@@ -100,9 +100,9 @@ each page's scene in its `Store`, one byte capacity for everything rendering
 reuses: scenes, decoded images, colour transforms, font programs and glyph
 edge setups (ADR 0012).
 
-Rendering a region prepares the scene for it (`pagura_paint::prepare`, the
-only fallible step): in source order it culls marks by conservative device
-bounds, validates them, reserves every budget (ADR 0016), builds coverage
+Rendering a region prepares the scene for it (`pagura_paint::prepare`):
+in source order it culls marks by conservative device bounds, validates them,
+reserves every budget (ADR 0016), builds coverage
 sources and prepared paint, chooses each buffer's storage format from its
 group's whole content and bins marks to bands of the global device grid.
 Coverage comes from the band rasterizer (`pagura-raster`): each mark's edges
@@ -112,6 +112,14 @@ rounded once (ADR 0004, section 4). The band executor then cannot fail; it can
 stop between bands for a viewer. Each output pixel is quantized once onto the
 background premultiplied once. Output does not depend on band height, tiles or
 platform.
+
+One band driver either appends output directly into an owned `Pixmap` or
+lends a reusable RGBA band to a consumer. Output storage belongs to the call:
+`decoded_bytes` caps the full collected surface or the streamed band, while
+`pixels` still caps the whole requested region. Preparation, repair reporting,
+scratch fitting and output reservation finish before the first consumer
+call. Paint execution cannot fail; a consumer can return its own error, such
+as an I/O failure, after output starts. A stop between bands is not an error.
 
 Rendering is exact: every pixel within one level of its exact result (ADR
 0004). Glyphs are rasterized at their exact device positions (ADR 0013).

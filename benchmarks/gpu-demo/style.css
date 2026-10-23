@@ -5,3 +5,5 @@
 .paper:not(.zoomed)>img{width:auto!important;height:auto!important;object-fit:contain}
 
 .direct-panel{border:1px solid #283641;border-radius:9px;padding:20px;margin:24px 0;background:#14202a}.direct-panel>h2{font-size:19px;margin:0 0 12px}.direct-panel p{font-size:11px;line-height:1.7;color:#9aaab7}.direct-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:18px 0}.direct-controls button{margin:0}.direct-controls label{display:flex;gap:10px;align-items:center;font-size:11px}.direct-previews{display:grid;grid-template-columns:1fr 1fr;gap:18px}.direct-previews section{overflow:hidden}.direct-previews h3{font-size:11px;color:#b9c9d4}.direct-previews canvas{width:100%;max-width:480px;aspect-ratio:1;background:white}.direct-panel input[type=range]{width:150px}@media(max-width:650px){.direct-previews{grid-template-columns:1fr}}
+
+.integrated-previews{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.integrated-previews section>div{overflow:auto;max-height:480px;background:white}.integrated-previews canvas{width:100%;max-width:480px;height:auto;display:block}

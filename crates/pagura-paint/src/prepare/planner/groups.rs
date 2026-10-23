@@ -180,7 +180,9 @@ impl Planner<'_> {
         budget
             .functions
             .charge_product(area(bounds), encoder.cost())?;
-        budget.bytes.charge(size_of::<Conversion>())?;
+        budget
+            .bytes
+            .reserve_capacity(&mut self.parts.conversions, 1)?;
         let id = u32::try_from(self.parts.conversions.len())
             .map_err(|_| Error::limit("conversion count exceeds u32"))?;
         self.parts

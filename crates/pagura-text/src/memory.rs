@@ -39,11 +39,6 @@ pub(crate) fn estimate(font: &PdfFont) -> usize {
     size_of::<PdfFont>()
         .saturating_add(mapping)
         .saturating_add(font.metrics.heap_bytes())
-        .saturating_add(font.to_unicode.as_ref().map_or(0, |map| {
-            size_of_val(map.as_ref())
-                .saturating_add(2 * size_of::<usize>())
-                .saturating_add(map.heap_bytes())
-        }))
         .saturating_add(source(&font.source))
 }
 

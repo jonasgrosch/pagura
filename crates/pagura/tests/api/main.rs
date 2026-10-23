@@ -9,6 +9,7 @@ mod overprint;
 mod provider;
 mod render;
 mod signatures;
+mod streaming;
 mod support;
 mod tags;
 mod text;

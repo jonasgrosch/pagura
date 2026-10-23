@@ -10,13 +10,16 @@
 //! colour is unpremultiplied for the executor.
 
 mod codes;
+mod contour;
 mod geometry;
+mod sampling;
+mod scratch;
 mod separable;
 #[cfg(test)]
 mod tests;
 mod texels;
 
-use super::{PaintContext, SpanColors};
+use super::{PaintContext, Pixels, SpanColors};
 use geometry::{Geometry, Mode, Texels};
 use pagura_color::{ColorSpace, Converter, Painted, Process};
 use pagura_core::{Built, Diagnostic, Error, Meter, Result, StoreKey};
@@ -26,11 +29,12 @@ use pagura_image::{
 };
 use pagura_interpret::{Image, ImageMask};
 use pagura_raster::Transform;
-use separable::{RowCache, Rows, Separable};
+use sampling::Sampling;
+pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, Colors, Convert, Lookup, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels, UnmatteTexels,
+    ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
+    SampleTexels, Strategy, TableTexels,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -40,17 +44,31 @@ use texels::{
 pub(crate) struct ImageSampler {
     prepared: Option<Box<Prepared>>,
     channels: usize,
-    /// The colour of every pixel, opaque, when all are alike.
-    uniform: Option<Vec<f64>>,
 }
 
 /// The budgets preparing an image charges.
 #[derive(Debug)]
 pub(crate) struct ImageBudgets<'a> {
+    /// Remaining preparation memory, including temporary capacity discovery.
+    pub(crate) bytes: &'a mut Meter,
     /// Render work: one unit per texel the filled pixels read.
     pub(crate) work: &'a mut Meter,
     /// `function_work` of the colour conversions sampling makes.
     pub(crate) functions: &'a mut Meter,
+}
+
+/// An owned preparation buffer, charged before allocation.
+fn reserved<T>(count: usize, bytes: &mut Meter) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    bytes.reserve(&mut values, count)?;
+    Ok(values)
+}
+
+/// An owned copy, charged while the source remains alive.
+fn copied<T: Copy>(values: &[T], bytes: &mut Meter) -> Result<Vec<T>> {
+    let mut copy = reserved(values.len(), bytes)?;
+    copy.extend_from_slice(values);
+    Ok(copy)
 }
 
 #[derive(Debug)]
@@ -62,11 +80,9 @@ struct Prepared {
     painted: Painted,
     /// Whether shape equals alpha, rather than the image's own shape.
     shape_is_alpha: bool,
-    /// Sampling by average codes, where the texels allow it.
-    codes: Option<codes::Codes>,
-    /// Separable sampling of converted texels otherwise, where the
-    /// placement is upright.
-    separable: Option<Separable>,
+    plan: Plan,
+    /// Device columns covered by the prepared plan.
+    columns: usize,
 }
 
 #[derive(Debug)]
@@ -78,16 +94,33 @@ enum Paint {
     Colors(Box<(Colors, Strategy)>),
 }
 
+/// One prepared image sampler: integer code averages where the colour
+/// map is affine, otherwise converted texels through the same footprints.
+#[derive(Debug)]
+enum Plan {
+    Codes(Box<codes::Codes>),
+    Texels(Sampling),
+}
+
+impl Plan {
+    fn bytes(&self) -> usize {
+        match self {
+            Self::Codes(plan) => size_of::<codes::Codes>().saturating_add(plan.bytes()),
+            Self::Texels(plan) => plan.bytes(),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct MaskSampling {
     image: Arc<Decoded>,
-    geometry: Geometry,
     opacity: Opacity,
     /// Whether the mask's opacity also scales shape: an explicit stencil
     /// mask, or alpha is shape.
     scales_shape: bool,
-    /// Separable sampling of the opacities, where the placement is upright.
-    separable: Option<Separable>,
+    /// A mask with its own grid or reconstruction; otherwise opacity
+    /// averages over the image's footprints together with the texels.
+    independent: Option<(Geometry, Sampling)>,
 }
 
 /// A decoded image in the store: the source and the request (layout and
@@ -194,6 +227,9 @@ impl ImageSampler {
         let mask = mask
             .map(|mask| decode_request(&mask.source, (Layout::Native, orientation), context))
             .transpose()?;
+        let mut memory = Meter::new(budgets.bytes.remaining(), "render memory budget exceeded");
+        memory.charge(decoded_bytes(&decoded.image))?;
+        memory.charge(mask.as_ref().map_or(0, |mask| decoded_bytes(&mask.image)))?;
         let description = Description {
             space: image.space.as_deref(),
             decode: &image.decode,
@@ -211,97 +247,149 @@ impl ImageSampler {
                     conversion.intent = intent;
                 }
                 let base = Lookup::of(space).map_or(space, |(_, base)| base);
-                let converter: Box<dyn Convert> =
-                    Box::new(Converter::new(base, context.target, &conversion)?);
+                let converter =
+                    Converter::new_metered(base, context.target, &conversion, &mut memory)?;
                 Some((converter, rgb_target(base, context)))
             }
             None => None,
         };
         let columns = (context.region.x0, context.region.x1);
-        let (prepared, conversions) = Prepared::new(
+        let mut prepared = Prepared::new(
             &description,
             (decoded, mask),
             (inverse, columns, orientation),
             convert,
+            &mut memory,
+            budgets.functions,
         )?;
-        prepared.charge(pixels, conversions, &mut budgets)?;
+        prepared.fit_memo(&mut ImageBudgets {
+            bytes: &mut memory,
+            work: budgets.work,
+            functions: budgets.functions,
+        })?;
+        prepared.charge(pixels, &mut budgets)?;
         Ok(Self::new(Some(Box::new(prepared)), channels))
     }
 
     fn new(prepared: Option<Box<Prepared>>, channels: usize) -> Self {
-        let mut sampler = Self {
-            prepared,
-            channels,
-            uniform: None,
-        };
-        sampler.uniform = sampler.find_uniform();
-        sampler
+        Self { prepared, channels }
     }
 
     /// The colour every pixel takes, when each takes the same opaque one:
     /// an image of one texel sampled nearest, without a mask image, whose
     /// texel has alpha and shape 1. Each pixel's span then holds exactly
     /// these values.
-    fn find_uniform(&self) -> Option<Vec<f64>> {
-        let prepared = self.prepared.as_ref()?;
+    ///
+    /// Decoding repairs keep the sampler, so preparation still reports
+    /// them when an image would otherwise become a solid source.
+    pub(crate) fn constant(
+        &self,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Option<(Box<[f64]>, Painted)>> {
+        let Some(prepared) = self.prepared.as_ref() else {
+            return Ok(None);
+        };
         let image = &prepared.image.image;
-        if prepared.mask.is_some()
+        if !self.repairs().is_empty()
+            || prepared.mask.is_some()
             || prepared.geometry.mode() != Mode::Nearest
             || (image.width, image.height) != (1, 1)
         {
-            return None;
+            return Ok(None);
         }
-        let mut colors = SpanColors::default();
-        let mut shape = Vec::new();
-        if prepared.shape_is_alpha {
-            self.span(0, 0, 1, &mut colors);
+        if let Plan::Codes(plan) = &prepared.plan {
+            let mut colors = SpanColors {
+                colors: reserved(self.channels, bytes)?,
+                alpha: reserved(1, bytes)?,
+                ..SpanColors::default()
+            };
+            plan.constant(image, &mut colors);
+            let opaque = colors.alpha.iter().all(|&alpha| alpha == 1.0);
+            let alpha_bytes = colors.alpha.capacity() * size_of::<f64>();
+            drop(colors.alpha);
+            bytes.refund(alpha_bytes);
+            if opaque && colors.colors.len() == self.channels {
+                return Ok(Some((colors.colors.into_boxed_slice(), prepared.painted)));
+            }
+            let released = colors.colors.capacity() * size_of::<f64>();
+            drop(colors.colors);
+            bytes.refund(released);
+            return Ok(None);
+        }
+        let mut texel = [0.0; geometry::MAX_LANES];
+        let lanes = self.channels + 2;
+        let texel = &mut texel[..lanes];
+        match &prepared.paint {
+            Paint::Stencil { table, .. } => {
+                let code = usize::from(image.samples.get(0).unwrap_or(0));
+                texels::copy_texel(texel, table.get(code * lanes..).unwrap_or(&[]));
+            }
+            Paint::Colors(paint) => {
+                if let Strategy::Table(table, _) = &paint.1 {
+                    let code = usize::from(image.samples.get(0).unwrap_or(0));
+                    texels::copy_texel(
+                        texel,
+                        table.get(code * lanes..(code + 1) * lanes).unwrap_or(&[]),
+                    );
+                } else {
+                    functions.charge(paint.0.convert.cost())?;
+                    SampleTexels::new(image, &paint.0, None).get(0, texel);
+                }
+            }
+        }
+        if texel[self.channels..] == [1.0, 1.0] {
+            let color = copied(&texel[..self.channels], bytes)?;
+            Ok(Some((color.into_boxed_slice(), prepared.painted)))
         } else {
-            self.span_with_shape(0, 0, 1, &mut colors, &mut shape);
+            Ok(None)
         }
-        let opaque = colors.alpha.iter().chain(&shape).all(|&value| value == 1.0);
-        (opaque && colors.colors.len() == self.channels).then_some(colors.colors)
-    }
-
-    /// The colour of every pixel, opaque, when the image paints one colour
-    /// alike everywhere, and the channels it paints.
-    pub(crate) fn uniform(&self) -> Option<(&[f64], Painted)> {
-        let painted = self.prepared.as_ref()?.painted;
-        Some((self.uniform.as_deref()?, painted))
     }
 
     /// Gives a stencil mask its colour, `color` in working colours painting
     /// `painted`, so that spans carry the exactly composited colour: each
     /// texel's colour is the colour times its alpha before averaging.
     /// Other images are unchanged.
-    #[must_use]
-    pub(crate) fn with_stencil_color(mut self, color: &[f64], painted: Painted) -> Self {
+    pub(crate) fn with_stencil_color(
+        mut self,
+        color: &[f64],
+        painted: Painted,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
         let Some(prepared) = self.prepared.as_mut() else {
             self.channels = color.len();
-            return self;
+            return Ok(self);
         };
         if let Paint::Stencil { table, opacity } = &mut prepared.paint {
             let lanes = color.len() + 2;
-            table.clear();
+            let mut replacement = reserved(2 * lanes, bytes)?;
             for alpha in *opacity {
-                table.extend(color.iter().map(|v| v * alpha));
-                table.extend([alpha, alpha]);
+                replacement.extend(color.iter().map(|v| v * alpha));
+                replacement.extend([alpha, alpha]);
             }
+            let old = std::mem::replace(table, replacement);
+            let released = old.capacity() * size_of::<f64>();
+            drop(old);
+            bytes.refund(released);
             debug_assert_eq!(table.len(), 2 * lanes);
-            // Rows kept from the colourless table are stale.
-            if let Some(separable) = prepared.separable.as_mut() {
-                separable.forget();
-            }
-            if let Some(codes) = prepared.codes.as_mut() {
-                match codes::Lanes::single(table, lanes, 2, false) {
-                    Some(fast) => codes.set_lanes(fast),
-                    None => prepared.codes = None,
+            let old = std::mem::replace(&mut prepared.plan, Plan::Texels(Sampling::Points));
+            prepared.plan = match old {
+                Plan::Codes(mut codes) => {
+                    if let Some(lanes) = codes::Lanes::single(table, lanes, 2, false, bytes)? {
+                        codes.set_lanes(lanes, bytes)?;
+                        Plan::Codes(codes)
+                    } else {
+                        let separable = (*codes).into_separable(bytes);
+                        bytes.refund(size_of::<codes::Codes>());
+                        Plan::Texels(Sampling::Separable(separable))
+                    }
                 }
-            }
+                Plan::Texels(plan) => Plan::Texels(plan),
+            };
             prepared.painted = painted;
             self.channels = color.len();
         }
-        self.uniform = self.find_uniform();
-        self
+        Ok(self)
     }
 
     /// Whether every pixel's shape equals its alpha. Otherwise (a soft mask
@@ -333,33 +421,67 @@ impl ImageSampler {
     /// Fills `out` with the colours and alpha of device pixels `x .. x +
     /// len` of row `y`: unpremultiplied working colours (none for an
     /// uncoloured stencil mask) and one alpha per pixel, before coverage.
-    pub(crate) fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
-        self.fill((x, y, len), out, None);
+    pub(crate) fn span(
+        &self,
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut SpanColors,
+    ) {
+        self.fill(pixels, scratch, out, None);
     }
 
     /// As [`Self::span`], also filling `shape` with each pixel's shape.
     pub(crate) fn span_with_shape(
         &self,
-        x: u32,
-        y: u32,
-        len: usize,
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
         out: &mut SpanColors,
         shape: &mut Vec<f64>,
     ) {
-        self.fill((x, y, len), out, Some(shape));
+        self.fill(pixels, scratch, out, Some(shape));
+    }
+
+    /// Writes the N16 words of device pixels `x .. x + out.len()` of row
+    /// `y` into `out`, as a store at full opacity writes opaque colours,
+    /// where every pixel of the span is opaque and its colour needs no
+    /// other pass: an RGB image without a mask whose pixels take nearest
+    /// samples. False, with `out` unspecified, otherwise.
+    pub(crate) fn words(
+        &self,
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let Some(prepared) = &self.prepared else {
+            return false;
+        };
+        if self.channels != 3 || prepared.mask.is_some() {
+            return false;
+        }
+        match &prepared.plan {
+            Plan::Codes(codes) => match &mut scratch.plan {
+                sampling::Scratch::Separable(storage) => {
+                    codes.words(&prepared.image.image, pixels, storage, out)
+                }
+                _ => false,
+            },
+            Plan::Texels(plan) => prepared.texel_words(plan, pixels, scratch, out),
+        }
     }
 
     fn fill(
         &self,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
+        let len = pixels.len;
         let channels = self.channels;
         out.channels = channels;
-        out.colors.clear();
         out.alpha.clear();
         let Some(prepared) = &self.prepared else {
+            out.colors.clear();
             out.colors.resize(len * channels, 0.0);
             out.alpha.resize(len, 0.0);
             if let Some(shape) = shape {
@@ -370,37 +492,54 @@ impl ImageSampler {
             return;
         };
         out.painted = prepared.painted;
-        if let Some(codes) = &prepared.codes {
-            codes.fill(&prepared.image.image, (x, y, len), out, shape);
-            return;
-        }
+        let plan = match &prepared.plan {
+            Plan::Texels(plan) => plan,
+            Plan::Codes(codes) => {
+                if let sampling::Scratch::Separable(storage) = &mut scratch.plan {
+                    codes.fill(&prepared.image.image, pixels, storage, out, shape);
+                }
+                return;
+            }
+        };
         let lanes = channels + 2;
-        if let Some(mask) = &prepared.mask {
-            out.alpha.resize(len, 0.0);
+        let mask = prepared.mask.as_ref();
+        // A mask on the image's grid averages ahead of the texels; another
+        // is sampled into the alphas first.
+        let fused = mask.is_some_and(|mask| mask.independent.is_none());
+        out.alpha.resize(len, 0.0);
+        if let Some(mask) = mask
+            && let Some((geometry, plan)) = &mask.independent
+        {
             let texels = OpacityTexels {
                 mask: &mask.image.image,
                 opacity: &mask.opacity,
             };
-            sample(
-                (mask.separable.as_ref(), &mask.geometry),
-                (x, y, len),
-                &texels,
-                &mut out.alpha,
-            );
+            if let Some(storage) = &mut scratch.mask {
+                plan.fill(geometry, pixels, storage, &texels, &mut out.alpha);
+            }
         }
-        out.colors.resize(len * lanes, 0.0);
-        prepared.texels((x, y, len), lanes, &mut out.colors);
+        let stride = lanes + usize::from(fused);
+        let mut summed = std::mem::take(&mut scratch.summed);
+        summed.resize(len * stride, 0.0);
+        prepared.texels(plan, pixels, scratch, lanes, &mut summed);
+        out.colors.resize(len * channels, 0.0);
         let mut shape = shape;
         if let Some(shape) = shape.as_deref_mut() {
             shape.clear();
         }
-        let factors = prepared.mask.as_ref().map(|mask| mask.scales_shape);
+        let scales_shape = mask.is_some_and(|mask| mask.scales_shape);
         for i in 0..len {
-            let base = i * lanes;
-            let (color, rest) = out.colors[base..base + lanes].split_at_mut(channels);
-            let (mut alpha, mut own) = (rest[0], rest[1]);
-            if let Some(scales_shape) = factors {
-                let factor = out.alpha[i];
+            let base = i * stride;
+            let texel = &summed[base..base + stride];
+            let (factor, texel) = match (mask, fused) {
+                (Some(_), true) => (Some(texel[0]), &texel[1..]),
+                (Some(_), false) => (Some(out.alpha[i]), texel),
+                (None, _) => (None, texel),
+            };
+            let color = &mut out.colors[i * channels..(i + 1) * channels];
+            texels::copy_texel(color, texel);
+            let (mut alpha, mut own) = (texel[channels], texel[channels + 1]);
+            if let Some(factor) = factor {
                 for value in color.iter_mut() {
                     *value *= factor;
                 }
@@ -414,86 +553,185 @@ impl ImageSampler {
                     *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
                 }
             }
-            // Moved value by value: a few values each, where a copy call
-            // costs more than the move.
-            for (to, from) in (i * channels..).zip(base..base + channels) {
-                out.colors[to] = out.colors[from];
-            }
-            if factors.is_some() {
-                out.alpha[i] = alpha;
-            } else {
-                out.alpha.push(alpha);
-            }
+            out.alpha[i] = alpha;
             if let Some(shape) = shape.as_deref_mut() {
                 shape.push(own);
             }
         }
-        out.colors.truncate(len * channels);
+        scratch.summed = summed;
     }
 }
 
+struct SamplingBuffers<'a> {
+    storage: &'a mut sampling::Scratch,
+    fused: &'a mut Vec<f64>,
+}
+
 impl Prepared {
+    /// Sizes a sparse memo from its source keys without reducing the
+    /// conversion reuse of photographic images.
+    fn fit_memo(&mut self, budgets: &mut ImageBudgets<'_>) -> Result<()> {
+        if let Paint::Colors(paint) = &mut self.paint
+            && let Strategy::Memo(layout) = &mut paint.1
+        {
+            layout.fit(
+                &self.image.image,
+                self.mask.as_ref().map(|mask| &mask.image.image),
+                budgets.work,
+                budgets.bytes,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Whether converted texels omit their constant alpha and shape lanes.
+    fn opaque(&self) -> bool {
+        match &self.paint {
+            Paint::Colors(paint) => match &paint.1 {
+                Strategy::Table(_, opaque) => *opaque,
+                Strategy::Rgb(_) => matches!(self.image.image.samples, Samples::Bytes(_)),
+                Strategy::Memo(layout) => layout.opaque(),
+                Strategy::General => false,
+            },
+            Paint::Stencil { .. } => false,
+        }
+    }
+
     /// Writes the summed texels of the span's pixels, `texels.lanes()`
-    /// values each, into `out`.
-    fn sample(&self, span: (u32, u32, usize), texels: &impl Texels, out: &mut [f64]) {
-        sample((self.separable.as_ref(), &self.geometry), span, texels, out);
+    /// values each, into `out`; with a mask on the image's grid, each
+    /// pixel's mask opacity ahead of them.
+    fn sample(
+        &self,
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        buffers: &mut SamplingBuffers<'_>,
+        texels: &impl Texels,
+        out: &mut [f64],
+    ) {
+        match self.mask.as_ref().filter(|mask| mask.independent.is_none()) {
+            Some(mask) => {
+                let fused = Fused {
+                    texels,
+                    mask: OpacityTexels {
+                        mask: &mask.image.image,
+                        opacity: &mask.opacity,
+                    },
+                    values: std::cell::RefCell::new(&mut *buffers.fused),
+                };
+                plan.fill(&self.geometry, pixels, buffers.storage, &fused, out);
+            }
+            None => plan.fill(&self.geometry, pixels, buffers.storage, texels, out),
+        }
+    }
+
+    /// [`ImageSampler::words`] of opaque texels sampled nearest: the
+    /// texels, then their words.
+    fn texel_words(
+        &self,
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let lanes = 5;
+        if !self.opaque() || !plan.nearest() {
+            return false;
+        }
+        let len = out.len();
+        let mut values = std::mem::take(&mut scratch.summed);
+        values.resize(len * lanes, 0.0);
+        self.texels(plan, pixels, scratch, lanes, &mut values);
+        for (pixel, texel) in out.iter_mut().zip(values.as_chunks::<5>().0) {
+            *pixel = [
+                crate::kernel::opaque_word(texel[0]),
+                crate::kernel::opaque_word(texel[1]),
+                crate::kernel::opaque_word(texel[2]),
+                u16::MAX,
+            ];
+        }
+        scratch.summed = values;
+        true
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.
-    fn texels(&self, span: (u32, u32, usize), lanes: usize, out: &mut [f64]) {
+    fn texels(
+        &self,
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        lanes: usize,
+        out: &mut [f64],
+    ) {
+        let ImageScratch {
+            plan: storage,
+            fused,
+            memo,
+            ..
+        } = scratch;
+        let mut buffers = SamplingBuffers { storage, fused };
         let image = &self.image.image;
         match &self.paint {
-            Paint::Stencil { table, .. } => self.table(span, (table, lanes, false), out),
+            Paint::Stencil { table, .. } => {
+                self.table(plan, pixels, &mut buffers, (table, lanes, false), out);
+            }
             Paint::Colors(paint) => match &paint.1 {
-                Strategy::Table(table, opaque) => self.table(span, (table, lanes, *opaque), out),
+                Strategy::Table(table, opaque) => {
+                    self.table(plan, pixels, &mut buffers, (table, lanes, *opaque), out);
+                }
                 Strategy::Rgb(tables) => {
                     if let Samples::Bytes(bytes) = &image.samples {
                         let texels = RgbTexels {
                             pixels: bytes.as_chunks::<3>().0,
                             tables,
                         };
-                        self.sample(span, &texels, out);
+                        self.sample(plan, pixels, &mut buffers, &texels, out);
                     } else {
                         // Planes sampled by a placement that average codes
                         // do not cover convert each sample.
-                        let texels = SampleTexels::new(image, &paint.0, None, None);
-                        self.sample(span, &texels, out);
+                        let texels = SampleTexels::new(image, &paint.0, None);
+                        self.sample(plan, pixels, &mut buffers, &texels, out);
                     }
                 }
-                Strategy::Cached(cache) => {
-                    let texels = SampleTexels::new(image, &paint.0, None, Some(cache));
-                    self.sample(span, &texels, out);
-                }
-                Strategy::Unmatte(memo) => {
+                Strategy::Memo(_) => {
                     let colors = &paint.0;
-                    let texels = self.mask.as_ref().and_then(|mask| {
-                        UnmatteTexels::new(image, colors, (&mask.image.image, &mask.opacity), memo)
-                    });
-                    match texels {
-                        Some(texels) => self.sample(span, &texels, out),
-                        None => self.general(span, colors, out),
+                    let mask = self.mask.as_ref().map(|m| (&m.image.image, &m.opacity));
+                    match memo
+                        .as_deref_mut()
+                        .and_then(|memo| MemoTexels::new(image, colors, mask, memo))
+                    {
+                        Some(texels) => self.sample(plan, pixels, &mut buffers, &texels, out),
+                        None => self.general(plan, pixels, &mut buffers, colors, out),
                     }
                 }
-                Strategy::General => self.general(span, &paint.0, out),
+                Strategy::General => self.general(plan, pixels, &mut buffers, &paint.0, out),
             },
         }
     }
 
     /// Every texel computed from its sample, the Matte removed at the soft
     /// mask's opacity.
-    fn general(&self, span: (u32, u32, usize), colors: &Colors, out: &mut [f64]) {
+    fn general(
+        &self,
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        buffers: &mut SamplingBuffers<'_>,
+        colors: &Colors,
+        out: &mut [f64],
+    ) {
         let matte = self
             .mask
             .as_ref()
             .filter(|_| colors.matte.is_some())
             .map(|mask| (&mask.image.image, &mask.opacity));
-        let texels = SampleTexels::new(&self.image.image, colors, matte, None);
-        self.sample(span, &texels, out);
+        let texels = SampleTexels::new(&self.image.image, colors, matte);
+        self.sample(plan, pixels, buffers, &texels, out);
     }
 
     fn table(
         &self,
-        span: (u32, u32, usize),
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        buffers: &mut SamplingBuffers<'_>,
         (table, lanes, opaque): (&[f64], usize, bool),
         out: &mut [f64],
     ) {
@@ -505,7 +743,7 @@ impl Prepared {
                     lanes,
                     opaque,
                 };
-                self.sample(span, &texels, out);
+                self.sample(plan, pixels, buffers, &texels, out);
             }
             Samples::Packed(packed) => {
                 let texels = TableTexels {
@@ -514,107 +752,10 @@ impl Prepared {
                     lanes,
                     opaque,
                 };
-                self.sample(span, &texels, out);
+                self.sample(plan, pixels, buffers, &texels, out);
             }
             Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
         }
-    }
-}
-
-/// The separable sampling of texels placed by `geometry` for device columns
-/// `columns`, where the placement is upright and not interpolated: an
-/// interpolated pixel adds its four texels by their weights' products, as
-/// any placement's does.
-///
-/// # Errors
-///
-/// A `Limit` error when the plan cannot be allocated.
-fn texel_rows(geometry: &Geometry, columns: (u32, u32)) -> Result<Option<Separable>> {
-    if geometry.mode() == Mode::Bilinear {
-        return Ok(None);
-    }
-    Separable::new(geometry, columns)
-}
-
-/// Writes the summed texels of device pixels `x .. x + len` of row `y`,
-/// `texels.lanes()` values each, into `out`: separably where the placement
-/// is upright, pixel by pixel through `geometry` otherwise. The alpha and
-/// shape of opaque texels are 1 where a pixel's footprint meets the image
-/// and 0 elsewhere.
-fn sample(
-    (separable, geometry): (Option<&Separable>, &Geometry),
-    (x, y, len): (u32, u32, usize),
-    texels: &impl Texels,
-    out: &mut [f64],
-) {
-    let Some(separable) = separable else {
-        geometry.fill((x, y, len), texels, out);
-        return;
-    };
-    let lanes = texels.lanes();
-    let opaque = texels.opaque();
-    let rows = TexelRows {
-        texels,
-        width: geometry.size().0,
-        values: lanes - if opaque { 2 } else { 0 },
-    };
-    let n = rows.values;
-    if separable.nearest() {
-        separable.gather(&rows, (x, y, len), |pixels| {
-            let sources = pixels.chunks_exact(n.max(1));
-            for (pixel, source) in out.chunks_exact_mut(lanes).zip(sources) {
-                if let Some((values, rest)) = pixel.split_at_mut_checked(n) {
-                    values.copy_from_slice(source);
-                    rest.fill(1.0);
-                }
-            }
-        });
-        return;
-    }
-    out.fill(0.0);
-    let finish = |out: &mut [f64], covered: &[bool]| {
-        if lanes > n {
-            for (pixel, &covered) in out.chunks_exact_mut(lanes).zip(covered) {
-                if let Some(rest) = pixel.get_mut(n..) {
-                    rest.fill(f64::from(u8::from(covered)));
-                }
-            }
-        }
-    };
-    let into = Some((&mut *out, lanes));
-    separable.average(&rows, (x, y, len), into, (|average| average, finish));
-}
-
-/// Rows of an image's texels, `values` per sample: every lane, or the
-/// colour lanes of opaque texels; the image is `width` samples wide.
-struct TexelRows<'a, T> {
-    texels: &'a T,
-    width: u32,
-    values: usize,
-}
-
-impl<T: Texels> Rows for TexelRows<'_, T> {
-    type Value = f64;
-
-    fn width(&self) -> usize {
-        self.values
-    }
-
-    fn row<'c>(
-        &'c self,
-        y: usize,
-        (first, end): (usize, usize),
-        cache: &'c mut RowCache<f64>,
-    ) -> &'c [f64] {
-        let (Ok(row), Ok(start), Ok(stop)) =
-            (u32::try_from(y), u32::try_from(first), u32::try_from(end))
-        else {
-            return &[];
-        };
-        cache.get((y, (first, end)), self.values, |out, _| {
-            self.texels.row((row, self.width), (start, stop), out);
-            true
-        })
     }
 }
 
@@ -760,14 +901,17 @@ enum MaskDescription<'a> {
 impl Prepared {
     /// Prepares sampling `decoded` (and its `mask`) under the device-to-unit
     /// square `inverse`, converting colours with `convert` (and per channel
-    /// when it is the identity with clipping). Returns the conversions
-    /// preparing tables made.
+    /// when it is the identity with clipping), charging its owned storage
+    /// and table conversions before construction.
     fn new(
         description: &Description<'_>,
         (decoded, mask): (Arc<Decoded>, Option<Arc<Decoded>>),
         (inverse, columns, orientation): (Transform, (u32, u32), Orientation),
-        convert: Option<(Box<dyn Convert>, bool)>,
-    ) -> Result<(Self, usize)> {
+        convert: Option<(Converter, bool)>,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Self> {
+        bytes.charge_items::<Self>(1)?;
         validate(&decoded.image)?;
         let geometry = placement(&decoded.image, inverse, orientation)?;
         let mask = match (mask, description.mask) {
@@ -777,105 +921,122 @@ impl Prepared {
                     MaskDescription::Soft { decode, .. } => (decode, description.alpha_is_shape),
                     _ => ([0.0, 1.0], true),
                 };
-                let geometry = placement(&image.image, inverse, orientation)?;
+                // On the image's grid and sampled alike: the same samples
+                // and the same reconstruction (a mask has its own
+                // `Interpolate`).
+                let fused = (image.image.width, image.image.height)
+                    == (decoded.image.width, decoded.image.height)
+                    && image.image.interpolate == decoded.image.interpolate;
                 Some(MaskSampling {
-                    opacity: Opacity::new(&image.image, decode),
-                    separable: texel_rows(&geometry, columns)?,
-                    geometry,
+                    opacity: Opacity::new(&image.image, decode, bytes)?,
+                    independent: if fused {
+                        None
+                    } else {
+                        let geometry = placement(&image.image, inverse, orientation)?;
+                        let plan = Sampling::new(&geometry, columns, bytes)?;
+                        Some((geometry, plan))
+                    },
                     image,
                     scales_shape,
                 })
             }
             _ => None,
         };
-        let (paint, conversions, painted) = match convert {
+        let (paint, painted) = match convert {
             Some((convert, rgb)) => {
-                let colors = colors(description, &decoded.image, mask.as_ref(), convert)?;
+                let colors = colors(description, &decoded.image, mask.as_ref(), convert, bytes)?;
                 // Sampled images select channels independently of their
                 // values (11.7.4.3).
                 let painted = colors.convert.painted();
-                let (strategy, conversions) = Strategy::new(&decoded.image, &colors, rgb);
-                (
-                    Paint::Colors(Box::new((colors, strategy))),
-                    conversions,
-                    painted,
-                )
+                let strategy = Strategy::new(
+                    &decoded.image,
+                    &colors,
+                    rgb,
+                    mask.as_ref().map(|mask| &mask.image.image),
+                    bytes,
+                    functions,
+                )?;
+                bytes.charge_items::<(Colors, Strategy)>(1)?;
+                (Paint::Colors(Box::new((colors, strategy))), painted)
             }
-            None => (stencil_paint(&decoded.image), 0, Painted(0)),
+            None => (stencil_paint(&decoded.image, bytes)?, Painted(0)),
         };
         let shape_is_alpha = matches!(
             description.mask,
             MaskDescription::None | MaskDescription::Stencil
         ) && !matches!(decoded.image.mask, MaskKind::Embedded(_))
             || description.alpha_is_shape;
-        let codes = match (&mask, fast_lanes(&paint, &decoded.image)) {
-            (None, Some(lanes)) => codes::Codes::new(lanes, &decoded.image, &geometry, columns)?,
-            _ => None,
-        };
-        let separable = match codes {
-            Some(_) => None,
-            None => texel_rows(&geometry, columns)?,
-        };
-        Ok((
-            Self {
-                image: decoded,
-                geometry,
-                paint,
-                mask,
-                painted,
-                shape_is_alpha,
-                codes,
-                separable,
+        let codes = match mask {
+            None => match fast_lanes(&paint, &decoded.image, bytes)? {
+                Some(lanes) => codes::Codes::new(lanes, &decoded.image, &geometry, columns, bytes)?,
+                None => None,
             },
-            conversions,
-        ))
+            Some(_) => None,
+        };
+        let plan = match codes {
+            Some(codes) => {
+                bytes.charge_items::<codes::Codes>(1)?;
+                Plan::Codes(Box::new(codes))
+            }
+            None => Plan::Texels(Sampling::new(&geometry, columns, bytes)?),
+        };
+        Ok(Self {
+            image: decoded,
+            geometry,
+            paint,
+            mask,
+            painted,
+            shape_is_alpha,
+            plan,
+            columns: usize::try_from(columns.1.saturating_sub(columns.0)).unwrap_or(usize::MAX),
+        })
     }
 
     /// Bytes held for the render: decoded samples, tables and plans.
     fn bytes(&self) -> usize {
         let tables = match &self.paint {
-            Paint::Stencil { table, .. } => size_of_val::<[f64]>(table),
-            Paint::Colors(paint) => paint.1.bytes(),
+            Paint::Stencil { table, .. } => table.capacity() * size_of::<f64>(),
+            Paint::Colors(paint) => {
+                size_of::<(Colors, Strategy)>() + paint.0.bytes() + paint.1.bytes()
+            }
         };
-        let mask = self
-            .mask
-            .as_ref()
-            .map_or(0, |mask| decoded_bytes(&mask.image.image));
+        let mask = self.mask.as_ref().map_or(0, |mask| {
+            let plan = mask
+                .independent
+                .as_ref()
+                .map_or(0, |(_, plan)| plan.bytes());
+            decoded_bytes(&mask.image.image)
+                .saturating_add(mask.opacity.bytes())
+                .saturating_add(plan)
+        });
         [
             decoded_bytes(&self.image.image),
             mask,
             tables,
-            self.codes.as_ref().map_or(0, codes::Codes::bytes),
-            self.separable.as_ref().map_or(0, Separable::bytes),
-            self.mask
-                .as_ref()
-                .and_then(|mask| mask.separable.as_ref())
-                .map_or(0, Separable::bytes),
+            self.plan.bytes(),
         ]
         .into_iter()
         .fold(size_of::<Self>(), usize::saturating_add)
     }
 
     /// Charges the texels `pixels` filled pixels read to `work`, and the
-    /// colour conversions of preparing tables and of sampling to
-    /// `functions`.
-    fn charge(
-        &self,
-        pixels: usize,
-        conversions: usize,
-        budgets: &mut ImageBudgets<'_>,
-    ) -> Result<()> {
+    /// colour conversions of sampling to `functions`; table construction
+    /// charged its conversions already.
+    fn charge(&self, pixels: usize, budgets: &mut ImageBudgets<'_>) -> Result<()> {
         let per_pixel = self
             .geometry
             .cost()
-            .saturating_add(self.mask.as_ref().map_or(0, |mask| mask.geometry.cost()));
+            .saturating_add(self.mask.as_ref().map_or(0, |mask| {
+                mask.independent
+                    .as_ref()
+                    .map_or(self.geometry.cost(), |(geometry, _)| geometry.cost())
+            }));
         budgets.work.charge_product(pixels, per_pixel)?;
         if let Paint::Colors(paint) = &self.paint {
             let (colors, strategy) = paint.as_ref();
             let cost = colors.convert.cost();
-            budgets.functions.charge_product(conversions, cost)?;
-            let planes =
-                self.codes.is_none() && matches!(self.image.image.samples, Samples::Planar(_));
+            let planes = matches!(self.plan, Plan::Texels(_))
+                && matches!(self.image.image.samples, Samples::Planar(_));
             if strategy.converts_while_painting() || planes {
                 budgets
                     .functions
@@ -888,32 +1049,40 @@ impl Prepared {
 
 /// The lanes of sampling by average codes for `paint`, when its texels
 /// follow the codes of `image` affinely.
-fn fast_lanes(paint: &Paint, image: &DecodedImage) -> Option<codes::Lanes> {
-    let codes = 1usize
-        << image
-            .component_bits(0)
-            .filter(|bits| (1..=8).contains(bits))?;
+fn fast_lanes(
+    paint: &Paint,
+    image: &DecodedImage,
+    bytes: &mut Meter,
+) -> Result<Option<codes::Lanes>> {
+    let Some(bits) = image
+        .component_bits(0)
+        .filter(|bits| (1..=8).contains(bits))
+    else {
+        return Ok(None);
+    };
+    let codes = 1usize << bits;
     match paint {
-        Paint::Stencil { table, .. } => codes::Lanes::single(table, table.len() / 2, 2, false),
+        Paint::Stencil { table, .. } => {
+            codes::Lanes::single(table, table.len() / 2, 2, false, bytes)
+        }
         Paint::Colors(paint) => match &paint.1 {
             Strategy::Table(table, opaque) => {
                 let lanes = paint.0.lanes();
-                codes::Lanes::single(table, lanes, codes, *opaque)
+                codes::Lanes::single(table, lanes, codes, *opaque, bytes)
             }
-            Strategy::Rgb(tables) => codes::Lanes::rgb(tables),
-            Strategy::Cached(_) | Strategy::Unmatte(_) | Strategy::General => None,
+            Strategy::Rgb(tables) => codes::Lanes::rgb(tables, bytes),
+            Strategy::Memo(_) | Strategy::General => Ok(None),
         },
     }
 }
 
 /// The texels of a stencil mask's two codes, without colour.
-fn stencil_paint(image: &DecodedImage) -> Paint {
+fn stencil_paint(image: &DecodedImage, bytes: &mut Meter) -> Result<Paint> {
     let inverted = matches!(image.kind, ImageKind::Stencil { inverted: true });
     let opacity = [0u16, 1].map(|code| f64::from(u8::from((code == 1) == inverted)));
-    Paint::Stencil {
-        table: opacity.iter().flat_map(|&a| [a, a]).collect(),
-        opacity,
-    }
+    let mut table = reserved(4, bytes)?;
+    table.extend(opacity.iter().flat_map(|&a| [a, a]));
+    Ok(Paint::Stencil { table, opacity })
 }
 
 /// How a colour image's samples become texels.
@@ -921,7 +1090,8 @@ fn colors(
     description: &Description<'_>,
     decoded: &DecodedImage,
     mask: Option<&MaskSampling>,
-    convert: Box<dyn Convert>,
+    convert: Converter,
+    bytes: &mut Meter,
 ) -> Result<Colors> {
     let space = description
         .space
@@ -931,15 +1101,16 @@ fn colors(
         .decode
         .get(..components)
         .ok_or(Error::syntax("missing Decode component"))?;
-    let maxima = (0..components)
-        .map(|i| {
+    let mut maxima = reserved(components, bytes)?;
+    for i in 0..components {
+        maxima.push(
             decoded
                 .component_bits(i)
                 .filter(|bits| (1..=16).contains(bits))
                 .map(texels::maximum)
-                .ok_or(Error::syntax("invalid image component precision"))
-        })
-        .collect::<Result<Vec<_>>>()?;
+                .ok_or(Error::syntax("invalid image component precision"))?,
+        );
+    }
     let embedded = match &decoded.mask {
         MaskKind::Embedded(alpha) => {
             if !(1..=16).contains(&alpha.bits_per_component) {
@@ -963,15 +1134,15 @@ fn colors(
             {
                 return Err(Error::syntax("Matte mask dimensions differ from image"));
             }
-            Some(matte.to_vec())
+            Some(copied(matte, bytes)?)
         }
         _ => None,
     };
     Ok(Colors {
-        decode: decode.to_vec(),
+        decode: copied(decode, bytes)?,
         maxima,
         lookup: Lookup::of(space).map(|(lookup, _)| lookup),
-        key: description.key.map(<[[u16; 2]]>::to_vec),
+        key: description.key.map(|key| copied(key, bytes)).transpose()?,
         embedded,
         matte,
         alpha_is_shape: description.alpha_is_shape,

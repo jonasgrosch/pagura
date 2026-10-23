@@ -1,7 +1,7 @@
 //! Three-entry prepared-scene LRU, shared by retained CPU and GPU setup.
 use pagura_core::{Error, Limits, Result, Store};
 use pagura_interpret::Scene;
-use pagura_paint::{PreparedScene, RenderRequest, Scratch};
+use pagura_paint::{PreparedScene, RenderRequest};
 
 const MAX_ENTRIES: usize = 3;
 const MAX_CHARGES: usize = 256 * 1024 * 1024;
@@ -24,10 +24,8 @@ pub struct Cache {
 }
 
 impl Cache {
-    pub fn clear(&mut self, scratch: &mut Scratch) {
-        for entry in self.entries.drain(..) {
-            scratch.recycle(entry.prepared);
-        }
+    pub fn clear(&mut self) {
+        self.entries.clear();
         self.charges = 0;
     }
 
@@ -37,23 +35,22 @@ impl Cache {
         scene: &Scene,
         request: &RenderRequest,
         resources: (&Store, &Limits),
-        scratch: &mut Scratch,
     ) -> Result<bool> {
         if let Some(i) = self.entries.iter().position(|e| e.key == key) {
             let entry = self.entries.remove(i);
             self.entries.push(entry);
             return Ok(true);
         }
-        let prepared = scratch.prepare(scene, request, resources)?;
+        let prepared = pagura_paint::prepare(scene, request, resources.0, resources.1)?;
         let charge = prepared.charges().render_bytes();
         if charge > MAX_CHARGES {
-            scratch.recycle(prepared);
+            drop(prepared);
             return Err(Error::limit("prepared cache entry exceeds budget"));
         }
         while self.entries.len() >= MAX_ENTRIES || self.charges > MAX_CHARGES - charge {
             let old = self.entries.remove(0);
             self.charges -= old.prepared.charges().render_bytes();
-            scratch.recycle(old.prepared);
+            drop(old.prepared);
             self.evictions += 1;
         }
         self.next += 1;

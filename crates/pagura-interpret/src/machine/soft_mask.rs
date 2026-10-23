@@ -1,7 +1,7 @@
 //! Soft masks (11.6.5.2): the mask's group interpreted in the coordinate
 //! system and state at `gs`, numbered in definition order.
 
-use super::form::FormBody;
+use super::form::{FormBody, HiddenForm};
 use super::{Machine, Scope, Text};
 use crate::device::{Device, SoftMaskInfo};
 use crate::model::{MaskId, MaskKind};
@@ -59,7 +59,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         parent.state.start_group();
         let object = document.object(id)?;
         let not_group = || Error::syntax("soft-mask G must be a transparency group").in_object(id);
-        let Some(form) = self.prepare_form(FormBody::Stored(object), resources, &parent, false)?
+        let Some(form) = self.prepare_form(
+            FormBody::Stored(object),
+            resources,
+            &parent,
+            HiddenForm::Skip,
+        )?
         else {
             return Err(not_group());
         };

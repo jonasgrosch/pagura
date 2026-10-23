@@ -1,7 +1,7 @@
 //! Path geometry: subpaths of lines and cubic Bézier curves.
 
 use crate::{Point, Transform};
-use pagura_core::{Limits, Rect, Result};
+use pagura_core::{Limits, Meter, Rect, Result};
 use std::fmt;
 
 /// One path construction step (8.5.2). Exhaustive: every PDF path
@@ -60,13 +60,33 @@ impl Path {
     /// orientation `re` gives a positive width and height (8.5.2.1).
     pub fn rect(rect: Rect) -> Self {
         let mut builder = PathBuilder::new();
-        builder.polygon([
+        builder.polygon(Self::rect_corners(rect));
+        builder.finish()
+    }
+
+    /// [`Self::rect`] with segment capacity charged before construction.
+    ///
+    /// # Errors
+    ///
+    /// Returns the meter's `Limit` error if the segment allocation exceeds
+    /// its allowance or cannot be reserved.
+    pub fn rect_with_bytes(rect: Rect, bytes: &mut Meter) -> Result<Self> {
+        let corners = Self::rect_corners(rect);
+        let mut builder = PathBuilder::new();
+        builder.reserve(corners.len() + 1, bytes)?;
+        builder.polygon(corners);
+        Ok(builder.finish())
+    }
+
+    /// The four corners in the construction order of [`Self::rect`],
+    /// without allocating or reconstructing an edge from a width or height.
+    pub fn rect_corners(rect: Rect) -> [Point; 4] {
+        [
             Point::new(rect.x0(), rect.y0()),
             Point::new(rect.x1(), rect.y0()),
             Point::new(rect.x1(), rect.y1()),
             Point::new(rect.x0(), rect.y1()),
-        ]);
-        builder.finish()
+        ]
     }
 
     /// The segments in construction order. Every subpath starts with
@@ -92,10 +112,34 @@ impl Path {
         limits: &Limits,
         work: &mut usize,
     ) -> Result<()> {
+        self.classify_fill_with_bytes(
+            rule,
+            limits,
+            work,
+            &mut Meter::new(limits.render_bytes, crate::band::RENDER_BYTES),
+        )
+    }
+
+    /// [`Self::classify_fill`] with temporary classification storage charged
+    /// to the caller's byte meter. Cached certificates need no further work
+    /// or storage, and classification scratch is released before returning.
+    ///
+    /// # Errors
+    ///
+    /// Returns invalid geometry, exhausted page geometry/work budgets or the
+    /// byte meter's `Limit` error if temporary storage cannot be reserved.
+    pub fn classify_fill_with_bytes(
+        &mut self,
+        rule: FillRule,
+        limits: &Limits,
+        work: &mut usize,
+        bytes: &mut Meter,
+    ) -> Result<()> {
         let index = usize::from(rule == FillRule::EvenOdd);
         if self.fill_certificates[index].is_none() {
-            self.fill_certificates[index] =
-                Some(crate::empty_fill::classify(self, rule, limits, work)?);
+            self.fill_certificates[index] = Some(crate::empty_fill::classify(
+                self, rule, limits, work, bytes,
+            )?);
         }
         Ok(())
     }
@@ -109,25 +153,57 @@ impl Path {
     /// A copy with every point mapped by `transform`.
     #[must_use]
     pub fn transformed(&self, transform: Transform) -> Self {
-        let map = |point: Point| transform.apply(point);
-        let segments = self
-            .segments
-            .iter()
-            .map(|segment| match *segment {
-                Segment::MoveTo(p) => Segment::MoveTo(map(p)),
-                Segment::LineTo(p) => Segment::LineTo(map(p)),
-                Segment::CubicTo { c1, c2, end } => Segment::CubicTo {
-                    c1: map(c1),
-                    c2: map(c2),
-                    end: map(end),
-                },
-                Segment::Close => Segment::Close,
-            })
-            .collect();
+        let segments = self.mapped(transform).collect();
         Self {
             segments,
             fill_certificates: [None; 2],
         }
+    }
+
+    /// A copy charged to `bytes` before its storage is allocated.
+    ///
+    /// # Errors
+    /// Returns the meter's `Limit` error if the allocation exceeds its budget
+    /// or cannot be reserved.
+    pub fn transformed_with_bytes(&self, transform: Transform, bytes: &mut Meter) -> Result<Self> {
+        let mut segments = Vec::new();
+        bytes.reserve(&mut segments, self.segments.len())?;
+        segments.extend(self.mapped(transform));
+        Ok(Self {
+            segments,
+            fill_certificates: [None; 2],
+        })
+    }
+
+    /// Copies the stored geometry and certificates without mapping points.
+    pub(crate) fn clone_with_bytes(&self, bytes: &mut Meter) -> Result<Self> {
+        let mut segments = Vec::new();
+        bytes.reserve(&mut segments, self.segments.len())?;
+        segments.extend_from_slice(&self.segments);
+        Ok(Self {
+            segments,
+            fill_certificates: self.fill_certificates,
+        })
+    }
+
+    fn mapped(&self, transform: Transform) -> impl ExactSizeIterator<Item = Segment> + '_ {
+        self.segments.iter().map(move |segment| match *segment {
+            Segment::MoveTo(p) => Segment::MoveTo(p * transform),
+            Segment::LineTo(p) => Segment::LineTo(p * transform),
+            Segment::CubicTo { c1, c2, end } => Segment::CubicTo {
+                c1: c1 * transform,
+                c2: c2 * transform,
+                end: end * transform,
+            },
+            Segment::Close => Segment::Close,
+        })
+    }
+
+    /// Bytes retained by this path's segment storage.
+    pub fn retained_bytes(&self) -> usize {
+        self.segments
+            .capacity()
+            .saturating_mul(size_of::<Segment>())
     }
 }
 
@@ -173,6 +249,19 @@ impl PathBuilder {
     /// Whether no segment was added.
     pub fn is_empty(&self) -> bool {
         self.segments.is_empty()
+    }
+
+    /// Makes room for the next preparation output before its infallible
+    /// construction methods append the already budgeted segments.
+    pub(crate) fn reserve(&mut self, count: usize, bytes: &mut Meter) -> Result<()> {
+        bytes.reserve_capacity(&mut self.segments, count)
+    }
+
+    /// Heap bytes of the output built so far.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.segments
+            .capacity()
+            .saturating_mul(size_of::<Segment>())
     }
 
     /// Begins a new subpath at `point` (`m`).
@@ -305,88 +394,4 @@ impl PathBuilder {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rect_paths_match_re_and_keep_exact_corners() {
-        let rect = Rect::from_corners(7.0, 0.1, -3.0, 0.3).unwrap();
-        let mut re = PathBuilder::new();
-        re.rect(-3.0, 0.1, 10.0, 0.2);
-        let expected = re.finish();
-        let path = Path::rect(rect);
-        assert_eq!(path.segments()[..2], expected.segments()[..2]);
-        // 0.1 + 0.2 != 0.3 in f64: the corners come from the rectangle itself.
-        assert_eq!(
-            path.segments()[2..],
-            [
-                Segment::LineTo(Point::new(7.0, 0.3)),
-                Segment::LineTo(Point::new(-3.0, 0.3)),
-                Segment::Close
-            ]
-        );
-    }
-
-    #[test]
-    fn lines_and_curves_need_a_current_point() {
-        let mut path = PathBuilder::new();
-        assert_eq!(
-            path.line_to(Point::new(1.0, 0.0)).err(),
-            Some(NoCurrentPoint)
-        );
-        assert_eq!(
-            path.cubic_to(Point::default(), Point::default(), Point::default())
-                .err(),
-            Some(NoCurrentPoint)
-        );
-        assert!(path.close().is_empty());
-        path.move_to(Point::new(1.0, 1.0)).close();
-        // Close returns the current point to the subpath start (8.5.2.1).
-        path.line_to(Point::new(2.0, 1.0)).unwrap();
-        assert_eq!(path.current_point(), Some(Point::new(2.0, 1.0)));
-    }
-
-    #[test]
-    fn polylines_polygons_and_appended_paths_keep_their_order() {
-        let mut path = PathBuilder::new();
-        path.polygon([]);
-        assert!(path.is_empty());
-        let [a, b, c] = [
-            Point::new(0.0, 0.0),
-            Point::new(2.0, 0.0),
-            Point::new(0.0, 2.0),
-        ];
-        path.polyline([a, b, c]);
-        assert_eq!(path.current_point(), Some(c));
-        let open = path.finish();
-        path.polygon([a, b, c]);
-        assert_eq!(path.current_point(), Some(a));
-        let triangle = path.finish();
-        assert_eq!(
-            triangle.segments(),
-            [
-                Segment::MoveTo(a),
-                Segment::LineTo(b),
-                Segment::LineTo(c),
-                Segment::Close
-            ]
-        );
-        assert_eq!(open.segments(), &triangle.segments()[..3]);
-        let mut curve = PathBuilder::new();
-        curve.move_to(a).cubic_to(b, c, b).unwrap();
-        let curve = curve.finish();
-        let shift = Transform::translate(1.0, -1.0);
-        let mut combined = PathBuilder::new();
-        combined
-            .move_to(c)
-            .append(&triangle, shift)
-            .append(&curve, shift);
-        assert_eq!(combined.current_point(), Some(b * shift));
-        let expected: Vec<_> = [Segment::MoveTo(c)]
-            .into_iter()
-            .chain(triangle.transformed(shift).segments().iter().copied())
-            .chain(curve.transformed(shift).segments().iter().copied())
-            .collect();
-        assert_eq!(combined.finish().segments(), expected);
-    }
-}
+mod tests;

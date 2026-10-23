@@ -100,13 +100,14 @@ fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
         let document = open(&name)?;
         assert!(PdfFont::load(&document, font(&document)?).is_err());
         let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
         for value in rows(&name, "out")? {
             let values = row(&value)?;
             near(loaded.width(integer(&values[0])?), number(&values[1])?);
         }
         let input = fixture("text", &format!("{name}.input"));
         if resource.program.is_none() {
-            let error = loaded.decode(&input).unwrap_err();
+            let error = loaded.decode(&input, Some(&unicode)).unwrap_err();
             assert_eq!(error.kind, ErrorKind::Unsupported(features::NON_EMBEDDED));
             continue;
         }
@@ -115,7 +116,7 @@ fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
             &document,
             pagura_text::information::SUBSTITUTED
         ));
-        let glyphs = loaded.decode(&input)?;
+        let glyphs = loaded.decode(&input, Some(&unicode))?;
         for (glyph, value) in glyphs.iter().zip(rows(&name, "out")?) {
             let values = row(&value)?;
             assert_eq!(glyph.code, integer(&values[0])?);
@@ -143,7 +144,8 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
     for name in names("bundled-substitute-inventory")? {
         let document = open(&name)?;
         let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
-        let glyphs = loaded.decode(b"A")?;
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+        let glyphs = loaded.decode(b"A", Some(&unicode))?;
         let values = rows(&name, "out")?;
         let values = row(&values[0])?;
         near(glyphs[0].advance, number(&values[1])?);
@@ -207,8 +209,9 @@ fn predefined_cmap_bindings_decode_embedded_glyphs() -> Result<()> {
             .ok_or_else(|| Error::syntax("missing predefined CMap"))?;
         let document = open(&name)?;
         let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
         assert_eq!(loaded.writing_mode(), cmap.writing_mode());
-        let glyphs = loaded.decode(&fixture("text", &format!("{name}.input")))?;
+        let glyphs = loaded.decode(&fixture("text", &format!("{name}.input")), Some(&unicode))?;
         let expected = rows(&name, "glyphs")?;
         assert_eq!(glyphs.len(), expected.len());
         for (glyph, value) in glyphs.iter().zip(expected) {
@@ -238,7 +241,8 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
     let provider = Bundled::default();
     let document = open("tt-unicode-priority")?;
     let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
-    let glyphs = loaded.decode(b"A")?;
+    let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+    let glyphs = loaded.decode(b"A", Some(&unicode))?;
     let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
         return Err(Error::syntax("missing embedded program"));
     };
@@ -271,7 +275,8 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
     ] {
         let document = open(name)?;
         let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
-        let glyphs = loaded.decode(&fixture("text", &format!("{name}.input")))?;
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+        let glyphs = loaded.decode(&fixture("text", &format!("{name}.input")), Some(&unicode))?;
         let rows = rows(name, "out")?;
         assert_eq!(glyphs.len(), rows.len());
         for (glyph, value) in glyphs.iter().zip(&rows) {
@@ -361,12 +366,13 @@ mod cjk {
                 },
             )?;
             let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(provider))?;
+            let unicode = loaded.unicode(&document, font(&document)?, Some(provider))?;
             let collection = fixture("text", &format!("{name}.collection"));
             let program = provider
                 .cid_font(b"Adobe", &collection)?
                 .ok_or_else(|| Error::syntax("missing CJK program"))?;
             let input = fixture("text", &format!("{name}.input"));
-            let glyphs = loaded.decode(&input)?;
+            let glyphs = loaded.decode(&input, Some(&unicode))?;
             let rows = rows(name, "out")?;
             assert_eq!(glyphs.len(), rows.len());
             for (glyph, value) in glyphs.iter().zip(rows) {
@@ -403,7 +409,7 @@ mod cjk {
             }
             assert!(loaded.retained_bytes() < program.data().len());
             let before = loaded.retained_bytes();
-            loaded.decode(&input)?;
+            loaded.decode(&input, Some(&unicode))?;
             assert_eq!(loaded.retained_bytes(), before);
         }
         Ok(())

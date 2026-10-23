@@ -8,8 +8,6 @@ pub(crate) type Encoding = [Option<Name>; 256];
 #[derive(Debug)]
 pub(crate) struct SimpleMapping {
     pub(crate) names: Encoding,
-    /// The bytes of the longest Unicode text a name can map to.
-    longest_text: usize,
     /// Whether names are read as ZapfDingbats names first.
     dingbats: bool,
     /// Each code's Unicode from its glyph name, found on first use.
@@ -29,23 +27,15 @@ impl SimpleMapping {
         // A name's text is at most a few bytes per name byte, so charging the
         // names bounds both the work and the text.
         let mut work = Meter::new(limits.font_work, "simple encoding work budget exceeded");
-        let mut longest = 0;
         for name in names.iter().flatten() {
             work.charge(name.len())?;
-            longest = longest.max(name.len());
         }
         Ok(Self {
             names,
-            longest_text: longest.saturating_mul(UNICODE_BYTES_PER_NAME_BYTE),
             dingbats: is_dingbats(base_font),
             unicode: std::array::from_fn(|_| std::sync::OnceLock::new()),
             selected: std::array::from_fn(|_| std::sync::OnceLock::new()),
         })
-    }
-
-    /// The bytes of the longest Unicode text any code's name can map to.
-    pub(crate) fn longest_text(&self) -> usize {
-        self.longest_text
     }
 
     /// The Unicode text of `code` from its glyph name (9.10.2), found when

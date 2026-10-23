@@ -1,16 +1,15 @@
 //! One owned canonical vector packet per recorded page, never DPI-keyed.
-use super::{Cow, Document, Instant, MAX_FRAME, Result, Scene, Scratch, Store, json_string, ms};
+use super::{Cow, Document, Instant, MAX_FRAME, Result, Scene, Store, json_string, ms};
 use pagura_core::{Error, ErrorKind, Limits};
 use pagura_interpret::Node;
 use pagura_paint::{OverprintMode, RenderRequest};
-use pagura_raster::{Adjustment, DeviceRect};
+use pagura_raster::Adjustment;
 
 pub fn export<'a>(
     cache: &'a mut Option<Vec<u8>>,
     scene: &Scene,
     document: &Document,
     store: &Store,
-    scratch: &mut Scratch,
     total: Instant,
 ) -> Result<(String, Cow<'a, [u8]>)> {
     let hit = cache.is_some();
@@ -76,24 +75,18 @@ pub fn export<'a>(
             }
         }
         let scale = 300.0 / 72.0;
-        let (w, h) = scene.page.device_size(scale)?;
+        let mut request = RenderRequest::page(&scene.page, scale)?;
+        let (w, h) = (request.page.width(), request.page.height());
         if u64::from(w) * u64::from(h) > document.limits().pixels as u64 {
             return Err(Error::limit("canonical world pixel budget"));
         }
-        let page = DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: w,
-            y1: h,
-        };
-        let mut request = RenderRequest::new(scene.page.device_transform(scale), page, page);
         request.overprint = if scene.print_intent {
             OverprintMode::Simulate
         } else {
             OverprintMode::Ignore
         };
         let start = Instant::now();
-        let prepared = scratch.prepare(scene, &request, (store, &document.limits()))?;
+        let prepared = pagura_paint::prepare(scene, &request, store, &document.limits())?;
         for repair in prepared.repairs() {
             document.repair(repair.clone())?;
         }
@@ -103,7 +96,7 @@ pub fn export<'a>(
             render_bytes: MAX_FRAME,
             ..document.limits()
         });
-        scratch.recycle(prepared);
+        drop(prepared);
         match words {
             Ok(words) => {
                 let mut bytes = Vec::new();

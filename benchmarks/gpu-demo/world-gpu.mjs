@@ -31,6 +31,7 @@ export async function createWorldJob(gpu,bytes,meta,world) {
     return {...slot,cache_hit:false,prepare_ms:performance.now()-started};
   };
   return {
+    output_buffer:output,
     setup_ms:performance.now()-start,
     metadata:()=>({geometry_uploads:1,geometry_upload_bytes:packetSize,view_uploads:viewUploads,view_upload_bytes:viewBytes,dispatches,rgba_readbacks:rgbaReadbacks,entries:slots.size,resident_bytes:resident,cpu_metadata_bytes:seed.words.byteLength,evictions}),
     hasView:dpi=>slots.has(dpi),

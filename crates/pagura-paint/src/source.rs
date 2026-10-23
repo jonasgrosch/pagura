@@ -35,6 +35,31 @@ pub(crate) struct SpanColors {
     pub(crate) painted: Painted,
 }
 
+/// Mutable storage for one prepared paint, owned by the caller.
+#[derive(Debug, Default)]
+pub(crate) struct PaintScratch {
+    image: Option<Box<image::ImageScratch>>,
+}
+
+impl PaintScratch {
+    /// Whether the capacities match `source`, without reusing its values.
+    pub(crate) fn fits(&self, source: &Source) -> bool {
+        self.image.as_ref().map(|scratch| scratch.layout()) == source.scratch_layout()
+    }
+
+    /// Bytes retained by this paint's execution storage.
+    pub(crate) fn bytes(&self) -> usize {
+        self.image.as_ref().map_or(0, |scratch| scratch.bytes())
+    }
+
+    /// Invalidates source-dependent values before rendering.
+    pub(crate) fn reset(&mut self) {
+        if let Some(image) = &mut self.image {
+            image.reset();
+        }
+    }
+}
+
 /// What preparing a paint needs.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PaintContext<'a> {
@@ -87,7 +112,50 @@ pub(crate) struct Pixels<'a> {
     pub(crate) boundary: Option<&'a [u8]>,
 }
 
+impl Pixels<'_> {
+    /// A span without a shading-pattern boundary.
+    pub(crate) fn new(x: u32, y: u32, len: usize) -> Self {
+        Self {
+            x,
+            y,
+            len,
+            boundary: None,
+        }
+    }
+}
+
 impl Source {
+    fn scratch_layout(&self) -> Option<image::ScratchLayout> {
+        match self {
+            Self::Image(image) => Some(image.scratch_layout()),
+            Self::Solid { .. } | Self::Shading(_) => None,
+        }
+    }
+
+    /// Execution bytes reserved independently of retained cache state.
+    pub(crate) fn scratch_bytes(&self) -> usize {
+        self.scratch_layout().map_or(0, image::ScratchLayout::bytes)
+    }
+
+    /// Allocates or reuses matching execution capacities before rendering.
+    pub(crate) fn make_scratch(
+        &self,
+        previous: Option<PaintScratch>,
+        bytes: &mut Meter,
+    ) -> Result<PaintScratch> {
+        bytes.charge(self.scratch_bytes())?;
+        if let Some(mut previous) = previous.filter(|previous| previous.fits(self)) {
+            previous.reset();
+            return Ok(previous);
+        }
+        Ok(PaintScratch {
+            image: self
+                .scratch_layout()
+                .map(|layout| layout.make().map(Box::new))
+                .transpose()?,
+        })
+    }
+
     /// Prepares `paint` (a solid colour or shading pattern; tiling patterns
     /// are prepared as groups) and charges `function_work` for every
     /// evaluation filling `pixels` device pixels will need.
@@ -112,19 +180,19 @@ impl Source {
         paint: &Paint,
         context: &PaintContext<'_>,
         pixels: usize,
-        functions: &mut Meter,
+        (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<Self> {
         match paint {
-            Paint::Solid(color) => Self::solid(color, context, functions),
+            Paint::Solid(color) => Self::solid(color, context, (functions, bytes)),
             Paint::Shading(pattern) => {
                 let source = ShadingSource::pattern(
                     &pattern.shading,
                     pattern.matrix.then(context.transform),
                     context,
                     pixels,
-                    functions,
+                    (functions, bytes),
                 )?;
-                Ok(Self::from_shading(source))
+                Self::from_shading(source, bytes)
             }
             Paint::Tiling(_) => Err(pagura_core::Error::invalid_argument(
                 "tiling patterns are prepared as groups",
@@ -144,11 +212,11 @@ impl Source {
         shading_to_device: Transform,
         context: &PaintContext<'_>,
         pixels: usize,
-        functions: &mut Meter,
+        budgets: (&mut Meter, &Meter),
     ) -> Result<Self> {
-        let source =
-            ShadingSource::prepare(shading, shading_to_device, context, pixels, functions)?;
-        Ok(Self::from_shading(source))
+        let bytes = budgets.1;
+        let source = ShadingSource::prepare(shading, shading_to_device, context, pixels, budgets)?;
+        Self::from_shading(source, bytes)
     }
 
     /// Prepares `image` drawn under `unit_to_device` as
@@ -165,16 +233,41 @@ impl Source {
         (context, pixels): (&PaintContext<'_>, usize),
         budgets: ImageBudgets<'_>,
     ) -> Result<Self> {
-        let sampler = ImageSampler::prepare_with(image, unit_to_device, context, pixels, budgets)?;
-        Ok(Self::Image(match stencil {
-            Some((color, painted)) => sampler.with_stencil_color(color, painted),
+        let ImageBudgets {
+            bytes: remaining,
+            work,
+            functions,
+        } = budgets;
+        let sampler = ImageSampler::prepare_with(
+            image,
+            unit_to_device,
+            context,
+            pixels,
+            ImageBudgets {
+                bytes: &mut *remaining,
+                work,
+                functions: &mut *functions,
+            },
+        )?;
+        let mut bytes = Meter::new(remaining.remaining(), "render memory budget exceeded");
+        bytes.charge(sampler.bytes())?;
+        let sampler = match stencil {
+            Some((color, painted)) => sampler.with_stencil_color(color, painted, &mut bytes)?,
             None => sampler,
-        }))
+        };
+        Ok(match sampler.constant(&mut bytes, functions)? {
+            Some((color, painted)) => Self::Solid { color, painted },
+            None => Self::Image(sampler),
+        })
     }
 
     /// A solid colour, converted once.
-    fn solid(color: &Color, context: &PaintContext<'_>, functions: &mut Meter) -> Result<Self> {
-        let (color, painted) = Self::solid_color(color, context, functions)?;
+    fn solid(
+        color: &Color,
+        context: &PaintContext<'_>,
+        budgets: (&mut Meter, &Meter),
+    ) -> Result<Self> {
+        let (color, painted) = Self::solid_color(color, context, budgets)?;
         Ok(Self::Solid { color, painted })
     }
 
@@ -188,12 +281,19 @@ impl Source {
     pub(crate) fn solid_color(
         color: &Color,
         context: &PaintContext<'_>,
-        functions: &mut Meter,
+        (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<(Box<[f64]>, Painted)> {
-        let converter =
-            Converter::new(&color.space, context.target, &context.composite.conversion)?;
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
+        let converter = Converter::new_metered(
+            &color.space,
+            context.target,
+            &context.composite.conversion,
+            &mut bytes,
+        )?;
         functions.charge(converter.cost())?;
-        let mut converted = vec![0.0; context.target.channels()];
+        let mut converted = Vec::new();
+        bytes.reserve(&mut converted, context.target.channels())?;
+        converted.resize(context.target.channels(), 0.0);
         let specified = converter.convert(&color.components, &mut converted);
         let overprint = context.composite.overprint;
         let painted = if !color.space.paints() {
@@ -208,24 +308,26 @@ impl Source {
         Ok((converted.into(), painted))
     }
 
-    fn from_shading(source: ShadingSource) -> Self {
-        match source.constant() {
-            Some(color) => Self::Solid {
-                color: color.into(),
-                painted: source.painted(),
-            },
-            None => Self::Shading(source),
-        }
+    fn from_shading(source: ShadingSource, bytes: &Meter) -> Result<Self> {
+        let Some(color) = source.constant() else {
+            return Ok(Self::Shading(source));
+        };
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
+        bytes.charge(source.bytes())?;
+        let mut converted = Vec::new();
+        bytes.reserve(&mut converted, color.len())?;
+        converted.extend_from_slice(color);
+        Ok(Self::Solid {
+            color: converted.into(),
+            painted: source.painted(),
+        })
     }
 
-    /// The colour of every pixel and the channels it paints, when every
-    /// pixel has the same opaque one: a solid, or an image of one texel
-    /// sampled nearest.
+    /// The colour of every pixel and the channels it paints for a solid.
     pub(crate) fn constant(&self) -> Option<(&[f64], Painted)> {
         match self {
             Self::Solid { color, painted } => Some((color, *painted)),
-            Self::Image(image) => image.uniform(),
-            Self::Shading(_) => None,
+            Self::Image(_) | Self::Shading(_) => None,
         }
     }
 
@@ -243,7 +345,13 @@ impl Source {
     /// at pixel centres, or over the pixel area where the contract asks for
     /// an average, and `shape` with their shapes where
     /// [`Self::shape_is_alpha`] is false.
-    pub(crate) fn fill(&self, pixels: Pixels<'_>, out: &mut SpanColors, shape: &mut Vec<f64>) {
+    pub(crate) fn fill(
+        &self,
+        pixels: Pixels<'_>,
+        scratch: &mut PaintScratch,
+        out: &mut SpanColors,
+        shape: &mut Vec<f64>,
+    ) {
         let Pixels {
             x,
             y,
@@ -264,8 +372,36 @@ impl Source {
                 Some(boundary) => shading.span_with_boundary(x, y, boundary, out),
                 None => shading.span(x, y, len, out),
             },
-            Self::Image(image) if image.shape_is_alpha() => image.span(x, y, len, out),
-            Self::Image(image) => image.span_with_shape(x, y, len, out, shape),
+            Self::Image(image) => {
+                let Some(scratch) = scratch.image.as_deref_mut() else {
+                    debug_assert!(false, "image storage was fitted before execution");
+                    return;
+                };
+                if image.shape_is_alpha() {
+                    image.span(pixels, scratch, out);
+                } else {
+                    image.span_with_shape(pixels, scratch, out, shape);
+                }
+            }
+        }
+    }
+
+    /// Writes into `out` the N16 words a store at full opacity writes for
+    /// device pixels `x .. x + out.len()` of row `y`, where the source gives
+    /// them without forming colours first (opaque images sampled nearest);
+    /// false otherwise.
+    pub(crate) fn words(
+        &self,
+        pixels: Pixels<'_>,
+        scratch: &mut PaintScratch,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        match self {
+            Self::Image(image) => scratch
+                .image
+                .as_deref_mut()
+                .is_some_and(|scratch| image.words(pixels, scratch, out)),
+            Self::Solid { .. } | Self::Shading(_) => false,
         }
     }
 

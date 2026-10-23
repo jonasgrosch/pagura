@@ -38,6 +38,53 @@ fn with_clip(state: StateId, clip: pagura_interpret::ClipId) -> MarkInfo {
 }
 
 #[test]
+fn round_cap_sliver_survives_composition_on_gray() {
+    use pagura_interpret::{Pen, PenId, StrokeNode};
+    use pagura_raster::{Adjustment, DeviceRect, LineCap, PathBuilder, Stroke};
+    use std::sync::Arc;
+
+    let mut b = Build::new(1008.0, 612.0);
+    let gray = b.color(ColorSpace::DeviceGray, &[379.0 / 400.0]);
+    let black = b.color(ColorSpace::DeviceGray, &[0.0]);
+    b.rect(PAGE, [0.0, 0.0, 1008.0, 612.0], gray, mark(StateId(0)));
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(156.83, 207.0));
+    path.line_to(Point::new(156.83, 198.0)).unwrap();
+    b.scene.pens.push(Arc::new(Pen {
+        stroke: Stroke {
+            width: 1.0,
+            cap: LineCap::Round,
+            ..Stroke::default()
+        },
+        transform: Transform::IDENTITY,
+        adjustment: Adjustment::None,
+    }));
+    b.node(
+        PAGE,
+        Node::Stroke(StrokeNode {
+            path: Arc::new(path.finish()),
+            pen: PenId(0),
+            paint: black,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let mut request = crate::RenderRequest::page(&b.scene.page, 25.0 / 6.0).unwrap();
+    request.region = DeviceRect {
+        x0: 652,
+        y0: 1727,
+        x1: 653,
+        y1: 1728,
+    };
+    // The canonical round-cap polygon has coverage1, so the exact composed
+    // gray value is 254*379/400=240.665. Missing the sliver gives242, more
+    // than one output level away even though the coverage differs by one.
+    for height in [1, 5, 16, 32, 256] {
+        request.band_height = height;
+        assert_eq!(b.render(&request).unwrap(), [241, 241, 241, 255]);
+    }
+}
+
+#[test]
 fn translucent_marks_and_clips() {
     let mut b = Build::new(9.0, 7.0);
     let red = b.rgb([1.0, 0.1, 0.0]);

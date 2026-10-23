@@ -347,7 +347,7 @@ impl<'s> Renderer<'s> {
         match &paint {
             Paint::Solid(color) => {
                 let sample = self.solid(color, state, context.target)?;
-                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
+                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
                 self.composite(
                     &coverage,
                     &Sources::Solid(sample),
@@ -364,7 +364,7 @@ impl<'s> Renderer<'s> {
                 {
                     regions.push(shapes::rect(bbox, to_device, self.limits)?);
                 }
-                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
+                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
                 let sources = self.shading_source(
                     &pattern.shading,
                     to_device,
@@ -375,7 +375,7 @@ impl<'s> Renderer<'s> {
                 self.composite(&coverage, &sources, state, buffer, context, Eligible::Yes)
             }
             Paint::Tiling(tiling) => {
-                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
+                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
                 self.tiling(tiling, &coverage, state, buffer, context)
             }
         }
@@ -411,7 +411,7 @@ impl<'s> Renderer<'s> {
         }
         let mut regions = vec![shapes::unit_square(to_device, self.limits)?];
         regions.extend(self.clips(node.mark.clip, context)?);
-        let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
+        let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
         let sources = self.image_source(node, stencil.as_ref(), to_device, state, context)?;
         let eligible = if matches!(
             node.image.mask,
@@ -446,7 +446,7 @@ impl<'s> Renderer<'s> {
             regions.push(shapes::rect(bbox, to_device, self.limits)?);
         }
         regions.extend(self.clips(node.mark.clip, context)?);
-        let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
+        let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
         let sources =
             self.shading_source(&node.shading, to_device, state, context, sources::Use::Mark)?;
         self.composite(&coverage, &sources, state, buffer, context, Eligible::Yes)

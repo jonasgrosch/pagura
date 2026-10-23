@@ -2,14 +2,15 @@
 //! the steps the free functions and [`crate::RenderContext`] share.
 
 use crate::options::{RenderOptions, Tile};
-use pagura_core::{Error, Limits, ObjectId, Rect, Result, Store};
+use pagura_core::{Error, Limits, Meter, ObjectId, Rect, Result, Store};
 use pagura_document::forms::FormFiller;
 use pagura_document::{Document, Page};
 use pagura_extract::{LayoutOptions, PositionedText, TextPage};
 use pagura_interpret::{Interpreter, Scene};
 use pagura_paint::{Completion, PreparedScene, RenderRequest, Scratch};
-use pagura_raster::{DeviceRect, Pixmap};
+use pagura_raster::Pixmap;
 use pagura_text::Provider;
+use std::ops::Range;
 
 /// A document, its font provider and the store that holds what rendering
 /// its pages reuses.
@@ -70,10 +71,31 @@ impl<'a> Renderer<'a> {
         scratch: &mut Scratch,
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
-        let prepared = self.prepare(scene, (options, tile), scratch)?;
-        let rendered = self.draw(&prepared, scratch, stop);
-        scratch.recycle(prepared);
-        rendered
+        let prepared = self.prepare(scene, (options, tile))?;
+        self.draw(&prepared, scratch, stop)
+    }
+
+    /// Prepares the whole region before lending any completed output band
+    /// to the consumer. Output storage is bounded by one band, rather than
+    /// an owned full surface, and belongs to this call alone.
+    pub(crate) fn render_bands<E>(
+        self,
+        scene: &Scene,
+        (options, tile): (&RenderOptions, Option<Tile>),
+        scratch: &mut Scratch,
+        stop: impl FnMut(u32) -> bool,
+        consume: impl FnMut(Range<u32>, &[u8]) -> std::result::Result<(), E>,
+    ) -> Result<std::result::Result<Completion, E>> {
+        let prepared = self.prepare(scene, (options, tile))?;
+        let mut rendering = prepared.with_scratch(scratch)?;
+        let mut band = Vec::new();
+        let limits = self.document.limits();
+        let mut output = Meter::new(limits.decoded_bytes, "output band byte budget exceeded");
+        output.reserve_capacity(&mut band, rendering.band_bytes()?)?;
+        if band.capacity() > limits.decoded_bytes {
+            return Err(Error::limit("output band allocation exceeds byte budget"));
+        }
+        Ok(rendering.render_bands(&mut band, stop, consume))
     }
 
     /// Renders `prepared` in `scratch`.
@@ -104,32 +126,21 @@ impl<'a> Renderer<'a> {
         Ok((pixmap, completion))
     }
 
-    /// Prepares `scene` for one region in the storage of `scratch` and
-    /// reports the repairs preparation made to the document, where strict
-    /// recovery refuses them.
+    /// Prepares `scene` for one region and reports its repairs to the
+    /// document, where strict recovery refuses them.
     fn prepare(
         self,
         scene: &Scene,
         (options, tile): (&RenderOptions, Option<Tile>),
-        scratch: &mut Scratch,
     ) -> Result<PreparedScene> {
-        let size = scene.page.device_size(options.scale)?;
-        let page = DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: size.0,
-            y1: size.1,
-        };
-        let region = match tile {
-            Some(tile) => tile.region(size)?,
-            None => page,
-        };
-        let mut request =
-            RenderRequest::new(scene.page.device_transform(options.scale), page, region);
+        let mut request = RenderRequest::page(&scene.page, options.scale)?;
+        if let Some(tile) = tile {
+            request.region = tile.region((request.page.width(), request.page.height()))?;
+        }
         request.background = options.background;
         request.overprint = options.overprint.resolve(scene.print_intent);
         let limits = self.document.limits();
-        let prepared = scratch.prepare(scene, &request, (self.store, &limits))?;
+        let prepared = pagura_paint::prepare(scene, &request, self.store, &limits)?;
         for repair in prepared.repairs() {
             self.document.repair(repair.clone())?;
         }

@@ -2,17 +2,17 @@
 use super::*;
 use crate::svg::tests::pages;
 
-fn request(session: &mut Session, args: [u32; 8]) -> (String, Vec<u8>) {
+pub(super) fn request(session: &mut Session, args: [u32; 8]) -> (String, Vec<u8>) {
     let bytes: Vec<u8> = args.into_iter().flat_map(u32::to_le_bytes).collect();
     let (meta, bytes) = session.request(&bytes).unwrap();
     (meta, bytes.into_owned())
 }
-fn open(session: &mut Session, contents: &[&[u8]]) {
+pub(super) fn open(session: &mut Session, contents: &[&[u8]]) {
     let mut bytes = 1_u32.to_le_bytes().to_vec();
     bytes.extend(pages(contents));
     session.request(&bytes).unwrap();
 }
-fn number(meta: &str, name: &str) -> u64 {
+pub(super) fn number(meta: &str, name: &str) -> u64 {
     meta.split(&format!("\"{name}\":"))
         .nth(1)
         .unwrap()

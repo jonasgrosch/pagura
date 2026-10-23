@@ -207,12 +207,16 @@ impl Builder {
         let correction_start = index(self.extras.len() / 4)?;
         for y in bounds.y0..bounds.y1 {
             self.work.charge(1)?;
-            for &(x, value) in geometry.corrections(y) {
+            let correction = geometry.corrections(y, &mut self.bytes, &mut self.work)?;
+            for &(x, value) in correction.values() {
                 if x >= bounds.x0 && x < bounds.x1 {
                     self.extra([y, x, x + 1, u32::from(value)])?;
                     self.correction_cells += 1;
                 }
             }
+            let refund = correction.reserved_bytes();
+            drop(correction);
+            self.bytes.refund(refund);
         }
         let correction_end = index(self.extras.len() / 4)?;
         let clip_start = correction_end;

@@ -7,10 +7,11 @@
 //! A pixel's coverage is its exact covered area (curves flattened within
 //! 1/256 pixel, glyph quadratics integrated against the true curve),
 //! quantized once with [`quantize_unit`](crate::quantize_unit). Each mark's
-//! edges add their signed areas to a dense row of cells with a bitmap of
-//! touched cells, in the edges' own order and without sorting; a prefix sum
-//! from the page's left edge gives each cell's integral of the winding
-//! number, and runs between touched cells leave as spans.
+//! edges, listed per strip of 16 rows on the global grid, add their signed
+//! areas to a strip of cells with a bitmap of touched cells per row, in the
+//! edges' own order and without sorting; a prefix sum from the mark's
+//! leftmost column gives each cell's integral of the winding number, and
+//! runs between touched cells leave as spans.
 //!
 //! The signed area is the covered area wherever the winding takes at most
 //! two neighbouring values. Preparation certifies that for the whole shape
@@ -27,6 +28,7 @@
 //! only which cells are visited. Rasterization is infallible and does not
 //! allocate: preparation validates, charges and bounds everything.
 
+mod cells;
 mod certify;
 mod clip;
 mod coverage;
@@ -37,17 +39,16 @@ mod glyph;
 pub mod gpu;
 mod raster;
 mod rect;
-mod resolve;
 mod row;
-mod scan;
 mod shape;
+mod union;
 
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
-pub(crate) use shape::RASTER_WORK;
 pub use shape::Shape;
+pub(crate) use shape::{RASTER_WORK, RENDER_BYTES};
 
 use pagura_core::Limits;
 

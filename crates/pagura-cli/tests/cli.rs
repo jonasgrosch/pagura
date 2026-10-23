@@ -122,6 +122,73 @@ fn does_not_overwrite_files_or_emit_partial_unsupported_images() {
     assert!(!result.status.success());
     assert!(String::from_utf8_lossy(&result.stderr).contains(&format!("unsupported [{feature}]")));
     assert!(!missing.exists());
+    let strict = scratch.0.join("strict.ppm");
+    let result = pagura()
+        .args(["render", "--strict"])
+        .arg(fixture_path("paint", "image-fax-grid-crop.pdf"))
+        .arg(&strict)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("image.ccitt-columns"));
+    assert!(
+        !strict.exists(),
+        "preparation repair created a file under strict recovery"
+    );
+}
+
+#[test]
+fn streamed_cli_ppms_equal_collected_public_api_output() {
+    let scratch = Scratch::new().unwrap();
+    for (area, name) in [
+        ("classic", "rectangle"),
+        ("classic", "many-rectangles"),
+        ("paint", "image-page-rgb"),
+        ("transparency", "gray-blend-Normal"),
+        ("transparency", "gray-blend-Multiply"),
+        ("overprint", "preview-pdfx-intent"),
+    ] {
+        let input = fixture_path(area, &format!("{name}.pdf"));
+        let image = scratch.0.join(format!("{area}-{name}.ppm"));
+        let result = pagura()
+            .arg("render")
+            .arg(&input)
+            .arg(&image)
+            .arg("150")
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{area}/{name}: {:?}",
+            result.stderr
+        );
+        let document = pagura::Document::open(
+            std::fs::read(input).unwrap(),
+            &pagura::OpenOptions::default(),
+        )
+        .unwrap();
+        let context = pagura::render_context(std::sync::Arc::new(document));
+        let pixmap = context
+            .render_page(
+                context.document().page(0).unwrap(),
+                &pagura::RenderOptions::from_dpi(150.0),
+            )
+            .unwrap();
+        assert!(
+            pixmap
+                .data()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|pixel| pixel[3] == 255)
+        );
+        let expected = pagura_testkit::ppm(
+            pixmap.width(),
+            pixmap.height(),
+            &pixmap.to_rgb_over(pagura::Rgba8::WHITE),
+        );
+        assert_bytes_eq(&std::fs::read(image).unwrap(), &expected, name);
+    }
 }
 
 #[test]

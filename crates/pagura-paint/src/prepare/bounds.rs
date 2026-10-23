@@ -2,6 +2,7 @@
 //! their transforms, which contain every pixel a mark's exact coverage can
 //! reach.
 
+use pagura_core::Rect;
 use pagura_raster::{DeviceRect, Path, Point, Segment, Transform};
 
 /// A rectangle in device space, `[x0, y0, x1, y1]`.
@@ -30,6 +31,15 @@ pub(crate) fn path(path: &Path, transform: Transform) -> Option<Hull> {
             .flatten()
             .map(move |p| transform.apply(p))
     }))
+}
+
+/// [`path`] for the canonical corners of a rectangle, without a temporary path.
+pub(crate) fn rect(rect: Rect, transform: Transform) -> Option<Hull> {
+    points(
+        Path::rect_corners(rect)
+            .into_iter()
+            .map(|point| transform.apply(point)),
+    )
 }
 
 /// `hull` grown by `margin` on every side.
@@ -101,6 +111,7 @@ pub(crate) fn stroke_reach(pen: &pagura_interpret::Pen, transform: Transform) ->
 }
 
 /// The unit square under `transform`, as a path.
+#[cfg(test)]
 pub(crate) fn unit_square() -> Path {
     let mut builder = pagura_raster::PathBuilder::new();
     builder.rect(0.0, 0.0, 1.0, 1.0);
@@ -136,5 +147,27 @@ mod tests {
         assert!(device(Some([20.0, 0.0, 30.0, 5.0]), region).is_empty());
         assert_eq!(device(Some([f64::NAN, 0.0, 1.0, 1.0]), region), region);
         assert_eq!(device(Some([-1e300, -1e300, 1e300, 1e300]), region), region);
+    }
+
+    #[test]
+    fn rectangle_bounds_match_canonical_paths_bit_for_bit() {
+        for source in [
+            Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap(),
+            Rect::from_corners(-3.0, 0.1, 7.0, 0.3).unwrap(),
+            Rect::from_corners(-0.0, -0.0, 0.0, 0.0).unwrap(),
+            Rect::from_corners(-1e100, -2e100, 3e100, 4e100).unwrap(),
+        ] {
+            for transform in [
+                Transform::IDENTITY,
+                Transform::new(-0.0, 1.25, -2.0, 0.5, -0.0, 7.0),
+                Transform::new(1e-90, -2e-90, 3e-90, 4e-90, 1e100, -1e100),
+            ] {
+                let bits = |hull: Option<Hull>| hull.map(|hull| hull.map(f64::to_bits));
+                assert_eq!(
+                    bits(rect(source, transform)),
+                    bits(path(&Path::rect(source), transform))
+                );
+            }
+        }
     }
 }

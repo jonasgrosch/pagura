@@ -2,13 +2,13 @@
 //! shadings and images per mark, stencil masks with their solid colour,
 //! each reserved with its bytes, geometry work and repairs.
 
-use super::{Colour, PAINT_BYTES, is_pattern};
+use super::{Colour, is_pattern};
 use crate::plan::area;
 use crate::prepare::Budget;
 use crate::prepare::planner::{Planner, Scope, SolidKey};
 use crate::source::{ImageBudgets, PaintContext, Source};
 use pagura_color::Painted;
-use pagura_core::{Diagnostic, Error, Result};
+use pagura_core::{Error, Result};
 use pagura_interpret::{Composite, Paint, PaintId};
 use std::sync::Arc;
 
@@ -55,9 +55,15 @@ impl Planner<'_> {
                 {
                     return Ok(cached);
                 }
-                let prepared = Source::prepare(&paint, &context, pixels, &mut budget.functions)?;
-                let index = self.add_paint(prepared, (scope, pixels), budget)?;
+                let prepared = Source::prepare(
+                    &paint,
+                    &context,
+                    pixels,
+                    (&mut budget.functions, &budget.bytes),
+                )?;
+                let index = self.add_paint(prepared, pixels, budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
+                    budget.bytes.reserve_map_capacity(self.solids(), 1)?;
                     self.solids().insert(key, index);
                 }
                 return Ok(index);
@@ -69,7 +75,7 @@ impl Planner<'_> {
                     to_device,
                     &context,
                     pixels,
-                    &mut budget.functions,
+                    (&mut budget.functions, &budget.bytes),
                 )?
             }
             Colour::Image(node) => {
@@ -77,7 +83,7 @@ impl Planner<'_> {
                     (Some(_), _) => None,
                     (None, stencil) => Some(self.stencil(scope, stencil, &context, budget)?),
                 };
-                Source::image(
+                let prepared = Source::image(
                     &node.image,
                     node.transform.then(scope.transform),
                     stencil
@@ -85,13 +91,20 @@ impl Planner<'_> {
                         .map(|(color, painted)| (&**color, *painted)),
                     (&context, pixels),
                     ImageBudgets {
+                        bytes: &mut budget.bytes,
                         work: &mut budget.work,
                         functions: &mut budget.functions,
                     },
-                )?
+                );
+                let released = stencil
+                    .as_ref()
+                    .map_or(0, |(color, _)| size_of_val(&**color));
+                drop(stencil);
+                budget.bytes.refund(released);
+                prepared?
             }
         };
-        self.add_paint(prepared, (scope, pixels), budget)
+        self.add_paint(prepared, pixels, budget)
     }
 
     /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
@@ -122,31 +135,32 @@ impl Planner<'_> {
                 ));
             }
         };
-        budget.bytes.charge(PAINT_BYTES)?;
-        Source::solid_color(color, context, &mut budget.functions)
+        let (color, painted) =
+            Source::solid_color(color, context, (&mut budget.functions, &budget.bytes))?;
+        budget.bytes.charge(size_of_val(&*color))?;
+        Ok((color, painted))
     }
 
     /// Keeps a prepared paint, reserving its bytes and its geometry work
     /// over `pixels` (mesh shadings), and the repairs preparing it made.
-    fn add_paint(
-        &mut self,
-        paint: Source,
-        (scope, pixels): (&Scope, usize),
-        budget: &mut Budget,
-    ) -> Result<u32> {
-        budget.bytes.charge(
-            PAINT_BYTES
-                .saturating_add(scope.layout.channels() * size_of::<f64>())
-                .saturating_add(paint.bytes()),
-        )?;
-        budget.work.charge_product(pixels, paint.work_per_pixel())?;
-        let repairs = paint.repairs();
-        budget
-            .bytes
-            .charge_product(repairs.len(), size_of::<Diagnostic>())?;
-        self.repairs.extend_from_slice(repairs);
+    fn add_paint(&mut self, paint: Source, pixels: usize, budget: &mut Budget) -> Result<u32> {
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
+        let payload = paint.bytes();
+        budget.bytes.charge(payload)?;
+        let retained = (|| {
+            budget.work.charge_product(pixels, paint.work_per_pixel())?;
+            budget.bytes.reserve_capacity(&mut self.parts.paints, 1)?;
+            budget
+                .bytes
+                .reserve_capacity(&mut self.repairs, paint.repairs().len())
+        })();
+        if let Err(error) = retained {
+            drop(paint);
+            budget.bytes.refund(payload);
+            return Err(error);
+        }
+        self.repairs.extend_from_slice(paint.repairs());
         self.parts.paints.push(paint);
         Ok(index)
     }
@@ -155,7 +169,7 @@ impl Planner<'_> {
     pub(crate) fn solid_paint(
         &mut self,
         paint: &Paint,
-        (state, scope): (&Arc<Composite>, &Scope),
+        (state, scope): (&Composite, &Scope),
         bounds: pagura_raster::DeviceRect,
         budget: &mut Budget,
     ) -> Result<u32> {
@@ -169,7 +183,12 @@ impl Planner<'_> {
             limits: self.limits,
             region: bounds,
         };
-        let prepared = Source::prepare(paint, &context, pixels, &mut budget.functions)?;
-        self.add_paint(prepared, (scope, pixels), budget)
+        let prepared = Source::prepare(
+            paint,
+            &context,
+            pixels,
+            (&mut budget.functions, &budget.bytes),
+        )?;
+        self.add_paint(prepared, pixels, budget)
     }
 }

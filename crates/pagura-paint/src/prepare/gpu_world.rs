@@ -148,6 +148,12 @@ impl Builder {
             return Ok(());
         }
         let geometry = shape.gpu_geometry();
+        if geometry.device_points() {
+            return Err(Error::unsupported(
+                Feature::new("gpu.world"),
+                "glyph point cells are resolution dependent",
+            ));
+        }
         if geometry.has_clip_rows() {
             return Err(Error::unsupported(
                 Feature::new("gpu.world"),
@@ -184,7 +190,7 @@ impl Builder {
             self.work.charge(1)?;
             self.omitted_cells = self
                 .omitted_cells
-                .checked_add(index(geometry.corrections(y).len())?)
+                .checked_add(index(geometry.correction_count(y))?)
                 .ok_or(Error::limit("world correction count"))?;
         }
         let clip = geometry.rectangle_clip();

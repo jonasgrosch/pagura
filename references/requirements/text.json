@@ -248,7 +248,7 @@
         "verdict": "documented capability limit",
         "choices": [
           "Without an explicit Provider, the original loading API keeps its unavailable-font/CMap errors. ADR 0009 now approves the bundled data provider; its integration is covered separately.",
-          "Malformed ToUnicode and painting-critical data reject in Strict or require a reported repair; see text-tounicode-recovery."
+          "Malformed painting-critical data, and ToUnicode data where text is extracted, reject in Strict or require a reported repair; see text-tounicode-recovery."
         ]
       }
     },
@@ -1049,7 +1049,7 @@
         "expectations": "Independently authored Python fixtures give strict error tags and exact repaired glyph IDs, widths, matrices and Unicode; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
         "verdict": "Normative checks and explicit repair policy agree with the independent fixtures.",
         "choices": [
-          "Reject malformed extraction data at font loading under Strict, preserving the original error and refused repair tag without reporting an applied repair. Repair mode keeps drawable glyphs and other Unicode fallback methods.",
+          "Reject malformed extraction data when the font's Unicode is loaded for text extraction under Strict, preserving the original error and refused repair tag without reporting an applied repair. Repair mode keeps drawable glyphs and other Unicode fallback methods. Rendering never loads ToUnicode (ADR 0034), so its faults neither fail nor repair a rendering.",
           "Repair two-byte simple-font source codes by their low byte, preserving agreeing aliases and dropping conflicting aliases.",
           "Omit invalid UTF-16 destinations atomically, including malformed surrogate sequences and odd byte counts. An invalid child definition suppresses inherited text for that source.",
           "Repair overflowing bfrange strings with big-endian byte carry. Keep valid UTF-16 results, omit invalid ones, and stop at full-string overflow without wrapping.",

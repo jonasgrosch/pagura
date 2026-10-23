@@ -1,41 +1,68 @@
 //! Translated glyph placements against placements that translate every
 //! vertex first: the same bytes, within the work bound, at any band height.
 
+mod oracle;
+
 use super::*;
 use crate::band::shape::Body;
 use std::sync::Arc;
 
+#[test]
+fn a_fractional_clip_run_rounding_to_full_still_clips_glyph_geometry() {
+    let limits = Limits::default();
+    let area = area(0, 0, 3, 2, 16);
+    let clip_path = polygon(&[
+        Point::new(-2.0, 0.0),
+        Point::new(3.0, 0.0),
+        Point::new(4.0, 0.5),
+        Point::new(3.0, 0.9985),
+        Point::new(-2.0, 0.9985),
+    ]);
+    let mut mark = PathBuilder::new();
+    mark.move_to(Point::new(-1.0, 0.4995));
+    mark.cubic_to(
+        Point::new(0.0, 0.4995),
+        Point::new(1.0, 0.4995),
+        Point::new(2.0, 0.4995),
+    )
+    .unwrap();
+    mark.line_to(Point::new(2.0, 1.0)).unwrap();
+    mark.line_to(Point::new(-1.0, 1.0)).unwrap();
+    mark.close();
+    let edges = Arc::new(GlyphEdges::new(&mark.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let prepare = |options: &Prep<'_>| glyph::place(&edges, Point::default(), options).unwrap();
+    let clip = |options: &ShapeOptions<'_>| {
+        ClipShape::new(
+            &[(&clip_path, FillRule::NonZero)],
+            Transform::IDENTITY,
+            options,
+        )
+        .unwrap()
+    };
+    let coverage = invariant(&area, &prepare, Some(&clip));
+    // The clip alone rounds .9985 to255, but its intersection with this
+    // mark has area .9985-.4995=.499, whose coverage byte is127, not128.
+    assert_eq!(coverage[0], 127);
+    assert_eq!(coverage[1], 127);
+}
+
 fn outlines() -> Vec<Path> {
     let mut out = Vec::new();
-    // An "o": two cubic contours of opposite directions (curve pieces).
+    // An "o": two quadratic contours of opposite directions.
     let mut path = PathBuilder::new();
-    for (r, s) in [(500.0, 1.0), (300.0, -1.0)] {
-        let k = 0.552_284_749_8 * r;
-        path.move_to(Point::new(r, 0.0));
-        path.cubic_to(
-            Point::new(r, s * k),
-            Point::new(k, s * r),
-            Point::new(0.0, s * r),
-        )
-        .unwrap();
-        path.cubic_to(
-            Point::new(-k, s * r),
-            Point::new(-r, s * k),
-            Point::new(-r, 0.0),
-        )
-        .unwrap();
-        path.cubic_to(
-            Point::new(-r, -s * k),
-            Point::new(-k, -s * r),
-            Point::new(0.0, -s * r),
-        )
-        .unwrap();
-        path.cubic_to(
-            Point::new(k, -s * r),
-            Point::new(r, -s * k),
-            Point::new(r, 0.0),
-        )
-        .unwrap();
+    for (r, sign) in [(500.0, 1.0), (300.0, -1.0)] {
+        let mut current = Point::new(r, 0.0);
+        path.move_to(current);
+        for (control, end) in [
+            (Point::new(r, sign * r), Point::new(0.0, sign * r)),
+            (Point::new(-r, sign * r), Point::new(-r, 0.0)),
+            (Point::new(-r, -sign * r), Point::new(0.0, -sign * r)),
+            (Point::new(r, -sign * r), Point::new(r, 0.0)),
+        ] {
+            let elevate = |p: Point| p + (control - p) * (2.0 / 3.0);
+            path.cubic_to(elevate(current), elevate(end), end).unwrap();
+            current = end;
+        }
         path.close();
     }
     out.push(path.finish());
@@ -59,19 +86,24 @@ fn outlines() -> Vec<Path> {
     out
 }
 
+/// Translated placements integrate the relative spline with the origin
+/// added per row; moving the pieces first rounds differently, by far less
+/// than a level, so the bytes agree but for rare ties.
 #[test]
-fn translated_placements_match_translated_vertices() {
+fn translated_placements_match_moved_pieces() {
     let limits = Limits::default();
     let area = area(0, 0, 48, 40, 16);
     let mut rng = Lcg(77);
     let mut crop = PathBuilder::new();
     crop.rect(0.0, 0.0, 48.0, 40.0);
     let crop = crop.finish();
+    let (mut pixels, mut differing) = (0, 0);
     for outline in outlines() {
         for size in [0.011, 0.023, 0.04] {
             let linear = [size, 0.002, 0.0, -size];
             let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
             assert!(edges.relative().is_some());
+            assert!(edges.curved());
             for _ in 0..12 {
                 let origin = Point::new(rng.grid(2.0, 42.0, 4096), rng.grid(4.0, 38.0, 4096));
                 for clipped in [false, true] {
@@ -84,15 +116,18 @@ fn translated_placements_match_translated_vertices() {
                         .unwrap()
                     });
                     let prep = options(area, &limits, clip.as_ref());
-                    let fast = Shape::glyph_in(&edges, origin, &prep).unwrap();
-                    let slow = glyph::general(&edges, origin, &prep);
-                    let (fast, slow) = (fast.unwrap(), slow.unwrap().unwrap());
+                    let fast = Shape::glyph_in(&edges, origin, &prep).unwrap().unwrap();
+                    let slow = glyph::moved(&edges, origin, &prep).unwrap().unwrap();
                     if !clipped {
-                        assert!(matches!(fast.body, Body::Glyph(_) | Body::Rect(_)));
+                        assert!(matches!(fast.body, Body::Glyph(_)));
                     }
                     let (a, work) = raster(&area, Some(&fast), clip.as_ref());
                     let (b, _) = raster(&area, Some(&slow), clip.as_ref());
-                    assert_eq!(a, b, "origin {origin:?}");
+                    for (x, y) in a.iter().zip(&b) {
+                        assert!(x.abs_diff(*y) <= 1, "origin {origin:?}");
+                        differing += usize::from(x != y);
+                    }
+                    pixels += a.len();
                     assert!(work <= fast.work());
                 }
                 let prepare = |o: &Prep<'_>| Shape::glyph_in(&edges, origin, o).unwrap();
@@ -100,6 +135,7 @@ fn translated_placements_match_translated_vertices() {
             }
         }
     }
+    assert!(differing * 10_000 < pixels, "{differing} of {pixels}");
 }
 
 /// A run's glyphs merged at once give each glyph's own bytes, in chunks
@@ -170,6 +206,271 @@ fn add(band: &BandCoverage, page: &mut [u8]) {
             let start = row.y as usize * 2000 + x as usize;
             for (g, v) in page[start..start + values.len()].iter_mut().zip(values) {
                 *g = (*g).max(v);
+            }
+        }
+    }
+}
+
+/// A stored quadratic arch with overlapping copies or many short pieces.
+fn arches(copies: u32, segments: u32) -> Path {
+    let mut path = PathBuilder::new();
+    for copy in 0..copies {
+        let x = f64::from(copy) * 0.23;
+        let mut previous = Point::new(x, 0.0);
+        path.move_to(previous);
+        for i in 0..segments {
+            let lo = f64::from(i) / f64::from(segments);
+            let hi = f64::from(i + 1) / f64::from(segments);
+            let endpoint = Point::new(x + 8.0 * hi, 16.0 * hi * (1.0 - hi));
+            let h = hi - lo;
+            let control = previous + Point::new(4.0 * h, 8.0 * (1.0 - 2.0 * lo) * h);
+            path.cubic_to(
+                previous + (control - previous) * (2.0 / 3.0),
+                endpoint + (control - endpoint) * (2.0 / 3.0),
+                endpoint,
+            )
+            .unwrap();
+            previous = endpoint;
+        }
+        path.close();
+    }
+    path.finish()
+}
+
+#[test]
+fn stored_cubics_define_the_true_curve_oracle() {
+    let mut bowl = PathBuilder::new();
+    bowl.move_to(Point::new(0.0, 0.0));
+    bowl.cubic_to(
+        Point::new(1.0 / 3.0, 0.0),
+        Point::new(2.0 / 3.0, 1.0 / 3.0),
+        Point::new(1.0, 1.0),
+    )
+    .unwrap();
+    bowl.line_to(Point::new(0.0, 1.0)).unwrap();
+    bowl.close();
+    let areas = oracle::areas(&bowl.finish(), Transform::IDENTITY, FillRule::NonZero);
+    assert!((areas.at(0, 0) - 2.0 / 3.0).abs() < 1e-14);
+    let arch = oracle::areas(&arches(1, 1), Transform::IDENTITY, FillRule::NonZero);
+    assert!((arch.total() - 64.0 / 3.0).abs() < 1e-12);
+}
+
+#[test]
+fn quadratic_placements_meet_the_true_curve_with_many_pieces_and_overlaps() {
+    let limits = Limits::default();
+    let area = area(0, 0, 32, 24, 16);
+    let mut rng = Lcg(123);
+    let mut maximum = 0.0_f64;
+    for outline in [arches(1, 1), arches(1, 40), arches(2, 1)] {
+        for linear in [
+            [1.0, 0.0, 0.0, 1.0],
+            [0.9, 0.17, -0.1, -1.2],
+            [1.1, -0.3, 0.21, 0.8],
+        ] {
+            let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
+            for _ in 0..4 {
+                let origin = Point::new(rng.grid(8.0, 10.0, 4096), rng.grid(10.0, 12.0, 4096));
+                let prep = options(area, &limits, None);
+                let shape = glyph::place(&edges, origin, &prep).unwrap().unwrap();
+                let (pixels, work) = raster(&area, Some(&shape), None);
+                assert!(work <= shape.work());
+                let [a, b, c, d] = linear;
+                let exact = oracle::areas(
+                    &outline,
+                    Transform::new(a, b, c, d, origin.x, origin.y),
+                    FillRule::NonZero,
+                );
+                for y in 0..24 {
+                    for x in 0..32 {
+                        let level = exact.at(x, y) * 255.0;
+                        let value = pixels[y as usize * 32 + x as usize];
+                        let error = (f64::from(value) - level).abs();
+                        maximum = maximum.max(error);
+                        assert!(
+                            error <= 1.0,
+                            "{x},{y}: {value} vs {level}, linear {linear:?}, origin {origin:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+    eprintln!("true-curve placement maximum error: {maximum:.9} levels");
+}
+
+#[test]
+fn clipped_quadratics_keep_the_true_curve_reference() {
+    let limits = Limits::default();
+    let area = area(0, 0, 32, 24, 16);
+    let mut triangle = PathBuilder::new();
+    triangle.polygon([
+        Point::new(7.13, 5.72),
+        Point::new(21.3, 17.4),
+        Point::new(6.24, 19.81),
+    ]);
+    let triangle = triangle.finish();
+    let clip = ClipShape::new(
+        &[(&triangle, FillRule::NonZero)],
+        Transform::IDENTITY,
+        &public(area, &limits),
+    )
+    .unwrap();
+    let mut maximum = 0.0_f64;
+    for outline in [arches(1, 40), arches(2, 1)] {
+        let linear = [1.2, 0.14, 0.2, -1.0];
+        let origin = Point::new(7.37, 14.81);
+        let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
+        let prep = options(area, &limits, Some(&clip));
+        let shape = glyph::place(&edges, origin, &prep).unwrap().unwrap();
+        let (pixels, work) = raster(&area, Some(&shape), Some(&clip));
+        assert!(work <= shape.work());
+        let [a, b, c, d] = linear;
+        let exact = oracle::clipped_areas(
+            &outline,
+            Transform::new(a, b, c, d, origin.x, origin.y),
+            &triangle,
+        );
+        for y in 0..24 {
+            for x in 0..32 {
+                let level = exact.at(x, y) * 255.0;
+                let value = pixels[y as usize * 32 + x as usize];
+                let error = (f64::from(value) - level).abs();
+                maximum = maximum.max(error);
+                assert!(error <= 1.0, "{x},{y}: {value} vs {level}");
+            }
+        }
+        let prepare = |p: &Prep<'_>| glyph::place(&edges, origin, p).unwrap();
+        let clipping = |p: &ShapeOptions<'_>| {
+            ClipShape::new(&[(&triangle, FillRule::NonZero)], Transform::IDENTITY, p).unwrap()
+        };
+        invariant(&area, &prepare, Some(&clipping));
+    }
+    eprintln!("true-curve clipped maximum error: {maximum:.9} levels");
+}
+
+#[test]
+fn large_source_coordinates_and_linear_scales_keep_true_curve_coverage() {
+    let limits = Limits::default();
+    let area = area(0, 0, 32, 24, 16);
+    let mut maximum = 0.0_f64;
+    for copies in [1, 2] {
+        for (anchor, scale) in [
+            (0.0, 1.0),
+            (1_073_741_824.0, 1_048_576.0),
+            (549_755_813_888.0, 1_073_741_824.0),
+            (-549_755_813_888.0, 1_073_741_824.0),
+        ] {
+            let outline = arches(copies, 40)
+                .transformed(Transform::new(scale, 0.0, 0.0, scale, anchor, -anchor));
+            let linear = [1.0 / scale, 0.0, 0.0, -1.0 / scale];
+            let origin = Point::new(8.37 - anchor / scale, 12.29 - anchor / scale);
+            let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
+            let shape = glyph::place(&edges, origin, &options(area, &limits, None))
+                .unwrap()
+                .unwrap();
+            let (pixels, work) = raster(&area, Some(&shape), None);
+            assert!(work <= shape.work());
+            let [a, b, c, d] = linear;
+            let exact = oracle::areas(
+                &outline,
+                Transform::new(a, b, c, d, origin.x, origin.y),
+                FillRule::NonZero,
+            );
+            for y in 0..24 {
+                for x in 0..32 {
+                    let value = pixels[y as usize * 32 + x as usize];
+                    let level = exact.at(x, y) * 255.0;
+                    let error = (f64::from(value) - level).abs();
+                    maximum = maximum.max(error);
+                    assert!(
+                        error <= 1.0,
+                        "{x},{y}: {value} vs {level}, anchor {anchor}, scale {scale}"
+                    );
+                }
+            }
+        }
+    }
+    eprintln!("large-source true-curve maximum error: {maximum:.9} levels");
+}
+
+#[test]
+fn fallback_half_levels_keep_their_bytes_at_translated_origins_and_band_grids() {
+    let limits = Limits::default();
+    let mut path = PathBuilder::new();
+    let h = 3.0 * 0.500_001 / 255.0;
+    for _ in 0..2 {
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(1.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+    }
+    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    assert!(!edges.curved());
+    for offset in [0, 10_000] {
+        let origin = Point::new(f64::from(offset), f64::from(offset));
+        for height in [1, 3, 16, 256] {
+            let area = area(offset, offset, offset + 1, offset + 1, height);
+            let shape = Shape::glyph_in(&edges, origin, &options(area, &limits, None))
+                .unwrap()
+                .unwrap();
+            assert_eq!(raster(&area, Some(&shape), None).0, [1]);
+        }
+    }
+}
+
+#[test]
+fn translated_clip_half_levels_use_only_hulls_that_can_change_the_joint_area() {
+    let limits = Limits::default();
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(-1.0, 0.0));
+    path.cubic_to(
+        Point::new(0.0, 1.0),
+        Point::new(1.0, 1.0),
+        Point::new(2.0, 0.0),
+    )
+    .unwrap();
+    path.close();
+    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    for offset in [0, 10_000] {
+        let base = f64::from(offset);
+        let left = if offset == 0 { -0.1 } else { 1.0 / 3.0 };
+        let top = base + 0.3;
+        let rectangle = polygon(&[
+            Point::new(left, base - 0.1),
+            Point::new(base + 1.1, base - 0.1),
+            Point::new(base + 1.1, top),
+            Point::new(left, top),
+        ]);
+        let trapezoid = polygon(&[
+            Point::new(left, base - 0.1),
+            Point::new(base + 1.1, base - 0.1),
+            Point::new(base + 1.2, top),
+            Point::new(left, top),
+        ]);
+        for clip_path in [&rectangle, &trapezoid] {
+            for height in [1, 3, 16] {
+                let area = area(offset, offset, offset + 1, offset + 1, height);
+                let clip = ClipShape::new(
+                    &[(clip_path, FillRule::NonZero)],
+                    Transform::IDENTITY,
+                    &public(area, &limits),
+                )
+                .unwrap();
+                let shape = Shape::glyph_in(
+                    &edges,
+                    Point::new(base + 0.2, base),
+                    &options(area, &limits, Some(&clip)),
+                )
+                .unwrap()
+                .unwrap();
+                assert_eq!(
+                    raster(&area, Some(&shape), Some(&clip)).0,
+                    [crate::quantize_unit(top - base)],
+                );
             }
         }
     }

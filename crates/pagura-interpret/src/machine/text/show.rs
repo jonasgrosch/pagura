@@ -1,8 +1,9 @@
 //! Showing strings (9.4.3): glyph placement, outlines, the text clip
-//! (9.3.6), and one glyph run per string operand for the device.
+//! (9.3.6), and per string operand a glyph run and a text run for the
+//! devices that need them.
 
 use super::{Machine, Scope, checked, text_object, text_translate};
-use crate::device::{Device, Glyph, GlyphPaint, GlyphRun, MarkState, OutlineKey};
+use crate::device::{Device, Glyph, GlyphPaint, GlyphRun, MarkState, OutlineKey, TextRun};
 use crate::fonts::LoadedFont;
 use crate::machine::Text;
 use crate::machine::path::finite;
@@ -48,20 +49,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let text = needs.text && scope.role == Text::Page;
         // The buffers of the previous string are reused; a string shown by
         // a Type 3 glyph inside this one takes fresh ones.
-        let mut decoded = std::mem::take(&mut self.session.decoded);
-        let mut glyphs = std::mem::take(&mut self.session.placed);
-        let result = self.show_glyphs(
-            font,
-            bytes,
-            text,
-            (&mut decoded, &mut glyphs),
-            resources,
-            scope,
-        );
-        decoded.clear();
-        glyphs.clear();
-        self.session.decoded = decoded;
-        self.session.placed = glyphs;
+        let mut strings = std::mem::take(&mut self.session.strings);
+        let result = self.show_glyphs(font, bytes, text, &mut strings, resources, scope);
+        strings.decoded.clear();
+        strings.placed.clear();
+        strings.text.clear();
+        self.session.strings = strings;
         result
     }
 
@@ -70,36 +63,47 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         font: &LoadedFont,
         bytes: &[u8],
         text: bool,
-        (decoded, glyphs): (&mut Vec<pagura_text::Glyph>, &mut Vec<Glyph>),
+        strings: &mut Strings,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
+        let unicode = if text { font.unicode.as_deref() } else { None };
         font.font
-            .decode_into(bytes, text, decoded)
+            .decode_into(bytes, unicode, &mut strings.decoded)
             .map_err(|mut e| {
                 e.position = self.position;
                 e
             })?;
+        let count = strings.decoded.len();
         self.session
             .tokens
-            .charge(decoded.len())
+            .charge(count)
             .map_err(|_| Error::limit("text glyph work exceeded"))?;
-        glyphs.reserve(decoded.len());
-        let run = Run::new(scope, self.needs().outlines);
-        for glyph in decoded.iter() {
-            let placed = self.glyph(font, glyph, text, &run, resources, scope)?;
-            glyphs.push(placed);
+        strings.placed.reserve(count);
+        if text {
+            strings.text.reserve(count);
         }
-        self.emit_run(font, glyphs, text, scope)
+        let run = Run::new(scope, self.needs().outlines);
+        for glyph in &strings.decoded {
+            if text {
+                let matrix = text_object(scope)?.matrix;
+                let transform = run.transform(glyph, matrix)?;
+                strings
+                    .text
+                    .push(self.positioned(font, glyph, matrix, transform, scope)?);
+            }
+            let placed = self.glyph(font, glyph, &run, resources, scope)?;
+            strings.placed.push(placed);
+        }
+        self.emit_run(font, strings, text, scope)
     }
 
-    /// Places one glyph: its record for text, its outline or procedure for
-    /// paint, its part of the text clip, and the advance (9.4.4).
+    /// Places one glyph: its outline or procedure for paint, its part of
+    /// the text clip, and the advance (9.4.4).
     fn glyph(
         &mut self,
         font: &LoadedFont,
         glyph: &pagura_text::Glyph,
-        text: bool,
         run: &Run,
         resources: &Dictionary,
         scope: &mut Scope,
@@ -109,23 +113,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .as_ref()
             .ok_or(Error::syntax("glyph outside text object"))?
             .matrix;
-        let scaled = match glyph.vertical {
-            Some(v) => Transform::translate(-v.origin.0, -v.origin.1).then(run.scale),
-            None => run.scaled,
-        };
-        let transform = checked(scaled.then(matrix).then(run.ctm))?;
+        let transform = run.transform(glyph, matrix)?;
         let spacing = run.character + if glyph.word_space { run.word } else { 0.0 };
         let (dx, dy) = glyph.vertical.map_or(
             ((glyph.advance * run.size + spacing) * run.horizontal, 0.0),
             |v| (0.0, v.advance * run.size + spacing),
         );
-        let positioned = if text {
-            Some(Box::new(
-                self.positioned(font, glyph, matrix, transform, scope)?,
-            ))
-        } else {
-            None
-        };
         let mut placed = Glyph {
             code: glyph.code,
             outline_key: OutlineKey {
@@ -134,7 +127,6 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             },
             transform,
             outline: None,
-            text: positioned,
             position: self.position,
         };
         let mode = run.mode;
@@ -191,34 +183,45 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         append(clip, &path, limit)
     }
 
-    /// Emits the glyphs of one string operand: to devices that need text
-    /// always, and to others when the string paints a visible glyph.
+    /// Emits one string operand: its glyphs when it paints one, and its
+    /// text when it is page text and the device needs text. Hidden strings
+    /// reach only devices that need structure.
     fn emit_run(
         &mut self,
         font: &LoadedFont,
-        glyphs: &[Glyph],
+        strings: &mut Strings,
         text: bool,
         scope: &mut Scope,
     ) -> Result<()> {
-        let paints = glyphs.iter().any(|g| g.outline.is_some());
-        let hidden = if scope.visible {
-            if paints {
-                self.open_lazy()?;
-            }
-            false
-        } else {
-            true
-        };
-        let emit = if hidden {
-            self.needs().structure && (paints || text)
-        } else {
-            paints || text
-        };
-        if !emit {
+        let paints = strings.placed.iter().any(|g| g.outline.is_some());
+        if !scope.visible && !self.needs().structure {
             return Ok(());
         }
+        if paints {
+            self.emit_glyphs(font, &strings.placed, scope)?;
+        }
+        if text {
+            self.device.text(TextRun {
+                font: &font.info,
+                glyphs: &mut strings.text,
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Emits the glyphs of a string that paints.
+    fn emit_glyphs(
+        &mut self,
+        font: &LoadedFont,
+        glyphs: &[Glyph],
+        scope: &mut Scope,
+    ) -> Result<()> {
+        let hidden = !scope.visible;
+        if !hidden {
+            self.open_lazy()?;
+        }
         let mode = pagura_extract::TextRenderingMode::from_low_bits(scope.state.text.mode);
-        let paint = self.needs().paint && paints;
+        let paint = self.needs().paint;
         let fill = (paint && mode.fills()).then(|| {
             let composite = scope.state.fill_composite();
             (self.fill_paint(scope), composite)
@@ -279,6 +282,15 @@ fn append(builder: &mut PathBuilder, path: &Path, limit: usize) -> Result<()> {
     Ok(())
 }
 
+/// The buffers of the string being shown, reused from one string to the
+/// next: its decoded glyphs, their placements and their records for text.
+#[derive(Debug, Default)]
+pub(crate) struct Strings {
+    decoded: Vec<pagura_text::Glyph>,
+    placed: Vec<Glyph>,
+    text: Vec<pagura_extract::PositionedGlyph>,
+}
+
 /// What the glyphs of one string share: the text state and CTM, which
 /// showing the string does not change.
 struct Run {
@@ -297,6 +309,16 @@ struct Run {
 }
 
 impl Run {
+    /// Glyph space (before `FontMatrix`) to default user space for `glyph`
+    /// at text matrix `matrix`: its origin adjusted for vertical writing.
+    fn transform(&self, glyph: &pagura_text::Glyph, matrix: Transform) -> Result<Transform> {
+        let scaled = match glyph.vertical {
+            Some(v) => Transform::translate(-v.origin.0, -v.origin.1).then(self.scale),
+            None => self.scaled,
+        };
+        checked(scaled.then(matrix).then(self.ctm))
+    }
+
     fn new(scope: &Scope, outlines: bool) -> Self {
         let params = &scope.state.text;
         let scale = Transform::new(

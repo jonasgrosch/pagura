@@ -188,6 +188,8 @@ func validate(_ data: Data) throws -> [UInt32] {
         }
     }
 }
+#if !SHARED_CLIENT
 @main struct NativeMain {
     @MainActor static func main() {do {try runHost()} catch {try? reply(["ok":false,"error":String(describing:error)]);exit(1)}}
 }
+#endif

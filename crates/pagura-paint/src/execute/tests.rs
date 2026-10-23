@@ -22,6 +22,72 @@ use pagura_interpret::{BlendMode, Composite, MaskKind, Shading, ShadingFunction,
 use pagura_raster::{Area, DeviceRect, PathBuilder, Point, Transform};
 use std::sync::Arc;
 
+#[test]
+fn output_band_capacity_uses_actual_edge_rows_and_checked_products() {
+    for (region, expected) in [
+        (
+            DeviceRect {
+                x0: 2,
+                y0: 31,
+                x1: 5,
+                y1: 33,
+            },
+            12,
+        ),
+        (
+            DeviceRect {
+                x0: 2,
+                y0: 31,
+                x1: 5,
+                y1: 65,
+            },
+            384,
+        ),
+        (
+            DeviceRect {
+                x0: 2,
+                y0: 5,
+                x1: 5,
+                y1: 15,
+            },
+            120,
+        ),
+        (
+            DeviceRect {
+                x0: 2,
+                y0: u32::MAX - 3,
+                x1: 5,
+                y1: u32::MAX,
+            },
+            36,
+        ),
+        (DeviceRect::default(), 0),
+    ] {
+        let area = Area {
+            region,
+            band_height: 32,
+        };
+        assert_eq!(
+            super::output_band_bytes(area).unwrap(),
+            expected,
+            "{area:?}"
+        );
+    }
+    let enormous = Area {
+        region: DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: u32::MAX,
+            y1: u32::MAX,
+        },
+        band_height: u32::MAX,
+    };
+    assert_eq!(
+        super::output_band_bytes(enormous).unwrap_err().kind,
+        pagura_core::ErrorKind::Limit
+    );
+}
+
 /// `C0 + x^N (C1 − C0)` of one input.
 fn exponential(c0: &[f64], c1: &[f64], exponent: f64) -> Arc<Function> {
     Arc::new(
@@ -100,7 +166,10 @@ fn gradient(channels: usize) -> Source {
         Transform::IDENTITY,
         &context,
         64 * 64,
-        &mut functions,
+        (
+            &mut functions,
+            &Meter::new(Limits::default().render_bytes, "test bytes"),
+        ),
     );
     let source = source.unwrap();
     assert!(matches!(source, Source::Shading(_)));
@@ -116,7 +185,12 @@ fn sample(paint: &Source, (x, y): (u32, u32)) -> (Vec<f64>, f64) {
         len: 1,
         boundary: None,
     };
-    paint.fill(pixels, &mut out, &mut Vec::new());
+    paint.fill(
+        pixels,
+        &mut crate::source::PaintScratch::default(),
+        &mut out,
+        &mut Vec::new(),
+    );
     (out.colors, out.alpha.first().copied().unwrap_or(1.0))
 }
 
@@ -278,9 +352,15 @@ impl Fixture {
             transfers: Vec::new(),
         };
         let rows = self.height.min(256) as usize;
-        let stack: Tops = crate::prepare::stacks::needs(&parts, rows);
+        let stack: Tops = crate::prepare::stacks::needs(
+            &parts,
+            rows,
+            &mut Meter::new(usize::MAX, "test stack analysis"),
+        )
+        .unwrap();
         let selections = !self.output.transfers.is_empty();
         let plan = Plan {
+            _names: crate::plan::TargetNames::default(),
             area,
             groups: parts.groups,
             items: parts.items,
@@ -646,7 +726,11 @@ impl Fixture {
             })
             .collect();
         if alone {
-            crate::prepare::planner::runs::mark_alone(&mut glyphs);
+            crate::prepare::planner::runs::mark_alone(
+                &mut glyphs,
+                &mut Meter::new(usize::MAX, "test bytes"),
+            )
+            .unwrap();
         }
         let union = bounds
             .iter()

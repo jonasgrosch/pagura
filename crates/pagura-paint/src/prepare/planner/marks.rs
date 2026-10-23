@@ -14,16 +14,14 @@ use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, 
 use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
 use crate::prepare::{Budget, Prepared, bounds, index};
 use crate::source::{BBoxUse, Source};
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::{Error, Limits, Meter, Position, Rect, Result};
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, ImageMask, ImageNode, MarkInfo, Paint, PaintId,
     Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
 };
-use pagura_raster::{FillRegion, FillRule, Path, Point, ShapeOptions, Transform};
+use pagura_raster::{FillRule, Path, Point, ShapeOptions, Transform};
+use std::cell::Cell;
 use std::sync::Arc;
-
-/// Bytes charged per prepared paint, besides what its source retains.
-const PAINT_BYTES: usize = size_of::<Source>();
 
 /// A mark's geometry.
 enum Geometry<'a> {
@@ -32,11 +30,11 @@ enum Geometry<'a> {
     /// A stroke.
     Stroke(&'a Path, &'a Pen),
     /// A glyph placement: its device linear map and origin.
-    Glyph(&'a GlyphSource, [f64; 4], Point, usize),
+    Glyph(&'a GlyphSource, [f64; 4], Point, &'a Cell<Option<u32>>),
     /// An image's unit square under this transform.
     Unit(Transform),
     /// A shading's `BBox` under its transform, or its clip region.
-    Area(Option<(Path, Transform)>),
+    Area(Option<(Rect, Transform)>),
 }
 
 /// Where a mark's colour comes from.
@@ -108,7 +106,7 @@ impl Planner<'_> {
         budget: &mut Budget,
     ) -> Result<()> {
         let to_device = node.transform.then(scope.transform);
-        let hull = bounds::path(&bounds::unit_square(), to_device).map(|h| bounds::expand(h, 1.0));
+        let hull = bounds::rect(unit_rect(), to_device).map(|h| bounds::expand(h, 1.0));
         let spec = Spec {
             info: &node.mark,
             position: node.mark.position,
@@ -127,9 +125,8 @@ impl Planner<'_> {
     ) -> Result<()> {
         let to_device = node.transform.then(scope.transform);
         let (hull, geometry) = if let Some(rect) = node.shading.bbox {
-            let path = bbox_path(rect, self.limits)?;
-            let hull = bounds::path(&path, to_device).map(|h| bounds::expand(h, 1.0));
-            (hull, Geometry::Area(Some((path, to_device))))
+            let hull = bounds::rect(rect, to_device).map(|h| bounds::expand(h, 1.0));
+            (hull, Geometry::Area(Some((rect, to_device))))
         } else {
             let r = self.area.region;
             let whole = [
@@ -195,7 +192,7 @@ impl Planner<'_> {
         };
         let pattern_box = match (paint.as_deref(), spec.colour) {
             (Some(Paint::Shading(pattern)), Colour::Paint(id)) if scope.paint.is_none() => {
-                pattern_bbox(pattern, scope.transform, self.limits)?.map(|(usage, extra)| {
+                pattern_bbox(pattern, scope.transform).map(|(usage, extra)| {
                     (
                         usage,
                         Extra {
@@ -265,7 +262,7 @@ impl Planner<'_> {
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
         };
         self.shapes.set_clip(clip);
-        let shape = self.shape(scope, &spec.geometry);
+        let shape = self.shape(scope, &spec.geometry, budget);
         self.shapes.set_clip(None);
         let shape = match shape? {
             Shape::Nothing => return Ok(None),
@@ -279,7 +276,7 @@ impl Planner<'_> {
         if bounds.is_empty() {
             return Ok(None);
         }
-        budget.bytes.charge(shape.map_or(0, |s| s.bytes))?;
+
         Ok(Some(Covered {
             cover: Cover {
                 shape: shape.map(|s| s.key),
@@ -325,19 +322,9 @@ impl Planner<'_> {
         boundary: &Extra,
         budget: &mut Budget,
     ) -> Result<()> {
-        let options = ShapeOptions {
-            area: self.area,
-            limits: self.limits,
-        };
-        let prepared = self.shapes.fill(
-            &boundary.path,
-            boundary.transform,
-            FillRule::NonZero,
-            &options,
-        )?;
+        let prepared = self.rect_shape(boundary.bbox, boundary.transform, true, budget)?;
         covered.boundary = match prepared {
             Some(prepared) => {
-                budget.bytes.charge(prepared.bytes)?;
                 covered.work = covered.work.saturating_add(prepared.work);
                 Boundary::Shape(prepared.key)
             }
@@ -414,6 +401,11 @@ impl Planner<'_> {
             });
         budget.work.charge(covered.work)?;
         budget.work.charge(area(covered.bounds))?;
+        if records {
+            // The same rasterization validates transfer selections before
+            // execution. Reserve it in source order beside this mark's draw.
+            budget.work.charge(covered.work)?;
+        }
         let mark = Mark {
             cover: covered.cover,
             paint,
@@ -458,46 +450,92 @@ impl Planner<'_> {
         self.push(scope.group, item, budget)
     }
 
-    fn shape(&mut self, scope: &Scope, geometry: &Geometry<'_>) -> Result<Shape> {
+    fn shape(
+        &mut self,
+        scope: &Scope,
+        geometry: &Geometry<'_>,
+        budget: &mut Budget,
+    ) -> Result<Shape> {
+        let limits = Limits {
+            render_bytes: budget.bytes.remaining(),
+            ..*self.limits
+        };
         let options = ShapeOptions {
             area: self.area,
-            limits: self.limits,
+            limits: &limits,
         };
         let prepared = match geometry {
             Geometry::Fill(path, rule) => {
-                self.shapes.fill(path, scope.transform, *rule, &options)?
+                self.shapes
+                    .fill(path, scope.transform, *rule, &options, &mut budget.bytes)?
             }
             Geometry::Stroke(path, pen) => {
                 let inverse = pen.transform.inverse().ok_or(Error::unsupported(
                     pagura_interpret::features::SINGULAR_STROKE,
                     "singular stroke transform",
                 ))?;
-                self.shapes
-                    .stroke(path, (pen, inverse), scope.transform, &options)?
+                self.shapes.stroke(
+                    path,
+                    (pen, inverse),
+                    scope.transform,
+                    &options,
+                    &mut budget.bytes,
+                )?
             }
-            Geometry::Glyph(source, linear, origin, index) => {
-                let mut edges = self.glyph_edges.get(*index).copied().flatten();
-                let prepared =
-                    self.shapes
-                        .glyph((source, &mut edges), *linear, *origin, &options)?;
-                if let Some(slot) = self.glyph_edges.get_mut(*index) {
-                    *slot = edges;
-                }
+            Geometry::Glyph(source, linear, origin, handle) => {
+                let mut edges = handle.get();
+                let prepared = self.shapes.glyph(
+                    (source, &mut edges),
+                    *linear,
+                    *origin,
+                    &options,
+                    &mut budget.bytes,
+                )?;
+                handle.set(edges);
                 prepared
             }
-            Geometry::Unit(transform) => self.shapes.fill(
-                &bounds::unit_square(),
-                *transform,
-                FillRule::NonZero,
-                &options,
-            )?,
-            Geometry::Area(Some((path, transform))) => {
-                self.shapes
-                    .fill(path, *transform, FillRule::NonZero, &options)?
+            Geometry::Unit(transform) => self.rect_shape(unit_rect(), *transform, false, budget)?,
+            Geometry::Area(Some((rect, transform))) => {
+                self.rect_shape(*rect, *transform, true, budget)?
             }
             Geometry::Area(None) => return Ok(Shape::Everything),
         };
         Ok(prepared.map_or(Shape::Nothing, Shape::Prepared))
+    }
+
+    /// Fixed geometry is built only after culling. Its path stays charged
+    /// while the coverage source is prepared beside it, then is released.
+    fn rect_shape(
+        &mut self,
+        rect: Rect,
+        transform: Transform,
+        classify: bool,
+        budget: &mut Budget,
+    ) -> Result<Option<Prepared>> {
+        let path = if classify {
+            bbox_path(rect, self.limits, &mut budget.bytes)?
+        } else {
+            Path::rect_with_bytes(rect, &mut budget.bytes)?
+        };
+        let limits = Limits {
+            render_bytes: budget.bytes.remaining(),
+            ..*self.limits
+        };
+        let options = ShapeOptions {
+            area: self.area,
+            limits: &limits,
+        };
+        let prepared = self.shapes.fill(
+            &path,
+            transform,
+            FillRule::NonZero,
+            &options,
+            &mut budget.bytes,
+        );
+        let released = path.retained_bytes();
+        drop(path);
+        budget.bytes.refund(released);
+        prepared
     }
 
     /// Whether the mark records a transfer selection and which (11.7.5.2):
@@ -542,41 +580,43 @@ struct Covered {
 /// it: no `BBox` limits nothing; without a `Background` the mark is clipped
 /// to the box; with one, a degenerate box mixes colours by its outline's
 /// coverage and any other box is tested per sample by the source.
-fn pattern_bbox(
-    pattern: &ShadingPaint,
-    transform: Transform,
-    limits: &Limits,
-) -> Result<Option<(BBoxUse, Extra)>> {
-    let Some(bbox) = pattern.shading.bbox else {
-        return Ok(None);
-    };
-    let path = bbox_path(bbox, limits)?;
-    let degenerate = path
-        .fill_region(FillRule::NonZero)
-        .is_some_and(|region| region != FillRegion::Ordinary);
+fn pattern_bbox(pattern: &ShadingPaint, transform: Transform) -> Option<(BBoxUse, Extra)> {
+    let bbox = pattern.shading.bbox?;
+    // Rect is normalized and finite. Its canonical four-corner contour
+    // has interior exactly when both coordinate intervals are nonempty.
     let usage = if pattern.shading.background.is_none() {
         BBoxUse::Clip
-    } else if degenerate {
+    } else if bbox.is_empty() {
         BBoxUse::Boundary
     } else {
-        return Ok(None);
+        return None;
     };
-    Ok(Some((
+    Some((
         usage,
         Extra {
             paint: 0,
-            path: Arc::new(path),
+            bbox,
             transform: pattern.matrix.then(transform),
         },
-    )))
+    ))
 }
 
 /// A shading's `BBox` as a path, classified so that a box without area
 /// clips and fills as its device hairline outline, as a clipping path does.
-fn bbox_path(bbox: pagura_core::Rect, limits: &Limits) -> Result<Path> {
-    let mut path = Path::rect(bbox);
-    path.classify_fill(FillRule::NonZero, limits, &mut 0)?;
+pub(super) fn bbox_path(bbox: Rect, limits: &Limits, bytes: &mut Meter) -> Result<Path> {
+    let mut path = Path::rect_with_bytes(bbox, bytes)?;
+    let classified = path.classify_fill_with_bytes(FillRule::NonZero, limits, &mut 0, bytes);
+    if let Err(error) = classified {
+        let released = path.retained_bytes();
+        drop(path);
+        bytes.refund(released);
+        return Err(error);
+    }
     Ok(path)
+}
+
+fn unit_rect() -> Rect {
+    Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap_or_else(|| unreachable!())
 }
 
 /// Whether a mark's colour space can change any colorant (Separation
@@ -627,4 +667,38 @@ enum Shape {
     Everything,
     /// A prepared shape.
     Prepared(Prepared),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_raster::FillRegion;
+
+    #[test]
+    fn bbox_choice_matches_canonical_classification_for_slivers_and_degenerate_rects() {
+        let limits = Limits::default();
+        for (x, y, width, height) in [
+            (0.0, 0.0, 1.0, 1.0),
+            (0.0, 0.0, 1e-200, 1e-200), // area underflows, endpoints do not
+            (0.0, 0.0, f64::from_bits(1), f64::from_bits(1)),
+            (-2.0, 3.0, 0.0, 4.0),
+            (-2.0, 3.0, 4.0, 0.0),
+            (-2.0, 3.0, 0.0, 0.0),
+        ] {
+            let rect = Rect::from_corners(x, y, x + width, y + height).unwrap();
+            let mut bytes = Meter::new(1 << 20, "bbox memory");
+            let path = bbox_path(rect, &limits, &mut bytes).unwrap();
+            let region = path.fill_region(FillRule::NonZero).unwrap();
+            assert_eq!(rect.is_empty(), region != FillRegion::Ordinary, "{rect:?}");
+            assert_eq!(bytes.used(), path.retained_bytes());
+        }
+        let mut tiny = Meter::new(5 * size_of::<pagura_raster::Segment>() - 1, "bbox memory");
+        assert_eq!(
+            bbox_path(unit_rect(), &limits, &mut tiny)
+                .unwrap_err()
+                .message,
+            "bbox memory"
+        );
+        assert_eq!(tiny.used(), 0);
+    }
 }

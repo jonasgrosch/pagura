@@ -2,11 +2,12 @@
 
 use crate::args::{Command, Conversion, HELP, Output, Source, Timings, USAGE};
 use crate::failure::Failure;
-use crate::input::write_new;
+use crate::input::{create_new, write_new};
 use crate::{json, microbench, scan};
 use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
-use pagura::{Document, Pixmap, RenderContext, Rgba8};
+use pagura::{Document, RenderContext, RenderOptions, Rgba8, device_size};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
@@ -167,27 +168,61 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
         )));
     }
     let open = started.elapsed();
-    let options = conversion.render;
+    // PPM has no alpha. The renderer composites onto opaque white before
+    // quantizing, so its final RGB bytes can be written directly.
+    let options = RenderOptions {
+        background: Rgba8::WHITE,
+        ..conversion.render
+    };
     let mut stages = Vec::with_capacity(indices.clone().count());
     for page in indices {
-        let render_started = Instant::now();
-        // Each page is visited once: its scene is dropped after rendering
-        // instead of being stored.
-        let scene = context.record(document.page(page)?)?;
-        let pixmap = context.render_scene(&scene, &options, None)?;
-        drop(scene);
-        let render = render_started.elapsed();
+        let page_started = Instant::now();
         let emit_started = Instant::now();
         let path = match &conversion.output {
             Output::File(path) => path.clone(),
             Output::Directory(directory) => image_path(directory, page),
         };
-        write_new(&path, &encode_ppm(&pixmap))?;
-        stages.push(Stage {
-            page,
-            render,
-            emit: emit_started.elapsed(),
-        });
+        let mut rgb = [0; RGB_CHUNK_BYTES];
+        let mut file: Option<File> = None;
+        let mut emit = emit_started.elapsed();
+        // Each page is visited once: its scene is dropped after rendering
+        // instead of being stored.
+        let source = document.page(page)?;
+        let scene = context.record(source)?;
+        let size = device_size(source, &options)?;
+        let rendered = context.render_bands(
+            &scene,
+            &options,
+            None,
+            |_| false,
+            |_, pixels| {
+                let emit_started = Instant::now();
+                let written = (|| {
+                    // The first callback follows preparation, strict
+                    // repair checks and every renderer allocation.
+                    let file = match &mut file {
+                        Some(file) => file,
+                        empty => {
+                            let mut opened = create_new(&path)?;
+                            write_ppm_header(&mut opened, size)?;
+                            empty.insert(opened)
+                        }
+                    };
+                    write_rgb(file, pixels, &mut rgb)
+                })();
+                emit += emit_started.elapsed();
+                written
+            },
+        );
+        drop(scene);
+        let emit_started = Instant::now();
+        drop(file);
+        emit += emit_started.elapsed();
+        // Sink work is interleaved with execution. Measure all of it in
+        // emit, including conversion and file close, rather than render.
+        let render = page_started.elapsed().saturating_sub(emit);
+        rendered??;
+        stages.push(Stage { page, render, emit });
     }
     if conversion.timings == Timings::Print {
         write_timings(out, open, &stages, started.elapsed())?;
@@ -201,11 +236,31 @@ fn image_path(directory: &Path, page: usize) -> std::path::PathBuf {
     directory.join(format!("page-{:04}.ppm", page + 1))
 }
 
-/// Binary PPM (P6) over white: the simplest raw image format.
-fn encode_ppm(pixmap: &Pixmap) -> Vec<u8> {
-    let mut ppm = format!("P6\n{} {}\n255\n", pixmap.width(), pixmap.height()).into_bytes();
-    ppm.extend(pixmap.to_rgb_over(Rgba8::WHITE));
-    ppm
+/// A fixed encoding chunk, independent of the page or band dimensions.
+const RGB_CHUNK_BYTES: usize = 3 * 4096;
+
+/// Binary PPM (P6) starts with the dimensions of the complete page.
+fn write_ppm_header(out: &mut impl Write, (width, height): (u32, u32)) -> std::io::Result<()> {
+    write!(out, "P6\n{width} {height}\n255\n")
+}
+
+/// Packs already-quantized opaque output, with no second compositing or
+/// rounding step. Opaque white is fixed at the CLI's RenderOptions above.
+fn write_rgb(
+    out: &mut impl Write,
+    rgba: &[u8],
+    rgb: &mut [u8; RGB_CHUNK_BYTES],
+) -> std::io::Result<()> {
+    let (pixels, rest) = rgba.as_chunks::<4>();
+    debug_assert_eq!(rest, []);
+    for pixels in pixels.chunks(rgb.len() / 3) {
+        for (target, pixel) in rgb.as_chunks_mut::<3>().0.iter_mut().zip(pixels) {
+            debug_assert_eq!(pixel[3], 255);
+            target.copy_from_slice(&pixel[..3]);
+        }
+        out.write_all(&rgb[..pixels.len() * 3])?;
+    }
+    Ok(())
 }
 
 fn write_timings(
@@ -235,7 +290,7 @@ fn write_timings(
 
 #[cfg(test)]
 mod tests {
-    use super::run;
+    use super::{RGB_CHUNK_BYTES, run, write_ppm_header, write_rgb};
     use crate::args::{Command, Source};
     use crate::failure::Failure;
     use pagura::Recovery;
@@ -253,6 +308,56 @@ mod tests {
         let mut out = Vec::new();
         run(command, &mut out)?;
         Ok(String::from_utf8(out).unwrap())
+    }
+
+    #[test]
+    fn streamed_ppm_header_and_payload_keep_pixel_order_across_chunks_and_calls() {
+        let mut actual = Vec::new();
+        let mut rgb = [0; RGB_CHUNK_BYTES];
+        write_ppm_header(&mut actual, (3, 2)).unwrap();
+        write_rgb(&mut actual, &[1, 2, 3, 255, 11, 22, 33, 255], &mut rgb).unwrap();
+        write_rgb(
+            &mut actual,
+            &[
+                101, 102, 103, 255, 10, 20, 30, 255, 0, 127, 255, 255, 255, 254, 253, 255,
+            ],
+            &mut rgb,
+        )
+        .unwrap();
+        assert_eq!(actual, b"P6\n3 2\n255\n\x01\x02\x03\x0b\x16\x21\x65\x66\x67\x0a\x14\x1e\x00\x7f\xff\xff\xfe\xfd");
+        let pixels: Vec<u8> = [[1, 2, 3, 255], [101, 102, 103, 255]]
+            .into_iter()
+            .cycle()
+            .take(RGB_CHUNK_BYTES / 3 + 3)
+            .flatten()
+            .collect();
+        actual.clear();
+        write_rgb(&mut actual, &pixels, &mut rgb).unwrap();
+        let expected = pagura::Pixmap::from_premultiplied(
+            u32::try_from(pixels.len() / 4).unwrap(),
+            1,
+            pixels,
+            pagura::Limits::default(),
+        )
+        .unwrap()
+        .to_rgb_over(pagura::Rgba8::WHITE);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn a_failed_write_stops_rgb_encoding() {
+        struct Failed;
+        impl std::io::Write for Failed {
+            fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::other("sink failed"))
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut rgb = [0; RGB_CHUNK_BYTES];
+        let error = write_rgb(&mut Failed, &[1, 2, 3, 255], &mut rgb).unwrap_err();
+        assert_eq!(error.to_string(), "sink failed");
     }
 
     #[test]

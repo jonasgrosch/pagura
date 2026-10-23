@@ -116,41 +116,30 @@ mechanism admitted under this rule records its bound here.
 
 ### 4. Coverage and glyphs
 
-The exact coverage producers are the band rasterizer's cell accumulation, its
-exact local resolver for the cells accumulation does not determine, the
-closed form for rectangles and the analytic integration of glyph quadratics
-(`pagura-raster`, `band`). For the same flattened geometry they yield the same
-coverage bytes (ADR 0034).
+The band rasterizer has one signed-area cell kernel. Prepared marks contain
+straight edges and certified monotone glyph quadratics. Edges are listed
+per strip of 16 rows; the kernel accumulates them in their own order into
+reusable f64 cells, tracks touched cells, and emits partial cells and solid
+spans. A rectangle is two vertical edges in that same kernel.
 
-**Cell accumulation.** Each mark's flattened device edges add their signed
-areas within each pixel cell, and their covers to the cells right of them, to
-a dense row of f64 cells, in the edges' own order and without snapping them
-to a grid. A prefix sum from the page's column 0 gives each cell's integral of
-the winding number, which the fill rule folds to a covered area and
-`quantize_unit` rounds once. The integral is the covered area wherever the
-winding takes at most two neighbouring values in the cell. Preparation
-establishes that, or resolves the cell, before any band is rasterized:
+**Certification and row union.** Each contour splits into y-monotone chains.
+The certificate proves that neighbouring chains keep their order between
+successive chain ends and alternate in direction from one common sign, so
+the winding is zero or that sign with magnitude one. For quadratics the
+certificate bounds the curves themselves, including their tangent fans at
+shared vertices. Doubt leaves the shape uncertified. Stroke pieces that are
+proved to meet without overlap are certified by construction.
 
-- **Certification** covers a whole shape. Each contour splits into strictly
-  y-monotone chains; a sweep compares neighbouring chains at every vertex
-  height and certifies the shape when, between consecutive chain end
-  heights, the active chains keep their order and alternate in direction from
-  a common sign, so the winding is 0 or that sign with magnitude one
-  everywhere off the boundary. Comparisons keep their rounding error, and any
-  doubt leaves the shape uncertified. A stroke outline of pieces that the
-  stroker proves to meet without overlapping is certified by construction;
-  other strokes keep the boundary of their pieces' union or their
-  overlapping components, and pieces and components cover the same set.
-- **Cell analysis** decides an uncertified shape cell by cell: a cell that no
-  edge or only one monotone chain crosses has windings w and w ± 1 and folds
-  exactly; a cell that pieces of two or more chains cross, or that a mark and
-  a clip boundary both cross, goes to the exact local resolver. The resolver
-  cuts the cell at every end point and crossing height, between which no two
-  edges cross, and integrates the width where every group (the mark, and each
-  clipping path under its own rule, 8.5.4) is inside by the midpoint rule,
-  which is exact for those linear widths. The shape keeps the results.
-- **Rectangles** fill in closed form, and a rectangular clip clips the mark's
-  edges instead of being integrated.
+Uncertified rows, and rows crossed by both a mark and a path clip, go through
+one exact row union during preparation. It cuts at edge ends and crossings,
+keeps the active edges ordered across each slab, and emits the boundaries of
+the area in which every group (mark and clipping paths, 8.5.4) is inside.
+These straight boundary pieces have winding zero or one and use the same
+cell kernel. Dense rows are partitioned by column with carried windings;
+each partition covers the same set and adds no boundary at its cut. The
+work and scratch reservations are charged before each allocation or sweep.
+Clips are prepared once per clip state into outside, inside and boundary
+runs. Rectangular clips clip edges geometrically before accumulation.
 
 A subpath whose points all coincide covers the pixel under them
 (8.5.3.3.1), and a fill whose region is empty with a boundary paints that
@@ -167,7 +156,7 @@ order, prefix sums left to right from column 0, cells indexed by global device
 column) and no kernel uses fused multiply-add, so a cell is a function of the
 geometry, the cell and the rule alone: band height, region and platform
 select which cells are visited, never their arithmetic. Certification and
-cell analysis depend only on the geometry and the clip state.
+row union depend only on the geometry and the clip state.
 
 **Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
 and 4) keeps its font outline, its linear glyph-to-device map L and its exact
@@ -186,21 +175,157 @@ of a run share preparation and accumulate into one band row only where no
 pixel receives coverage from two of them, never as a union. Strokes and text
 clipping follow the path rules.
 
-**Glyph reference.** An exactly quadratic outline is referenced against its
-true curve at its exact device position (8.5.2.2, 9.3.6): TrueType
-quadratics, and cubics whose third difference -P0 + 3P1 - 3P2 + P3 is at
-most 2^-24 device pixels per coordinate, as degree elevation leaves it after
-rounding. Their midpoint quadratics move the curve by less than 2^-27
-pixels, so by less than 2^-26 of a pixel's area per monotone piece crossing
-it, and the rasterizer integrates monotone quadratic pieces analytically in
-f64. A general cubic's midpoint quadratic is no area certificate:
-displacements below 1/1024 pixel on several edges sharing a pixel exceed one
-level. Cubic outlines therefore keep their placed canonical polygon, with its
-point rule, as the reference. The flattening tolerance alone does not bound
-area against the true curve, so independent high-precision quadrature of the
-outline checks curve results, and for those glyphs the polygon is a
-differential reference only. Which reference a glyph has depends only on its
-outline, L and its clip state, never on regions, bands or cache state.
+**Glyph reference.** A quadratic outline is referenced against its original
+stored curve at its exact device position (8.5.2.2, 9.3.6), independently of
+the renderer's certificate, its clip state and its selected representation.
+TrueType quadratics arrive as degree-elevated cubics. In device space the
+sum of absolute third differences -P0 + 3P1 - 3P2 + P3 over the entire outline
+must be at most 2^-24 pixels per coordinate. This defines its source-curve
+reference independently of certification. Analytic reduction additionally
+includes a conservative 64-rounding-unit allowance for the absolute products
+of the original controls and linear map, third-difference evaluation and
+midpoint-control construction. Absolute products retain their scale when a
+large offset or cancelling map hides it in the third difference; uncertain
+cases use the area-bounded original-curve polygon below.
+
+The bound is on area inside each pixel, including any number of near-parallel
+pieces. Between an original cubic C and its midpoint quadratic Q, the
+homotopy F(s,t) = Q(t) + s(C(t) - Q(t)) remains cubic. At each s each coordinate
+has at most three monotone intervals, and its total variation inside a unit
+pixel is at most three. Integrating the absolute Jacobian of F bounds the
+area swept inside that pixel by 3(delta_x + delta_y), where delta is the
+coordinate-wise maximum displacement. For exact midpoint reduction,
+C(t) - Q(t) = D t(t - 1/2)(t - 1), whose maximum factor is sqrt(3)/36.
+The cumulative third-difference and floating-error allowances bound the sum
+of displacements by 2^-24 per coordinate, hence area by 6 * 2^-24 square
+pixel (under 0.0001 levels), independent of the number of curves. Clipping
+cannot increase this symmetric difference. Certified outlines use
+closed-form integration of monotone quadratics with no piece-count cap.
+
+Uncertified quadratic outlines and quadratic placements crossed by a path
+clip use de Casteljau subdivision of the original stored cubics. Each
+accepted chord and its curve lie in their shared control hull. The sum of
+those hull areas is at most 1/4096 square pixel over the whole outline;
+subdivision divides each curve's allowance between its two children. The
+hull determinants include outward error allowances for multiplication,
+cancellation, mapping and accumulated subdivision rounding; an uncertain
+zero determinant cannot certify zero area. Thus
+the symmetric difference, in any pixel and under any clip or fill rule,
+is less than 0.063 levels. This gives the fallback the same true-curve
+reference without depending on a distance tolerance or on the number of
+boundaries in a cell. Segment and subdivision limits still apply; an
+unattainable bound returns a limit error.
+
+Neither area allowance alone certifies a coverage byte. A curve and a fine
+inscribed polygon can fall on opposite sides of a half-level; repeating
+that one-byte difference in separate glyph placements can exceed the scene's
+one-level contract. Preparation therefore inspects the common cell kernel's
+unquantized areas and quantizes both ends of their source-curve intervals,
+including reduction, mapping and translation error. An unambiguous interval
+certifies the byte that ordinary execution emits. Ambiguous pixels are
+resolved from the original stored cubics in a pixel-local frame using the
+shared bounded subdivision and row-union arithmetic. Accepted control hulls
+bound the area uncertainty under the canonical clips. Integer localization
+retains its two-sum tails; full outward hulls must miss outward clip bounds
+before their error is omitted.
+
+When the proven byte differs from the prepared representation, only curve
+pieces whose full hulls meet those pixels are subdivided more finely. The
+replacement remains an ordinary polygon with resolved rows. Every cell of
+that replacement is inspected again, so refining one boundary cannot silently
+change a neighboring byte. Inspection, local proofs and all replacement
+resolutions share one bounded work meter; scratch and overlapping old/new
+geometry are charged before allocation. Unresolved precision or exhausted
+work, segment, subdivision or memory limits refuse preparation. Execution
+has no coverage overrides, allocation or fallible refinement. A synthetic
+coincident-outline composition checks coverage byte one directly and its
+three-placement composed result against the analytic byte reference.
+
+The interval includes canonical straight-edge arithmetic as well as curve
+approximation. An interior interpolation parameter lies in [0,1]; rounding
+its two differences, division, product and addition is bounded by sixteen
+rounding units times the endpoint magnitudes in each coordinate. A linear
+boundary's swept uncertainty inside a unit pixel is bounded by those radii
+times its coordinate variations there. Axis-aligned boundaries require no
+such interpolation; localization tails are still retained. Large opposite
+endpoints can otherwise hide a low bit in the denominator and move an area
+from below a half-level onto it. Independent analytic source-line and
+clip-line regressions require that case to remain inside the interval and
+refuse unresolved precision.
+
+Preparation measures signed accumulation in the common kernel for both
+initial ambiguity selection and local proof. Error-free TwoSum retains the
+actual roundoff of each area/cover addition without changing the stored
+result or operation order. Let A be the outward sum of absolute inputs and
+E the outward sum of primitive errors and addition tails. Stored cell
+magnitudes total at most A+E. Only emission's prefix remains unmeasured: at
+most window width plus four operations per pixel, bounded by gamma_n(A+E).
+The positive A/E sums include their own count-dependent rounding allowance.
+Thus thousands of exactly added fragments do not themselves impose a
+precision floor, while lost low terms under cancellation remain bounded.
+This includes the primitives before they cancel: H's coefficient products
+and endpoint evaluations, coordinate evaluations, area products and the
+multi-column kernel's internal prefix of dy values. Their absolute operand
+bounds remain charged even for columns left of the requested window.
+Measuring only the final area additions would miss cancellation between
+large antiderivative values.
+
+Computed quadratic roots need no inverse-derivative assumption. Moving a row
+cut to a computed parameter changes coverage only in the horizontal strip
+between the target height and the exact stored polynomial at that parameter;
+a column transition similarly changes coverage only in a vertical residual
+strip. Its area inside a unit cell is bounded by the residual times one plus
+the opposite-coordinate residual. Coordinate-evaluation error, both ends,
+endpoint floor/ceil decisions and clamped column roots are included. A
+quadratic has at most two monotone intervals per coordinate, so an eightfold
+sum including residual cross products conservatively covers their overlaps.
+These bounds remain valid at a zero derivative and for a carried row root.
+An independent long-quadratic half-level regression checks the primitive
+interval and requires the original-curve byte or a bounded precision refusal.
+The execution specialization omits that measurement. Canonical clip proof
+bounds and their broad arithmetic allowance are computed once with charged
+work. Strip input scans are reserved before traversal, mask filtering uses
+one monotone row cursor, and replacement-builder scratch is returned before
+the next inspection starts.
+
+Clip classification uses those unquantized cells too. Touched cells keep
+their boundary support even when they round to zero; an untouched zero run
+is omitted only if its full arithmetic interval still quantizes to zero.
+Only an untouched run with raw area one, whose resolved boundaries span the
+whole pixel row, is inside. A fractional-height run that merely rounds to
+255 remains a boundary and participates in joint mark/clip resolution.
+These are ordinary clip segments, charged by the existing row meters. They
+prevent classification from hiding an ambiguous pixel before glyph
+certification, and preserve the same geometry in sub-region requests.
+
+A general cubic's displacement tolerance alone does not bound area when
+several edges share a pixel, so its outline retains the canonical 1/256-pixel
+polygon as its reference. Singular linear maps retain the polygon's
+geometric-point rule. The independent test oracle keeps the stored cubic
+segments and integrates their covered lengths by adaptive Gauss-Legendre
+quadrature. The slow differential reference bounds its own original-curve
+polygon's total control-hull area by 1/65536 square pixel; it never adopts
+the renderer's certificate or a path-clip exception. That initial area
+allowance alone cannot decide a coverage byte near a half-level. The
+reference therefore retains each accepted hull's outward bounds and area
+(including placed-coordinate mapping and translation rounding),
+sums the errors of hulls that touch each pixel, and quantizes both ends of
+the resulting area interval. When those bytes differ it refines the
+original controls with one sixteenth of the area allowance and repeats.
+Clipping cannot increase the interval's error. An unresolved interval,
+segment limit or subdivision limit is an error, never permission to select
+the byte that agrees with the renderer. A synthetic overlapping-quadratic
+case checks this distinction against an analytic area.
+
+Ambiguous pixels are evaluated in a local frame: subtract the integer pixel
+from the stored glyph origin before mapping the original controls. An
+error-free two-sum subtraction retains its tail as coordinate uncertainty;
+canonical clip endpoints retain their own subtraction tails. Thus a large
+absolute position cannot impose an artificial precision floor. A curve hull
+is omitted only when its outward rectangle misses the intersection of the
+canonical clips' outward bounds, including those endpoint tails. The full
+hull, rather than its chord, must miss that intersection. Translated
+half-level and clipped half-level cases exercise both decisions.
 
 ### 5. Storage formats
 

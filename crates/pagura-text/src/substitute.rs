@@ -4,7 +4,7 @@ use crate::{
     descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
     features,
-    font::{Mapping, Ownership, Source, to_unicode},
+    font::{Mapping, Ownership, Source},
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{number, optional, required},
     report::Report,
@@ -99,7 +99,6 @@ pub(crate) fn load(
         &document.limits(),
         base.as_bytes(),
     )?));
-    let to_unicode = to_unicode(document, font, &mapping)?;
     let source = data
         .program
         .as_ref()
@@ -126,9 +125,7 @@ pub(crate) fn load(
         source,
         mapping,
         metrics,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode: None,
         retained: 0,
     }
     .accounted())

@@ -69,6 +69,8 @@ func validateWorld(_ data:Data) throws -> [UInt32] {
         views[dpi]=View(parameters:params,width:Int(w[0]),height:Int(w[1]));order.append(dpi);viewUploads+=1;viewUploadBytes+=data.count
     }
     func metadata()->[String:Any] {return ["geometry_uploads":1,"geometry_upload_bytes":source.length,"view_uploads":viewUploads,"view_upload_bytes":viewUploadBytes,"dispatches":dispatches,"rgba_readbacks":rgbaReadbacks,"entries":views.count,"resident_bytes":bytes,"evictions":evictions,"cached_dpis":order]}
+    func hasView(_ dpi: UInt32) -> Bool {views[dpi] != nil}
+    func dimensions(_ dpi:UInt32) throws -> (Int,Int) {guard let view=views[dpi] else {throw fail("Unknown world dimensions")};return (view.width,view.height)}
     func draw(_ dpi:UInt32,queue:MTLCommandQueue,pipeline:MTLComputePipelineState,readback:Bool,presentation:Presentation?,center:Bool,capture:Bool) throws -> ([String:Any],Data) {
         guard let view=views[dpi],let command=queue.makeCommandBuffer(),let encoder=command.makeComputeCommandEncoder() else {throw fail("Native world view unavailable")}
         let started=now();order.removeAll(where:{$0==dpi});order.append(dpi)

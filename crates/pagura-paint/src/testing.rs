@@ -4,7 +4,7 @@
 use crate::prepare::{PreparedScene, ShapeBuilder, Shapes};
 use crate::request::RenderRequest;
 use pagura_color::{ColorSpace, Components};
-use pagura_core::{Limits, Position, Rect, Result, Store};
+use pagura_core::{Limits, Meter, Position, Rect, Result, Store};
 use pagura_interpret::{
     ClipId, ClipNode, Color, Composite, FillNode, Group, GroupAttributes, GroupCause, GroupId,
     GroupRole, MarkInfo, MaskId, MaskKind, Node, NodeId, PageSpace, Paint, PaintId, Scene,
@@ -25,15 +25,22 @@ pub(crate) fn path_shapes(area: Area, paths: &[Path]) -> Shapes {
         area,
         limits: &limits,
     };
-    let mut builder = ShapeBuilder::new(&store, &limits, Vec::new());
+    let mut builder = ShapeBuilder::new(&store, &limits);
+    let mut bytes = Meter::new(limits.render_bytes, "test shape bytes");
     for (i, path) in paths.iter().enumerate() {
         let prepared = builder
-            .fill(path, Transform::IDENTITY, FillRule::NonZero, &options)
+            .fill(
+                path,
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                &options,
+                &mut bytes,
+            )
             .unwrap_or_else(|e| panic!("{e}"))
             .unwrap_or_else(|| panic!("shape {i} covers no pixel"));
         assert_eq!(prepared.key, index(i));
     }
-    builder.finish()
+    builder.finish(&mut bytes).unwrap()
 }
 
 /// Builds scenes in device space (an identity request transform unless
@@ -224,13 +231,15 @@ impl Build {
 
     /// The page in device pixels.
     pub(crate) fn page(&self) -> DeviceRect {
-        let (width, height) = self.scene.page.device_size(self.scale).unwrap_or((1, 1));
-        DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: width,
-            y1: height,
-        }
+        RenderRequest::page(&self.scene.page, self.scale).map_or(
+            DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+            },
+            |request| request.page,
+        )
     }
 
     /// A request for `region` with `band_height`.

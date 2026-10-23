@@ -88,11 +88,15 @@ impl Builder {
         let start = index(self.cells.len() / 4)?;
         for y in bounds.y0..bounds.y1 {
             self.work.charge(1)?;
-            for &(x, value) in geometry.corrections(y) {
+            let correction = geometry.corrections(y, &mut self.bytes, &mut self.work)?;
+            for &(x, value) in correction.values() {
                 self.work.charge(1)?;
                 self.bytes.reserve(&mut self.cells, 4)?;
                 self.cells.extend([y, x, x + 1, u32::from(value)]);
             }
+            let refund = correction.reserved_bytes();
+            drop(correction);
+            self.bytes.refund(refund);
         }
         let placement = geometry.shared().map(|(_, p)| p);
         let x = placement.map_or(0.0, |p| p.x).to_bits().to_le_bytes();

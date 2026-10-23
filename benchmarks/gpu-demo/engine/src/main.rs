@@ -16,6 +16,8 @@ use std::time::Instant;
 const MAX_FRAME: usize = 64 * 1024 * 1024;
 
 mod cache;
+#[cfg(not(target_family = "wasm"))]
+mod shared;
 mod svg;
 #[cfg(test)]
 mod tests;
@@ -52,7 +54,6 @@ impl Session {
         Limits {
             file_bytes: MAX_FRAME - 4,
             pixels: 16 * 1024 * 1024,
-            render_bytes: 128 * 1024 * 1024,
             ..Limits::default()
         }
     }
@@ -66,9 +67,17 @@ impl Session {
     }
 
     fn request(&mut self, bytes: &[u8]) -> Result<(String, Cow<'_, [u8]>)> {
+        self.request_with_sink(bytes, None)
+    }
+
+    fn request_with_sink(
+        &mut self,
+        bytes: &[u8],
+        sink: Option<&mut dyn Write>,
+    ) -> Result<(String, Cow<'_, [u8]>)> {
         let operation = word(bytes, 0)?;
         if operation == 1 {
-            self.prepared.clear(&mut self.scratch);
+            self.prepared.clear();
             self.output = Vec::new();
             self.scene = None;
             self.svg = None;
@@ -96,7 +105,7 @@ impl Session {
             ));
         }
         if operation == 9 && bytes.len() == 32 {
-            self.prepared.clear(&mut self.scratch);
+            self.prepared.clear();
             return Ok((
                 format!("{{\"ok\":true,{}}}", self.cache_metadata()),
                 Cow::Owned(Vec::new()),
@@ -127,7 +136,7 @@ impl Session {
         {
             self.svg = None;
             self.world = None;
-            self.prepared.clear(&mut self.scratch);
+            self.prepared.clear();
             let scene = Interpreter::new(document)
                 .with_provider(Some(&self.provider))
                 .with_store(&self.store)
@@ -141,7 +150,8 @@ impl Session {
             .ok_or(Error::invalid_argument("no recorded scene"))?
             .1;
         let scale = f64::from(dpi) / 72.0;
-        let size = scene.page.device_size(scale)?;
+        let page_request = RenderRequest::page(&scene.page, scale)?;
+        let size = (page_request.page.width(), page_request.page.height());
         let page = DeviceRect {
             x0: 0,
             y0: 0,
@@ -162,14 +172,7 @@ impl Session {
             if region != page {
                 return Err(Error::invalid_argument("world demo exports whole pages"));
             }
-            return match world::export(
-                &mut self.world,
-                scene,
-                document,
-                &self.store,
-                &mut self.scratch,
-                total,
-            ) {
+            return match world::export(&mut self.world, scene, document, &self.store, total) {
                 Err(error)
                     if matches!(error.kind, ErrorKind::Limit | ErrorKind::Unsupported(_)) =>
                 {
@@ -237,7 +240,7 @@ impl Session {
             ));
         }
 
-        let mut request = RenderRequest::new(scene.page.device_transform(scale), page, region);
+        let mut request = RenderRequest::new(page_request.transform, page, region);
         request.band_height = band;
         request.overprint = if scene.print_intent {
             OverprintMode::Simulate
@@ -256,13 +259,9 @@ impl Session {
                 region.x1,
                 region.y1,
             ]);
-            let hit = self.prepared.ensure(
-                key,
-                scene,
-                &request,
-                (&self.store, &limits),
-                &mut self.scratch,
-            )?;
+            let hit = self
+                .prepared
+                .ensure(key, scene, &request, (&self.store, &limits))?;
             let prepare_ms = ms(start);
             let entry = self.prepared.current()?;
             for repair in entry.prepared.repairs() {
@@ -275,13 +274,22 @@ impl Session {
                 let count =
                     usize::try_from(u64::from(region.width()) * u64::from(region.height()) * 4)
                         .map_err(|_| Error::limit("retained CPU pixels"))?;
+                let mut rendering = entry.prepared.with_scratch(&mut self.scratch)?;
+                let capacity = if sink.is_some() {
+                    rendering.band_bytes()?
+                } else {
+                    count
+                };
                 self.output
-                    .try_reserve_exact(count)
+                    .try_reserve_exact(capacity)
                     .map_err(|_| Error::limit("retained CPU output allocation"))?;
-                entry
-                    .prepared
-                    .with_scratch(&mut self.scratch)?
-                    .render(&mut self.output);
+                if let Some(sink) = sink {
+                    rendering
+                        .render_bands(&mut self.output, |_| false, |_, band| sink.write_all(band))
+                        .map_err(|_| Error::invalid_argument("shared output consumer failed"))?;
+                } else {
+                    rendering.render(&mut self.output);
+                }
             } else {
                 let export_limits = Limits {
                     render_bytes: MAX_FRAME,
@@ -335,9 +343,7 @@ impl Session {
             ));
         }
         let start = Instant::now();
-        let prepared = self
-            .scratch
-            .prepare(scene, &request, (&self.store, &limits))?;
+        let prepared = pagura_paint::prepare(scene, &request, &self.store, &limits)?;
         for repair in prepared.repairs() {
             document.repair(repair.clone())?;
         }
@@ -345,7 +351,7 @@ impl Session {
         if matches!(operation, 3 | 5 | 6)
             && let Some(reason) = prepared.gpu_fallback_reason()
         {
-            self.scratch.recycle(prepared);
+            drop(prepared);
             return Ok((
                 format!(
                     "{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}",
@@ -381,7 +387,7 @@ impl Session {
             } {
                 Ok(program) => program,
                 Err(error) if error.kind == ErrorKind::Limit => {
-                    self.scratch.recycle(prepared);
+                    drop(prepared);
                     return Ok((
                         format!(
                             "{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}",
@@ -391,7 +397,7 @@ impl Session {
                     ));
                 }
                 Err(error) if matches!(error.kind, ErrorKind::Unsupported(_)) => {
-                    self.scratch.recycle(prepared);
+                    drop(prepared);
                     return Ok((
                         format!(
                             "{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}",
@@ -410,7 +416,7 @@ impl Session {
         }
         let execute_ms = ms(start);
         let engine_ms = ms(total);
-        self.scratch.recycle(prepared);
+        drop(prepared);
         let meta = format!(
             "{{\"ok\":true,\"width\":{},\"height\":{},\"record_ms\":{record_ms},\"prepare_ms\":{prepare_ms},\"execute_ms\":{execute_ms},\"engine_ms\":{engine_ms}}}",
             region.width(),
@@ -453,6 +459,8 @@ fn json_string(value: &str) -> String {
 }
 
 fn main() -> io::Result<()> {
+    #[cfg(not(target_family = "wasm"))]
+    let mut shared = shared::Output::from_args()?;
     let mut session = Session::new();
     let mut input = io::stdin().lock();
     let mut output = io::stdout().lock();
@@ -474,7 +482,17 @@ fn main() -> io::Result<()> {
             .map_err(|_| io::Error::other("input allocation failed"))?;
         bytes.resize(length, 0);
         input.read_exact(&mut bytes)?;
-        let (meta, data) = match session.request(&bytes) {
+        #[cfg(not(target_family = "wasm"))]
+        let result = if let Some(shared) = &mut shared {
+            shared
+                .request(&mut session, &bytes)
+                .map(|meta| (meta, Cow::Owned(Vec::new())))
+        } else {
+            session.request(&bytes)
+        };
+        #[cfg(target_family = "wasm")]
+        let result = session.request(&bytes);
+        let (meta, data) = match result {
             Ok(result) => result,
             Err(error) => (
                 format!(

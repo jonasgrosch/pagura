@@ -113,6 +113,7 @@ impl Planner<'_> {
             paint: None,
             depth: scope.depth + 1,
         };
+        budget.bytes.reserve_capacity(&mut self.open, 1)?;
         self.open.push(key);
         let walked = self.children(&inner, &group.children, budget);
         self.open.pop();
@@ -136,9 +137,16 @@ impl Planner<'_> {
             outside: 0.0,
         };
         plan.outside = crate::execute::mask_transfer(&plan, value);
-        budget.bytes.charge(size_of::<MaskPlan>())?;
+        self.add_mask(key, plan, budget)
+    }
+
+    /// Retains one plan and its use bounds, each in charged containers.
+    fn add_mask(&mut self, key: MaskKey, plan: MaskPlan, budget: &mut Budget) -> Result<u32> {
         let id = u32::try_from(self.parts.masks.len())
             .map_err(|_| Error::limit("soft mask count exceeds u32"))?;
+        budget.bytes.reserve_capacity(&mut self.parts.masks, 1)?;
+        budget.bytes.reserve_capacity(&mut self.users, 1)?;
+        budget.bytes.reserve_map_capacity(&mut self.masks, 1)?;
         self.parts.masks.push(plan);
         self.users.push(DeviceRect::default());
         self.masks.insert(key, id);

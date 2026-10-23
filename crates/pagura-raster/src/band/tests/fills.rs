@@ -44,9 +44,19 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
                 .map(|c| ClipShape::new(c, Transform::IDENTITY, &public(area, &limits)).unwrap());
             let prep = options(area, &limits, clip.as_ref());
             let fast = Shape::fill_in(&path, transform, FillRule::NonZero, &prep).unwrap();
+            let mut bytes = crate::testing::bytes();
             let (polygon, rule) =
-                clip::fill_polygon(&path, transform, FillRule::NonZero, &limits).unwrap();
-            let slow = Shape::polygon(polygon, rule, shape::Winding::Check(0.0), &prep).unwrap();
+                clip::fill_polygon(&path, transform, FillRule::NonZero, &limits, &mut bytes)
+                    .unwrap();
+            let slow = Shape::polygon(
+                polygon,
+                rule,
+                shape::Winding::Check(0.0),
+                &prep,
+                &mut bytes,
+                None,
+            )
+            .unwrap();
             let bytes = |s: Option<&Shape>| {
                 s.map_or_else(
                     || vec![0; 40 * 32],
@@ -58,10 +68,10 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
     }
 }
 
-/// Small shapes accumulated edge by edge in the grid give the bytes of the
-/// row lists.
+/// Shapes within one strip visit every item; listed per strip they give
+/// the same bytes.
 #[test]
-fn grid_shapes_match_their_row_lists() {
+fn unlisted_shapes_match_their_strip_lists() {
     let limits = Limits::default();
     let area = area(0, 0, 48, 40, 4);
     let mut rng = Lcg(404);
@@ -91,19 +101,24 @@ fn grid_shapes_match_their_row_lists() {
         let grid = raster(&area, Some(&shape), None).0;
         let bounds = shape.bounds();
         if let shape::Body::Edges(e) = &mut shape.body
-            && e.index.is_none()
+            && e.strips.is_none()
         {
             grids += 1;
             let right = 48.0;
             let lines = e.lines.clone();
-            e.index = Some(
-                edges::RowList::new((bounds.y0, bounds.y1), lines.len(), |i| {
-                    let l = lines[i];
-                    if l.a.x.min(l.b.x) >= right {
-                        return None;
-                    }
-                    edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
-                })
+            e.strips = Some(
+                edges::StripList::new(
+                    (bounds.y0, bounds.y1),
+                    lines.len(),
+                    lines.iter().enumerate().filter_map(|(i, l)| {
+                        if l.a.x.min(l.b.x) >= right {
+                            return None;
+                        }
+                        edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
+                            .map(|rows| (i, rows))
+                    }),
+                    &mut Meter::new(usize::MAX, "bytes"),
+                )
                 .unwrap(),
             );
             assert_eq!(raster(&area, Some(&shape), None).0, grid, "case {case}");

@@ -142,7 +142,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(emission) = self.admit(scope)? else {
             return Ok(());
         };
-        let composite = composite.unwrap_or_else(|| scope.state.fill_composite());
+        let composite = composite.unwrap_or_else(|| self.fill_state(scope));
         let paint = self.fill_paint(scope);
         self.device.fill(&FillMark {
             path,
@@ -167,7 +167,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(emission) = self.admit(scope)? else {
             return Ok(());
         };
-        let composite = composite.unwrap_or_else(|| scope.state.stroke_composite());
+        let composite = composite.unwrap_or_else(|| self.stroke_state(scope));
         let pen = scope.state.pen();
         let paint = self.stroke_paint(scope);
         self.device.stroke(&StrokeMark {
@@ -181,6 +181,25 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 hidden: emission.hidden(),
             },
         })
+    }
+
+    /// The composite state of fills, glyphs, images and shadings: the
+    /// graphics state's for devices that need paint, else the default.
+    pub(crate) fn fill_state(&self, scope: &mut Scope) -> Arc<Composite> {
+        if self.needs().paint {
+            scope.state.fill_composite()
+        } else {
+            Arc::clone(&self.session.opaque)
+        }
+    }
+
+    /// The composite state of strokes, as [`Self::fill_state`].
+    pub(crate) fn stroke_state(&self, scope: &mut Scope) -> Arc<Composite> {
+        if self.needs().paint {
+            scope.state.stroke_composite()
+        } else {
+            Arc::clone(&self.session.opaque)
+        }
     }
 
     /// The fill paint, for devices that need paint.

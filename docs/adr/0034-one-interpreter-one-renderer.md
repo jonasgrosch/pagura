@@ -55,8 +55,8 @@ PreparedScene ─► band executor (infallible, cancellable between bands) ─�
 
 Dependencies point downward: `pagura-render` → `pagura-paint` →
 `pagura-interpret` → `pagura-content`, `pagura-color`, `pagura-image`,
-`pagura-raster`, `pagura-text`, `pagura-extract`, `pagura-appearance`,
-`pagura-document`, `pagura-core`. `pagura-color` stays free of PDF objects
+`pagura-raster`, `pagura-text`, `pagura-font`, `pagura-extract`,
+`pagura-appearance`, `pagura-document`, `pagura-core`. `pagura-color` stays free of PDF objects
 (ADR 0028): the interpreter resolves colour-space and function objects into
 its types.
 
@@ -99,8 +99,8 @@ the `Store` under (document, page, optional-content configuration).
 
 ### 4. One renderer
 
-`pagura_paint::prepare(&Scene, &RenderRequest, …)` is the only fallible step
-of rendering. In source order it culls marks by conservative device bounds
+`pagura_paint::prepare(&Scene, &RenderRequest, …)` prepares one region before
+execution. In source order it culls marks by conservative device bounds
 against the requested region, validates them, reserves their work and bytes,
 builds coverage sources and prepared paint for marks that meet the region,
 chooses each buffer's storage format from its group's whole content, and bins
@@ -115,6 +115,13 @@ covered by a later opaque Normal mark of the same group, with no mask,
 transfer or non-Normal blend between, may be skipped for earlier marks. Each
 output pixel is quantized once with `pagura_raster::quantize_unit`, onto a
 background premultiplied once.
+
+One common band driver serves both direct collection into a `Pixmap` and a
+consumer of borrowed RGBA bands, using the same executor and output
+quantization. The rendering call reserves its output: `decoded_bytes` caps
+the full collected surface or one reusable output band. The whole region
+still obeys `pixels`; preparation and caller-owned `Scratch` remain under
+`render_bytes`. A streamed band belongs to the call, not the scene or Store.
 
 The band rasterizer accumulates a mark's edges per band into a dense row of
 f64 cells with a touched-cell bitmap and no sorting (ADR 0004 §4); cells
@@ -154,10 +161,15 @@ Interpretation fails as a whole, with no partial scene. Preparation runs in
 source order, validates every input and reserves every work and byte budget
 (ADR 0016: `render_bytes`, `function_work`, and one render-work meter);
 the error it reports is the first in source order among the marks that meet
-the region, independent of band height and partition. Execution cannot fail;
-cancellation between bands is a stop, not an error. Type 4 calculator
-programs are validated statically (stack effect and operand types per
-branch); a program that cannot be validated fails in preparation and
+the region, independent of band height and partition. Engine validation,
+repair reporting, scratch fitting and output reservation complete before
+the first consumer call. Paint execution cannot fail; cancellation between
+bands is a stop, not an error. A consumer returns its own error separately
+from an engine error and can leave partial output after it starts. The CLI
+creates a new PPM only at its first completed band, after engine preflight;
+unsupported content creates no file and existing files are never overwritten.
+Type 4 calculator programs are validated statically (stack effect and operand
+types per branch); a program that cannot be validated fails in preparation and
 arithmetic faults get defined results. Budgets are per render, so a whole page
 can reach a limit that its tiles do not.
 

@@ -7,8 +7,8 @@
 
 mod patch;
 
-use super::{Input, Sampler};
-use pagura_core::{Error, Result};
+use super::{Input, Sampler, allocate};
+use pagura_core::{Error, Meter, Result};
 use pagura_interpret::{MeshVertex, Patch};
 use pagura_raster::Point;
 
@@ -64,43 +64,59 @@ struct Grid {
 }
 
 impl Mesh {
-    pub(super) fn triangles(triangles: &[[MeshVertex; 3]], values: usize) -> Result<Self> {
-        let triangles: Vec<Triangle> = triangles
-            .iter()
-            .map(|t| {
-                let points = [t[0].point, t[1].point, t[2].point];
-                let mut colors = vec![0.0; 3 * values];
-                for (vertex, out) in t.iter().zip(colors.chunks_exact_mut(values.max(1))) {
-                    for (out, &v) in out.iter_mut().zip(vertex.color.iter()) {
-                        *out = v;
-                    }
+    pub(super) fn triangles(
+        source: &[[MeshVertex; 3]],
+        values: usize,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        let mut triangles = Vec::new();
+        bytes.reserve(&mut triangles, source.len())?;
+        for t in source {
+            let points = [t[0].point, t[1].point, t[2].point];
+            let mut colors = allocate(3 * values, bytes)?;
+            for (vertex, out) in t.iter().zip(colors.chunks_exact_mut(values.max(1))) {
+                for (out, &v) in out.iter_mut().zip(vertex.color.iter()) {
+                    *out = v;
                 }
-                Triangle {
-                    points,
-                    colors: colors.into(),
-                    bounds: Bounds::points(points),
-                }
-            })
-            .collect();
-        let bounds: Vec<Bounds> = triangles.iter().map(|t| t.bounds).collect();
+            }
+            triangles.push(Triangle {
+                points,
+                colors: colors.into(),
+                bounds: Bounds::points(points),
+            });
+        }
+        let mut bounds = Vec::new();
+        bytes.reserve(&mut bounds, triangles.len())?;
+        bounds.extend(triangles.iter().map(|t| t.bounds));
+        let grid = Grid::new(&bounds, bytes)?;
+        let released = bounds.capacity() * size_of::<Bounds>();
+        drop(bounds);
+        bytes.refund(released);
         Ok(Self {
             values,
-            grid: Grid::new(&bounds)?,
+            grid,
             triangles,
             patches: Vec::new(),
             kind: Kind::Triangles,
         })
     }
 
-    pub(super) fn patches(patches: &[Patch], values: usize) -> Result<Self> {
-        let patches: Vec<patch::Patch> = patches
-            .iter()
-            .map(|p| patch::Patch::new(p, values))
-            .collect();
-        let bounds: Vec<Bounds> = patches.iter().map(patch::Patch::bounds).collect();
+    pub(super) fn patches(source: &[Patch], values: usize, bytes: &mut Meter) -> Result<Self> {
+        let mut patches = Vec::new();
+        bytes.reserve(&mut patches, source.len())?;
+        for patch in source {
+            patches.push(patch::Patch::new(patch, values, bytes)?);
+        }
+        let mut bounds = Vec::new();
+        bytes.reserve(&mut bounds, patches.len())?;
+        bounds.extend(patches.iter().map(patch::Patch::bounds));
+        let grid = Grid::new(&bounds, bytes)?;
+        let released = bounds.capacity() * size_of::<Bounds>();
+        drop(bounds);
+        bytes.refund(released);
         Ok(Self {
             values,
-            grid: Grid::new(&bounds)?,
+            grid,
             triangles: Vec::new(),
             patches,
             kind: Kind::Patches,
@@ -202,7 +218,7 @@ impl Bounds {
 }
 
 impl Grid {
-    fn new(bounds: &[Bounds]) -> Result<Self> {
+    fn new(bounds: &[Bounds], bytes: &mut Meter) -> Result<Self> {
         let all = bounds
             .iter()
             .copied()
@@ -232,23 +248,34 @@ impl Grid {
         };
         // Count, then fill the cells in reverse primitive order.
         let cells = columns * rows;
-        let mut counts = vec![0_u32; cells + 1];
+        let mut counts = allocate::<u32>(cells + 1, bytes)?;
+        let mut total = 0_usize;
         for b in bounds {
+            let [x0, x1, y0, y1] = grid.cell_bounds(*b);
+            let count = (x1 - x0 + 1) * (y1 - y0 + 1);
+            total = total
+                .checked_add(count)
+                .filter(|&n| u32::try_from(n).is_ok())
+                .ok_or(Error::limit("mesh shading grid exceeds its index range"))?;
+            // Entries are reserved before visiting their cells; dense meshes
+            // cannot do an unbounded counting pass before memory refusal.
+            bytes.charge_items::<u32>(count)?;
             grid.each_cell(*b, |cell| counts[cell] += 1);
         }
-        let total: usize = counts.iter().map(|&c| c as usize).sum();
-        if u32::try_from(total).is_err() {
-            return Err(Error::limit("mesh shading grid exceeds its index range"));
-        }
         grid.occupancy = counts.iter().map(|&c| c as usize).max().unwrap_or(0);
-        let mut starts = vec![0_u32; cells + 1];
+        let mut starts = allocate(cells + 1, bytes)?;
         let mut running = 0_u32;
         for (start, &count) in starts.iter_mut().zip(&counts) {
             *start = running;
             running += count;
         }
-        let mut next = starts.clone();
-        let mut entries = vec![0_u32; total];
+        let mut next = allocate(cells + 1, bytes)?;
+        next.copy_from_slice(&starts);
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(total)
+            .map_err(|_| Error::limit("mesh shading allocation failed"))?;
+        entries.resize(total, 0_u32);
         for (index, b) in bounds.iter().enumerate().rev() {
             let index = u32::try_from(index).unwrap_or(u32::MAX);
             grid.each_cell(*b, |cell| {
@@ -259,6 +286,10 @@ impl Grid {
         }
         grid.cells = starts.into();
         grid.entries = entries.into();
+        let released = (counts.capacity() + next.capacity()) * size_of::<u32>();
+        drop(counts);
+        drop(next);
+        bytes.refund(released);
         Ok(grid)
     }
 
@@ -278,15 +309,20 @@ impl Grid {
     }
 
     fn each_cell(&self, b: Bounds, mut visit: impl FnMut(usize)) {
-        let x0 = Self::coordinate(b.lo.x, self.origin.x, self.scale.x, self.columns);
-        let x1 = Self::coordinate(b.hi.x, self.origin.x, self.scale.x, self.columns);
-        let y0 = Self::coordinate(b.lo.y, self.origin.y, self.scale.y, self.rows);
-        let y1 = Self::coordinate(b.hi.y, self.origin.y, self.scale.y, self.rows);
+        let [x0, x1, y0, y1] = self.cell_bounds(b);
         for y in y0..=y1 {
             for x in x0..=x1 {
                 visit(y * self.columns + x);
             }
         }
+    }
+
+    fn cell_bounds(&self, b: Bounds) -> [usize; 4] {
+        let x0 = Self::coordinate(b.lo.x, self.origin.x, self.scale.x, self.columns);
+        let x1 = Self::coordinate(b.hi.x, self.origin.x, self.scale.x, self.columns);
+        let y0 = Self::coordinate(b.lo.y, self.origin.y, self.scale.y, self.rows);
+        let y1 = Self::coordinate(b.hi.y, self.origin.y, self.scale.y, self.rows);
+        [x0, x1, y0, y1]
     }
 
     /// The primitives whose bounds may contain `p`, last first. Points
@@ -298,5 +334,49 @@ impl Grid {
         let start = self.cells.get(cell).copied().unwrap_or(0) as usize;
         let end = self.cells.get(cell + 1).copied().unwrap_or(0) as usize;
         self.entries.get(start..end).unwrap_or(&[])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_color::Components;
+    use pagura_core::ErrorKind;
+
+    fn triangle() -> [MeshVertex; 3] {
+        [
+            Point::new(0.0, 0.0),
+            Point::new(8.0, 0.0),
+            Point::new(0.0, 8.0),
+        ]
+        .map(|point| MeshVertex {
+            point,
+            color: Components::from_slice(&[0.2, 0.3, 0.4]),
+        })
+    }
+
+    #[test]
+    fn mesh_storage_refunds_only_released_preparation_scratch() {
+        let input = vec![triangle(); 17];
+        let mut bytes = Meter::new(1 << 20, "mesh test");
+        bytes.charge(13).unwrap();
+        let mesh = Mesh::triangles(&input, 3, &mut bytes).unwrap();
+        assert_eq!(bytes.used(), 13 + mesh.bytes());
+        assert!(mesh.grid.occupancy > 1);
+        let mut tiny = Meter::new(1, "mesh test");
+        assert_eq!(
+            Mesh::triangles(&input, 3, &mut tiny).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        assert_eq!(tiny.used(), 0);
+    }
+
+    #[test]
+    fn overlapping_meshes_refuse_their_grid_before_unbounded_growth() {
+        let input = vec![triangle(); 1024];
+        let mut bytes = Meter::new(256 * 1024, "mesh test");
+        let error = Mesh::triangles(&input, 3, &mut bytes).unwrap_err();
+        assert_eq!((error.kind, error.message), (ErrorKind::Limit, "mesh test"));
+        assert!(bytes.used() <= bytes.max());
     }
 }

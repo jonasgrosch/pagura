@@ -103,7 +103,7 @@ pub fn export(scene: &Scene, document: &Document) -> Result<Export> {
     }
     xml.add(format_args!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{extent_width}\" height=\"{extent_height}\" viewBox=\"0 0 {extent_width} {extent_height}\" color-interpolation=\"sRGB\" style=\"isolation:isolate;background:white\"><defs>{}</defs><rect width=\"100%\" height=\"100%\" fill=\"white\"/><g transform=\"{}\">{}</g></svg>",
-        writer.defs.text, matrix(scene.page.device_transform(1.0))?, writer.body.text,
+        writer.defs.text, matrix(pagura_paint::RenderRequest::page(&scene.page, 1.0)?.transform)?, writer.body.text,
     ))?;
     Ok(Export {
         bytes: xml.text.into_bytes(),

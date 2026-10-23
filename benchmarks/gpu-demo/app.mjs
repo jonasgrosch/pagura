@@ -1,4 +1,5 @@
 import {installDirectPanel} from './display-panel.mjs';
+import {installIntegratedPanel} from './integrated-panel.mjs';
 import {browserZoom} from './retained-zoom.mjs';
 import {Engine} from './engine.mjs';
 import {GpuBackend} from './gpu.mjs';
@@ -12,6 +13,7 @@ const ms = value => `${value.toFixed(2)} ms`;
 export const demo = {engine: null, gpu: null, ready: null};
 globalThis.demo = demo;
 const directPanel=installDirectPanel(demo);
+const integratedPanel=installIntegratedPanel(demo);
 let selected = samples[0], selectedName = selected.label, pdfBytes = null;
 const workloads = [...samples];
 for (const sample of samples) { const option = document.createElement('option'); option.value = sample.id; option.textContent = sample.label; $('sample').append(option); }
@@ -75,6 +77,7 @@ export function show(output, label) {
   $('zoom-detail').textContent = 'Zoom retains SVG geometry; CPU and GPU rebuild pixels at the new resolution. Measure zoom for frame timing.';
   status(`${label} · ${result.width} × ${result.height} pixels · comparison complete`);
   directPanel.enable();
+  integratedPanel.enable();
 }
 
 async function changeZoom() {
@@ -150,9 +153,11 @@ async function run() {
   demo.busy = true; $('compare').disabled = true; $('zoom-test').disabled = true; $('zoom').disabled = true; $('error').hidden = true;
   try {
     await directPanel.clear();
+    await integratedPanel.clear();
     await demo.current?.output.retained?.clear();
     await demo.ready;
     const pdf = pdfBytes ?? (selected.make ? selected.make() : await selected.load());
+    demo.input=pdf;
     const opened = await demo.engine.open(pdf);
     $('page').max = opened.meta.pages;
     const page = Number($('page').value) - 1;

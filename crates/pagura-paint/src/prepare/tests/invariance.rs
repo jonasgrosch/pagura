@@ -5,18 +5,81 @@ use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
 use pagura_core::{Limits, Position};
 use pagura_interpret::{
-    BlendMode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen, PenId,
-    StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
+    BlendMode, ClipId, ClipNode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node,
+    Paint, PatternId, Pen, PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
-use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Point, Stroke, Transform};
+use pagura_raster::{Adjustment, DeviceRect, FillRule, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
 const HEIGHTS: [u32; 5] = [1, 5, 16, 32, 256];
 
+#[test]
+fn distant_line_interpolation_survives_repeated_composition() {
+    let n = 549_755_813_888.0;
+    let u = 1.0 / 8192.0;
+    let c = 7679.0 / 8192.0;
+    let cases = [
+        // Area=(1-u/2)^2/(2+u/n)=0.4999389667063951, coverage127.
+        // Two black stores reference16384/255=64.25098039215686; old63
+        // violates the unrounded one-level contract.
+        ([(-n, -n), (n, n + u), (-n, n + u)], 2, 64),
+        // Area0.0019645858556032185 rounds to coverage1. A false empty
+        // clip loses all three stores: old255 instead of reference252.0117.
+        ([(-n + c, -n), (n + c, n + u), (n + c, -n)], 3, 252),
+    ];
+    for (points, repeats, level) in cases {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(points[0].0, points[0].1));
+        for (x, y) in &points[1..] {
+            path.line_to(Point::new(*x, *y)).unwrap();
+        }
+        path.close();
+        let path = Arc::new(path.finish());
+        for clipped in [false, true] {
+            let mut b = Build::new(1.0, 1.0);
+            let black = b.rgb([0.0; 3]);
+            if clipped {
+                b.scene.clips.push(ClipNode {
+                    parent: None,
+                    path: Arc::clone(&path),
+                    rule: FillRule::NonZero,
+                });
+            }
+            for _ in 0..repeats {
+                let info = MarkInfo {
+                    clip: clipped.then_some(ClipId(0)),
+                    ..mark(StateId(0))
+                };
+                if clipped {
+                    b.rect(PAGE, [-2.0, -2.0, 2.0, 2.0], black, info);
+                } else {
+                    b.node(
+                        PAGE,
+                        Node::Fill(FillNode {
+                            path: Arc::clone(&path),
+                            rule: FillRule::NonZero,
+                            paint: black,
+                            mark: info,
+                        }),
+                    );
+                }
+            }
+            for height in HEIGHTS {
+                let actual = b.render(&b.request(b.page(), height)).unwrap();
+                assert_eq!(
+                    actual,
+                    [level, level, level, 255],
+                    "clipped={clipped}, height={height}, repeats={repeats}"
+                );
+            }
+        }
+    }
+}
+
 /// A page that exercises every buffer kind: translucent marks, blend
 /// modes, a knockout group, a soft mask, a tiling pattern and clips.
-fn busy() -> Build {
+pub(super) fn busy() -> Build {
     let mut b = Build::new(37.0, 29.0);
     let colors = [
         b.rgb([0.9, 0.1, 0.1]),
@@ -243,6 +306,69 @@ fn budgets_fail_in_source_order_and_bound_what_rendering_uses() {
 }
 
 #[test]
+fn geometry_preparation_uses_what_earlier_marks_leave() {
+    // Enough vertices make the polygon and its edge copy overlap by more
+    // than the final render's scratch; each input separately still fits.
+    let mut path = PathBuilder::new();
+    path.polygon((0..8000_u32).map(|i| {
+        let angle = f64::from(i) * std::f64::consts::TAU / 8000.0;
+        Point::new(2.0 + 1.7 * angle.cos(), 2.0 + 1.7 * angle.sin())
+    }));
+    let path = Arc::new(path.finish());
+    let geometry = |b: &mut Build| {
+        let paint = b.rgb([0.0, 0.0, 0.0]);
+        b.node(
+            PAGE,
+            Node::Fill(FillNode {
+                path: Arc::clone(&path),
+                rule: FillRule::NonZero,
+                paint,
+                mark: MarkInfo {
+                    position: Position::Buffer(7),
+                    ..mark(StateId(0))
+                },
+            }),
+        );
+    };
+    let limits = Limits {
+        render_bytes: 390 * 1024,
+        ..Limits::default()
+    };
+    let mut alone = Build::new(4.0, 4.0);
+    geometry(&mut alone);
+    alone
+        .prepare(&alone.request(alone.page(), 1), &limits)
+        .unwrap();
+    let mut occupied = Build::new(4.0, 4.0);
+    let paint = occupied.rgb([0.0, 0.0, 0.0]);
+    for _ in 0..40 {
+        occupied.rect(PAGE, [0.25, 0.25, 3.75, 3.75], paint, mark(StateId(0)));
+    }
+    assert!(
+        occupied
+            .prepare(&occupied.request(occupied.page(), 1), &limits)
+            .is_ok()
+    );
+    geometry(&mut occupied);
+    refused(&mut occupied, [1.0, 1.0], 11);
+    for height in HEIGHTS {
+        let error = occupied
+            .prepare(&occupied.request(occupied.page(), height), &limits)
+            .map(|_| ())
+            .unwrap_err();
+        assert_eq!(
+            (error.kind, error.message, error.position),
+            (
+                pagura_core::ErrorKind::Limit,
+                "render memory budget exceeded",
+                Position::Buffer(7)
+            ),
+            "band height {height}"
+        );
+    }
+}
+
+#[test]
 fn prepared_scenes_can_be_shared_between_threads() {
     fn shared<T: Send + Sync>() {}
     shared::<crate::PreparedScene>();
@@ -273,4 +399,116 @@ fn rendering_stops_between_bands() {
     let rows = 16 * page.width() as usize * 4;
     assert_eq!(target.len(), rows);
     assert_eq!(target, whole[..rows]);
+}
+
+#[test]
+fn reused_scratch_forgets_scenes_backgrounds_and_stopped_renders() {
+    use pagura_raster::Rgba8;
+
+    let wide = busy();
+    let mut narrow = Build::new(37.0, 29.0);
+    let red = narrow.rgb([0.8, 0.1, 0.2]);
+    narrow.rect(PAGE, [2.25, 3.5, 28.75, 25.25], red, mark(StateId(0)));
+    let mut changed = Build::new(37.0, 29.0);
+    let green = changed.rgb([0.1, 0.7, 0.2]);
+    changed.rect(PAGE, [6.25, 5.5, 32.75, 27.25], green, mark(StateId(0)));
+    let mut scratch = crate::Scratch::default();
+    for height in [5, 8] {
+        for (scene, background) in [
+            (&narrow, Rgba8::WHITE),
+            (&changed, Rgba8::WHITE),
+            (&narrow, Rgba8::new(20, 40, 60, 128)),
+            (&changed, Rgba8::TRANSPARENT),
+            (&wide, Rgba8::WHITE),
+            (&wide, Rgba8::WHITE),
+            (&narrow, Rgba8::WHITE),
+        ] {
+            let mut request = scene.request(scene.page(), height);
+            request.background = background;
+            let (expected, charges) = scene.render_charged(&request).unwrap();
+            let prepared = scene.prepare(&request, &Limits::default()).unwrap();
+            assert_eq!(prepared.charges(), charges);
+            let mut stopped = Vec::new();
+            let completion = prepared
+                .with_scratch(&mut scratch)
+                .unwrap()
+                .render_until(&mut stopped, |row| row >= 16);
+            assert!(matches!(completion, Completion::Stopped { .. }));
+            assert_eq!(stopped, expected[..stopped.len()]);
+            for _ in 0..2 {
+                let mut rows = Vec::new();
+                let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
+                rendering.render(&mut rows);
+                super::assert_within_charges(&rendering, charges);
+                assert_eq!(rows, expected);
+            }
+        }
+    }
+}
+
+#[test]
+fn a_prior_large_scratch_changes_neither_small_charges_nor_tight_errors() {
+    use pagura_core::{ErrorKind, Store};
+
+    let mut large = Build::new(128.0, 96.0);
+    let ink = large.rgb([0.1, 0.2, 0.4]);
+    for i in 0..80_u32 {
+        let x = f64::from(i % 10) * 12.0;
+        let y = f64::from(i / 10) * 11.0;
+        large.rect(PAGE, [x, y, x + 9.5, y + 8.25], ink, mark(StateId(0)));
+    }
+    let store = Store::new(1 << 20);
+    let prepared = crate::prepare(
+        &large.scene,
+        &large.request(large.page(), 32),
+        &store,
+        &Limits::default(),
+    )
+    .unwrap();
+    let mut reused = crate::Scratch::default();
+    prepared
+        .with_scratch(&mut reused)
+        .unwrap()
+        .render(&mut Vec::new());
+    drop(prepared);
+
+    let mut small = Build::new(8.0, 4.0);
+    let ink = small.rgb([0.8, 0.2, 0.1]);
+    small.rect(
+        PAGE,
+        [0.25, 0.5, 7.75, 3.5],
+        ink,
+        MarkInfo {
+            position: Position::Buffer(5),
+            ..mark(StateId(0))
+        },
+    );
+    let request = small.request(small.page(), 1);
+    let cold_store = Store::new(1 << 20);
+    let fresh = crate::prepare(&small.scene, &request, &cold_store, &Limits::default()).unwrap();
+    let charges = fresh.charges();
+    let mut fresh_scratch = crate::Scratch::default();
+    let mut expected = Vec::new();
+    fresh
+        .with_scratch(&mut fresh_scratch)
+        .unwrap()
+        .render(&mut expected);
+    let kept = crate::prepare(&small.scene, &request, &store, &Limits::default()).unwrap();
+    assert_eq!(kept.charges(), charges);
+    let mut actual = Vec::new();
+    kept.with_scratch(&mut reused).unwrap().render(&mut actual);
+    assert_eq!(actual, expected);
+    assert_eq!(reused.retained_bytes(), fresh_scratch.retained_bytes());
+
+    let limits = Limits {
+        render_bytes: charges.render_bytes() - 1,
+        ..Limits::default()
+    };
+    let error = crate::prepare(&small.scene, &request, &store, &limits).unwrap_err();
+    let cold = crate::prepare(&small.scene, &request, &cold_store, &limits).unwrap_err();
+    assert_eq!(
+        (error.kind, error.message, error.position),
+        (cold.kind, cold.message, cold.position)
+    );
+    assert_eq!(error.kind, ErrorKind::Limit);
 }

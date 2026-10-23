@@ -12,7 +12,6 @@
 mod blend;
 mod execute;
 mod format;
-mod hash;
 mod kernel;
 mod plan;
 mod prepare;

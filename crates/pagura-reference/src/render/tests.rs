@@ -124,13 +124,9 @@ impl Build {
     }
 
     fn render(&self, background: Rgba8) -> Rendering {
-        let (width, height) = self.scene.page.device_size(1.0).unwrap();
-        let region = DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: width,
-            y1: height,
-        };
+        let region = pagura_paint::RenderRequest::page(&self.scene.page, 1.0)
+            .unwrap()
+            .page;
         let mut request = Request::new(Transform::IDENTITY, region);
         request.background = background;
         render(&self.scene, &request, &Limits::default()).unwrap()
@@ -376,6 +372,300 @@ fn glyph_placements_are_separate_marks_at_exact_origins() {
     let v = (1.0 - first) * (1.0 - second);
     assert_pixel(&r, (1, 0), [v, v, v, 1.0]);
     assert_pixel(&r, (0, 1), [1.0, 1.0, 1.0, 1.0]);
+}
+
+#[test]
+fn overlapping_quadratics_refine_ambiguous_coverage_bytes() {
+    let mut b = Build::new(1.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mut arch = pagura_raster::PathBuilder::new();
+    // The quadratic control is (1/2, h), so its area above its chord is
+    // h/3. A fixed fine polygon lies just below the half-level while the
+    // original curve lies above it. Overlap exposes that byte flip in the
+    // final composed value, even though each approximation is very fine.
+    let area = 62.5 / 255.0 + 1e-6;
+    let h = 3.0 * area;
+    arch.move_to(Point::new(0.0, 0.0));
+    arch.cubic_to(
+        Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+        Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+        Point::new(1.0, 0.0),
+    )
+    .unwrap();
+    arch.close();
+    let arch = arch.finish();
+    let pixel = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1,
+        y1: 1,
+    };
+    let coarse = crate::exact::glyph(
+        &arch,
+        [1.0, 0.0, 0.0, 1.0],
+        Point::default(),
+        &Limits::default(),
+    )
+    .unwrap();
+    let coarse_area = crate::area::areas(std::slice::from_ref(&coarse), pixel).get(0, 0);
+    let error: f64 = coarse.hulls.iter().map(|hull| hull.error(0, 0)).sum();
+    assert!((coarse_area - area).abs() <= error);
+    assert_eq!(quantize_unit(coarse_area), 62);
+    assert_eq!(crate::exact::coverage(&[coarse], pixel).unwrap(), [63]);
+
+    let sources = [rect_path(0.0, 0.0, 6.0 / 255.0, 1.0), Arc::new(arch)]
+        .into_iter()
+        .enumerate()
+        .map(|(i, outline)| GlyphSource {
+            outline,
+            key: OutlineKey {
+                font: pagura_interpret::FontKey(1),
+                glyph: u32::try_from(i).unwrap(),
+            },
+            linear: Transform::IDENTITY,
+        })
+        .collect();
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources,
+            placements: vec![
+                Placement {
+                    source: 0,
+                    origin: Point::default(),
+                },
+                Placement {
+                    source: 1,
+                    origin: Point::default(),
+                },
+            ],
+            positions: Vec::new(),
+            paint: black,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let value = (1.0 - 6.0 / 255.0) * (1.0 - 63.0 / 255.0);
+    assert_pixel(&b.render(Rgba8::WHITE), (0, 0), [value, value, value, 1.0]);
+}
+
+#[test]
+fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
+    let mut b = Build::new(1.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mut path = pagura_raster::PathBuilder::new();
+    // Coincident contours have one arch's nonzero covered set, but cannot
+    // certify winding zero or one. Its true area h/3 is just above the
+    // first half-level, where an inscribed polygon can select byte zero.
+    let area = 0.500_001 / 255.0;
+    let h = 3.0 * area;
+    for _ in 0..32 {
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(1.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+    }
+    let outline = Arc::new(path.finish());
+    let limits = Limits::default();
+    let geometry = pagura_raster::GlyphEdges::new(&outline, [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
+    assert!(!geometry.curved());
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources: vec![GlyphSource {
+                outline,
+                key: OutlineKey {
+                    font: pagura_interpret::FontKey(1),
+                    glyph: 1,
+                },
+                linear: Transform::IDENTITY,
+            }],
+            placements: vec![
+                Placement {
+                    source: 0,
+                    origin: Point::default(),
+                };
+                3
+            ],
+            positions: Vec::new(),
+            paint: black,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let expected = (1.0 - level(area)).powi(3);
+    assert_pixel(
+        &b.render(Rgba8::WHITE),
+        (0, 0),
+        [expected, expected, expected, 1.0],
+    );
+    let pixel = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1,
+        y1: 1,
+    };
+    let emitted = emitted_glyph_byte(geometry, pixel, &limits);
+    assert_eq!(emitted, 1);
+    let request = pagura_paint::RenderRequest::new(Transform::IDENTITY, pixel, pixel);
+    let store = pagura_core::Store::new(64 << 20);
+    let prepared = pagura_paint::prepare(&b.scene, &request, &store, &limits).unwrap();
+    let mut scratch = pagura_paint::Scratch::default();
+    let mut actual = Vec::new();
+    prepared
+        .with_scratch(&mut scratch)
+        .unwrap()
+        .render(&mut actual);
+    for &channel in &actual[..3] {
+        assert!(
+            (f64::from(channel) - 255.0 * expected).abs() <= 1.0,
+            "composed output {actual:?} against analytic {}",
+            255.0 * expected,
+        );
+    }
+    assert_eq!(actual, [252, 252, 252, 255]);
+    eprintln!(
+        "coverage{emitted}, RGBA{actual:?}, byte-reference{}, raw-area analytic diagnostic{}",
+        255.0 * expected,
+        255.0 * (1.0 - area).powi(3),
+    );
+}
+
+#[test]
+fn fractional_full_clip_runs_keep_repeated_glyph_composition() {
+    let mut b = Build::new(2.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mut path = pagura_raster::PathBuilder::new();
+    path.move_to(Point::new(-2.0, 0.0));
+    for p in [(3.0, 0.0), (4.0, 0.5), (3.0, 0.9985), (-2.0, 0.9985)] {
+        path.line_to(Point::new(p.0, p.1)).unwrap();
+    }
+    path.close();
+    b.scene.clips.push(ClipNode {
+        parent: None,
+        path: Arc::new(path.finish()),
+        rule: FillRule::NonZero,
+    });
+    let mut outline = pagura_raster::PathBuilder::new();
+    outline.move_to(Point::new(-1.0, 0.4995));
+    outline
+        .cubic_to(
+            Point::new(0.0, 0.4995),
+            Point::new(1.0, 0.4995),
+            Point::new(2.0, 0.4995),
+        )
+        .unwrap();
+    outline.line_to(Point::new(2.0, 1.0)).unwrap();
+    outline.line_to(Point::new(-1.0, 1.0)).unwrap();
+    outline.close();
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources: vec![GlyphSource {
+                outline: Arc::new(outline.finish()),
+                key: OutlineKey {
+                    font: pagura_interpret::FontKey(1),
+                    glyph: 1,
+                },
+                linear: Transform::IDENTITY,
+            }],
+            placements: vec![
+                Placement {
+                    source: 0,
+                    origin: Point::default()
+                };
+                2
+            ],
+            positions: Vec::new(),
+            paint: black,
+            mark: MarkInfo {
+                clip: Some(ClipId(0)),
+                ..mark(StateId(0))
+            },
+        }),
+    );
+    let expected = (1.0 - level(0.9985 - 0.4995)).powi(2);
+    assert!((255.0 * expected - 64.250_980_392_156_86).abs() < 1e-12);
+    assert_pixel(
+        &b.render(Rgba8::WHITE),
+        (1, 0),
+        [expected, expected, expected, 1.0],
+    );
+    let limits = Limits::default();
+    let page = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 2,
+        y1: 1,
+    };
+    let store = pagura_core::Store::new(64 << 20);
+    for region in [page, DeviceRect { x0: 1, ..page }] {
+        for height in [1, 3, 16] {
+            let mut request = pagura_paint::RenderRequest::new(Transform::IDENTITY, page, region);
+            request.band_height = height;
+            let prepared = pagura_paint::prepare(&b.scene, &request, &store, &limits).unwrap();
+            let mut scratch = pagura_paint::Scratch::default();
+            let mut actual = Vec::new();
+            prepared
+                .with_scratch(&mut scratch)
+                .unwrap()
+                .render(&mut actual);
+            assert!(
+                actual
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .all(|pixel| *pixel == [64, 64, 64, 255])
+            );
+        }
+    }
+}
+
+/// Exercise product preparation and ordinary Cells emission independently
+/// of the final-pixel differential assertion.
+fn emitted_glyph_byte(
+    geometry: pagura_raster::GlyphEdges,
+    pixel: DeviceRect,
+    limits: &Limits,
+) -> u8 {
+    let area = pagura_raster::Area {
+        region: pixel,
+        band_height: 1,
+    };
+    let shape = pagura_raster::Shape::glyph(
+        &Arc::new(geometry),
+        Point::default(),
+        &pagura_raster::ShapeOptions { area, limits },
+    )
+    .unwrap()
+    .unwrap();
+    let mut bytes = pagura_core::Meter::new(limits.render_bytes, "test bytes");
+    let mut raster = pagura_raster::BandRasterizer::new(area, &mut bytes).unwrap();
+    let mut coverage =
+        pagura_raster::BandCoverage::with_capacity(shape.capacity(), &mut bytes).unwrap();
+    raster.rasterize(
+        pagura_raster::MarkCoverage {
+            shape: Some(&shape),
+            clip: None,
+        },
+        0,
+        &mut coverage,
+    );
+    let row = coverage.rows().next().unwrap();
+    let mut spans = row.spans();
+    let value = match spans.next() {
+        Some(pagura_raster::Span::Partial {
+            x: 0,
+            coverage: [value],
+        }) => *value,
+        Some(pagura_raster::Span::Full { x: 0, len: 1 }) => 255,
+        None => 0,
+        other => panic!("unexpected single-pixel coverage: {other:?}"),
+    };
+    assert!(spans.next().is_none());
+    value
 }
 
 #[test]

@@ -35,14 +35,16 @@ struct PresentedFrame {
         window.makeKeyAndOrderFront(nil);app.activate();app.updateWindows();CATransaction.flush()
         RunLoop.main.run(until:Date(timeIntervalSinceNow:0.05))
     }
-    func encode(_ command: MTLCommandBuffer, buffer: MTLBuffer, width: Int, height: Int, center: Bool, capture: Bool) throws -> PresentedFrame {
+    func encode(_ command: MTLCommandBuffer, buffer: MTLBuffer, width: Int, height: Int, center: Bool, capture: Bool, offset: SIMD2<UInt32>? = nil) throws -> PresentedFrame {
         window.orderFrontRegardless();NSApp.updateWindows();CATransaction.flush()
         guard let drawable = layer.nextDrawable() else {throw fail("No native drawable")}
         let pass = MTLRenderPassDescriptor();pass.colorAttachments[0].texture = drawable.texture
         pass.colorAttachments[0].loadAction = .clear;pass.colorAttachments[0].storeAction = .store
         pass.colorAttachments[0].clearColor = MTLClearColorMake(1,1,1,1)
         guard let encoder = command.makeRenderCommandEncoder(descriptor:pass) else {throw fail("Native presentation encoder")}
-        var view = SIMD4<UInt32>(UInt32(width),UInt32(height),center ? UInt32(max(0,(width-size)/2)) : 0,center ? UInt32(max(0,(height-size)/2)) : 0)
+        let origin = offset ?? SIMD2<UInt32>(center ? UInt32(max(0,(width-size)/2)) : 0,center ? UInt32(max(0,(height-size)/2)) : 0)
+        guard origin.x < max(1,width), origin.y < max(1,height), buffer.length >= width*height*4 else {throw fail("Presentation buffer or offset")}
+        var view = SIMD4<UInt32>(UInt32(width),UInt32(height),origin.x,origin.y)
         encoder.setRenderPipelineState(pipeline);encoder.setFragmentBuffer(buffer,offset:0,index:0)
         encoder.setFragmentBytes(&view,length:16,index:1);var marker=UInt32(frames+1);encoder.setFragmentBytes(&marker,length:4,index:2);encoder.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:3);encoder.endEncoding()
         var staging: MTLBuffer?
@@ -97,5 +99,12 @@ struct PresentedFrame {
         command.commit();command.waitUntilCompleted();if let error=command.error {throw error}
         let complete=now()-started
         var (meta,data)=try finish(frame,started:started);meta["complete_ms"]=complete;meta["upload_ms"]=uploadMs;return(meta,data)
+    }
+    func retained(_ buffer: MTLBuffer, width: Int, height: Int, queue: MTLCommandQueue, offset: SIMD2<UInt32> = .zero, capture: Bool = false) throws -> ([String:Any],Data) {
+        let started=now()
+        guard let command=queue.makeCommandBuffer() else {throw fail("Retained presentation command")}
+        let frame=try encode(command,buffer:buffer,width:width,height:height,center:false,capture:capture,offset:offset)
+        command.commit();command.waitUntilCompleted();if let error=command.error {throw error}
+        return try finish(frame,started:started)
     }
 }

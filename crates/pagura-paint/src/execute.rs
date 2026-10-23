@@ -36,7 +36,8 @@ use std::ops::Range;
 mod tests;
 
 /// A prepared scene with scratch storage sized for it: what every band's
-/// execution works with. Rendering cannot fail.
+/// execution works with. Paint execution cannot fail; an output consumer
+/// can return its own error.
 #[derive(Debug)]
 pub struct Rendering<'a> {
     pub(crate) plan: &'a Plan,
@@ -46,6 +47,17 @@ pub struct Rendering<'a> {
 }
 
 impl Rendering<'_> {
+    /// The maximum premultiplied RGBA8 bytes in one output band. Reserving
+    /// this capacity before [`Self::render_bands`] keeps execution from
+    /// allocating output storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Limit` when the band's byte count does not fit `usize`.
+    pub fn band_bytes(&self) -> pagura_core::Result<usize> {
+        output_band_bytes(self.plan.area)
+    }
+
     /// Renders every band, appending each row of the region to `rows` as
     /// premultiplied RGBA8, `4 × width` bytes, top to bottom. Room for the
     /// rows should be reserved: appending beyond it allocates.
@@ -58,19 +70,79 @@ impl Rendering<'_> {
     pub fn render_until(
         &mut self,
         rows: &mut Vec<u8>,
-        mut stop: impl FnMut(u32) -> bool,
+        stop: impl FnMut(u32) -> bool,
     ) -> Completion {
+        match self.render_each(rows, stop, |_, _| Ok::<(), std::convert::Infallible>(())) {
+            Ok(completion) => completion,
+            Err(never) => match never {},
+        }
+    }
+
+    /// Renders top to bottom into a reusable `band`, passing its device-row
+    /// range and premultiplied RGBA8 bytes to `consume`. The bytes are valid
+    /// only during that call. `band` is cleared before rendering and after
+    /// each successful call; reserve [`Self::band_bytes`] first to avoid
+    /// allocation during execution.
+    ///
+    /// As [`Self::render_until`], `stop` is asked before each band. Every
+    /// call starts again at the region's first row, including after a stop
+    /// or consumer error.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first consumer error without rendering another band.
+    pub fn render_bands<E>(
+        &mut self,
+        band: &mut Vec<u8>,
+        stop: impl FnMut(u32) -> bool,
+        mut consume: impl FnMut(Range<u32>, &[u8]) -> Result<(), E>,
+    ) -> Result<Completion, E> {
+        band.clear();
+        self.render_each(band, stop, |rows, band| {
+            consume(rows, band)?;
+            band.clear();
+            Ok(())
+        })
+    }
+
+    /// The shared driver: collectors keep appended rows; consumers release
+    /// each band's output for reuse. Execution and quantization are shared.
+    fn render_each<E>(
+        &mut self,
+        output: &mut Vec<u8>,
+        mut stop: impl FnMut(u32) -> bool,
+        mut consume: impl FnMut(Range<u32>, &mut Vec<u8>) -> Result<(), E>,
+    ) -> Result<Completion, E> {
         let area = self.plan.area;
         self.workspace.restart();
         for band in area.bands() {
-            let row = area.band_rows(band).start;
+            let rows = area.band_rows(band);
+            let row = rows.start;
             if stop(row) {
-                return Completion::Stopped { row };
+                return Ok(Completion::Stopped { row });
             }
-            Executor::band(self, band, rows);
+            Executor::band(self, band, output);
+            consume(rows, output)?;
         }
-        Completion::Complete
+        Ok(Completion::Complete)
     }
+}
+
+/// The largest actual band: clipped edge bands can both be shorter than
+/// the grid height. Three or more bands include an unclipped middle band.
+fn output_band_bytes(area: pagura_raster::Area) -> pagura_core::Result<usize> {
+    let bands = area.bands();
+    let rows = if bands.end.saturating_sub(bands.start) > 2 {
+        u32_to_usize(area.band_height)
+    } else {
+        area.band_rows(bands.start)
+            .len()
+            .max(area.band_rows(bands.end.saturating_sub(1)).len())
+    };
+    u32_to_usize(area.region.width())
+        .checked_mul(rows)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or(pagura_core::Error::limit("output band byte size overflows"))
 }
 
 /// One band's execution.
@@ -267,7 +339,10 @@ impl<'a> Executor<'a> {
         let ws = &mut *self.ws;
         let compositing = &mark.compositing;
         let constant = paint.constant();
-        if constant.is_none() && !fill_colors(ws, (paint, mark.boundary), (x, y), len) {
+        if constant.is_none()
+            && (paint_words(ws, (mark, paint), frame, (x, y), cover)
+                || !fill_colors(ws, (mark, paint), (x, y), len))
+        {
             return;
         }
         let mask = match compositing.mask {
@@ -311,8 +386,11 @@ impl<'a> Executor<'a> {
             && overwrite(
                 (&mut ws.page, &mut ws.extents),
                 frame,
-                (x, y),
-                values.get(..len * 3).unwrap_or(&[]),
+                Pixels::new(x, y, len),
+                |pixels| {
+                    kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
+                    true
+                },
             )
         {
             ws.usage.work = ws.usage.work.saturating_add(len);
@@ -357,11 +435,11 @@ impl<'a> Executor<'a> {
 /// under `boundary`; false where the boundary's coverage does not fit.
 fn fill_colors(
     ws: &mut Workspace,
-    (paint, boundary): (&Source, Boundary),
+    (mark, paint): (&Mark, &Source),
     (x, y): (u32, u32),
     len: usize,
 ) -> bool {
-    let outline = match boundary {
+    let outline = match mark.boundary {
         Boundary::Shape(_) | Boundary::Empty => {
             let (boundary, dense) = &mut ws.boundary;
             let Some(dense) = dense.get_mut(..len) else {
@@ -378,7 +456,10 @@ fn fill_colors(
         len,
         boundary: outline,
     };
-    paint.fill(pixels, &mut ws.colors, &mut ws.texel_shape);
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+        return false;
+    };
+    paint.fill(pixels, scratch, &mut ws.colors, &mut ws.texel_shape);
     true
 }
 
@@ -396,23 +477,58 @@ fn filled(colors: &SpanColors, len: usize) -> Option<(Colors<'_>, Option<&[f64]>
     Some((values, alpha, colors.painted))
 }
 
-/// Overwrites `frame`'s narrow page from pixel (`x`, `y`) on with opaque
-/// colours, three `values` a pixel, as a store at full opacity does; false,
-/// with nothing stored, where the frame is not a narrow page.
+/// Lets an opaque paint over a whole span at full opacity, without a soft
+/// mask, write a narrow page's words itself; false where it does not.
+fn paint_words(
+    ws: &mut Workspace,
+    (mark, paint): (&Mark, &Source),
+    frame: Frame,
+    (x, y): (u32, u32),
+    cover: Cover<'_>,
+) -> bool {
+    let compositing = &mark.compositing;
+    let len = cover.len();
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+        return false;
+    };
+    let written = cover.coverage().is_none()
+        && !mark.records
+        && mark.boundary == Boundary::Absent
+        && compositing.alpha == 1.0
+        && compositing.mask.is_none()
+        && compositing.blend == pagura_interpret::BlendMode::Normal
+        && compositing.overprint == 0
+        && overwrite(
+            (&mut ws.page, &mut ws.extents),
+            frame,
+            Pixels::new(x, y, len),
+            |pixels| paint.words(Pixels::new(x, y, len), scratch, pixels),
+        );
+    if written {
+        ws.usage.work = ws.usage.work.saturating_add(len);
+    }
+    written
+}
+
+/// Overwrites `len` pixels of `frame`'s narrow page from pixel (`x`, `y`)
+/// on with the words `write` gives, as a store at full opacity does; false,
+/// with nothing stored, where the frame is not a narrow page or `write`
+/// gives none.
 fn overwrite(
     (page, extents): (&mut PageBuffer, &mut Extents),
     frame: Frame,
-    (x, y): (u32, u32),
-    values: &[f64],
+    pixels: Pixels<'_>,
+    write: impl FnOnce(&mut [[u16; 4]]) -> bool,
 ) -> bool {
-    let len = values.len() / 3;
+    let Pixels { x, y, len, .. } = pixels;
     let Some(start) = frame.index(x, y).filter(|_| frame.buffer == Buffer::Page) else {
         return false;
     };
     let stored = match page {
         PageBuffer::N16(page) => page
             .get_mut(start..start + len)
-            .map(|pixels| kernel::overwrite_n16(pixels, values)),
+            .is_some_and(write)
+            .then_some(()),
         PageBuffer::F64(_) | PageBuffer::F32(_) => None,
     };
     if stored.is_some() {

@@ -28,7 +28,7 @@ mod calculator;
 mod sampled;
 
 use crate::space::MAX_COMPONENTS;
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
 /// A validated function of `m` inputs and `n` outputs.
@@ -339,6 +339,22 @@ impl Function {
     /// power stays finite over the domain, and a stitching function whose
     /// subfunctions are all such constants with identical outputs.
     pub fn constant(&self, output: &mut [f64]) -> bool {
+        self.constant_metered(
+            output,
+            &mut Meter::new(usize::MAX, "function work budget exceeded"),
+        )
+        .unwrap_or(false)
+    }
+
+    /// As [`Self::constant`], reserving one `function_work` unit before
+    /// inspecting each function. A stitching function may inspect every
+    /// subfunction, even though evaluation follows only one branch.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Limit` error when the next inspection exceeds `work`.
+    pub fn constant_metered(&self, output: &mut [f64], work: &mut Meter) -> Result<bool> {
+        work.charge(1)?;
         let count = output.len().min(self.outputs);
         let (values, rest) = output.split_at_mut(count);
         rest.fill(0.0);
@@ -364,13 +380,13 @@ impl Function {
                 }
                 constant
             }
-            Kind::Stitching(stitching) => stitching.constant(values),
+            Kind::Stitching(stitching) => stitching.constant(values, work)?,
             Kind::Sampled(_) | Kind::Calculator(_) => false,
         };
         if constant {
             self.clip(values);
         }
-        constant
+        Ok(constant)
     }
 
     /// Evaluates the function: inputs are clipped to the domain and outputs to
@@ -454,22 +470,29 @@ impl Function {
 impl Stitching {
     /// Whether every subfunction is a constant with the same outputs, which
     /// it writes to `values`.
-    fn constant(&self, values: &mut [f64]) -> bool {
+    fn constant(&self, values: &mut [f64], work: &mut Meter) -> Result<bool> {
         let mut other = [0.0; MAX_COMPONENTS];
         let Some(other) = other.get_mut(..values.len()) else {
-            return false;
+            return Ok(false);
         };
         let mut functions = self.functions.iter();
-        if !functions.next().is_some_and(|f| f.constant(values)) {
-            return false;
+        let Some(first) = functions.next() else {
+            return Ok(false);
+        };
+        if !first.constant_metered(values, work)? {
+            return Ok(false);
         }
-        functions.all(|f| {
-            f.constant(other)
-                && values
+        for f in functions {
+            if !f.constant_metered(other, work)?
+                || !values
                     .iter()
                     .zip(&*other)
                     .all(|(a, b)| a.to_bits() == b.to_bits())
-        })
+            {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 }
 

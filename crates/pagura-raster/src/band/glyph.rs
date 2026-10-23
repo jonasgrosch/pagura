@@ -1,22 +1,33 @@
 //! Glyph outlines prepared once per linear map and placed at exact origins
 //! (ADR 0013).
 //!
-//! Only the linear map participates in flattening; each placement adds its
-//! device origin to every vertex without rounding either to a grid. A small
-//! TrueType outline keeps its quadratics and is integrated against the true
-//! curve where its contours are certified at least two flattening
-//! tolerances apart, so that the curves cannot meet either.
+//! Only the linear map shapes the edges; each placement adds its device
+//! origin to every point without rounding either to a grid. An outline is
+//! integrated as quadratics when its pieces certify winding zero or one
+//! sign everywhere. Uncertified quadratic outlines and placements crossed
+//! by a clip path use the same flattener with a whole-outline area bound;
+//! every quadratic placement certifies its coverage bytes before execution,
+//! refining ambiguous pixels from the original controls. General cubics
+//! retain the canonical 1/256-pixel polygon.
 
-use super::Prep;
-use super::certify::certified;
-use super::curve::{self, Piece, Quadratic};
-use super::edges::{self, Bounds, Line, Polygon, RowList};
-use super::rect::rectangle;
+use super::certify::{certified, spline_certified};
+use super::curve::{self, Mono, Piece, Quadratic, Spline};
+use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
-use crate::flatten::{CurveStack, Polyline, TOLERANCE, bounded, flatten_into};
+use super::{Prep, RENDER_BYTES};
+use crate::flatten::{
+    CurveStack, Flatness, Inspection, Polyline, bounded, flatten_inspected, flatten_with,
+};
 use crate::{FillRule, Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
+
+#[cfg(test)]
+mod tests;
+
+mod polygon;
+mod rounding;
+pub(crate) use polygon::PolygonLines;
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
@@ -26,133 +37,107 @@ use std::sync::Arc;
 pub struct GlyphEdges {
     retained: usize,
     hull: Option<[f64; 4]>,
-    polygon: Polygon,
-    /// Geometric points, whose floor cells are taken once placed.
-    points: Vec<Point>,
-    certified: bool,
-    /// Lines and monotone quadratics, when the outline has them and its
-    /// contours stay apart.
-    curves: Option<Vec<Piece>>,
-    /// The edges a certified placement accumulates, ready for translation.
-    relative: Option<Relative>,
+    pub(super) kind: Kind,
 }
 
-/// A certified glyph's edges relative to its origin, listed per row for any
-/// origin within one pixel row: a placement adds its origin to each edge as
-/// the edge is accumulated, so placing costs no geometry work and no
-/// allocation, and gives the bytes of translating every vertex first.
+#[derive(Debug)]
+pub(super) enum Kind {
+    /// A certified spline: its pieces in contour order, for placements a
+    /// clip's rectangle cuts, and the edges a placement translates. The
+    /// outline and map stay for placements a clip path crosses, which take
+    /// its polygon.
+    Curve {
+        spline: Spline,
+        relative: Relative,
+        outline: Arc<Path>,
+        linear: Transform,
+    },
+    /// The polygon at the flattening tolerance with its geometric points'
+    /// floor cells, and whether it is certified.
+    Polygon {
+        polygon: Polygon,
+        points: Vec<Point>,
+        certified: bool,
+        /// Original curves retained for coverage-byte certification.
+        source: Option<(Arc<Path>, Transform)>,
+    },
+}
+
+/// A certified glyph's edges relative to its origin: a placement adds its
+/// origin to each edge as the edge is accumulated, so placing costs no
+/// geometry work and no allocation, and gives the bytes of translating
+/// every point first.
 #[derive(Debug)]
 pub(crate) struct Relative {
     /// Edges that are not horizontal, then curves, in accumulation order.
     pub(crate) lines: Vec<Line>,
-    pub(crate) curves: Vec<Quadratic>,
-    /// Items by row, from relative row `first`; an item is listed one row
-    /// further than it reaches at a whole origin, for fractional ones.
-    pub(crate) index: RowList,
-    pub(crate) first: i64,
-    /// Per item, its first and last listed rows and the fractional origins
-    /// that reach them: the first row only below `reach[0]`, the last only
-    /// above `reach[1]`.
-    pub(crate) ends: Vec<[u32; 2]>,
-    pub(crate) reach: Vec<[f64; 2]>,
+    pub(crate) curves: Vec<Mono>,
     /// The extent the pixels and the scanned columns come from.
     pub(crate) hull: [Point; 2],
-    /// An axis-aligned rectangle, filled in closed form.
-    pub(crate) rect: Option<Bounds>,
-    /// Edge visits and four units per cell they can touch, over all rows.
+    /// Four units per cell and row the edges can touch, over every row an
+    /// edge can reach at any fractional origin.
     pub(crate) work: usize,
 }
 
 impl Relative {
-    /// From every line (horizontal ones bound the extent only) and curve.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "bounded coordinates; rows are checked to fit u32"
-    )]
-    fn new(all: &[Line], curves: Vec<Quadratic>) -> Result<Self> {
-        let allocation = |_| Error::limit("glyph geometry allocation failed");
+    /// From a certified spline's pieces.
+    fn new(spline: &Spline, bytes: &mut Meter) -> Result<Self> {
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
-        let ends = all
-            .iter()
-            .flat_map(|l| [l.a, l.b])
-            .chain(curves.iter().flat_map(|q| [q.points[0], q.points[2]]));
-        for p in ends {
-            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
-            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
-        }
         let mut lines: Vec<Line> = Vec::new();
-        lines.try_reserve_exact(all.len()).map_err(allocation)?;
-        lines.extend(all.iter().filter(|l| !l.is_horizontal()));
-        // A curve spans its ends, as monotone pieces do.
-        let chord = |i: usize| {
-            lines.get(i).copied().unwrap_or_else(|| {
-                let q = curves[i - lines.len()];
-                Line {
-                    a: q.points[0],
-                    b: q.points[2],
+        let mut curves: Vec<Mono> = Vec::new();
+        let line_count = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Line(line) if !line.is_horizontal()))
+            .count();
+        let curve_count = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Curve(_)))
+            .count();
+        bytes.reserve(&mut lines, line_count)?;
+        bytes.reserve(&mut curves, curve_count)?;
+        let mut work = 0_usize;
+        for &piece in &spline.pieces {
+            for p in piece.ends() {
+                lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+                hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
+            }
+            // A curve spans its ends, as monotone pieces do; a fractional
+            // origin moves an edge into at most one more row.
+            let [a, b] = piece.ends();
+            let chord = Line { a, b };
+            match piece {
+                Piece::Line(line) if !line.is_horizontal() => lines.push(line),
+                Piece::Line(_) => continue,
+                Piece::Curve(q) => {
+                    curves.push(Mono::new(q));
                 }
-            })
-        };
-        let span = |i: usize| {
-            let l = chord(i);
-            (l.a.y.min(l.b.y), l.a.y.max(l.b.y))
-        };
-        let count = lines.len() + curves.len();
-        let (first, last) = (0..count).fold((f64::INFINITY, f64::NEG_INFINITY), |(f, l), i| {
-            let (a, b) = span(i);
-            (f.min(a.floor()), l.max(b.ceil()))
-        });
-        let (first, rows) = if count == 0 {
-            (0, 0)
-        } else {
-            let rows = u32::try_from(last as i64 - first as i64 + 1)
-                .map_err(|_| Error::limit("glyph extent budget exceeded"))?;
-            (first as i64, rows)
-        };
-        // Within `0..rows` by construction.
-        let relative = |i: usize| {
-            let (a, b) = span(i);
-            let row = |v: f64| u32::try_from(v as i64 - first).unwrap_or(0);
-            (row(a.floor()), row(b.ceil()))
-        };
-        let index = RowList::new((0, rows), count, |i| Some(relative(i)))?;
-        let mut ends = Vec::new();
-        let mut reach = Vec::new();
-        ends.try_reserve_exact(count)
-            .and_then(|()| reach.try_reserve_exact(count))
-            .map_err(allocation)?;
-        for i in 0..count {
-            let (a, b) = span(i);
-            ends.push(<[u32; 2]>::from(relative(i)));
-            reach.push([a.floor() + 1.0 - a, b.ceil() - b]);
-        }
-        let mut work = index.len();
-        for i in 0..count {
-            let line = chord(i);
-            work = work
-                .saturating_add(edges::line_work(line, relative(i), usize::MAX).saturating_mul(4));
+            }
+            let rows = rows_reached((a.y.min(b.y), a.y.max(b.y)));
+            work = work.saturating_add(edges::line_work(chord, rows, usize::MAX).saturating_mul(4));
         }
         Ok(Self {
             lines,
             curves,
-            index,
-            first,
-            ends,
-            reach,
             hull: [lo, hi],
-            rect: None,
             work,
         })
     }
+}
 
-    fn retained_bytes(&self) -> usize {
-        (self.lines.capacity() * size_of::<Line>())
-            .saturating_add(self.curves.capacity() * size_of::<Quadratic>())
-            .saturating_add(self.ends.capacity() * size_of::<[u32; 2]>())
-            .saturating_add(self.reach.capacity() * size_of::<[f64; 2]>())
-            .saturating_add(self.index.retained_bytes())
-    }
+/// The rows, counted from the edge's own first one, that an edge spanning
+/// heights `(lo, hi)` relative to an origin can reach at any fractional
+/// origin, as `(0, last)`.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "bounded glyph extents; saturating conversion of a nonnegative span"
+)]
+fn rows_reached((lo, hi): (f64, f64)) -> (u32, u32) {
+    let span = (hi.ceil() - lo.floor()).max(0.0);
+    (0, span as u32)
 }
 
 impl GlyphEdges {
@@ -169,100 +154,71 @@ impl GlyphEdges {
         if !transform.is_finite() {
             return Err(Error::invalid_argument("glyph linear map is not finite"));
         }
-        let mut contours: Vec<Polyline> = Vec::new();
-        let count = flatten_into(
-            outline,
-            transform,
-            limits,
-            &mut contours,
-            &mut CurveStack::new(),
-        )?;
-        contours.truncate(count);
-        classify(outline, transform, &mut contours)?;
-        let mut polygon = Polygon::default();
-        let mut points = Vec::new();
-        let n = contours.len();
-        for (i, contour) in contours.iter().enumerate() {
-            if i + 1 == n && !contour.closed && contour.points.len() == 1 {
-                continue;
-            }
-            let Some(&first) = contour.points.first() else {
-                continue;
-            };
-            if contour.degenerate {
-                let p = first * transform;
-                bounded(p)?;
-                points
-                    .try_reserve(1)
-                    .map_err(|_| Error::limit("glyph geometry allocation failed"))?;
-                points.push(p);
-                continue;
-            }
-            polygon.begin(limits, contour.points.len())?;
-            for &point in &contour.points {
-                let p = point * transform;
-                bounded(p)?;
-                polygon.points.push(p);
-            }
-            polygon.end();
+        if outline.segments().len() > limits.path_segments {
+            return Err(Error::limit("path segment budget exceeded"));
         }
-        if polygon.vertices().saturating_add(4 * points.len()) > limits.path_segments {
-            return Err(Error::limit("flattened segment budget exceeded"));
+        let hull = control_hull(outline, transform);
+        let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
+        bytes.charge_items::<Self>(1)?;
+        let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        Ok(Self {
+            retained: bytes.used(),
+            hull,
+            kind,
+        })
+    }
+
+    fn geometry(
+        outline: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Kind> {
+        // A singular map can make a genuine point of a curve; the polygon
+        // keeps the point rule.
+        let regular = transform.determinant() != 0.0;
+        let spline = if regular {
+            curve::spline(outline, transform, limits, bytes)?
+        } else {
+            None
+        };
+        if let Some(spline) = spline {
+            if spline_certified(&spline, bytes)? {
+                let relative = Relative::new(&spline, bytes)?;
+                // The outline's allocation includes the Arc counters and
+                // Path, whose segment vector is charged separately.
+                bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
+                let outline = Arc::new(outline.clone_with_bytes(bytes)?);
+                return Ok(Kind::Curve {
+                    spline,
+                    relative,
+                    outline,
+                    linear: transform,
+                });
+            }
+            let released = spline.retained_bytes();
+            drop(spline);
+            bytes.refund(released);
         }
-        let certified_polygon = points.is_empty() && certified(&polygon, 0.0);
-        let vertices: usize = contours.iter().map(|c| c.points.len()).sum();
-        let curves = if outline.segments().len() > 32
-            || contours.iter().any(|c| c.degenerate)
-            || !outline
+        let (polygon, points) = polygon(outline, transform, limits, bytes)?;
+        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        let source = if regular
+            && outline
                 .segments()
                 .iter()
                 .any(|s| matches!(s, Segment::CubicTo { .. }))
+            && curve::quadratic_outline(outline, transform)
         {
-            None
-        } else {
-            // At most 32 pieces, and fewer than a quarter of the polygon's
-            // vertices.
-            let cap = (vertices.saturating_sub(1) / 4).min(32);
-            curve::pieces(outline, transform, cap, limits)?
-                .filter(|_| certified(&polygon, 2.0 * TOLERANCE))
-        };
-        let relative = if let Some(pieces) = &curves {
-            let mut lines = Vec::new();
-            let mut quadratics = Vec::new();
-            for piece in pieces {
-                match *piece {
-                    Piece::Line(line) => lines.push(line),
-                    Piece::Curve(q) => quadratics.push(q),
-                }
-            }
-            Some(Relative::new(&lines, quadratics)?)
-        } else if certified_polygon && !polygon.points_cells {
-            let mut relative = Relative::new(&edges::lines(&polygon)?, Vec::new())?;
-            relative.rect = rectangle(&polygon);
-            Some(relative)
+            bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
+            Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
         } else {
             None
         };
-        let retained = size_of::<Self>()
-            .saturating_add(polygon.points.capacity() * size_of::<Point>())
-            .saturating_add(polygon.starts.capacity() * size_of::<usize>())
-            .saturating_add(
-                curves
-                    .as_ref()
-                    .map_or(0, |c| c.capacity() * size_of::<Piece>()),
-            )
-            .saturating_add(relative.as_ref().map_or(0, Relative::retained_bytes));
-        if retained > limits.decoded_bytes {
-            return Err(Error::limit("glyph geometry byte budget exceeded"));
-        }
-        Ok(Self {
-            retained,
-            hull: control_hull(outline, transform),
+        Ok(Kind::Polygon {
             polygon,
             points,
-            certified: certified_polygon,
-            curves,
-            relative,
+            certified,
+            source,
         })
     }
 
@@ -279,9 +235,134 @@ impl GlyphEdges {
     }
 
     /// The edges a certified placement translates.
+    #[cfg(test)]
     pub(crate) fn relative(&self) -> Option<&Relative> {
-        self.relative.as_ref()
+        match &self.kind {
+            Kind::Curve { relative, .. } => Some(relative),
+            Kind::Polygon { .. } => None,
+        }
     }
+
+    /// Whether the stored outline admits analytic placements. A placement
+    /// whose coverage byte is ambiguous takes the shared bounded polygon
+    /// refinement before execution (ADR 0004 §4).
+    pub fn curved(&self) -> bool {
+        matches!(self.kind, Kind::Curve { .. })
+    }
+}
+
+/// The polygon of `outline` under the translation-free `transform` at the
+/// flattening tolerance, and its geometric points (8.5.3.3.1).
+fn polygon(
+    outline: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<(Polygon, Vec<Point>)> {
+    let before = bytes.used();
+    let result = flattened(outline, transform, limits, bytes);
+    let retained = result.as_ref().map_or(0, |(polygon, points)| {
+        polygon
+            .heap_bytes()
+            .saturating_add(points.capacity().saturating_mul(size_of::<Point>()))
+    });
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn flattened(
+    outline: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<(Polygon, Vec<Point>)> {
+    flattened_with(outline, transform, limits, bytes, None)
+}
+
+fn flattened_with(
+    outline: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+    inspection: Option<Inspection<'_>>,
+) -> Result<(Polygon, Vec<Point>)> {
+    let mut contours: Vec<Polyline> = Vec::new();
+    let flatness = if inspection.is_some() || curve::quadratic_outline(outline, transform) {
+        // Global polygons bound the hull areas over the whole outline by
+        // 1/4096 pixel: less than 0.063 levels, also after clipping. Local
+        // interval proofs retain that bound only where hulls meet targets;
+        // disjoint hulls may keep their chords without moving target winding.
+        let curves = outline
+            .segments()
+            .iter()
+            .filter(|s| matches!(s, Segment::CubicTo { .. }))
+            .count();
+        Flatness::Area(1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
+    } else {
+        Flatness::Distance
+    };
+    let mut pending = CurveStack::new();
+    let count = match inspection {
+        Some(inspection) => flatten_inspected(
+            outline,
+            transform,
+            limits,
+            &mut contours,
+            &mut pending,
+            (flatness, bytes, inspection),
+        )?,
+        None => flatten_with(
+            outline,
+            transform,
+            limits,
+            &mut contours,
+            &mut pending,
+            flatness,
+            bytes,
+        )?,
+    };
+    let released = crate::flatten::stack_bytes(&pending);
+    drop(pending);
+    bytes.refund(released);
+    contours.truncate(count);
+    classify(
+        outline,
+        Transform {
+            e: 0.0,
+            f: 0.0,
+            ..transform
+        },
+        &mut contours,
+    )?;
+    let mut polygon = Polygon::default();
+    let mut points = Vec::new();
+    let n = contours.len();
+    for (i, contour) in contours.iter().enumerate() {
+        if i + 1 == n && !contour.closed && contour.points.len() == 1 {
+            continue;
+        }
+        let Some(&first) = contour.points.first() else {
+            continue;
+        };
+        if contour.degenerate {
+            let p = first * transform;
+            bounded(p)?;
+            bytes.reserve_capacity(&mut points, 1)?;
+            points.push(p);
+            continue;
+        }
+        polygon.begin(limits, contour.points.len(), bytes)?;
+        for &point in &contour.points {
+            let p = point * transform;
+            bounded(p)?;
+            polygon.points.push(p);
+        }
+        polygon.end();
+    }
+    if polygon.vertices().saturating_add(4 * points.len()) > limits.path_segments {
+        return Err(Error::limit("flattened segment budget exceeded"));
+    }
+    Ok((polygon, points))
 }
 
 /// The bounds of `outline`'s points under `transform`, as
@@ -316,6 +397,9 @@ pub(crate) fn place(
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
     let mut shape = placed(edges, origin, options)?;
+    if let Some(prepared) = shape.take() {
+        shape = Some(rounding::certify(edges, origin, prepared, options)?);
+    }
     if let Some(shape) = &mut shape {
         shape.add_work(merged(shape.bounds()));
     }
@@ -329,90 +413,174 @@ fn merged(b: super::DeviceRect) -> usize {
 
 fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<Option<Shape>> {
     bounded(origin)?;
-    // A certified glyph the clip keeps whole is its translated edges.
-    if let Some(relative) = &edges.relative {
-        let Some(mut frame) = Frame::new(options) else {
-            return Ok(None);
-        };
-        let [lo, hi] = relative.hull;
-        if lo.x > hi.x {
-            // No edges: nothing to cover.
-            return Ok(None);
+    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+    match &edges.kind {
+        Kind::Curve {
+            spline,
+            relative,
+            outline,
+            linear,
+        } => {
+            let Some(mut frame) = Frame::new(options) else {
+                return Ok(None);
+            };
+            let [lo, hi] = relative.hull;
+            if lo.x > hi.x {
+                // No edges: nothing to cover.
+                return Ok(None);
+            }
+            let lo = Point::new(lo.x + origin.x, lo.y + origin.y);
+            let hi = Point::new(hi.x + origin.x, hi.y + origin.y);
+            bounded(lo)?;
+            bounded(hi)?;
+            frame.fit([lo, hi]);
+            match (frame.rect, frame.paths) {
+                // The clip keeps it whole: its translated edges.
+                (None, None) => Shape::translated(edges, relative, origin, &frame, options),
+                // A rectangle cuts it: its pieces, clipped.
+                (Some(_), None) => pieces(spline, origin, &frame, options, &mut bytes),
+                // A clip path crosses it: its polygon, resolved with the
+                // clip's paths.
+                (_, Some(_)) => {
+                    let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
+                    translated(
+                        (&polygon, &points),
+                        origin,
+                        Winding::Check(0.0),
+                        options,
+                        &mut bytes,
+                        None,
+                        None,
+                    )
+                }
+            }
         }
-        let lo = Point::new(lo.x + origin.x, lo.y + origin.y);
-        let hi = Point::new(hi.x + origin.x, hi.y + origin.y);
-        bounded(lo)?;
-        bounded(hi)?;
-        frame.fit([lo, hi]);
-        if frame.rows.is_none() && frame.rect.is_none() {
-            return Shape::translated(edges, relative, origin, &frame, options);
+        Kind::Polygon {
+            polygon,
+            points,
+            certified,
+            ..
+        } => {
+            let winding = if *certified {
+                Winding::Certified
+            } else {
+                Winding::Check(0.0)
+            };
+            translated(
+                (polygon, points),
+                origin,
+                winding,
+                options,
+                &mut bytes,
+                None,
+                Some(edges),
+            )
         }
     }
-    general(edges, origin, options)
 }
 
-/// A placement that translates the outline's vertices and prepares them as
-/// any shape: where the clip cuts the glyph or the glyph is not certified.
-pub(crate) fn general(
-    edges: &GlyphEdges,
+/// A placement of a certified spline through its pieces moved to `origin`
+/// first, as a clip rectangle prepares them.
+#[cfg(test)]
+pub(crate) fn moved(
+    edges: &Arc<GlyphEdges>,
     origin: Point,
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
-    if let Some(pieces) = &edges.curves {
-        let Some(mut frame) = Frame::new(options) else {
-            return Ok(None);
-        };
-        // Monotone pieces lie within the boxes of their ends.
-        let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
-        let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
-        for piece in pieces {
-            for p in piece.translated(origin).ends() {
-                bounded(p)?;
-                lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
-                hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
-            }
+    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+    match (&edges.kind, Frame::new(options)) {
+        (Kind::Curve { spline, .. }, Some(frame)) => {
+            pieces(spline, origin, &frame, options, &mut bytes)
         }
-        frame.fit([lo, hi]);
-        if frame.rows.is_none() {
-            let mut lines = Vec::new();
-            let mut curves = Vec::new();
-            lines
-                .try_reserve(pieces.len())
-                .and_then(|()| curves.try_reserve(pieces.len()))
-                .map_err(|_| Error::limit("glyph placement allocation failed"))?;
-            for piece in pieces {
-                match piece.translated(origin) {
-                    Piece::Line(line) => lines.push(line),
-                    Piece::Curve(q) => curves.push(q),
+        _ => placed(edges, origin, options),
+    }
+}
+
+/// A certified spline's pieces moved to `origin` and clipped to the clip's
+/// rectangle.
+fn pieces(
+    spline: &Spline,
+    origin: Point,
+    frame: &Frame<'_>,
+    options: &Prep<'_>,
+    bytes: &mut Meter,
+) -> Result<Option<Shape>> {
+    let mut lines = Vec::new();
+    let mut curves: Vec<Quadratic> = Vec::new();
+    let line_count = spline
+        .pieces
+        .iter()
+        .filter(|piece| matches!(piece, Piece::Line(_)))
+        .count();
+    bytes.reserve(&mut lines, line_count)?;
+    bytes.reserve(&mut curves, spline.pieces.len() - line_count)?;
+    for piece in &spline.pieces {
+        match piece.translated(origin) {
+            Piece::Line(line) => {
+                for p in [line.a, line.b] {
+                    bounded(p)?;
                 }
+                lines.push(line);
             }
-            return Shape::pieces(lines, curves, &frame, options);
+            Piece::Curve(q) => {
+                for p in q.points {
+                    bounded(p)?;
+                }
+                curves.push(q);
+            }
         }
     }
+    Shape::pieces(lines, curves, frame, options, bytes)
+}
+
+/// A placement that translates a polygon's points and its geometric points
+/// and prepares them as any shape.
+fn translated(
+    (source, points): (&Polygon, &[Point]),
+    origin: Point,
+    winding: Winding,
+    options: &Prep<'_>,
+    bytes: &mut Meter,
+    work: Option<&mut Meter>,
+    shared: Option<&Arc<GlyphEdges>>,
+) -> Result<Option<Shape>> {
     let mut polygon = Polygon::default();
-    polygon
-        .points
-        .try_reserve(edges.polygon.points.len())
-        .and_then(|()| polygon.starts.try_reserve(edges.polygon.starts.len()))
-        .map_err(|_| Error::limit("glyph placement allocation failed"))?;
-    for &p in &edges.polygon.points {
+    bytes.reserve(&mut polygon.points, source.points.len())?;
+    bytes.reserve(&mut polygon.starts, source.starts.len())?;
+    for &p in &source.points {
         let p = Point::new(p.x + origin.x, p.y + origin.y);
         bounded(p)?;
         polygon.points.push(p);
     }
-    polygon.starts.extend_from_slice(&edges.polygon.starts);
-    for &p in &edges.points {
+    polygon.starts.extend_from_slice(&source.starts);
+    for &p in points {
         // A floor cell belongs to the placed point, not to the outline origin.
         let p = Point::new(p.x + origin.x, p.y + origin.y);
         bounded(p)?;
-        polygon.cell(p, options.limits)?;
+        polygon.cell(p, options.limits, bytes)?;
     }
-    let winding = if edges.certified {
-        Winding::Certified
-    } else {
-        Winding::Unknown
-    };
-    Shape::polygon(polygon, FillRule::NonZero, winding, options)
+    match work {
+        Some(work) => {
+            work.charge(polygon.vertices())?;
+            Shape::polygon_metered(
+                polygon,
+                FillRule::NonZero,
+                winding,
+                options,
+                bytes,
+                work,
+                shared.map(|edges| (edges, origin)),
+            )
+        }
+        None => Shape::polygon(
+            polygon,
+            FillRule::NonZero,
+            winding,
+            options,
+            bytes,
+            shared.map(|edges| (edges, origin)),
+        ),
+    }
 }
 
 // The shared flattener retains source point classification. A singular linear

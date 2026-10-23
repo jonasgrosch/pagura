@@ -164,7 +164,17 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
         for antialias in [parsed.antialias, !parsed.antialias] {
             for usage in [Use::Operator, Use::Pattern] {
                 let parts = parts(parsed, antialias);
-                let source = ShadingSource::new(&parts, transform, &context, usage).unwrap();
+                let source = ShadingSource::new(
+                    &parts,
+                    transform,
+                    &context,
+                    usage,
+                    (
+                        &mut Meter::new(limits.render_bytes, "test bytes"),
+                        &mut Meter::new(usize::MAX, "test functions"),
+                    ),
+                )
+                .unwrap();
                 counts.aligned += usize::from(source.aligned.is_some());
                 let old = oracle::Oracle {
                     parsed,

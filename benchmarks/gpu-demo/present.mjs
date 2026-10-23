@@ -16,8 +16,7 @@ export class Presenter {
     this.uniform=gpu.device.createBuffer({size:16,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});this.groups=new WeakMap();
   }
   encode(encoder,buffer,width,height) {
-    const x=this.position==='center'?Math.max(0,Math.floor((width-this.canvas.width)/2)):0;
-    const y=this.position==='center'?Math.max(0,Math.floor((height-this.canvas.height)/2)):0;
+    const {x,y}=viewOrigin(width,height,this.canvas.width,this.position);
     this.gpu.device.queue.writeBuffer(this.uniform,0,new Uint32Array([width,height,x,y]));
     let group=this.groups.get(buffer);
     if(!group){group=this.gpu.device.createBindGroup({layout:this.gpu.presentationPipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer}},{binding:1,resource:{buffer:this.uniform}}]});this.groups.set(buffer,group);}
@@ -43,8 +42,14 @@ export class Presenter {
   destroy(){this.capturePending?.staging.destroy();this.uniform.destroy();this.context.unconfigure();this.groups=new WeakMap();}
 }
 export function viewport(pixels,width,height,size=480,position='top') {
-  const x=position==='center'?Math.max(0,Math.floor((width-size)/2)):0,y=position==='center'?Math.max(0,Math.floor((height-size)/2)):0;
+  const {x,y}=viewOrigin(width,height,size,position);
   const out=new Uint8Array(size*size*4);out.fill(255);
   for(let row=0;row<Math.min(size,height-y);row++)out.set(pixels.subarray(((y+row)*width+x)*4,((y+row)*width+Math.min(width,x+size))*4),row*size*4);
   return out;
+}
+export function viewOrigin(width,height,size,position) {
+  const x=typeof position==='object'?position.x:position==='center'?Math.max(0,Math.floor((width-size)/2)):0;
+  const y=typeof position==='object'?position.y:position==='center'?Math.max(0,Math.floor((height-size)/2)):0;
+  if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x>=width||y>=height)throw new Error('Presentation offset');
+  return {x,y};
 }
