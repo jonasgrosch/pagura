@@ -35,6 +35,8 @@ mod coverage;
 mod curve;
 mod edges;
 mod glyph;
+#[cfg(feature = "gpu-demo")]
+pub mod gpu;
 mod raster;
 mod rect;
 mod row;

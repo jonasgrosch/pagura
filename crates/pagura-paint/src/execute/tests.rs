@@ -717,6 +717,8 @@ impl Fixture {
             .iter()
             .enumerate()
             .map(|(i, &b)| Glyph {
+                #[cfg(feature = "gpu-demo")]
+                serial: u32::try_from(i).unwrap(),
                 shape: first + u32::try_from(i).unwrap(),
                 bounds: b,
                 bands: [0, u32::MAX],

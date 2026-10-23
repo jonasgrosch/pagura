@@ -130,6 +130,8 @@ impl Planner<'_> {
         });
         budget.bytes.reserve_capacity(&mut open.glyphs, 1)?;
         open.glyphs.push(Glyph {
+            #[cfg(feature = "gpu-demo")]
+            serial: placed.serial,
             shape: placed.shape,
             bounds: placed.bounds,
             bands,
@@ -401,6 +403,8 @@ mod tests {
     #[test]
     fn overlap_scratch_reserves_before_allocation_and_is_returned_on_refusal() {
         let mut glyphs = [2, 1].map(|x| Glyph {
+            #[cfg(feature = "gpu-demo")]
+            serial: x,
             shape: x,
             bounds: DeviceRect {
                 x0: x,
@@ -444,6 +448,8 @@ mod tests {
                 let i = u32::try_from(i).unwrap();
                 let (x, y) = ((i * 17) % 100, (i * 23) % 71);
                 Glyph {
+                    #[cfg(feature = "gpu-demo")]
+                    serial: i,
                     shape: i,
                     bounds: DeviceRect {
                         x0: x,

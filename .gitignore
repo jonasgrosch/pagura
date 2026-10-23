@@ -1,4 +1,5 @@
 /target/
+/benchmarks/gpu-demo/engine/target/
 /.cache/
 /work/
 __pycache__/
