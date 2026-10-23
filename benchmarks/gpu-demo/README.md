@@ -58,6 +58,9 @@ code. The browser reuses the viewer's WASI shim, bounded mailbox and extracted
 
 ## GPU coverage experiment
 
+Measured performance, accuracy, native FP64 capability and limitations are in
+[GPU_COVERAGE_RESULTS.md](GPU_COVERAGE_RESULTS.md).
+
 The GPU stage selector also offers **local f32 coverage** and **absolute f32
 coverage**. These are approximate experiments, distinct from the exact N16
 span compositor. SVG export, its one-page cache, reusable resources and the

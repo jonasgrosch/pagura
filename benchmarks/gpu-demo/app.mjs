@@ -55,7 +55,7 @@ export function show(output, label) {
   $('detail').textContent = result.fallback ? `WebGPU fallback: ${result.fallback}. This panel shows the CPU result.`
     : `WebGPU packet: ${(result.packet_bytes / 1024).toFixed(0)} KiB; ${raster ? 'geometry export' : 'coverage and packet'} ${ms(result.packet_build_ms.median)}, GPU completion and readback ${ms(result.gpu_complete_ms.median)}. Kernel ${result.gpu_kernel_ms ? ms(result.gpu_kernel_ms.median) : 'timestamp unavailable'}.`;
   if (result.gpu_geometry) $('detail').textContent += ` ${result.gpu_geometry.edges.toLocaleString()} edges; ${result.gpu_geometry.correction_cells.toLocaleString()} exact CPU correction cells; ${result.gpu_geometry.clip_runs.toLocaleString()} prepared clip runs. Experimental f32 coverage is compared with Exact CPU, not certified as exact.`;
-  $('frame-detail').textContent = `Worker transport included: CPU ${ms(result.cpu_frame_ms.median)}${result.gpu_frame_ms ? `, hybrid ${ms(result.gpu_frame_ms.median)}` : ''}${result.svg_frame_ms ? `, SVG ${ms(result.svg_frame_ms.median)}` : ''}. ${result.samples.length} samples after ${result.warmups} warmups.`;
+  $('frame-detail').textContent = `Worker transport included: CPU ${ms(result.cpu_frame_ms.median)}${result.gpu_frame_ms ? `, GPU ${ms(result.gpu_frame_ms.median)}` : ''}${result.svg_frame_ms ? `, SVG ${ms(result.svg_frame_ms.median)}` : ''}. ${result.samples.length} samples after ${result.warmups} warmups.`;
   $('svg-detail').textContent = result.svg_fallback ? `SVG unavailable: ${result.svg_fallback}. No partial page is displayed.`
     : `Retained SVG raster and readback ${ms(result.svg_browser_ms.median)}. First setup ${ms(result.first_svg.frame_ms)} including export ${ms(result.first_svg.export_ms)}${result.first_svg.cache_hit ? ' (host artifact reused)' : ''}. XML and source images are reused after setup. ${result.svg_samples} samples after ${result.svg_warmups} warmups${result.svg_sample_cap ? ' (slow raster sample cap)' : ''}. ${(result.svg_bytes / 1024).toFixed(0)} KiB; ${result.svg_resources.glyphs.toLocaleString()} glyph placements; ${result.svg_resources.images} image resources; ${result.svg_resources.clips_elided} inactive clips removed, ${result.svg_resources.clips_retained} retained. Against CPU: ${result.svg_accuracy.changed_percent.toFixed(2)}% changed pixels, max channel difference ${result.svg_accuracy.max_channel_error}, mean ${result.svg_accuracy.mean_channel_error.toFixed(3)}. SVG repeat variation: ${result.svg_repeatability.differing_samples}/${result.svg_samples} samples, max channel delta ${result.svg_repeatability.max_channel_difference}. This is a differential comparison, not an exactness proof.`;
   $('empty')?.remove();
@@ -65,7 +65,7 @@ export function show(output, label) {
   }
   $('history').prepend(tr);
   $('zoom').value = '1'; $('zoom-test').disabled = false;$('export-svg').disabled = !svgPage;
-  $('zoom-detail').textContent = 'Zoom retains SVG geometry; CPU and hybrid rebuild pixels at the new resolution. Measure zoom for frame timing.';
+  $('zoom-detail').textContent = 'Zoom retains SVG geometry; CPU and GPU rebuild pixels at the new resolution. Measure zoom for frame timing.';
   status(`${label} · ${result.width} × ${result.height} pixels · comparison complete`);
 }
 
@@ -86,21 +86,23 @@ async function changeZoom() {
     putPixels($('cpu'), dimensions.data, dimensions.meta.width, dimensions.meta.height);
     await paintOpportunity();
     const cpuFrame = dimensions.host_ms + performance.now() - cpuStart;
-    let gpuFrame;
+    let gpuFrame, gpuPixels = dimensions.data, zoomFallback = result.fallback;
     if (!result.fallback && demo.gpu) {
       const start = performance.now(), packet = await demo.engine.render(result.gpu_operation, {...result.options, dpi});
       if (!packet.meta.fallback) {
         const job = demo.gpu.prepare(packet.data);
-        try { const pixels = await job.render(packet.data);putPixels($('gpu'), pixels.pixels, dimensions.meta.width, dimensions.meta.height);await paintOpportunity();gpuFrame = performance.now() - start; }
+        try { const pixels = await job.render(packet.data);gpuPixels = pixels.pixels;putPixels($('gpu'), pixels.pixels, dimensions.meta.width, dimensions.meta.height);await paintOpportunity();gpuFrame = performance.now() - start; }
         finally {job.destroy();}
-      }
+      } else {zoomFallback = packet.meta.fallback;putPixels($('gpu'), dimensions.data, dimensions.meta.width, dimensions.meta.height);}
     } else putPixels($('gpu'), dimensions.data, dimensions.meta.width, dimensions.meta.height);
+    const delta = pixelDifference(gpuPixels, dimensions.data);
+    $('identity').textContent = zoomFallback ? `WebGPU: CPU fallback at ${dpi} DPI` : `WebGPU at ${dpi} DPI: ${delta.changed_pixels} changed pixels · max ${delta.max_channel_error} levels`;
     if (svgPage) {
       const raster = await svgPage.rasterize(dimensions.meta.width, dimensions.meta.height, dpi, {retained: true});
       putPixels($('difference'), differencePixels(raster.pixels, dimensions.data), dimensions.meta.width, dimensions.meta.height);
       $('svg-error').textContent = `${pixelDifference(raster.pixels, dimensions.data).beyond_one_percent.toFixed(2)}%`;
     }
-    $('zoom-detail').textContent = `At ${dpi} DPI: CPU ${ms(cpuFrame)}${gpuFrame ? `; hybrid ${ms(gpuFrame)}` : ''}. SVG reused its vector tree. Use “Measure zoom” for independent SVG frame timings. Total update ${ms(performance.now() - svgStart)}.`;
+    $('zoom-detail').textContent = `At ${dpi} DPI: CPU ${ms(cpuFrame)}${gpuFrame ? `; GPU ${ms(gpuFrame)}` : ''}. SVG reused its vector tree. Use “Measure zoom” for independent SVG frame timings. Total update ${ms(performance.now() - svgStart)}.`;
   } catch (failure) {error(failure);}
   finally {demo.busy = false;$('zoom').disabled = false;$('compare').disabled = false;$('zoom-test').disabled = false;}
 }
