@@ -549,24 +549,41 @@ struct StoreOut<'a> {
     stored: usize,
 }
 
+/// Columns of the current row within the frame.
+struct Columns {
+    row: usize,
+    /// The first column, relative to the frame.
+    column: u32,
+    count: usize,
+    /// How many of the requested columns lie left of the first.
+    skip: usize,
+}
+
 impl StoreOut<'_> {
-    /// The page pixels of columns `x .. x + len` of the current row within
-    /// `rect`, the first column's offset into them, and marks them stored.
-    fn pixels(&mut self, x: u32, len: usize) -> Option<(&mut [[u16; 4]], usize)> {
+    /// Columns `x .. x + len` of the current row within `rect`, if any.
+    fn columns(&self, x: u32, len: usize) -> Option<Columns> {
         let row = self.row?;
         let end = x.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
         let (start, stop) = (x.max(self.rect.x0), end.min(self.rect.x1));
-        if start >= stop {
-            return None;
-        }
-        let (column, last) = (start - self.rect.x0, stop - self.rect.x0);
-        self.extents.mark(row, column, last);
-        self.stored += u32_to_usize(last - column);
-        let first = row * self.width;
-        let pixels = self
-            .page
-            .get_mut(first + u32_to_usize(column)..first + u32_to_usize(last))?;
-        Some((pixels, u32_to_usize(start - x)))
+        (start < stop).then(|| Columns {
+            row,
+            column: start - self.rect.x0,
+            count: u32_to_usize(stop - start),
+            skip: u32_to_usize(start - x),
+        })
+    }
+
+    /// The page pixels of `columns`.
+    fn pixels(&mut self, columns: &Columns) -> Option<&mut [[u16; 4]]> {
+        let first = columns.row * self.width + u32_to_usize(columns.column);
+        self.page.get_mut(first..first + columns.count)
+    }
+
+    /// Records stores at `lo .. hi` of `columns`.
+    fn stored(&mut self, columns: &Columns, (lo, hi): (usize, usize)) {
+        let at = |k: usize| columns.column + u32::try_from(k).unwrap_or(u32::MAX);
+        self.extents.mark(columns.row, at(lo), at(hi));
+        self.stored += hi - lo;
     }
 }
 
@@ -579,31 +596,33 @@ impl RowOut for StoreOut<'_> {
 
     fn put_run(&mut self, x: u32, len: u32, value: u8) {
         let words = self.words;
-        if value == 0 {
+        let Some(columns) = self.columns(x, u32_to_usize(len)).filter(|_| value != 0) else {
             return;
-        }
-        if let Some((pixels, _)) = self.pixels(x, u32_to_usize(len)) {
+        };
+        if let Some(pixels) = self.pixels(&columns) {
             if value == u8::MAX {
                 pixels.fill(words);
             } else {
                 kernel::store_n16_uniform(pixels, words, value);
             }
         }
+        self.stored(&columns, (0, columns.count));
     }
 
     fn put_row(&mut self, x: u32, values: &[u8]) {
-        // Zero coverage leaves a pixel as it is: store from the first to the
-        // last covered pixel.
-        let Some(first) = values.iter().position(|&v| v != 0) else {
+        let words = self.words;
+        let Some(columns) = self.columns(x, values.len()) else {
             return;
         };
-        let last = values.iter().rposition(|&v| v != 0).unwrap_or(first);
-        let values = values.get(first..=last).unwrap_or_default();
-        let x = x.saturating_add(u32::try_from(first).unwrap_or(u32::MAX));
-        let words = self.words;
-        if let Some((pixels, skip)) = self.pixels(x, values.len()) {
-            let values = values.get(skip..skip + pixels.len()).unwrap_or_default();
-            kernel::store_n16(pixels, words, Some(values));
+        let Some(values) = values.get(columns.skip..columns.skip + columns.count) else {
+            return;
+        };
+        // Zero coverage leaves a pixel as it is: only covered pixels count.
+        let covered = self
+            .pixels(&columns)
+            .and_then(|pixels| kernel::store_n16_runs(pixels, words, values));
+        if let Some(stretch) = covered {
+            self.stored(&columns, stretch);
         }
     }
 }
