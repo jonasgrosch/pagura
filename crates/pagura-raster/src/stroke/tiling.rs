@@ -20,7 +20,7 @@
 //! may meet), are not proven to tile: their union is still the stroke, and
 //! the rasterizer certifies or resolves its windings.
 
-use super::{Pen, Run, cap, join, polygon, ring};
+use super::{Pen, Run, cap, join, offsets, polygon};
 use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -451,10 +451,9 @@ fn held_caps(
     }
     let before = bytes.used();
     let result = (|| {
-        let near = ring(first, pen, limits, bytes)?;
-        let far = ring(last, pen, limits, bytes)?;
+        let circle = offsets(pen, limits, bytes)?;
         if lone {
-            let count = f64::from(u32::try_from(near.len()).unwrap_or(u32::MAX));
+            let count = f64::from(u32::try_from(circle.len()).unwrap_or(u32::MAX));
             let slack = 8.0
                 * f64::EPSILON
                 * (first.x.abs() + first.y.abs() + last.x.abs() + last.y.abs() + radius);
@@ -467,12 +466,12 @@ fn held_caps(
             }
         }
         let mut chains = Vec::new();
-        bytes.reserve(&mut chains, near.len() + far.len() + 4)?;
-        if !beyond(&near, first, -start, radius, &mut chains) {
+        bytes.reserve(&mut chains, 2 * circle.len() + 4)?;
+        if !beyond(&circle, first, -start, radius, &mut chains) {
             return Ok(None);
         }
         let split = chains.len();
-        if !beyond(&far, last, finish, radius, &mut chains) {
+        if !beyond(&circle, last, finish, radius, &mut chains) {
             return Ok(None);
         }
         Ok(Some(Caps { chains, split }))
@@ -551,32 +550,33 @@ fn capped(
     result
 }
 
-/// Appends the chain of the cap polygon `ring` around `end` beyond the end
-/// line, `outward` its unit normal: where its sides cross the line from the
-/// right, its vertices beyond, and where they cross back on the left.
-/// Returns false unless that chain is one run, both crossings lie on the
-/// quadrilateral's end, and every vertex on or behind the line lies across
-/// the quadrilateral, of half-width `radius`.
+/// Appends the chain of the cap polygon around `end`, its vertices `end`
+/// plus `circle`, beyond the end line, `outward` its unit normal: where its
+/// sides cross the line from the right, its vertices beyond, and where they
+/// cross back on the left. Returns false unless that chain is one run, both
+/// crossings lie on the quadrilateral's end, and every vertex on or behind
+/// the line lies across the quadrilateral, of half-width `radius`.
 fn beyond(
-    ring: &[Point],
+    circle: &[Point],
     end: Point,
     outward: Point,
     radius: f64,
     outline: &mut Vec<Point>,
 ) -> bool {
+    let ring = circle.iter().map(|&offset| end + offset);
     let along = |v: Point| (v - end).dot(outward);
     let across = |v: Point| (v - end).dot(outward.perp());
     // Where the side from `v` to `w`, on opposite sides, crosses the line.
     let crossing = |v: Point, w: Point| v.lerp(w, along(v) / (along(v) - along(w)));
     // The vertices' own rounding, relative to their coordinates.
     let slack = 8.0 * f64::EPSILON * (end.x.abs() + end.y.abs() + radius);
-    let Some(&back) = ring.last() else {
+    let Some(back) = ring.clone().next_back() else {
         return false;
     };
     let mut entry = None;
     let mut entries = 0_usize;
     let mut previous = back;
-    for (i, &v) in ring.iter().enumerate() {
+    for (i, v) in ring.clone().enumerate() {
         if along(v) <= 0.0 {
             if across(v).abs() > radius + slack {
                 return false;
@@ -590,8 +590,8 @@ fn beyond(
     let (Some((first, behind)), 1) = (entry, entries) else {
         return false;
     };
-    let mut chain = ring.iter().cycle().skip(first);
-    let Some(&first) = chain.next() else {
+    let mut chain = ring.cycle().skip(first);
+    let Some(first) = chain.next() else {
         return false;
     };
     let enter = crossing(behind, first);
@@ -600,7 +600,7 @@ fn beyond(
     }
     outline.extend([enter, first]);
     let mut last = first;
-    for &v in chain {
+    for v in chain {
         if along(v) <= 0.0 {
             let leave = crossing(last, v);
             if across(leave) <= 0.0 || across(leave) > radius + slack {
