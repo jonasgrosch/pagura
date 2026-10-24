@@ -443,9 +443,7 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
-        for (out, value) in out.iter_mut().zip(self.texel(index)) {
-            *out = *value;
-        }
+        copy_texel(out, self.texel(index));
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
