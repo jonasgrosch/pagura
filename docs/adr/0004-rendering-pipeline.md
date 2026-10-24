@@ -9,8 +9,8 @@ evidence. Section 4's coverage producers were brought in line with the
 implementation on 2026-10-22, and the fast parameters and their accuracy gate
 were retired the same day (section 8). On 2026-10-24 TrueType quadratics
 became their own path segments, integrated without per-placement
-certification, and lone round-capped segments became one convex stroke piece
-(section 4).
+certification, and round caps that their end segments hold became part of
+the end pieces (section 4).
 
 ## Decision
 
@@ -131,18 +131,25 @@ successive chain ends and alternate in direction from one common sign, so
 the winding is zero or that sign with magnitude one. For quadratics the
 certificate bounds the curves themselves, including their tangent fans at
 shared vertices. Doubt leaves the shape uncertified. Stroke pieces that are
-proved to meet without overlap are certified by construction. A lone
-round-capped segment longer than the pen is one convex piece: its
-quadrilateral joined to the chain of each canonical cap polygon beyond its
-end line, entered and left where the polygon's sides cross that line. Cap
-vertices behind the end line must lie across the quadrilateral within eight
-rounding units of their coordinates, so the piece differs from the
-components' union only by slivers of that width. Admission bounds crossing
-and side rounding by 64 rounding units at the endpoints' construction-space
-magnitude. This must fit in 1/4096 of the pen's flattening tolerance, which
-already accounts for the pen-to-device map's stretch. Otherwise the canonical
-components use row union: construction-space ulps cannot justify the shortcut
-when a large offset and magnification make them visible in device space.
+proved to meet without overlap are certified by construction. An open
+round-capped run is proved where its joints are and each end segment holds
+its cap: the segment is longer than the pen radius plus what its other end
+needs along it (the other cap's radius, or a turn's inner reach), so the
+cap polygon's part behind the end line lies within the end piece. The end
+piece then takes the chain of the canonical cap polygon beyond its end
+line, entered and left where the polygon's sides cross that line, and the
+cap polygon is not drawn. Cap vertices behind the end line must lie across
+the piece within eight rounding units of their coordinates, so the piece
+differs from the components' union only by slivers of that width. A lone
+segment holds both caps as one convex piece where each cap polygon's part
+beyond the other end line, which lies within sqrt(r^2 - L^2) of that end,
+is inside the other polygon's inscribed circle of radius r cos(pi/n), less
+eight rounding units; for segments at least as long as the pen radius that
+part is empty. A point's two round caps are the same polygon, drawn once.
+Cap admission also bounds crossing and side rounding by 64 rounding units at
+the endpoints' construction-space magnitude. This must fit in 1/4096 of the
+pen's flattening tolerance, which already accounts for device stretch;
+otherwise the run keeps the canonical components and their row union.
 
 Uncertified rows, and rows crossed by both a mark and a path clip, go through
 one exact row union during preparation. It cuts at edge ends and crossings,
@@ -174,8 +181,11 @@ row union depend only on the geometry and the clip state. An edge whose
 coordinates are at most 2^16 in magnitude and whose height is at least
 2^-30 interpolates its crossings in plain f64, within the straight-edge
 interpolation bound below; other edges use the exact two-product form.
-Execution windows of at most 256 columns keep no touched bitmap: they
-accumulate densely and emit every cell, with the same values. A glyph
+Execution windows of at most 256 columns with at least one item per two
+columns keep no touched bitmap: they accumulate densely and emit every
+cell, with the same values. A thin stroke across a wider window touches
+few of its cells and keeps the bitmap.
+A glyph
 placement's last window in a band also takes its rows in the next band, as
 far as one window reaches, into storage reserved with the rasterizer; the
 next band copies those bytes instead of walking the placement again. They

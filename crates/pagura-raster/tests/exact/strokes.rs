@@ -405,3 +405,61 @@ fn capsule_admission_bounds_rounding_after_pen_transform() {
     };
     assert_eq!(invariant(&area, &prepare, &[]), expected);
 }
+
+/// Tiny changes made in pen space can cover visible area after magnification.
+#[test]
+fn round_run_admission_bounds_rounding_after_pen_transform() {
+    let limits = Limits::default();
+    let area = area(0, 0, 48, 48, 16);
+    let anchor = 34_359_738_368.0;
+    let scale = 65_536.0;
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(anchor, anchor));
+    path.line_to(Point::new(
+        anchor + 49.0 / 131_072.0,
+        anchor + 9.0 / 131_072.0,
+    ))
+    .unwrap();
+    path.line_to(Point::new(
+        anchor + 98.0 / 131_072.0,
+        anchor + 18.0 / 131_072.0,
+    ))
+    .unwrap();
+    let path = path.finish();
+    let stroke = Stroke {
+        width: 8.0 / scale,
+        cap: LineCap::Round,
+        ..Stroke::default()
+    };
+    let transform = Transform::new(
+        scale,
+        0.0,
+        0.0,
+        scale,
+        30.25 - anchor * scale,
+        30.25 - anchor * scale,
+    );
+    let mark = exact::stroke(
+        &path,
+        &stroke,
+        Transform::IDENTITY,
+        Adjustment::None,
+        transform,
+        &limits,
+    )
+    .unwrap();
+    let expected = reference(area.region, mark, &[]);
+    assert_eq!(expected[26 * 48 + 31], 161);
+    let prepare = |options: &ShapeOptions<'_>, clip: Option<&ClipShape>| {
+        Shape::stroke_with_clip(
+            &path,
+            &stroke,
+            (Transform::IDENTITY, transform),
+            Adjustment::None,
+            clip,
+            options,
+        )
+        .unwrap()
+    };
+    assert_eq!(invariant(&area, &prepare, &[]), expected);
+}

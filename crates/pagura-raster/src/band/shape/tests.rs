@@ -113,10 +113,11 @@ fn round_capped(points: &[(f64, f64)]) -> Shape {
 
 #[test]
 fn round_cap_overlap_resolves_only_uncertified_rows() {
-    // Two segments keep the canonical full circles, which overlap the body
-    // near its ends. Their uncertain rows still resolve, but the long
-    // middle is signed area.
-    let shape = round_capped(&[(8.0, 5.0), (8.0, 55.0), (8.0, 105.0)]);
+    // An end segment shorter than the pen radius cannot hold its cap, so
+    // the run keeps the canonical full circles, which overlap the body near
+    // its ends. Their uncertain rows still resolve, but the long middle is
+    // signed area.
+    let shape = round_capped(&[(8.0, 5.0), (8.0, 55.0), (8.0, 105.0), (8.0, 106.5)]);
     assert_ne!(shape.resolved.rows, []);
     assert!(shape.resolved.rows.len() < shape.bounds.height() as usize / 4);
     assert!(
@@ -132,6 +133,17 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
 fn a_lone_round_capped_segment_is_one_convex_piece() {
     let shape = round_capped(&[(8.0, 5.0), (8.0, 105.0)]);
     assert_eq!(shape.resolved.rows, []);
+}
+
+#[test]
+fn end_segments_holding_their_round_caps_resolve_nothing() {
+    for points in [
+        [(8.0, 5.0), (8.0, 55.0), (8.0, 105.0)],
+        [(6.0, 5.0), (10.0, 55.0), (6.0, 105.0)],
+    ] {
+        let shape = round_capped(&points);
+        assert_eq!(shape.resolved.rows, [], "{points:?}");
+    }
 }
 
 #[test]

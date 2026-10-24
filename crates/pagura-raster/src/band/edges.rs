@@ -207,6 +207,37 @@ pub(crate) struct Polygon {
     pub(crate) points_cells: bool,
 }
 
+/// The points of a path of lines' longest contour, its points in all and its
+/// contours, as [`Polygon::from_lines`] collects them: a line after a close
+/// reopens a contour at the subpath start.
+fn contour_sizes(path: &Path) -> (usize, usize, usize) {
+    let (mut longest, mut points, mut contours) = (0, 0, 0);
+    let (mut run, mut closed) = (0_usize, false);
+    for segment in path.segments() {
+        match segment {
+            Segment::MoveTo(_) => {
+                longest = longest.max(run);
+                (run, closed) = (1, false);
+                contours += 1;
+                points += 1;
+            }
+            Segment::LineTo(_) => {
+                if closed {
+                    longest = longest.max(run);
+                    (run, closed) = (1, false);
+                    contours += 1;
+                    points += 1;
+                }
+                run += 1;
+                points += 1;
+            }
+            Segment::Close => closed = true,
+            Segment::CubicTo { .. } | Segment::QuadTo { .. } => {}
+        }
+    }
+    (longest.max(run), points, contours)
+}
+
 impl Polygon {
     pub(crate) fn contours(&self) -> impl Iterator<Item = &[Point]> {
         self.starts.iter().enumerate().map(|(i, &start)| {
@@ -310,9 +341,13 @@ impl Polygon {
         crate::flatten::validate(path, transform, limits)?;
         let mut polygon = Self::default();
         let mut count = 0_usize;
-        // The current contour's user points start at `from` in `points`,
-        // untransformed until the contour ends.
+        // The current contour's user points, untransformed until the
+        // contour ends, room for the longest contour reserved at once.
         let mut user: Vec<Point> = Vec::new();
+        let (longest, points, contours) = contour_sizes(path);
+        bytes.reserve(&mut user, longest)?;
+        bytes.reserve(&mut polygon.points, points)?;
+        bytes.reserve(&mut polygon.starts, contours)?;
         let mut closed = false;
         let finish = |polygon: &mut Self,
                       user: &mut Vec<Point>,
