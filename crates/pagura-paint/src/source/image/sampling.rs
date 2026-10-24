@@ -94,11 +94,6 @@ impl Sampling {
         })
     }
 
-    /// Whether pixels gather nearest samples through a column plan.
-    pub(super) fn nearest(&self) -> bool {
-        matches!(self, Self::Separable(plan) if plan.nearest())
-    }
-
     /// Bytes retained by the immutable plan.
     pub(super) fn bytes(&self) -> usize {
         match self {
