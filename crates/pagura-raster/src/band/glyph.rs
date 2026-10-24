@@ -189,11 +189,10 @@ impl GlyphEdges {
         let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
         let relative = match &kind {
             Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { relative, .. } => relative.as_deref(),
+            Kind::Polygon { .. } => None,
         };
-        // A nonpoint spline accompanied by one canonical point contour
-        // integrates its source quadratics too. Keep the allowance on the
-        // glyph owner so both representations share the same admission.
+        // A curve body with a point contour integrates its quadratics too.
+        // Cache their arithmetic allowance once on the glyph owner.
         let direct =
             relative.and_then(|relative| rounding::Direct::new(outline, transform, relative));
         Ok(Self {
