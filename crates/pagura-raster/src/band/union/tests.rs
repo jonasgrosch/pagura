@@ -70,6 +70,7 @@ fn compare_ordering(pieces: &[Piece], rules: &[FillRule]) -> (Vec<Line>, Resolve
     let mut demand = Resolver::default();
     let mut midpoint = Resolver {
         eager_midpoint_keys: true,
+        original_height_sort: true,
         ..Resolver::default()
     };
     let (actual, work, bytes) = run(&mut demand);
@@ -257,6 +258,7 @@ fn demand_keys_keeps_the_original_resource_acceptance_boundary() {
         let mut bytes = Meter::new(byte_limit, "bytes");
         let result = Resolver {
             eager_midpoint_keys,
+            original_height_sort: eager_midpoint_keys,
             ..Resolver::default()
         }
         .row(
@@ -283,6 +285,45 @@ fn demand_keys_keeps_the_original_resource_acceptance_boundary() {
             );
         }
     }
+}
+
+#[test]
+fn height_merge_keeps_crossings_carry_and_both_fill_rules() {
+    let mut lines = polygon(&[(-2.0, 0.0), (2.0, 1.0), (-2.0, 1.0), (2.0, 0.0)], 0);
+    lines.extend(polygon(
+        &[(-3.0, 0.0), (3.0, 0.0), (3.0, 1.0), (-3.0, 1.0)],
+        1,
+    ));
+    for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+        let (out, resolver) = compare_ordering(&pieces(&lines), &[rule, FillRule::NonZero]);
+        assert!(resolver.heights.contains(&0.5));
+        assert_eq!(enclosed(&out), 2.0);
+    }
+}
+
+#[test]
+fn height_merge_preserves_sorted_bits_and_zero_representative() {
+    let rows = [
+        (-0.0, 0.5, 0),
+        (0.0, 1.0, 1),
+        (0.125, 0.75, 2),
+        (0.5, 1.0, 3),
+        (0.5, 0.875, 4),
+        (0.75, 1.0, 5),
+    ];
+    let mut heights = vec![0.0, 1.0, 0.75, 0.5, 1.0, 0.75, 1.0, 0.875, -0.0];
+    let mut expected = heights.clone();
+    expected.extend(rows.iter().map(|row| row.0));
+    expected.sort_unstable_by(f64::total_cmp);
+    heights.reserve(rows.len());
+    heights.sort_unstable_by(f64::total_cmp);
+    merge_heights(&mut heights, &rows);
+    let bits = |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+    assert_eq!(bits(&heights), bits(&expected));
+    heights.dedup();
+    expected.dedup();
+    assert_eq!(bits(&heights), bits(&expected));
+    assert_eq!(heights[0].to_bits(), (-0.0_f64).to_bits());
 }
 
 /// The closed polygon through `points`, in `group`.

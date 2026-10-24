@@ -93,7 +93,7 @@ struct Place {
 }
 
 const _: () = assert!(size_of::<Place>() == size_of::<(f64, u32)>());
-const _: () = assert!(std::mem::align_of::<Place>() == std::mem::align_of::<(f64, u32)>());
+const _: () = assert!(align_of::<Place>() == align_of::<(f64, u32)>());
 
 impl Place {
     fn new(piece: u32, pieces: &[Piece], mid: f64) -> Self {
@@ -170,6 +170,8 @@ fn sort_work(count: usize) -> usize {
 pub(crate) struct Resolver {
     #[cfg(test)]
     eager_midpoint_keys: bool,
+    #[cfg(test)]
+    original_height_sort: bool,
     heights: Vec<f64>,
     /// The pieces' columns and heights, `(start, end, piece)`, each by
     /// start: the sweep takes the pieces by their upper end.
@@ -368,12 +370,24 @@ impl Resolver {
         self.heights.clear();
         self.heights.extend([top, top + 1.0]);
         self.heights.extend_from_slice(&self.carry[1..]);
+        // Start heights will already be ordered in `rows`. Keep them
+        // implicit until the final merge instead of sorting them twice.
+        let starts = count;
+        #[cfg(test)]
+        let starts = if self.original_height_sort { 0 } else { starts };
         for p in pieces {
-            self.heights.extend([p.lo, p.hi]);
+            #[cfg(test)]
+            if self.original_height_sort {
+                self.heights.push(p.lo);
+            }
+            self.heights.push(p.hi);
         }
-        self.crossings(pieces, total, (work, bytes))?;
-        work.charge(sort_work(self.heights.len()))?;
+        self.crossings(pieces, total, starts, (work, bytes))?;
+        work.charge(sort_work(self.heights.len() + starts))?;
         self.heights.sort_unstable_by(f64::total_cmp);
+        if starts != 0 {
+            merge_heights(&mut self.heights, &self.rows);
+        }
         self.heights.dedup();
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
@@ -450,6 +464,7 @@ impl Resolver {
         &mut self,
         pieces: &[Piece],
         total: u32,
+        starts: usize,
         (work, bytes): (&mut Meter, &mut Meter),
     ) -> Result<()> {
         self.columns.clear();
@@ -486,7 +501,9 @@ impl Resolver {
                 if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
                     let y = lo + (hi - lo) * (d0 / (d0 - d1));
                     if y > lo && y < hi {
-                        room(&mut self.heights, 1, bytes)?;
+                        // Implicit starts still own their original slots:
+                        // reserve exactly the old full-list requirement.
+                        room(&mut self.heights, starts + 1, bytes)?;
                         self.heights.push(y);
                     }
                 }
@@ -657,6 +674,27 @@ fn overlapping(spans: &[Span]) -> usize {
         .enumerate()
         .map(|(n, &(_, end, _))| spans[n + 1..].partition_point(|s| s.0 <= end))
         .fold(0, usize::saturating_add)
+}
+
+/// Merges the already ordered row starts into the other sorted heights.
+/// Every implicit start retained its slot in the original height capacity;
+/// crossing insertion reserves against that full length too.
+fn merge_heights(heights: &mut Vec<f64>, rows: &[Span]) {
+    let (mut i, mut j) = (heights.len(), rows.len());
+    debug_assert!(heights.capacity() >= i + j);
+    heights.resize(i + j, 0.0);
+    for k in (0..heights.len()).rev() {
+        if j == 0 {
+            break;
+        }
+        if i > 0 && rows[j - 1].0.total_cmp(&heights[i - 1]).is_lt() {
+            heights[k] = heights[i - 1];
+            i -= 1;
+        } else {
+            heights[k] = rows[j - 1].0;
+            j -= 1;
+        }
+    }
 }
 
 /// Restores the order of `order` by moving entries down one at a time,
