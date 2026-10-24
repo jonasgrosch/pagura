@@ -433,9 +433,7 @@ fn curve(
         // A Bézier lies in its control hull (ISO 32000-2, 8.5.2.2).
         // The tolerance neighbourhood of a segment is convex, so admitting
         // both inner controls certifies the whole curve, including cusps.
-        let rounding = magnitude
-            * f64::EPSILON
-            * (16.0 * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX)) + elevation)
+        let rounding = hull_rounding(magnitude, depth, elevation)
             + inspection.as_ref().map_or(0.0, |i| i.rounding);
         let hull = inspection
             .as_ref()
@@ -492,6 +490,76 @@ fn curve(
             points = [a, ab, abc, mid];
         }
     }
+}
+
+/// The rounding allowance of a piece's control hull at subdivision `depth`,
+/// for controls of coordinate `magnitude` that carry `elevation` units.
+fn hull_rounding(magnitude: f64, depth: usize, elevation: f64) -> f64 {
+    magnitude
+        * f64::EPSILON
+        * (16.0 * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX)) + elevation)
+}
+
+/// For each curve of `path` in order, a box under `transform` containing
+/// every hull its subdivision accepts. Midpoints of coordinates stay between
+/// them, so every subdivided control lies within the curve's control box,
+/// and its image within the box's mapped corners, up to three rounding
+/// units of the magnitude for each of the two mappings. The hulls add their
+/// rounding allowance, at most that of the deepest subdivision.
+pub(crate) fn curve_boxes(
+    path: &Path,
+    transform: Transform,
+) -> impl Iterator<Item = [f64; 4]> + '_ {
+    let (mut start, mut position) = (Point::default(), Point::default());
+    path.segments().iter().filter_map(move |segment| {
+        let (controls, elevation) = match *segment {
+            Segment::MoveTo(point) => {
+                (start, position) = (point, point);
+                return None;
+            }
+            Segment::LineTo(point) => {
+                position = point;
+                return None;
+            }
+            Segment::Close => {
+                position = start;
+                return None;
+            }
+            Segment::CubicTo { c1, c2, end } => ([position, c1, c2, end], 0.0),
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(position, control, end);
+                ([position, c1, c2, end], ELEVATION)
+            }
+        };
+        position = controls[3];
+        let (mut lo, mut hi) = (controls[0], controls[0]);
+        for p in &controls[1..] {
+            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
+        }
+        let corners = [lo, Point::new(hi.x, lo.y), hi, Point::new(lo.x, hi.y)];
+        let magnitude = corners
+            .iter()
+            .map(|p| {
+                ((p.x * transform.a).abs() + (p.y * transform.c).abs() + transform.e.abs())
+                    .max((p.x * transform.b).abs() + (p.y * transform.d).abs() + transform.f.abs())
+            })
+            .fold(1.0_f64, f64::max);
+        let margin = hull_rounding(magnitude, MAX_SUBDIVISION_DEPTH, elevation)
+            + 8.0 * f64::EPSILON * magnitude;
+        let mapped = corners.map(|p| p * transform);
+        let (mut lo, mut hi) = (mapped[0], mapped[0]);
+        for p in &mapped[1..] {
+            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
+        }
+        Some([
+            (lo.x - margin).next_down(),
+            (lo.y - margin).next_down(),
+            (hi.x + margin).next_up(),
+            (hi.y + margin).next_up(),
+        ])
+    })
 }
 
 #[expect(
@@ -608,6 +676,80 @@ mod tests {
                     .map(|hull| hull.area)
                     .sum();
                 assert!(error <= allowance);
+            }
+        }
+    }
+
+    #[test]
+    fn curve_boxes_contain_every_accepted_hull() {
+        let p = Point::new;
+        let curves = [
+            Segment::QuadTo {
+                control: p(3.0, 9.0),
+                end: p(7.0, -2.0),
+            },
+            Segment::CubicTo {
+                c1: p(-5.0, 8.0),
+                c2: p(12.0, 8.0),
+                end: p(1.0, 0.0),
+            },
+            Segment::QuadTo {
+                control: p(1e3 + 3.0, 1e3 - 7.0),
+                end: p(1e3 + 9.0, 1e3 + 1.0),
+            },
+        ];
+        let transforms = [
+            Transform::IDENTITY,
+            Transform::new(0.6, 0.8, -0.8, 0.6, 0.0, 0.0),
+            Transform::new(1e-3, 2e-4, -3e-4, 7e-4, 0.0, 0.0),
+        ];
+        for (i, &segment) in curves.iter().enumerate() {
+            // Far from the origin, rounding bounds the hull areas from below.
+            let (start, allowance) = if i == 2 {
+                (p(1e3, 1e3), 1e-7)
+            } else {
+                (p(0.0, 0.0), 1e-9)
+            };
+            let mut path = PathBuilder::new();
+            path.move_to(start);
+            match segment {
+                Segment::QuadTo { control, end } => path.quad_to(control, end).unwrap(),
+                Segment::CubicTo { c1, c2, end } => path.cubic_to(c1, c2, end).unwrap(),
+                _ => unreachable!(),
+            };
+            let path = path.finish();
+            for transform in transforms {
+                let mut boxes = curve_boxes(&path, transform);
+                let bounds = boxes.next().unwrap();
+                assert!(boxes.next().is_none());
+                let mut hulls = Vec::new();
+                let mut work = Meter::new(usize::MAX, crate::band::RASTER_WORK);
+                flatten_inspected(
+                    &path,
+                    transform,
+                    &Limits::default(),
+                    &mut Vec::new(),
+                    &mut CurveStack::new(),
+                    (
+                        Flatness::Area(allowance),
+                        &mut crate::testing::bytes(),
+                        Inspection {
+                            hulls: Some(&mut hulls),
+                            work: &mut work,
+                            rounding: 0.0,
+                            targets: &[],
+                            offset: Point::default(),
+                            factor: 1.0,
+                        },
+                    ),
+                )
+                .unwrap();
+                assert!(hulls.len() > 1);
+                for hull in hulls {
+                    let [x0, y0, x1, y1] = hull.bounds;
+                    assert!(bounds[0] <= x0 && bounds[1] <= y0, "{bounds:?} {hull:?}");
+                    assert!(x1 <= bounds[2] && y1 <= bounds[3], "{bounds:?} {hull:?}");
+                }
             }
         }
     }
