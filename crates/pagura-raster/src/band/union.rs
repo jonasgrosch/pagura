@@ -311,6 +311,8 @@ fn sort_work(count: usize) -> usize {
 
 /// Reusable storage of the resolver.
 #[derive(Debug, Default)]
+// Test controls select independent eager implementations for differential checks.
+#[cfg_attr(test, allow(clippy::struct_excessive_bools))]
 pub(crate) struct Resolver {
     #[cfg(test)]
     eager_midpoint_keys: bool,
