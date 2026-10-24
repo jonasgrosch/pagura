@@ -1,6 +1,7 @@
 //! Boundaries of convex closed miter strokes (ISO 32000-2, 8.4.3.4).
 
 use crate::flatten::bounded;
+use crate::geometry::convex_orientation;
 use crate::{PathBuilder, Point};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -62,7 +63,7 @@ fn build_boundaries(
     if radius <= resolution || resolution * f64::from(vertices) > tolerance / 1024.0 {
         return Ok(None);
     }
-    let Some(orientation) = orientation(points) else {
+    let Some(orientation) = convex_orientation(points) else {
         return Ok(None);
     };
     let mut directions = buffer(points.len(), bytes)?;
@@ -166,63 +167,9 @@ fn buffer(capacity: usize, bytes: &mut Meter) -> Result<Vec<Point>> {
     Ok(points)
 }
 
-// Strict turns and exactly one revolution certify a simple convex polygon.
-// The error guard excludes uncertain determinants and collinear subdivision.
-fn orientation(points: &[Point]) -> Option<f64> {
-    let mut sign = 0.0_f64;
-    let mut turns = 0;
-    let half = |p: Point| p.y > 0.0 || (p.y == 0.0 && p.x >= 0.0);
-    for i in 0..points.len() {
-        let p = points[if i == 0 { points.len() - 1 } else { i - 1 }];
-        let q = points[i];
-        let r = points[(i + 1) % points.len()];
-        let a = q - p;
-        let b = r - q;
-        turns += usize::from(half(a) != half(b));
-        let (left, right) = (a.x * b.y, a.y * b.x);
-        let cross = left - right;
-        if cross.abs() <= 8.0 * f64::EPSILON * (left.abs() + right.abs())
-            || (sign != 0.0 && cross.signum() != sign)
-        {
-            return None;
-        }
-        sign = cross.signum();
-    }
-    (turns == 2).then_some(sign)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn rejects_uncertain_concave_and_repeated_turns() {
-        let rectangle = [
-            Point::new(1.0, 1.0),
-            Point::new(7.0, 1.0),
-            Point::new(7.0, 7.0),
-            Point::new(1.0, 7.0),
-        ];
-        assert_eq!(orientation(&rectangle), Some(1.0));
-        assert_eq!(
-            orientation(&rectangle.into_iter().rev().collect::<Vec<_>>()),
-            Some(-1.0)
-        );
-        assert!(orientation(&rectangle.repeat(2)).is_none());
-        let mut concave = rectangle.to_vec();
-        concave.insert(2, Point::new(2.0, 2.0));
-        assert!(orientation(&concave).is_none());
-        let mut subdivided = rectangle.to_vec();
-        subdivided.insert(1, Point::new(4.0, 1.0));
-        assert!(orientation(&subdivided).is_none());
-        let star: Vec<_> = (0..5)
-            .map(|i| {
-                let a = f64::from((i * 2) % 5) * std::f64::consts::TAU / 5.0;
-                Point::new(a.cos(), a.sin())
-            })
-            .collect();
-        assert!(orientation(&star).is_none());
-    }
 
     fn polygon(angles: impl Iterator<Item = f64>, radius: f64) -> Vec<Point> {
         angles

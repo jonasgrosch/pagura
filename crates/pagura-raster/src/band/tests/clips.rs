@@ -99,3 +99,53 @@ fn clip_preparation_cells_and_rows_use_the_remaining_byte_budget() {
     .unwrap_err();
     assert_eq!(error.message, RENDER_BYTES);
 }
+
+#[test]
+fn a_ring_inside_a_round_clip_keeps_its_own_edges() {
+    // A ring whose box corners lie outside a round clip, so that the clip's
+    // boundary runs cross every one of its rows, though the ring itself
+    // stays inside the clip.
+    let area = area(0, 0, 32, 32, 8);
+    let limits = Limits::default();
+    let circle = |radius: f64, count: u32, reversed: bool| {
+        let step = std::f64::consts::TAU / f64::from(count);
+        (0..count)
+            .map(|i| {
+                let a = f64::from(i) * step * if reversed { -1.0 } else { 1.0 };
+                Point::new(16.0 + radius * a.cos(), 16.0 + radius * a.sin())
+            })
+            .collect::<Vec<_>>()
+    };
+    let mut round = PathBuilder::new();
+    round.polygon(circle(14.0, 160, false));
+    let round = round.finish();
+    let mut ring = PathBuilder::new();
+    ring.polygon(circle(13.0, 96, false));
+    ring.polygon(circle(9.0, 64, true));
+    let ring = ring.finish();
+    let clip = ClipShape::new(
+        &[(&round, FillRule::NonZero)],
+        Transform::IDENTITY,
+        &public(area, &limits),
+    )
+    .unwrap();
+    let prepare = |clip| {
+        Shape::fill_in(
+            &ring,
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            &options(area, &limits, clip),
+        )
+        .unwrap()
+        .unwrap()
+    };
+    let alone = prepare(None);
+    let clipped = prepare(Some(&clip));
+    assert!(!clipped.masked);
+    assert!(clipped.resolved.is_empty());
+    assert_eq!(clipped.work(), alone.work());
+    assert_eq!(
+        raster(&area, Some(&clipped), Some(&clip)).0,
+        raster(&area, Some(&alone), None).0
+    );
+}
