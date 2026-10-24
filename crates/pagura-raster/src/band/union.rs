@@ -171,10 +171,13 @@ fn key_bounds(piece: &Piece, (left, right): (f64, f64)) -> (f64, f64) {
     }
     let full = (a.x.min(b.x), a.x.max(b.x));
     let (top, bottom) = (a.y.min(b.y), a.y.max(b.y));
-    if ![a.x, a.y, b.x, b.y]
+    if !([a.x, a.y, b.x, b.y]
         .into_iter()
         .all(|value| value.abs() <= 1.0e12)
-        || !(top < bottom && top <= piece.lo && piece.lo < piece.hi && piece.hi <= bottom)
+        && top < bottom
+        && top <= piece.lo
+        && piece.lo < piece.hi
+        && piece.hi <= bottom)
     {
         return full;
     }
