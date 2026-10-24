@@ -28,6 +28,50 @@ pub(crate) const WIDE: usize = 4096;
 /// up to this many rows of a band at once.
 pub(crate) const WINDOW: u32 = 32;
 
+/// Checked consumed-work tally for one complete measured inspection.
+/// Each record includes its own fixed bookkeeping fee; overflow disables reuse.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct InspectionWork {
+    consumed: Option<usize>,
+}
+
+impl Default for InspectionWork {
+    fn default() -> Self {
+        Self { consumed: Some(0) }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum InspectionPart {
+    Accumulated,
+    Touched,
+    MaskAdvances,
+    Scan,
+    Skipped,
+    EmptyContours,
+    SearchBound,
+    Windows,
+    Rows,
+}
+
+impl InspectionWork {
+    pub(crate) fn record(&mut self, part: InspectionPart, count: usize) {
+        let weight: usize = match part {
+            InspectionPart::Touched => 3,
+            InspectionPart::Windows | InspectionPart::Rows => 0,
+            _ => 1,
+        };
+        self.consumed = self
+            .consumed
+            .and_then(|used| used.checked_add(count.checked_mul(weight)?)?.checked_add(1));
+    }
+
+    /// The original prepaid work left after all inspection and tally costs.
+    pub(crate) fn surplus(self, prepaid: usize) -> Option<usize> {
+        prepaid.checked_sub(self.consumed?.checked_add(16)?)
+    }
+}
+
 /// Strip-sized cells, reused for every mark and band of a render.
 #[derive(Debug, Default)]
 pub(crate) struct Cells {
@@ -273,18 +317,30 @@ impl Cells {
     /// Adds a canonical contour in source order, moving each vertex once.
     /// Consecutive whole-row sides keep one row view; all other sides use
     /// the ordinary line kernel. Closing sides use the first placed bits.
-    #[expect(
-        clippy::cast_precision_loss,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "window coordinates are bounded; a checked local row is below WINDOW"
-    )]
     pub(super) fn contour<const MEASURE: bool>(
         &mut self,
         points: &[Point],
         origin: Point,
     ) -> usize {
+        self.contour_counted::<MEASURE>(points, origin, None)
+    }
+
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the original bounded contour arithmetic is unchanged"
+    )]
+    pub(super) fn contour_counted<const MEASURE: bool>(
+        &mut self,
+        points: &[Point],
+        origin: Point,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let Some(&head) = points.first() else {
+            if let Some(observed) = observed.as_deref_mut() {
+                observed.record(InspectionPart::EmptyContours, 1);
+            }
             return 0;
         };
         // Match canonical placement followed by the all-items default
@@ -344,7 +400,8 @@ impl Cells {
                 }
             } else {
                 if a.0.y != b.0.y && a.0.x.min(b.0.x) < right {
-                    visited += self.line_with::<MEASURE>(Line { a: a.0, b: b.0 });
+                    visited += self
+                        .line_counted::<MEASURE>(Line { a: a.0, b: b.0 }, observed.as_deref_mut());
                 }
                 if index == points.len() {
                     return visited;
@@ -358,6 +415,14 @@ impl Cells {
 
     #[inline]
     fn line_with<const MEASURE: bool>(&mut self, line: Line) -> usize {
+        self.line_counted::<MEASURE>(line, None)
+    }
+
+    pub(super) fn line_counted<const MEASURE: bool>(
+        &mut self,
+        line: Line,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let Line { a, b } = line;
         if a.y == b.y {
             return 0;
@@ -369,12 +434,18 @@ impl Cells {
         let mut carried: Option<(f64, f64)> = None;
         for r in self.span(a.y, b.y) {
             if self.skipped(r) {
+                if let Some(observed) = observed.as_deref_mut() {
+                    observed.record(InspectionPart::Skipped, 1);
+                }
                 continue;
             }
             let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
             let lo = upper.y.max(top);
             let hi = lower.y.min(top + 1.0);
             if lo >= hi {
+                if let Some(observed) = observed.as_deref_mut() {
+                    observed.record(InspectionPart::Skipped, 1);
+                }
                 continue;
             }
             let xa = match carried {
@@ -401,11 +472,20 @@ impl Cells {
         self.curve_with::<true>(curve, origin)
     }
 
+    fn curve_with<const MEASURE: bool>(&mut self, curve: &Mono, origin: Point) -> usize {
+        self.curve_counted::<MEASURE>(curve, origin, None)
+    }
+
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "bounded device coordinates are within i64"
+        reason = "the original bounded curve arithmetic is unchanged"
     )]
-    fn curve_with<const MEASURE: bool>(&mut self, curve: &Mono, origin: Point) -> usize {
+    pub(super) fn curve_counted<const MEASURE: bool>(
+        &mut self,
+        curve: &Mono,
+        origin: Point,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let m = curve;
         let (x0, y0) = (m.x0 + origin.x, m.y0 + origin.y);
         let (x1, y1) = (m.x1 + origin.x, m.y1 + origin.y);
@@ -417,6 +497,9 @@ impl Cells {
             let lo = y0.max(top);
             let hi = y1.min(top + 1.0);
             if lo >= hi || self.skipped(r) {
+                if let Some(observed) = observed.as_deref_mut() {
+                    observed.record(InspectionPart::Skipped, 1);
+                }
                 carried = None;
                 continue;
             }

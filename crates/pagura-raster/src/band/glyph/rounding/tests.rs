@@ -203,7 +203,9 @@ fn saturated_winding_keeps_original_control_and_nonfinite_uncertainty() {
     for uncertainty in [1.0 / 255.0, f64::NAN, f64::INFINITY] {
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let mut bytes = crate::testing::bytes();
-        let pending = ambiguous(&shape, uncertainty, None, (&mut work, &mut bytes)).unwrap();
+        let pending = ambiguous(&shape, uncertainty, None, (&mut work, &mut bytes))
+            .unwrap()
+            .pixels;
         let pixel = *pending.iter().find(|p| p.x == 2 && p.y == 4).unwrap();
         assert_eq!(pixel.byte, 255);
         let source = Source::of(&edges, Point::default(), &mut work)
@@ -264,6 +266,7 @@ fn local_proof_chords_keep_nonpoint_loops_distinct_from_points() {
                 x: 0,
                 y: 0,
                 byte: 0,
+                hint: None,
             },
             (&options, 0),
             (&mut work, &mut bytes),
@@ -332,6 +335,7 @@ fn analytic_integral_cancellation_cannot_skip_a_coverage_byte() {
     assert_eq!(
         ambiguous(&prepared, 0.0, None, (&mut work, &mut bytes))
             .unwrap()
+            .pixels
             .len(),
         1,
     );
@@ -420,7 +424,9 @@ fn replacement_releases_dead_builder_scratch_before_the_next_inspection() {
         RENDER_BYTES,
     );
     tight.charge(bytes.used()).unwrap();
-    let pending = ambiguous(&shape, AREA, None, (&mut work, &mut tight)).unwrap();
+    let pending = ambiguous(&shape, AREA, None, (&mut work, &mut tight))
+        .unwrap()
+        .pixels;
     assert_eq!(pending.len(), 1);
     assert_eq!(tight.used(), shape.retained_bytes() + size_of::<Pixel>());
 }
@@ -490,6 +496,7 @@ fn canonical_clip_interpolation_cancellation_stays_inside_the_interval() {
             x: 0,
             y: 0,
             byte: 0,
+            hint: None,
         },
         (&options, 0),
         (&mut work, &mut bytes),
@@ -565,6 +572,7 @@ fn canonical_source_line_cancellation_cannot_bypass_curve_intervals() {
             x: 0,
             y: 0,
             byte: 0,
+            hint: None,
         },
         (&options, 0),
         (&mut work, &mut bytes),
@@ -671,7 +679,8 @@ fn local_leaf_enclosures_ignore_a_distant_opposite_lobe() {
         }),
         (&mut work, &mut bytes),
     )
-    .unwrap();
+    .unwrap()
+    .pixels;
     assert!(pending.iter().any(|p| p.x == 2 && p.y == 3));
     assert!(!pending.iter().any(|p| p.x == 7 && p.y == 4));
     let ready = super::super::place(&edges, origin, &options)
@@ -948,7 +957,8 @@ fn owned_replacement_evidence_survives_inspection_and_keeps_point_band_bytes() {
         local,
         (&mut work, &mut bytes),
     )
-    .unwrap();
+    .unwrap()
+    .pixels;
     assert!(pending.iter().any(|p| p.x == 2 && p.y == 3));
     let pending_bytes = pending.capacity() * size_of::<Pixel>();
     assert_eq!(bytes.used(), live + pending_bytes);
@@ -1058,6 +1068,7 @@ fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
         x: 2,
         y: 3,
         byte: quantize_unit(10.0 / 9.0 - origin.y),
+        hint: None,
     };
     assert_eq!(pixel.byte, 127);
     let mut proven = prove_original_pixel(
@@ -1075,7 +1086,12 @@ fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
     let mut hit_work = Meter::new(64, RASTER_WORK);
     let mut pending = Vec::new();
     bytes.reserve_capacity(&mut pending, 1).unwrap();
-    pending.push(Pixel { byte: 0, ..pixel });
+    // An earlier original-control certificate has precedence over any hint.
+    pending.push(Pixel {
+        byte: 0,
+        hint: Some(0),
+        ..pixel
+    });
     let released = pending.capacity() * size_of::<Pixel>();
     let mut targets = Vec::new();
     assert!(
@@ -1098,6 +1114,50 @@ fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
         bytes.used(),
         proven.capacity() * size_of::<Pixel>() + targets.capacity() * size_of::<[f64; 4]>(),
     );
+}
+
+#[test]
+fn a_prepared_hint_keeps_the_original_certificate_collector() {
+    let limits = Limits::default();
+    let (edges, options) = original_reuse_fixture(&limits);
+    let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
+    let mut source_work = Meter::new(limits.raster_work, RASTER_WORK);
+    let source = Source::of(&edges, origin, &mut source_work)
+        .unwrap()
+        .unwrap();
+    // The independent integral 10/9-origin.y rounds to127. This tiny work
+    // allowance cannot repeat the original-control integration.
+    for hint in [Some(127), None] {
+        let mut work = Meter::new(64, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let mut pending = Vec::new();
+        bytes.reserve_capacity(&mut pending, 1).unwrap();
+        pending.push(Pixel {
+            x: 2,
+            y: 3,
+            byte: 0,
+            hint,
+        });
+        let (mut targets, mut proven) = (Vec::new(), Vec::new());
+        let result = collect_targets(
+            source,
+            pending,
+            (&mut targets, &mut proven),
+            &options,
+            Meters {
+                work: &mut work,
+                bytes: &mut bytes,
+            },
+        );
+        match hint {
+            Some(expected) => {
+                assert!(result.unwrap());
+                assert_eq!(proven[0].byte, expected);
+                assert_eq!(targets, [[2.0, 3.0, 3.0, 4.0]]);
+            }
+            None => assert_eq!(result.unwrap_err().kind, pagura_core::ErrorKind::Limit),
+        }
+    }
 }
 
 #[test]
@@ -1141,6 +1201,7 @@ fn original_byte_certificates_do_not_survive_a_different_clip_or_call() {
                     x: 2,
                     y: 3,
                     byte: quantize_unit(exact),
+                    hint: None,
                 },
                 &options,
                 Meters {
@@ -1177,6 +1238,7 @@ fn original_byte_reuse_keeps_adjacent_work_and_byte_limits() {
         x: 2,
         y: 3,
         byte: 127,
+        hint: None,
     };
     let proven = prove_original_pixel(
         source,

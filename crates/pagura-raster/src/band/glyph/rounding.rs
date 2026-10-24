@@ -14,6 +14,8 @@ use crate::{FillRule, Path, Point, Segment, Transform, quantize_unit};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 
+mod analytic;
+
 const ROUNDS: i32 = 12;
 
 #[derive(Debug, Clone, Copy)]
@@ -21,6 +23,15 @@ struct Pixel {
     x: u32,
     y: u32,
     byte: u8,
+    hint: Option<u8>,
+}
+
+const _: () = assert!(size_of::<Pixel>() == 12);
+
+#[derive(Debug)]
+struct Ambiguity {
+    pixels: Vec<Pixel>,
+    surplus: Option<usize>,
 }
 
 #[derive(Clone, Copy)]
@@ -296,10 +307,23 @@ pub(super) fn certify(
             origin,
             other_error,
         });
-        let pending = ambiguous(&shape, error, local, (&mut work, &mut bytes))?;
+        let Ambiguity {
+            mut pixels,
+            surplus,
+        } = ambiguous(&shape, error, local, (&mut work, &mut bytes))?;
+        if let Some(surplus) = surplus.filter(|&units| units != 0) {
+            analytic::hint(
+                source,
+                options,
+                &mut pixels,
+                &proven,
+                surplus,
+                bytes.remaining(),
+            );
+        }
         let wrong = collect_targets(
             source,
-            pending,
+            pixels,
             (&mut targets, &mut proven),
             options,
             Meters {
@@ -386,7 +410,10 @@ fn collect_targets(
         {
             proven[index].byte
         } else {
-            let byte = true_byte(source, pixel, options, (work, bytes))?;
+            let byte = match pixel.hint {
+                Some(byte) => byte,
+                None => true_byte(source, pixel, options, (work, bytes))?,
+            };
             if proven.len() == proven.capacity() {
                 work.charge(proven.len())?;
             }
@@ -578,17 +605,18 @@ fn ambiguous(
     error: f64,
     local: Option<Local<'_>>,
     (work, bytes): (&mut Meter, &mut Meter),
-) -> Result<Vec<Pixel>> {
+) -> Result<Ambiguity> {
     let width = match &shape.body {
         Body::Glyph(body) => body.scan.1.saturating_sub(body.scan.0),
         Body::Edges(body) => body.scan.1.saturating_sub(body.scan.0),
     };
     let mut cells = Cells::new(width, bytes)?;
     let cell_bytes = cells.retained_bytes();
-    work.charge(shape.work())?;
+    let allowance = shape.work();
+    work.charge(allowance)?;
     let mut pending = Vec::new();
     let mut failure = None;
-    raster::inspect(shape, &mut cells, |y, x0, x1, area, arithmetic| {
+    let observed = raster::inspect(shape, &mut cells, |y, x0, x1, area, arithmetic| {
         if failure.is_some() || certain(area, outward(error + arithmetic)) {
             return;
         }
@@ -633,6 +661,7 @@ fn ambiguous(
                     x: u32::try_from(x).map_err(|_| Error::limit("glyph column exceeds u32"))?,
                     y,
                     byte: quantize_unit(area),
+                    hint: None,
                 });
             }
             Ok(())
@@ -646,7 +675,10 @@ fn ambiguous(
     if let Some(error) = failure {
         return Err(error);
     }
-    Ok(pending)
+    Ok(Ambiguity {
+        pixels: pending,
+        surplus: observed.surplus(allowance),
+    })
 }
 
 fn certain(area: f64, error: f64) -> bool {

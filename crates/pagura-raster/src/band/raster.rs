@@ -1,6 +1,6 @@
 //! The band rasterizer: one strip of cells, reused for every mark and band.
 
-use super::cells::{Cells, STRIP};
+use super::cells::{Cells, InspectionPart, InspectionWork, STRIP};
 use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
 use super::curve::Mono;
@@ -486,6 +486,15 @@ impl Items<'_> {
         cells: &mut Cells,
         window: &std::ops::Range<u32>,
     ) -> usize {
+        self.accumulate_counted::<MEASURE>(cells, window, None)
+    }
+
+    fn accumulate_counted<const MEASURE: bool>(
+        &self,
+        cells: &mut Cells,
+        window: &std::ops::Range<u32>,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let resolved = !self.resolved.is_empty();
         if resolved {
             cells.skip(self.resolved.mask(window));
@@ -495,10 +504,10 @@ impl Items<'_> {
             listed.len()
                 + listed
                     .iter()
-                    .map(|&item| self.add::<MEASURE>(cells, item as usize))
+                    .map(|&item| self.add::<MEASURE>(cells, item as usize, observed.as_deref_mut()))
                     .sum::<usize>()
         } else {
-            self.all::<MEASURE>(cells)
+            self.all::<MEASURE>(cells, observed.as_deref_mut())
         };
         if resolved {
             cells.skip(0);
@@ -506,7 +515,7 @@ impl Items<'_> {
             work += sides.len();
             for &line in sides {
                 work += if MEASURE {
-                    cells.line_measured(line)
+                    cells.line_counted::<true>(line, observed.as_deref_mut())
                 } else {
                     cells.line(line)
                 };
@@ -517,7 +526,11 @@ impl Items<'_> {
 
     /// Adds every item to the open window: lines, curves, then canonical
     /// point contours. Returns the work spent, one unit per item visited.
-    fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
+    fn all<const MEASURE: bool>(
+        &self,
+        cells: &mut Cells,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let origin = self.origin.unwrap_or_default();
         let at = |p: Point| Point::new(p.x + origin.x, p.y + origin.y);
         let mut work = self.curves.len();
@@ -531,6 +544,7 @@ impl Items<'_> {
                             a: at(l.a),
                             b: at(l.b),
                         },
+                        observed.as_deref_mut(),
                     );
                 }
             }
@@ -538,13 +552,21 @@ impl Items<'_> {
                 // Count every visited side, including those whose placed
                 // endpoints collapse to a horizontal line.
                 work = work.saturating_add(view.raw_count().unwrap_or(usize::MAX));
-                work += view.accumulate_unindexed::<MEASURE>(cells);
+                work += if let Some(observed) = observed.as_deref_mut() {
+                    view.accumulate_unindexed_counted::<MEASURE>(cells, Some(observed))
+                } else {
+                    view.accumulate_unindexed::<MEASURE>(cells)
+                };
             }
         }
         for m in self.curves {
             if cells.reaches(m.x0.min(m.x1) + origin.x) {
                 work += if MEASURE {
-                    cells.curve_measured(m, origin)
+                    if let Some(observed) = observed.as_deref_mut() {
+                        cells.curve_counted::<true>(m, origin, Some(observed))
+                    } else {
+                        cells.curve_measured(m, origin)
+                    }
                 } else {
                     cells.curve(m, origin)
                 };
@@ -570,7 +592,7 @@ impl Items<'_> {
                     for line in [right, left] {
                         // These are absolute canonical endpoints. Adding an
                         // origin or a default zero again changes their bits.
-                        work += Self::line::<MEASURE>(cells, line);
+                        work += Self::line::<MEASURE>(cells, line, observed.as_deref_mut());
                     }
                 }
             }
@@ -579,11 +601,15 @@ impl Items<'_> {
     }
 
     #[inline]
-    fn line<const MEASURE: bool>(cells: &mut Cells, line: Line) -> usize {
+    fn line<const MEASURE: bool>(
+        cells: &mut Cells,
+        line: Line,
+        observed: Option<&mut InspectionWork>,
+    ) -> usize {
         if !cells.reaches(line.a.x.min(line.b.x)) {
             0
         } else if MEASURE {
-            cells.line_measured(line)
+            cells.line_counted::<true>(line, observed)
         } else {
             cells.line(line)
         }
@@ -592,16 +618,21 @@ impl Items<'_> {
     /// Adds item `item` to the open window: each point plus the origin, as
     /// translating the vertices first would give. Returns the work spent.
     #[inline]
-    fn add<const MEASURE: bool>(&self, cells: &mut Cells, item: usize) -> usize {
+    fn add<const MEASURE: bool>(
+        &self,
+        cells: &mut Cells,
+        item: usize,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let lines = match &self.lines {
             Lines::Slice { lines, point } => {
                 debug_assert!(point.is_none());
                 lines
             }
             Lines::Polygon(view) => {
-                return view
-                    .line(item)
-                    .map_or(0, |line| Self::line::<MEASURE>(cells, line));
+                return view.line(item).map_or(0, |line| {
+                    Self::line::<MEASURE>(cells, line, observed.as_deref_mut())
+                });
             }
         };
         let at = |p: Point| match self.origin {
@@ -617,7 +648,7 @@ impl Items<'_> {
                 };
                 if cells.reaches(line.a.x.min(line.b.x)) {
                     if MEASURE {
-                        cells.line_measured(line)
+                        cells.line_counted::<true>(line, observed.as_deref_mut())
                     } else {
                         cells.line(line)
                     }
@@ -632,7 +663,11 @@ impl Items<'_> {
                     let origin = self.origin.unwrap_or_default();
                     if cells.reaches(m.x0.min(m.x1) + origin.x) {
                         if MEASURE {
-                            cells.curve_measured(m, origin)
+                            if let Some(observed) = observed.as_deref_mut() {
+                                cells.curve_counted::<true>(m, origin, Some(observed))
+                            } else {
+                                cells.curve_measured(m, origin)
+                            }
                         } else {
                             cells.curve(m, origin)
                         }
@@ -651,7 +686,7 @@ pub(crate) fn inspect(
     shape: &Shape,
     cells: &mut Cells,
     mut visit: impl FnMut(u32, usize, usize, f64, f64),
-) -> Result<()> {
+) -> Result<InspectionWork> {
     let (items, scan) = match &shape.body {
         Body::Edges(edges) => (
             Items {
@@ -670,6 +705,8 @@ pub(crate) fn inspect(
     };
     let target = Target::of(shape);
     let fit = cells.rows_fit(scan.1.saturating_sub(scan.0));
+    let mut observed = InspectionWork::default();
+    let scan_work = scan.1.saturating_sub(scan.0) / 64 + 4;
     let mut y = shape.bounds.y0;
     while y < shape.bounds.y1 {
         let end = match items.strips {
@@ -681,24 +718,39 @@ pub(crate) fn inspect(
         if !cells.open(scan, window.clone()) {
             return Err(Error::limit("glyph inspection cells exceed allocation"));
         }
-        items.accumulate::<true>(cells, &window);
+        observed.record(InspectionPart::Windows, 1);
+        // Three partition searches in Resolved::mask/lines, each at most
+        // 65 predicates on the supported 32/64-bit targets. This is a bound,
+        // not a second search or a claim that every predicate ran.
+        if !shape.resolved.is_empty() {
+            observed.record(InspectionPart::SearchBound, 3 * 65);
+        }
+        let accumulated = items.accumulate_counted::<true>(cells, &window, Some(&mut observed));
+        observed.record(InspectionPart::Accumulated, accumulated);
         let rounding = cells.arithmetic_error();
         for (r, row) in (0_usize..).zip(cells.rows()) {
+            observed.record(InspectionPart::Rows, 1);
+            observed.record(InspectionPart::Scan, scan_work);
             let mut next = 0;
-            cells.inspect(r, |x0, x1, area| {
+            let touched = cells.inspect(r, |x0, x1, area| {
                 let x0 = x0.max(target.bounds.x0 as usize);
                 let x1 = x1.min(target.bounds.x1 as usize);
                 if let Some(mask) = target.mask {
-                    masked_ranges(mask.row(row), &mut next, (x0, x1), |a, b| {
+                    // The unchanged inspector performs this lookup for every
+                    // raw span, rather than caching it once per row.
+                    observed.record(InspectionPart::SearchBound, 65);
+                    let advanced = masked_ranges(mask.row(row), &mut next, (x0, x1), |a, b| {
                         visit(row, a, b, area.abs(), rounding);
                     });
+                    observed.record(InspectionPart::MaskAdvances, advanced);
                 } else if x0 < x1 {
                     visit(row, x0, x1, area.abs(), rounding);
                 }
             });
+            observed.record(InspectionPart::Touched, touched);
         }
     }
-    Ok(())
+    Ok(observed)
 }
 
 /// Writes runs to the current row of a coverage, within columns `x0..x1`.

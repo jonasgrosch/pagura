@@ -2,7 +2,7 @@
 
 use super::super::edges::{Line, Polygon};
 use crate::Point;
-use crate::band::cells::{Cells, WIDE, WINDOW};
+use crate::band::cells::{Cells, InspectionWork, WIDE, WINDOW};
 use crate::flatten::{MAX_COORDINATE, bounded};
 use pagura_core::{Result, convert::u32_to_usize};
 use std::num::NonZeroU32;
@@ -169,9 +169,22 @@ impl<'a> PolygonLines<'a> {
     /// Adds each unindexed contour through the common bulk cell kernel.
     /// Canonical point cells retain their original two-side path and order.
     pub(crate) fn accumulate_unindexed<const MEASURE: bool>(self, cells: &mut Cells) -> usize {
+        self.accumulate_unindexed_counted::<MEASURE>(cells, None)
+    }
+
+    /// The same traversal with an optional lexical inspection counter.
+    pub(crate) fn accumulate_unindexed_counted<const MEASURE: bool>(
+        self,
+        cells: &mut Cells,
+        mut observed: Option<&mut InspectionWork>,
+    ) -> usize {
         let mut work = 0;
         for contour in self.polygon.contours() {
-            work += cells.contour::<MEASURE>(contour, self.origin);
+            work += if let Some(observed) = observed.as_deref_mut() {
+                cells.contour_counted::<MEASURE>(contour, self.origin, Some(observed))
+            } else {
+                cells.contour::<MEASURE>(contour, self.origin)
+            };
         }
         for &point in self.points {
             for line in point_sides(self.at(point)) {
@@ -181,7 +194,7 @@ impl<'a> PolygonLines<'a> {
                 };
                 if !line.is_horizontal() && cells.reaches(line.a.x.min(line.b.x)) {
                     work += if MEASURE {
-                        cells.line_measured(line)
+                        cells.line_counted::<true>(line, observed.as_deref_mut())
                     } else {
                         cells.line(line)
                     };
