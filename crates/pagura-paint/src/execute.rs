@@ -115,6 +115,7 @@ impl Rendering<'_> {
     ) -> Result<Completion, E> {
         let area = self.plan.area;
         self.workspace.restart();
+        self.rasterizer.restart();
         for band in area.bands() {
             let rows = area.band_rows(band);
             let row = rows.start;

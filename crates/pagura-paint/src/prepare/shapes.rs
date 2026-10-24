@@ -361,11 +361,30 @@ impl Shapes {
         rasterizer.rasterize(MarkCoverage { shape, clip }, band, out);
     }
 
+    /// Writes the coverage of glyph placement `shape` in `band` to `out`,
+    /// replacing it, as [`Self::rasterize`] does for it alone; its key names
+    /// it across the bands of a render.
+    pub(crate) fn rasterize_glyph(
+        &self,
+        rasterizer: &mut BandRasterizer,
+        shape: u32,
+        band: u32,
+        out: &mut BandCoverage,
+    ) {
+        match self.shapes.get(u32_to_usize(shape)) {
+            Some(glyph) => rasterizer.rasterize_glyph((shape, glyph), band, out),
+            // A key no preparation gave out covers nothing.
+            None => out.clear(),
+        }
+    }
+
     /// Writes the coverage within `band` of the leading `shapes`, which
     /// share no pixel and are all within `clip`, to `out`, replacing it:
     /// each pixel's coverage as [`Self::rasterize`] gives it for the one
     /// shape that can cover it, with zero coverage in the gaps of a row.
-    /// Returns how many shapes it took, at least one when there are any.
+    /// Each shape goes with its key, which names it across the bands of a
+    /// render. Returns how many shapes it took, at least one when there are
+    /// any.
     pub(crate) fn rasterize_run(
         &self,
         rasterizer: &mut BandRasterizer,
@@ -377,7 +396,7 @@ impl Shapes {
         let mut shapes = shapes
             .iter()
             .take(RUN_SHAPES)
-            .map_while(|&key| self.shapes.get(u32_to_usize(key)));
+            .map_while(|&key| Some((key, self.shapes.get(u32_to_usize(key))?)));
         let Some(first) = shapes.next() else {
             out.clear();
             return 0;
