@@ -729,31 +729,10 @@ fn circle(
 ) -> Result<()> {
     let before = bytes.used().saturating_sub(out.heap_bytes());
     let result = (|| {
-        let Pen { radius, tolerance } = pen;
-        if radius == 0.0 {
+        if pen.radius == 0.0 {
             return Ok(());
         }
-        let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
-        let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
-        if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX)
-        {
-            return Err(Error::limit("round stroke subdivision budget exceeded"));
-        }
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "integer count is bounded by the u32-compatible path budget below"
-        )]
-        let count = count as u32;
-        let mut points = Vec::new();
-        bytes.reserve(&mut points, count as usize)?;
-        points.extend((0..count).map(|i| {
-            let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
-            Point::new(
-                center.x + radius * angle.cos(),
-                center.y + radius * angle.sin(),
-            )
-        }));
+        let points = ring(center, pen, limits, bytes)?;
         polygon(out, &points, limits, bytes)
     })();
     bytes.refund(
@@ -762,6 +741,34 @@ fn circle(
             .saturating_sub(before.saturating_add(out.heap_bytes())),
     );
     result
+}
+
+/// The pen's canonical circle polygon around `center`, counterclockwise
+/// from angle zero at equal angles, within the pen's tolerance; charged to
+/// `bytes`.
+fn ring(center: Point, pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let Pen { radius, tolerance } = pen;
+    let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
+    let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
+    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
+        return Err(Error::limit("round stroke subdivision budget exceeded"));
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "integer count is bounded by the u32-compatible path budget above"
+    )]
+    let count = count as u32;
+    let mut points = Vec::new();
+    bytes.reserve(&mut points, count as usize)?;
+    points.extend((0..count).map(|i| {
+        let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
+        Point::new(
+            center.x + radius * angle.cos(),
+            center.y + radius * angle.sin(),
+        )
+    }));
+    Ok(points)
 }
 
 fn polygon(

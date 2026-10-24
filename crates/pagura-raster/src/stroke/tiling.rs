@@ -7,7 +7,9 @@
 //! side, at the segment's own normal. The outer wedge between two normals
 //! takes the join. Round caps keep the component stroker's circle polygon:
 //! its angular grid is part of the canonical outline. Those circles overlap
-//! the adjacent pieces, so open round-capped runs remain unproven.
+//! the adjacent pieces, so open round-capped runs remain unproven, except a
+//! lone segment longer than the pen: its quadrilateral and the parts of its
+//! circles beyond its ends make one convex outline.
 //! Pieces that meet share their vertices bit for bit. Their nonzero filled
 //! set is the components'; where proven, every point is covered once. A
 //! reversal, or a turn tighter than the pen around a short segment, takes the components'
@@ -17,7 +19,7 @@
 //! may meet), are not proven to tile: their union is still the stroke, and
 //! the rasterizer certifies or resolves its windings.
 
-use super::{Pen, Run, cap, join, polygon};
+use super::{Pen, Run, cap, join, polygon, ring};
 use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -88,6 +90,11 @@ pub(super) fn append(
             },
         };
         let segments = segments(&points, joints, bytes)?;
+        if let (false, LineCap::Round, &[segment]) = (run.closed, stroke.cap, segments.as_slice())
+            && capsule(out, (*first, *last), segment, pen, limits, bytes)?
+        {
+            return Ok(true);
+        }
         let turns = turns(&segments, joints, radius, stroke.cap, bytes)?;
         let overlaps = turns.iter().any(|j| matches!(j, Joint::Overlap));
         let proven = !overlaps
@@ -389,6 +396,117 @@ fn turns(
     Ok(turns)
 }
 
+/// Appends a lone round-capped segment from `p` to `q` as one convex
+/// outline, its quadrilateral joined to the chain of each cap polygon beyond
+/// its end line, and returns whether it did. That is the union of the
+/// components where both caps stay within the segment behind their end
+/// lines: the segment is longer than the pen, and every cap vertex on or
+/// behind its end line lies across the quadrilateral. Vertices within eight
+/// rounding units of their coordinates outside its sides, and the rounding
+/// of the two crossings per end, move the boundary by slivers that narrow,
+/// within the kernel's own error.
+fn capsule(
+    out: &mut PathBuilder,
+    (p, q): (Point, Point),
+    (direction, length): (Point, f64),
+    pen: Pen,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<bool> {
+    let radius = pen.radius;
+    if radius <= 0.0 || length <= 2.0 * radius {
+        return Ok(false);
+    }
+    let before = bytes.used().saturating_sub(out.heap_bytes());
+    let result = (|| {
+        let normal = Point::new(-direction.y * radius, direction.x * radius);
+        let far = ring(q, pen, limits, bytes)?;
+        let near = ring(p, pen, limits, bytes)?;
+        let mut outline = Vec::new();
+        bytes.reserve(&mut outline, far.len() + near.len() + 8)?;
+        outline.extend([p - normal, q - normal]);
+        if !beyond(&far, q, direction, radius, &mut outline) {
+            return Ok(false);
+        }
+        outline.extend([q + normal, p + normal]);
+        if !beyond(&near, p, -direction, radius, &mut outline) {
+            return Ok(false);
+        }
+        polygon(out, &outline, limits, bytes)?;
+        Ok(true)
+    })();
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before.saturating_add(out.heap_bytes())),
+    );
+    result
+}
+
+/// Appends the chain of the cap polygon `ring` around `end` beyond the end
+/// line, `outward` its unit normal: where its sides cross the line from the
+/// right, its vertices beyond, and where they cross back on the left.
+/// Returns false unless that chain is one run, both crossings lie on the
+/// quadrilateral's end, and every vertex on or behind the line lies across
+/// the quadrilateral, of half-width `radius`.
+fn beyond(
+    ring: &[Point],
+    end: Point,
+    outward: Point,
+    radius: f64,
+    outline: &mut Vec<Point>,
+) -> bool {
+    let along = |v: Point| (v - end).dot(outward);
+    let across = |v: Point| (v - end).dot(outward.perp());
+    // Where the side from `v` to `w`, on opposite sides, crosses the line.
+    let crossing = |v: Point, w: Point| v.lerp(w, along(v) / (along(v) - along(w)));
+    // The vertices' own rounding, relative to their coordinates.
+    let slack = 8.0 * f64::EPSILON * (end.x.abs() + end.y.abs() + radius);
+    let Some(&back) = ring.last() else {
+        return false;
+    };
+    let mut entry = None;
+    let mut entries = 0_usize;
+    let mut previous = back;
+    for (i, &v) in ring.iter().enumerate() {
+        if along(v) <= 0.0 {
+            if across(v).abs() > radius + slack {
+                return false;
+            }
+        } else if along(previous) <= 0.0 {
+            entry = Some((i, previous));
+            entries += 1;
+        }
+        previous = v;
+    }
+    let (Some((first, behind)), 1) = (entry, entries) else {
+        return false;
+    };
+    let mut chain = ring.iter().cycle().skip(first);
+    let Some(&first) = chain.next() else {
+        return false;
+    };
+    let enter = crossing(behind, first);
+    if across(enter) < -radius - slack || across(enter) >= 0.0 {
+        return false;
+    }
+    outline.extend([enter, first]);
+    let mut last = first;
+    for &v in chain {
+        if along(v) <= 0.0 {
+            let leave = crossing(last, v);
+            if across(leave) <= 0.0 || across(leave) > radius + slack {
+                return false;
+            }
+            outline.push(leave);
+            return true;
+        }
+        outline.push(v);
+        last = v;
+    }
+    false
+}
+
 /// One segment's piece between its joints: the inner miter point on a
 /// turn's inner side (through the joint itself), the normal elsewhere.
 fn piece(
@@ -653,6 +771,61 @@ mod tests {
             .unwrap();
             assert_eq!(tiling, Tiling::Unproven);
             components_kept(&path, &stroke);
+        }
+    }
+
+    #[test]
+    fn lone_round_capped_segments_take_one_convex_outline() {
+        let limits = Limits::default();
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut bits = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let mut next = || (bits() >> 11) as f64 / (1u64 << 53) as f64;
+        for case in 0..300 {
+            let width = 0.2 + 7.0 * next();
+            // Every fourth segment runs along an axis, where cap vertices
+            // fall on the end line.
+            let quarter = std::f64::consts::FRAC_PI_2;
+            let heading = if case % 4 == 0 {
+                quarter * (4.0 * next()).floor()
+            } else {
+                std::f64::consts::TAU * next()
+            };
+            let length = width * (1.01 + 2.0 * next());
+            let (x, y) = (12.0 + 24.0 * next(), 12.0 + 24.0 * next());
+            let path = polyline(
+                &[
+                    (x, y),
+                    (x + length * heading.cos(), y + length * heading.sin()),
+                ],
+                false,
+            );
+            let stroke = Stroke {
+                width,
+                cap: LineCap::Round,
+                ..Stroke::default()
+            };
+            for transform in [
+                Transform::IDENTITY,
+                Transform::scale(1.0, 0.6).then(Transform::translate(0.3, 4.1)),
+            ] {
+                let (components, pen) =
+                    crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
+                let (tiles, _, tiling) = tiled(&path, transform, &stroke);
+                assert_eq!(tiling, Tiling::Proven, "{case}");
+                assert_eq!(exact(&tiles, pen), exact(&components, pen), "{case}");
+            }
+            let (components, pen) =
+                crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
+            assert_eq!(cells(&path, &stroke), exact(&components, pen), "{case}");
         }
     }
 
