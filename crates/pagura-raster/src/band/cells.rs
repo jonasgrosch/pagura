@@ -480,6 +480,10 @@ impl Cells {
         clippy::cast_possible_truncation,
         reason = "the original bounded curve arithmetic is unchanged"
     )]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "single numerical row traversal preserves floating operation order while tracking consumed work"
+    )]
     pub(super) fn curve_counted<const MEASURE: bool>(
         &mut self,
         curve: &Mono,

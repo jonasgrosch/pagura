@@ -34,6 +34,28 @@ struct Ambiguity {
     surplus: Option<usize>,
 }
 
+impl Ambiguity {
+    fn into_pixels(
+        mut self,
+        source: Source<'_>,
+        options: &Prep<'_>,
+        proven: &[Pixel],
+        bytes: &Meter,
+    ) -> Vec<Pixel> {
+        if let Some(surplus) = self.surplus.filter(|&units| units != 0) {
+            analytic::hint(
+                source,
+                options,
+                &mut self.pixels,
+                proven,
+                surplus,
+                bytes.remaining(),
+            );
+        }
+        self.pixels
+    }
+}
+
 #[derive(Clone, Copy)]
 struct Local<'a> {
     proof: &'a Proof,
@@ -307,20 +329,8 @@ pub(super) fn certify(
             origin,
             other_error,
         });
-        let Ambiguity {
-            mut pixels,
-            surplus,
-        } = ambiguous(&shape, error, local, (&mut work, &mut bytes))?;
-        if let Some(surplus) = surplus.filter(|&units| units != 0) {
-            analytic::hint(
-                source,
-                options,
-                &mut pixels,
-                &proven,
-                surplus,
-                bytes.remaining(),
-            );
-        }
+        let pixels = ambiguous(&shape, error, local, (&mut work, &mut bytes))?
+            .into_pixels(source, options, &proven, &bytes);
         let wrong = collect_targets(
             source,
             pixels,

@@ -113,6 +113,16 @@ stop between bands for a viewer. Each output pixel is quantized once onto the
 background premultiplied once. Output does not depend on band height, tiles or
 platform.
 
+During preparation, an optional coverage proof builds temporary source-derived
+bounds once for a shape placement and reuses them across its unresolved pixels.
+It borrows only the unused portion of work already reserved for a completed
+inspection. Its byte meter is capped by the preparation meter's remaining
+capacity, and every temporary owner is released before the original sequential
+certificate collector continues. Only uniquely proved byte values survive as
+hints; earlier certificates take precedence, and unsupported evidence or an
+exhausted optional meter leaves the existing collector responsible. These
+bounds do not enter the document store or the band executor.
+
 One band driver either appends output directly into an owned `Pixmap` or
 lends a reusable RGBA band to a consumer. Output storage belongs to the call:
 `decoded_bytes` caps the full collected surface or the streamed band, while

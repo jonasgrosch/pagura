@@ -663,7 +663,7 @@ impl Items<'_> {
                     let origin = self.origin.unwrap_or_default();
                     if cells.reaches(m.x0.min(m.x1) + origin.x) {
                         if MEASURE {
-                            if let Some(observed) = observed.as_deref_mut() {
+                            if let Some(observed) = observed {
                                 cells.curve_counted::<true>(m, origin, Some(observed))
                             } else {
                                 cells.curve_measured(m, origin)
