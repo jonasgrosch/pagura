@@ -33,6 +33,104 @@ fn key_columns(pieces: &[Piece]) -> Vec<Span> {
 }
 
 #[test]
+fn midpoint_filter_separates_overlapping_piece_ranges_and_reuses_its_center() {
+    let input = pieces(&[
+        (line(0.0, 0.0, 100.0, 1.0), 0),
+        (line(2.0, 0.0, 102.0, 1.0), 0),
+    ]);
+    let columns = key_columns(&input);
+    assert!(separated(columns[0], columns[1]).is_none());
+    let mut a = Place::new(0, &input, 0.5);
+    let mut b = Place::new(1, &input, 0.5);
+    a.ready = false;
+    b.ready = false;
+    assert!(compare(&mut a, &mut b, &input, 0.5).is_lt());
+    assert!(!a.ready && !b.ready && a.approximate && b.approximate);
+    let centers = (a.x.to_bits(), b.x.to_bits());
+    assert!(!coincident(&mut a, &mut b, &input, 0.5));
+    assert_eq!((a.x.to_bits(), b.x.to_bits()), centers);
+    assert_eq!(a.key(&input, 0.5).to_bits(), input[0].line.x(0.5).to_bits());
+    assert!(a.ready && !a.approximate);
+}
+
+#[test]
+fn midpoint_filter_encloses_literal_keys_with_cancellation_and_underflow() {
+    let n = 549_755_813_888.0;
+    let tiny = f64::from_bits(1);
+    for edge in [
+        line(-n, -n, n, n + 1.0 / 8192.0),
+        line(n, n + 1.0 / 8192.0, -n, -n),
+        line(-1.0e12, -1.0e12, 1.0e12, 1.0e12),
+        line(tiny, 0.0, 2.0 * tiny, f64::MIN_POSITIVE),
+        line(-0.0, 0.0, 0.0, f64::MIN_POSITIVE),
+        line(0.25, f64::MIN_POSITIVE, 0.5, 2.0 * f64::MIN_POSITIVE),
+    ] {
+        let input = [Piece {
+            line: edge,
+            lo: edge.a.y.min(edge.b.y),
+            hi: edge.a.y.max(edge.b.y),
+            direction: 1,
+            group: 0,
+        }];
+        assert_ne!(key_radius(&input[0]), 0);
+        for k in 0..=16 {
+            let mid = input[0].lo + (input[0].hi - input[0].lo) * (f64::from(k) / 16.0);
+            let mut place = Place::new(0, &input, mid);
+            place.ready = false;
+            let (lo, hi) = place.interval(&input, mid).unwrap();
+            let exact = edge.x(mid);
+            assert!(
+                lo <= exact && exact <= hi,
+                "{edge:?}: {lo} <= {exact} <= {hi}"
+            );
+        }
+    }
+}
+
+#[test]
+fn midpoint_radius_codes_bound_the_reviewed_allowance() {
+    for power in 0..=39 {
+        let edge = line(2.0_f64.powi(power), 0.0, 0.0, 1.0);
+        let input = pieces(&[(edge, 0)]);
+        let code = key_radius(&input[0]);
+        assert!((1..=41).contains(&code));
+        let radius = f64::from_bits((u64::from(code) + 979) << 52);
+        let error = (256.0 * f64::EPSILON) * ((1.0 + edge.a.x.abs()) + edge.b.x.abs());
+        assert!(error < radius && radius <= 2.0 * error);
+    }
+    let input = pieces(&[(line(0.0, 0.0, 0.0, 1.0), 0)]);
+    assert_eq!(key_radius(&input[0]), 1);
+}
+
+#[test]
+fn midpoint_filter_unsupported_domain_uses_the_original_key() {
+    let tiny = f64::from_bits(1);
+    for edge in [
+        line(0.25, 0.0, 0.5, 2.0 * tiny),
+        line(1.0e13, 0.0, 1.0e13 + 2.0, 1.0),
+        line(f64::INFINITY, 0.0, 2.0, 1.0),
+        line(f64::NAN, 0.0, 2.0, 1.0),
+    ] {
+        let input = [Piece {
+            line: edge,
+            lo: edge.a.y,
+            hi: edge.b.y,
+            direction: 1,
+            group: 0,
+        }];
+        assert_eq!(key_radius(&input[0]), 0);
+        let mid = input[0].lo.midpoint(input[0].hi);
+        let mut place = Place::new(0, &input, mid);
+        place.ready = false;
+        assert!(place.interval(&input, mid).is_none());
+        let actual = place.key(&input, mid);
+        let expected = edge.x(mid);
+        assert!(actual.to_bits() == expected.to_bits() || actual.is_nan() && expected.is_nan());
+        assert!(place.ready && !place.approximate);
+    }
+}
+
+#[test]
 fn indexed_columns_reuses_clipped_ranges_for_long_diagonals() {
     let input = pieces(&[
         (line(0.0, 0.0, 1000.0, 1000.0), 0),
@@ -41,13 +139,17 @@ fn indexed_columns_reuses_clipped_ranges_for_long_diagonals() {
     let columns = key_columns(&input);
     assert_eq!((columns[0].2, columns[1].2), (0, 1));
     assert!(columns[0].1 < columns[1].0);
-    let mut a = Place::default();
-    let mut b = Place {
-        piece: 1,
+    let mut a = Place {
+        radius_code: key_radius(&input[0]),
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &input, &columns, 0.5).is_lt());
-    assert!(!coincident(&mut a, &mut b, &input, &columns, 0.5));
+    let mut b = Place {
+        piece: 1,
+        radius_code: key_radius(&input[1]),
+        ..Place::default()
+    };
+    assert!(compare(&mut a, &mut b, &input, 0.5).is_lt());
+    assert!(!coincident(&mut a, &mut b, &input, 0.5));
     assert!(!a.ready && !b.ready);
     let mut lines = polygon(
         &[(0.0, 0.0), (2.0, 0.0), (1002.0, 1000.0), (1000.0, 1000.0)],
@@ -346,7 +448,6 @@ fn demand_keys_distinguish_order_from_numeric_zero_equality() {
         (line(-0.0, 0.0, -0.0, 1.0), 0),
         (line(0.0, 1.0, 0.0, 0.0), 0),
     ]);
-    let columns = key_columns(&pieces);
     let mut a = Place {
         piece: 0,
         ..Place::default()
@@ -355,11 +456,11 @@ fn demand_keys_distinguish_order_from_numeric_zero_equality() {
         piece: 1,
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.5).is_lt());
+    assert!(compare(&mut a, &mut b, &pieces, 0.5).is_lt());
     assert!(a.ready && b.ready);
     assert_eq!(a.x.to_bits(), (-0.0_f64).to_bits());
     assert_eq!(b.x.to_bits(), 0.0_f64.to_bits());
-    assert!(coincident(&mut a, &mut b, &pieces, &columns, 0.5));
+    assert!(coincident(&mut a, &mut b, &pieces, 0.5));
 }
 
 #[test]
@@ -368,7 +469,6 @@ fn demand_keys_recompute_ambiguous_survivors_at_each_midpoint() {
         (line(1.0 + f64::EPSILON, 0.0, 1.0, 1.0), 0),
         (line(1.0, 1.0, 1.0, 0.0), 0),
     ]);
-    let columns = key_columns(&pieces);
     let mut a = Place {
         piece: 0,
         ..Place::default()
@@ -377,11 +477,11 @@ fn demand_keys_recompute_ambiguous_survivors_at_each_midpoint() {
         piece: 1,
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.25).is_gt());
-    assert!(!coincident(&mut a, &mut b, &pieces, &columns, 0.25));
+    assert!(compare(&mut a, &mut b, &pieces, 0.25).is_gt());
+    assert!(!coincident(&mut a, &mut b, &pieces, 0.25));
     (a.ready, b.ready) = (false, false);
-    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.75).is_lt());
-    assert!(coincident(&mut a, &mut b, &pieces, &columns, 0.75));
+    assert!(compare(&mut a, &mut b, &pieces, 0.75).is_lt());
+    assert!(coincident(&mut a, &mut b, &pieces, 0.75));
 }
 
 #[test]
@@ -390,17 +490,18 @@ fn demand_keys_leave_proven_separation_unevaluated() {
         (line(-4.0, 0.0, -3.0, 1.0), 0),
         (line(1.0, 1.0, 0.0, 0.0), 0),
     ]);
-    let columns = key_columns(&pieces);
     let mut a = Place {
         piece: 0,
+        radius_code: key_radius(&pieces[0]),
         ..Place::default()
     };
     let mut b = Place {
         piece: 1,
+        radius_code: key_radius(&pieces[1]),
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.5).is_lt());
-    assert!(!coincident(&mut a, &mut b, &pieces, &columns, 0.5));
+    assert!(compare(&mut a, &mut b, &pieces, 0.5).is_lt());
+    assert!(!coincident(&mut a, &mut b, &pieces, 0.5));
     assert!(!a.ready && !b.ready);
 }
 

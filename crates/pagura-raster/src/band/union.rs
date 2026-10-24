@@ -83,13 +83,15 @@ const CHUNK: usize = 64;
 /// A piece's current midpoint key, evaluated only when a comparison needs it.
 /// Joining pieces are ready before their sort; survivors are invalidated in
 /// the existing retain visit. Bit-constant verticals keep their exact key.
-/// Both flags occupy the old tuple's padding.
+/// All flags and the radius code occupy the old tuple's padding.
 #[derive(Debug, Clone, Copy, Default)]
 struct Place {
     x: f64,
     piece: u32,
     ready: bool,
     constant: bool,
+    approximate: bool,
+    radius_code: u8,
 }
 
 const _: () = assert!(size_of::<Place>() == size_of::<(f64, u32)>());
@@ -99,11 +101,14 @@ impl Place {
     fn new(piece: u32, pieces: &[Piece], mid: f64) -> Self {
         let constant =
             pieces[piece as usize].line.a.x.to_bits() == pieces[piece as usize].line.b.x.to_bits();
+        let radius_code = key_radius(&pieces[piece as usize]);
         Self {
             x: pieces[piece as usize].line.x(mid),
             piece,
             ready: true,
             constant,
+            approximate: false,
+            radius_code,
         }
     }
 
@@ -111,9 +116,57 @@ impl Place {
         if !self.ready {
             self.x = pieces[self.piece as usize].line.x(mid);
             self.ready = true;
+            self.approximate = false;
         }
         self.x
     }
+
+    /// A comparison certificate, never an exact key. An unsupported line
+    /// keeps the original interpolation, and a ready key is a point only
+    /// when finite. A center is evaluated at most once per entry and slab.
+    fn interval(&mut self, pieces: &[Piece], mid: f64) -> Option<(f64, f64)> {
+        if self.ready {
+            return self.x.is_finite().then_some((self.x, self.x));
+        }
+        if self.radius_code == 0 {
+            return None;
+        }
+        if !self.approximate {
+            let line = &pieces[self.piece as usize].line;
+            let height = line.b.y - line.a.y;
+            let offset = mid - line.a.y;
+            let fraction = offset / height;
+            let width = line.b.x - line.a.x;
+            let product = width * fraction;
+            self.x = line.a.x + product;
+            self.approximate = true;
+        }
+        let radius = f64::from_bits((u64::from(self.radius_code) + 979) << 52);
+        Some(((self.x - radius).next_down(), (self.x + radius).next_up()))
+    }
+}
+
+/// Encodes a normal power-of-two enclosure radius, or zero for an
+/// unsupported line. For the guarded domain the six-operation affine
+/// center differs from the literal compensated key by less than 400*u*M,
+/// u=2^-53, M=1+|a.x|+|b.x|. The normal-height guard covers underflow in
+/// the ratio. The radius strictly exceeds E=2^-44*fl(fl(1+|a.x|)+|b.x|),
+/// which exceeds 500*u*M. Code 1..41 decodes to 2^-43..2^-3.
+fn key_radius(piece: &Piece) -> u8 {
+    let Line { a, b } = piece.line;
+    let (top, bottom) = (a.y.min(b.y), a.y.max(b.y));
+    if !([a.x, a.y, b.x, b.y]
+        .into_iter()
+        .all(|value| value.abs() <= 1.0e12)
+        && top <= piece.lo
+        && piece.lo < piece.hi
+        && piece.hi <= bottom
+        && (b.y - a.y).abs() >= f64::MIN_POSITIVE)
+    {
+        return 0;
+    }
+    let magnitude = (1.0 + a.x.abs()) + b.x.abs();
+    u8::try_from((magnitude.to_bits() >> 52) - 1022).unwrap_or(0)
 }
 
 fn ordered(p: &Place, q: &Place) -> std::cmp::Ordering {
@@ -132,15 +185,20 @@ fn separated(p: Span, q: Span) -> Option<std::cmp::Ordering> {
     }
 }
 
-fn compare(
+fn filtered(
     p: &mut Place,
     q: &mut Place,
     pieces: &[Piece],
-    columns: &[Span],
     mid: f64,
-) -> std::cmp::Ordering {
+) -> Option<std::cmp::Ordering> {
+    let (pl, pr) = p.interval(pieces, mid)?;
+    let (ql, qr) = q.interval(pieces, mid)?;
+    separated((pl, pr, 0), (ql, qr, 0))
+}
+
+fn compare(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> std::cmp::Ordering {
     if !(p.ready && q.ready)
-        && let Some(order) = separated(columns[p.piece as usize], columns[q.piece as usize])
+        && let Some(order) = filtered(p, q, pieces, mid)
     {
         return order;
     }
@@ -149,10 +207,8 @@ fn compare(
         .then(p.piece.cmp(&q.piece))
 }
 
-fn coincident(p: &mut Place, q: &mut Place, pieces: &[Piece], columns: &[Span], mid: f64) -> bool {
-    if !(p.ready && q.ready)
-        && separated(columns[p.piece as usize], columns[q.piece as usize]).is_some()
-    {
+fn coincident(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> bool {
+    if !(p.ready && q.ready) && filtered(p, q, pieces, mid).is_some() {
         return false;
     }
     // Numeric equality deliberately groups the two signs of zero together.
@@ -224,8 +280,8 @@ pub(crate) struct Resolver {
     #[cfg(test)]
     original_crossings: bool,
     heights: Vec<f64>,
-    /// Column spans by start during crossing enumeration, then enclosing
-    /// column spans indexed by piece ID for comparisons.
+    /// Column spans by start during crossing enumeration, or enclosing
+    /// column spans indexed by piece ID when heights enumerate the pairs.
     columns: Vec<Span>,
     /// Height spans by start: the sweep takes pieces by their upper end.
     rows: Vec<Span>,
@@ -577,9 +633,6 @@ impl Resolver {
                 }
             }
         }
-        if !by_rows {
-            index_columns(&mut self.columns, pieces);
-        }
         Ok(())
     }
 
@@ -598,6 +651,7 @@ impl Resolver {
         work.charge(self.order.len())?;
         self.order.retain_mut(|entry| {
             entry.ready = entry.constant;
+            entry.approximate = false;
             #[cfg(test)]
             if self.eager_midpoint_keys {
                 entry.ready = false;
@@ -605,7 +659,7 @@ impl Resolver {
             }
             pieces[entry.piece as usize].hi >= b
         });
-        settle(&mut self.order, pieces, &self.columns, mid, work)?;
+        settle(&mut self.order, pieces, mid, work)?;
         self.joining.clear();
         while let Some(&(lo, hi, i)) = self.rows.get(joined)
             && lo <= a
@@ -618,7 +672,7 @@ impl Resolver {
         if !self.joining.is_empty() {
             work.charge(sort_work(self.joining.len()).saturating_add(self.order.len()))?;
             self.joining.sort_unstable_by(ordered);
-            merge(&mut self.order, &self.joining, pieces, &self.columns, mid);
+            merge(&mut self.order, &self.joining, pieces, mid);
         }
         Ok(joined)
     }
@@ -655,13 +709,7 @@ impl Resolver {
                     break;
                 }
                 let (before, after) = self.order.split_at_mut(n);
-                if !coincident(
-                    &mut before[start],
-                    &mut after[0],
-                    pieces,
-                    &self.columns,
-                    mid,
-                ) {
+                if !coincident(&mut before[start], &mut after[0], pieces, mid) {
                     break;
                 }
             }
@@ -777,18 +825,12 @@ fn merge_heights(heights: &mut Vec<f64>, rows: &[Span]) {
 /// Restores the order of `order` by moving entries down one at a time,
 /// charging each move: pieces that crossed at the height between two
 /// sub-slabs are one move apart per crossing.
-fn settle(
-    order: &mut [Place],
-    pieces: &[Piece],
-    columns: &[Span],
-    mid: f64,
-    work: &mut Meter,
-) -> Result<()> {
+fn settle(order: &mut [Place], pieces: &[Piece], mid: f64, work: &mut Meter) -> Result<()> {
     for n in 1..order.len() {
         let mut j = n;
         while j > 0 && {
             let (before, after) = order.split_at_mut(j);
-            compare(&mut after[0], &mut before[j - 1], pieces, columns, mid).is_lt()
+            compare(&mut after[0], &mut before[j - 1], pieces, mid).is_lt()
         } {
             work.charge(1)?;
             order.swap(j - 1, j);
@@ -800,7 +842,7 @@ fn settle(
 
 /// Merges the ordered `joining` into the ordered `order`, which has room
 /// for them.
-fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], columns: &[Span], mid: f64) {
+fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], mid: f64) {
     let (mut i, mut j) = (order.len(), joining.len());
     order.resize(i + j, Place::default());
     for k in (0..order.len()).rev() {
@@ -808,7 +850,7 @@ fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], columns: &
             break;
         }
         let mut next = joining[j - 1];
-        if i > 0 && compare(&mut next, &mut order[i - 1], pieces, columns, mid).is_lt() {
+        if i > 0 && compare(&mut next, &mut order[i - 1], pieces, mid).is_lt() {
             order[k] = order[i - 1];
             i -= 1;
         } else {
