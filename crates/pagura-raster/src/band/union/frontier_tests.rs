@@ -240,13 +240,20 @@ fn rounded_ulp_ties_and_signed_zero_do_not_inherit_stale_order() {
     assert_eq!(resolver.frontier_successes, 0);
 }
 
-fn chunked_input() -> Vec<Piece> {
+fn chunked_input(stagger: bool) -> Vec<Piece> {
     let mut lines = Vec::new();
     for n in 0..48_u32 {
         let x = 3.0 * f64::from(n);
         for k in 0..4_u32 {
-            let y = f64::from(k) * 0.25;
-            lines.push((line((x, y), (x, y + 0.25)), 0));
+            let height = |k| {
+                f64::from(k) * 0.25
+                    + if stagger && k > 0 && k < 4 {
+                        f64::from(n) / 4096.0
+                    } else {
+                        0.0
+                    }
+            };
+            lines.push((line((x, height(k)), (x, height(k + 1))), 0));
         }
         lines.push((line((x + 0.5, 1.0), (x + 0.5, 0.0)), 0));
     }
@@ -259,12 +266,18 @@ fn chunked_input() -> Vec<Piece> {
 
 #[test]
 fn handoffs_reset_at_chunks_and_carried_winding_changes() {
-    let input = chunked_input();
-    assert!(input.len() > CHUNK);
-    let (out, resolver) = differential(&input, &[FillRule::NonZero; 2]);
-    assert_ne!(resolver.cuts, []);
-    assert_eq!(area(&out), 18.0);
-    assert!(resolver.frontier_successes > 0);
+    for stagger in [false, true] {
+        let input = chunked_input(stagger);
+        assert!(input.len() > CHUNK);
+        let (out, resolver) = differential(&input, &[FillRule::NonZero; 2]);
+        assert_ne!(resolver.cuts, []);
+        assert_eq!(area(&out), 18.0);
+        if stagger {
+            assert!(resolver.frontier_successes > 0);
+        } else {
+            assert_eq!(resolver.frontier_successes, 0);
+        }
+    }
 }
 
 #[test]
@@ -327,7 +340,7 @@ fn exact_work_and_byte_boundaries_preserve_partial_output_and_capacity() {
 #[test]
 fn failed_and_reused_scratch_keeps_history_and_existing_oracle_switches() {
     let small = pieces(&chain(0.0, 2.0, 0));
-    let large = chunked_input();
+    let large = chunked_input(false);
     let rules = [FillRule::NonZero; 2];
     for original_helpers in [false, true] {
         let make = |original_frontier| Resolver {
