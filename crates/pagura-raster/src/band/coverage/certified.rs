@@ -171,8 +171,8 @@ impl CertifiedRows {
             return Ok(true);
         }
         work.charge(4)?;
-        let logical = std::mem::size_of_val(self.coverage.rows.as_slice())
-            .checked_add(std::mem::size_of_val(self.coverage.spans.as_slice()))
+        let logical = size_of_val(self.coverage.rows.as_slice())
+            .checked_add(size_of_val(self.coverage.spans.as_slice()))
             .and_then(|n| n.checked_add(self.coverage.cells.len()))
             .ok_or(Error::limit("certified coverage storage exceeds usize"))?;
         if logical > limit {
@@ -421,8 +421,8 @@ mod tests {
     }
 
     fn logical_bytes(rows: &CertifiedRows) -> usize {
-        std::mem::size_of_val(rows.coverage.rows.as_slice())
-            + std::mem::size_of_val(rows.coverage.spans.as_slice())
+        size_of_val(rows.coverage.rows.as_slice())
+            + size_of_val(rows.coverage.spans.as_slice())
             + rows.coverage.cells.len()
     }
 
@@ -472,9 +472,9 @@ mod tests {
         for after_first in [false, true] {
             let (mut rows, area, allocated) = fixture();
             let expected = emitted(&rows, &area).0;
-            let first = std::mem::size_of_val(rows.coverage.rows.as_slice());
+            let first = size_of_val(rows.coverage.rows.as_slice());
             let first_old = rows.coverage.rows.capacity() * size_of::<super::super::RowSpans>();
-            let second = std::mem::size_of_val(rows.coverage.spans.as_slice());
+            let second = size_of_val(rows.coverage.spans.as_slice());
             let first_peak = allocated + first;
             let second_peak = allocated + first - first_old + second;
             assert!(second_peak > first_peak);
