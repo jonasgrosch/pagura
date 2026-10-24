@@ -7,7 +7,10 @@ accumulation, bounded storage, direct glyph curves, direct opaque images and
 signed-area glyph coverage). The history of this file keeps them and their
 evidence. Section 4's coverage producers were brought in line with the
 implementation on 2026-10-22, and the fast parameters and their accuracy gate
-were retired the same day (section 8).
+were retired the same day (section 8). On 2026-10-24 TrueType quadratics
+became their own path segments, integrated without per-placement
+certification, and lone round-capped segments became one convex stroke piece
+(section 4).
 
 ## Decision
 
@@ -128,7 +131,13 @@ successive chain ends and alternate in direction from one common sign, so
 the winding is zero or that sign with magnitude one. For quadratics the
 certificate bounds the curves themselves, including their tangent fans at
 shared vertices. Doubt leaves the shape uncertified. Stroke pieces that are
-proved to meet without overlap are certified by construction.
+proved to meet without overlap are certified by construction. A lone
+round-capped segment longer than the pen is one convex piece: its
+quadrilateral joined to the chain of each canonical cap polygon beyond its
+end line, entered and left where the polygon's sides cross that line. Cap
+vertices behind the end line must lie across the quadrilateral within eight
+rounding units of their coordinates, so the piece differs from the
+components' union only by slivers of that width.
 
 Uncertified rows, and rows crossed by both a mark and a path clip, go through
 one exact row union during preparation. It cuts at edge ends and crossings,
@@ -156,7 +165,12 @@ order, prefix sums left to right from column 0, cells indexed by global device
 column) and no kernel uses fused multiply-add, so a cell is a function of the
 geometry, the cell and the rule alone: band height, region and platform
 select which cells are visited, never their arithmetic. Certification and
-row union depend only on the geometry and the clip state.
+row union depend only on the geometry and the clip state. An edge whose
+coordinates are at most 2^16 in magnitude and whose height is at least
+2^-30 interpolates its crossings in plain f64, within the straight-edge
+interpolation bound below; other edges use the exact two-product form.
+Execution windows of at most 256 columns keep no touched bitmap: they
+accumulate densely and emit every cell, with the same values.
 
 **Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
 and 4) keeps its font outline, its linear glyph-to-device map L and its exact
@@ -178,10 +192,14 @@ clipping follow the path rules.
 **Glyph reference.** A quadratic outline is referenced against its original
 stored curve at its exact device position (8.5.2.2, 9.3.6), independently of
 the renderer's certificate, its clip state and its selected representation.
-TrueType quadratics arrive as degree-elevated cubics. In device space the
-sum of absolute third differences -P0 + 3P1 - 3P2 + P3 over the entire outline
-must be at most 2^-24 pixels per coordinate. This defines its source-curve
-reference independently of certification. Analytic reduction additionally
+TrueType quadratics arrive as quadratic path segments and are integrated as
+themselves. Every polygon flattens a quadratic as its degree-elevated cubic,
+whose controls round once more than the source's; the flattener's hull
+allowance includes that rounding. A cubic outline may also be a quadratic
+one: in device space the sum of absolute third differences
+-P0 + 3P1 - 3P2 + P3 over the entire outline must be at most 2^-24 pixels per
+coordinate. This defines its source-curve reference independently of
+certification. Analytic reduction of such cubics additionally
 includes a conservative 64-rounding-unit allowance for the absolute products
 of the original controls and linear map, third-difference evaluation and
 midpoint-control construction. Absolute products retain their scale when a
@@ -203,7 +221,8 @@ cannot increase this symmetric difference. Certified outlines use
 closed-form integration of monotone quadratics with no piece-count cap.
 
 Uncertified quadratic outlines and quadratic placements crossed by a path
-clip use de Casteljau subdivision of the original stored cubics. Each
+clip use de Casteljau subdivision of the original stored curves, each
+quadratic as its elevated cubic. Each
 accepted chord and its curve lie in their shared control hull. The sum of
 those hull areas is at most 1/4096 square pixel over the whole outline;
 subdivision divides each curve's allowance between its two children. The
@@ -222,8 +241,13 @@ that one-byte difference in separate glyph placements can exceed the scene's
 one-level contract. Preparation therefore inspects the common cell kernel's
 unquantized areas and quantizes both ends of their source-curve intervals,
 including reduction, mapping and translation error. An unambiguous interval
-certifies the byte that ordinary execution emits. Ambiguous pixels are
-resolved from the original stored cubics in a pixel-local frame using the
+certifies the byte that ordinary execution emits. A placement that
+integrates its outline's own quadratic segments in closed form, crossed by
+no clip path, approximates nothing: like straight edges, it carries only
+mapping, translation and kernel arithmetic error, so its bytes are the
+correctly rounded exact areas except within that margin, and it is not
+inspected. Polygon placements and reduced cubics are. Ambiguous pixels are
+resolved from the original stored curves in a pixel-local frame using the
 shared bounded subdivision and row-union arithmetic. Accepted control hulls
 bound the area uncertainty under the canonical clips. Integer localization
 retains its two-sum tails; full outward hulls must miss outward clip bounds
@@ -301,8 +325,8 @@ certification, and preserve the same geometry in sub-region requests.
 A general cubic's displacement tolerance alone does not bound area when
 several edges share a pixel, so its outline retains the canonical 1/256-pixel
 polygon as its reference. Singular linear maps retain the polygon's
-geometric-point rule. The independent test oracle keeps the stored cubic
-segments and integrates their covered lengths by adaptive Gauss-Legendre
+geometric-point rule. The independent test oracle keeps the stored quadratic
+and cubic segments and integrates their covered lengths by adaptive Gauss-Legendre
 quadrature. The slow differential reference bounds its own original-curve
 polygon's total control-hull area by 1/65536 square pixel; it never adopts
 the renderer's certificate or a path-clip exception. That initial area
