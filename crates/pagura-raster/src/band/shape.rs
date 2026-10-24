@@ -1,10 +1,12 @@
 //! Marks prepared for the band rasterizer: fills, strokes and glyph
-//! placements in device space, clipped by their clip state's rectangle,
-//! with the rows their signed area does not determine already resolved.
+//! placements in device space, clipped by their clip state's rectangle and
+//! convex paths, with the rows their signed area does not determine already
+//! resolved.
 
 use super::cells::STRIP;
 use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
+use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
 use super::union::{Meters, Piece, Resolver, room};
@@ -483,6 +485,22 @@ impl Shape {
                 clipped
             }
             None => all,
+        };
+        // A mark crossing convex clipping paths is clipped to them as to
+        // the rectangle, and then meets no clip row.
+        let lines = match frame.paths.and_then(Paths::convex) {
+            Some(convex) => {
+                let hull = Bounds {
+                    left: hull[0].x,
+                    top: hull[0].y,
+                    right: hull[1].x,
+                    bottom: hull[1].y,
+                };
+                let clipped = clip_convex(lines, (convex, hull), work, bytes)?;
+                frame.paths = None;
+                clipped
+            }
+            None => lines,
         };
         let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
             return Ok(None);
@@ -1022,6 +1040,68 @@ impl<'a> Frame<'a> {
                 .fold(0, usize::saturating_add)
         })
     }
+}
+
+/// The pieces of `lines` within every path of `convex`, each path clipping
+/// the pieces the previous one left, and within the mark's `hull`.
+fn clip_convex(
+    mut lines: Vec<Line>,
+    (convex, hull): (&[Convex], Bounds),
+    work: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<Vec<Line>> {
+    for chains in convex {
+        work.charge(lines.len())?;
+        let mut clipped = Vec::new();
+        room(&mut clipped, lines.len(), bytes)?;
+        // Contour order: each line usually starts where the last one ended.
+        let mut last = None;
+        for &line in &lines {
+            let start = match last {
+                Some((end, inside)) if end == line.a => inside,
+                _ => chains.contains(line.a),
+            };
+            let end = chains.contains(line.b);
+            last = Some((line.b, end));
+            // Both ends strictly inside: by convexity, so is the line.
+            if start && end {
+                room(&mut clipped, 1, bytes)?;
+                clipped.push(line);
+                continue;
+            }
+            let bound = chains.bound(line);
+            work.charge(bound)?;
+            room(&mut clipped, bound, bytes)?;
+            chains.clip(line, &mut clipped);
+        }
+        let released = lines.capacity() * size_of::<Line>();
+        drop(lines);
+        bytes.refund(released);
+        lines = clipped;
+    }
+    // Parts moved along a nearly horizontal chain side can reach far beside
+    // the mark; its hull box clips them back, as the rectangle does.
+    work.charge(lines.len())?;
+    let beside = |l: &Line| l.a.x.min(l.b.x) < hull.left || l.a.x.max(l.b.x) > hull.right;
+    if lines.iter().any(beside) {
+        let mut kept = Vec::new();
+        room(&mut kept, lines.len(), bytes)?;
+        for &line in &lines {
+            if beside(&line) {
+                room(&mut kept, 3, bytes)?;
+                edges::clip_line(line, hull, &mut kept)?;
+            } else {
+                room(&mut kept, 1, bytes)?;
+                kept.push(line);
+            }
+        }
+        kept.retain(|l| !l.is_horizontal());
+        let released = lines.capacity() * size_of::<Line>();
+        drop(lines);
+        bytes.refund(released);
+        lines = kept;
+    }
+    Ok(lines)
 }
 
 /// The rows of `bounds` a line has area in, as `(first, last)`.

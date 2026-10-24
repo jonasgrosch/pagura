@@ -101,6 +101,44 @@ fn clip_preparation_cells_and_rows_use_the_remaining_byte_budget() {
 }
 
 #[test]
+fn a_nearly_flat_convex_side_keeps_a_crossing_mark_within_its_hull() {
+    // A square turned by about 0.06 degrees: its top side rises one pixel
+    // over a thousand. The box's part beside that side moves onto it, which
+    // would reach hundreds of columns left of the box without the hull.
+    let area = area(0, 0, 1024, 16, 16);
+    let limits = Limits::default();
+    let mut square = PathBuilder::new();
+    square.polygon([
+        Point::new(0.0, 0.0),
+        Point::new(1000.0, 1.0),
+        Point::new(999.0, 1001.0),
+        Point::new(-1.0, 1000.0),
+    ]);
+    let square = square.finish();
+    let clip = ClipShape::new(
+        &[(&square, FillRule::NonZero)],
+        Transform::IDENTITY,
+        &public(area, &limits),
+    )
+    .unwrap();
+    assert!(clip.paths().unwrap().convex().is_some());
+    let mut mark = PathBuilder::new();
+    mark.rect(500.0, -5.0, 10.0, 10.0);
+    let mark = mark.finish();
+    let shape = Shape::fill_in(
+        &mark,
+        Transform::IDENTITY,
+        FillRule::NonZero,
+        &options(area, &limits, Some(&clip)),
+    )
+    .unwrap()
+    .unwrap();
+    assert!(!shape.masked);
+    let bounds = shape.bounds();
+    assert!(bounds.x0 >= 500 && bounds.x1 <= 510, "{bounds:?}");
+}
+
+#[test]
 fn a_ring_inside_a_round_clip_keeps_its_own_edges() {
     // A ring whose box corners lie outside a round clip, so that the clip's
     // boundary runs cross every one of its rows, though the ring itself

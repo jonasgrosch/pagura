@@ -139,8 +139,8 @@ vertices behind the end line must lie across the quadrilateral within eight
 rounding units of their coordinates, so the piece differs from the
 components' union only by slivers of that width.
 
-Uncertified rows, and rows crossed by both a mark and a path clip, go through
-one exact row union during preparation. It cuts at edge ends and crossings,
+Uncertified rows, and rows crossed by both a mark and a non-convex path clip,
+go through one exact row union during preparation. It cuts at edge ends and crossings,
 keeps the active edges ordered across each slab, and emits the boundaries of
 the area in which every group (mark and clipping paths, 8.5.4) is inside.
 These straight boundary pieces have winding zero or one and use the same
@@ -154,13 +154,33 @@ runs. Rectangular clips clip edges geometrically before accumulation.
 and convex (repeated points ignored; turns of one sign beyond eight rounding
 units of their products, and one revolution, as for convex stroke outlines)
 is also kept as its left and right chains, each of strictly increasing
-height. When every path of a clip state is convex, a mark whose hull box, or
-failing that every vertex, lies strictly inside every path, by orientation
-signs certified against their rounding, keeps its own edges and drops the
-paths: by convexity it lies inside them, so it meets none of their boundary
-runs, needs no joint row union and no mask, and its coverage is its own. This
-decides marks whose bounding columns meet the clip's boundary runs in rows
-where the mark itself stays inside, such as rings inside a round clip.
+height. When every path of a clip state is convex, a polygon mark never meets
+their boundary runs. A mark whose hull box, or failing that every vertex,
+lies strictly inside every path, by orientation signs certified against
+their rounding, keeps its own edges and drops the paths. Any other mark is
+clipped to each path in turn as to the rectangle: an edge keeps its part
+between the chains, a part beside a chain is replaced by that chain's sides
+at the same heights, and a part above or below the path becomes horizontal
+and bounds no area. That map fixes the region and moves every other point
+along a horizontal segment outside it, or vertically through heights outside
+it, so the moved boundary has the mark's winding inside the region and none
+outside: windings of zero or one sign of magnitude one stay so, and either
+fill rule selects the region's part of the mark. Each piece lies on one
+stored line, the edge or a chain side, and its ends are evaluated on that
+line at event heights. Crossing heights use the row union's interpolation of
+the two lines' differences; the pieces meeting there end on their own lines
+and are joined by a horizontal step, so a crossing height off by a rounding
+unit moves area only within that unit's slab, however flat the lines meet.
+Parts moved along a nearly horizontal side can reach far beside the mark, so
+the pieces are then clipped to the mark's hull box, as to the rectangle.
+Curves meet such clips only as the polygon every path-clipped mark already
+uses, and glyph placements are still inspected against their source curves
+under the canonical clips, with the chain sides' interpolation uncertainty
+added to the clip's. The rasterized bytes equal the row union's on the
+benchmark pages at 72, 150 and 300 dpi, the catalogued pages and the
+conformance fixtures, and the exact-oracle clip tests find no differing
+pixel; marks along a chain side, through chain points and across nearly
+horizontal sides are tested separately.
 
 A subpath whose points all coincide covers the pixel under them
 (8.5.3.3.1), and a fill whose region is empty with a boundary paints that
