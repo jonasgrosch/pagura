@@ -54,6 +54,54 @@ fn midpoint_filter_separates_overlapping_piece_ranges_and_reuses_its_center() {
 }
 
 #[test]
+fn midpoint_gap_keeps_rounded_radius_ties_on_the_exact_path() {
+    let radius = 2.0_f64.powi(-43);
+    let tiny = f64::from_bits(1);
+    let input = pieces(&[
+        (line(0.0, 0.0, 2.0 * radius, 1.0), 0),
+        (line(tiny, 0.0, tiny, 1.0), 0),
+    ]);
+    let mut a = Place::new(0, &input, 0.5);
+    let mut b = Place::new(1, &input, 0.5);
+    a.ready = false;
+    assert_eq!(a.radius(), radius);
+    assert_eq!(b.radius(), 0.0);
+    // The real gap is just below the radius, but subtraction rounds to
+    // the radius. A non-strict test would accept an unproved separation.
+    assert_eq!(radius - tiny, radius);
+    assert!(filtered(&mut a, &mut b, &input, 0.5).is_none());
+    assert!(a.approximate && !a.ready);
+    assert!(compare(&mut a, &mut b, &input, 0.5).is_gt());
+    assert_eq!(a.x.to_bits(), input[0].line.x(0.5).to_bits());
+    assert!(a.ready && !a.approximate);
+}
+
+#[test]
+fn midpoint_gap_declines_nonfinite_centers_and_preserves_signed_zero() {
+    let input = pieces(&[
+        (line(-0.0, 0.0, -0.0, 1.0), 0),
+        (line(0.0, 0.0, 0.0, 1.0), 0),
+    ]);
+    let mut a = Place::new(0, &input, 0.5);
+    let mut b = Place::new(1, &input, 0.5);
+    assert!(filtered(&mut a, &mut b, &input, 0.5).is_none());
+    assert!(compare(&mut a, &mut b, &input, 0.5).is_lt());
+    assert!(coincident(&mut a, &mut b, &input, 0.5));
+    for x in [f64::NEG_INFINITY, f64::INFINITY, f64::NAN] {
+        for ready in [false, true] {
+            let mut a = Place {
+                x,
+                ready,
+                approximate: !ready,
+                radius_code: 1,
+                ..Place::default()
+            };
+            assert!(filtered(&mut a, &mut b, &input, 0.5).is_none());
+        }
+    }
+}
+
+#[test]
 fn midpoint_filter_encloses_literal_keys_with_cancellation_and_underflow() {
     let n = 549_755_813_888.0;
     let tiny = f64::from_bits(1);
@@ -77,7 +125,11 @@ fn midpoint_filter_encloses_literal_keys_with_cancellation_and_underflow() {
             let mid = input[0].lo + (input[0].hi - input[0].lo) * (f64::from(k) / 16.0);
             let mut place = Place::new(0, &input, mid);
             place.ready = false;
-            let (lo, hi) = place.interval(&input, mid).unwrap();
+            assert!(place.ensure_center(&input, mid));
+            let (lo, hi) = (
+                (place.x - place.radius()).next_down(),
+                (place.x + place.radius()).next_up(),
+            );
             let exact = edge.x(mid);
             assert!(
                 lo <= exact && exact <= hi,
@@ -122,7 +174,7 @@ fn midpoint_filter_unsupported_domain_uses_the_original_key() {
         let mid = input[0].lo.midpoint(input[0].hi);
         let mut place = Place::new(0, &input, mid);
         place.ready = false;
-        assert!(place.interval(&input, mid).is_none());
+        assert!(!place.ensure_center(&input, mid));
         let actual = place.key(&input, mid);
         let expected = edge.x(mid);
         assert!(actual.to_bits() == expected.to_bits() || actual.is_nan() && expected.is_nan());

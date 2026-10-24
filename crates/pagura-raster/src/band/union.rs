@@ -121,15 +121,15 @@ impl Place {
         self.x
     }
 
-    /// A comparison certificate, never an exact key. An unsupported line
-    /// keeps the original interpolation, and a ready key is a point only
-    /// when finite. A center is evaluated at most once per entry and slab.
-    fn interval(&mut self, pieces: &[Piece], mid: f64) -> Option<(f64, f64)> {
+    /// Makes a finite comparison center available, never an exact key.
+    /// Unsupported lines keep the original interpolation. A cheap center
+    /// is evaluated at most once per entry and slab.
+    fn ensure_center(&mut self, pieces: &[Piece], mid: f64) -> bool {
         if self.ready {
-            return self.x.is_finite().then_some((self.x, self.x));
+            return self.x.is_finite();
         }
         if self.radius_code == 0 {
-            return None;
+            return false;
         }
         if !self.approximate {
             let line = &pieces[self.piece as usize].line;
@@ -141,8 +141,16 @@ impl Place {
             self.x = line.a.x + product;
             self.approximate = true;
         }
-        let radius = f64::from_bits((u64::from(self.radius_code) + 979) << 52);
-        Some(((self.x - radius).next_down(), (self.x + radius).next_up()))
+        self.x.is_finite()
+    }
+
+    /// The error radius after `ensure_center`: zero for an exact key.
+    fn radius(&self) -> f64 {
+        if self.ready {
+            0.0
+        } else {
+            f64::from_bits((u64::from(self.radius_code) + 979) << 52)
+        }
     }
 }
 
@@ -191,9 +199,23 @@ fn filtered(
     pieces: &[Piece],
     mid: f64,
 ) -> Option<std::cmp::Ordering> {
-    let (pl, pr) = p.interval(pieces, mid)?;
-    let (ql, qr) = q.interval(pieces, mid)?;
-    separated((pl, pr, 0), (ql, qr, 0))
+    if !(p.ensure_center(pieces, mid) && q.ensure_center(pieces, mid)) {
+        return None;
+    }
+    // Each nonzero radius is a power of two in 2^-43..2^-3. Their sum
+    // has at most 41 significant bits, so it is exact in binary64.
+    // Monotone rounding then makes a strict rounded difference beyond
+    // that sum a strict gap between the original exact keys too.
+    // Equality or uncertainty keeps the original comparison below.
+    let radius = p.radius() + q.radius();
+    let difference = p.x - q.x;
+    if difference < -radius {
+        Some(std::cmp::Ordering::Less)
+    } else if difference > radius {
+        Some(std::cmp::Ordering::Greater)
+    } else {
+        None
+    }
 }
 
 fn compare(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> std::cmp::Ordering {
