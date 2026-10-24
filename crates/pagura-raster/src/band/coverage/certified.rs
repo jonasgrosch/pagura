@@ -429,7 +429,7 @@ mod tests {
         assert_eq!(rows.bounds(), None);
         assert!(rows.coverage.rows.is_empty());
         assert!(rows.coverage.spans.is_empty());
-        assert!(rows.coverage.cells.is_empty());
+        assert_eq!(rows.coverage.cells, [] as [u8; 0]);
         assert_eq!(rows.heap_bytes(), bytes.used());
     }
 
