@@ -2,7 +2,7 @@
 //! colours) and the prepared conversion into the target.
 
 use super::{Input, PaintContext, Parts};
-use pagura_color::{Converter, Function, MAX_COMPONENTS, Painted};
+use pagura_color::{Converter, Function, MAX_CHANNELS, MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Result};
 use pagura_interpret::ShadingFunction;
 use std::sync::Arc;
@@ -15,6 +15,30 @@ pub(super) struct Colors {
     converter: Converter,
     channels: usize,
     cost: usize,
+    /// The input values a conversion reads.
+    inputs: usize,
+}
+
+/// One sample's function input, and the last input converted with its
+/// colour: inputs equal bit for bit convert to equal colours, so a run of
+/// them (an extended axis, a flat stretch of a function) converts once.
+pub(super) struct Sample {
+    pub(super) input: Input,
+    /// The input values the last conversion read; `None` before one.
+    last: Option<usize>,
+    key: Input,
+    color: [f64; MAX_CHANNELS],
+}
+
+impl Sample {
+    pub(super) fn new() -> Self {
+        Self {
+            input: [0.0; MAX_COMPONENTS],
+            last: None,
+            key: [0.0; MAX_COMPONENTS],
+            color: [0.0; MAX_CHANNELS],
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -60,12 +84,18 @@ impl Colors {
                 fs.iter().fold(0_usize, |c, f| c.saturating_add(f.cost()))
             }
         };
+        let inputs = match &functions {
+            Functions::Identity => components,
+            Functions::Single(f) => f.inputs(),
+            Functions::PerComponent(fs) => fs.iter().map(|f| f.inputs()).max().unwrap_or(0),
+        };
         Ok(Self {
             functions,
             components,
             channels: context.target.channels(),
             cost: function_cost.saturating_add(converter.cost()),
             converter,
+            inputs: inputs.min(MAX_COMPONENTS),
         })
     }
 
@@ -117,6 +147,28 @@ impl Colors {
             }
         }
         self.converter.convert(values, out);
+    }
+
+    /// [`Self::convert`] of `sample.input`: the last colour again when the
+    /// input values it reads are those of the last conversion.
+    pub(super) fn convert_sample(&self, sample: &mut Sample, out: &mut [f64]) {
+        let n = self.inputs;
+        let (input, key) = (&sample.input[..n], &mut sample.key[..n]);
+        let same = sample.last == Some(n)
+            && input
+                .iter()
+                .zip(&*key)
+                .all(|(a, b)| a.to_bits() == b.to_bits());
+        if same && let Some(color) = sample.color.get(..out.len()) {
+            out.copy_from_slice(color);
+            return;
+        }
+        self.convert(&sample.input, out);
+        key.copy_from_slice(input);
+        if let Some(color) = sample.color.get_mut(..out.len()) {
+            color.copy_from_slice(out);
+            sample.last = Some(n);
+        }
     }
 
     /// The colour of explicit components, such as a `Background`.
