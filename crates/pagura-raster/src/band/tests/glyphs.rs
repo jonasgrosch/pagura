@@ -175,8 +175,9 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
     let mut raster = BandRasterizer::new(area, &mut bytes).unwrap();
     let mut band = BandCoverage::with_capacity(Capacity::band(&area), &mut bytes).unwrap();
     let mut got = vec![0_u8; 2000 * 40];
+    let keyed: Vec<(u32, &Shape)> = (0..).zip(kept.iter().copied()).collect();
     for b in area.bands() {
-        let mut rest = &kept[..];
+        let mut rest = &keyed[..];
         while !rest.is_empty() {
             let taken = raster.rasterize_run(rest, None, b, &mut band);
             assert!(taken >= 1);

@@ -7,9 +7,10 @@
 //! one by one in content order. Every pixel thus receives the stores it
 //! would receive with one item per placement, in the same order, plus
 //! zero-coverage stores at the gaps, which leave every format as it is.
-//! Results are byte-identical.
+//! Results are byte-identical. In all paths, a placement that crosses into
+//! the next band keeps its rows there instead of being walked again.
 
-use super::{Executor, Frame, Tops};
+use super::{DirectCoverage, Executor, Frame, Tops};
 use crate::plan::{Glyph, Item, Run, intersect};
 
 impl Executor<'_> {
@@ -22,11 +23,7 @@ impl Executor<'_> {
         if let Some(words) = self.opaque(mark, frame) {
             for glyph in &run.glyphs {
                 if self.meets(glyph, frame) {
-                    let cover = crate::plan::Cover {
-                        shape: Some(glyph.shape),
-                        clip: mark.cover.clip,
-                    };
-                    self.store_direct(cover, frame, words);
+                    self.store_direct(DirectCoverage::Glyph(glyph.shape), frame, words);
                 }
             }
             return;
@@ -56,12 +53,8 @@ impl Executor<'_> {
             if glyph.alone || !self.meets(glyph, frame) {
                 continue;
             }
-            let cover = crate::plan::Cover {
-                shape: Some(glyph.shape),
-                clip: mark.cover.clip,
-            };
             self.shapes
-                .rasterize(self.rasterizer, cover, self.band, &mut coverage);
+                .rasterize_glyph(self.rasterizer, glyph.shape, self.band, &mut coverage);
             self.store_coverage(mark, frame, &coverage);
         }
         self.ws.coverage = coverage;

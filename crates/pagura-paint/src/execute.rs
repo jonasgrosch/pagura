@@ -35,6 +35,14 @@ use std::ops::Range;
 #[cfg(test)]
 mod tests;
 
+/// Coverage stored directly: an ordinary mark or a keyed glyph whose
+/// rows can be kept for the next band.
+#[derive(Debug, Clone, Copy)]
+enum DirectCoverage {
+    Mark(crate::plan::Cover),
+    Glyph(u32),
+}
+
 /// A prepared scene with scratch storage sized for it: what every band's
 /// execution works with. Paint execution cannot fail; an output consumer
 /// can return its own error.
@@ -115,6 +123,7 @@ impl Rendering<'_> {
     ) -> Result<Completion, E> {
         let area = self.plan.area;
         self.workspace.restart();
+        self.rasterizer.restart();
         for band in area.bands() {
             let rows = area.band_rows(band);
             let row = rows.start;
@@ -268,7 +277,7 @@ impl<'a> Executor<'a> {
             Boundary::Absent => {}
         }
         if let Some(words) = self.opaque(mark, frame) {
-            self.store_direct(mark.cover, frame, words);
+            self.store_direct(DirectCoverage::Mark(mark.cover), frame, words);
             return;
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
@@ -281,12 +290,7 @@ impl<'a> Executor<'a> {
     /// Rasterizes `cover` straight into the N16 page as the opaque constant
     /// colour `words`, row by row as the rasterizer emits it: one rounding
     /// per store from each pixel's coverage, nothing else to evaluate.
-    pub(super) fn store_direct(
-        &mut self,
-        cover: crate::plan::Cover,
-        frame: Frame,
-        words: [u16; 4],
-    ) {
+    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, words: [u16; 4]) {
         let ws = &mut *self.ws;
         let PageBuffer::N16(page) = &mut ws.page else {
             return;
@@ -301,8 +305,16 @@ impl<'a> Executor<'a> {
             row: None,
             stored: 0,
         };
-        self.shapes
-            .rasterize_into(self.rasterizer, cover, self.band, &mut out);
+        match cover {
+            DirectCoverage::Mark(cover) => {
+                self.shapes
+                    .rasterize_into(self.rasterizer, cover, self.band, &mut out);
+            }
+            DirectCoverage::Glyph(shape) => {
+                self.shapes
+                    .rasterize_glyph_into(self.rasterizer, shape, self.band, &mut out);
+            }
+        }
         let stored = out.stored;
         ws.usage.work = ws.usage.work.saturating_add(stored);
     }
