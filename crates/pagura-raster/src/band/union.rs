@@ -66,6 +66,16 @@ impl Piece {
         let (a, b) = (self.line.x(self.lo), self.line.x(self.hi));
         (a.min(b), a.max(b))
     }
+
+    /// A comparison token for a sweep whose whole-line x ranges are fixed.
+    /// Emitted sides always use the original line and heights instead.
+    fn fixed_key(&self) -> f64 {
+        if self.line.a.y < self.line.b.y {
+            self.line.a.x
+        } else {
+            self.line.b.x
+        }
+    }
 }
 
 /// A side open from an earlier sub-slab: its piece, +1 where coverage
@@ -99,6 +109,8 @@ fn sort_work(count: usize) -> usize {
 /// Reusable storage of the resolver.
 #[derive(Debug, Default)]
 pub(crate) struct Resolver {
+    #[cfg(test)]
+    midpoint_keys: bool,
     heights: Vec<f64>,
     /// The pieces' columns and heights, `(start, end, piece)`, each by
     /// start: the sweep takes the pieces by their upper end.
@@ -300,7 +312,7 @@ impl Resolver {
         for p in pieces {
             self.heights.extend([p.lo, p.hi]);
         }
-        self.crossings(pieces, total, (work, bytes))?;
+        let fixed = self.crossings(pieces, total, (work, bytes))?;
         work.charge(sort_work(self.heights.len()))?;
         self.heights.sort_unstable_by(f64::total_cmp);
         self.heights.dedup();
@@ -330,7 +342,7 @@ impl Resolver {
                 while self.carry.get(segment + 1).is_some_and(|&y| y <= a) {
                     segment += 1;
                 }
-                joined = self.place(pieces, (a, b), joined, work)?;
+                joined = self.place(pieces, (a, b), joined, fixed, work)?;
                 work.charge(
                     self.order
                         .len()
@@ -380,7 +392,7 @@ impl Resolver {
         pieces: &[Piece],
         total: u32,
         (work, bytes): (&mut Meter, &mut Meter),
-    ) -> Result<()> {
+    ) -> Result<bool> {
         self.columns.clear();
         self.rows.clear();
         for (i, p) in (0..total).zip(pieces) {
@@ -391,13 +403,33 @@ impl Resolver {
         let by_start = |a: &Span, b: &Span| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2));
         self.columns.sort_unstable_by(by_start);
         self.rows.sort_unstable_by(by_start);
-        let (across, down) = (overlapping(&self.columns), overlapping(&self.rows));
+        // The existing overlap-counting pass also checks adjacent full-line
+        // ranges. Its fixed inspection is covered by the prepaid pass; it
+        // adds no traversal, scratch or charge to the parent's tariff.
+        let mut fixed = true;
+        let mut previous = None;
+        let across = overlapping(&self.columns, |i| {
+            if fixed {
+                let line = pieces[i as usize].line;
+                fixed = [line.a.x, line.a.y, line.b.x, line.b.y]
+                    .into_iter()
+                    .all(f64::is_finite)
+                    && previous.is_none_or(|before| fixed_pair(before, line));
+                previous = Some(line);
+            }
+        });
+        let down = overlapping(&self.rows, |_| {});
+        work.charge(across.min(down))?;
+        #[cfg(test)]
+        let fixed = fixed && !self.midpoint_keys;
+        if fixed {
+            return Ok(true);
+        }
         let spans = if down < across {
             &self.rows
         } else {
             &self.columns
         };
-        work.charge(across.min(down))?;
         for (n, &(_, end, i)) in spans.iter().enumerate() {
             let p = pieces[i as usize];
             for &(start, _, j) in &spans[n + 1..] {
@@ -421,7 +453,7 @@ impl Resolver {
                 }
             }
         }
-        Ok(())
+        Ok(false)
     }
 
     /// Orders the pieces spanning sub-slab `a..b`: those from above placed
@@ -433,16 +465,33 @@ impl Resolver {
         pieces: &[Piece],
         (a, b): (f64, f64),
         mut joined: usize,
+        fixed: bool,
         work: &mut Meter,
     ) -> Result<usize> {
         let mid = a.midpoint(b);
-        let place = |i: u32| (pieces[i as usize].line.x(mid), i);
+        let place = |i: u32| {
+            let piece = &pieces[i as usize];
+            (
+                if fixed {
+                    piece.fixed_key()
+                } else {
+                    piece.line.x(mid)
+                },
+                i,
+            )
+        };
         work.charge(self.order.len())?;
-        self.order.retain_mut(|entry| {
-            *entry = place(entry.1);
-            pieces[entry.1 as usize].hi >= b
-        });
-        settle(&mut self.order, work)?;
+        if fixed {
+            // Every retained subset has the same strict class order and
+            // equal-key groups; the old midpoint settle would make no move.
+            self.order.retain(|entry| pieces[entry.1 as usize].hi >= b);
+        } else {
+            self.order.retain_mut(|entry| {
+                *entry = place(entry.1);
+                pieces[entry.1 as usize].hi >= b
+            });
+            settle(&mut self.order, work)?;
+        }
         self.joining.clear();
         while let Some(&(lo, hi, i)) = self.rows.get(joined)
             && lo <= a
@@ -566,12 +615,44 @@ fn clip(piece: Piece, (left, right): (f64, f64)) -> Option<Piece> {
 
 /// The pairs of `spans`, ordered by start, that overlap: for each, the
 /// later ones starting at or before its end.
-fn overlapping(spans: &[Span]) -> usize {
+fn overlapping(spans: &[Span], mut inspect: impl FnMut(u32)) -> usize {
     spans
         .iter()
         .enumerate()
-        .map(|(n, &(_, end, _))| spans[n + 1..].partition_point(|s| s.0 <= end))
+        .map(|(n, &(_, end, i))| {
+            inspect(i);
+            spans[n + 1..].partition_point(|s| s.0 <= end)
+        })
         .fold(0, usize::saturating_add)
+}
+
+/// All computed x keys stay in the original endpoint range (`Line::x`
+/// clamps every interior result). Strictly separated ranges therefore fix
+/// their order at every midpoint. Exact line copies and bit-constant
+/// verticals fix equality too. Unproved touching and signed-zero relations
+/// require the original midpoint path.
+fn fixed_pair(before: Line, after: Line) -> bool {
+    if before.a.x.max(before.b.x) < after.a.x.min(after.b.x) {
+        return true;
+    }
+    let vertical = |line: Line| line.a.x.to_bits() == line.b.x.to_bits();
+    if vertical(before) && vertical(after) && before.a.x.to_bits() == after.a.x.to_bits() {
+        return true;
+    }
+    let ends = |line: Line| {
+        let (top, bottom) = if line.a.y < line.b.y {
+            (line.a, line.b)
+        } else {
+            (line.b, line.a)
+        };
+        [
+            top.x.to_bits(),
+            top.y.to_bits(),
+            bottom.x.to_bits(),
+            bottom.y.to_bits(),
+        ]
+    };
+    ends(before) == ends(after)
 }
 
 /// Restores the order of `order` by moving entries down one at a time,

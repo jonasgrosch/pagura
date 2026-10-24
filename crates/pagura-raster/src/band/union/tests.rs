@@ -44,6 +44,186 @@ fn area(lines: &[(Line, u8)], rules: &[FillRule]) -> f64 {
     enclosed(&sides(&pieces(lines), rules, &mut work).unwrap())
 }
 
+/// Compare the complete side coordinates and resource charges with the
+/// original midpoint ordering, including the sign of every zero.
+fn compare_ordering(pieces: &[Piece], rules: &[FillRule]) -> (Vec<Line>, Resolver) {
+    let run = |resolver: &mut Resolver| {
+        let mut work = Meter::new(usize::MAX, "work");
+        let mut bytes = Meter::new(usize::MAX, "bytes");
+        let mut out = Vec::new();
+        resolver
+            .row(
+                pieces,
+                rules,
+                0.0,
+                (
+                    &mut out,
+                    Meters {
+                        work: &mut work,
+                        bytes: &mut bytes,
+                    },
+                ),
+            )
+            .unwrap();
+        (out, work.used(), bytes.used())
+    };
+    let mut fixed = Resolver::default();
+    let mut midpoint = Resolver {
+        midpoint_keys: true,
+        ..Resolver::default()
+    };
+    let (actual, work, bytes) = run(&mut fixed);
+    let (expected, old_work, old_bytes) = run(&mut midpoint);
+    let bits = |lines: &[Line]| {
+        lines
+            .iter()
+            .map(|l| {
+                [
+                    l.a.x.to_bits(),
+                    l.a.y.to_bits(),
+                    l.b.x.to_bits(),
+                    l.b.y.to_bits(),
+                ]
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(bits(&actual), bits(&expected));
+    assert_eq!(work, old_work);
+    assert_eq!(bytes, old_bytes);
+    (actual, fixed)
+}
+
+#[test]
+fn fixed_order_keeps_coincident_ids_and_staggered_joins() {
+    let mark = polygon(&[(-6.0, 0.0), (-3.0, 0.0), (-2.0, 1.0), (-5.0, 1.0)], 0);
+    let mut lines = [mark.clone(), mark].concat();
+    lines.extend(polygon(
+        &[(-8.0, 0.0), (0.0, 0.0), (1.0, 1.0), (-7.0, 1.0)],
+        1,
+    ));
+    lines.extend(polygon(
+        &[(4.0, 0.125), (5.0, 0.125), (5.0, 0.625), (4.0, 0.625)],
+        0,
+    ));
+    let (out, resolver) = compare_ordering(&pieces(&lines), &[FillRule::NonZero; 2]);
+    assert_eq!(
+        out,
+        [line(-6.0, 0.0, -5.0, 1.0), line(-2.0, 1.0, -3.0, 0.0)]
+    );
+    // A nonvertical retained edge uses its endpoint token, proving that
+    // this comparison exercised the fixed-key route.
+    assert!(resolver.order.iter().any(|&(x, _)| x == -6.0));
+    assert_eq!(enclosed(&out), 3.0);
+}
+
+#[test]
+fn fixed_order_preserves_chunk_carries_and_both_fill_rules() {
+    let mut lines = Vec::new();
+    for n in 0..128_u32 {
+        let x = f64::from(n) * 4.0;
+        let y = f64::from(n % 4) * 0.125;
+        lines.extend(polygon(
+            &[
+                (x, y),
+                (x + 1.0, y),
+                (x + 1.5, y + 0.375),
+                (x + 0.5, y + 0.375),
+            ],
+            0,
+        ));
+    }
+    lines.extend(polygon(
+        &[(-2.0, 0.0), (514.0, 0.0), (514.0, 1.0), (-2.0, 1.0)],
+        1,
+    ));
+    for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+        let (out, resolver) = compare_ordering(&pieces(&lines), &[rule, FillRule::NonZero]);
+        assert!(!resolver.cuts.is_empty());
+        assert_eq!(enclosed(&out), 48.0);
+    }
+}
+
+#[test]
+fn rounding_ties_without_a_crossing_keep_midpoint_ordering() {
+    let high = 1.0 + f64::EPSILON;
+    let mut lines = vec![
+        (line(high, 0.0, 1.0, 1.0), 0),
+        (line(1.0, 1.0, 1.0, 0.0), 0),
+    ];
+    lines.extend(polygon(
+        &[(4.0, 0.5), (5.0, 0.5), (5.0, 1.0), (4.0, 1.0)],
+        0,
+    ));
+    let (_, resolver) = compare_ordering(&pieces(&lines), &[FillRule::NonZero]);
+    assert_eq!(resolver.heights, [0.0, 0.5, 1.0]);
+    // The first two edges never strictly cross. Their rounded keys do
+    // coincide in the last slab, restoring the original piece-index tie.
+    assert_eq!(&resolver.order[..2], &[(1.0, 0), (1.0, 1)]);
+    assert!(!fixed_pair(lines[1].0, lines[0].0));
+}
+
+#[test]
+fn fixed_order_rejects_unproved_signed_zero_relations() {
+    let mixed = line(-0.0, f64::from_bits(1), 0.0, f64::from_bits(2));
+    let constant = line(-0.0, 0.0, -0.0, 1.0);
+    assert!(!fixed_pair(mixed, constant));
+    assert!(!fixed_pair(constant, mixed));
+    assert!(fixed_pair(
+        mixed,
+        Line {
+            a: mixed.b,
+            b: mixed.a
+        }
+    ));
+    let (_, resolver) = compare_ordering(
+        &pieces(&[(mixed, 0), (constant, 0), (line(2.0, 1.0, 2.0, 0.0), 0)]),
+        &[FillRule::NonZero],
+    );
+    // The mixed line's subnormal slab rounds its midpoint to the lower
+    // endpoint. It cannot be grouped with the constant negative zero by
+    // an unproved numerical-equality shortcut.
+    assert!(resolver.heights.contains(&f64::from_bits(2)));
+}
+
+#[test]
+fn fixed_order_keeps_the_original_resource_acceptance_boundary() {
+    let pieces = pieces(&polygon(
+        &[(-4.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (-3.0, 1.0)],
+        0,
+    ));
+    let attempt = |midpoint_keys, work_limit, byte_limit| {
+        let mut work = Meter::new(work_limit, "work");
+        let mut bytes = Meter::new(byte_limit, "bytes");
+        let result = Resolver {
+            midpoint_keys,
+            ..Resolver::default()
+        }
+        .row(
+            &pieces,
+            &[FillRule::NonZero],
+            0.0,
+            (
+                &mut Vec::new(),
+                Meters {
+                    work: &mut work,
+                    bytes: &mut bytes,
+                },
+            ),
+        );
+        (result.is_ok(), work.used(), bytes.used())
+    };
+    let (passed, work, bytes) = attempt(true, usize::MAX, usize::MAX);
+    assert!(passed);
+    for work_limit in [work - 1, work, work + 1] {
+        for byte_limit in [bytes - 1, bytes, bytes + 1] {
+            assert_eq!(
+                attempt(false, work_limit, byte_limit),
+                attempt(true, work_limit, byte_limit)
+            );
+        }
+    }
+}
+
 /// The closed polygon through `points`, in `group`.
 fn polygon(points: &[(f64, f64)], group: u8) -> Vec<(Line, u8)> {
     let next = points.iter().cycle().skip(1);
