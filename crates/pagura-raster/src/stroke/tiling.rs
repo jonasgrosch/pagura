@@ -57,8 +57,9 @@ impl Joint {
     }
 }
 
-/// Appends the pieces of `run` to `out`, whose union is the components'.
-/// Returns whether no two pieces overlap: no joint overlaps and the
+/// Appends the pieces of `run` to `out`, whose union is the components'; a
+/// lone round-capped segment's capsule differs from it only by slivers of
+/// rounding width (ADR 0004 §4). Returns whether no two pieces overlap: no joint overlaps and the
 /// centreline is proven not to return within the pen of itself.
 pub(super) fn append(
     out: &mut PathBuilder,

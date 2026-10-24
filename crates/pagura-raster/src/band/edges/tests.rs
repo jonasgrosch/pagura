@@ -174,3 +174,50 @@ fn polygons_drop_repeats_and_keep_point_cells() {
     assert_eq!(contours[1].len(), 3);
     assert!(polygon.points_cells);
 }
+
+#[test]
+fn plain_interpolation_stays_within_the_interpolation_bound() {
+    let mut state = 0x2545_f491_4f6c_dd1d_u64;
+    let mut next = || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let unit = (state >> 11) as f64 / (1u64 << 53) as f64;
+        unit
+    };
+    for case in 0..20_000 {
+        // Ordinary coordinates, then ones beyond the plain range or too
+        // flat for it, which must take the exact form.
+        let scale = match case % 4 {
+            0 | 1 => 2000.0,
+            2 => 1e7,
+            _ => 1.0,
+        };
+        let a = Point::new(scale * (next() - 0.5), scale * (next() - 0.5));
+        let height = if case % 4 == 3 {
+            1e-10 * next()
+        } else {
+            scale * (next() - 0.5)
+        };
+        let b = Point::new(scale * (next() - 0.5), a.y + height);
+        let line = Line { a, b };
+        let (lo, hi) = (a.y.min(b.y), a.y.max(b.y));
+        let y = lo + (hi - lo) * next();
+        let plain = a.x.abs().max(b.x.abs()) <= PLAIN_LIMIT
+            && a.y.abs().max(b.y.abs()) <= PLAIN_LIMIT
+            && (hi - lo) >= PLAIN_HEIGHT;
+        let (fast, exact) = (line.kernel_x(y), line.x(y));
+        if plain {
+            assert!(
+                (fast - exact).abs() <= line.interpolation_error().x,
+                "{case}: {fast} vs {exact} for {line:?} at {y}"
+            );
+        } else {
+            assert_eq!(fast.to_bits(), exact.to_bits(), "{case}: {line:?} at {y}");
+        }
+    }
+}

@@ -786,6 +786,58 @@ mod tests {
         }
     }
 
+    /// A row's bytes, unemitted pixels zero.
+    struct Bytes(Vec<u8>);
+    impl Sink for Bytes {
+        fn run(&mut self, x0: usize, x1: usize, value: u8) {
+            if let Some(pixels) = self.0.get_mut(x0..x1) {
+                pixels.fill(value);
+            }
+        }
+    }
+
+    #[test]
+    fn dense_windows_emit_the_bytes_of_marked_windows() {
+        let mut state = 0x853c_49e6_748f_ea9b_u64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "53 random bits map to a uniform fraction"
+            )]
+            let unit = (state >> 11) as f64 / (1u64 << 53) as f64;
+            unit
+        };
+        let (width, rows) = (40_usize, 0..STRIP);
+        let (mut marked, mut dense) = (cells(width), cells(width));
+        for case in 0..200 {
+            assert!(marked.open((3, width), rows.clone()));
+            assert!(dense.open_dense((3, width), rows.clone()));
+            // Short flattened-curve edges, long ones across rows and
+            // columns, and some reaching outside the window.
+            let count = 1 + case % 24;
+            let mut point = (3.0 + 34.0 * next(), 16.0 * next());
+            for _ in 0..count {
+                let reach = if next() < 0.7 { 0.6 } else { 20.0 };
+                let to = (
+                    point.0 + reach * (next() - 0.5),
+                    point.1 + reach * (next() - 0.5),
+                );
+                marked.line(line(point, to));
+                dense.line(line(point, to));
+                point = to;
+            }
+            for r in 0..rows.len() {
+                let (mut a, mut b) = (Bytes(vec![0; width]), Bytes(vec![0; width]));
+                marked.emit(r, FillRule::NonZero, &mut a);
+                dense.emit(r, FillRule::NonZero, &mut b);
+                assert_eq!(a.0, b.0, "{case} row {r}");
+            }
+        }
+    }
+
     #[test]
     fn exact_fragment_additions_do_not_create_a_count_precision_floor() {
         let mut measured = cells(1);

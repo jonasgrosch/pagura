@@ -82,12 +82,8 @@ pub(super) fn certify(
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
     for round in 0..=ROUNDS {
-        let analytic = match &shape.body {
-            Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
-            Body::Edges(body) => !body.curves.is_empty(),
-        };
         work.charge_product(outline.segments().len(), 2)?;
-        let base = if analytic {
+        let base = if analytic(&shape) {
             curve::reduction_area(outline, linear)
         } else {
             AREA
@@ -196,16 +192,20 @@ fn replacement(
     Ok(prepared)
 }
 
+/// Whether `shape` integrates quadratics in closed form.
+fn analytic(shape: &Shape) -> bool {
+    match &shape.body {
+        Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
+        Body::Edges(body) => !body.curves.is_empty(),
+    }
+}
+
 /// Whether `shape` integrates `outline`'s own quadratics in closed form:
 /// analytic geometry from an outline without cubics, crossed by no clip
 /// path. Its curves are the source's, mapped and placed, so its bytes are
 /// correctly rounded up to the kernel's arithmetic, as for straight edges.
 fn exact(outline: &Path, shape: &Shape, options: &Prep<'_>) -> bool {
-    let analytic = match &shape.body {
-        Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
-        Body::Edges(body) => !body.curves.is_empty(),
-    };
-    analytic
+    analytic(shape)
         && options.clip.and_then(|clip| clip.paths()).is_none()
         && !outline
             .segments()
