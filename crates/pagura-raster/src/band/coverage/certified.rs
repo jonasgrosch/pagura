@@ -301,6 +301,33 @@ mod tests {
         (rows, area, bytes.used())
     }
 
+    fn prepared(rows: CertifiedRows, area: Area) -> crate::Shape {
+        let limits = pagura_core::Limits::default();
+        let bounds = rows.bounds().unwrap();
+        let mut path = crate::PathBuilder::new();
+        path.rect(
+            f64::from(bounds.x0),
+            f64::from(bounds.y0),
+            f64::from(bounds.width()),
+            f64::from(bounds.height()),
+        );
+        let mut shape = crate::Shape::fill(
+            &path.finish(),
+            crate::Transform::IDENTITY,
+            crate::FillRule::NonZero,
+            &crate::ShapeOptions {
+                area,
+                limits: &limits,
+            },
+        )
+        .unwrap()
+        .unwrap()
+        .with_certified_rows(rows);
+        // The existing placement allowance, unchanged by row publication.
+        shape.add_work(bounds.height() as usize * (2 * bounds.width() as usize + 2) + 1);
+        shape
+    }
+
     fn emitted(rows: &CertifiedRows, area: &Area) -> (Vec<(u32, u32, u8)>, usize) {
         let mut scratch = Meter::new(1 << 20, "scratch");
         let mut output = BandCoverage::with_capacity(rows.capacity(), &mut scratch).unwrap();
@@ -404,7 +431,6 @@ mod tests {
 
     #[test]
     fn certified_rows_work_covers_run_slot_setup_in_every_band() {
-        let limits = pagura_core::Limits::default();
         for height in [1, 3, 4, 7, 32] {
             let (mut rows, mut area, _) = fixture();
             area.band_height = height;
@@ -412,28 +438,7 @@ mod tests {
                 .unwrap();
             let (expected, _) = emitted(&rows, &area);
             let bounds = rows.bounds().unwrap();
-            let mut path = crate::PathBuilder::new();
-            path.rect(
-                f64::from(bounds.x0),
-                f64::from(bounds.y0),
-                f64::from(bounds.width()),
-                f64::from(bounds.height()),
-            );
-            let mut shape = crate::Shape::fill(
-                &path.finish(),
-                crate::Transform::IDENTITY,
-                crate::FillRule::NonZero,
-                &crate::ShapeOptions {
-                    area,
-                    limits: &limits,
-                },
-            )
-            .unwrap()
-            .unwrap()
-            .with_certified_rows(rows);
-            // The existing placement allowance; it must not grow globally
-            // to cover this owner's per-band slot setup.
-            shape.add_work(bounds.height() as usize * (2 * bounds.width() as usize + 2) + 1);
+            let shape = prepared(rows, area);
             let mut bytes = crate::testing::bytes();
             let mut raster = crate::BandRasterizer::new(area, &mut bytes).unwrap();
             let mut output = BandCoverage::with_capacity(shape.capacity(), &mut bytes).unwrap();
@@ -460,6 +465,77 @@ mod tests {
             if height == 1 {
                 assert!(raster.work_done() > shape.work() - bounds.height() as usize);
             }
+        }
+    }
+
+    #[test]
+    fn certified_runs_publish_separated_stretches_without_empty_rows() {
+        for height in [1, 3, 4, 7, 32] {
+            let area = Area {
+                region: DeviceRect {
+                    x0: 0,
+                    y0: 0,
+                    x1: 16,
+                    y1: 12,
+                },
+                band_height: height,
+            };
+            let build = |ranges: &[(u32, u32, u32, u8)]| {
+                let mut work = Meter::new(1 << 20, "work");
+                let mut bytes = Meter::new(1 << 20, "bytes");
+                let mut rows = CertifiedRows::new();
+                for &(y, x0, x1, value) in ranges {
+                    rows.push_range(y, x0, x1, value, &mut work, &mut bytes)
+                        .unwrap();
+                }
+                rows.finish(&area, &mut work).unwrap();
+                prepared(rows, area)
+            };
+            let shapes = [
+                build(&[(2, 1, 3, 255), (5, 2, 3, 17), (7, 1, 2, 255)]),
+                build(&[(2, 8, 10, 9), (4, 9, 10, 255), (7, 8, 9, 4)]),
+            ];
+            let mut bytes = crate::testing::bytes();
+            let mut raster = crate::BandRasterizer::new(area, &mut bytes).unwrap();
+            // Production run output has the dense regional capacity, rather
+            // than the compact capacity of either individual shape.
+            let mut output =
+                BandCoverage::with_capacity(Capacity::band(&area), &mut bytes).unwrap();
+            let retained = output.retained_bytes();
+            let mut actual = Vec::new();
+            for band in area.bands() {
+                assert_eq!(
+                    raster.rasterize_run(&[&shapes[0], &shapes[1]], None, band, &mut output),
+                    2,
+                );
+                assert_eq!(output.retained_bytes(), retained);
+                for row in output.rows() {
+                    for span in row.spans() {
+                        match span {
+                            super::super::Span::Full { x, len } => {
+                                actual.extend((x..x + len).map(|x| (row.y, x, 255)));
+                            }
+                            super::super::Span::Partial { x, coverage } => {
+                                actual.extend((x..).zip(coverage).map(|(x, &v)| (row.y, x, v)));
+                            }
+                        }
+                    }
+                }
+            }
+            assert_eq!(
+                actual,
+                [
+                    (2, 1, 255),
+                    (2, 2, 255),
+                    (2, 8, 9),
+                    (2, 9, 9),
+                    (4, 9, 255),
+                    (5, 2, 17),
+                    (7, 1, 255),
+                    (7, 8, 4),
+                ]
+            );
+            assert!(raster.work_done() <= shapes.iter().map(crate::Shape::work).sum::<usize>());
         }
     }
 

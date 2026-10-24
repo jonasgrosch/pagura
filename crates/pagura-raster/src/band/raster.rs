@@ -53,6 +53,28 @@ impl Run {
             .saturating_add(self.cells.capacity())
             .saturating_add(self.row.capacity())
     }
+
+    /// Publishes the first nonzero stretch's row lazily, so empty gaps and
+    /// suffix rows never need a temporary output-row slot.
+    fn flush(
+        row: &mut [u8],
+        out: &mut BandCoverage,
+        y: u32,
+        (x0, x1): (u32, u32),
+        nonzero: u8,
+        started: &mut bool,
+    ) {
+        if nonzero != 0 {
+            if !*started {
+                out.push_row(y);
+                *started = true;
+            }
+            out.put_row(x0, &row[x0 as usize..x1 as usize]);
+            row[x0 as usize..x1 as usize].fill(0);
+        }
+        // Otherwise every merged input byte was zero. The scratch starts
+        // zero and every positive stretch is cleared above, so it stays so.
+    }
 }
 
 /// One shape of a run and its cells.
@@ -298,28 +320,29 @@ impl BandRasterizer {
         run.slots.sort_unstable_by_key(|s| s.x0);
         let mut work = run.slots.len();
         for y in rows {
-            out.push_row(y);
+            let mut started = false;
+            let mut nonzero = 0_u8;
             let mut stretch: Option<(u32, u32)> = None;
             for slot in run.slots.iter().filter(|s| s.rows.contains(&y)) {
                 let x1 = slot.x0 + u32::try_from(slot.width).unwrap_or(u32::MAX);
                 if let Some((a, b)) = stretch
                     && slot.x0 >= b
                 {
-                    out.put_row(a, &run.row[a as usize..b as usize]);
-                    run.row[a as usize..b as usize].fill(0);
+                    Run::flush(&mut run.row, out, y, (a, b), nonzero, &mut started);
                     stretch = None;
+                    nonzero = 0;
                 }
                 let k = (y - slot.rows.start) as usize * slot.width + slot.start;
                 let own = &run.cells[k..k + slot.width];
                 for (merged, &value) in run.row[slot.x0 as usize..x1 as usize].iter_mut().zip(own) {
                     *merged = (*merged).max(value);
+                    nonzero |= *merged;
                 }
                 work += 2 * slot.width + 2;
                 stretch = Some(stretch.map_or((slot.x0, x1), |(a, b)| (a, b.max(x1))));
             }
             if let Some((a, b)) = stretch {
-                out.put_row(a, &run.row[a as usize..b as usize]);
-                run.row[a as usize..b as usize].fill(0);
+                Run::flush(&mut run.row, out, y, (a, b), nonzero, &mut started);
             }
         }
         self.work = self.work.saturating_add(work);
