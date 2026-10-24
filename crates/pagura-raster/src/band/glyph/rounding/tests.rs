@@ -1440,6 +1440,11 @@ fn complete_rows_keep_canonical_point_floors_and_a_containing_clip() {
     let mut path = complete_rows_builder();
     path.move_to(Point::new(7.75, 1.25));
     path.close();
+    // Keep the floor-crossing point inside a separately supported bbox.
+    // Its outward original MoveTo enclosure may cross8 even when the
+    // literal placed point is just below8 and its canonical cell ends8.
+    path.move_to(Point::new(9.25, 4.25));
+    path.close();
     let edges = std::sync::Arc::new(
         GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
     );
@@ -1478,7 +1483,8 @@ fn complete_rows_keep_canonical_point_floors_and_a_containing_clip() {
         shape.add_work(1_000_000);
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
-        assert_eq!(source.points.len(), 1);
+        assert_eq!(source.points.len(), 2);
+        assert!(support_contained(source, Some(&shape), &options, &mut work).unwrap());
         let mut bytes = crate::testing::bytes();
         bytes.charge(shape.retained_bytes()).unwrap();
         let (mut targets, mut proven) = (Vec::new(), Vec::new());
@@ -1500,6 +1506,7 @@ fn complete_rows_keep_canonical_point_floors_and_a_containing_clip() {
             expected[pixel.y as usize * 12 + pixel.x as usize] = pixel.byte;
         }
         assert_eq!(expected[12 + case.point_x], 255);
+        assert_eq!(expected[4 * 12 + 9], 255);
         let ready = rows::replace(
             source,
             shape,
@@ -1799,11 +1806,24 @@ fn complete_rows_leave_sources_without_original_curves_unchanged() {
     let limits = Limits::default();
     let options = complete_rows_options(&limits, 3);
     let mut path = PathBuilder::new();
-    path.rect(1.25, 1.25, 4.0, 4.0);
-    let edges = std::sync::Arc::new(
-        GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
-    );
+    path.move_to(Point::new(1.25, 1.25));
+    path.cubic_to(
+        Point::new(2.25, 5.25),
+        Point::new(4.25, 2.25),
+        Point::new(5.25, 5.25),
+    )
+    .unwrap();
+    path.line_to(Point::new(1.25, 5.25)).unwrap();
+    path.close();
+    let path = path.finish();
+    assert!(!curve::quadratic_outline(&path, Transform::IDENTITY));
+    let edges = std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
     assert!(matches!(&edges.kind, Kind::Polygon { source: None, .. }));
+    assert!(
+        Source::of(&edges, Point::default(), &mut crate::testing::bytes())
+            .unwrap()
+            .is_none()
+    );
     let shape = super::super::placed(&edges, Point::default(), &options)
         .unwrap()
         .unwrap();

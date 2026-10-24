@@ -106,9 +106,12 @@ impl CertifiedRows {
             ));
         }
         // One-row bands maximize seeking, including gaps between nonzero
-        // rows. The work/admission bound never depends on band height.
+        // rows. Also reserve one run-slot setup per intersecting band:
+        // rasterize_run counts each slot anew, whereas the common glyph
+        // merge allowance includes that scalar setup only once. Both are
+        // bounded by the nonzero height, independently of band height.
         let mut emission = (bounds.height() as usize)
-            .checked_mul(self.search_work() + 1)
+            .checked_mul(self.search_work() + 2)
             .ok_or(Error::limit("certified coverage work exceeds usize"))?;
         let mut band = bounds.y0 / area.band_height;
         let mut count = [0_u32; 3];
@@ -396,6 +399,67 @@ mod tests {
             assert_eq!(actual, expected);
             assert_eq!(rows.work(), bound);
             assert!(spent <= bound);
+        }
+    }
+
+    #[test]
+    fn certified_rows_work_covers_run_slot_setup_in_every_band() {
+        let limits = pagura_core::Limits::default();
+        for height in [1, 3, 4, 7, 32] {
+            let (mut rows, mut area, _) = fixture();
+            area.band_height = height;
+            rows.finish(&area, &mut Meter::new(1 << 20, "work"))
+                .unwrap();
+            let (expected, _) = emitted(&rows, &area);
+            let bounds = rows.bounds().unwrap();
+            let mut path = crate::PathBuilder::new();
+            path.rect(
+                f64::from(bounds.x0),
+                f64::from(bounds.y0),
+                f64::from(bounds.width()),
+                f64::from(bounds.height()),
+            );
+            let mut shape = crate::Shape::fill(
+                &path.finish(),
+                crate::Transform::IDENTITY,
+                crate::FillRule::NonZero,
+                &crate::ShapeOptions {
+                    area,
+                    limits: &limits,
+                },
+            )
+            .unwrap()
+            .unwrap()
+            .with_certified_rows(rows);
+            // The existing placement allowance; it must not grow globally
+            // to cover this owner's per-band slot setup.
+            shape.add_work(bounds.height() as usize * (2 * bounds.width() as usize + 2) + 1);
+            let mut bytes = crate::testing::bytes();
+            let mut raster = crate::BandRasterizer::new(area, &mut bytes).unwrap();
+            let mut output = BandCoverage::with_capacity(shape.capacity(), &mut bytes).unwrap();
+            let retained = output.retained_bytes();
+            let mut actual = Vec::new();
+            for band in shape.bands(&area) {
+                assert_eq!(raster.rasterize_run(&[&shape], None, band, &mut output), 1);
+                assert_eq!(output.retained_bytes(), retained);
+                for row in output.rows() {
+                    for span in row.spans() {
+                        match span {
+                            super::super::Span::Full { x, len } => {
+                                actual.extend((x..x + len).map(|x| (row.y, x, 255)));
+                            }
+                            super::super::Span::Partial { x, coverage } => {
+                                actual.extend((x..).zip(coverage).map(|(x, &v)| (row.y, x, v)));
+                            }
+                        }
+                    }
+                }
+            }
+            assert_eq!(actual, expected);
+            assert!(raster.work_done() <= shape.work());
+            if height == 1 {
+                assert!(raster.work_done() > shape.work() - bounds.height() as usize);
+            }
         }
     }
 
