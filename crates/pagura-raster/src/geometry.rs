@@ -230,8 +230,8 @@ impl Mul<Transform> for Point {
 
 /// The sign of every turn of the closed polygon `points` when they certify
 /// a simple convex polygon: strict turns of one sign and exactly one
-/// revolution. The error guard excludes uncertain determinants and
-/// collinear subdivision.
+/// revolution. The error guard excludes uncertain determinants, including
+/// underflowing ones, and collinear subdivision.
 pub(crate) fn convex_orientation(points: &[Point]) -> Option<f64> {
     let mut sign = 0.0_f64;
     let mut turns = 0;
@@ -245,7 +245,7 @@ pub(crate) fn convex_orientation(points: &[Point]) -> Option<f64> {
         turns += usize::from(half(a) != half(b));
         let (left, right) = (a.x * b.y, a.y * b.x);
         let cross = left - right;
-        if cross.abs() <= 8.0 * f64::EPSILON * (left.abs() + right.abs())
+        if cross.abs() <= 8.0 * f64::EPSILON * (left.abs() + right.abs()) + f64::MIN_POSITIVE
             || (sign != 0.0 && cross.signum() != sign)
         {
             return None;

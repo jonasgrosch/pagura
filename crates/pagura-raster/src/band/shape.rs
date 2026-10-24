@@ -439,6 +439,18 @@ impl Shape {
             return Ok(None);
         };
         frame.fit(hull);
+        if let Some(paths) = frame.paths {
+            // A mark strictly inside every convex clipping path meets none
+            // of their boundaries.
+            work.charge(
+                paths
+                    .convex()
+                    .map_or(0, |convex| convex.len().saturating_mul(polygon.vertices())),
+            )?;
+            if paths.contain(&polygon.points) {
+                frame.paths = None;
+            }
+        }
         // Only the original, uncut stored polygon can supply these edges.
         let shared = shared.filter(|_| frame.rect.is_none() && frame.paths.is_none());
         // The heights the winding certificate leaves in doubt: none when
@@ -959,8 +971,9 @@ impl<'a> Frame<'a> {
 
     /// Drops what the clip cannot change for geometry within `hull`: a
     /// rectangle containing it needs no edge clipping, and rows inside
-    /// across every pixel it can touch need no overlay or analysis. A mark
-    /// within the page crop thus meets no clip at all.
+    /// across every pixel it can touch, or convex paths containing it, need
+    /// no overlay or analysis. A mark within the page crop thus meets no
+    /// clip at all.
     pub(crate) fn fit(&mut self, [lo, hi]: [crate::Point; 2]) {
         let hull = Bounds {
             left: lo.x,
@@ -971,10 +984,15 @@ impl<'a> Frame<'a> {
         if self.rect.is_some_and(|r| r.contains(hull)) {
             self.rect = None;
         }
-        if self
-            .paths
-            .is_some_and(|p| p.rows.inside(edges::pixels([lo, hi], self.limit, false)))
-        {
+        let corners = [
+            lo,
+            crate::Point::new(hi.x, lo.y),
+            hi,
+            crate::Point::new(lo.x, hi.y),
+        ];
+        if self.paths.is_some_and(|p| {
+            p.rows.inside(edges::pixels([lo, hi], self.limit, false)) || p.contain(&corners)
+        }) {
             self.paths = None;
         }
     }

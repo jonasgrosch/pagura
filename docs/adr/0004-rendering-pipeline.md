@@ -150,6 +150,18 @@ work and scratch reservations are charged before each allocation or sweep.
 Clips are prepared once per clip state into outside, inside and boundary
 runs. Rectangular clips clip edges geometrically before accumulation.
 
+**Convex clip paths.** A clipping path that is one contour certified simple
+and convex (repeated points ignored; turns of one sign beyond eight rounding
+units of their products, and one revolution, as for convex stroke outlines)
+is also kept as its left and right chains, each of strictly increasing
+height. When every path of a clip state is convex, a mark whose hull box, or
+failing that every vertex, lies strictly inside every path, by orientation
+signs certified against their rounding, keeps its own edges and drops the
+paths: by convexity it lies inside them, so it meets none of their boundary
+runs, needs no joint row union and no mask, and its coverage is its own. This
+decides marks whose bounding columns meet the clip's boundary runs in rows
+where the mark itself stays inside, such as rings inside a round clip.
+
 A subpath whose points all coincide covers the pixel under them
 (8.5.3.3.1), and a fill whose region is empty with a boundary paints that
 boundary's hairline outline (10.7.4).

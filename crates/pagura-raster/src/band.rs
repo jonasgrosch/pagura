@@ -31,6 +31,7 @@
 mod cells;
 mod certify;
 mod clip;
+mod convex;
 mod coverage;
 mod curve;
 mod edges;

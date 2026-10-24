@@ -7,16 +7,18 @@
 //! take its signed area, the others go through the exact row resolver. A
 //! mark whose row meets a boundary run is resolved there together with the
 //! clip's paths, so that their joint geometry is integrated rather than
-//! multiplied.
+//! multiplied. When every such path is convex, a polygon mark strictly
+//! inside them all meets no boundary run.
 
 use super::cells::{Cells, STRIP};
 use super::certify::uncertified;
+use super::convex::Convex;
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
 use super::shape::RENDER_BYTES;
 use super::union::{Meters, Piece, Resolver, room};
 use super::{DeviceRect, Prep, ShapeOptions};
-use crate::{FillRule, Path, Transform, quantize_unit};
+use crate::{FillRule, Path, Point, Transform, quantize_unit};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
@@ -57,9 +59,26 @@ pub(crate) struct Paths {
     arithmetic: f64,
     strips: StripList,
     pub(crate) rows: Rows,
+    /// Every path's chains when each is convex; empty otherwise.
+    convex: Vec<Convex>,
 }
 
 impl Paths {
+    /// The paths' chains, when every path is convex.
+    pub(crate) fn convex(&self) -> Option<&[Convex]> {
+        (!self.convex.is_empty()).then_some(self.convex.as_slice())
+    }
+
+    /// Whether every point lies strictly inside every path, all convex: a
+    /// mark within them meets none of their boundaries.
+    pub(crate) fn contain(&self, points: &[Point]) -> bool {
+        self.convex().is_some_and(|convex| {
+            convex
+                .iter()
+                .all(|chains| points.iter().all(|&p| chains.contains(p)))
+        })
+    }
+
     /// Outward rectangles containing each canonical path's covered set,
     /// intersected. A curve can affect the joint area only inside them.
     pub(crate) fn proof_bounds(&self) -> Option<Bounds> {
@@ -134,6 +153,8 @@ impl Paths {
             .saturating_add(self.ends.capacity() * size_of::<(u32, FillRule)>())
             .saturating_add(self.strips.retained_bytes())
             .saturating_add(self.rows.retained_bytes())
+            .saturating_add(self.convex.capacity() * size_of::<Convex>())
+            .saturating_add(self.convex.iter().map(Convex::retained_bytes).sum())
     }
 }
 
@@ -429,6 +450,7 @@ fn classify(
         bytes,
     )?;
     meter.charge(strips_list.len())?;
+    let convex = convex_chains(groups, &mut meter, bytes)?;
     let mut paths = Paths {
         lines,
         ends,
@@ -436,6 +458,7 @@ fn classify(
         arithmetic: 0.0,
         strips: strips_list,
         rows: Rows::default(),
+        convex,
     };
     meter.charge(paths.lines.len().saturating_add(paths.ends.len()))?;
     paths.proof = paths.calculate_bounds();
@@ -508,6 +531,26 @@ fn classify(
     }
     paths.rows = rows;
     Ok(paths)
+}
+
+/// Every group's chains when each is convex, else none.
+fn convex_chains(
+    groups: &[(Polygon, FillRule)],
+    meter: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<Vec<Convex>> {
+    let mut convex = Vec::new();
+    bytes.reserve(&mut convex, groups.len())?;
+    for (polygon, _) in groups {
+        meter.charge_product(polygon.vertices(), 2)?;
+        let Some(chains) = Convex::new(polygon, bytes)? else {
+            bytes.refund(convex.iter().map(Convex::retained_bytes).sum());
+            convex.clear();
+            break;
+        };
+        convex.push(chains);
+    }
+    Ok(convex)
 }
 
 /// Builds a clip row's runs from its emitted cells: touched cells and
@@ -654,6 +697,7 @@ mod tests {
             arithmetic: 0.0,
             strips,
             rows: Rows::default(),
+            convex: Vec::new(),
         };
         let mut out = Vec::new();
         let mut tight = Meter::new(100, CLIP_WORK);
