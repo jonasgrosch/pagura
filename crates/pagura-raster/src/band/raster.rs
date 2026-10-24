@@ -774,18 +774,12 @@ impl Items<'_> {
                 let Some(relative) = glyph.edges.relative() else {
                     unreachable!("a relative glyph source");
                 };
-                let lines = match &glyph.edges.kind {
-                    Kind::Polygon { .. } => {
-                        debug_assert!(glyph.strips.is_none());
-                        Lines::Slice {
-                            lines: &relative.lines,
-                            point: Some(glyph),
-                        }
-                    }
-                    Kind::Curve { .. } => Lines::Slice {
-                        lines: &relative.lines,
-                        point: None,
-                    },
+                // A placement with a point cell visits every item.
+                let point = glyph.edges.point().map(|_| glyph);
+                debug_assert!(point.is_none() || glyph.strips.is_none());
+                let lines = Lines::Slice {
+                    lines: &relative.lines,
+                    point,
                 };
                 (lines, relative.curves.as_slice())
             }
@@ -911,13 +905,10 @@ impl Items<'_> {
         } = &self.lines
         {
             work += 2;
-            let Kind::Polygon { points, .. } = &glyph.edges.kind else {
-                unreachable!("a canonical point with a certified body");
+            let Some(point) = glyph.edges.point() else {
+                unreachable!("a point cell with its point");
             };
-            let [point] = points.as_slice() else {
-                unreachable!("one canonical point with a certified body");
-            };
-            let [right, left] = point_sides(*point + glyph.origin);
+            let [right, left] = point_sides(point + glyph.origin);
             let rows = cells.rows();
             let scan = f64::from(u32::try_from(glyph.scan.0).unwrap_or(u32::MAX));
             // A whole cell outside the global scan contributes no carry.

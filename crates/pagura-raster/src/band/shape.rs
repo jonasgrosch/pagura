@@ -627,15 +627,7 @@ impl Shape {
         let words = columns / 64 + 2;
         // Each window of a band visits every item once, at most as often as
         // the placement has rows.
-        let point = match &edges.kind {
-            super::glyph::Kind::Polygon { points, .. } => {
-                let [point] = points.as_slice() else {
-                    unreachable!("one canonical point with a certified body");
-                };
-                Some(*point + origin)
-            }
-            super::glyph::Kind::Curve { .. } => None,
-        };
+        let point = edges.point().map(|point| point + origin);
         let items = relative
             .lines
             .len()
