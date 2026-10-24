@@ -4,7 +4,7 @@
 //! transfer functions, black generation, and narrow stores of group
 //! results. Expected values are clause-11 formulas evaluated here.
 
-use super::{Rendering, Sizes, Tops, Workspace};
+use super::{Extents, Rendering, Sizes, StoreOut, Tops, Workspace, each_span};
 use crate::format::Format;
 use crate::plan::{
     Compositing, Conversion, Cover, Curve, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout,
@@ -812,6 +812,105 @@ fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
                         );
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Rows stored as the rasterizer emits them change the page as the same
+/// rows collected in a band coverage and stored span by span, and mark at
+/// least those spans' columns.
+#[test]
+fn emitted_rows_store_as_band_coverage_spans() {
+    use crate::kernel;
+    use pagura_raster::{BandCoverage, RowOut};
+    let rect = DeviceRect {
+        x0: 3,
+        y0: 10,
+        x1: 43,
+        y1: 16,
+    };
+    let (width, rows) = (40_usize, 6_usize);
+    let words = [1_000, 20_000, 40_000, 65_535];
+    let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+    let mut next = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        state
+    };
+    let mut meter = Meter::new(usize::MAX, "budget");
+    for case in 0..200 {
+        #[expect(clippy::cast_possible_truncation, reason = "random words")]
+        let initial: Vec<[u16; 4]> = (0..width * rows)
+            .map(|_| [0; 4].map(|_: u16| next() as u16))
+            .collect();
+        let (mut direct, mut spans) = (initial.clone(), initial);
+        let mut emitted = Extents::new(rows, &mut meter).unwrap();
+        let mut collected = Extents::new(rows, &mut meter).unwrap();
+        let mut coverage = BandCoverage::default();
+        coverage.clear();
+        let mut out = StoreOut {
+            page: &mut direct,
+            extents: &mut emitted,
+            rect,
+            width,
+            words,
+            row: None,
+            stored: 0,
+        };
+        // Rows from above the frame to below it, with gaps, full and
+        // partial runs and cells, some reaching past its sides.
+        for y in 8..18 {
+            out.push_row(y);
+            coverage.push_row(y);
+            let mut x = u32::try_from(next() % 6).unwrap();
+            while x < 50 {
+                let len = 1 + u32::try_from(next() % 8).unwrap();
+                #[expect(clippy::cast_possible_truncation, reason = "random bytes")]
+                match next() % 4 {
+                    0 => {}
+                    1 => {
+                        out.put_run(x, len, u8::MAX);
+                        coverage.put_run(x, len, u8::MAX);
+                    }
+                    2 => {
+                        let value = 1 + (next() % 254) as u8;
+                        out.put_run(x, len, value);
+                        coverage.put_run(x, len, value);
+                    }
+                    _ => {
+                        let values: Vec<u8> = (0..len)
+                            .map(|_| match next() % 4 {
+                                0 => 0,
+                                1 => u8::MAX,
+                                _ => next() as u8,
+                            })
+                            .collect();
+                        out.put_row(x, &values);
+                        coverage.put_row(x, &values);
+                    }
+                }
+                x += len;
+            }
+        }
+        coverage.finish();
+        each_span(&coverage, rect, |(x, y), cover| {
+            let row = (y - rect.y0) as usize;
+            let column = x - rect.x0;
+            let start = row * width + column as usize;
+            kernel::store_n16(
+                &mut spans[start..start + cover.len()],
+                words,
+                cover.coverage(),
+            );
+            collected.mark(row, column, column + u32::try_from(cover.len()).unwrap());
+        });
+        assert_eq!(direct, spans, "{case}");
+        for row in 0..rows {
+            if let Some((lo, hi)) = collected.get(row) {
+                let (a, b) = emitted.get(row).unwrap();
+                assert!(a <= lo && hi <= b, "{case} row {row}");
             }
         }
     }

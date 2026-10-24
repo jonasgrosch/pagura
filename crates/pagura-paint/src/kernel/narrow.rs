@@ -81,6 +81,67 @@ pub(crate) fn store_n16(pixels: &mut [[u16; 4]], words: [u16; 4], coverage: Opti
     }
 }
 
+/// [`store_n16`] at `coverage`, eight pixels at a time: eight at zero stay
+/// as they are and eight at 255 take the words, so only mixed stretches
+/// evaluate stores. Returns the pixels from the first to past the last one
+/// with coverage, if any. `pixels` and `coverage` have equal lengths.
+pub(crate) fn store_n16_runs(
+    pixels: &mut [[u16; 4]],
+    words: [u16; 4],
+    coverage: &[u8],
+) -> Option<(usize, usize)> {
+    let mut covered: Option<(usize, usize)> = None;
+    let mut cover = |lo: usize, hi: usize| {
+        covered = Some(covered.map_or((lo, hi), |(first, _)| (first, hi)));
+    };
+    let (blocks, pixel_tail) = pixels.as_chunks_mut::<8>();
+    let (bytes, byte_tail) = coverage.as_chunks::<8>();
+    for (k, (block, eight)) in blocks.iter_mut().zip(bytes).enumerate() {
+        let word = u64::from_le_bytes(*eight);
+        if word == 0 {
+            continue;
+        }
+        if word == u64::MAX {
+            *block = [words; 8];
+        } else {
+            store_n16(block, words, Some(eight));
+        }
+        // Little-endian: the first pixel is the lowest byte.
+        let at = k * 8;
+        let lo = at + (word.trailing_zeros() / 8) as usize;
+        let hi = at + 8 - (word.leading_zeros() / 8) as usize;
+        cover(lo, hi);
+    }
+    let at = blocks.len() * 8;
+    if let Some(first) = byte_tail.iter().position(|&c| c != 0) {
+        let last = byte_tail.iter().rposition(|&c| c != 0).unwrap_or(first);
+        if let (Some(pixels), Some(coverage)) = (
+            pixel_tail.get_mut(first..=last),
+            byte_tail.get(first..=last),
+        ) {
+            store_n16(pixels, words, Some(coverage));
+        }
+        cover(at + first, at + last + 1);
+    }
+    covered
+}
+
+/// [`store_n16`] with one coverage byte `c` for every pixel.
+pub(crate) fn store_n16_uniform(pixels: &mut [[u16; 4]], words: [u16; 4], c: u8) {
+    let s = words.map(u32::from);
+    let c = u32::from(c);
+    let r = 255_u32.wrapping_sub(c);
+    for pixel in pixels {
+        let b = pixel.map(u32::from);
+        *pixel = [
+            mix(s[0], b[0], (c, r)),
+            mix(s[1], b[1], (c, r)),
+            mix(s[2], b[2], (c, r)),
+            mix(s[3], b[3], (c, r)),
+        ];
+    }
+}
+
 /// One N16 store; the sum is at most 255 · 65535 + 127.
 #[inline]
 #[expect(
@@ -283,6 +344,59 @@ pub(crate) fn level(value: f64) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stores_by_stretches_match_stores_by_pixel() {
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let words = [3, 30_000, 50_000, 65_535];
+        for case in 0..2_000 {
+            // Rows of zero, full and partial stretches of any length, so
+            // that blocks of eight and the tail both see every kind.
+            let len = usize::try_from(next() % 40).unwrap();
+            let mut coverage = Vec::with_capacity(len);
+            while coverage.len() < len {
+                let run = 1 + usize::try_from(next() % 12).unwrap();
+                let kind = next() % 3;
+                for _ in 0..run.min(len - coverage.len()) {
+                    coverage.push(match kind {
+                        0 => 0,
+                        1 => u8::MAX,
+                        _ => u8::try_from(next() % 256).unwrap(),
+                    });
+                }
+            }
+            let pixels: Vec<[u16; 4]> = (0..len)
+                .map(|_| [0; 4].map(|_: u16| u16::try_from(next() % 65_536).unwrap()))
+                .collect();
+            let (mut runs, mut each) = (pixels.clone(), pixels);
+            let covered = store_n16_runs(&mut runs, words, &coverage);
+            store_n16(&mut each, words, Some(&coverage));
+            assert_eq!(runs, each, "{case}");
+            let first = coverage.iter().position(|&c| c != 0);
+            let last = coverage.iter().rposition(|&c| c != 0);
+            assert_eq!(covered, first.zip(last).map(|(a, b)| (a, b + 1)), "{case}");
+        }
+    }
+
+    #[test]
+    fn uniform_coverage_stores_as_per_pixel_coverage() {
+        let pixels: Vec<[u16; 4]> = (0..64_u16)
+            .map(|i| [i.wrapping_mul(1021), i.wrapping_mul(4093), 65_535 - i, i])
+            .collect();
+        let words = [0, 1_234, 40_000, 65_535];
+        for c in 0..=u8::MAX {
+            let (mut uniform, mut each) = (pixels.clone(), pixels.clone());
+            store_n16_uniform(&mut uniform, words, c);
+            store_n16(&mut each, words, Some(&[c; 64]));
+            assert_eq!(uniform, each, "coverage {c}");
+        }
+    }
 
     #[test]
     fn words_round_to_their_nearest_byte_in_u16_lanes() {

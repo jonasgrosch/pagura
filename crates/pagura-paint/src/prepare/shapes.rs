@@ -9,7 +9,7 @@ use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, OutlineKey, Pen};
 use pagura_raster::{
     BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, MarkCoverage, Path,
-    Point, Shape, ShapeOptions, Transform,
+    Point, RowOut, Shape, ShapeOptions, Transform,
 };
 use std::sync::Arc;
 
@@ -348,17 +348,28 @@ impl Shapes {
         band: u32,
         out: &mut BandCoverage,
     ) {
+        out.clear();
+        self.rasterize_into(rasterizer, cover, band, out);
+        out.finish();
+    }
+
+    /// Writes the coverage of `cover` in `band` to `out` row by row, each
+    /// pixel once.
+    pub(crate) fn rasterize_into(
+        &self,
+        rasterizer: &mut BandRasterizer,
+        cover: Cover,
+        band: u32,
+        out: &mut dyn RowOut,
+    ) {
         let clip = cover.clip.and_then(|i| self.clips.get(u32_to_usize(i)));
         let shape = match cover.shape.map(|key| self.shapes.get(u32_to_usize(key))) {
             Some(Some(shape)) => Some(shape),
             // A key no preparation gave out covers nothing.
-            Some(None) => {
-                out.clear();
-                return;
-            }
+            Some(None) => return,
             None => None,
         };
-        rasterizer.rasterize(MarkCoverage { shape, clip }, band, out);
+        rasterizer.rasterize_into(MarkCoverage { shape, clip }, band, out);
     }
 
     /// Writes the coverage within `band` of the leading `shapes`, which
