@@ -1,11 +1,13 @@
-//! Path geometry: subpaths of lines and cubic Bézier curves.
+//! Path geometry: subpaths of lines and cubic Bézier curves, and the
+//! quadratic curves of font outlines.
 
 use crate::{Point, Transform};
 use pagura_core::{Limits, Meter, Rect, Result};
 use std::fmt;
 
 /// One path construction step (8.5.2). Exhaustive: every PDF path
-/// construction operator reduces to these four (`v`, `y` and `re` included).
+/// construction operator reduces to these (`v`, `y` and `re` included), and
+/// font outlines add quadratic curves (9.6.5, ADR 0004 §4).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Segment {
     /// Begins a new subpath.
@@ -21,8 +23,33 @@ pub enum Segment {
         /// The end point, which becomes the current point.
         end: Point,
     },
+    /// A quadratic Bézier curve from the current point, kept exact. Every
+    /// polygon flattens it as its degree-elevated cubic,
+    /// [`Segment::elevated`].
+    QuadTo {
+        /// The control point.
+        control: Point,
+        /// The end point, which becomes the current point.
+        end: Point,
+    },
     /// Closes the current subpath with a line to its start.
     Close,
+}
+
+impl Segment {
+    /// The cubic controls of the quadratic from `from` through `control`
+    /// to `end`, two thirds of the way from each end to the control: the
+    /// cubic every polygon flattens. Exact up to the rounding of each
+    /// coordinate.
+    pub fn elevated(from: Point, control: Point, end: Point) -> [Point; 2] {
+        let third = |end: Point| {
+            Point::new(
+                end.x + (control.x - end.x) * 2.0 / 3.0,
+                end.y + (control.y - end.y) * 2.0 / 3.0,
+            )
+        };
+        [third(from), third(end)]
+    }
 }
 
 /// Which points a fill covers (8.5.3.3). Exhaustive: PDF defines exactly
@@ -195,6 +222,10 @@ impl Path {
                 c2: c2 * transform,
                 end: end * transform,
             },
+            Segment::QuadTo { control, end } => Segment::QuadTo {
+                control: control * transform,
+                end: end * transform,
+            },
             Segment::Close => Segment::Close,
         })
     }
@@ -302,6 +333,18 @@ impl PathBuilder {
         Ok(self)
     }
 
+    /// Appends a quadratic curve, as font outlines define them.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::line_to`].
+    pub fn quad_to(&mut self, control: Point, end: Point) -> Result<&mut Self, NoCurrentPoint> {
+        self.current.ok_or(NoCurrentPoint)?;
+        self.segments.push(Segment::QuadTo { control, end });
+        self.current = Some(end);
+        Ok(self)
+    }
+
     /// Closes the current subpath (`h`). The current point returns to the
     /// subpath start. Has no effect without an open subpath.
     pub fn close(&mut self) -> &mut Self {
@@ -370,6 +413,14 @@ impl PathBuilder {
                     self.segments.push(Segment::CubicTo {
                         c1: c1 * transform,
                         c2: c2 * transform,
+                        end,
+                    });
+                    self.current = Some(end);
+                }
+                Segment::QuadTo { control, end } => {
+                    let end = end * transform;
+                    self.segments.push(Segment::QuadTo {
+                        control: control * transform,
                         end,
                     });
                     self.current = Some(end);

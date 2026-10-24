@@ -166,6 +166,37 @@ impl<'a> PolygonLines<'a> {
         }
     }
 
+    /// Every placed side in [`Self::indexed`] order, without keys: one pass
+    /// over the stored contours, then the point cells' sides.
+    pub(crate) fn for_each(self, mut visit: impl FnMut(Line)) {
+        let points = &self.polygon.points;
+        for (contour, &start) in self.polygon.starts.iter().enumerate() {
+            let end = self
+                .polygon
+                .starts
+                .get(contour + 1)
+                .copied()
+                .unwrap_or(points.len());
+            let Some(contour) = points.get(start..end) else {
+                continue;
+            };
+            for (i, &a) in contour.iter().enumerate() {
+                let next = if i + 1 == contour.len() { 0 } else { i + 1 };
+                if let Some(&b) = contour.get(next) {
+                    visit(Line {
+                        a: self.at(a),
+                        b: self.at(b),
+                    });
+                }
+            }
+        }
+        for &point in self.points {
+            for side in point_sides(self.at(point)) {
+                visit(side);
+            }
+        }
+    }
+
     /// Keep source order, never numeric key order: a closing key precedes
     /// the next contour's ordinary vertex keys.
     pub(crate) fn indexed(self) -> impl Iterator<Item = (usize, Line)> + Clone {

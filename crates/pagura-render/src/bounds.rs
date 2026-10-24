@@ -151,6 +151,9 @@ fn point_contour(path: &Path) -> bool {
             Segment::CubicTo { c1, c2, end } => {
                 point &= [c1, c2, end].into_iter().all(|p| start == Some(p));
             }
+            Segment::QuadTo { control, end } => {
+                point &= [control, end].into_iter().all(|p| start == Some(p));
+            }
             Segment::Close => {}
         }
     }
@@ -221,6 +224,7 @@ fn hull(path: &Path, transform: Transform) -> Option<Rect> {
         let points = match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => [Some(p), None, None],
             Segment::CubicTo { c1, c2, end } => [Some(c1), Some(c2), Some(end)],
+            Segment::QuadTo { control, end } => [Some(control), Some(end), None],
             Segment::Close => [None; 3],
         };
         points

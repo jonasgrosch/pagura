@@ -11,7 +11,7 @@
 
 use super::curve::Mono;
 use super::edges::Line;
-use super::row::{Accumulate, Sink, fold};
+use super::row::{Accumulate, Sink, fold, piece_into, single};
 use crate::{FillRule, Point};
 use pagura_core::{Error, Meter, Result};
 
@@ -27,6 +27,11 @@ pub(crate) const WIDE: usize = 4096;
 /// The most rows of one window: a mark without strip lists (a glyph) takes
 /// up to this many rows of a band at once.
 pub(crate) const WINDOW: u32 = 32;
+
+/// The widest window emitted densely: every cell of each row in one pass,
+/// without a touched bitmap. Narrow windows (glyphs, small marks) touch a
+/// large share of their cells, so the bitmap costs more than it skips.
+pub(crate) const DENSE: usize = 256;
 
 /// Strip-sized cells, reused for every mark and band of a render.
 #[derive(Debug, Default)]
@@ -45,6 +50,8 @@ pub(crate) struct Cells {
     rows: usize,
     /// Window rows (bits from the first) that items skip.
     skip: u32,
+    /// Whether the window keeps no touched bitmap and emits every cell.
+    dense: bool,
     /// Used only by the preparation-only measured entry points. The
     /// ordinary kernel specializes measurement away at compile time.
     rounding: Rounding,
@@ -181,8 +188,20 @@ impl Cells {
         self.y0 = rows.start;
         self.rows = count;
         self.skip = 0;
+        self.dense = false;
         self.rounding = Rounding::default();
         true
+    }
+
+    /// Opens a window as [`Self::open`] does for execution: one at most
+    /// [`DENSE`] columns wide keeps no touched bitmap and [`Self::emit`]
+    /// visits every cell of its rows. The cells and their arithmetic are the
+    /// same, so the emitted bytes are too; inspection keeps [`Self::open`],
+    /// whose touched cells classify clip boundaries.
+    pub(crate) fn open_dense(&mut self, scan: (usize, usize), rows: std::ops::Range<u32>) -> bool {
+        let opened = self.open(scan, rows);
+        self.dense = opened && self.width <= DENSE;
+        opened
     }
 
     /// Makes items skip the window rows whose bits `mask` sets, from the
@@ -236,7 +255,13 @@ impl Cells {
     #[inline]
     fn row<const MEASURE: bool>(&mut self, r: usize) -> Row<'_, MEASURE> {
         let cells = r.wrapping_mul(self.width);
-        let words = r.wrapping_mul(self.words);
+        // A dense window marks nothing: an empty bitmap drops every mark.
+        let words = if self.dense {
+            0..0
+        } else {
+            let first = r.wrapping_mul(self.words);
+            first..first.wrapping_add(self.words)
+        };
         Row {
             rounding: &mut self.rounding,
             base: self.base,
@@ -248,11 +273,42 @@ impl Cells {
                 .cover
                 .get_mut(cells..cells.wrapping_add(self.width))
                 .unwrap_or_default(),
-            touched: self
-                .touched
-                .get_mut(words..words.wrapping_add(self.words))
-                .unwrap_or_default(),
+            touched: self.touched.get_mut(words).unwrap_or_default(),
         }
+    }
+
+    /// Adds a piece to window row `r`, as [`Row::piece`] does. A dense
+    /// execution window adds a piece inside one cell, with a cell after it,
+    /// at its flat index: the same operations, without the row's view.
+    #[expect(
+        clippy::inline_always,
+        reason = "every flattened glyph edge takes this path inside the edge loop"
+    )]
+    #[inline(always)]
+    fn piece<const MEASURE: bool>(&mut self, r: usize, xa: f64, xb: f64, h: f64) -> usize {
+        if !MEASURE && self.dense {
+            let (l, right) = if xa < xb { (xa, xb) } else { (xb, xa) };
+            let start = l.floor();
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "device coordinates are bounded by 10^12, within i64"
+            )]
+            let first = start as i64;
+            if right.ceil() == start + 1.0
+                && let Ok(x) = usize::try_from(first.wrapping_sub(self.base))
+                && x.wrapping_add(1) < self.width
+            {
+                let k = r.wrapping_mul(self.width).wrapping_add(x);
+                if let (Some(area), Some(cover)) =
+                    (self.area.get_mut(k), self.cover.get_mut(k.wrapping_add(1)))
+                {
+                    *area += single(xa, xb, h, start);
+                    *cover += h;
+                    return 2;
+                }
+            }
+        }
+        self.row::<MEASURE>(r).piece(xa, xb, h)
     }
 
     /// Adds a straight edge to the rows it crosses. Returns the cells and
@@ -277,6 +333,25 @@ impl Cells {
             return 0;
         }
         let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
+        // An edge within one row is one piece between its endpoints, which
+        // interpolation returns exactly: most flattened curve edges.
+        let top = upper.y.floor();
+        if lower.y <= top + 1.0 {
+            let first = f64::from(self.y0);
+            if top < first || top >= first + self.rows as f64 {
+                return 0;
+            }
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "a row of the window, checked above"
+            )]
+            let r = (top - first) as usize;
+            if self.skipped(r) {
+                return 0;
+            }
+            return 1 + self.piece::<MEASURE>(r, upper.x, lower.x, (lower.y - upper.y) * d);
+        }
         let mut visited = 0;
         // The crossing of a row's lower side is the next row's upper one:
         // computed once, the same value either way.
@@ -293,11 +368,11 @@ impl Cells {
             }
             let xa = match carried {
                 Some((y, x)) if y == lo => x,
-                _ => line.x(lo),
+                _ => line.kernel_x(lo),
             };
-            let xb = line.x(hi);
+            let xb = line.kernel_x(hi);
             carried = Some((hi, xb));
-            visited += 1 + self.row::<MEASURE>(r).piece(xa, xb, (hi - lo) * d);
+            visited += 1 + self.piece::<MEASURE>(r, xa, xb, (hi - lo) * d);
         }
         visited
     }
@@ -472,6 +547,9 @@ impl Cells {
     ) -> usize {
         let base = usize::try_from(self.base).unwrap_or(0);
         let cells = r.wrapping_mul(self.width);
+        if self.dense {
+            return self.emit_dense(cells, base, sink, map);
+        }
         let words = r.wrapping_mul(self.words)..(r + 1).wrapping_mul(self.words);
         let mut cover = 0.0;
         let mut position = 0;
@@ -518,6 +596,42 @@ impl Cells {
             let value = map(base + position, base + self.width, cover, false);
             sink.run(base + position, base + self.width, value);
         }
+        touched
+    }
+
+    /// [`Self::emit_with`] for a dense window: every cell of the row from the
+    /// left, with the same prefix sum, handed on as one run of bytes. Cells
+    /// that received nothing count as untouched.
+    fn emit_dense(
+        &mut self,
+        cells: usize,
+        base: usize,
+        sink: &mut impl Sink,
+        mut map: impl FnMut(usize, usize, f64, bool) -> u8,
+    ) -> usize {
+        let end = cells.wrapping_add(self.width);
+        let (Some(area), Some(cover), Some(bytes)) = (
+            self.area.get_mut(cells..end),
+            self.cover.get_mut(cells..end),
+            self.bytes.get_mut(..self.width),
+        ) else {
+            return 0;
+        };
+        let mut sum = 0.0;
+        let mut touched = 0;
+        for (x, ((a, c), byte)) in area
+            .iter_mut()
+            .zip(cover.iter_mut())
+            .zip(bytes.iter_mut())
+            .enumerate()
+        {
+            let (part, step) = (std::mem::take(a), std::mem::take(c));
+            let hit = part != 0.0 || step != 0.0;
+            touched += usize::from(hit);
+            sum += step;
+            *byte = map(base + x, base + x + 1, part + sum, hit);
+        }
+        sink.cells(base, bytes);
         touched
     }
 
@@ -599,6 +713,47 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
             self.mark(x);
         }
     }
+
+    /// [`piece_into`] with its most common case, a piece inside one cell
+    /// with a cell after it in the row, done in place: the same operations
+    /// in the same order, located once.
+    #[inline]
+    fn piece(&mut self, xa: f64, xb: f64, h: f64) -> usize {
+        let (l, r) = if xa < xb { (xa, xb) } else { (xb, xa) };
+        let start = l.floor();
+        let end = r.ceil();
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "device coordinates are bounded by 10^12, within i64"
+        )]
+        let first = start as i64;
+        if end == start + 1.0
+            && let Ok(x) = usize::try_from(first.wrapping_sub(self.base))
+            && x.wrapping_add(1) < self.area.len()
+            && x.wrapping_add(1) < self.cover.len()
+        {
+            let value = single(xa, xb, h, start);
+            let before = self.area[x];
+            self.area[x] += value;
+            if MEASURE {
+                self.rounding.add(before, value, self.area[x]);
+                self.primitive(
+                    64.0 * f64::EPSILON
+                        * h.abs()
+                        * (xa.abs() + xb.abs() + (start + 1.0).abs() + 1.0),
+                );
+            }
+            self.mark(x);
+            let before = self.cover[x + 1];
+            self.cover[x + 1] += h;
+            if MEASURE {
+                self.rounding.add(before, h, self.cover[x + 1]);
+            }
+            self.mark(x + 1);
+            return 2;
+        }
+        piece_into(self, xa, xb, h)
+    }
 }
 
 #[cfg(test)]
@@ -628,6 +783,58 @@ mod tests {
         Line {
             a: Point::new(a.0, a.1),
             b: Point::new(b.0, b.1),
+        }
+    }
+
+    /// A row's bytes, unemitted pixels zero.
+    struct Bytes(Vec<u8>);
+    impl Sink for Bytes {
+        fn run(&mut self, x0: usize, x1: usize, value: u8) {
+            if let Some(pixels) = self.0.get_mut(x0..x1) {
+                pixels.fill(value);
+            }
+        }
+    }
+
+    #[test]
+    fn dense_windows_emit_the_bytes_of_marked_windows() {
+        let mut state = 0x853c_49e6_748f_ea9b_u64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "53 random bits map to a uniform fraction"
+            )]
+            let unit = (state >> 11) as f64 / (1u64 << 53) as f64;
+            unit
+        };
+        let (width, rows) = (40_usize, 0..STRIP);
+        let (mut marked, mut dense) = (cells(width), cells(width));
+        for case in 0..200 {
+            assert!(marked.open((3, width), rows.clone()));
+            assert!(dense.open_dense((3, width), rows.clone()));
+            // Short flattened-curve edges, long ones across rows and
+            // columns, and some reaching outside the window.
+            let count = 1 + case % 24;
+            let mut point = (3.0 + 34.0 * next(), 16.0 * next());
+            for _ in 0..count {
+                let reach = if next() < 0.7 { 0.6 } else { 20.0 };
+                let to = (
+                    point.0 + reach * (next() - 0.5),
+                    point.1 + reach * (next() - 0.5),
+                );
+                marked.line(line(point, to));
+                dense.line(line(point, to));
+                point = to;
+            }
+            for r in 0..rows.len() {
+                let (mut a, mut b) = (Bytes(vec![0; width]), Bytes(vec![0; width]));
+                marked.emit(r, FillRule::NonZero, &mut a);
+                dense.emit(r, FillRule::NonZero, &mut b);
+                assert_eq!(a.0, b.0, "{case} row {r}");
+            }
         }
     }
 

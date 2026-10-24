@@ -71,11 +71,15 @@ fn an_empty_resolved_row_still_masks_the_original_polygon() {
     assert!(work <= shape.work());
 }
 
-#[test]
-fn round_cap_overlap_resolves_only_uncertified_rows() {
+fn round_capped(points: &[(f64, f64)]) -> Shape {
     let mut path = crate::PathBuilder::new();
-    path.move_to(Point::new(8.0, 5.0));
-    path.line_to(Point::new(8.0, 105.0)).unwrap();
+    for (i, &(x, y)) in points.iter().enumerate() {
+        if i == 0 {
+            path.move_to(Point::new(x, y));
+        } else {
+            path.line_to(Point::new(x, y)).unwrap();
+        }
+    }
     let path = path.finish();
     let stroke = Stroke {
         width: 4.0,
@@ -95,7 +99,7 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
         },
         limits: &limits,
     };
-    let shape = Shape::stroke(
+    Shape::stroke(
         &path,
         &stroke,
         Transform::IDENTITY,
@@ -104,9 +108,15 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
         &options,
     )
     .unwrap()
-    .unwrap();
-    // The canonical full circles overlap the body near its ends. Their
-    // uncertain rows still resolve, but the long middle is signed area.
+    .unwrap()
+}
+
+#[test]
+fn round_cap_overlap_resolves_only_uncertified_rows() {
+    // Two segments keep the canonical full circles, which overlap the body
+    // near its ends. Their uncertain rows still resolve, but the long
+    // middle is signed area.
+    let shape = round_capped(&[(8.0, 5.0), (8.0, 55.0), (8.0, 105.0)]);
     assert_ne!(shape.resolved.rows, []);
     assert!(shape.resolved.rows.len() < shape.bounds.height() as usize / 4);
     assert!(
@@ -116,6 +126,12 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
             .iter()
             .all(|&(y, _)| !(9..=100).contains(&y))
     );
+}
+
+#[test]
+fn a_lone_round_capped_segment_is_one_convex_piece() {
+    let shape = round_capped(&[(8.0, 5.0), (8.0, 105.0)]);
+    assert_eq!(shape.resolved.rows, []);
 }
 
 #[test]

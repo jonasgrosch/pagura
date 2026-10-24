@@ -5,10 +5,11 @@
 //! origin to every point without rounding either to a grid. An outline is
 //! integrated as quadratics when its pieces certify winding zero or one
 //! sign everywhere. Uncertified quadratic outlines and placements crossed
-//! by a clip path use the same flattener with a whole-outline area bound;
-//! every quadratic placement certifies its coverage bytes before execution,
-//! refining ambiguous pixels from the original controls. General cubics
-//! retain the canonical 1/256-pixel polygon.
+//! by a clip path use the same flattener with a whole-outline area bound.
+//! Every placement that approximates its quadratics, as a polygon or by
+//! reducing degree-elevated cubics, certifies its coverage bytes before
+//! execution, refining ambiguous pixels from the original controls. General
+//! cubics retain the canonical 1/256-pixel polygon.
 
 use super::certify::{certified, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
@@ -40,6 +41,7 @@ pub struct GlyphEdges {
     retained: usize,
     hull: Option<[f64; 4]>,
     pub(super) kind: Kind,
+    direct: Option<rounding::Direct>,
 }
 
 #[derive(Debug)]
@@ -185,10 +187,20 @@ impl GlyphEdges {
         let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
         bytes.charge_items::<Self>(1)?;
         let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        let relative = match &kind {
+            Kind::Curve { relative, .. } => Some(relative),
+            Kind::Polygon { relative, .. } => relative.as_deref(),
+        };
+        // A nonpoint spline accompanied by one canonical point contour
+        // integrates its source quadratics too. Keep the allowance on the
+        // glyph owner so both representations share the same admission.
+        let direct =
+            relative.and_then(|relative| rounding::Direct::new(outline, transform, relative));
         Ok(Self {
             retained: bytes.used(),
             hull,
             kind,
+            direct,
         })
     }
 
@@ -235,7 +247,7 @@ impl GlyphEdges {
             && outline
                 .segments()
                 .iter()
-                .any(|s| matches!(s, Segment::CubicTo { .. }))
+                .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
             && curve::quadratic_outline(outline, transform);
         let relative = if source_available && points.len() == 1 {
             point::relative(outline, transform, limits, polygon.vertices(), bytes)?
@@ -330,7 +342,7 @@ fn flattened_with(
         let curves = outline
             .segments()
             .iter()
-            .filter(|s| matches!(s, Segment::CubicTo { .. }))
+            .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
             .count();
         Flatness::Area(1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
     } else {
@@ -411,15 +423,32 @@ fn control_hull(outline: &Path, transform: Transform) -> Option<[f64; 4]> {
             Some([x0, y0, x1, y1]) => [x0.min(p.x), y0.min(p.y), x1.max(p.x), y1.max(p.y)],
         });
     };
+    // A quadratic counts its elevated controls, as the cubic it once was.
+    let (mut start, mut current) = (Point::default(), Point::default());
     for segment in outline.segments() {
         match *segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => add(p),
+            Segment::MoveTo(p) => {
+                add(p);
+                (start, current) = (p, p);
+            }
+            Segment::LineTo(p) => {
+                add(p);
+                current = p;
+            }
             Segment::CubicTo { c1, c2, end } => {
                 add(c1);
                 add(c2);
                 add(end);
+                current = end;
             }
-            Segment::Close => {}
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(current, control, end);
+                add(c1);
+                add(c2);
+                add(end);
+                current = end;
+            }
+            Segment::Close => current = start,
         }
     }
     hull
@@ -662,10 +691,13 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [Polyline]) -> 
     let mut index = 0;
     let mut occupied = false;
     let mut closed = false;
+    let (mut start, mut current) = (Point::default(), Point::default());
     for segment in outline.segments() {
-        if (closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }))
-            || (occupied && matches!(segment, Segment::MoveTo(_)))
-        {
+        let reopens = matches!(
+            segment,
+            Segment::LineTo(_) | Segment::CubicTo { .. } | Segment::QuadTo { .. }
+        );
+        if (closed && reopens) || (occupied && matches!(segment, Segment::MoveTo(_))) {
             index += 1;
             occupied = false;
             closed = false;
@@ -679,19 +711,31 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [Polyline]) -> 
         let first = contour.points.first().copied().unwrap_or_default() * transform;
         let same = |point: Point| point * transform == first;
         match *segment {
-            Segment::MoveTo(_) => {
+            Segment::MoveTo(point) => {
                 occupied = true;
                 closed = false;
+                (start, current) = (point, point);
             }
             Segment::LineTo(point) => {
                 contour.degenerate &= same(point);
                 occupied = true;
+                current = point;
             }
             Segment::CubicTo { c1, c2, end } => {
                 contour.degenerate &= [c1, c2, end].into_iter().all(same);
                 occupied = true;
+                current = end;
             }
-            Segment::Close => closed = true,
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(current, control, end);
+                contour.degenerate &= [c1, c2, end].into_iter().all(same);
+                occupied = true;
+                current = end;
+            }
+            Segment::Close => {
+                closed = true;
+                current = start;
+            }
         }
     }
     Ok(())

@@ -11,6 +11,14 @@ use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
+/// The largest coordinate magnitude, in device pixels, at which the cell
+/// kernel interpolates edges in plain f64 (2^16).
+pub(crate) const PLAIN_LIMIT: f64 = 65_536.0;
+
+/// The smallest edge height the cell kernel interpolates in plain f64:
+/// shorter heights could overflow the slope.
+pub(crate) const PLAIN_HEIGHT: f64 = 1.0 / 1_073_741_824.0;
+
 /// A straight edge in device space, in contour order.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Line {
@@ -53,6 +61,39 @@ impl Line {
             let (back, error) = product(quotient, height);
             let x = quotient + (((numerator - back) + tail - error) - quotient * low) / height;
             x.max(top.x.min(bottom.x)).min(top.x.max(bottom.x))
+        }
+    }
+
+    /// The x at height `y` as the cell kernel evaluates it. Where every
+    /// coordinate is within [`PLAIN_LIMIT`] and the height is at least
+    /// [`PLAIN_HEIGHT`], plain f64 interpolation from the upper endpoint
+    /// stays within [`Self::interpolation_error`] of the exact value (about
+    /// 1e-12 of a pixel at ordinary device coordinates); elsewhere this is
+    /// [`Self::x`], whose rounding tails keep distant endpoints exact.
+    #[inline]
+    pub(crate) fn kernel_x(self, y: f64) -> f64 {
+        let (top, bottom) = if self.a.y < self.b.y {
+            (self.a, self.b)
+        } else {
+            (self.b, self.a)
+        };
+        let height = bottom.y - top.y;
+        let plain = top.x.abs().max(bottom.x.abs()) <= PLAIN_LIMIT
+            && top.y.abs().max(bottom.y.abs()) <= PLAIN_LIMIT
+            && height >= PLAIN_HEIGHT;
+        if !plain {
+            return self.x(y);
+        }
+        if y <= top.y {
+            top.x
+        } else if y >= bottom.y {
+            bottom.x
+        } else if top.x == bottom.x {
+            top.x
+        } else {
+            (top.x + (y - top.y) * ((bottom.x - top.x) / height))
+                .max(top.x.min(bottom.x))
+                .min(top.x.max(bottom.x))
         }
     }
 
@@ -262,7 +303,7 @@ impl Polygon {
         if path
             .segments()
             .iter()
-            .any(|s| matches!(s, Segment::CubicTo { .. }))
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
         {
             return Ok(None);
         }
@@ -336,7 +377,7 @@ impl Polygon {
                     append(&mut user, point, bytes)?;
                 }
                 Segment::Close => closed = true,
-                Segment::CubicTo { .. } => return Ok(None),
+                Segment::CubicTo { .. } | Segment::QuadTo { .. } => return Ok(None),
             }
         }
         finish(&mut polygon, &mut user, true, closed, bytes)?;

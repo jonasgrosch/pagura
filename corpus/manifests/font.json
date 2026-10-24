@@ -14,7 +14,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap0.expect",
-          "sha256": "df2c8f70f6d0df3218017bc0e10eb94319e268550b3ce65090e4085d30e76554"
+          "sha256": "b11e1b39b049b6af8d15e135c0a679ada4c17567374c4adb5476851d01421280"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap0.font",
@@ -33,7 +33,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap4.expect",
-          "sha256": "3debcde1cb4435aa5693f817d0c1a2a2c36f5d59bacc91ddb983c804f0c98a01"
+          "sha256": "27a482819ddfc2e518a3928d25c96e2c777af6f578b9d57f0ae66eecc817f7ff"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap4.font",
@@ -52,7 +52,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap6.expect",
-          "sha256": "a2e64b48cd371b4cbb90a58c149bba99db7e87db14fc2a41a48d75d67ad14ce5"
+          "sha256": "b3081e60bfc9c0cdcae34060470bed20d3c4b683b4c14da2ab9d5da58e244a4f"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap6.font",
@@ -71,7 +71,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap12.expect",
-          "sha256": "150b66ed75ef2f6aba7f8210f3a90c5d40a8105b5c2ec3068f99ca2d00309119"
+          "sha256": "70ab354a7d4a38ad426fd9230c980d2924b9ac1510087761ce5d92dac7c44627"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap12.font",
@@ -717,7 +717,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-implied-points.expect",
-          "sha256": "20e4445116b2e240783d6b90d9917f666cbc87253a91d8c1f2bbf4de77244c03"
+          "sha256": "72b5811655a0defb0eb9a372bca6b728b7f9f1a2eed71d86de4952674b0cd81c"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-implied-points.font",
@@ -4349,7 +4349,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/repair-glyph-truncated.expect",
-          "sha256": "8425913f3f0526d2c082338d20427e1926e87da70d930d8b231ffca32705d410"
+          "sha256": "be1714ce111947e6b8bafeeb030ba9aec641ce6c791ef542559c1f8f1b9634f2"
         },
         ".font": {
           "path": "corpus/generated/font/repair-glyph-truncated.font",
@@ -7046,7 +7046,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/glyph-names-post-alias.expect",
-          "sha256": "decd20abbfc48ec137bd1cca4014786d2ecf3c4a2753ee1ac9ed58c94ebe1e68"
+          "sha256": "48b5e06b42454c8d2080b63d1c903fee5b9e027f6a5db7d5e4f81f4cdbd827a8"
         },
         ".font": {
           "path": "corpus/generated/font/glyph-names-post-alias.font",

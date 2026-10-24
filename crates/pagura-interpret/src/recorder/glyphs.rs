@@ -317,6 +317,7 @@ fn user_path(outline: &Path, transform: Transform, bytes: &mut Meter) -> Result<
         let points: &[Point] = match segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => std::slice::from_ref(p),
             Segment::CubicTo { c1, c2, end } => &[*c1, *c2, *end],
+            Segment::QuadTo { control, end } => &[*control, *end],
             Segment::Close => &[],
         };
         if points.iter().any(|p| !p.is_finite()) {
@@ -339,15 +340,32 @@ fn hull(outline: &Path, linear: Transform) -> Result<[Point; 2]> {
         high = Point::new(high.x.max(p.x), high.y.max(p.y));
         Ok(())
     };
+    // A quadratic records its elevated controls, which its polygon uses.
+    let (mut start, mut current) = (Point::default(), Point::default());
     for segment in outline.segments() {
         match *segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => record(p)?,
+            Segment::MoveTo(p) => {
+                record(p)?;
+                (start, current) = (p, p);
+            }
+            Segment::LineTo(p) => {
+                record(p)?;
+                current = p;
+            }
             Segment::CubicTo { c1, c2, end } => {
                 record(c1)?;
                 record(c2)?;
                 record(end)?;
+                current = end;
             }
-            Segment::Close => {}
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(current, control, end);
+                record(c1)?;
+                record(c2)?;
+                record(end)?;
+                current = end;
+            }
+            Segment::Close => current = start,
         }
     }
     Ok([low, high])

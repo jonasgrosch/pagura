@@ -417,6 +417,11 @@ fn path(path: &Path) -> String {
                 "C {:?} {:?} {:?} {:?} {:?} {:?}",
                 c1.x, c1.y, c2.x, c2.y, end.x, end.y
             ),
+            Segment::QuadTo { control, end } => write!(
+                out,
+                "Q {:?} {:?} {:?} {:?}",
+                control.x, control.y, end.x, end.y
+            ),
             Segment::Close => write!(out, "Z"),
         };
     }
