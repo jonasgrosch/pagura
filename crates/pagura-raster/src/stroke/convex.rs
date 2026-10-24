@@ -78,7 +78,7 @@ fn build_boundaries(
         directions.push(Point::new(x / length, y / length));
     }
     let filled = fills_interior(points, radius);
-    let mut outer = buffer(points.len().saturating_mul(3), bytes)?;
+    let mut outer = buffer(points.len(), bytes)?;
     let mut inner = buffer(if filled { 0 } else { points.len() }, bytes)?;
     for i in 0..points.len() {
         super::charge(&mut work, 1, limits.raster_work)?;
@@ -100,7 +100,10 @@ fn build_boundaries(
         if !filled {
             inner.push(points[i] + m);
         }
-        outer.extend([points[i] - n1, points[i] - m, points[i] - n2]);
+        // The outer offsets of a segment's ends lie on its offset line
+        // between the miter points of its two joints, so the miter points
+        // alone bound the same region.
+        outer.push(points[i] - m);
     }
     for i in 0..inner.len() {
         let a = inner[i];
