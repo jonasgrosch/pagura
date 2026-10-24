@@ -312,8 +312,9 @@ impl BandCoverage {
     }
 }
 
-/// Where a shape's rows go: a band's coverage, or a run's scratch.
-pub(crate) trait RowOut {
+/// Where a shape's rows go: a band's coverage, a run's scratch, or a
+/// store straight into a page.
+pub trait RowOut {
     /// Starts row `y`; rows come top to bottom.
     fn push_row(&mut self, y: u32);
     /// Pixels `x .. x + len` of the current row have `value`.

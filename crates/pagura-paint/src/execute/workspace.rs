@@ -184,7 +184,7 @@ pub(crate) struct Extents {
 }
 
 impl Extents {
-    fn new(rows: usize, bytes: &mut Meter) -> Result<Self> {
+    pub(super) fn new(rows: usize, bytes: &mut Meter) -> Result<Self> {
         let mut values = reserve(rows, bytes)?;
         values.resize(rows, EMPTY);
         Ok(Self { rows: values })

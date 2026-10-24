@@ -9,7 +9,7 @@ mod narrow;
 
 pub(crate) use narrow::{
     dynamic_f32, dynamic_n16, f32_bytes, full, level, n16_bytes, opaque_word, overwrite_n16,
-    store_f32, store_n16, word,
+    store_f32, store_n16, store_n16_uniform, word,
 };
 
 use crate::blend::{Blend, BlendVisitor, with_blend};

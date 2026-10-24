@@ -81,6 +81,22 @@ pub(crate) fn store_n16(pixels: &mut [[u16; 4]], words: [u16; 4], coverage: Opti
     }
 }
 
+/// [`store_n16`] with one coverage byte `c` for every pixel.
+pub(crate) fn store_n16_uniform(pixels: &mut [[u16; 4]], words: [u16; 4], c: u8) {
+    let s = words.map(u32::from);
+    let c = u32::from(c);
+    let r = 255_u32.wrapping_sub(c);
+    for pixel in pixels {
+        let b = pixel.map(u32::from);
+        *pixel = [
+            mix(s[0], b[0], (c, r)),
+            mix(s[1], b[1], (c, r)),
+            mix(s[2], b[2], (c, r)),
+            mix(s[3], b[3], (c, r)),
+        ];
+    }
+}
+
 /// One N16 store; the sum is at most 255 · 65535 + 127.
 #[inline]
 #[expect(
@@ -283,6 +299,20 @@ pub(crate) fn level(value: f64) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn uniform_coverage_stores_as_per_pixel_coverage() {
+        let pixels: Vec<[u16; 4]> = (0..64_u16)
+            .map(|i| [i.wrapping_mul(1021), i.wrapping_mul(4093), 65_535 - i, i])
+            .collect();
+        let words = [0, 1_234, 40_000, 65_535];
+        for c in 0..=u8::MAX {
+            let (mut uniform, mut each) = (pixels.clone(), pixels.clone());
+            store_n16_uniform(&mut uniform, words, c);
+            store_n16(&mut each, words, Some(&[c; 64]));
+            assert_eq!(uniform, each, "coverage {c}");
+        }
+    }
 
     #[test]
     fn words_round_to_their_nearest_byte_in_u16_lanes() {
