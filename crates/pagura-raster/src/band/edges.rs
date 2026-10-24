@@ -609,74 +609,83 @@ impl Polygon {
     }
 
     fn cancelled(&self, bytes: &mut Meter) -> Result<Option<Self>> {
-        // Points ordered by their coordinates' total order, as integers.
-        let key = |p: Point| (ordered(p.x), ordered(p.y));
-        let mut edges: Vec<Keyed> = Vec::new();
-        bytes.reserve(&mut edges, self.points.len())?;
-        for contour in self.contours() {
-            let n = contour.len();
-            edges.extend((0..n).map(|i| {
-                let (a, b) = (contour[i], contour[(i + 1) % n]);
-                let (ka, kb) = (key(a), key(b));
-                Keyed {
-                    lo: ka.min(kb),
-                    hi: ka.max(kb),
-                    forward: ka <= kb,
-                    from: ka,
-                    to: kb,
-                    a,
-                }
-            }));
+        let n = self.points.len();
+        // Points ordered by their coordinates' total order, as integers,
+        // and each side as its first point's index and the next one's.
+        let mut keys: Vec<(i64, i64)> = Vec::new();
+        bytes.reserve(&mut keys, n)?;
+        keys.extend(self.points.iter().map(|p| (ordered(p.x), ordered(p.y))));
+        let mut next: Vec<usize> = Vec::new();
+        bytes.reserve(&mut next, n)?;
+        for (contour, &start) in self.starts.iter().enumerate() {
+            let end = self.starts.get(contour + 1).copied().unwrap_or(n);
+            next.extend(start + 1..end);
+            next.push(start);
         }
-        // Each edge by its undirected key, the reversed ones first;
-        // opposite directions cancel.
-        edges.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
-        let mut kept: Vec<Keyed> = Vec::new();
-        bytes.reserve(&mut kept, edges.len())?;
-        let mut start = 0;
-        while let Some(first) = edges.get(start) {
-            let end = start
-                + edges[start..]
-                    .iter()
-                    .take_while(|e| e.lo == first.lo && e.hi == first.hi)
-                    .count();
-            let group = &edges[start..end];
-            let reversed = group.iter().filter(|e| !e.forward).count();
-            let cancelled = reversed.min(group.len() - reversed);
-            kept.extend_from_slice(&group[cancelled..reversed]);
-            kept.extend_from_slice(&group[reversed + cancelled..]);
-            start = end;
-        }
-        if kept.len() == edges.len() {
+        let mut kept = uncancelled(&keys, &next, bytes)?;
+        if kept.len() == n {
             return Ok(None);
         }
         // Relink by start point: any pairing at a shared vertex keeps the
-        // winding.
-        kept.sort_unstable_by_key(|e| e.from);
+        // winding, but which one is taken shapes the contours.
+        kept.sort_unstable();
+        let mut links: Vec<Keyed> = Vec::new();
+        bytes.reserve(&mut links, kept.len())?;
+        links.extend(kept.iter().map(|&(from, a)| {
+            let to = keys[next[a]];
+            Keyed {
+                lo: from.min(to),
+                hi: from.max(to),
+                forward: from <= to,
+                from,
+                to,
+                a: self.points[a],
+            }
+        }));
+        if links.windows(2).any(|w| w[0].from == w[1].from) {
+            // Sides that share a start keep the order they had from sorting
+            // these values by undirected key, then by start. Sides with
+            // equal undirected keys and directions are equal.
+            links.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+            links.sort_unstable_by_key(|e| e.from);
+        }
+        // Where each link's successors start: the links by end merged with
+        // the links by start.
+        let by_end = &mut kept;
+        by_end.clear();
+        by_end.extend(links.iter().enumerate().map(|(i, e)| (e.to, i)));
+        by_end.sort_unstable();
+        let mut successors: Vec<usize> = Vec::new();
+        bytes.reserve(&mut successors, links.len())?;
+        successors.resize(links.len(), 0);
+        let mut first = 0;
+        for &(to, i) in by_end.iter() {
+            first += links[first..].iter().take_while(|e| e.from < to).count();
+            successors[i] = first;
+        }
         let mut used: Vec<bool> = Vec::new();
-        bytes.reserve(&mut used, kept.len())?;
-        used.resize(kept.len(), false);
+        bytes.reserve(&mut used, links.len())?;
+        used.resize(links.len(), false);
         let mut points = Vec::new();
         let mut starts = Vec::new();
-        bytes.reserve(&mut points, kept.len())?;
-        for first in 0..kept.len() {
+        bytes.reserve(&mut points, links.len())?;
+        for first in 0..links.len() {
             if used[first] {
                 continue;
             }
             bytes.reserve_capacity(&mut starts, 1)?;
             starts.push(points.len());
-            let origin = kept[first].from;
+            let origin = links[first].from;
             let mut current = first;
             loop {
                 used[current] = true;
-                points.push(kept[current].a);
-                let next = kept[current].to;
+                points.push(links[current].a);
+                let next = links[current].to;
                 if next == origin {
                     break;
                 }
-                let from = kept.partition_point(|e| e.from < next);
-                let Some(found) = (from..kept.len())
-                    .take_while(|&i| kept[i].from == next)
+                let Some(found) = (successors[current]..links.len())
+                    .take_while(|&i| links[i].from == next)
                     .find(|&i| !used[i])
                 else {
                     return Ok(None);
@@ -713,8 +722,63 @@ impl Polygon {
     }
 }
 
-/// An edge keyed for cancelling: its ends' integer keys, undirected and
-/// directed, and its first end.
+/// The sides, as their start keys and first points' indices, that no side of
+/// opposite direction cancels: of the sides with one undirected key, as many
+/// reversed as forward ones cancel in pairs.
+fn uncancelled(
+    keys: &[(i64, i64)],
+    next: &[usize],
+    bytes: &mut Meter,
+) -> Result<Vec<((i64, i64), usize)>> {
+    let undirected = |a: usize| {
+        let (from, to) = (keys[a], keys[next[a]]);
+        (from.min(to), from.max(to), from <= to)
+    };
+    // Sides with equal undirected keys have equal fingerprints, so ordering
+    // by fingerprint brings each key's sides together. The index takes as
+    // few low bits as the sides need.
+    let n = keys.len();
+    let low = n
+        .checked_next_power_of_two()
+        .and_then(|power| u64::try_from(power - 1).ok())
+        .unwrap_or(u64::MAX);
+    let index = |o: u64| usize::try_from(o & low).unwrap_or(usize::MAX);
+    let mut order: Vec<u64> = Vec::new();
+    bytes.reserve(&mut order, n)?;
+    for a in 0..n {
+        let (lo, hi, _) = undirected(a);
+        order.push(fingerprint(lo, hi) & !low | u64::try_from(a).unwrap_or(low));
+    }
+    order.sort_unstable();
+    let mut kept = Vec::new();
+    bytes.reserve(&mut kept, n)?;
+    let mut run: Vec<(Undirected, usize)> = Vec::new();
+    for same in order.chunk_by(|o, p| o & !low == p & !low) {
+        if let [o] = *same {
+            kept.push((keys[index(o)], index(o)));
+            continue;
+        }
+        // Within a fingerprint, each side by its undirected key, the
+        // reversed ones first.
+        run.clear();
+        bytes.reserve_capacity(&mut run, same.len())?;
+        run.extend(same.iter().map(|&o| (undirected(index(o)), index(o))));
+        run.sort_unstable();
+        for group in run.chunk_by(|(e, _), (g, _)| (e.0, e.1) == (g.0, g.1)) {
+            let reversed = group.iter().filter(|(e, _)| !e.2).count();
+            let cancelled = reversed.min(group.len() - reversed);
+            let rest = group[cancelled..reversed]
+                .iter()
+                .chain(&group[reversed + cancelled..]);
+            kept.extend(rest.map(|&(_, a)| (keys[a], a)));
+        }
+    }
+    Ok(kept)
+}
+
+/// A kept edge keyed for relinking: its ends' integer keys, undirected and
+/// directed, and its first end. Edges that share a start take the order an
+/// unstable sort of these values gives them, which depends on their size.
 #[derive(Debug, Clone, Copy)]
 struct Keyed {
     lo: (i64, i64),
@@ -724,6 +788,22 @@ struct Keyed {
     to: (i64, i64),
     a: Point,
 }
+
+/// A hash of an undirected edge key: equal keys have equal fingerprints.
+#[expect(
+    clippy::cast_sign_loss,
+    reason = "bit reinterpretation of the integer keys"
+)]
+fn fingerprint(lo: (i64, i64), hi: (i64, i64)) -> u64 {
+    [lo.0, lo.1, hi.0, hi.1].into_iter().fold(0, |hash, value| {
+        (hash ^ value as u64)
+            .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+            .rotate_left(29)
+    })
+}
+
+/// An edge's undirected key and whether it runs from its lower end.
+type Undirected = ((i64, i64), (i64, i64), bool);
 
 /// The total order of f64 as an integer: equal keys exactly for equal bits.
 #[expect(

@@ -67,6 +67,31 @@ fn shared_edges_cancel_into_the_union_boundary() {
 }
 
 #[test]
+fn sides_sharing_a_start_relink_in_their_sorted_order() {
+    // Squares meeting at corners: after the shared sides cancel, two kept
+    // sides start at (2, 0) and two at (2, 1).
+    let mut polygon = Polygon::default();
+    for (x, y) in [(0.0, 0.0), (1.0, 0.0), (2.0, 1.0), (2.0, -1.0), (3.0, -1.0)] {
+        polygon.starts.push(polygon.points.len());
+        polygon.points.extend([
+            Point::new(x, y),
+            Point::new(x + 1.0, y),
+            Point::new(x + 1.0, y + 1.0),
+            Point::new(x, y + 1.0),
+        ]);
+    }
+    assert!(polygon.cancel_shared(&mut crate::testing::bytes()).unwrap());
+    assert_eq!(polygon.starts, [0, 12]);
+    let points: Vec<_> = polygon.points.iter().map(|p| (p.x, p.y)).collect();
+    #[rustfmt::skip]
+    assert_eq!(points, [
+        (0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (2.0, -1.0), (3.0, -1.0), (4.0, -1.0),
+        (4.0, 0.0), (3.0, 0.0), (2.0, 0.0), (2.0, 1.0), (1.0, 1.0), (0.0, 1.0),
+        (2.0, 1.0), (3.0, 1.0), (3.0, 2.0), (2.0, 2.0),
+    ]);
+}
+
+#[test]
 fn polygon_output_is_charged_beside_its_flattened_source() {
     let mut path = PathBuilder::new();
     path.polygon([
@@ -112,7 +137,7 @@ fn cancellation_refuses_before_copying_its_source_edges() {
     let source = polygon.heap_bytes();
     let before = (polygon.points.clone(), polygon.starts.clone());
     let mut bytes = Meter::new(
-        source + polygon.points.len() * size_of::<Keyed>() - 1,
+        source + polygon.points.len() * size_of::<(i64, i64)>() - 1,
         super::super::RENDER_BYTES,
     );
     bytes.charge(source).unwrap();
