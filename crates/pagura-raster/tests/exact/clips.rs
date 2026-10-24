@@ -133,3 +133,67 @@ fn a_containing_clip_keeps_the_exact_mark() {
     );
     assert_eq!(count, 0);
 }
+
+/// A regular `count`-gon around `(x, y)`, turned by `angle` and stretched by
+/// `scale` along x: a convex clipping path with sides at many slopes.
+fn regular(count: u32, (x, y): (f64, f64), radius: f64, angle: f64, scale: f64) -> Path {
+    let step = std::f64::consts::TAU / f64::from(count);
+    let points: Vec<_> = (0..count)
+        .map(|i| {
+            let a = angle + f64::from(i) * step;
+            Point::new(x + scale * radius * a.cos(), y + radius * a.sin())
+        })
+        .collect();
+    polygon(&points)
+}
+
+#[test]
+fn marks_within_convex_paths_are_within_one_level() {
+    let mut rng = Lcg(4242);
+    let area = area(0, 0, 24, 20, 16);
+    let mut totals = [(0, 0); 5];
+    for case in 0..40 {
+        let steps = if case % 2 == 0 { 256 } else { 10 };
+        let mark = random_polygon(&mut rng, 3 + case % 6, steps);
+        let centre = (rng.grid(6.0, 18.0, steps), rng.grid(6.0, 14.0, steps));
+        let round = regular(
+            u32::try_from(6 + case % 50).unwrap(),
+            centre,
+            rng.grid(2.0, 9.0, steps),
+            rng.grid(0.0, 6.3, 1000),
+            rng.grid(0.4, 2.5, steps),
+        );
+        // A turned square, and a hexagon with a horizontal top and bottom.
+        let turned = regular(4, centre, rng.grid(3.0, 9.0, steps), 0.4, 1.0);
+        let flat = regular(6, centre, rng.grid(3.0, 9.0, steps), 0.0, 1.0);
+        let triangle = random_polygon(&mut rng, 3, steps);
+        let rect = random_rectangle(&mut rng, steps);
+        let small = regular(5, centre, 1.5, 0.2, 1.0);
+        let cases: [(&Path, Vec<(&Path, FillRule)>); 5] = [
+            (&mark, vec![(&round, FillRule::NonZero)]),
+            (
+                &mark,
+                vec![(&turned, FillRule::EvenOdd), (&triangle, FillRule::NonZero)],
+            ),
+            (
+                &mark,
+                vec![(&rect, FillRule::NonZero), (&flat, FillRule::NonZero)],
+            ),
+            // A mark inside the path, and one around it.
+            (&small, vec![(&round, FillRule::NonZero)]),
+            (&round, vec![(&small, FillRule::NonZero)]),
+        ];
+        for (kind, (mark, clips)) in cases.iter().enumerate() {
+            for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+                let (count, largest) = check(&area, Some((mark, rule)), clips);
+                assert!(
+                    largest <= 1,
+                    "case {case} kind {kind} {rule:?}: {count} by {largest}"
+                );
+                totals[kind].0 += count;
+                totals[kind].1 += 480;
+            }
+        }
+    }
+    eprintln!("marks in convex paths (round, two, rect and flat, inside, around): {totals:?}");
+}
