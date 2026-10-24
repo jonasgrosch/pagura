@@ -16,6 +16,10 @@ use pagura_core::{Error, Meter, Result};
 
 mod rows;
 
+#[cfg(test)]
+#[path = "rounding/interval_body_tests.rs"]
+mod interval_body_tests;
+
 const ROUNDS: i32 = 12;
 
 #[derive(Debug, Clone, Copy)]
@@ -799,20 +803,7 @@ fn interval(
         );
         polygon.cell(point, options.limits, bytes)?;
     }
-    let lines = edges::lines(&polygon, bytes)?;
-    let released = polygon.heap_bytes();
-    drop(polygon);
-    bytes.refund(released);
-    let mut pieces = Vec::new();
-    bytes.reserve(&mut pieces, lines.len())?;
-    pieces.extend(lines.iter().filter_map(|&line| Piece::new(line, 0.0, 0)));
-    work.charge(lines.len())?;
-    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
-        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
-    });
-    let released = lines.capacity() * size_of::<Line>();
-    drop(lines);
-    bytes.refund(released);
+    let (mut pieces, arithmetic) = interval_body(polygon, work, bytes)?;
     let mut error = hull_error(&hulls, bounds);
     let released = hulls.capacity() * size_of::<Hull>();
     drop(hulls);
@@ -847,6 +838,69 @@ fn interval(
     cells.inspect(0, |_, _, value| area = value.abs());
     error = outward(error + cells.arithmetic_error());
     Ok((area, error))
+}
+
+/// Produces the original interval edges and their ordered arithmetic bound.
+/// A retained polygon may occupy the old line reservation only when its
+/// actual heap fits that reservation. The logical charges and their order
+/// remain the same as materializing the original lines before the pieces.
+fn interval_body(
+    polygon: edges::Polygon,
+    work: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<(Vec<Piece>, f64)> {
+    let vertices = polygon.vertices();
+    let retained = polygon.heap_bytes();
+    let Some(reserved_lines) = vertices.checked_mul(size_of::<Line>()) else {
+        return materialized_interval_body(polygon, work, bytes);
+    };
+    if retained > reserved_lines {
+        return materialized_interval_body(polygon, work, bytes);
+    }
+
+    // Preserve the original line request before traversing its sides. The
+    // paid reservation then covers the retained polygon until it is dropped.
+    bytes.charge_items::<Line>(vertices)?;
+    let count = polygon.sides().filter(|line| !line.is_horizontal()).count();
+    bytes.refund(retained);
+    let mut pieces = Vec::new();
+    bytes.reserve(&mut pieces, count)?;
+    work.charge(count)?;
+    let mut arithmetic = 0.0;
+    for line in polygon.sides().filter(|line| !line.is_horizontal()) {
+        if let Some(piece) = Piece::new(line, 0.0, 0) {
+            pieces.push(piece);
+        }
+        // Lines outside the row still contribute their original error bound.
+        arithmetic = outward(
+            arithmetic + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]),
+        );
+    }
+    drop(polygon);
+    bytes.refund(reserved_lines);
+    Ok((pieces, arithmetic))
+}
+
+fn materialized_interval_body(
+    polygon: edges::Polygon,
+    work: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<(Vec<Piece>, f64)> {
+    let lines = edges::lines(&polygon, bytes)?;
+    let released = polygon.heap_bytes();
+    drop(polygon);
+    bytes.refund(released);
+    let mut pieces = Vec::new();
+    bytes.reserve(&mut pieces, lines.len())?;
+    pieces.extend(lines.iter().filter_map(|&line| Piece::new(line, 0.0, 0)));
+    work.charge(lines.len())?;
+    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
+        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
+    });
+    let released = lines.capacity() * size_of::<Line>();
+    drop(lines);
+    bytes.refund(released);
+    Ok((pieces, arithmetic))
 }
 
 fn hull_error(hulls: &[Hull], bounds: [f64; 4]) -> f64 {
