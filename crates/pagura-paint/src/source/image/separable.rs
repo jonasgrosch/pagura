@@ -400,6 +400,8 @@ pub(super) struct Separable {
     whole: bool,
     /// Whether the planned nearest samples step by one sample.
     consecutive: bool,
+    /// Whether the planned footprints that meet the image step one way.
+    monotone: bool,
 }
 
 impl Separable {
@@ -488,6 +490,7 @@ impl Separable {
             x0,
             whole: whole(&feet),
             consecutive: consecutive(&cells),
+            monotone: monotone(&feet),
             feet,
             cells,
         }))
@@ -593,7 +596,7 @@ impl Separable {
             let feet = self.feet(pixels);
             let whole = self.whole;
             let across = row(&self.geometry, self.taps, y);
-            if let Some((first, end)) = extent(feet)
+            if let Some((first, end)) = self.extent(feet)
                 && across.first < across.end
                 && n > 0
             {
@@ -635,6 +638,19 @@ impl Separable {
             }
             finish(values, covered);
         }
+    }
+
+    /// The samples `first..end` that `feet`, planned footprints, span: on
+    /// a monotone plan those of the outermost footprints that meet the
+    /// image, without visiting the others.
+    fn extent(&self, feet: &[Footprint]) -> Option<(usize, usize)> {
+        if !self.monotone {
+            return extent(feet);
+        }
+        let mut met = feet.iter().filter(|foot| foot.first < foot.end);
+        let a = met.next()?;
+        let b = met.next_back().unwrap_or(a);
+        Some((index(a.first.min(b.first)), index(a.end.max(b.end))))
     }
 
     /// The planned footprints of `pixels`.
@@ -1089,6 +1105,23 @@ fn footprint(taps: Taps, pixel: u32, (scale, offset, maximum): (f64, f64, u32)) 
 fn whole(feet: &[Footprint]) -> bool {
     feet.iter()
         .all(|foot| foot.first >= foot.end || foot.whole())
+}
+
+/// Whether the footprints that meet the image step one way along the row:
+/// their first and end samples both never decrease, or both never
+/// increase.
+fn monotone(feet: &[Footprint]) -> bool {
+    let mut met = feet.iter().filter(|foot| foot.first < foot.end);
+    let Some(mut previous) = met.next() else {
+        return true;
+    };
+    let (mut up, mut down) = (true, true);
+    for foot in met {
+        up &= previous.first <= foot.first && previous.end <= foot.end;
+        down &= previous.first >= foot.first && previous.end >= foot.end;
+        previous = foot;
+    }
+    up || down
 }
 
 /// Whether sample columns step by one.
