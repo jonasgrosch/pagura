@@ -6,7 +6,7 @@
 
 use super::{Pixel, Source};
 use crate::band::curve::coverage::{self, Work};
-use crate::band::{Prep, RASTER_WORK, RENDER_BYTES};
+use crate::band::{ClipShape, Prep, RASTER_WORK, RENDER_BYTES};
 use crate::quantize_unit;
 use pagura_core::{Meter, Result};
 
@@ -74,7 +74,7 @@ fn populate(
     else {
         return Ok(());
     };
-    if let Some(rect) = options.clip.and_then(|clip| clip.rect())
+    if let Some(rect) = options.clip.and_then(ClipShape::rect)
         && !metadata.inside_rect(source.origin, rect, work)?
     {
         return Ok(());
@@ -225,5 +225,172 @@ mod tests {
             assert_eq!(pending[0].hint, None);
             assert_eq!(pending[0].byte, 3);
         }
+    }
+
+    fn third_outline() -> crate::Path {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::default());
+        path.line_to(Point::new(1.0 / 3.0, 0.0)).unwrap();
+        path.cubic_to(
+            Point::new(1.0 / 3.0, 1.0 / 3.0),
+            Point::new(1.0 / 3.0, 2.0 / 3.0),
+            Point::new(1.0 / 3.0, 1.0),
+        )
+        .unwrap();
+        path.line_to(Point::new(0.0, 1.0)).unwrap();
+        path.close();
+        path.finish()
+    }
+
+    #[test]
+    fn partial_setup_byte_refusal_keeps_parent_headroom() {
+        let path = third_outline();
+        let limits = Limits::default();
+        // Exactly the first Builder owner fits. Its starts reservation must
+        // fail after the pieces allocation has actually succeeded.
+        let first_owner = (3 * path.segments().len() + 1) * size_of::<crate::band::curve::Piece>();
+        let mut parent = Meter::new(first_owner + 7, RENDER_BYTES);
+        let mut retained = Vec::<u8>::new();
+        parent.reserve_capacity(&mut retained, 7).unwrap();
+        retained.resize(7, 1);
+        let before = parent.clone();
+        let original = Pixel {
+            x: 0,
+            y: 0,
+            byte: 3,
+            hint: None,
+        };
+        let mut pending = [original];
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut child_bytes = Meter::new(parent.remaining(), RENDER_BYTES);
+        let error = populate(
+            source(&path),
+            &options(&limits),
+            &mut pending,
+            &[],
+            &mut child_bytes,
+            &mut Work::new(&mut work),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+        assert_eq!(error.message, RENDER_BYTES);
+        assert_eq!(child_bytes.used(), first_owner);
+        assert_eq!(pending[0].hint, None);
+        assert_eq!(pending[0].byte, original.byte);
+
+        // The public prepass catches that same optional refusal and cannot
+        // retain an owner or poison the mandatory parent's next reservation.
+        hint(
+            source(&path),
+            &options(&limits),
+            &mut pending,
+            &[],
+            limits.raster_work,
+            parent.remaining(),
+        );
+        assert_eq!(parent, before);
+        assert_eq!(pending[0].hint, None);
+        assert_eq!(retained, [1; 7]);
+        let mut mandatory = Vec::<u8>::new();
+        parent
+            .reserve_capacity(&mut mandatory, first_owner)
+            .unwrap();
+        assert_eq!(parent.remaining(), 0);
+    }
+
+    fn third_hint_tariff(path: &crate::Path, options: &Prep<'_>, first: Pixel) -> usize {
+        // Measure the literal tariff through one completed proof. This
+        // calibrates a resource boundary without duplicating its arithmetic.
+        let mut calibration = [first];
+        let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+        populate(
+            source(path),
+            options,
+            &mut calibration,
+            &[],
+            &mut bytes,
+            &mut Work::new(&mut work),
+        )
+        .unwrap();
+        assert_eq!(calibration[0].hint, Some(85));
+        work.used()
+    }
+
+    #[test]
+    fn exhausted_work_keeps_a_valid_hint_prefix_and_original_collector_error() {
+        let path = third_outline();
+        let limits = Limits::default();
+        let mut options = options(&limits);
+        options.area.region.x1 = 2;
+        let first = Pixel {
+            x: 0,
+            y: 0,
+            byte: 3,
+            hint: None,
+        };
+        let second = Pixel { x: 1, ..first };
+        let first_cost = third_hint_tariff(&path, &options, first);
+
+        let mut pair = [first, second];
+        let mut work = Meter::new(first_cost, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let error = populate(
+            source(&path),
+            &options,
+            &mut pair,
+            &[],
+            &mut bytes,
+            &mut Work::new(&mut work),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+        assert_eq!(work.used(), first_cost);
+        assert_eq!(pair[0].hint, Some(85));
+        assert_eq!(pair[1].hint, None);
+        assert_eq!([pair[0].byte, pair[1].byte], [3, 3]);
+
+        let paid = first_cost + 16;
+        let mut parent_work = Meter::new(paid + 2, RASTER_WORK);
+        parent_work.charge(paid).unwrap();
+        let mut parent_bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let mut pending = Vec::new();
+        parent_bytes.reserve_capacity(&mut pending, 2).unwrap();
+        pending.extend([first, second]);
+        let before_work = parent_work.clone();
+        let before_bytes = parent_bytes.clone();
+        hint(
+            source(&path),
+            &options,
+            &mut pending,
+            &[],
+            first_cost,
+            parent_bytes.remaining(),
+        );
+        assert_eq!(parent_work, before_work);
+        assert_eq!(parent_bytes, before_bytes);
+        assert_eq!(pending[0].hint, Some(85));
+        assert_eq!(pending[1].hint, None);
+
+        // The valid first hint still enters the unchanged collector before
+        // its next mandatory lookup reports the original work-budget error.
+        let (mut targets, mut proven) = (Vec::new(), Vec::new());
+        let error = super::super::collect_targets(
+            source(&path),
+            pending,
+            (&mut targets, &mut proven),
+            &options,
+            crate::band::union::Meters {
+                work: &mut parent_work,
+                bytes: &mut parent_bytes,
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+        assert_eq!(error.message, RASTER_WORK);
+        assert_eq!(parent_work.used(), paid + 2);
+        assert_eq!(proven.len(), 1);
+        assert_eq!(proven[0].byte, 85);
+        assert_eq!(targets, [[0.0, 0.0, 1.0, 1.0]]);
     }
 }

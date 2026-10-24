@@ -15,7 +15,13 @@
 //! intersection. Source, clamp and physical-window fees enter only once after
 //! summing the selected slabs. A caller accepts only a unique coverage byte.
 
-use super::*;
+use super::super::edges::{Bounds, Line};
+use super::{
+    Builder, EXTREMUM, Mono, Piece, PointContours, Quadratic, Spline, add, cross, lerp,
+    quadratic_outline, reducible_with_rounding, scale, sub,
+};
+use crate::{Path, Point, Segment, Transform};
+use pagura_core::{Limits, Meter, Result};
 
 /// A closed real enclosure. Nonfinite endpoints mean unknown evidence.
 #[derive(Debug, Clone, Copy)]
@@ -675,10 +681,10 @@ fn split_error(
         } else {
             Piece::Curve(leaf)
         };
-        if !matches!(emitted,Piece::Line(Line{a,b}) if a==b) {
-            if !next.next().is_some_and(|&p| same_piece(p, emitted)) {
-                return Ok(None);
-            }
+        if !matches!(emitted,Piece::Line(Line{a,b}) if a==b)
+            && !next.next().is_some_and(|&p| same_piece(p, emitted))
+        {
+            return Ok(None);
         }
         // R -> L belongs to the complete paired closed chains, including
         // these shared literal endpoint overrides. It does not compare an
@@ -1233,21 +1239,7 @@ fn integrate_crossings(
     for c in spans {
         math.blocks(1)?;
         let after = winding + c.delta;
-        if c.count != 1 {
-            let inactive = winding + c.negative > 0 || winding + c.positive < 0;
-            // Every possible internal prefix stays nonzero, so this whole
-            // component leaves the covered indicator unchanged. Its signed
-            // net winding still advances below for every following boundary.
-            if !inactive {
-                let part = component_rectangle(c, cuts, window, winding, math)?;
-                if !part.area.finite() {
-                    return Ok(Err(Failure::Nonfinite));
-                }
-                math.blocks(1)?;
-                area = area.add(part.area);
-                rectangle_error = rectangle_error.add(Interval::exact(part.rectangle_error));
-            }
-        } else {
+        if c.count == 1 {
             let change = i64::from(after != 0) - i64::from(winding != 0);
             if change != 0 {
                 let part = meta.pieces[c.index].strip(cuts, window.shift, math)?;
@@ -1263,6 +1255,20 @@ fn integrate_crossings(
                     _ => return Ok(Err(Failure::Geometry)),
                 };
                 area = area.add(part.mul(Interval::exact(factor)));
+            }
+        } else {
+            let inactive = winding + c.negative > 0 || winding + c.positive < 0;
+            // Every possible internal prefix stays nonzero, so this whole
+            // component leaves the covered indicator unchanged. Its signed
+            // net winding still advances below for every following boundary.
+            if !inactive {
+                let part = component_rectangle(c, cuts, window, winding, math)?;
+                if !part.area.finite() {
+                    return Ok(Err(Failure::Nonfinite));
+                }
+                math.blocks(1)?;
+                area = area.add(part.area);
+                rectangle_error = rectangle_error.add(Interval::exact(part.rectangle_error));
             }
         }
         winding = after;
@@ -1615,5 +1621,175 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+    }
+
+    fn evidence(path: &Path, points: &[Point]) -> Metadata {
+        let limits = Limits::default();
+        let mut work = Meter::new(limits.raster_work, "test work");
+        let mut bytes = Meter::new(limits.render_bytes, "test bytes");
+        prepare(
+            path,
+            Transform::IDENTITY,
+            points,
+            &limits,
+            &mut bytes,
+            &mut Work::new(&mut work),
+        )
+        .unwrap()
+        .unwrap()
+    }
+
+    fn enclosure(meta: &Metadata, origin: Point, pixel: [u32; 2], exact: f64) -> Interval {
+        let mut work = Meter::new(Limits::default().raster_work, "test work");
+        let area = meta
+            .unit(origin, pixel, &mut Work::new(&mut work))
+            .unwrap()
+            .unwrap();
+        assert!(area.finite());
+        assert!(area.upper() - area.lower() < 1e-8);
+        assert!(area.lower() <= exact && exact <= area.upper());
+        area
+    }
+
+    #[test]
+    fn common_translation_and_a_small_query_tail_keep_original_curve_enclosures() {
+        let meta = evidence(&outline(Direction::Forward, None), &[]);
+        let anchor = 1_u32 << 20;
+        let large = f64::from(anchor);
+        let ordinary = enclosure(&meta, Point::default(), [0, 0], 13.0 / 24.0);
+        let moved = enclosure(
+            &meta,
+            Point::new(large, large),
+            [anchor, anchor],
+            13.0 / 24.0,
+        );
+        assert_eq!(
+            crate::quantize_unit(ordinary.lower()),
+            crate::quantize_unit(moved.upper())
+        );
+        let tail = 1.0 / 4_294_967_296.0;
+        enclosure(
+            &meta,
+            Point::new(large + tail, large),
+            [anchor, anchor],
+            13.0 / 24.0 - tail,
+        );
+        // Unlike the large equal-coordinate subtraction, this query loses a
+        // nonzero tail. Only the rightmost width .1 of the body enters pixel1.
+        let small = Point::new(0.1, 0.0);
+        let column = 1_u32;
+        let rounded = f64::from(column) - small.x;
+        assert_ne!(f64::from(column) - rounded, small.x);
+        assert!(shift(f64::from(column), small.x).lower() < rounded);
+        enclosure(&meta, small, [column, 0], small.x);
+    }
+
+    #[test]
+    fn canonical_point_floor_uses_the_literal_global_addition() {
+        let point = Point::new(0.5_f64.next_down(), 2.25);
+        let meta = evidence(&outline(Direction::Forward, Some(point)), &[point]);
+        let anchor = 1_u32 << 20;
+        let origin = Point::new(f64::from(anchor) + 0.5, f64::from(anchor));
+        assert_eq!((point.x + origin.x).floor(), f64::from(anchor + 1));
+        // Both queries are below the body's Y support. The point is a full
+        // canonical cell at the rounded global floor, not at separate floors.
+        enclosure(&meta, origin, [anchor, anchor + 2], 0.0);
+        enclosure(&meta, origin, [anchor + 1, anchor + 2], 1.0);
+    }
+
+    #[test]
+    fn collinear_builder_collapse_keeps_a_geometric_chord_fee() {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(1.0 / 6.0, 0.0),
+            Point::new(0.5, 0.0),
+            Point::new(1.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+        let meta = evidence(&path.finish(), &[]);
+        // The recovered quadratic has control x=1/4, not the chord's
+        // midpoint. Its differently parameterized collinear loop has no area.
+        assert!(meta.error.is_finite() && meta.error < 1e-10);
+        enclosure(&meta, Point::default(), [0, 0], 0.0);
+        let mut work = Meter::new(Limits::default().raster_work, "test work");
+        let mut math = Work::new(&mut work);
+        let height = 1.0 / 1024.0;
+        let points = [
+            Point::default(),
+            Point::new(0.25, height),
+            Point::new(1.0, 0.0),
+        ];
+        for points in [points, [points[2], points[1], points[0]]] {
+            let fee = chord_area(points, &mut math).unwrap();
+            // Green integration of this horizontal arc/chord loop is h/3.
+            assert!(fee.is_finite() && height / 3.0 <= fee);
+            assert!(fee - height / 3.0 < 1e-15);
+        }
+    }
+
+    #[test]
+    fn control_clamps_pay_for_tiny_and_large_overshoots_with_fixed_endpoints() {
+        let mut work = Meter::new(Limits::default().raster_work, "test work");
+        let mut math = Work::new(&mut work);
+        for x in [1.0_f64.next_up(), 1.25] {
+            let ends = [Point::new(-0.0, 0.0), Point::new(1.0, 1.0)];
+            for ends in [ends, [ends[1], ends[0]]] {
+                let piece = Piece::Curve(Quadratic {
+                    points: [ends[0], Point::new(x, 0.5), ends[1]],
+                });
+                let (shadow, fee) = monotone_shadow(piece, &mut math).unwrap();
+                assert_eq!(
+                    shadow.ends().map(|p| [p.x.to_bits(), p.y.to_bits()]),
+                    ends.map(|p| [p.x.to_bits(), p.y.to_bits()])
+                );
+                let Piece::Curve(q) = shadow else {
+                    panic!("quadratic shadow");
+                };
+                assert_eq!(q.points[1], Point::new(1.0, 0.5));
+                assert!(Polynomial::new(shadow, &mut math).unwrap().is_some());
+                // Integrating the original-minus-clamped middle control
+                // against y=t gives area-change magnitude (x-1)/3.
+                assert!(fee.is_finite() && (x - 1.0) / 3.0 <= fee);
+                assert!(fee <= 4.0 * (x - 1.0));
+            }
+        }
+    }
+
+    #[test]
+    fn duplicate_body_winding_is_not_normalized_before_point_cancellation() {
+        let mut body = PathBuilder::new();
+        body.move_to(Point::default());
+        body.cubic_to(
+            Point::new(0.0, 1.0 / 3.0),
+            Point::new(0.0, 2.0 / 3.0),
+            Point::new(0.0, 1.0),
+        )
+        .unwrap();
+        body.line_to(Point::new(3.0 / 8.0, 1.0)).unwrap();
+        body.line_to(Point::new(3.0 / 8.0, 0.0)).unwrap();
+        body.close();
+        let body = body.finish();
+        for count in 0..=2 {
+            let mut path = PathBuilder::new();
+            path.append(&body, Transform::IDENTITY)
+                .append(&body, Transform::IDENTITY);
+            let points = vec![Point::new(0.25, 0.25); count];
+            for &point in &points {
+                path.move_to(point).close();
+            }
+            let exact = match count {
+                0 => 3.0 / 8.0,
+                1 => 1.0,
+                _ => 5.0 / 8.0,
+            };
+            enclosure(
+                &evidence(&path.finish(), &points),
+                Point::default(),
+                [0, 0],
+                exact,
+            );
+        }
     }
 }

@@ -998,4 +998,27 @@ mod tests {
         assert!(!c.open((0, 8), 0..STRIP + 1));
         assert!(c.open((0, 8), 0..STRIP));
     }
+
+    #[test]
+    fn unrepresentable_or_unfunded_inspection_never_lends_work() {
+        let empty = InspectionWork::default();
+        assert_eq!(empty.surplus(15), None);
+        assert_eq!(empty.surplus(16), Some(0));
+        assert_eq!(empty.surplus(17), Some(1));
+
+        let mut overflow = InspectionWork::default();
+        overflow.record(InspectionPart::Accumulated, usize::MAX);
+        assert_eq!(overflow.surplus(usize::MAX), None);
+        overflow.record(InspectionPart::Rows, 0);
+        assert_eq!(overflow.surplus(usize::MAX), None);
+
+        let mut weighted = InspectionWork::default();
+        weighted.record(InspectionPart::Touched, usize::MAX);
+        assert_eq!(weighted.surplus(usize::MAX), None);
+
+        // The update fits, but the final fixed inspection fee does not.
+        let mut final_fee = InspectionWork::default();
+        final_fee.record(InspectionPart::Accumulated, usize::MAX - 1);
+        assert_eq!(final_fee.surplus(usize::MAX), None);
+    }
 }
