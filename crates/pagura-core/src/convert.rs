@@ -12,7 +12,9 @@
 //! costs more than the pixel arithmetic around it. [`round_u8`],
 //! [`round_u16`] and [`round_f32_u8`] give the integers of `v.round() as u8`
 //! (or `u16`) from one addition and the truncating conversion, which every
-//! target has.
+//! target has. They convert to `u32` and clamp there: WebAssembly SIMD
+//! converts float lanes to `u32` in one instruction but has none for bytes
+//! or words, and loops of a direct `as u8` stay scalar there.
 
 const _: () = assert!(usize::BITS >= 32 && usize::BITS <= 64);
 
@@ -39,33 +41,36 @@ pub const fn usize_to_u64(value: usize) -> u64 {
 /// and below the half it stays below. Truncation then gives the nearest
 /// integer, and the saturating conversion clamps as `as` does; negative
 /// values and NaN give 0 either way.
+#[inline]
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "the saturating conversion is the clamp"
+    reason = "the saturating conversion and the minimum are the clamp"
 )]
 pub fn round_u8(value: f64) -> u8 {
-    (value + BELOW_HALF) as u8
+    ((value + BELOW_HALF) as u32).min(255) as u8
 }
 
 /// `value.round() as u16` for every `value`, as [`round_u8`] rounds.
+#[inline]
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "the saturating conversion is the clamp"
+    reason = "the saturating conversion and the minimum are the clamp"
 )]
 pub fn round_u16(value: f64) -> u16 {
-    (value + BELOW_HALF) as u16
+    ((value + BELOW_HALF) as u32).min(65_535) as u16
 }
 
 /// `value.round() as u8` for every `f32` `value`, as [`round_u8`] rounds.
+#[inline]
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "the saturating conversion is the clamp"
+    reason = "the saturating conversion and the minimum are the clamp"
 )]
 pub fn round_f32_u8(value: f32) -> u8 {
-    (value + BELOW_HALF_F32) as u8
+    ((value + BELOW_HALF_F32) as u32).min(255) as u8
 }
 
 #[cfg(test)]
