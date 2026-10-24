@@ -262,7 +262,12 @@ fn flatten_using(
     for segment in path.segments() {
         // A line or curve following Close reopens at the subpath start.
         // Preserve the closed contour separately, including its point buffer.
-        if current.closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }) {
+        if current.closed
+            && matches!(
+                segment,
+                Segment::LineTo(_) | Segment::CubicTo { .. } | Segment::QuadTo { .. }
+            )
+        {
             let first = current.points.first().copied();
             contour += 1;
             current = prepare(result, contour, bytes)?;
@@ -271,7 +276,7 @@ fn flatten_using(
                 current.points.push(first);
             }
         }
-        match *segment {
+        let piece = match *segment {
             Segment::MoveTo(point) => {
                 if !current.points.is_empty() {
                     contour += 1;
@@ -284,6 +289,7 @@ fn flatten_using(
                 current.degenerate = true;
                 start = point;
                 position = point;
+                None
             }
             Segment::LineTo(point) => {
                 bounded(point)?;
@@ -291,39 +297,52 @@ fn flatten_using(
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
                 append(&mut current.points, point, &mut count, limits, bytes)?;
                 position = point;
+                None
             }
             Segment::CubicTo { c1, c2, end } => {
-                current.degenerate &= [c1, c2, end].iter().all(|p| *p == position);
                 for point in [c1, c2, end] {
                     bounded(point)?;
                     bounded(point * transform)?;
                 }
-                curve(
-                    [position, c1, c2, end],
-                    transform,
-                    pending,
-                    &mut current.points,
-                    &mut count,
-                    limits,
-                    Subdivision {
-                        flatness: subdivision.flatness,
-                        bytes,
-                        inspection: subdivision.inspection.as_mut().map(|i| Inspection {
-                            hulls: i.hulls.as_deref_mut(),
-                            work: i.work,
-                            rounding: i.rounding,
-                            targets: i.targets,
-                            offset: i.offset,
-                            factor: i.factor,
-                        }),
-                    },
-                )?;
-                position = end;
+                Some(([position, c1, c2, end], 0.0))
+            }
+            Segment::QuadTo { control, end } => {
+                for point in [control, end] {
+                    bounded(point)?;
+                    bounded(point * transform)?;
+                }
+                let [c1, c2] = Segment::elevated(position, control, end);
+                Some(([position, c1, c2, end], ELEVATION))
             }
             Segment::Close => {
                 current.closed = true;
                 position = start;
+                None
             }
+        };
+        if let Some((controls @ [_, c1, c2, end], elevation)) = piece {
+            current.degenerate &= [c1, c2, end].iter().all(|p| *p == position);
+            curve(
+                (controls, elevation),
+                transform,
+                pending,
+                &mut current.points,
+                &mut count,
+                limits,
+                Subdivision {
+                    flatness: subdivision.flatness,
+                    bytes,
+                    inspection: subdivision.inspection.as_mut().map(|i| Inspection {
+                        hulls: i.hulls.as_deref_mut(),
+                        work: i.work,
+                        rounding: i.rounding,
+                        targets: i.targets,
+                        offset: i.offset,
+                        factor: i.factor,
+                    }),
+                },
+            )?;
+            position = end;
         }
     }
     Ok(contour + usize::from(!current.points.is_empty()))
@@ -371,8 +390,15 @@ struct Subdivision<'a> {
     inspection: Option<Inspection<'a>>,
 }
 
+/// Rounding units of the coordinates' magnitude that elevating a quadratic
+/// adds to its cubic controls ([`Segment::elevated`]): its difference,
+/// quotient and sum, mapped, with margin.
+const ELEVATION: f64 = 16.0;
+
+/// Flattens the cubic `points`, whose controls carry `elevation` rounding
+/// units beyond the source's.
 fn curve(
-    points: [Point; 4],
+    (points, elevation): ([Point; 4], f64),
     transform: Transform,
     pending: &mut CurveStack,
     out: &mut Vec<Point>,
@@ -409,8 +435,7 @@ fn curve(
         // both inner controls certifies the whole curve, including cusps.
         let rounding = magnitude
             * f64::EPSILON
-            * 16.0
-            * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX))
+            * (16.0 * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX)) + elevation)
             + inspection.as_ref().map_or(0.0, |i| i.rounding);
         let hull = inspection
             .as_ref()
@@ -548,7 +573,7 @@ mod tests {
             let mut work = Meter::new(100_000, crate::band::RASTER_WORK);
             let mut bytes = crate::testing::bytes();
             curve(
-                controls,
+                (controls, 0.0),
                 Transform::IDENTITY,
                 &mut pending,
                 &mut out,
@@ -600,7 +625,7 @@ mod tests {
         let mut bytes = crate::testing::bytes();
         let mut flatten = |transform| {
             curve(
-                corner,
+                (corner, 0.0),
                 transform,
                 &mut pending,
                 &mut points,
@@ -759,7 +784,7 @@ mod tests {
             reference(points, transform, &mut expected);
             let mut actual = Vec::new();
             curve(
-                points,
+                (points, 0.0),
                 transform,
                 &mut pending,
                 &mut actual,
@@ -804,7 +829,7 @@ mod tests {
     fn certify(points: [Point; 4], transform: Transform) {
         let mut out = vec![points[0]];
         curve(
-            points,
+            (points, 0.0),
             transform,
             &mut Vec::new(),
             &mut out,

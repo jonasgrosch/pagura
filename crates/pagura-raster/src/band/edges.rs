@@ -303,7 +303,7 @@ impl Polygon {
         if path
             .segments()
             .iter()
-            .any(|s| matches!(s, Segment::CubicTo { .. }))
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
         {
             return Ok(None);
         }
@@ -377,7 +377,7 @@ impl Polygon {
                     append(&mut user, point, bytes)?;
                 }
                 Segment::Close => closed = true,
-                Segment::CubicTo { .. } => return Ok(None),
+                Segment::CubicTo { .. } | Segment::QuadTo { .. } => return Ok(None),
             }
         }
         finish(&mut polygon, &mut user, true, closed, bytes)?;

@@ -351,6 +351,7 @@ fn finite(path: &pagura_raster::Path) -> bool {
     path.segments().iter().all(|segment| match *segment {
         Segment::MoveTo(p) | Segment::LineTo(p) => p.is_finite(),
         Segment::CubicTo { c1, c2, end } => c1.is_finite() && c2.is_finite() && end.is_finite(),
+        Segment::QuadTo { control, end } => control.is_finite() && end.is_finite(),
         Segment::Close => true,
     })
 }

@@ -361,7 +361,7 @@ fn contours_with_area(
     let curve_count = path
         .segments()
         .iter()
-        .filter(|s| matches!(s, Segment::CubicTo { .. }))
+        .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
         .count();
     let allowance = Precision {
         area: precision.area / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX)),
@@ -382,7 +382,7 @@ fn contours_with_area(
     };
     for segment in path.segments() {
         // A line or curve after a close starts again at the subpath start.
-        if matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. })
+        if !matches!(segment, Segment::MoveTo(_) | Segment::Close)
             && contours.last().is_none_or(|c| c.closed)
         {
             contours.push(Contour {
@@ -391,6 +391,7 @@ fn contours_with_area(
                 degenerate: true,
             });
         }
+        let piece = cubic(*segment, position);
         match *segment {
             Segment::MoveTo(point) => {
                 if contours.last().is_none_or(|c| !c.points.is_empty()) {
@@ -413,25 +414,7 @@ fn contours_with_area(
                 }
                 position = point;
             }
-            Segment::CubicTo { c1, c2, end } => {
-                if let Some(contour) = contours.last_mut() {
-                    contour.degenerate &= [c1, c2, end].iter().all(|&p| same(p, position));
-                    let mut points = Vec::new();
-                    flatten_curve(
-                        [position, c1, c2, end],
-                        device,
-                        curves,
-                        allowance,
-                        &mut points,
-                        &mut hulls,
-                        limits,
-                    )?;
-                    for point in points {
-                        push(contour, point)?;
-                    }
-                }
-                position = end;
-            }
+            Segment::CubicTo { .. } | Segment::QuadTo { .. } => {}
             Segment::Close => {
                 if let Some(contour) = contours.last_mut() {
                     contour.closed = true;
@@ -439,14 +422,52 @@ fn contours_with_area(
                 position = start;
             }
         }
+        if let Some((controls @ [_, c1, c2, end], elevation)) = piece {
+            if let Some(contour) = contours.last_mut() {
+                contour.degenerate &= [c1, c2, end].iter().all(|&p| same(p, position));
+                let mut points = Vec::new();
+                flatten_curve(
+                    (controls, elevation),
+                    device,
+                    curves,
+                    allowance,
+                    &mut points,
+                    &mut hulls,
+                    limits,
+                )?;
+                for point in points {
+                    push(contour, point)?;
+                }
+            }
+            position = end;
+        }
     }
     contours.retain(|c| !c.points.is_empty());
     Ok((contours, hulls))
 }
 
-/// Appends the end points of the pieces of a cubic, after its start.
+/// Rounding units of the coordinates' magnitude that elevating a quadratic
+/// adds to its cubic controls.
+const ELEVATION: f64 = 32.0;
+
+/// A curve's cubic controls from `from`, with the rounding units their
+/// elevation adds: a quadratic flattens as its elevated cubic. `None` for
+/// a move, line or close.
+fn cubic(segment: Segment, from: Point) -> Option<([Point; 4], f64)> {
+    match segment {
+        Segment::CubicTo { c1, c2, end } => Some(([from, c1, c2, end], 0.0)),
+        Segment::QuadTo { control, end } => {
+            let [c1, c2] = Segment::elevated(from, control, end);
+            Some(([from, c1, c2, end], ELEVATION))
+        }
+        Segment::MoveTo(_) | Segment::LineTo(_) | Segment::Close => None,
+    }
+}
+
+/// Appends the end points of the pieces of a cubic, after its start; its
+/// controls carry `elevation` rounding units beyond the source's.
 fn flatten_curve(
-    points: [Point; 4],
+    (points, elevation): ([Point; 4], f64),
     device: Transform,
     curves: Curves,
     precision: Precision,
@@ -468,8 +489,8 @@ fn flatten_curve(
         let hull = if curves == Curves::Curve {
             let triangle = |p: Point, q: Point| {
                 let (u, v) = (p - a, q - a);
-                let error =
-                    magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4) + precision.rounding;
+                let error = magnitude * f64::EPSILON * (32.0 * f64::from(depth + 4) + elevation)
+                    + precision.rounding;
                 let products = (u.x * v.y).abs() + (u.y * v.x).abs();
                 let determinant = (u.x * v.y - u.y * v.x).abs()
                     + 16.0 * f64::EPSILON * products
@@ -479,8 +500,8 @@ fn flatten_curve(
             };
             let area =
                 (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON);
-            let rounding =
-                magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4) + precision.rounding;
+            let rounding = magnitude * f64::EPSILON * (32.0 * f64::from(depth + 4) + elevation)
+                + precision.rounding;
             let bounds = [
                 a.x.min(b.x).min(c.x).min(d.x) - rounding,
                 a.y.min(b.y).min(c.y).min(d.y) - rounding,

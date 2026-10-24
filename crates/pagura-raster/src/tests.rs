@@ -551,7 +551,7 @@ fn sixteen_sided(offset: Point) -> (Path, Stroke) {
             crate::Segment::Close => {
                 moved.close();
             }
-            crate::Segment::CubicTo { .. } => panic!("polygon"),
+            crate::Segment::CubicTo { .. } | crate::Segment::QuadTo { .. } => panic!("polygon"),
         }
     }
     let stroke = Stroke {
@@ -641,7 +641,7 @@ fn boundary_strokes_clean_repeated_closure_and_exclude_dashes_and_affine_pens() 
                 repeated.line_to(first).unwrap();
                 repeated.close();
             }
-            crate::Segment::CubicTo { .. } => panic!("polygon"),
+            crate::Segment::CubicTo { .. } | crate::Segment::QuadTo { .. } => panic!("polygon"),
         }
     }
     let path = repeated.finish();

@@ -1,9 +1,10 @@
 //! Glyph boundaries integrated against their true curve (8.5.2.2, 8.5.3.3).
 //!
-//! A TrueType quadratic arrives as a degree-elevated cubic. Its midpoint
-//! quadratic recovers it up to rounding; general cubic outlines keep their
-//! canonical polygon. Quadratics split at coordinate extrema and integrate
-//! x(t)y'(t) between pixel crossings in closed form ([`Mono`]).
+//! A TrueType quadratic arrives as itself ([`Segment::QuadTo`]). A cubic
+//! that is a degree-elevated quadratic is recovered by its midpoint
+//! quadratic up to rounding; general cubic outlines keep their canonical
+//! polygon. Quadratics split at coordinate extrema and integrate x(t)y'(t)
+//! between pixel crossings in closed form ([`Mono`]).
 
 use super::edges::{Bounds, Line};
 use crate::flatten::bounded;
@@ -40,6 +41,7 @@ pub(crate) fn quadratic_outline(outline: &Path, linear: Transform) -> bool {
                 difference.y += third.y.abs();
                 current = d;
             }
+            Segment::QuadTo { end, .. } => current = end * linear,
             Segment::Close => current = start,
         }
     }
@@ -95,6 +97,8 @@ fn reduction_errors(outline: &Path, linear: Transform) -> [f64; 2] {
                 }
                 current = end;
             }
+            // Kept exact: nothing to reduce.
+            Segment::QuadTo { end, .. } => current = end,
             Segment::Close => current = start,
         }
     }
@@ -603,10 +607,9 @@ impl Builder<'_> {
                     segments = 0;
                     self.begin()?;
                 }
-                Segment::LineTo(p) => {
-                    let source = p;
-                    let p = map(p)?;
-                    let a = current.ok_or(Error::invalid_argument("line has no current point"))?;
+                Segment::LineTo(_) | Segment::CubicTo { .. } | Segment::QuadTo { .. } => {
+                    let a =
+                        current.ok_or(Error::invalid_argument("segment has no current point"))?;
                     if closed {
                         start = Some(a);
                         degenerate = true;
@@ -614,26 +617,9 @@ impl Builder<'_> {
                         closed = false;
                         self.begin()?;
                     }
-                    degenerate &= source_current == Some(source);
-                    source_current = Some(source);
-                    self.line(a, p)?;
-                    current = Some(p);
-                    segments += 1;
-                }
-                Segment::CubicTo { c1, c2, end } => {
-                    let a = current.ok_or(Error::invalid_argument("curve has no current point"))?;
-                    if closed {
-                        start = Some(a);
-                        degenerate = true;
-                        segments = 0;
-                        closed = false;
-                        self.begin()?;
-                    }
-                    degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == source_current);
-                    source_current = Some(end);
-                    let (b, c, d) = (map(c1)?, map(c2)?, map(end)?);
-                    self.cubic([a, b, c, d])?;
-                    current = Some(d);
+                    let (source, end) =
+                        self.draw(*segment, (a, source_current), &mut degenerate, map)?;
+                    (source_current, current) = (source, Some(end));
                     segments += 1;
                 }
                 Segment::Close => {
@@ -667,6 +653,44 @@ impl Builder<'_> {
             (self.point_contours == PointContours::Keep || !self.spline.pieces.is_empty())
                 .then_some(self.spline),
         )
+    }
+
+    /// Adds the pieces of a line or curve from the mapped point `a`, the
+    /// source point `from`, and returns its source and mapped ends; a move
+    /// or close adds nothing. Clears `degenerate` unless every source
+    /// control repeats `from`.
+    fn draw(
+        &mut self,
+        segment: Segment,
+        (a, from): (Point, Option<Point>),
+        degenerate: &mut bool,
+        map: impl Fn(Point) -> Result<Point>,
+    ) -> BuildResult<(Option<Point>, Point)> {
+        match segment {
+            Segment::LineTo(p) => {
+                *degenerate &= from == Some(p);
+                let d = map(p)?;
+                self.line(a, d)?;
+                Ok((Some(p), d))
+            }
+            Segment::CubicTo { c1, c2, end } => {
+                *degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == from);
+                let (b, c, d) = (map(c1)?, map(c2)?, map(end)?);
+                self.cubic([a, b, c, d])?;
+                Ok((Some(end), d))
+            }
+            Segment::QuadTo { control, end } => {
+                // A point as the elevated cubic's controls classify it.
+                *degenerate &= from.is_some_and(|from| {
+                    let [c1, c2] = Segment::elevated(from, control, end);
+                    [c1, c2, end].iter().all(|p| *p == from)
+                });
+                let (b, d) = (map(control)?, map(end)?);
+                self.quadratic(Quadratic { points: [a, b, d] })?;
+                Ok((Some(end), d))
+            }
+            Segment::MoveTo(_) | Segment::Close => Ok((from, a)),
+        }
     }
 
     /// Closes a contour; `false` for a geometric point, which keeps the

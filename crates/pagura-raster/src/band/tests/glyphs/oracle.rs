@@ -180,6 +180,12 @@ fn pieces(outline: &Path, transform: Transform) -> Vec<Piece> {
                 current = c;
                 cubic
             }
+            Segment::QuadTo { control, end } => {
+                let [control, end] = [control, end].map(|p| transform.apply(p));
+                let quadratic = Curve::quadratic([current, control, end]);
+                current = end;
+                quadratic
+            }
             Segment::Close => {
                 let closing = Curve::line(current, start);
                 current = start;
@@ -199,6 +205,10 @@ struct Polynomial([f64; 4]);
 impl Polynomial {
     fn line(a: f64, b: f64) -> Self {
         Self([a, b - a, 0.0, 0.0])
+    }
+
+    fn quadratic([p0, p1, p2]: [f64; 3]) -> Self {
+        Self([p0, 2.0 * (p1 - p0), p2 - 2.0 * p1 + p0, 0.0])
     }
 
     fn bezier([p0, p1, p2, p3]: [f64; 4]) -> Self {
@@ -259,6 +269,13 @@ impl Curve {
         Self {
             x: Polynomial::bezier(points.map(|p| p.x)),
             y: Polynomial::bezier(points.map(|p| p.y)),
+        }
+    }
+
+    fn quadratic(points: [Point; 3]) -> Self {
+        Self {
+            x: Polynomial::quadratic(points.map(|p| p.x)),
+            y: Polynomial::quadratic(points.map(|p| p.y)),
         }
     }
 }

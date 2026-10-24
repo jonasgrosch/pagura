@@ -1,6 +1,8 @@
 //! Coverage-byte certification at the preparation boundary. A small area
 //! error alone cannot survive repeated composition: both ends of the true
-//! coverage interval must quantize to the byte execution will emit.
+//! coverage interval must quantize to the byte execution will emit. Exact
+//! quadratics integrated in closed form carry only the kernel's arithmetic
+//! error, as straight edges do, and need no certificate.
 
 use super::{GlyphEdges, Kind, flattened_with, translated};
 use crate::band::cells::Cells;
@@ -48,7 +50,7 @@ impl<'a> Source<'a> {
         Ok(outline
             .segments()
             .iter()
-            .any(|s| matches!(s, Segment::CubicTo { .. }))
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
             .then_some(Self {
                 outline,
                 linear,
@@ -73,6 +75,9 @@ pub(super) fn certify(
     let Source {
         outline, linear, ..
     } = source;
+    if exact(outline, &shape, options) {
+        return Ok(shape);
+    }
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
@@ -191,6 +196,23 @@ fn replacement(
     Ok(prepared)
 }
 
+/// Whether `shape` integrates `outline`'s own quadratics in closed form:
+/// analytic geometry from an outline without cubics, crossed by no clip
+/// path. Its curves are the source's, mapped and placed, so its bytes are
+/// correctly rounded up to the kernel's arithmetic, as for straight edges.
+fn exact(outline: &Path, shape: &Shape, options: &Prep<'_>) -> bool {
+    let analytic = match &shape.body {
+        Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
+        Body::Edges(body) => !body.curves.is_empty(),
+    };
+    analytic
+        && options.clip.and_then(|clip| clip.paths()).is_none()
+        && !outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. }))
+}
+
 /// Translation and row/intersection arithmetic can move a boundary. The
 /// per-edge homotopy bound is at most three times the two coordinate
 /// displacements inside any pixel. This broad initial bound only selects
@@ -208,6 +230,10 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
             Segment::CubicTo { c1, c2, end } => {
                 include(c1);
                 include(c2);
+                include(end);
+            }
+            Segment::QuadTo { control, end } => {
+                include(control);
                 include(end);
             }
             Segment::Close => {}
@@ -593,7 +619,7 @@ fn source_lines(
                 }
                 current = Some(p);
             }
-            Segment::CubicTo { end, .. } => current = Some(end),
+            Segment::CubicTo { end, .. } | Segment::QuadTo { end, .. } => current = Some(end),
             Segment::Close => {
                 if let Some(previous) = current {
                     error = outward(error + line(previous, start));

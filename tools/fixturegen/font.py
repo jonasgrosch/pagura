@@ -24,6 +24,8 @@ def u32(n):
 
 RECT = "m 0 0\nl 100 0\nl 100 200\nl 0 200\nh\n"
 QUAD = "m 0 0\nc 0 200 100 200 300 0\nh\n"
+# The same glyph from glyf, whose quadratic outlines keep.
+TRUETYPE_QUAD = "m 0 0\nq 0 300 300 0\nh\n"
 
 
 def simple(points, contours=None):
@@ -374,7 +376,7 @@ def cases():
     for fmt in (0,4,6,12):
         expected = "count 5\nmatrix 0.001 0 0 0.001 0 0\nname A 1\nadvance 1 600\nadvance 4 600\n"
         expected += f"code {('mac' if fmt == 0 else 'symbol' if fmt == 6 else 'full' if fmt == 12 else 'unicode')} {0x1f600 if fmt == 12 else 65} 1\n"
-        expected += "outline 1\n"+RECT+"outline 2\n"+QUAD
+        expected += "outline 1\n"+RECT+"outline 2\n"+TRUETYPE_QUAD
         expected += "outline 3\nm 20 30\nl 70 55\nl 70 155\nl 20 130\nh\n"
         expected += "outline 4\n"+RECT+"m 100 200\nl 200 200\nl 200 400\nl 100 400\nh\n"
         yield vector(f"truetype-cmap{fmt}", truetype(fmt, short=fmt == 0), expected, "font-truetype")
@@ -437,7 +439,7 @@ def cases():
     for variant in ("hint-replacement", "custom-encoding"):
         yield vector("type1-"+variant,type1_font(conforming=True,variant=variant),"count 6\nname A 1\nencoding 65 A\nadvance 1 600\noutline 1\n"+RECT,"font-type1","type1")
     yield vector("truetype-implied-points",truetype(glyph_override=simple([(0,100,False),(100,100,False),(100,0,True),(0,0,False)])),
-                 "outline 1\nm 0 50\nc 0 83.33333333333333 16.66666666666667 100 50 100\nc 83.33333333333333 100 100 66.66666666666667 100 0\nc 33.33333333333333 0 0 16.66666666666667 0 50\nh\n", "font-truetype")
+                 "outline 1\nm 0 50\nq 0 100 50 100\nq 100 100 100 0\nq 0 0 0 50\nh\n", "font-truetype")
 
     yield vector("cff-cid-fd-array",cff_font(conforming=True,cid=True,variant="fd-array"),
                  "count 5\nis-cid 1\ncid 17 1\nadvance 1 1400\nadvance 2 600\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\noutline 2\n"+QUAD,"font-cff","cff")
@@ -874,7 +876,7 @@ def recovery_cases():
     yield recovery_vector("glyf-truncated", truetype(table_overrides={b"glyf":glyf}),
                           result+"outline 4\n", "font.table-bounds")
     yield recovery_vector("glyph-truncated", truetype(glyph_override=b"\x00"),
-                          "outline 1\noutline 2\n"+QUAD, "font.glyph-data", 1)
+                          "outline 1\noutline 2\n"+TRUETYPE_QUAD, "font.glyph-data", 1)
     # Put the component in glyph 3 instead to avoid a recursive reference.
     glyf = bytearray(tables[b"glyf"])
     start = int.from_bytes(tables[b"loca"][12:16], "big")
@@ -1225,7 +1227,7 @@ def glyph_name_cases():
     aliases = named_post([b".notdef",b"A",b"A",b"composite",b"attached"])
     yield vector("glyph-names-post-alias",truetype(table_overrides={b"post":aliases}),
                  "count 5\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\nglyph-name 2 A\n"
-                 "glyph-name-none 5\nglyph-name-none 4294967295\noutline 1\n"+RECT+"outline 2\n"+QUAD,req)
+                 "glyph-name-none 5\nglyph-name-none 4294967295\noutline 1\n"+RECT+"outline 2\n"+TRUETYPE_QUAD,req)
     standard = u32(0x10000)+bytes(28)
     yield vector("glyph-names-post-standard",truetype(table_overrides={b"post":standard}),
                  "count 5\nglyph-name 0 .notdef\nglyph-name 3 space\n",req)
