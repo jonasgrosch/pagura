@@ -27,9 +27,8 @@ const DIRECT: f64 = 1.0 / (255.0 * 1024.0);
 /// reduction error, but not cancellation in H or mapping and translation.
 #[derive(Debug)]
 pub(super) struct Direct {
-    arithmetic: f64,
-    magnitude: f64,
-    pieces: f64,
+    /// Largest translation whose arithmetic allowance still fits DIRECT.
+    origin: f64,
 }
 
 impl Direct {
@@ -50,20 +49,22 @@ impl Direct {
             )
             .unwrap_or(u32::MAX),
         );
-        Some(Self {
-            arithmetic: relative
-                .curves
-                .iter()
-                .map(curve::Mono::arithmetic_allowance)
-                .sum(),
-            magnitude: mapped_magnitude(outline, linear, Point::default()),
-            pieces,
-        })
+        let arithmetic = relative
+            .curves
+            .iter()
+            .map(curve::Mono::arithmetic_allowance)
+            .fold(0.0, |sum, error| (sum + error).next_up());
+        // Solve arithmetic + 384*EPS*pieces*(magnitude + |origin|)
+        // <= DIRECT once. Round every inverse step down so the cached
+        // translation bound cannot admit more than the original allowance.
+        let room = (DIRECT - arithmetic).next_down();
+        let magnitude = mapped_magnitude(outline, linear, Point::default());
+        let origin = ((room / (384.0 * f64::EPSILON * pieces)).next_down() - magnitude).next_down();
+        (origin >= 0.0).then_some(Self { origin })
     }
 
     fn admits(&self, origin: Point) -> bool {
-        let magnitude = self.magnitude + origin.x.abs().max(origin.y.abs());
-        self.arithmetic + 384.0 * f64::EPSILON * magnitude * self.pieces <= DIRECT
+        origin.x.abs().max(origin.y.abs()) <= self.origin
     }
 }
 
