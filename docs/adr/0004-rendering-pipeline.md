@@ -9,8 +9,8 @@ evidence. Section 4's coverage producers were brought in line with the
 implementation on 2026-10-22, and the fast parameters and their accuracy gate
 were retired the same day (section 8). On 2026-10-24 TrueType quadratics
 became their own path segments, integrated without per-placement
-certification, and lone round-capped segments became one convex stroke piece
-(section 4).
+certification, and round caps that their end segments hold became part of
+the end pieces (section 4).
 
 ## Decision
 
@@ -131,13 +131,17 @@ successive chain ends and alternate in direction from one common sign, so
 the winding is zero or that sign with magnitude one. For quadratics the
 certificate bounds the curves themselves, including their tangent fans at
 shared vertices. Doubt leaves the shape uncertified. Stroke pieces that are
-proved to meet without overlap are certified by construction. A lone
-round-capped segment longer than the pen is one convex piece: its
-quadrilateral joined to the chain of each canonical cap polygon beyond its
-end line, entered and left where the polygon's sides cross that line. Cap
-vertices behind the end line must lie across the quadrilateral within eight
-rounding units of their coordinates, so the piece differs from the
-components' union only by slivers of that width.
+proved to meet without overlap are certified by construction. An open
+round-capped run is proved where its joints are and each end segment holds
+its cap: the segment is longer than the pen radius plus what its other end
+needs along it (the other cap's radius, or a turn's inner reach), so the
+cap polygon's part behind the end line lies within the end piece. The end
+piece then takes the chain of the canonical cap polygon beyond its end
+line, entered and left where the polygon's sides cross that line, and the
+cap polygon is not drawn. Cap vertices behind the end line must lie across
+the piece within eight rounding units of their coordinates, so the piece
+differs from the components' union only by slivers of that width. A lone
+segment longer than the pen holds both caps as one convex piece.
 
 Uncertified rows, and rows crossed by both a mark and a path clip, go through
 one exact row union during preparation. It cuts at edge ends and crossings,
