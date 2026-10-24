@@ -169,8 +169,10 @@ row union depend only on the geometry and the clip state. An edge whose
 coordinates are at most 2^16 in magnitude and whose height is at least
 2^-30 interpolates its crossings in plain f64, within the straight-edge
 interpolation bound below; other edges use the exact two-product form.
-Execution windows of at most 256 columns keep no touched bitmap: they
-accumulate densely and emit every cell, with the same values.
+Execution windows of at most 256 columns with at least one item per two
+columns keep no touched bitmap: they accumulate densely and emit every
+cell, with the same values. A thin stroke across a wider window touches
+few of its cells and keeps the bitmap.
 
 **Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
 and 4) keeps its font outline, its linear glyph-to-device map L and its exact
