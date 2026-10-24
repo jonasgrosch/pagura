@@ -272,13 +272,14 @@ impl<'a> Parser<'a> {
     /// Returns a syntax error for anything but ASCII digits that fit `u64`.
     pub fn unsigned(&mut self) -> Result<u64> {
         let token = self.word()?;
-        if !token.iter().all(u8::is_ascii_digit) {
-            return Err(self.error("expected unsigned integer"));
+        let mut value = Some(0_u64);
+        for &byte in token {
+            if !byte.is_ascii_digit() {
+                return Err(self.error("expected unsigned integer"));
+            }
+            value = value.and_then(|v| v.checked_mul(10)?.checked_add(u64::from(byte - b'0')));
         }
-        std::str::from_utf8(token)
-            .ok()
-            .and_then(|text| text.parse().ok())
-            .ok_or_else(|| self.error("integer overflow"))
+        value.ok_or_else(|| self.error("integer overflow"))
     }
 
     /// Parses one complete object. The value-node budget applies per call.

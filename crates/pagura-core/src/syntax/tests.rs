@@ -24,6 +24,28 @@ fn value_budget_applies_per_object_not_per_parser() {
     }
 }
 
+#[test]
+fn unsigned_integers_and_their_errors_follow_the_token() {
+    let read = |data: &[u8]| {
+        let mut parser = Parser::new(data, Origin::Buffer, Limits::default());
+        parser
+            .unsigned()
+            .map_err(|error| (error.message, error.position))
+    };
+    assert_eq!(read(b" 007 obj"), Ok(7));
+    assert_eq!(read(b"18446744073709551615"), Ok(u64::MAX));
+    let overflow = ("integer overflow", Position::Buffer(20));
+    assert_eq!(read(b"18446744073709551616 0"), Err(overflow));
+    // A letter anywhere in the token, even after an overflow, is not a number.
+    let letter = ("expected unsigned integer", Position::Buffer(21));
+    assert_eq!(read(b"99999999999999999999x"), Err(letter));
+    assert_eq!(
+        read(b"-1"),
+        Err(("expected unsigned integer", Position::Buffer(2)))
+    );
+    assert_eq!(read(b" /1"), Err(("expected token", Position::Buffer(1))));
+}
+
 /// The text conversion the short path replaces, for comparison.
 fn text_value(token: &str) -> Value {
     if token.contains('.') {

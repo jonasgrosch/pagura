@@ -4,7 +4,7 @@ pub(crate) mod rebuild;
 pub(crate) mod stream;
 
 use crate::repairs;
-use pagura_core::syntax::{Origin, Parser, is_whitespace};
+use pagura_core::syntax::{Origin, Parser, is_regular, is_whitespace};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, Meter, ObjectId, Position,
     Result,
@@ -526,6 +526,37 @@ fn find_startxref(
 }
 
 /// Reads the subsections of a classic table, up to `trailer` (clause 7.5.4).
+/// The bytes of a table entry before its end-of-line marker (7.5.4).
+const FIXED_ENTRY: usize = 18;
+
+/// A table entry's offset, generation and type.
+type Entry<'a> = (usize, u16, &'a [u8]);
+
+/// The entry at the start of `rest` in its fixed form: ten offset digits, a
+/// space, five generation digits, a space and the type, then no regular
+/// byte. Token reading returns the same offset, generation and type there;
+/// `None` leaves every other form, and values out of range, to it.
+fn fixed_entry(rest: &[u8]) -> Option<Entry<'_>> {
+    let entry = rest.get(..FIXED_ENTRY)?;
+    let digits = |field: &[u8]| {
+        field.iter().try_fold(0_u64, |value, &byte| {
+            byte.is_ascii_digit()
+                .then(|| value * 10 + u64::from(byte - b'0'))
+        })
+    };
+    let kind = &entry[17..];
+    if entry[10] != b' '
+        || entry[16] != b' '
+        || !matches!(kind, b"n" | b"f")
+        || rest.get(FIXED_ENTRY).is_some_and(|&byte| is_regular(byte))
+    {
+        return None;
+    }
+    let offset = usize::try_from(digits(&entry[..10])?).ok()?;
+    let generation = u16::try_from(digits(&entry[11..16])?).ok()?;
+    Some((offset, generation, kind))
+}
+
 fn classic_section(
     bytes: &[u8],
     parser: &mut Parser<'_>,
@@ -546,11 +577,18 @@ fn classic_section(
                 .ok()
                 .and_then(|index| first.checked_add(index))
                 .ok_or_else(|| invalid(parser, "object number out of range"))?;
-            let offset = usize::try_from(parser.unsigned()?)
-                .map_err(|_| invalid(parser, "object offset out of range"))?;
-            let generation = u16::try_from(parser.unsigned()?)
-                .map_err(|_| invalid(parser, "generation out of range"))?;
-            let kind = parser.word()?;
+            parser.skip_whitespace();
+            let fixed = bytes.get(parser.offset()..).and_then(fixed_entry);
+            let (offset, generation, kind) = if let Some(entry) = fixed {
+                parser.seek(parser.offset() + FIXED_ENTRY)?;
+                entry
+            } else {
+                let offset = usize::try_from(parser.unsigned()?)
+                    .map_err(|_| invalid(parser, "object offset out of range"))?;
+                let generation = u16::try_from(parser.unsigned()?)
+                    .map_err(|_| invalid(parser, "generation out of range"))?;
+                (offset, generation, parser.word()?)
+            };
             let location = match kind {
                 b"n" if number == 0 => return Err(invalid(parser, "object 0 cannot be in use")),
                 b"n" if offset >= bytes.len() => {
@@ -575,4 +613,40 @@ fn classic_section(
         }
     }
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// What token reading takes from `entry`, and where it stops.
+    fn tokens(entry: &[u8]) -> Option<(Entry<'_>, usize)> {
+        let mut parser = Parser::new(entry, Origin::File, Limits::default());
+        let offset = usize::try_from(parser.unsigned().ok()?).ok()?;
+        let generation = u16::try_from(parser.unsigned().ok()?).ok()?;
+        let kind = parser.word().ok()?;
+        Some(((offset, generation, kind), parser.offset()))
+    }
+
+    #[test]
+    fn fixed_entries_read_as_their_tokens() {
+        for (entry, fixed) in [
+            (&b"0000000017 00000 n\r\n"[..], true),
+            (b"0000000000 65535 f \n", true),
+            (b"0000001234 00002 n\n", true),
+            (b"0000001234 00002 n", true),
+            (b"0000001234 00002 n%\n", true),
+            (b"0000001234 65536 n\r\n", false),
+            (b"0000001234 00002 nx\r\n", false),
+            (b"0000001234 00002 x\r\n", false),
+            (b"000000123  00002 n\r\n", false),
+            (b"0000001234\t00002 n\r\n", false),
+        ] {
+            let found = fixed_entry(entry);
+            assert_eq!(found.is_some(), fixed, "{entry:?}");
+            if let Some(found) = found {
+                assert_eq!(Some((found, FIXED_ENTRY)), tokens(entry), "{entry:?}");
+            }
+        }
+    }
 }
