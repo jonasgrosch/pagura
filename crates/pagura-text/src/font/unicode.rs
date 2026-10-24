@@ -1,14 +1,81 @@
-//! ToUnicode maps and collection Unicode of a loaded font (9.10).
-use super::Mapping;
+//! ToUnicode maps and collection Unicode of a loaded font (9.10), loaded
+//! only for text extraction.
+use super::{FontKind, Mapping, PdfFont, Source};
 use crate::{
-    cmap::{self, CMap, CMapRole},
+    CidToUnicode, GlyphText,
+    cid::Cid,
+    cmap::{self, CMap, CMapRole, Code},
     objects::{optional, required},
 };
 use pagura_core::{Dictionary, Error, Position, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 
-pub(crate) fn to_unicode(
+/// The Unicode of a font's character codes (9.10.2): its `ToUnicode` CMap,
+/// and the Unicode of its character collection for composite fonts whose
+/// collection the provider knows. Codes without either fall back to their
+/// glyph names. Load it with [`PdfFont::unicode`]; rendering never does.
+#[derive(Debug, Clone)]
+pub struct FontUnicode {
+    to_unicode: Option<Arc<CMap>>,
+    collection: Option<Arc<CidToUnicode>>,
+    retained: usize,
+}
+
+impl FontUnicode {
+    pub(crate) fn new(
+        to_unicode: Option<Arc<CMap>>,
+        collection: Option<Arc<CidToUnicode>>,
+    ) -> Self {
+        let retained = size_of::<Self>().saturating_add(to_unicode.as_ref().map_or(0, |map| {
+            size_of_val(map.as_ref())
+                .saturating_add(2 * size_of::<usize>())
+                .saturating_add(map.heap_bytes())
+        }));
+        Self {
+            to_unicode,
+            collection,
+            retained,
+        }
+    }
+
+    /// Estimates retained storage as [`PdfFont::retained_bytes`] does: the
+    /// ToUnicode CMap; collection tables belong to the provider.
+    pub fn retained_bytes(&self) -> usize {
+        self.retained
+    }
+
+    /// The ToUnicode text of `code`.
+    pub(crate) fn text(&self, code: Code) -> Option<GlyphText> {
+        self.to_unicode.as_ref()?.text(code)
+    }
+
+    /// The collection's Unicode for `cid`.
+    pub(crate) fn collection(&self, cid: Cid) -> Option<&GlyphText> {
+        self.collection.as_ref()?.text(cid)
+    }
+}
+
+/// Loads the Unicode of `font`, loaded from the dictionary `dictionary`.
+pub(super) fn load(
+    font: &PdfFont,
+    document: &Document,
+    dictionary: &Dictionary,
+    provider: Option<&dyn crate::Provider>,
+) -> Result<FontUnicode> {
+    let to_unicode = to_unicode(document, dictionary, &font.mapping)?;
+    let collection = match &font.source {
+        Source::CidSubstitute { unicode, .. } => Some(Arc::clone(unicode)),
+        Source::Program { .. } if font.kind == FontKind::Type0 => {
+            let (descendant, _) = super::load::descendant(document, dictionary)?;
+            collection_unicode(document, descendant, &font.mapping, provider)?
+        }
+        Source::Program { .. } | Source::Type3 { .. } | Source::MetricsOnly => None,
+    };
+    Ok(FontUnicode::new(to_unicode, collection))
+}
+
+fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
@@ -72,12 +139,12 @@ fn to_unicode_inner(
     Ok(Some(map))
 }
 
-pub(super) fn collection_unicode(
+fn collection_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
     provider: Option<&dyn crate::Provider>,
-) -> Result<Option<Arc<crate::CidToUnicode>>> {
+) -> Result<Option<Arc<CidToUnicode>>> {
     let (Mapping::Composite { .. }, Some(provider)) = (mapping, provider) else {
         return Ok(None);
     };

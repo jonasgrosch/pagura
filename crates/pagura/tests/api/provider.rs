@@ -34,7 +34,7 @@ fn explicit_absence_of_font_data_stays_unsupported() {
         .unwrap();
         let context = pagura::render_context_with_provider(Arc::new(source), None);
         let page = context.document().page(0).unwrap();
-        let error = context.compile_page(page).unwrap_err();
+        let error = context.scene(page).unwrap_err();
         assert!(
             matches!(error.kind, ErrorKind::Unsupported(_)),
             "{name}: {error}"
@@ -61,7 +61,7 @@ fn facade_feature_selects_provider_and_reuses_document_resources() {
         let context = pagura::render_context(Arc::new(document));
         let document = context.document();
         let page = document.page(0).unwrap();
-        let result = context.compile_page(page);
+        let result = context.scene(page);
         #[cfg(not(feature = "bundled-data"))]
         assert!(matches!(
             result.unwrap_err().kind,
@@ -69,14 +69,18 @@ fn facade_feature_selects_provider_and_reuses_document_resources() {
         ));
         #[cfg(feature = "bundled-data")]
         {
-            let list = result.unwrap_or_else(|e| panic!("{name}: {e}"));
+            let scene = result.unwrap_or_else(|e| panic!("{name}: {e}"));
             let bytes = context.retained_bytes();
             assert!(bytes > 0);
-            let again = context.compile_page(page).unwrap();
+            let again = context.scene(page).unwrap();
+            assert!(Arc::ptr_eq(&scene, &again), "{name}: the scene is stored");
             assert_eq!(context.retained_bytes(), bytes);
             let options = RenderOptions::default();
-            let image = list.render(&options).unwrap();
-            assert_eq!(image.data(), again.render(&options).unwrap().data());
+            let image = context.render_scene(&scene, &options, None).unwrap();
+            assert_eq!(
+                image.data(),
+                context.render_page(page, &options).unwrap().data()
+            );
             let actual = ppm(&image);
             let expected = fixture("paint", &format!("{name}.rgb"));
             assert_eq!(actual.len(), expected.len());
@@ -112,9 +116,9 @@ fn context_rejects_foreign_pages() {
     let context = RenderContext::new(a);
     // Page clones retain the document's shared resource identity.
     let cloned = context.document().page(0).unwrap().clone();
-    context.compile_page(&cloned).unwrap();
+    context.scene(&cloned).unwrap();
     assert_eq!(
-        context.compile_page(b.page(0).unwrap()).unwrap_err().kind,
+        context.scene(b.page(0).unwrap()).unwrap_err().kind,
         ErrorKind::InvalidArgument
     );
 }
@@ -165,7 +169,7 @@ fn custom_provider_matches_the_facade_default_and_loads_once() {
     let document = context.document();
     let page = document.page(0).unwrap();
     for _ in 0..3 {
-        context.compile_page(page).unwrap();
+        context.scene(page).unwrap();
     }
     assert_eq!(provider.calls.load(Ordering::Relaxed), 1);
     let options = RenderOptions::default();
@@ -193,20 +197,24 @@ fn fonts_and_outlines_are_shared_across_document_pages() {
     let document = context.document();
     let mut retained = None;
     for page in document.pages().unwrap() {
-        let list = context.compile_page(page).unwrap();
+        let scene = context.scene(page).unwrap();
         let bytes = context.retained_bytes();
+        // The font program and outlines are stored once: a later page adds
+        // only its scene.
         if let Some(previous) = retained {
-            assert_eq!(bytes, previous);
+            assert_eq!(bytes, previous + scene.bytes);
         }
         retained = Some(bytes);
-        let options = RenderOptions::default();
-        let direct = pagura::compile_page(document, page)
-            .unwrap()
-            .render(&options)
-            .unwrap();
-        assert_eq!(list.render(&options).unwrap().data(), direct.data());
     }
     assert!(retained.unwrap() > 0);
+    let options = RenderOptions::default();
+    for page in document.pages().unwrap() {
+        let direct = pagura::render_page(document, page, &options).unwrap();
+        assert_eq!(
+            context.render_page(page, &options).unwrap().data(),
+            direct.data()
+        );
+    }
 }
 
 #[test]
@@ -238,7 +246,7 @@ fn unusable_glyphs_report_repairs_without_losing_advances() {
         },
     )
     .unwrap();
-    let error = pagura::compile_page(&strict, strict.page(0).unwrap()).unwrap_err();
+    let error = pagura::record_page(&strict, strict.page(0).unwrap()).unwrap_err();
     assert_eq!(error.repair.unwrap().as_str(), "font.glyph-data");
 }
 
@@ -289,7 +297,7 @@ fn cjk_substitution_requires_its_opt_in_data() {
     .unwrap();
     let context = pagura::render_context(Arc::new(document));
     let error = context
-        .compile_page(context.document().page(0).unwrap())
+        .scene(context.document().page(0).unwrap())
         .unwrap_err();
     assert_eq!(
         error.feature().unwrap().as_str(),

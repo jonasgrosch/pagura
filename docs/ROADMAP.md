@@ -19,21 +19,29 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
 ## Current focus
 
-- **M7 foundations, alongside performance work:** caller-owned transactions,
-  append-only save and filled-form persistence (ADR 0031). Work and review use
-  an isolated branch; tests run on hosted runners. Full rewrite, sanitizing
-  redaction, encryption-on-write and general page-content editing remain later M7 work.
+- **Performance on the one-pass architecture (ADR 0034):** one interpreter,
+  a recorded scene per page, preparation that validates and reserves in
+  source order, the band rasterizer and a band executor with per-buffer
+  storage formats are in place, held to ADR 0004's one-level contract by the
+  reference harness. The next goal is exact rendering faster than hayro in
+  every category (text, vector, mixed, images), then the 0.80 target of ADR
+  0002, judged on the scoreboard harness. The levers in order of evidence:
+  band cell coverage (setup cost per mark, interior spans), non-overlapping
+  stroke pieces, prepared paint (span evaluators, column reuse), the
+  executor on opaque pages and band height, images decoded at size and
+  region, interpretation (numeric fast path, operator dispatch, scene
+  reuse), glyph edge setup, and occlusion culling. Byte storage promoted to
+  N16 per 16×16 chunk is an experiment that needs ADR 0004's proof first.
+  WebAssembly SIMD and scalar costs are measured for every kept lever.
+- **M7 foundations:** caller-owned transactions, append-only save and
+  filled-form persistence (ADR 0031). Work and review use an isolated branch;
+  tests run on hosted runners. Full rewrite, sanitizing redaction,
+  encryption-on-write and general page-content editing remain later M7 work.
   Inline form controls support filling, preview and PDF download.
-
 - **Specification verification:** every requirement registry is being checked
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent
   expectations. A registry whose `scope` does not state this is unverified.
-- **Rendering speed without spending accuracy:** one compositor with f32
-  page and group buffers under ADR 0004's accuracy contract (every pixel
-  within one level of its exact result), opaque text-object groups elided,
-  device geometry prepared once. Speed comes from the rasterizer and the
-  compositor, not from glyph-position snapping (ADR 0013).
 - **M3/M5 gaps on real files:** vertical writing with substituted CJK fonts,
   Type 1 programs that need PostScript, non-RGB transparency group colour
   spaces, overprint, and transfer functions under transparency.
@@ -55,8 +63,35 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   runner for that size.
 - Long coverage-guided fuzz campaigns (the `fuzz/` targets) on dedicated hardware.
 - PNG output (Flate compressor, PNG encoder) for the conversion use case.
-- Multithreaded tile rendering (native threads, `wasm32-wasip1-threads`).
-- Linearization and incremental loading for large files.
+- **Loading:** a `ByteSource` whose reads may return `Unavailable` naming
+  every missing range; page prefetch that walks a page's resource graph in
+  one round; tail-first opening of non-linearized files and linearization
+  hints; objects as shared handles the `Store` can evict; revisions as a
+  parent plus an overlay (an ADR 0012 amendment).
+- **Host and viewer:** protocol v2 replacing versions 1.0–1.7; rendering in
+  band steps, cancellable between bands; a JSPI transport so cross-origin
+  isolation becomes optional, with the Atomics path as fallback (an ADR 0005
+  amendment); low-resolution previews and stale tiles while zooming; a worker
+  pool fed with serialized prepared scenes; ARIA from the logical structure
+  view; a size budget for the core module.
+- **Preview rendering:** a rough profile for thumbnails and progressive
+  first paint (greeking small text, images decoded at drawn size or as their
+  average colour, coarse coverage), built only after exact rendering beats
+  hayro. The 2026-10-22 stage study projects at least 5× over exact at
+  thumbnail size for image pages and about 2.5–3.5× cold for text, but not
+  for vector pages.
+- **More devices** on the interpreter's `Device` trait: SVG output, PDF
+  re-emission through the operator layer, hit testing.
+- **Concurrency:** native band threads (`std::thread::scope`) and WebAssembly
+  threads under cross-origin isolation, on `PreparedScene` bands.
+- **Editing additions to M7:** sessions on snapshots with undo and redo;
+  semantic operations with XFDF; content filters on `pagura-content`;
+  redaction with a residual scan; one DocMDP/FieldMDP change classifier;
+  two-phase external signing (signature creation needs its own decision; ADR
+  0015 is verification only); a native AcroForm AF function library, with no
+  JavaScript engine.
+- **Crate splits:** `pagura-interactive` (fields, navigation, actions) and
+  `pagura-sign`.
 
 Deferred capabilities remain release blockers wherever the performance or
 feature contract requires them. Exclusions are explicit product decisions,

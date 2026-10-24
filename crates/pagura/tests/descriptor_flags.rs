@@ -34,7 +34,7 @@ fn descriptor_vectors_render_exact_pixels_and_text() {
             },
         )
         .unwrap();
-        let result = pagura_render::compile_page(&strict, strict.page(0).unwrap());
+        let result = pagura_render::record_page(&strict, strict.page(0).unwrap(), None);
         if repaired {
             let error = result.unwrap_err();
             assert_eq!(error.repair, Some(DESCRIPTOR_FLAGS), "{name}: {error}");
@@ -46,18 +46,17 @@ fn descriptor_vectors_render_exact_pixels_and_text() {
 
         let document = Document::open(pdf, &OpenOptions::default()).unwrap();
         let original = document.object(DESCRIPTOR).unwrap().value().clone();
-        let (list, extracted) =
-            pagura_render::compile_page_with_text(&document, document.page(0).unwrap(), None)
-                .unwrap();
+        let page = document.page(0).unwrap();
+        let extracted = pagura_render::text_page(&document, page, None).unwrap();
         assert_eq!(extracted.glyphs().len(), 1, "{name}");
         assert_eq!(
             extracted.glyphs()[0].unicode.as_deref().unwrap_or(""),
             text,
             "{name}"
         );
-        let pixels = list
-            .render(&pagura_render::RenderOptions::default())
-            .unwrap();
+        let pixels =
+            pagura_render::render_page(&document, page, &pagura::RenderOptions::default(), None)
+                .unwrap();
         let oracle = fixture("font", &format!("{name}.ppm"));
         let rgb = oracle.strip_prefix(b"P6\n16 16\n255\n").unwrap();
         assert_eq!((pixels.width(), pixels.height()), (16, 16), "{name}");

@@ -1,8 +1,5 @@
 //! Font dictionary loading (9.6–9.7; Tables 109–117).
-use super::{
-    FontKind, Mapping, Ownership, PdfFont, Source, WritingMode, to_unicode,
-    unicode::collection_unicode,
-};
+use super::{FontKind, Mapping, Ownership, PdfFont, Source, WritingMode};
 use crate::{
     cid::CidToGidMap,
     cmap::{self, CMapRole},
@@ -61,7 +58,6 @@ pub(super) fn load_with(
             }
             return crate::substitute::cid::load(
                 document,
-                font,
                 metrics_font,
                 metrics_id,
                 mapping,
@@ -107,8 +103,6 @@ pub(super) fn load_with(
         Mapping::Composite { map, .. } => map.mode,
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
-    let to_unicode = to_unicode(document, font, &mapping)?;
-    let cid_unicode = collection_unicode(document, metrics_font, &mapping, provider)?;
     Ok(PdfFont {
         kind,
         writing_mode: mode,
@@ -120,16 +114,14 @@ pub(super) fn load_with(
         },
         mapping,
         metrics,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode,
         retained: 0,
     }
     .accounted())
 }
 
 /// The single CIDFont of a Type 0 font and its object (9.7.6.1).
-fn descendant<'a>(
+pub(super) fn descendant<'a>(
     document: &'a Document,
     font: &'a Dictionary,
 ) -> Result<(&'a Dictionary, Option<ObjectId>)> {
@@ -260,7 +252,6 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         &document.limits(),
         encoding::font_name(document, font)?,
     )?));
-    let to_unicode = to_unicode(document, font, &mapping)?;
     Ok(PdfFont {
         kind: FontKind::Type3,
         writing_mode: WritingMode::Horizontal,
@@ -271,9 +262,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
             matrix,
         },
         mapping,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode: None,
         retained: 0,
     }
     .accounted())
@@ -341,10 +330,10 @@ mod tests {
             .collect();
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Raw, None)?;
         assert!(mapping.names.iter().all(Option::is_none));
-        assert!(mapping.unicode.iter().all(Option::is_none));
+        assert!((0..=255).all(|code| mapping.unicode(code).is_none()));
         // An unknown encoding name is a reported repair: StandardEncoding applies.
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None)?;
-        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         assert!(
             document
                 .diagnostics()
@@ -368,7 +357,7 @@ mod tests {
             .into_iter()
             .collect();
         let mapping = simple_mapping(&document, &named, FontKind::TrueType, Route::Named, None)?;
-        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         Ok(())
     }
 }

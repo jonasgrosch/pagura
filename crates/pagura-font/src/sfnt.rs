@@ -2,7 +2,7 @@
 //! locations (9.9; OpenType).
 use crate::budget::Work;
 use crate::cff::Cff;
-use crate::memory::{names, vector};
+use crate::memory::vector;
 use crate::read::{self, here, syntax};
 use crate::recovery::glyph_error;
 use crate::{CmapSubtable, GlyphId, repairs};
@@ -191,7 +191,7 @@ impl Sfnt {
     pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.cff()
             .and_then(|cff| cff.name(name))
-            .or_else(|| self.names.by_name.get(name).copied())
+            .or_else(|| self.names.glyph(name))
     }
 
     /// The CFF charset name, else the `post` name.
@@ -229,8 +229,7 @@ impl Sfnt {
         outlines
             .saturating_add(self.advances.as_ref().map_or(0, vector))
             .saturating_add(vector(&self.cmaps))
-            .saturating_add(names(&self.names.by_name))
-            .saturating_add(crate::names::heap_bytes(&self.names.by_glyph))
+            .saturating_add(self.names.heap_bytes())
     }
 }
 

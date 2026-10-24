@@ -76,7 +76,7 @@ InvalidArgument error without ending the session.
 Generation values are nonzero, monotonically increasing per open document;
 selecting the same value is idempotent. Close releases the selection. A future
 or unselected generation is InvalidArgument. For a generation older than the
-selected value, status 0 is returned **before page lookup, compilation or
+selected value, status 0 is returned **before page lookup, recording or
 painting**, with no dimensions or pixels. Status 1 is followed by
 `u32 width,height | straight RGBA8 bytes`, identically to a v1 tile. Error
 responses still use kind 255 and retain the existing structured fields.
@@ -87,7 +87,7 @@ requests locally. It sends kind 7 before the first tile of the newest view.
 This matters for a synchronous transport: a later generation frame cannot
 overtake an earlier frame already being processed. A tile already executing
 is allowed to finish; its stale pixels are discarded. There is no interruption
-inside interpretation/rasterization. Generations do not wrap: reopen the session
+inside interpretation or painting from the browser. Generations do not wrap: reopen the session
 if the u32 space is exhausted. Buffer error offsets refer to the actual v1.1
 payload fields, including the additional generation word.
 
@@ -99,29 +99,33 @@ This additive request requires a v1.1 handshake; v1 rejects it with an
 operational InvalidArgument error. No existing layouts change.
 
 Source bytes count original input retained across open documents; cache bytes
-are compiled-list policy charges described below. Close releases both counts
-for that handle. The counters exclude document-internal caches, temporary
+are what the open documents' render stores retain, and lists counts the
+recorded page scenes those stores keep, as described below. Close releases
+all three counts for that handle. The counters exclude document-internal caches, temporary
 allocations, allocator overhead, request/response buffers and JavaScript data.
 They are not total live bytes. Document's internal ADR 0012 counter currently
 has no public accessor. The shim separately reports linear-memory byte length
 as a sideband message, outside the protocol; WebAssembly memory cannot shrink
 when allocations are freed. Neither value is process RSS.
 
-## Compiled page retention
+## Recorded page retention
 
-The session reuses immutable display lists keyed by document handle and page
-index across tiles and zoom levels. Close releases all lists for that handle.
-The LRU retains at most eight entries, with an accounting budget of
-SessionLimits::list_cache_bytes (default 64 MiB); zero disables retention.
-Oversized lists render without being retained.
+Each open document has one render store (ADR 0012) with a capacity of
+SessionLimits::store_bytes (default 64 MiB); zero disables retention. A page
+is recorded once into a scene, which does not depend on zoom or tile, and the
+store keeps it with the decoded images, fonts and glyph setups that rendering
+reuses across tiles and zoom levels. When a new value does not fit, the store
+evicts the least recently used values that no render still uses; a value
+larger than the capacity is used without being retained. Close releases the
+document's store.
 
-The charge is 4096 bytes per painted mark and a
-fixed 512-byte header charge. These are explicit **estimates**, not measured
-retained heap sizes: the renderer's public API exposes mark count but no allocation count.
-The accounting budget and entry cap bound retention policy; they are not a
-hard ceiling on allocator or process memory, especially for expanded resources.
-Per-operation renderer Limits still apply. Exact cache memory accounting would
-require an allocation-size API from the renderer.
+The bytes are the engine's own **estimates** of what each value retains, not
+measured heap sizes. The capacity bounds retention policy per document; it is
+not a hard ceiling on allocator or process memory. Per-render Limits still
+apply, and a render costs the same budgets whether its values came from the
+store or were built for it.
+
+Tiles render every pixel within one level of its exact result (ADR 0004).
 
 ## Structured failures and diagnostics
 
@@ -199,13 +203,13 @@ entire session. There is no cancellation within a synchronous request in v1.
 ## Supervisor cancellation and execution recovery
 
 Native embedders can attach a cloneable Cancellation flag through
-Session::with_cancellation. Generated tiles observe it before compilation,
-between compilation and painting, and after painting before publishing pixels.
-Cancellation produces the existing kind 136 skipped response. A compiled list
-cancelled before admission is not cached; successfully admitted lists remain
-valid. Reset the flag only after acknowledgement, before the next generation.
-v1 requests retain their original behavior. This is a host-boundary check,
-not a checkpoint inside the engine. The current WASI command cannot observe an
+Session::with_cancellation. Generated tiles observe it before recording,
+between recording and painting, before every band of painting, and after
+painting before publishing pixels. Cancellation produces the existing kind 136
+skipped response. A scene recorded for a cancelled tile stays in the store,
+since the next generation usually renders the same page. Reset the flag only
+after acknowledgement, before the next generation. v1 requests retain their
+original behavior. Recording a page is not interrupted. The current WASI command cannot observe an
 external flag during rendering: no unsafe memory exports or extra descriptors
 are introduced. Engine checkpoints and their WASI control bridge need separate
 APIs. A skipped result carries no pixels and cannot become a partial success.
@@ -347,8 +351,9 @@ No source-size multiplier is used. Hits refresh recency; over-budget pages are
 served without retention. Close releases the text cache for that document.
 Kind 15 reports these charges and entry counts; kind 9 stays unchanged.
 Charges exclude font caches, document internals, temporaries and transport/JS
-buffers and are not heap/RSS measurements. Text extraction may compile a page
-independently of its cached painting list; no text is added to display lists.
+buffers and are not heap/RSS measurements. Text is extracted by interpreting
+the page into the text device, which records no scene and decodes no image;
+extraction and rendering do not change each other's results.
 
 ## Painted content bounds (v1.3)
 
@@ -369,10 +374,10 @@ renderer’s conservative painted-content bounds, clamped to the crop box
 The viewer uses them for FitB/FitBH/FitBV, falling back to the crop box for an
 empty page. This fallback is viewer policy, not fabricated engine geometry.
 
-The request reuses or admits the page's compiled display list under its existing
-LRU budget, so bounds and subsequent tiles share compilation. Unknown handles
+The request reuses or records the page's scene in the document's render
+store, so bounds and subsequent tiles share one recording. Unknown handles
 and invalid page indexes return operational InvalidArgument at payload offsets
-5 and 9 respectively; compilation errors and bounds traversal limits preserve
+5 and 9 respectively; recording errors and the group nesting limit preserve
 their structured category/context. A response-budget failure returns Limit
 without partial geometry. Request truncation or trailing bytes remain terminal
 protocol errors. The request is synchronous and never interrupts running work.

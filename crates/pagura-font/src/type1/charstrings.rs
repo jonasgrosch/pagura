@@ -1,9 +1,9 @@
 //! Length-delimited CharStrings extraction (Type 1 chapters 6 and 10).
 //! Duplicate names keep the first definition as reported recovery policy.
+use super::Charstring;
 use super::aliases::{Aliases, Assignment};
 use super::locator::{Locator, Space};
 use super::tokens::Tokens;
-use super::{Charstring, charstring_bytes};
 use crate::read::{glyph_id, syntax};
 use crate::{GlyphId, repairs};
 use pagura_core::convert::u32_to_usize;
@@ -51,7 +51,8 @@ impl CharStrings {
                         return Err(syntax(at, "more Type 1 charstrings than declared"));
                     }
                     let glyph = glyph_id(self.glyphs.len(), at)?;
-                    self.glyphs.push(charstring_bytes(program, start, len_iv)?);
+                    self.glyphs
+                        .push(Charstring::new(start, program.len(), len_iv));
                     entry.insert(glyph);
                 }
             }

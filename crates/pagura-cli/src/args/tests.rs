@@ -1,5 +1,5 @@
 use super::{Bench, Command, Conversion, Output, Source, Timings, parse};
-use pagura::{Accuracy, OverprintPreview, Recovery, RenderOptions};
+use pagura::{OverprintPreview, Recovery, RenderOptions};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -20,6 +20,11 @@ fn help_wins_anywhere_and_version_stands_alone() {
     assert_eq!(run(&["--help"]), Ok(Command::Help));
     assert_eq!(run(&["render", "-h", "--bogus"]), Ok(Command::Help));
     assert_eq!(run(&["--version"]), Ok(Command::Version));
+    // A harness puts rendering options before every invocation.
+    assert_eq!(
+        run(&["--overprint", "never", "--version"]),
+        Ok(Command::Version)
+    );
     assert_eq!(
         run(&["--version", "--strict"]),
         Err("--strict does not apply to --version".into())
@@ -126,7 +131,7 @@ fn malformed_arguments_name_what_is_wrong() {
         ),
         (
             &["microbench", "a.pdf", "warm", "1"],
-            "OPERATION must be open-pages, render-cold or render-warm",
+            "OPERATION must be open-pages, render-cold, record-cold, record-warm or render-warm",
         ),
         (
             &["microbench", "a.pdf", "open-pages", "0"],
@@ -205,6 +210,13 @@ fn the_other_commands_parse_their_operands() {
             output: PathBuf::from("b.pdf"),
         })
     );
+    let operation = |name| match run(&["microbench", "a.pdf", name, "1"]) {
+        Ok(Command::Microbench { operation, .. }) => operation,
+        other => panic!("{name}: {other:?}"),
+    };
+    assert_eq!(operation("render-cold"), Bench::RenderCold);
+    assert_eq!(operation("record-cold"), Bench::RecordCold);
+    assert_eq!(operation("record-warm"), Bench::RecordWarm);
     assert_eq!(
         run(&["microbench", "--strict", "a.pdf", "render-warm", "10", "96"]),
         Ok(Command::Microbench {
@@ -264,37 +276,4 @@ fn overprint_selects_the_preview_of_every_rendering_command() {
             assert_eq!(preview(&args), expected, "{args:?}");
         }
     }
-}
-
-#[test]
-fn accuracy_selects_the_path_of_every_rendering_command() {
-    let accuracy = |args: &[&str]| match run(args) {
-        Ok(Command::Convert(conversion)) => conversion.render.accuracy,
-        Ok(Command::Scan { render, .. } | Command::Microbench { render, .. }) => render.accuracy,
-        other => panic!("{args:?}: {other:?}"),
-    };
-    assert_eq!(accuracy(&["render", "a.pdf", "b.ppm"]), Accuracy::Exact);
-    for (mode, expected) in [
-        ("exact", Accuracy::Exact),
-        ("competitive", Accuracy::Competitive),
-    ] {
-        for args in [
-            &["render", "a.pdf", "b.ppm"][..],
-            &["convert", "a.pdf", "out"],
-            &["scan", "a.pdf"],
-            &["microbench", "a.pdf", "render-cold", "1"],
-        ] {
-            let mut args = args.to_vec();
-            args.extend(["--accuracy", mode]);
-            assert_eq!(accuracy(&args), expected, "{args:?}");
-        }
-    }
-    assert_eq!(
-        run(&["render", "--accuracy", "fast", "a.pdf", "b.ppm"]),
-        Err("--accuracy must be exact or competitive".into())
-    );
-    assert_eq!(
-        run(&["inspect", "--accuracy", "exact", "a.pdf"]),
-        Err("--accuracy does not apply to inspect".into())
-    );
 }

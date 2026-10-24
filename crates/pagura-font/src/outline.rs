@@ -62,8 +62,7 @@ impl Pen {
         added(self.path.cubic_to(first, second, to).is_ok(), at)
     }
 
-    /// A quadratic Bézier from the current point, elevated exactly to the
-    /// cubic with the same curve.
+    /// A quadratic Bézier from the current point, kept exact.
     pub(crate) fn quad_to(
         &mut self,
         work: &mut Work<'_>,
@@ -71,16 +70,14 @@ impl Pen {
         to: Point,
         at: Position,
     ) -> Result<()> {
-        let from = self
-            .current()
-            .ok_or_else(|| syntax(at, "quadratic segment without a current point"))?;
-        let third = |end: Point| {
-            Point::new(
-                end.x + (control.x - end.x) * 2.0 / 3.0,
-                end.y + (control.y - end.y) * 2.0 / 3.0,
-            )
-        };
-        self.cubic_to(work, [third(from), third(to), to], at)
+        if self.current().is_none() {
+            return Err(syntax(at, "quadratic segment without a current point"));
+        }
+        for point in [control, to] {
+            finite(point, at)?;
+        }
+        work.segments(1, at)?;
+        added(self.path.quad_to(control, to).is_ok(), at)
     }
 
     /// Closes the open contour, if any.
@@ -111,6 +108,9 @@ impl Pen {
                 Segment::CubicTo { c1, c2, end } => {
                     self.cubic_to(work, [c1, c2, end].map(|p| transform.apply(p)), at)?;
                 }
+                Segment::QuadTo { control, end } => {
+                    self.quad_to(work, transform.apply(control), transform.apply(end), at)?;
+                }
                 Segment::Close => self.close(work, at)?,
             }
         }
@@ -136,6 +136,11 @@ impl Pen {
                 Segment::MoveTo(p) | Segment::LineTo(p) => finite(p, at)?,
                 Segment::CubicTo { c1, c2, end } => {
                     for p in [c1, c2, end] {
+                        finite(p, at)?;
+                    }
+                }
+                Segment::QuadTo { control, end } => {
+                    for p in [control, end] {
                         finite(p, at)?;
                     }
                 }
@@ -196,11 +201,15 @@ mod tests {
         let path = pen.finish(Transform::IDENTITY, at).unwrap();
         assert_eq!(
             path.segments()[1],
-            Segment::CubicTo {
-                c1: Point::new(2.0, 2.0),
-                c2: Point::new(4.0, 2.0),
+            Segment::QuadTo {
+                control: Point::new(3.0, 3.0),
                 end: Point::new(6.0, 0.0),
             }
+        );
+        // Polygons flatten it as this cubic.
+        assert_eq!(
+            Segment::elevated(Point::default(), Point::new(3.0, 3.0), Point::new(6.0, 0.0)),
+            [Point::new(2.0, 2.0), Point::new(4.0, 2.0)]
         );
     }
 

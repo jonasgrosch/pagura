@@ -228,9 +228,36 @@ impl Mul<Transform> for Point {
     }
 }
 
+/// The sign of every turn of the closed polygon `points` when they certify
+/// a simple convex polygon: strict turns of one sign and exactly one
+/// revolution. The error guard excludes uncertain determinants, including
+/// underflowing ones, and collinear subdivision.
+pub(crate) fn convex_orientation(points: &[Point]) -> Option<f64> {
+    let mut sign = 0.0_f64;
+    let mut turns = 0;
+    let half = |p: Point| p.y > 0.0 || (p.y == 0.0 && p.x >= 0.0);
+    for i in 0..points.len() {
+        let p = points[if i == 0 { points.len() - 1 } else { i - 1 }];
+        let q = points[i];
+        let r = points[(i + 1) % points.len()];
+        let a = q - p;
+        let b = r - q;
+        turns += usize::from(half(a) != half(b));
+        let (left, right) = (a.x * b.y, a.y * b.x);
+        let cross = left - right;
+        if cross.abs() <= 8.0 * f64::EPSILON * (left.abs() + right.abs()) + f64::MIN_POSITIVE
+            || (sign != 0.0 && cross.signum() != sign)
+        {
+            return None;
+        }
+        sign = cross.signum();
+    }
+    (turns == 2).then_some(sign)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Point, Transform};
+    use super::{Point, Transform, convex_orientation};
 
     #[test]
     fn vector_operators_match_componentwise_arithmetic() {
@@ -283,5 +310,34 @@ mod tests {
         let back = point * transform * inverse;
         assert!((back.x - point.x).abs() < 1e-12 && (back.y - point.y).abs() < 1e-12);
         assert!(Transform::scale(0.0, 1.0).inverse().is_none());
+    }
+
+    #[test]
+    fn rejects_uncertain_concave_and_repeated_turns() {
+        let rectangle = [
+            Point::new(1.0, 1.0),
+            Point::new(7.0, 1.0),
+            Point::new(7.0, 7.0),
+            Point::new(1.0, 7.0),
+        ];
+        assert_eq!(convex_orientation(&rectangle), Some(1.0));
+        assert_eq!(
+            convex_orientation(&rectangle.into_iter().rev().collect::<Vec<_>>()),
+            Some(-1.0)
+        );
+        assert!(convex_orientation(&rectangle.repeat(2)).is_none());
+        let mut concave = rectangle.to_vec();
+        concave.insert(2, Point::new(2.0, 2.0));
+        assert!(convex_orientation(&concave).is_none());
+        let mut subdivided = rectangle.to_vec();
+        subdivided.insert(1, Point::new(4.0, 1.0));
+        assert!(convex_orientation(&subdivided).is_none());
+        let star: Vec<_> = (0..5)
+            .map(|i| {
+                let a = f64::from((i * 2) % 5) * std::f64::consts::TAU / 5.0;
+                Point::new(a.cos(), a.sin())
+            })
+            .collect();
+        assert!(convex_orientation(&star).is_none());
     }
 }

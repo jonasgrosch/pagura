@@ -6,15 +6,31 @@ version = 4
 name = "pagura"
 version = "0.1.0"
 dependencies = [
+ "pagura-appearance",
+ "pagura-color",
  "pagura-core",
  "pagura-crypto",
  "pagura-data",
  "pagura-document",
  "pagura-extract",
  "pagura-font",
+ "pagura-image",
+ "pagura-interpret",
  "pagura-pki",
  "pagura-raster",
  "pagura-render",
+ "pagura-testkit",
+ "pagura-text",
+ "pagura-write",
+]
+
+[[package]]
+name = "pagura-appearance"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-data",
+ "pagura-document",
  "pagura-testkit",
  "pagura-text",
  "pagura-write",
@@ -42,6 +58,15 @@ version = "0.1.0"
 dependencies = [
  "pagura-core",
  "pagura-crypto",
+ "pagura-document",
+ "pagura-testkit",
+]
+
+[[package]]
+name = "pagura-content"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
  "pagura-testkit",
 ]
 
@@ -134,6 +159,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-interpret"
+version = "0.1.0"
+dependencies = [
+ "pagura-appearance",
+ "pagura-color",
+ "pagura-content",
+ "pagura-core",
+ "pagura-document",
+ "pagura-extract",
+ "pagura-font",
+ "pagura-image",
+ "pagura-interpret",
+ "pagura-raster",
+ "pagura-testkit",
+ "pagura-text",
+]
+
+[[package]]
+name = "pagura-paint"
+version = "0.1.0"
+dependencies = [
+ "pagura-color",
+ "pagura-core",
+ "pagura-document",
+ "pagura-image",
+ "pagura-interpret",
+ "pagura-raster",
+ "pagura-reference",
+ "pagura-testkit",
+]
+
+[[package]]
 name = "pagura-pki"
 version = "0.1.0"
 dependencies = [
@@ -145,7 +202,27 @@ name = "pagura-raster"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-font",
+ "pagura-reference",
  "pagura-testkit",
+]
+
+[[package]]
+name = "pagura-reference"
+version = "0.1.0"
+dependencies = [
+ "pagura-codec",
+ "pagura-color",
+ "pagura-core",
+ "pagura-data",
+ "pagura-document",
+ "pagura-image",
+ "pagura-interpret",
+ "pagura-paint",
+ "pagura-raster",
+ "pagura-render",
+ "pagura-testkit",
+ "pagura-text",
 ]
 
 [[package]]
@@ -156,11 +233,12 @@ dependencies = [
  "pagura-core",
  "pagura-document",
  "pagura-extract",
- "pagura-font",
- "pagura-image",
+ "pagura-interpret",
+ "pagura-paint",
  "pagura-raster",
  "pagura-testkit",
  "pagura-text",
+ "pagura-write",
 ]
 
 [[package]]

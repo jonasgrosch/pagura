@@ -18,7 +18,7 @@
 /// | Streams | `stream_bytes`, `decoded_bytes` |
 /// | Image codecs | `decode_work`, `decode_bytes` |
 /// | Fonts and CMaps | `font_work`, `font_entries` |
-/// | Content and rendering | `operations`, `display_commands`, `path_segments`, `raster_work`, `mask_sources`, `pixels`, `render_bytes` |
+/// | Content and rendering | `operations`, `display_commands`, `path_segments`, `raster_work`, `mask_sources`, `pixels`, `render_bytes`, `render_work` |
 /// | Page text | `text_items`, `text_work` |
 /// | Functions | `function_work` |
 /// | Signatures | `signatures`: [`SignatureLimits`] for ASN.1, certification paths and RSA |
@@ -70,15 +70,22 @@ pub struct Limits {
     /// Maximum number of line segments in one flattened path.
     pub path_segments: usize,
     /// Maximum rasterization work units (edges × scanlines touched) per fill.
+    /// A render's cumulative work is `render_work`.
     pub raster_work: usize,
     /// Maximum number of paths intersected into one clip mask.
     pub mask_sources: usize,
     /// Maximum number of painted marks in one page's display list.
     pub display_commands: usize,
-    /// Maximum aggregate bytes held by the caches and surfaces of one page
-    /// compilation and rendering: decoded content, images, colour
-    /// transforms, fonts and compositing surfaces together.
+    /// Maximum bytes one render holds besides the values it takes from the
+    /// [`Store`](crate::Store): prepared marks, coverage sources and paint,
+    /// the band buffers of the page, groups and soft masks, coverage rows
+    /// and scratch. Reserved during preparation (ADR 0016, ADR 0034).
     pub render_bytes: usize,
+    /// Maximum work units of one render (ADR 0016, ADR 0034): the
+    /// rasterization work of the marks that meet the region, plus one unit
+    /// per pixel each of them composites. Reserved during preparation, so
+    /// execution cannot exceed it.
+    pub render_work: usize,
     /// Maximum work units for decoding one image (DCT, JPEG 2000, JBIG2,
     /// CCITT) or colour profile: roughly one unit per entropy-coded symbol,
     /// transformed coefficient or decoded sample, so the budget scales with
@@ -101,10 +108,11 @@ pub struct Limits {
     /// Maximum work units for laying out, ordering, structuring and
     /// searching one page's text (ADR 0014).
     pub text_work: usize,
-    /// Maximum work units for evaluating functions (7.10) during one page's
-    /// compilation or rendering: one unit per Type 4 calculator operator
-    /// executed and per sample looked up or interpolated in a sampled,
-    /// exponential or stitching function.
+    /// Maximum work units for evaluating functions (7.10) during one render:
+    /// one unit per Type 4 calculator operator executed and per sample
+    /// looked up or interpolated in a sampled, exponential or stitching
+    /// function. Reserved during preparation through the prepared sources
+    /// that evaluate them.
     pub function_work: usize,
     /// Budgets of signature validation (ADR 0015).
     pub signatures: SignatureLimits,
@@ -204,6 +212,7 @@ impl Default for Limits {
             mask_sources: 256,
             display_commands: 10_000_000,
             render_bytes: 512 * MIB,
+            render_work: 2_000_000_000,
             // 32 units per pixel at the pixel cap: a progressive or 4:4:4
             // JPEG of that size decodes, unlike under the 50M-token
             // `operations` budget that capped codecs before (ADR 0016).
@@ -246,6 +255,7 @@ mod tests {
             mask_sources,
             display_commands,
             render_bytes,
+            render_work,
             decode_work,
             decode_bytes,
             font_work,
@@ -274,6 +284,7 @@ mod tests {
             mask_sources,
             display_commands,
             render_bytes,
+            render_work,
             decode_work,
             decode_bytes,
             font_work,

@@ -4,14 +4,110 @@
 //! Flattening is measured after the CTM; constructing the pen before the CTM
 //! preserves elliptical pens under nonuniform transforms.
 
-use crate::coverage::RASTER_WORK;
+use crate::band::{Mapped, Polygon, RASTER_WORK, RENDER_BYTES};
 use crate::flatten::{TOLERANCE, bounded, flatten};
-use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
+use crate::{Path, PathBuilder, Point, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
-use std::sync::Arc;
 
 mod convex;
 mod tiling;
+
+/// Line cap style (8.4.3.3). Exhaustive: Table 53 closes the set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum LineCap {
+    /// 0: square end at the endpoint.
+    #[default]
+    Butt,
+    /// 1: semicircular end.
+    Round,
+    /// 2: square end projecting half the line width.
+    ProjectingSquare,
+}
+
+/// Line join style (8.4.3.4). Exhaustive: Table 54 closes the set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum LineJoin {
+    /// 0: mitered, subject to the miter limit.
+    #[default]
+    Miter,
+    /// 1: circular arc.
+    Round,
+    /// 2: bevelled.
+    Bevel,
+}
+
+/// Stroke parameters in the path's own (user) space; the stroker applies
+/// the transform, so non-uniform scaling distorts the pen as PDF requires.
+///
+/// A plain record built with functional record update from
+/// [`Stroke::default`], so it is not `#[non_exhaustive]`. Its fields are
+/// checked when a stroke is outlined, not when it is built.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Stroke {
+    /// Line width; 0 means the thinnest line the device can render.
+    pub width: f64,
+    /// Cap style.
+    pub cap: LineCap,
+    /// Join style.
+    pub join: LineJoin,
+    /// Miter limit, at least 1.
+    pub miter_limit: f64,
+    /// Dash lengths; empty means solid.
+    pub dash_array: Vec<f64>,
+    /// Dash phase.
+    pub dash_phase: f64,
+}
+
+impl Default for Stroke {
+    /// PDF's initial graphics state values (Table 51).
+    fn default() -> Self {
+        Self {
+            width: 1.0,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
+            miter_limit: 10.0,
+            dash_array: Vec::new(),
+            dash_phase: 0.0,
+        }
+    }
+}
+
+/// Converts a user-space stroke to a fill outline and its device transform.
+///
+/// # Errors
+/// Returns invalid geometry or exhausted caller budgets.
+pub fn stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+    outline(path, transform, stroke, limits, &mut bytes)
+}
+
+/// Converts an automatically grid-fitted stroke to a fill outline (10.7.5).
+///
+/// # Errors
+/// As [`stroke_outline`]; fitted principal pen diameters must fit the numeric budget.
+pub fn adjusted_stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+    crate::adjust::outline(path, transform, stroke, limits, &mut bytes)
+}
+
+/// Adds `amount` to a stroker's work counter, which may not pass `maximum`.
+fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<()> {
+    *work = work
+        .checked_add(amount)
+        .filter(|&n| n <= maximum)
+        .ok_or(Error::limit(RASTER_WORK))?;
+    Ok(())
+}
 
 /// A dash retains its tangent even when its length is zero (8.5.3.2).
 pub(crate) struct Run {
@@ -45,39 +141,185 @@ impl Run {
     }
 }
 
+/// The circular pen in construction space and its flattening tolerance.
+#[derive(Clone, Copy)]
+pub(crate) struct Pen {
+    pub(crate) radius: f64,
+    pub(crate) tolerance: f64,
+}
+
+/// How far the pieces of a stroke outline are known to tile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Tiling {
+    /// Pieces that meet without overlapping: the outline is its own
+    /// boundary.
+    Proven,
+    /// Pieces whose union is the stroke, meeting without overlapping at
+    /// every joint, which may overlap where the centreline comes back near
+    /// itself.
+    Unproven,
+    /// The components, which overlap inside every turn.
+    Components,
+}
+
+/// Where a stroke's outline polygons go as the stroker makes them, in its
+/// construction space: a path, or the device polygon of that path.
+pub(crate) trait Outline {
+    /// The segments of the path so far: each polygon's points and a close.
+    fn len(&self) -> usize;
+
+    /// Heap bytes of the output so far.
+    fn heap_bytes(&self) -> usize;
+
+    /// Appends the closed polygon through `points`, in reverse order when
+    /// `reversed`; the points are bounded and the budget checked.
+    ///
+    /// # Errors
+    ///
+    /// Returns exhausted budgets, and geometry beyond the working range.
+    fn add_polygon(
+        &mut self,
+        points: &[Point],
+        reversed: bool,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()>;
+}
+
+impl Outline for PathBuilder {
+    fn len(&self) -> usize {
+        Self::len(self)
+    }
+
+    fn heap_bytes(&self) -> usize {
+        Self::heap_bytes(self)
+    }
+
+    fn add_polygon(
+        &mut self,
+        points: &[Point],
+        reversed: bool,
+        _: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        self.reserve(points.len() + 1, bytes)?;
+        if reversed {
+            self.polygon(points.iter().rev().copied());
+        } else {
+            self.polygon(points.iter().copied());
+        }
+        Ok(())
+    }
+}
+
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, false)
+    outline_with(
+        path,
+        transform,
+        stroke,
+        limits,
+        (Tiling::Components, TOLERANCE),
+        |_| PathBuilder::new(),
+        bytes,
+    )
+    .map(|(mut path, transform, _)| (path.finish(), transform))
 }
 
-/// [`outline`] whose boundary, when every run admits one, is made of pieces
-/// that meet without overlapping ([`tiling`]): signed-area coverage of it
-/// needs no union integration.
-pub(crate) fn tiled_outline(
+/// The outline as pieces where every run admits them at least as well as
+/// `accept`, else as components, and how far its pieces tile; round caps
+/// and joins are flattened within the device tolerance `tolerance`.
+#[cfg(test)]
+pub(crate) fn pieces(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
-) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, true)
+    (accept, tolerance): (Tiling, f64),
+    bytes: &mut Meter,
+) -> Result<(Path, Transform, Tiling)> {
+    outline_with(
+        path,
+        transform,
+        stroke,
+        limits,
+        (accept, tolerance),
+        |_| PathBuilder::new(),
+        bytes,
+    )
+    .map(|(mut path, transform, tiling)| (path.finish(), transform, tiling))
 }
 
-fn outline_with(
+/// [`pieces`] as the device polygon of the outline: the polygon that
+/// [`Polygon::from_lines`] makes of the outline under its transform, built
+/// as the stroker makes each piece.
+pub(crate) fn polygon_pieces(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
-    tiled: bool,
-) -> Result<(Path, Transform)> {
+    (accept, tolerance): (Tiling, f64),
+    bytes: &mut Meter,
+) -> Result<(Polygon, Tiling)> {
+    outline_with(
+        path,
+        transform,
+        stroke,
+        limits,
+        (accept, tolerance),
+        Mapped::new,
+        bytes,
+    )
+    .map(|(mapped, _, tiling)| (mapped.finish(), tiling))
+}
+
+fn outline_with<O: Outline>(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    (accept, device_tolerance): (Tiling, f64),
+    fresh: impl Fn(Transform) -> O,
+    bytes: &mut Meter,
+) -> Result<(O, Transform, Tiling)> {
+    let before = bytes.used();
+    let result = construct(
+        path,
+        transform,
+        stroke,
+        limits,
+        (accept, device_tolerance),
+        fresh,
+        bytes,
+    );
+    let retained = result.as_ref().map_or(0, |(out, _, _)| out.heap_bytes());
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+/// The outline in `fresh(t)`, `t` the transform from construction space
+/// to device space, which it also returns.
+fn construct<O: Outline>(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    (accept, device_tolerance): (Tiling, f64),
+    fresh: impl Fn(Transform) -> O,
+    bytes: &mut Meter,
+) -> Result<(O, Transform, Tiling)> {
     validate(stroke, limits)?;
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
     // then transform each run before constructing the hairline pen.
-    let contours = flatten(path, transform, limits)?;
+    // The centreline keeps the exact tolerance: near a cusp, chords of
+    // another tolerance turn otherwise and move whole joins.
+    let contours = flatten(path, transform, limits, bytes)?;
     let hairline = stroke.width == 0.0;
     let pen_transform = if hairline {
         Transform::IDENTITY
@@ -88,87 +330,124 @@ fn outline_with(
     let radius = width * 0.5;
     let stretch = pen_transform.a.hypot(pen_transform.b) + pen_transform.c.hypot(pen_transform.d);
     let tolerance = if stretch == 0.0 {
-        TOLERANCE
+        device_tolerance
     } else {
-        TOLERANCE / stretch
+        device_tolerance / stretch
     };
-    // Boundaries replace components only for undashed miter strokes whose pen
-    // maps circles to circles.
+    // A closed run's convex boundaries serve as its pieces only for undashed
+    // miter strokes whose pen maps circles to circles.
     let boundaries_allowed = stroke.dash_array.is_empty()
         && stroke.join == LineJoin::Miter
         && ((transform.a == transform.d && transform.b == -transform.c)
             || (transform.a == -transform.d && transform.b == transform.c));
+    let pen = Pen { radius, tolerance };
     let mut runs = Vec::new();
+    let contour_bytes = contours
+        .capacity()
+        .saturating_mul(size_of::<crate::flatten::Polyline>());
     let mut cleanup_work = 0;
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
+            let released = contour.points.capacity().saturating_mul(size_of::<Point>());
+            drop(contour);
+            bytes.refund(released);
             continue;
         }
-        for run in dash(contour.points, contour.closed, stroke, limits)? {
+        let dashed = dash(contour.points, contour.closed, stroke, limits, bytes)?;
+        let dashed_bytes = dashed.capacity().saturating_mul(size_of::<Run>());
+        for run in dashed {
             let mut run = if hairline {
                 run.transformed(transform)
             } else {
                 run
             };
-            let boundary = if boundaries_allowed
-                && run.closed
-                && run.points.len() >= convex::MIN_VERTICES
-            {
-                // Closed curves may explicitly repeat their starting vertex.
-                // Use the same point cleanup as the component stroker before
-                // proving strict convexity; duplicate endpoints are not a
-                // geometric turn.
-                crate::coverage::charge(&mut cleanup_work, run.points.len(), limits.raster_work)?;
-                run.points.dedup();
-                if run.points.first() == run.points.last() {
-                    run.points.pop();
-                }
-                convex::boundaries(&run.points, radius, tolerance, stroke.miter_limit, limits)?
+            let boundary = if boundaries_allowed {
+                closed_boundary(
+                    &mut run,
+                    pen,
+                    stroke.miter_limit,
+                    limits,
+                    &mut cleanup_work,
+                    bytes,
+                )?
             } else {
                 None
             };
+            bytes.reserve_capacity(&mut runs, 1)?;
             runs.push((run, boundary));
         }
+        bytes.refund(dashed_bytes);
     }
+    bytes.refund(contour_bytes);
     // Pieces replace the components when every run admits them; they cover
-    // the same set, so they serve as the outline and as its boundary.
-    if tiled {
-        let mut tiles = PathBuilder::new();
-        let mut complete = tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke)?;
+    // the same set.
+    if accept < Tiling::Components {
+        let mut tiles = fresh(pen_transform);
+        let mut tiling = if tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke, bytes)? {
+            Tiling::Proven
+        } else {
+            Tiling::Unproven
+        };
         for (run, boundary) in &runs {
-            if !complete {
+            if tiling > accept {
                 break;
             }
-            complete = match boundary {
+            let built = match boundary {
                 Some(contours) => {
-                    convex::append(&mut tiles, contours.clone(), limits)?;
-                    true
+                    convex::append(&mut tiles, contours, limits, bytes)?;
+                    Tiling::Proven
                 }
-                None => tiling::append(&mut tiles, run, radius, tolerance, stroke, limits)?,
+                None => {
+                    if tiling::append(&mut tiles, run, pen, stroke, limits, bytes)? {
+                        Tiling::Proven
+                    } else {
+                        Tiling::Unproven
+                    }
+                }
             };
+            tiling = tiling.max(built);
         }
-        if complete {
-            let mut outline = tiles.finish();
-            outline.boundary = Some(Arc::new(outline.clone()));
-            return Ok((outline, pen_transform));
+        if tiling <= accept {
+            return Ok((tiles, pen_transform, tiling));
         }
+        let released = tiles.heap_bytes();
+        drop(tiles);
+        bytes.refund(released);
     }
-    let mut components = PathBuilder::new();
-    // Begins at the first proven boundary as a copy of the components so far;
-    // each later run adds its boundary or its components.
-    let mut boundaries: Option<PathBuilder> = None;
-    for (run, boundary) in runs {
-        if let Some(contours) = boundary {
-            let out = boundaries.get_or_insert_with(|| components.clone());
-            convex::append(out, contours, limits)?;
-        } else if let Some(out) = &mut boundaries {
-            draw(out, &run, radius, tolerance, stroke, limits)?;
-        }
-        draw(&mut components, &run, radius, tolerance, stroke, limits)?;
+    let mut components = fresh(pen_transform);
+    for (run, _) in &runs {
+        draw(&mut components, run, pen, stroke, limits, bytes)?;
     }
-    let mut outline = components.finish();
-    outline.boundary = boundaries.map(|mut boundaries| Arc::new(boundaries.finish()));
-    Ok((outline, pen_transform))
+    Ok((components, pen_transform, Tiling::Components))
+}
+
+/// Clean the repeated closing vertex before attempting convex boundaries.
+fn closed_boundary(
+    run: &mut Run,
+    pen: Pen,
+    miter_limit: f64,
+    limits: &Limits,
+    work: &mut usize,
+    bytes: &mut Meter,
+) -> Result<Option<[Vec<Point>; 2]>> {
+    if !run.closed || run.points.len() < convex::MIN_VERTICES {
+        return Ok(None);
+    }
+    // The component stroker uses the same cleanup: duplicate endpoints
+    // are not geometric turns.
+    charge(work, run.points.len(), limits.raster_work)?;
+    run.points.dedup();
+    if run.points.first() == run.points.last() {
+        run.points.pop();
+    }
+    convex::boundaries(
+        &run.points,
+        pen.radius,
+        pen.tolerance,
+        miter_limit,
+        limits,
+        bytes,
+    )
 }
 
 pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
@@ -191,19 +470,45 @@ pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
 }
 
 pub(crate) fn dash(
+    points: Vec<Point>,
+    closed: bool,
+    stroke: &Stroke,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Vec<Run>> {
+    let before = bytes
+        .used()
+        .saturating_sub(points.capacity().saturating_mul(size_of::<Point>()));
+    let result = split_dashes(points, closed, stroke, limits, bytes);
+    let retained = result.as_ref().map_or(0, |runs| {
+        runs.iter().fold(
+            runs.capacity().saturating_mul(size_of::<Run>()),
+            |n, run| n.saturating_add(run.points.capacity().saturating_mul(size_of::<Point>())),
+        )
+    });
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn split_dashes(
     mut points: Vec<Point>,
     closed: bool,
     stroke: &Stroke,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<Vec<Run>> {
     if stroke.dash_array.is_empty() {
-        return Ok(vec![Run {
+        let mut runs = Vec::new();
+        bytes.reserve(&mut runs, 1)?;
+        runs.push(Run {
             points,
             closed,
             tangent: Point::new(1.0, 0.0),
-        }]);
+        });
+        return Ok(runs);
     }
     if closed && let Some(&first) = points.first() {
+        bytes.reserve_capacity(&mut points, 1)?;
         points.push(first);
     }
     let cycle_count = stroke
@@ -236,6 +541,7 @@ pub(crate) fn dash(
         let distance = (b - a).length();
         if distance == 0.0 {
             if index % 2 == 0 {
+                bytes.reserve_capacity(&mut run, 2)?;
                 run.extend([a, b]);
             }
             continue;
@@ -255,14 +561,17 @@ pub(crate) fn dash(
             let interpolate = |d: f64| a.lerp(b, d / distance);
             if index % 2 == 0 {
                 if run.is_empty() {
+                    bytes.reserve_capacity(&mut run, 1)?;
                     run.push(interpolate(offset));
                 }
+                bytes.reserve_capacity(&mut run, 1)?;
                 run.push(interpolate(end));
             }
             offset = end;
             remaining -= step;
             if remaining == 0.0 {
                 if index % 2 == 0 && !run.is_empty() {
+                    bytes.reserve_capacity(&mut result, 1)?;
                     result.push(Run {
                         points: std::mem::take(&mut run),
                         closed: false,
@@ -275,17 +584,23 @@ pub(crate) fn dash(
         }
     }
     if !run.is_empty() {
+        bytes.reserve_capacity(&mut result, 1)?;
         result.push(Run {
             points: run,
             closed: false,
             tangent,
         });
     }
-    join_seam(&mut result, &points, closed && initial_on);
+    join_seam(&mut result, &points, closed && initial_on, bytes)?;
     Ok(result)
 }
 
-fn join_seam(result: &mut Vec<Run>, points: &[Point], closed: bool) {
+fn join_seam(
+    result: &mut Vec<Run>,
+    points: &[Point],
+    closed: bool,
+    bytes: &mut Meter,
+) -> Result<()> {
     // A dash crossing the closing vertex has a join, not a pair of caps.
     let seam = points.first();
     let starts = result.first().and_then(|run| run.points.first()) == seam;
@@ -299,10 +614,14 @@ fn join_seam(result: &mut Vec<Run>, points: &[Point], closed: bool) {
         } else if let Some(mut tail) = result.pop()
             && let Some(head) = result.first_mut()
         {
+            bytes.reserve_capacity(&mut tail.points, head.points.len().saturating_sub(1))?;
             tail.points.extend(head.points.iter().skip(1).copied());
+            let released = head.points.capacity().saturating_mul(size_of::<Point>());
             *head = tail;
+            bytes.refund(released);
         }
     }
+    Ok(())
 }
 
 fn dash_length(stroke: &Stroke, index: usize) -> f64 {
@@ -314,82 +633,78 @@ fn dash_length(stroke: &Stroke, index: usize) -> f64 {
 }
 
 pub(crate) fn draw(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     run: &Run,
-    radius: f64,
-    tolerance: f64,
+    pen: Pen,
     stroke: &Stroke,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<()> {
-    let closed = run.closed;
-    let points = tiling::centreline(run);
-    if points.len() < 2 {
-        if let Some(&point) = points.first() {
-            cap(
-                out,
-                point,
-                run.tangent,
-                radius,
-                tolerance,
-                stroke.cap,
-                limits,
-            )?;
-            cap(
-                out,
-                point,
-                -run.tangent,
-                radius,
-                tolerance,
-                stroke.cap,
-                limits,
-            )?;
+    let before = bytes.used().saturating_sub(out.heap_bytes());
+    let result = (|| {
+        let Pen { radius, .. } = pen;
+        let closed = run.closed;
+        let points = tiling::centreline(run, bytes)?;
+        if points.len() < 2 {
+            if let Some(&point) = points.first() {
+                cap(out, point, run.tangent, pen, stroke.cap, limits, bytes)?;
+                cap(out, point, -run.tangent, pen, stroke.cap, limits, bytes)?;
+            }
+            return Ok(());
         }
-        return Ok(());
-    }
-    let first = points
-        .first()
-        .copied()
-        .ok_or(Error::invalid_argument("empty stroke"))?;
-    let last = points
-        .last()
-        .copied()
-        .ok_or(Error::invalid_argument("empty stroke"))?;
-    let mut directions = Vec::new();
-    for (&a, &b) in points
-        .iter()
-        .zip(points.iter().skip(1).chain(closed.then_some(&first)))
-    {
-        let d = (b - a) / (b - a).length();
-        let n = d.perp() * radius;
-        polygon(out, &[a + n, b + n, b - n, a - n], limits)?;
-        directions.push(d);
-    }
-    for (i, &point) in points.iter().enumerate() {
-        let before = if i == 0 {
-            if closed { directions.last() } else { None }
-        } else {
-            directions.get(i - 1)
-        };
-        let after = directions.get(i);
-        match (before, after) {
-            (Some(&a), Some(&b)) => join(out, point, [a, b], radius, tolerance, stroke, limits)?,
-            (None, Some(&d)) => cap(out, first, -d, radius, tolerance, stroke.cap, limits)?,
-            (Some(&d), None) => cap(out, last, d, radius, tolerance, stroke.cap, limits)?,
-            _ => {}
+        let first = points
+            .first()
+            .copied()
+            .ok_or(Error::invalid_argument("empty stroke"))?;
+        let last = points
+            .last()
+            .copied()
+            .ok_or(Error::invalid_argument("empty stroke"))?;
+        let mut directions = Vec::new();
+        for (&a, &b) in points
+            .iter()
+            .zip(points.iter().skip(1).chain(closed.then_some(&first)))
+        {
+            let d = (b - a) / (b - a).length();
+            let n = d.perp() * radius;
+            polygon(out, &[a + n, b + n, b - n, a - n], limits, bytes)?;
+            bytes.reserve_capacity(&mut directions, 1)?;
+            directions.push(d);
         }
-    }
-    Ok(())
+        for (i, &point) in points.iter().enumerate() {
+            let before = if i == 0 {
+                if closed { directions.last() } else { None }
+            } else {
+                directions.get(i - 1)
+            };
+            let after = directions.get(i);
+            match (before, after) {
+                (Some(&a), Some(&b)) => join(out, point, [a, b], pen, stroke, limits, bytes)?,
+                (None, Some(&d)) => cap(out, first, -d, pen, stroke.cap, limits, bytes)?,
+                (Some(&d), None) => cap(out, last, d, pen, stroke.cap, limits, bytes)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    })();
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before.saturating_add(out.heap_bytes())),
+    );
+    result
 }
 
 fn join(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     point: Point,
     tangents: [Point; 2],
-    radius: f64,
-    tolerance: f64,
+    pen: Pen,
     stroke: &Stroke,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<()> {
+    let Pen { radius, .. } = pen;
     let [a, b] = tangents;
     let cross = a.cross(b);
     if cross == 0.0 && (stroke.join != LineJoin::Round || a.dot(b) >= 0.0) {
@@ -399,7 +714,7 @@ fn join(
     let n1 = a.perp() * side;
     let n2 = b.perp() * side;
     if stroke.join == LineJoin::Round {
-        return round_join(out, point, [n1, n2], radius, tolerance, cross, limits);
+        return round_join(out, point, [n1, n2], pen, cross, limits, bytes);
     }
     let p1 = point + n1;
     let p2 = point + n2;
@@ -407,82 +722,129 @@ fn join(
     if stroke.join == LineJoin::Miter && denominator > 0.0 {
         let m = (n1 + n2) / denominator;
         if m.length() <= radius * stroke.miter_limit {
-            return polygon(out, &[point, p1, point + m, p2], limits);
+            return polygon(out, &[point, p1, point + m, p2], limits, bytes);
         }
     }
-    polygon(out, &[point, p1, p2], limits)
+    polygon(out, &[point, p1, p2], limits, bytes)
 }
 
 fn round_join(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     point: Point,
     normals: [Point; 2],
-    radius: f64,
-    tolerance: f64,
+    pen: Pen,
     cross: f64,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<()> {
-    let [a, b] = normals;
-    let start = a.y.atan2(a.x);
-    let end = b.y.atan2(b.x);
-    let angle = if cross > 0.0 {
-        (end - start).rem_euclid(std::f64::consts::TAU)
-    } else {
-        -(start - end).rem_euclid(std::f64::consts::TAU)
-    };
-    let step = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
-    let count = (angle.abs() / step).ceil().max(1.0);
-    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
-        return Err(Error::limit("round join subdivision budget exceeded"));
-    }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "integer count bounded by the u32-compatible path budget below"
-    )]
-    let count = count as u32;
-    let mut points = vec![point, point + a];
-    for i in 1..count {
-        let angle = start + angle * f64::from(i) / f64::from(count);
-        points.push(Point::new(
-            point.x + radius * angle.cos(),
-            point.y + radius * angle.sin(),
-        ));
-    }
-    points.push(point + b);
-    polygon(out, &points, limits)
+    let before = bytes.used().saturating_sub(out.heap_bytes());
+    let result = (|| {
+        let Pen { radius, tolerance } = pen;
+        let [a, b] = normals;
+        let start = a.y.atan2(a.x);
+        let end = b.y.atan2(b.x);
+        let angle = if cross > 0.0 {
+            (end - start).rem_euclid(std::f64::consts::TAU)
+        } else {
+            -(start - end).rem_euclid(std::f64::consts::TAU)
+        };
+        let step = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
+        let count = (angle.abs() / step).ceil().max(1.0);
+        if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX)
+        {
+            return Err(Error::limit("round join subdivision budget exceeded"));
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "integer count bounded by the u32-compatible path budget below"
+        )]
+        let count = count as u32;
+        let mut points = Vec::new();
+        bytes.reserve(&mut points, count as usize + 2)?;
+        points.extend([point, point + a]);
+        for i in 1..count {
+            let angle = start + angle * f64::from(i) / f64::from(count);
+            points.push(Point::new(
+                point.x + radius * angle.cos(),
+                point.y + radius * angle.sin(),
+            ));
+        }
+        points.push(point + b);
+        polygon(out, &points, limits, bytes)
+    })();
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before.saturating_add(out.heap_bytes())),
+    );
+    result
 }
 
 fn cap(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     point: Point,
     direction: Point,
-    radius: f64,
-    tolerance: f64,
+    pen: Pen,
     cap: LineCap,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<()> {
+    let Pen { radius, .. } = pen;
     match cap {
         LineCap::Butt => Ok(()),
-        LineCap::Round => circle(out, point, radius, tolerance, limits),
+        LineCap::Round => circle(out, point, pen, limits, bytes),
         LineCap::ProjectingSquare => {
             let n = direction.perp() * radius;
             let end = point + direction * radius;
-            polygon(out, &[point + n, end + n, end - n, point - n], limits)
+            polygon(
+                out,
+                &[point + n, end + n, end - n, point - n],
+                limits,
+                bytes,
+            )
         }
     }
 }
 
 fn circle(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     center: Point,
-    radius: f64,
-    tolerance: f64,
+    pen: Pen,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<()> {
-    if radius == 0.0 {
-        return Ok(());
+    let before = bytes.used().saturating_sub(out.heap_bytes());
+    let result = (|| {
+        if pen.radius == 0.0 {
+            return Ok(());
+        }
+        let points = ring(center, pen, limits, bytes)?;
+        polygon(out, &points, limits, bytes)
+    })();
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before.saturating_add(out.heap_bytes())),
+    );
+    result
+}
+
+/// The pen's canonical circle polygon around `center`, counterclockwise
+/// from angle zero at equal angles, within the pen's tolerance; charged to
+/// `bytes`.
+fn ring(center: Point, pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let mut points = offsets(pen, limits, bytes)?;
+    for point in &mut points {
+        *point = center + *point;
     }
+    Ok(points)
+}
+
+/// The vertices of the pen's canonical circle polygon less its centre: each
+/// vertex of [`ring`] is its centre plus one of these, and its count.
+fn offsets(pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let Pen { radius, tolerance } = pen;
     let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
     let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
     if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
@@ -491,22 +853,24 @@ fn circle(
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "integer count is bounded by the u32-compatible path budget below"
+        reason = "integer count is bounded by the u32-compatible path budget above"
     )]
     let count = count as u32;
-    let points: Vec<_> = (0..count)
-        .map(|i| {
-            let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
-            Point::new(
-                center.x + radius * angle.cos(),
-                center.y + radius * angle.sin(),
-            )
-        })
-        .collect();
-    polygon(out, &points, limits)
+    let mut points = Vec::new();
+    bytes.reserve(&mut points, count as usize)?;
+    points.extend((0..count).map(|i| {
+        let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
+        Point::new(radius * angle.cos(), radius * angle.sin())
+    }));
+    Ok(points)
 }
 
-fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<()> {
+fn polygon(
+    out: &mut impl Outline,
+    points: &[Point],
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<()> {
     if out
         .len()
         .checked_add(points.len() + 1)
@@ -526,65 +890,8 @@ fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<(
         .map(|(&a, &b)| (a - first).cross(b - first))
         .sum();
     // Every component polygon is positively oriented (module comment).
-    if area < 0.0 {
-        out.polygon(points.iter().rev().copied());
-    } else {
-        out.polygon(points.iter().copied());
-    }
-    Ok(())
+    out.add_polygon(points, area < 0.0, limits, bytes)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn table_55_run_sequences() {
-        // Explicit on intervals derived from Table 55, independent of dash().
-        type Example<'a> = (&'a [f64], f64, f64, &'a [(f64, f64)]);
-        let examples: &[Example<'_>] = &[
-            (&[], 0.0, 12.0, &[(0.0, 12.0)]),
-            (&[3.0], 0.0, 12.0, &[(0.0, 3.0), (6.0, 9.0)]),
-            (&[2.0], 1.0, 9.0, &[(0.0, 1.0), (3.0, 5.0), (7.0, 9.0)]),
-            (&[2.0, 1.0], 0.0, 8.0, &[(0.0, 2.0), (3.0, 5.0), (6.0, 8.0)]),
-            (&[3.0, 5.0], 6.0, 18.0, &[(2.0, 5.0), (10.0, 13.0)]),
-            (
-                &[2.0, 3.0],
-                11.0,
-                16.0,
-                &[(0.0, 1.0), (4.0, 6.0), (9.0, 11.0), (14.0, 16.0)],
-            ),
-            (
-                &[2.0, 1.0, 3.0],
-                0.0,
-                14.0,
-                &[(0.0, 2.0), (3.0, 6.0), (8.0, 9.0), (12.0, 14.0)],
-            ),
-            (
-                &[2.0, 1.0, 3.0],
-                -2.0,
-                14.0,
-                &[(2.0, 4.0), (5.0, 8.0), (10.0, 11.0)],
-            ),
-        ];
-        for &(array, phase, length, expected) in examples {
-            let stroke = Stroke {
-                dash_array: array.to_vec(),
-                dash_phase: phase,
-                ..Stroke::default()
-            };
-            let runs = dash(
-                vec![Point::new(0.0, 0.0), Point::new(length, 0.0)],
-                false,
-                &stroke,
-                &Limits::default(),
-            )
-            .unwrap();
-            let actual: Vec<_> = runs
-                .iter()
-                .map(|run| (run.points.first().unwrap().x, run.points.last().unwrap().x))
-                .collect();
-            assert_eq!(actual, expected, "{array:?} {phase}");
-        }
-    }
-}
+mod tests;

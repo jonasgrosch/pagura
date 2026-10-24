@@ -3,9 +3,9 @@ use crate::budget::Work;
 use crate::read::{glyph_id, unsupported};
 use crate::{GlyphId, features};
 use pagura_core::bytes::Cursor;
-use pagura_core::{Name, Position, Result};
-use std::collections::BTreeMap;
-use std::sync::LazyLock;
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Name, Result};
+use std::sync::{LazyLock, OnceLock};
 
 /// post table versions: standard Macintosh order, an explicit name index,
 /// or no names.
@@ -283,11 +283,46 @@ static STANDARD_NAMES: LazyLock<Vec<Name>> = LazyLock::new(|| {
         .collect()
 });
 
-/// Glyph names by name (the first glyph for a repeated name) and by glyph.
+/// Glyph names by glyph, and an index by name built at the first lookup:
+/// selection reads names only when no cmap subtable maps a code (9.6.5.4).
 #[derive(Debug, Default)]
 pub(super) struct PostNames {
-    pub(super) by_name: BTreeMap<Name, GlyphId>,
     pub(super) by_glyph: Vec<Option<Name>>,
+    /// The named glyphs, ordered by name and then glyph.
+    by_name: OnceLock<Vec<u32>>,
+}
+
+impl PostNames {
+    /// The first glyph named `name`.
+    pub(super) fn glyph(&self, name: &[u8]) -> Option<GlyphId> {
+        let index = self.by_name.get_or_init(|| self.index());
+        let at = index.partition_point(|&glyph| self.name(glyph) < Some(name));
+        let glyph = *index.get(at)?;
+        (self.name(glyph) == Some(name)).then_some(GlyphId(glyph))
+    }
+
+    fn name(&self, glyph: u32) -> Option<&[u8]> {
+        self.by_glyph
+            .get(u32_to_usize(glyph))?
+            .as_ref()
+            .map(Name::as_bytes)
+    }
+
+    fn index(&self) -> Vec<u32> {
+        // Glyph counts fit u32: the parser checked every glyph id.
+        let mut index: Vec<u32> = (0..u32::try_from(self.by_glyph.len()).unwrap_or(u32::MAX))
+            .filter(|&glyph| self.name(glyph).is_some())
+            .collect();
+        index.sort_unstable_by(|&a, &b| self.name(a).cmp(&self.name(b)).then(a.cmp(&b)));
+        index
+    }
+
+    /// Heap bytes, the index by name included whether built or not.
+    pub(super) fn heap_bytes(&self) -> usize {
+        let named = self.by_glyph.iter().flatten().count();
+        crate::names::heap_bytes(&self.by_glyph)
+            .saturating_add(named.saturating_mul(size_of::<u32>()))
+    }
 }
 
 pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Result<PostNames> {
@@ -359,13 +394,32 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Res
             ));
         }
     };
-    let mut by_name = BTreeMap::new();
-    for (i, name) in by_glyph.iter().enumerate() {
-        if let Some(name) = name {
-            by_name
-                .entry(name.clone())
-                .or_insert(glyph_id(i, Position::Unknown)?);
-        }
+    Ok(PostNames {
+        by_glyph,
+        by_name: OnceLock::new(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PostNames;
+    use crate::GlyphId;
+    use pagura_core::Name;
+
+    #[test]
+    fn a_repeated_name_selects_its_first_glyph() {
+        let names = PostNames {
+            by_glyph: ["b", "a", "c", "a"]
+                .into_iter()
+                .map(|name| Some(Name::new(name.as_bytes())))
+                .chain([None])
+                .collect(),
+            ..PostNames::default()
+        };
+        assert_eq!(names.glyph(b"a"), Some(GlyphId(1)));
+        assert_eq!(names.glyph(b"b"), Some(GlyphId(0)));
+        assert_eq!(names.glyph(b"c"), Some(GlyphId(2)));
+        assert_eq!(names.glyph(b"d"), None);
+        assert_eq!(names.glyph(b""), None);
     }
-    Ok(PostNames { by_name, by_glyph })
 }

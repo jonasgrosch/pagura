@@ -229,7 +229,10 @@ async function main() {
     const retainedPdf = new Uint8Array(await readFile(join(root, 'corpus/generated/classic/rectangle.pdf')));
     const retained = await client.open(retainedPdf);
     await client.renderTile(retained.document, 0, 1, { x: 0, y: 0, width: 64, height: 64 });
-    assert.deepEqual(await client.stats(), { sourceBytes: retainedPdf.length, cacheBytes: 4608, documents: 1, lists: 1 });
+    // The render store keeps the page's scene; its bytes are the engine's estimate.
+    const retainedStats = await client.stats();
+    assert.ok(retainedStats.cacheBytes > 0);
+    assert.deepEqual({ ...retainedStats, cacheBytes: 0 }, { sourceBytes: retainedPdf.length, cacheBytes: 0, documents: 1, lists: 1 });
     assert.ok(client.wasmBytes > 0);
     await client.close(retained.document); assert.deepEqual(await client.stats(), emptyStats);
     const statsInput = Buffer.concat([encodeRequest(1, 1, { version: VERSION_1_1 }), encodeRequest(9, 2)]);
@@ -951,8 +954,9 @@ async function testReading(client, root, native, wasiRun) {
     assert.ifError(result.error); assert.equal(result.status, 0, result.stderr?.toString());
     const wasi = await wasiRun(input, `reading-${name}`); assert.equal(wasi.code, 0);
     // These small fixtures fit both targets' byte budgets. Capacity accounting
-    // uses target allocation sizes, so only its eight text-byte bytes may
-    // differ here; entry counts and every document result/layout stay exact.
+    // uses target allocation sizes, so only the eight bytes each of the
+    // store's and the text cache's retained sizes may differ here; entry
+    // counts and every document result/layout stay exact.
     const accounted = (bytes) => {
       const copy = Buffer.from(bytes); let offset=0;
       for(const frame of parse(bytes)) {
@@ -960,6 +964,7 @@ async function testReading(client, root, native, wasiRun) {
         if(frame.kind === 143) {
           assert.equal(frame.value.textBytes === 0, frame.value.textPages === 0);
           assert.ok(frame.value.textBytes <= 16*1024*1024);
+          copy.fill(0,offset+4+13,offset+4+21);
           copy.fill(0,offset+4+29,offset+4+37);
         }
         offset+=4+length;

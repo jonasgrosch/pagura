@@ -4,9 +4,22 @@ use super::super::entropy::{Bits, Huffman};
 use super::basis::Reference;
 use pagura_core::{Error, Result};
 
+/// The blocks of a component and how its plane stores them.
+#[derive(Debug, Clone, Copy)]
+pub(in crate::dct) struct Shape {
+    /// Blocks per block row.
+    pub(in crate::dct) stride: usize,
+    /// Block rows.
+    pub(in crate::dct) rows: usize,
+    /// Whether the plane stores rows and columns exchanged.
+    pub(in crate::dct) transposed: bool,
+}
+
 /// Sample bytes for eight-by-eight blocks in block-row order, initialized to
-/// a background value, plus per-block flags.
+/// a background value, plus per-block flags. Transposed, rows and columns
+/// are exchanged, blocks and flags with them.
 pub(in crate::dct) struct Plane {
+    shape: Shape,
     samples: Vec<u8>,
     /// Per block: nonzero once the block differs from the background.
     dirty: Vec<u8>,
@@ -32,12 +45,11 @@ fn filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Ve
 }
 
 impl Plane {
-    pub(in crate::dct) fn new(
-        blocks: usize,
-        stride: usize,
-        background: u8,
-        buffers: Option<&crate::deferred::SampleBuffers>,
-    ) -> Result<Self> {
+    pub(in crate::dct) fn new(shape: Shape, background: u8) -> Result<Self> {
+        let blocks = shape
+            .stride
+            .checked_mul(shape.rows)
+            .ok_or(Error::limit("JPEG native storage overflow"))?;
         let length = blocks
             .checked_mul(64)
             .ok_or(Error::limit("JPEG native storage overflow"))?;
@@ -46,14 +58,14 @@ impl Plane {
             .try_reserve_exact(4096)
             .map_err(|_| Error::limit("JPEG native prefix allocation failed"))?;
         Ok(Self {
-            samples: match buffers {
-                Some(buffers) => buffers
-                    .filled(length, background)
-                    .ok_or(Error::limit("JPEG native allocation failed"))?,
-                None => filled(length, background, "JPEG native allocation failed")?,
-            },
+            shape,
+            samples: filled(length, background, "JPEG native allocation failed")?,
             dirty: filled(blocks, 0, "JPEG block flag allocation failed")?,
-            pitch: stride * 8,
+            pitch: if shape.transposed {
+                shape.rows * 8
+            } else {
+                shape.stride * 8
+            },
             scratch: [0; 64],
             reference: Reference::new(),
             shortcut,
@@ -83,6 +95,11 @@ impl Plane {
         self.pitch
     }
 
+    /// Whether rows and columns are exchanged.
+    pub(in crate::dct) fn transposed(&self) -> bool {
+        self.shape.transposed
+    }
+
     pub(in crate::dct) fn bytes(&self) -> usize {
         self.samples.capacity()
             + self.dirty.capacity()
@@ -100,11 +117,20 @@ impl Plane {
         predictor: &mut i32,
         quant: &[u16; 64],
     ) -> Result<()> {
-        let stride = self.pitch / 8;
+        let stride = self.shape.stride;
         let index = row * stride + column;
         if column >= stride || index >= self.blocks {
             return Err(bits.error("JPEG block outside component"));
         }
+        // Where the block is stored: exchanged with its rows and columns.
+        let (flag, base) = if self.shape.transposed {
+            (
+                column * self.shape.rows + row,
+                (column * self.pitch + row) * 8,
+            )
+        } else {
+            (index, (row * self.pitch + column) * 8)
+        };
         if self.shortcut.is_empty() {
             let table = bits.native_shortcut(dc, ac)?;
             self.shortcut.extend_from_slice(&table);
@@ -129,13 +155,17 @@ impl Plane {
         if !nonconstant && constant == self.background {
             return Ok(());
         }
+        self.dirty[flag] = 1;
         let output = if nonconstant {
-            self.reconstruct(bits, l1)?
+            let block = self.reconstruct(bits, l1)?;
+            if self.shape.transposed {
+                transpose(block)
+            } else {
+                block
+            }
         } else {
             [[constant; 8]; 8]
         };
-        self.dirty[index] = 1;
-        let base = (row * self.pitch + column) * 8;
         for (y, row) in output.iter().enumerate() {
             let start = base + y * self.pitch;
             self.samples
@@ -185,6 +215,17 @@ impl Plane {
     }
 }
 
+/// `block` with rows and columns exchanged.
+fn transpose(block: [[u8; 8]; 8]) -> [[u8; 8]; 8] {
+    let mut out = [[0; 8]; 8];
+    for (y, row) in block.iter().enumerate() {
+        for (x, &value) in row.iter().enumerate() {
+            out[x][y] = value;
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,7 +253,12 @@ mod tests {
     #[test]
     fn certified_samples_are_the_ordered_annex_a_result() {
         let reference = Reference::new();
-        let mut plane = Plane::new(1, 1, 255, None).unwrap();
+        let shape = Shape {
+            stride: 1,
+            rows: 1,
+            transposed: false,
+        };
+        let mut plane = Plane::new(shape, 255).unwrap();
         let mut bits = Bits::new(&[], 0);
         bits.limit_stream(0, 100_000_000);
         let mut state = 0x75a3_194bu32;

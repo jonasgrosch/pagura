@@ -3,7 +3,7 @@ use super::{
     Decoder,
     entropy::{Bits, Huffman},
     frame::Storage,
-    transform::{Cells, Idct, Sparse, reconstruct},
+    transform::{Idct, Sparse, reconstruct},
 };
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
 
@@ -141,7 +141,6 @@ impl Decoder {
         let idct = (!frame.progressive).then(Idct::new);
         // Sequential blocks share one buffer, cleared after each block.
         let mut sequential = [0; 64];
-        let cells = (!frame.progressive && frame.cells < 8).then(|| Cells::new(frame.cells));
         for mcu in 0..cols * rows {
             let (row, column) = (mcu / cols, mcu % cols);
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
@@ -209,7 +208,7 @@ impl Decoder {
                         };
                         if let Some(idct) = &idct {
                             let coefficients = Sparse::with(&sequential, nonzero);
-                            store(c, idct, cells.as_ref(), coefficients, index)
+                            store(c, idct, coefficients, index)
                                 .ok_or_else(|| bits.error("JPEG block outside component"))?;
                             sequential = [0; 64];
                         }
@@ -326,17 +325,13 @@ fn native(
 fn store(
     component: &mut super::frame::Component,
     idct: &Idct,
-    cells: Option<&Cells>,
     block: Sparse<'_>,
     index: usize,
 ) -> Option<()> {
     let quant = component.quant.as_ref()?;
     let stride = component.stride;
     match &mut component.storage {
-        Storage::Bytes(plane) => match cells {
-            Some(cells) => cells.reconstruct(idct, quant, block, plane, stride, index),
-            None => reconstruct(idct, quant, block, plane, stride, index),
-        },
+        Storage::Bytes(plane) => reconstruct(idct, quant, block, plane, stride, index),
         Storage::Words(plane) => reconstruct(idct, quant, block, plane, stride, index),
         Storage::Coefficients(_) | Storage::Native(_) => None,
     }

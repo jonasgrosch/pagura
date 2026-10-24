@@ -10,7 +10,7 @@
 
 use crate::flatten::{bounded, flatten};
 use crate::{FillRegion, FillRule, Path, PathBuilder, Point, Segment, Stroke, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// Classify in construction space once; affine device placement must not
 /// collapse a positive-area sliver into a certified empty region.
@@ -20,6 +20,7 @@ pub(crate) fn classify(
     rule: FillRule,
     limits: &Limits,
     work: &mut usize,
+    bytes: &mut Meter,
 ) -> Result<FillRegion> {
     if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
@@ -28,7 +29,7 @@ pub(crate) fn classify(
     if ordinary_rectangle(path)? || ordinary_polygon(path)? {
         return Ok(FillRegion::Ordinary);
     }
-    classify_uncertain(path, rule, limits, work)
+    classify_uncertain(path, rule, limits, work, bytes)
 }
 
 // Keep allocation and sorting out of the ordinary fill's stack frame.
@@ -37,13 +38,27 @@ fn classify_uncertain(
     rule: FillRule,
     limits: &Limits,
     work: &mut usize,
+    bytes: &mut Meter,
+) -> Result<FillRegion> {
+    let before = bytes.used();
+    let result = classify_lines(path, rule, limits, work, bytes);
+    bytes.refund(bytes.used().saturating_sub(before));
+    result
+}
+
+fn classify_lines(
+    path: &Path,
+    rule: FillRule,
+    limits: &Limits,
+    work: &mut usize,
+    bytes: &mut Meter,
 ) -> Result<FillRegion> {
     // Uncertain paths need a second source traversal before flattening.
     charge(work, path.segments().len(), limits)?;
     if !linear_curves(path)? {
         return Ok(FillRegion::Ordinary);
     }
-    let contours = flatten(path, Transform::IDENTITY, limits)?;
+    let contours = flatten(path, Transform::IDENTITY, limits, bytes)?;
     let mut edges = Vec::new();
     for contour in &contours {
         let Some(&first) = contour.points.first() else {
@@ -53,6 +68,7 @@ fn classify_uncertain(
         for &next in contour.points.iter().skip(1).chain(std::iter::once(&first)) {
             charge(work, 1, limits)?;
             if previous != next {
+                bytes.reserve_capacity(&mut edges, 1)?;
                 edges.push(Edge::new(previous, next));
             }
             previous = next;
@@ -87,12 +103,18 @@ fn classify_uncertain(
             if !line.contains(edge.a, edge.b) {
                 return Ok(FillRegion::Ordinary);
             }
-            line.add(edge.a, edge.b);
+            line.add(edge.a, edge.b, bytes)?;
         }
         charge(work, sort_work(line.events.len()), limits)?;
         if !line.cancels(rule)? {
             return Ok(FillRegion::Ordinary);
         }
+        let released = line
+            .events
+            .capacity()
+            .saturating_mul(size_of::<(f64, i64)>());
+        drop(line);
+        bytes.refund(released);
         first = end;
     }
     Ok(FillRegion::EmptyBoundary)
@@ -242,6 +264,32 @@ fn noncollinear(a: Point, b: Point, c: Point) -> bool {
     (left - right).abs() > error
 }
 
+/// Constructs a device-space outline for an empty polygon filling region
+/// with nonempty extent (ISO 32000-2, 10.7.4). Its boundary uses the solid
+/// one-device-pixel hairline policy of 8.4.3.2, independently of stroke state.
+/// Fill the returned outline with [`FillRule::NonZero`]. Point contours retain
+/// their floor cells. Returns `None` for point-only paths, ordinary fills or geometry whose
+/// emptiness cannot be certified; positive-area slivers are never widened.
+/// Requires a retained [`Path::classify_fill`] certificate. The same outline
+/// defines painting and clipping (8.5.4, 10.7.4).
+///
+/// # Errors
+/// Returns invalid geometry or exhausted geometry and work budgets.
+pub fn empty_fill_outline(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    limits: &Limits,
+) -> Result<Option<Path>> {
+    outline(
+        path,
+        transform,
+        rule,
+        limits,
+        &mut Meter::new(limits.render_bytes, crate::band::RENDER_BYTES),
+    )
+}
+
 /// Converts a retained certificate into device hairlines. Ordinary raster paths
 /// (including all stroke outlines) do no classification here.
 #[inline]
@@ -250,11 +298,42 @@ pub(crate) fn outline(
     transform: Transform,
     rule: FillRule,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<Option<Path>> {
     if path.fill_region(rule) != Some(FillRegion::EmptyBoundary) {
         return Ok(None);
     }
-    outline_boundary(path, transform, rule, limits).map(Some)
+    outline_boundary(path, transform, rule, limits, bytes).map(Some)
+}
+
+/// The boundary outline of an empty filling region of `path`, classified
+/// now when it carries no retained certificate (8.5.3.3, 10.7.4); `None`
+/// for ordinary filling.
+pub(crate) fn classified_outline(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Option<Path>> {
+    if region(path, rule, limits, bytes)? != FillRegion::EmptyBoundary {
+        return Ok(None);
+    }
+    outline_boundary(path, transform, rule, limits, bytes).map(Some)
+}
+
+/// The retained fill certificate of `path` for `rule`, or one classified
+/// now.
+pub(crate) fn region(
+    path: &Path,
+    rule: FillRule,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<FillRegion> {
+    match path.fill_region(rule) {
+        Some(region) => Ok(region),
+        None => classify(path, rule, limits, &mut 0, bytes),
+    }
 }
 
 pub(crate) fn outline_boundary(
@@ -262,11 +341,26 @@ pub(crate) fn outline_boundary(
     transform: Transform,
     rule: FillRule,
     limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Path> {
+    let before = bytes.used();
+    let result = boundary(path, transform, rule, limits, bytes);
+    let retained = result.as_ref().map_or(0, Path::retained_bytes);
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn boundary(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<Path> {
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    let contours = flatten(path, transform, limits)?;
+    let contours = flatten(path, transform, limits, bytes)?;
     let mut boundary = PathBuilder::new();
     let mut points = Vec::new();
     for (i, contour) in contours.iter().enumerate() {
@@ -281,24 +375,45 @@ pub(crate) fn outline_boundary(
         if contour.degenerate {
             let point = first * transform;
             // Canonicalize signed zero so equal floor cells stay adjacent.
+            bytes.reserve_capacity(&mut points, 1)?;
             points.push(Point::new(point.x.floor() + 0.0, point.y.floor() + 0.0));
             continue;
         }
+        if boundary
+            .len()
+            .checked_add(contour.points.len() + 1)
+            .is_none_or(|n| n > limits.path_segments)
+        {
+            return Err(Error::limit("path segment budget exceeded"));
+        }
+        boundary.reserve(contour.points.len() + 1, bytes)?;
         boundary.polygon(contour.points.iter().map(|&point| point * transform));
     }
+    let released = crate::flatten::retained_bytes(&contours);
+    drop(contours);
+    bytes.refund(released);
+    let boundary = boundary.finish();
     let (outline, _) = crate::stroke::outline(
-        &boundary.finish(),
+        &boundary,
         Transform::IDENTITY,
         &Stroke {
             width: 0.0,
             ..Stroke::default()
         },
         limits,
+        bytes,
     )?;
+    let released = boundary.retained_bytes();
+    drop(boundary);
+    bytes.refund(released);
     // The stroker emits positively oriented polygons, so these cells and the
     // hairline boundaries form one union, painted exactly once.
     let mut result = PathBuilder::new();
+    result.reserve(outline.segments().len(), bytes)?;
     result.append(&outline, Transform::IDENTITY);
+    let released = outline.retained_bytes();
+    drop(outline);
+    bytes.refund(released);
     points.sort_unstable_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
     let mut points = points.iter().peekable();
     while let Some(&point) = points.next() {
@@ -307,6 +422,14 @@ pub(crate) fn outline_boundary(
             odd = !odd;
         }
         if rule == FillRule::NonZero || odd {
+            if result
+                .len()
+                .checked_add(5)
+                .is_none_or(|n| n > limits.path_segments)
+            {
+                return Err(Error::limit("empty fill outline segment budget exceeded"));
+            }
+            result.reserve(5, bytes)?;
             result.rect(point.x, point.y, 1.0, 1.0);
         }
     }
@@ -340,6 +463,18 @@ fn linear_curves(path: &Path) -> Result<bool> {
                 }
                 current = end;
             }
+            Segment::QuadTo { control, end } => {
+                for p in [control, end] {
+                    bounded(p)?;
+                }
+                let controls = [current, control, end];
+                if let Some(&other) = controls.iter().find(|&&p| p != current)
+                    && !controls.iter().all(|&p| collinear(current, other, p))
+                {
+                    return Ok(false);
+                }
+                current = end;
+            }
             Segment::Close => current = start,
         }
     }
@@ -364,15 +499,17 @@ impl Line {
     fn contains(&self, a: Point, b: Point) -> bool {
         collinear(self.a, self.b, a) && collinear(self.a, self.b, b)
     }
-    fn add(&mut self, a: Point, b: Point) {
+    fn add(&mut self, a: Point, b: Point, bytes: &mut Meter) -> Result<()> {
         let (a, b) = if self.vertical {
             (a.y, b.y)
         } else {
             (a.x, b.x)
         };
         let direction = if a < b { 1 } else { -1 };
+        bytes.reserve_capacity(&mut self.events, 2)?;
         self.events.push((a.min(b), direction));
         self.events.push((a.max(b), -direction));
+        Ok(())
     }
     fn cancels(&mut self, rule: FillRule) -> Result<bool> {
         self.events.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
@@ -441,7 +578,8 @@ fn charge(work: &mut usize, amount: usize, limits: &Limits) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Mask, Paint, Pixmap, Rgba8, fill_path, fill_path_at};
+    use crate::DeviceRect;
+    use crate::testing::{clip, fill, stroke, window};
 
     #[test]
     fn exact_collinearity_does_not_widen_a_nearly_collinear_triangle() {
@@ -487,9 +625,15 @@ mod tests {
         for transform in transforms {
             for rule in [FillRule::NonZero, FillRule::EvenOdd] {
                 assert!(
-                    outline(&path, transform, rule, &Limits::default())
-                        .unwrap()
-                        .is_none()
+                    outline(
+                        &path,
+                        transform,
+                        rule,
+                        &Limits::default(),
+                        &mut crate::testing::bytes()
+                    )
+                    .unwrap()
+                    .is_none()
                 );
             }
         }
@@ -500,35 +644,31 @@ mod tests {
         let mut path = PathBuilder::new();
         path.rect(3.0, 1.0, 0.0, 6.0);
         let mut path = path.finish();
-        let paint = Paint::Solid(Rgba8::BLACK);
+        let limits = Limits::default();
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
-            path.classify_fill(rule, &Limits::default(), &mut 0)
-                .unwrap();
-            let clip = Mask::from_path(8, 8, &path, Transform::IDENTITY, rule, 64).unwrap();
-            let mut full = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-            fill_path(&mut full, &path, Transform::IDENTITY, rule, &paint, None).unwrap();
+            path.classify_fill(rule, &limits, &mut 0).unwrap();
+            let clip = clip(window(8, 8), &[(&path, rule)], &limits).unwrap();
+            let fill = |region| fill(region, (&path, Transform::IDENTITY, rule), &[], &limits);
+            let full = fill(window(8, 8)).unwrap();
             for y in 0..8 {
                 for x in 0..8 {
-                    let mut tile = Pixmap::new(1, 1, Rgba8::TRANSPARENT, 1).unwrap();
-                    fill_path_at(
-                        &mut tile,
-                        &path,
-                        Transform::IDENTITY,
-                        rule,
-                        &paint,
-                        None,
-                        (x, y),
-                    )
+                    let tile = fill(DeviceRect {
+                        x0: x,
+                        y0: y,
+                        x1: x + 1,
+                        y1: y + 1,
+                    })
                     .unwrap();
-                    let offset = usize::try_from((y * 8 + x) * 4).unwrap();
-                    assert_eq!(tile.data(), &full.data()[offset..offset + 4]);
+                    let at = (y * 8 + x) as usize;
                     let expected = if (2..4).contains(&x) && (1..7).contains(&y) {
                         128
                     } else {
                         0
                     };
-                    assert_eq!(tile.data()[3], expected);
-                    assert_eq!(clip.coverage()[(y * 8 + x) as usize], expected);
+                    assert_eq!(
+                        (tile[0], full[at], clip[at]),
+                        (expected, expected, expected)
+                    );
                 }
             }
         }
@@ -549,21 +689,19 @@ mod tests {
                 .x
                 .is_sign_positive()
         );
-        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
         let mut path = path.finish();
-        path.classify_fill(FillRule::EvenOdd, &Limits::default(), &mut 0)
+        let limits = Limits::default();
+        path.classify_fill(FillRule::EvenOdd, &limits, &mut 0)
             .unwrap();
-        fill_path(
-            &mut target,
-            &path,
-            transform,
-            FillRule::EvenOdd,
-            &Paint::Solid(Rgba8::BLACK),
-            None,
+        let coverage = fill(
+            window(8, 8),
+            (&path, transform, FillRule::EvenOdd),
+            &[],
+            &limits,
         )
         .unwrap();
-        assert_eq!(target.data()[(2 * 8) * 4 + 3], 0);
-        assert_eq!(target.data()[(3 * 8) * 4 + 3], 255);
+        assert_eq!(coverage[2 * 8], 0);
+        assert_eq!(coverage[3 * 8], 255);
     }
 
     #[test]
@@ -603,7 +741,8 @@ mod tests {
                 &Limits {
                     raster_work: 0,
                     ..limits
-                }
+                },
+                &mut crate::testing::bytes()
             )
             .unwrap()
             .is_none()
@@ -683,17 +822,14 @@ mod tests {
                     path.classify_fill(rule, &Limits::default(), &mut 0)
                         .unwrap();
                     assert_eq!(path.fill_region(rule), Some(FillRegion::EmptyBoundary));
-                    let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-                    fill_path(
-                        &mut target,
-                        &path,
-                        Transform::IDENTITY,
-                        rule,
-                        &Paint::Solid(Rgba8::BLACK),
-                        None,
+                    let coverage = fill(
+                        window(8, 8),
+                        (&path, Transform::IDENTITY, rule),
+                        &[],
+                        &Limits::default(),
                     )
                     .unwrap();
-                    assert!(target.data().as_chunks::<4>().0.iter().any(|p| p[3] != 0));
+                    assert!(coverage.iter().any(|&c| c != 0));
                 }
             }
         }
@@ -810,7 +946,13 @@ mod tests {
             let path = builder.finish();
             if ordinary_polygon(&path).unwrap() {
                 for rule in [FillRule::NonZero, FillRule::EvenOdd] {
-                    let full = classify_uncertain(&path, rule, &Limits::default(), &mut 0);
+                    let full = classify_uncertain(
+                        &path,
+                        rule,
+                        &Limits::default(),
+                        &mut 0,
+                        &mut crate::testing::bytes(),
+                    );
                     assert_eq!(full.unwrap(), FillRegion::Ordinary, "{path:?}");
                 }
             }
@@ -873,24 +1015,24 @@ mod tests {
             Some(FillRegion::EmptyBoundary)
         );
         let transform = Transform::new(1.0, 0.0, 0.0, 0.0, 0.0, 3.0);
-        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-        crate::stroke_path(
-            &mut target,
+        let coverage = stroke(
+            window(8, 8),
             &path,
-            transform,
             &Stroke {
                 width: 2.0,
                 ..Stroke::default()
             },
-            &Paint::Solid(Rgba8::BLACK),
-            None,
+            transform,
+            &Limits::default(),
         )
         .unwrap();
-        assert!(target.data().iter().all(|&v| v == 0));
+        assert!(coverage.iter().all(|&v| v == 0));
     }
 
     #[test]
     fn prepared_points_keep_floor_cells_and_original_segment_limits() {
+        // Classification counts the source segments; the band rasterizer
+        // charges the floor cell's four edges as flattened segments.
         let limits = Limits {
             path_segments: 2,
             ..Limits::default()
@@ -902,31 +1044,25 @@ mod tests {
             path.classify_fill(rule, &limits, &mut 0).unwrap();
             assert_eq!(path.fill_region(rule), Some(FillRegion::Points));
             assert!(
-                outline(&path, Transform::IDENTITY, rule, &limits)
-                    .unwrap()
-                    .is_none()
+                outline(
+                    &path,
+                    Transform::IDENTITY,
+                    rule,
+                    &limits,
+                    &mut crate::testing::bytes()
+                )
+                .unwrap()
+                .is_none()
             );
-            let mut target = Pixmap::new_with_limits(8, 8, Rgba8::TRANSPARENT, limits).unwrap();
-            fill_path(
-                &mut target,
-                &path,
-                Transform::IDENTITY,
-                rule,
-                &Paint::Solid(Rgba8::BLACK),
-                None,
+            let coverage = fill(
+                window(8, 8),
+                (&path, Transform::IDENTITY, rule),
+                &[],
+                &Limits::default(),
             )
             .unwrap();
-            assert_eq!(
-                target
-                    .data()
-                    .as_chunks::<4>()
-                    .0
-                    .iter()
-                    .filter(|p| p[3] != 0)
-                    .count(),
-                1
-            );
-            assert_eq!(target.data()[(2 * 8 + 3) * 4 + 3], 255);
+            assert_eq!(coverage.iter().filter(|&&c| c != 0).count(), 1);
+            assert_eq!(coverage[2 * 8 + 3], 255);
         }
     }
 

@@ -26,11 +26,14 @@ impl Clut {
         if !matches!(precision, 1 | 2) {
             return Err(Error::syntax("invalid ICC CLUT precision"));
         }
+        // At most 3 × 255^4 values, which fits u64 but not a 32-bit usize:
+        // counting in u64 lets the work budget, not the address width,
+        // decide, so every target reports the same error.
         let count = grids
             .iter()
-            .try_fold(3_usize, |n, &g| n.checked_mul(usize::from(g)))
-            .ok_or(Error::limit("ICC CLUT size overflow"))?;
-        budget.values(count)?;
+            .fold(3_u64, |n, &g| n.saturating_mul(u64::from(g)));
+        budget.values(usize::try_from(count).unwrap_or(usize::MAX))?;
+        let count = usize::try_from(count).map_err(|_| Error::limit("ICC CLUT size overflow"))?;
         let values = samples(&mut data.clone(), count, precision)?;
         Ok(Self {
             grids: grids.iter().map(|&n| usize::from(n)).collect(),

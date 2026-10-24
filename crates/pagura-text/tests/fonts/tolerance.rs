@@ -1,5 +1,7 @@
 //! Independent strict/repair oracles for extraction faults and font tolerance.
-use crate::support::{check_glyphs, dictionary, lines, open, rejected, row, uint, values};
+use crate::support::{
+    check_glyphs, dictionary, lines, load_text, open, rejected, row, uint, values,
+};
 use pagura_core::{Error, ErrorKind, Limits, Recovery, Result};
 use pagura_document::{Document, OpenOptions};
 use pagura_testkit::fixture;
@@ -70,15 +72,18 @@ fn extraction_repairs_reject_font_loading_in_strict_mode() -> Result<()> {
         "unicode-simple-source-length",
     ] {
         let strict = open(name, Recovery::Strict)?;
-        let error = rejected(PdfFont::load(&strict, dictionary(&strict)?))?;
+        let error = rejected(load_text(&strict, dictionary(&strict)?, None))?;
         check_strict_rejection(&strict, &error, name)?;
         // A cached nested parser failure must keep its original tag and context.
-        let repeated = rejected(PdfFont::load(&strict, dictionary(&strict)?))?;
+        let repeated = rejected(load_text(&strict, dictionary(&strict)?, None))?;
         assert_eq!(error, repeated, "{name}");
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;
-        let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
-        check_glyphs(&font, name, "out")?;
+        check_glyphs(
+            &load_text(&repaired, dictionary(&repaired)?, None)?,
+            name,
+            "out",
+        )?;
         for tag in tags(name)? {
             assert!(
                 repaired.diagnostics().iter().any(|item| item.tag() == tag),
@@ -102,8 +107,11 @@ fn painting_critical_repairs_require_permission_and_preserve_exact_glyphs() -> R
         assert_eq!(error.kind, ErrorKind::Syntax);
         check_strict_rejection(&strict, &error, name)?;
         let repaired = open(name, Recovery::Repair)?;
-        let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
-        check_glyphs(&font, name, "out")?;
+        check_glyphs(
+            &load_text(&repaired, dictionary(&repaired)?, None)?,
+            name,
+            "out",
+        )?;
         assert!(repaired.diagnostics().iter().any(|item| {
             Some(item.tag())
                 == tags(name)
@@ -136,8 +144,8 @@ fn oversized_cmap_blocks_remain_bounded() -> Result<()> {
 fn repeated_unicode_faults_use_bounded_document_diagnostics() -> Result<()> {
     let name = "repair-tounicode-diagnostic-cap";
     let document = open(name, Recovery::Repair)?;
-    let font = PdfFont::load(&document, dictionary(&document)?)?;
-    let glyphs = font.decode(b"A")?;
+    let (font, unicode) = load_text(&document, dictionary(&document)?, None)?;
+    let glyphs = font.decode(b"A", Some(&unicode))?;
     assert_eq!(glyphs[0].unicode.as_deref(), Some("A"));
     let expected = values(name, "out")?;
     let row = row(&expected[0])?;
@@ -161,8 +169,11 @@ fn null_unicode_entries_are_absent_without_repairs() -> Result<()> {
     ] {
         for recovery in [Recovery::Strict, Recovery::Repair] {
             let document = open(name, recovery)?;
-            let font = PdfFont::load(&document, dictionary(&document)?)?;
-            check_glyphs(&font, name, "out")?;
+            check_glyphs(
+                &load_text(&document, dictionary(&document)?, None)?,
+                name,
+                "out",
+            )?;
             assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
         }
     }
@@ -183,8 +194,11 @@ fn simple_font_dictionary_faults_are_reported_repairs() -> Result<()> {
         assert_eq!(error.repair, Some(tag), "{name}: {error}");
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;
-        let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
-        check_glyphs(&font, name, "out")?;
+        check_glyphs(
+            &load_text(&repaired, dictionary(&repaired)?, None)?,
+            name,
+            "out",
+        )?;
         assert_eq!(tags(name)?, [tag.as_str()], "{name}");
         assert!(
             repaired

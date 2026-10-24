@@ -16,4 +16,5 @@ pagura-core.workspace = true
 pagura-crypto.workspace = true
 
 [dev-dependencies]
+pagura-document.workspace = true
 pagura-testkit.workspace = true

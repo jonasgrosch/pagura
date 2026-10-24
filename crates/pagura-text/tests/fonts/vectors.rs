@@ -1,6 +1,8 @@
 //! Decoding vectors through the public API: Type 3, embedded programs,
 //! font stream repairs and explicit load failures.
-use crate::support::{dictionary, near, number, open, rejected, row, text, uint, values};
+use crate::support::{
+    dictionary, load_text, near, number, open, rejected, row, text, uint, values,
+};
 use pagura_core::{
     Error, Limits, Recovery, Result,
     syntax::{Origin, Parser},
@@ -22,7 +24,7 @@ fn only_outline_fonts_expose_their_program() -> Result<()> {
     let program = font
         .program()
         .ok_or_else(|| Error::syntax("missing embedded program"))?;
-    let glyph = font.decode(b"\0\x11")?.remove(0);
+    let glyph = font.decode(b"\0\x11", None)?.remove(0);
     let GlyphShape::Outline { program: drawn, .. } = glyph.shape else {
         return Err(Error::syntax("expected an outline glyph"));
     };
@@ -47,14 +49,14 @@ fn type3_decoding_vectors() -> Result<()> {
         "tounicode-empty",
     ] {
         let document = open(name, Recovery::Repair)?;
-        let font = PdfFont::load(&document, dictionary(&document)?)?;
+        let (font, unicode) = load_text(&document, dictionary(&document)?, None)?;
         assert_eq!(font.kind(), FontKind::Type3);
         assert_eq!(font.writing_mode(), WritingMode::Horizontal);
         assert!(
             font.type3_resources()
                 .is_some_and(|d| d.contains_key(b"ProcSet"))
         );
-        let actual = font.decode(&fixture("text", &format!("{name}.input")))?;
+        let actual = font.decode(&fixture("text", &format!("{name}.input")), Some(&unicode))?;
         let expected = values(name, "out")?;
         assert_eq!(actual.len(), expected.len(), "{name}");
         for (glyph, expected) in actual.iter().zip(&expected) {
@@ -85,7 +87,7 @@ fn type3_decoding_vectors() -> Result<()> {
                 );
             }
         }
-        assert!(font.decode(&[])?.is_empty());
+        assert!(font.decode(&[], Some(&unicode))?.is_empty());
     }
     Ok(())
 }
@@ -155,8 +157,8 @@ fn missing_cid_map_entry_uses_cid_zero() -> Result<()> {
 
 fn check_program_vector(name: &str) -> Result<()> {
     let document = open(name, Recovery::Repair)?;
-    let font = PdfFont::load(&document, dictionary(&document)?)?;
-    let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+    let (font, unicode) = load_text(&document, dictionary(&document)?, None)?;
+    let glyphs = font.decode(&fixture("text", &format!("{name}.input")), Some(&unicode))?;
     let expectations = values(name, "out")?;
     assert_eq!(glyphs.len(), expectations.len(), "{name}");
     let matrix_bytes = fixture("text", &format!("{name}.matrix"));

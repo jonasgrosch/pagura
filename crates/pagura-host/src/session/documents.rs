@@ -4,22 +4,26 @@ use crate::cache::{self, PageCache, PageKey};
 use crate::config::{SessionConfig, SessionLimits};
 use crate::protocol::{Field, PageRef, Response, SessionStats};
 use pagura::{
-    Diagnostic, DisplayList, Document, Error, Limits, OpenOptions, Page, Recovery, RenderContext,
-    RenderOptions, Result, TextPage,
+    Diagnostic, Document, Error, Limits, OpenOptions, Page, Recovery, Rect, RenderContext,
+    RenderOptions, Result, Scene, TextPage,
 };
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 /// One open document and its session state.
 #[derive(Debug)]
 struct Slot {
+    /// The document and its render store, which keeps recorded scenes.
     context: RenderContext,
+    /// The scenes recorded for tiles and bounds by page index; a scene is
+    /// retained while its store keeps it.
+    scenes: BTreeMap<u32, Weak<Scene>>,
     /// The selected viewport generation, zero before the first (1.1).
     generation: u32,
 }
 
-/// Open documents by handle, with the page caches they share. Closing a
-/// handle releases everything here in one place.
+/// Open documents by handle, with their render stores and the text cache
+/// they share. Closing a handle releases everything here in one place.
 #[derive(Debug)]
 pub(super) struct Documents {
     engine: Limits,
@@ -27,7 +31,6 @@ pub(super) struct Documents {
     slots: BTreeMap<u32, Slot>,
     next_handle: u32,
     source_bytes: usize,
-    lists: PageCache<DisplayList>,
     texts: PageCache<TextPage>,
 }
 
@@ -39,7 +42,6 @@ impl Documents {
             slots: BTreeMap::new(),
             next_handle: 1,
             source_bytes: 0,
-            lists: PageCache::new(config.session.list_cache_bytes),
             texts: PageCache::new(config.session.text_cache_bytes),
         }
     }
@@ -68,11 +70,17 @@ impl Documents {
         let pages = u32::try_from(document.page_count()?)
             .map_err(|_| Error::limit("page count exceeds protocol range"))?;
         let handle = self.next_handle;
-        let context = pagura::render_context(Arc::new(document));
+        let provider = pagura::provider::default_provider(self.engine);
+        let context = RenderContext::with_store_capacity(
+            Arc::new(document),
+            provider,
+            self.limits.store_bytes,
+        );
         self.slots.insert(
             handle,
             Slot {
                 context,
+                scenes: BTreeMap::new(),
                 generation: 0,
             },
         );
@@ -89,7 +97,6 @@ impl Documents {
             .slots
             .remove(&handle.get())
             .ok_or_else(|| unknown(handle))?;
-        self.lists.close(handle.get());
         self.texts.close(handle.get());
         let released = slot.context.document().original_bytes().len();
         self.source_bytes = self.source_bytes.saturating_sub(released);
@@ -125,25 +132,24 @@ impl Documents {
         })
     }
 
-    /// The page's compiled list from the cache, or compiled now and retained
-    /// if `admit` still agrees once compilation has finished.
-    pub(super) fn compiled(
-        &mut self,
-        page: PageRef,
-        admit: impl FnOnce() -> bool,
-    ) -> Result<Arc<DisplayList>> {
-        let key = key(page);
-        if let Some(list) = self.lists.get(key) {
-            return Ok(list);
-        }
+    /// The page's recorded scene, from its document's store or recorded now
+    /// and stored.
+    pub(super) fn scene(&mut self, page: PageRef) -> Result<Arc<Scene>> {
         let (context, found) = self.page(page)?;
-        let list = Arc::new(context.compile_page(found)?);
-        if admit()
-            && let Some(charge) = cache::list_charge(&list)
-        {
-            self.lists.insert(key, Arc::clone(&list), charge);
+        let scene = context.scene(found)?;
+        if let Some(slot) = self.slots.get_mut(&page.document.get()) {
+            slot.scenes.retain(|_, scene| scene.strong_count() > 0);
+            slot.scenes.insert(page.page.get(), Arc::downgrade(&scene));
         }
-        Ok(list)
+        Ok(scene)
+    }
+
+    /// Conservative painted bounds of the page, from its stored scene.
+    pub(super) fn content_bounds(&mut self, page: PageRef) -> Result<Option<Rect>> {
+        // Recording through `scene` first keeps the scene in the accounting.
+        self.scene(page)?;
+        let (context, found) = self.page(page)?;
+        context.content_bounds(found)
     }
 
     /// The page's extracted text from the cache, or extracted and retained now.
@@ -188,13 +194,25 @@ impl Documents {
         self.document(handle).map(Document::diagnostics)
     }
 
+    /// Source bytes, the bytes the render stores retain and the scenes they
+    /// keep.
     pub(super) fn stats(&self) -> SessionStats {
-        let (charged, lists) = self.lists.accounting();
+        let retained = self
+            .slots
+            .values()
+            .map(|slot| slot.context.retained_bytes())
+            .fold(0_usize, usize::saturating_add);
+        let scenes = self
+            .slots
+            .values()
+            .flat_map(|slot| slot.scenes.values())
+            .filter(|scene| scene.strong_count() > 0)
+            .count();
         SessionStats {
             source_bytes: u64::try_from(self.source_bytes).unwrap_or(u64::MAX),
-            cache_bytes: u64::try_from(charged).unwrap_or(u64::MAX),
+            cache_bytes: u64::try_from(retained).unwrap_or(u64::MAX),
             documents: u32::try_from(self.slots.len()).unwrap_or(u32::MAX),
-            lists: u32::try_from(lists).unwrap_or(u32::MAX),
+            lists: u32::try_from(scenes).unwrap_or(u32::MAX),
         }
     }
 
@@ -203,9 +221,10 @@ impl Documents {
         self.texts.accounting()
     }
 
+    /// The scene a document's store still keeps for a page.
     #[cfg(test)]
-    pub(super) fn cached_list(&mut self, document: u32, page: u32) -> Option<Arc<DisplayList>> {
-        self.lists.get(PageKey { document, page })
+    pub(super) fn stored_scene(&self, document: u32, page: u32) -> Option<Arc<Scene>> {
+        self.slots.get(&document)?.scenes.get(&page)?.upgrade()
     }
 }
 

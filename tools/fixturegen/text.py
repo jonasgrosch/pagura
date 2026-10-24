@@ -1319,7 +1319,9 @@ def tolerance_cases():
 
 
 def tolerance_paint_cases():
-    """Actual page pixels prove optional Unicode never selects the outline."""
+    """Actual page pixels prove optional Unicode never selects the outline,
+    and that painting never examines ToUnicode: malformed maps neither fail
+    a strict rendering nor are repaired by one (ADR 0034)."""
     from .paint import ttf, page
     from .model import Case, RENDER
     from .pdf import opaque_rectangles
@@ -1337,7 +1339,7 @@ def tolerance_paint_cases():
         objects[0]=objects[0][:-2]+b" /ToUnicode 8 0 R >>"
         objects.append(stream(cmap))
         yield Case("paint-tounicode-"+name,page(b"BT /F 20 Tf 4 4 Td (A) Tj ET",objects,b"<< /Font << /F 5 0 R >> >>"),RENDER,
-                   ("text-tounicode-recovery",),"Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",oracle=oracle,repairs=(tag,),strict_valid=False)
+                   ("text-tounicode-recovery",),"Painting never reads ToUnicode, so data that extraction rejects with "+tag+" neither fails nor repairs a rendering of the same analytic rectangle glyph",oracle=oracle)
     for name,cmap,tag in [
         ("identity",None,"font.cid-to-gid-identity"),
         ("codespace",b"1 begincodespacerange <00ff> <0102> endcodespacerange 1 begincidchar <00ff> 1 endcidchar","font.cmap-codespace"),

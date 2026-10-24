@@ -1,5 +1,5 @@
 //! Image dictionary validation (ISO 32000-2, 8.9.5, Tables 87–88).
-use crate::{DecodedImage, ImageKind, Samples};
+use crate::Samples;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result, Value};
 use pagura_document::Document;
 
@@ -310,54 +310,4 @@ pub(crate) fn packed_data<'a>(
             .repair(Diagnostic::new(tag, message).at(Position::Buffer(data.len().min(length))))?;
     }
     Ok(&data[..data.len().min(length)])
-}
-
-pub(crate) fn finish(
-    document: &Document,
-    dict: &Dictionary,
-    mut image: DecodedImage,
-) -> Result<DecodedImage> {
-    let stencil = boolean(dict, b"ImageMask", false)?;
-    if let Some(value) = dict.get(b"Decode").filter(|v| !v.is_null()) {
-        let decode = document
-            .resolve(value)?
-            .as_array()
-            .ok_or(Error::syntax("Decode must be an array"))?;
-        if decode.len() != usize::from(image.components) * 2 {
-            return Err(Error::syntax("invalid Decode length"));
-        }
-        image.decode = Some(
-            decode
-                .iter()
-                .map(|v| {
-                    document
-                        .resolve(v)?
-                        .as_number()
-                        .filter(|v| v.is_finite())
-                        .ok_or(Error::syntax("invalid Decode value"))
-                })
-                .collect::<Result<_>>()?,
-        );
-    }
-    image.interpolate = boolean(dict, b"Interpolate", false)?;
-    if stencil {
-        if image.bits_per_component != 1
-            || dict.get(b"ColorSpace").is_some_and(|v| !v.is_null())
-            || dict.get(b"Mask").is_some_and(|v| !v.is_null())
-            || dict.get(b"SMask").is_some_and(|v| !v.is_null())
-        {
-            return Err(Error::syntax("invalid stencil image dictionary"));
-        }
-        let inverted = match image.decode.as_deref() {
-            None | Some([0.0, 1.0]) => false,
-            Some([1.0, 0.0]) => true,
-            _ => return Err(Error::syntax("invalid stencil Decode")),
-        };
-        image.kind = ImageKind::Stencil { inverted };
-        return Ok(image);
-    }
-    if !matches!(image.mask, crate::MaskKind::Embedded(_)) {
-        image.mask = crate::mask::read(document, dict, &image)?;
-    }
-    Ok(image)
 }

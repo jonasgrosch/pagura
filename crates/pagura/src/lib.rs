@@ -8,15 +8,23 @@
 //! - the root holds documents, pages, the object model, rendering and
 //!   writing, the free functions, and the types their signatures name;
 //! - [`text`] holds the extracted-text model, [`provider`] the font and CMap
-//!   resources, and [`forms`], [`form_appearance`], [`navigation`] and
-//!   [`signatures`](mod@signatures) their domains.
+//!   resources, [`tags`] the stable tags of rendering, and [`forms`],
+//!   [`form_appearance`], [`navigation`] and [`signatures`](mod@signatures)
+//!   their domains.
 //!
-//! The free functions ([`compile_page`], [`compile_page_with_text`],
-//! [`text_page`], [`render_page`], [`render_tile`], [`prepare_form`]) use the
-//! feature-selected [`provider::default_provider`]. To compile or render many
-//! pages, keep a [`render_context`]; to use other font data, build one with
-//! [`render_context_with_provider`]. Positioned text extraction has its own
-//! output and leaves the rendering display list unchanged.
+//! A page is recorded once into a device-independent [`Scene`] and rendered
+//! from it by region at any resolution (ADR 0034), every pixel within one
+//! level of its exact result (ADR 0004). Text extraction runs the same
+//! interpreter without painting.
+//!
+//! The free functions ([`record_page`], [`text_page`], [`render_page`],
+//! [`render_tile`], [`appearance_text`], [`prepare_form`]) use the
+//! feature-selected [`provider::default_provider`]. To record or render many
+//! pages, or many tiles of one page, keep a [`render_context`], whose store
+//! keeps scenes, fonts, glyphs and images between renders; to use other font
+//! data, build one with [`render_context_with_provider`]. A page with
+//! in-memory form values renders through [`RenderContext::filled_scene`] and
+//! [`RenderContext::render_scene`].
 //!
 //! [`Document`] and [`RenderContext`] are `Send + Sync`: share one through an
 //! `Arc` across threads. See `docs/STATUS.md` for what is implemented;
@@ -85,26 +93,44 @@ pub use pagura_document::forms;
 pub use pagura_document::navigation;
 pub mod editing;
 pub mod signatures;
+/// Form-field and annotation appearance generation, kept as data (12.5.5,
+/// 12.7.4.3). Its functions take an explicit provider; [`prepare_form`] uses
+/// the feature-selected one.
+pub use pagura_appearance as form_appearance;
 pub use pagura_document::{
     Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenOptions, Page, Rotation,
 };
 pub use pagura_raster::{Pixmap, Point, Rgba8};
-/// Form appearance programs and resources kept as data (12.7.4.3). Its
-/// functions take an explicit provider; [`prepare_form`] uses the
-/// feature-selected one.
-pub use pagura_render::form_appearance;
 pub use pagura_render::{
-    Accuracy, DisplayList, OverprintPreview, RenderContext, RenderOptions, Tile, device_size,
+    Completion, OverprintPreview, RenderContext, RenderOptions, Scene, Tile, device_size,
 };
 pub use pagura_write::{Builder, NewObject};
 pub use text::{SearchOptions, TextMatch, TextPage};
+
+/// Stable [`Feature`] tags of rendering (ADR 0017), by the crate that owns
+/// their areas: compare them with [`Error::feature`]. Each module lists its
+/// tags in `ALL`. Text and font tags stay with their errors' own crates;
+/// [`form_appearance::information`] holds the appearance information tags.
+pub mod tags {
+    /// `annotation.` and `appearance.`: appearance generation.
+    pub use pagura_appearance::features as appearance;
+    /// `colorspace.` and `function.`: colour spaces and functions.
+    pub use pagura_color::features as color;
+    /// `image.`, `jpeg.` and `ccitt.`: image samples and decoders.
+    pub use pagura_image::features as image;
+    /// `graphics.`, `extgstate.`, `optionalcontent.`, `pattern.`,
+    /// `shading.`, `transparency.` and `xobject.`: content interpretation
+    /// and painting.
+    pub use pagura_interpret::features as content;
+}
 
 use provider::{Provider, default_provider};
 use std::sync::Arc;
 
 /// Creates document-bound rendering resources with the feature-selected
-/// [`provider::default_provider`]. Keep this context when compiling or
-/// rendering many pages. The opt-in `cjk-fonts` feature adds horizontal
+/// [`provider::default_provider`] and the default store capacity
+/// ([`RenderContext::DEFAULT_STORE_BYTES`]). Keep this context when recording
+/// or rendering many pages. The opt-in `cjk-fonts` feature adds horizontal
 /// collection-specific substitutes.
 ///
 /// ```
@@ -136,64 +162,34 @@ pub fn render_context_with_provider(
     }
 }
 
-/// Compiles one page. For many pages, keep a [`render_context`]. The default
-/// `bundled-data` feature provides standard-font substitutes and predefined CMaps;
-/// `cjk-fonts` adds horizontal CID substitutes and is off by default.
-/// This uses stored appearances and ignores NeedAppearances. Use
-/// [`compile_filled_page`] with an empty filler to honor NeedAppearances.
+/// Records one page into a scene with stored appearances, with the
+/// feature-selected font data. For many pages, keep a [`render_context`],
+/// whose [`RenderContext::scene`] keeps the scene for later renders. The
+/// default `bundled-data` feature provides standard-font substitutes and
+/// predefined CMaps; `cjk-fonts` adds horizontal CID substitutes and is off
+/// by default. `NeedAppearances` is honoured only by
+/// [`RenderContext::filled_scene`].
 ///
 /// # Errors
-/// As [`RenderContext::compile_page`].
-pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
-    match default_provider(document.limits()) {
-        Some(provider) => pagura_render::compile_page_with(document, page, provider.as_ref()),
-        None => pagura_render::compile_page(document, page),
-    }
-}
-
-/// Compiles a page using in-memory filled values (12.7.4.3).
-/// Uses the feature-selected font provider, as [`compile_page`]. Keep a
-/// [`render_context`] to share resources when re-rendering after edits.
-///
-/// # Errors
-/// As [`pagura_render::compile_filled_page`].
-pub fn compile_filled_page(filler: &forms::FormFiller<'_>, page: &Page) -> Result<DisplayList> {
-    let provider = default_provider(filler.document().limits());
-    pagura_render::compile_filled_page(filler, page, provider.as_deref())
-}
-
-/// Compiles one page and extracts its positioned text in the same pass, with
-/// the feature-selected font data, as [`compile_page`] and [`text_page`] do.
-/// For many pages, keep a [`render_context`].
-///
-/// # Errors
-/// As [`RenderContext::compile_page_with_text`].
-pub fn compile_page_with_text(document: &Document, page: &Page) -> Result<(DisplayList, TextPage)> {
+/// As [`RenderContext::scene`].
+pub fn record_page(document: &Document, page: &Page) -> Result<Scene> {
     let provider = default_provider(document.limits());
-    pagura_render::compile_page_with_text(document, page, provider.as_deref())
+    pagura_render::record_page(document, page, provider.as_deref())
 }
 
 /// Extracts actual positioned text from a stored widget appearance.
 /// Uses the feature-selected font provider, without interpreting the page.
 ///
 /// # Errors
-/// As [`pagura_render::appearance_text`].
+/// As [`RenderContext::appearance_text`].
 pub fn appearance_text(
     document: &Document,
     page: &Page,
     appearance: ObjectId,
     rect: Rect,
-) -> Result<pagura_render::PositionedText> {
-    #[cfg(feature = "bundled-data")]
-    return pagura_render::appearance_text(
-        document,
-        page,
-        appearance,
-        rect,
-        Some(&pagura_data::Bundled::new(document.limits())),
-    );
-    #[cfg(not(feature = "bundled-data"))]
-    pagura_render::appearance_text(document, page, appearance, rect, None)
+) -> Result<text::PositionedText> {
+    let provider = default_provider(document.limits());
+    pagura_render::appearance_text(document, page, appearance, rect, provider.as_deref())
 }
 
 /// Extracts one page's positioned text, with the feature-selected font data.
@@ -221,26 +217,29 @@ pub fn text_page(document: &Document, page: &Page) -> Result<TextPage> {
 /// Renders one page. For many pages, keep a [`render_context`].
 ///
 /// # Errors
-/// As [`compile_page`] and [`DisplayList::render`].
+/// As [`RenderContext::render_page`].
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
+    let provider = default_provider(document.limits());
+    pagura_render::render_page(document, page, options, provider.as_deref())
 }
 
-/// Renders one tile. For repeated work, keep a [`render_context`].
+/// Renders one tile. For repeated work, keep a [`render_context`], which
+/// records the page once for all its tiles.
 ///
 /// # Errors
-/// As [`compile_page`] and [`DisplayList::render_tile`].
+/// As [`RenderContext::render_tile`].
 pub fn render_tile(
     document: &Document,
     page: &Page,
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
+    let provider = default_provider(document.limits());
+    pagura_render::render_tile(document, page, options, tile, provider.as_deref())
 }
 
 /// Prepares normal widget appearances for an in-memory form session (12.7.4.3).
-/// Uses the feature-selected font provider, as [`compile_page`]. The returned
+/// Uses the feature-selected font provider, as [`render_page`]. The returned
 /// programs and document-relative resources remain data; nothing is saved.
 ///
 /// # Errors

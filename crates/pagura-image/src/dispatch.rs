@@ -1,32 +1,11 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::deferred::{SampleBuffers, SampleLayout};
-use crate::{DecodedImage, ImageKind, MaskKind, Samples, dct, jbig2, parameters as p};
-use pagura_codec::ImageCodec;
+use crate::{DecodedImage, Samples, dct, jbig2, parameters as p};
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
 use pagura_document::Document;
 
-type Codec = (ImageCodec, Option<Dictionary>);
-
-pub(crate) fn decode(
-    document: &Document,
-    dict: &Dictionary,
-    data: std::borrow::Cow<'_, [u8]>,
-    codec: Option<&Codec>,
-    diagnostics: &mut Diagnostics,
-) -> Result<DecodedImage> {
-    decode_with(
-        document,
-        dict,
-        data,
-        codec,
-        (SampleLayout::Interleaved, None),
-        diagnostics,
-    )
-}
-
 /// Samples of unfiltered image data. Whole bytes of exactly the declared
 /// extent are the samples themselves when the data is owned.
-fn unfiltered(
+pub(crate) fn unfiltered(
     data: std::borrow::Cow<'_, [u8]>,
     (width, height, components, bits): (u32, u32, u8, u8),
     limits: &pagura_core::Limits,
@@ -44,121 +23,13 @@ fn unfiltered(
     })
 }
 
-pub(crate) fn decode_with(
-    document: &Document,
+/// The data of the `JBIG2Globals` stream of an image whose JBIG2 filter has
+/// `params` (7.4.7).
+pub(crate) fn jbig2_globals<'a>(
+    document: &'a Document,
     dict: &Dictionary,
-    data: std::borrow::Cow<'_, [u8]>,
-    codec: Option<&Codec>,
-    (layout, buffers): (SampleLayout, Option<&SampleBuffers>),
-    diagnostics: &mut Diagnostics,
-) -> Result<DecodedImage> {
-    let (deferred, cells) = (layout == SampleLayout::Deferred, layout.cells());
-    let (width, height) = p::dimensions(dict)?;
-    let limits = document.limits();
-    p::budget(width, height, 1, 1, &limits)?;
-    let stencil = p::boolean(dict, b"ImageMask", false)?;
-    let (space, components) = if stencil {
-        (None, 1)
-    } else if let Some(space) = dict.get(b"ColorSpace").filter(|v| !v.is_null()) {
-        let (value, n) = p::resolve_space(document, space)?;
-        (Some(value), n)
-    } else if matches!(codec, Some((ImageCodec::Jpx, _))) {
-        (None, 0)
-    } else {
-        return Err(Error::syntax("missing image ColorSpace"));
-    };
-    let bits = if matches!(codec, Some((ImageCodec::Jpx, _))) {
-        1
-    } else {
-        u8::try_from(p::integer(dict, b"BitsPerComponent", i64::from(stencil))?)
-            .ok()
-            .filter(|b| matches!(b, 1 | 2 | 4 | 8 | 16))
-            .ok_or(Error::syntax("invalid image BitsPerComponent"))?
-    };
-    if !matches!(codec, Some((ImageCodec::Jpx, _))) {
-        p::budget(width, height, components, bits, &limits)?;
-    }
-    let mut image = DecodedImage {
-        width,
-        height,
-        components,
-        bits_per_component: 1,
-        samples: Samples::Bytes(Vec::new()),
-        kind: if stencil {
-            ImageKind::Stencil { inverted: false }
-        } else {
-            ImageKind::Color { color_space: space }
-        },
-        decode: None,
-        mask: MaskKind::None,
-        interpolate: false,
-        reduction: None,
-    };
-    let params = codec.and_then(|(_, params)| params.as_ref());
-    match codec.map(|(codec, _)| codec) {
-        None if deferred && bits == 1 && components == 1 => {
-            image.bits_per_component = 1;
-            image.samples = p::packed(&data, width, height, &limits, diagnostics)?;
-        }
-        None => {
-            image.bits_per_component = bits;
-            image.samples = unfiltered(
-                data,
-                (width, height, components, bits),
-                &limits,
-                diagnostics,
-            )?;
-        }
-        Some(ImageCodec::Dct) => {
-            decode_dct(
-                &data,
-                params,
-                (&mut image, bits),
-                (deferred, cells, buffers),
-                &limits,
-                diagnostics,
-            )?;
-        }
-        Some(ImageCodec::CcittFax) => {
-            if bits != 1 || components != 1 {
-                return Err(Error::syntax("CCITT requires one-bit components"));
-            }
-            image.samples = crate::fax_image::decode(
-                &data,
-                params,
-                (width, height, deferred),
-                &limits,
-                diagnostics,
-            )?;
-        }
-        Some(ImageCodec::Jbig2) => {
-            if bits != 1 || components != 1 {
-                return Err(Error::syntax("JBIG2 requires one-bit components"));
-            }
-            image.samples = decode_jbig2(document, dict, &data, params, width, height)?;
-        }
-        Some(ImageCodec::Jpx) => {
-            crate::jpx_image::decode(&data, dict, &mut image, &limits, diagnostics)?;
-        }
-    }
-    let mut dictionary = dict.clone();
-    if matches!(codec, Some((ImageCodec::Jpx, _)))
-        && dict.get(b"ColorSpace").is_none_or(Value::is_null)
-        && !stencil
-    {
-        dictionary.remove(b"Decode");
-    }
-    p::finish(document, &dictionary, image)
-}
-
-fn decode_jbig2(
-    document: &Document,
-    dict: &Dictionary,
-    data: &[u8],
     params: Option<&Dictionary>,
-    width: u32,
-    height: u32,
-) -> Result<Samples> {
+) -> Result<Option<std::borrow::Cow<'a, [u8]>>> {
     // Preserve identity for stream-valued parameters using the original
     // dictionary; resolved filter parameters hold only object values.
     let original = dict
@@ -169,7 +40,7 @@ fn decode_jbig2(
         Some(Value::Array(values)) => values.last().map(|v| document.resolve(v)).transpose()?,
         value => value,
     };
-    let globals = original
+    original
         .and_then(Value::as_dictionary)
         .or(params)
         .and_then(|p| p.get(b"JBIG2Globals"))
@@ -179,8 +50,17 @@ fn decode_jbig2(
                 .ok_or(Error::syntax("JBIG2Globals must reference a stream"))?;
             document.stream_data(document.object(id)?)
         })
-        .transpose()?;
-    let decoded = jbig2::decode(data, globals.as_deref(), &document.limits())?;
+        .transpose()
+}
+
+/// The samples of a JBIG2 image of `width` × `height` with `globals`.
+pub(crate) fn jbig2_samples(
+    data: &[u8],
+    globals: Option<&[u8]>,
+    (width, height): (u32, u32),
+    limits: &pagura_core::Limits,
+) -> Result<Samples> {
+    let decoded = jbig2::decode(data, globals, limits)?;
     if decoded.width != width || decoded.height != height {
         return Err(Error::syntax(
             "JBIG2 dimensions disagree with image dictionary",
@@ -191,17 +71,17 @@ fn decode_jbig2(
     for byte in &mut inverted {
         *byte = !*byte;
     }
-    let count = p::budget(width, height, 1, 1, &document.limits())?;
+    let count = p::budget(width, height, 1, 1, limits)?;
     if count
         .checked_add(inverted.len())
-        .is_none_or(|v| v > document.limits().decoded_bytes)
+        .is_none_or(|v| v > limits.decoded_bytes)
     {
         return Err(Error::limit("JBIG2 adapter sample budget exceeded"));
     }
-    p::unpack(&inverted, width, height, 1, 1, &document.limits())
+    p::unpack(&inverted, width, height, 1, 1, limits)
 }
 
-fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
+pub(crate) fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
     params
         .and_then(|dict| dict.get(b"ColorTransform"))
         .map(|v| {
@@ -211,19 +91,33 @@ fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
         .transpose()
 }
 
-/// Decodes DCTDecode samples into `image`, in native planes when `deferred`
-/// and otherwise with `cells` samples per eight-sample block axis.
+/// How DCTDecode samples are decoded.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct DctOptions {
+    /// Whether native planes are kept where the frame allows.
+    pub(crate) deferred: bool,
+    /// Whether native planes store rows and columns exchanged.
+    pub(crate) transposed: bool,
+}
+
+/// Decodes DCTDecode samples into `image` as `options` ask. Returns whether
+/// the samples hold rows and columns exchanged: native planes asked for
+/// that way; other samples never are.
 ///
 /// An independently validated lossless image cannot be a JPEG with a damaged
 /// SOI: all Flate framing, checksums, row tags and sample counts must agree.
-fn decode_dct(
+pub(crate) fn decode_dct(
     data: &[u8],
     params: Option<&Dictionary>,
     (image, bits): (&mut DecodedImage, u8),
-    (deferred, cells, buffers): (bool, u8, Option<&SampleBuffers>),
+    options: DctOptions,
     limits: &pagura_core::Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<()> {
+) -> Result<bool> {
+    let DctOptions {
+        deferred,
+        transposed,
+    } = options;
     let (width, height, components) = (image.width, image.height, image.components);
     image.bits_per_component = 8;
     let transform = color_transform(params)?;
@@ -231,31 +125,18 @@ fn decode_dct(
     // ordinary decoder below then reports its own errors and repairs.
     if deferred
         && bits == 8
-        && let Some(decoded) = dct::decode_deferred(data, transform, limits, buffers, diagnostics)
+        && let Some(decoded) = dct::decode_deferred(
+            data,
+            transform,
+            limits,
+            dct::Native { transposed },
+            diagnostics,
+        )
     {
-        let (size, samples) = match decoded {
-            dct::Deferred::Planar(planar) => (
-                (planar.width(), planar.height(), 3),
-                Samples::Planar(planar),
-            ),
-            dct::Deferred::Gray(image) => (
-                (
-                    image.width as usize,
-                    image.height as usize,
-                    image.components,
-                ),
-                Samples::Bytes(image.samples),
-            ),
-        };
-        if size != (width as usize, height as usize, components) {
-            return Err(Error::syntax(
-                "JPEG metadata disagrees with image dictionary",
-            ));
-        }
-        image.samples = samples;
-        return Ok(());
+        native_samples(image, decoded, (components, transposed))?;
+        return Ok(transposed);
     }
-    let decoded = match dct::decode_cells(data, transform, limits, diagnostics, cells) {
+    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
         Ok(decoded) => decoded,
         Err(error) => {
             if !data.starts_with(&[0xff, 0xd8])
@@ -271,13 +152,13 @@ fn decode_dct(
                     .at(pagura_core::Position::Buffer(0)),
                 )?;
                 image.samples = Samples::Bytes(samples);
-                return Ok(());
+                return Ok(false);
             }
             return Err(error);
         }
     };
-    if decoded.width != dct::scaled_length(width, decoded.cells)
-        || decoded.height != dct::scaled_length(height, decoded.cells)
+    if decoded.width != width
+        || decoded.height != height
         || decoded.components != components
         || bits != 8
     {
@@ -286,15 +167,42 @@ fn decode_dct(
         ));
     }
     image.samples = Samples::Bytes(decoded.samples);
-    if decoded.cells < 8 {
-        image.width = decoded.width;
-        image.height = decoded.height;
-        image.reduction = Some(crate::Reduction {
-            cells: decoded.cells,
-            width,
-            height,
-        });
+    Ok(false)
+}
+
+/// Places a deferred decode's samples in `image`, checking them against
+/// the dictionary's dimensions and components, exchanged when `transposed`.
+fn native_samples(
+    image: &mut DecodedImage,
+    decoded: dct::Deferred,
+    (components, transposed): (u8, bool),
+) -> Result<()> {
+    let (size, samples) = match decoded {
+        dct::Deferred::Planar(planar) => (
+            (planar.width(), planar.height(), 3),
+            Samples::Planar(planar),
+        ),
+        dct::Deferred::Gray(image) => (
+            (
+                image.width as usize,
+                image.height as usize,
+                image.components,
+            ),
+            Samples::Bytes(image.samples),
+        ),
+    };
+    let declared = if transposed {
+        (image.height, image.width)
+    } else {
+        (image.width, image.height)
+    };
+    if size != (declared.0 as usize, declared.1 as usize, components) {
+        return Err(Error::syntax(
+            "JPEG metadata disagrees with image dictionary",
+        ));
     }
+    image.samples = samples;
+    (image.width, image.height) = declared;
     Ok(())
 }
 
