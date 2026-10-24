@@ -348,7 +348,7 @@ impl BandRasterizer {
             };
             let window = y..end.min(y.saturating_add(fit));
             y = window.end;
-            if !self.cells.open(scan, window.clone()) {
+            if !self.cells.open_dense(scan, window.clone()) {
                 continue;
             }
             let mut work = items.accumulate::<false>(&mut self.cells, &window);
@@ -546,7 +546,7 @@ impl Items<'_> {
                 // Count every visited side, including those whose placed
                 // endpoints collapse to a horizontal line.
                 work = work.saturating_add(view.raw_count().unwrap_or(usize::MAX));
-                for (_, line) in view.indexed() {
+                view.for_each(|line| {
                     if !line.is_horizontal() {
                         // The owned all-items path adds the default origin
                         // to already placed endpoints; keep its signed zeros.
@@ -556,7 +556,7 @@ impl Items<'_> {
                         };
                         work += Self::line::<MEASURE>(cells, line);
                     }
-                }
+                });
             }
         }
         for m in self.curves {
