@@ -263,3 +263,52 @@ fn equal_endpoint_nonpoint_contours_keep_their_covered_region() {
         assert!(largest <= 1);
     }
 }
+
+/// A kept quadratic has no reduction error, but evaluating H at two large,
+/// nearly equal parameters can still lose several coverage levels.
+#[test]
+fn kept_quadratic_integrals_certify_large_cancellation() {
+    let limits = Limits::default();
+    let area = area(0, 0, 1, 1, 1);
+    for m in [10_000_000.0, 1_000_000.0, 98_304.0, 8192.0, 512.0, 64.0] {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::default());
+        path.quad_to(Point::new(m / 4.0, m / 2.0), Point::new(m, m))
+            .unwrap();
+        path.line_to(Point::new(m + 2.0, m)).unwrap();
+        path.line_to(Point::new(m + 2.0, 0.0)).unwrap();
+        path.close();
+        let edges =
+            Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        let origin = Point::new(1.002_936_555_945 - m, 1.0 - m);
+        // In pixel-local coordinates z=M(1-t), x=u-3z/2+z²/(2M).
+        // Integrate between both pixel sides, x=0 and x=1, so the short
+        // section outside the right side does not contribute negative area.
+        // These roots and integrals avoid the production antiderivative.
+        let u = origin.x + m;
+        let integral = |value: f64| {
+            let z = 2.0 * value / (1.5 + (2.25 - 2.0 * value / m).sqrt());
+            value * z - 0.75 * z * z + z * z * z / (6.0 * m)
+        };
+        let exact = 1.0 - integral(u) + integral(u - 1.0);
+        let expected = pagura_raster::quantize_unit(exact);
+        match Shape::glyph_with_clip(&edges, origin, None, &options(area, &limits)) {
+            Ok(Some(shape)) => {
+                let actual = raster(&area, Some(&shape), None).0[0];
+                assert_eq!(actual, expected, "M={m}, exact levels={}", exact * 255.0);
+            }
+            Err(error) => {
+                assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+                assert!(matches!(
+                    error.message,
+                    "unresolved curve coverage interval" | "curve subdivision depth exceeded"
+                ));
+                eprintln!(
+                    "quadratic M={m}: bounded precision refusal: {}",
+                    error.message
+                );
+            }
+            Ok(None) => panic!("the quadratic covers this pixel"),
+        }
+    }
+}

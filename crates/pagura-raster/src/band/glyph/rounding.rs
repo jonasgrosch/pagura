@@ -1,10 +1,10 @@
 //! Coverage-byte certification at the preparation boundary. A small area
 //! error alone cannot survive repeated composition: both ends of the true
 //! coverage interval must quantize to the byte execution will emit. Exact
-//! quadratics integrated in closed form carry only the kernel's arithmetic
-//! error, as straight edges do, and need no certificate.
+//! quadratics integrated in closed form skip inspection only while a cached
+//! arithmetic allowance stays small at their actual placement.
 
-use super::{GlyphEdges, Kind, flattened_with, translated};
+use super::{GlyphEdges, Kind, Relative, flattened_with, translated};
 use crate::band::cells::Cells;
 use crate::band::clip::Paths;
 use crate::band::edges::{self, Bounds, Line};
@@ -17,6 +17,55 @@ use pagura_core::{Error, Meter, Result};
 
 const AREA: f64 = 1.0 / 4096.0;
 const ROUNDS: i32 = 12;
+
+/// The direct path reserves all but 1/1024 of a coverage level for the
+/// ordinary kernel's rounding margin. This is an arithmetic admission
+/// bound, not a source-curve approximation allowance.
+const DIRECT: f64 = 1.0 / (255.0 * 1024.0);
+
+/// Cached once per source outline and linear map. Kept quadratics remove
+/// reduction error, but not cancellation in H or mapping and translation.
+#[derive(Debug)]
+pub(super) struct Direct {
+    arithmetic: f64,
+    magnitude: f64,
+    pieces: f64,
+}
+
+impl Direct {
+    pub(super) fn new(outline: &Path, linear: Transform, relative: &Relative) -> Option<Self> {
+        if outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. }))
+        {
+            return None;
+        }
+        let pieces = f64::from(
+            u32::try_from(
+                outline
+                    .segments()
+                    .len()
+                    .max(relative.lines.len() + relative.curves.len()),
+            )
+            .unwrap_or(u32::MAX),
+        );
+        Some(Self {
+            arithmetic: relative
+                .curves
+                .iter()
+                .map(curve::Mono::arithmetic_allowance)
+                .sum(),
+            magnitude: mapped_magnitude(outline, linear, Point::default()),
+            pieces,
+        })
+    }
+
+    fn admits(&self, origin: Point) -> bool {
+        let magnitude = self.magnitude + origin.x.abs().max(origin.y.abs());
+        self.arithmetic + 384.0 * f64::EPSILON * magnitude * self.pieces <= DIRECT
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 struct Pixel {
@@ -68,6 +117,9 @@ pub(super) fn certify(
     mut shape: Shape,
     options: &Prep<'_>,
 ) -> Result<Shape> {
+    if exact(edges, origin, &shape, options) {
+        return Ok(shape);
+    }
     let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
     let Some(source) = Source::of(edges, origin, &mut work)? else {
         return Ok(shape);
@@ -75,9 +127,6 @@ pub(super) fn certify(
     let Source {
         outline, linear, ..
     } = source;
-    if exact(outline, &shape, options) {
-        return Ok(shape);
-    }
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
@@ -200,17 +249,16 @@ fn analytic(shape: &Shape) -> bool {
     }
 }
 
-/// Whether `shape` integrates `outline`'s own quadratics in closed form:
-/// analytic geometry from an outline without cubics, crossed by no clip
-/// path. Its curves are the source's, mapped and placed, so its bytes are
-/// correctly rounded up to the kernel's arithmetic, as for straight edges.
-fn exact(outline: &Path, shape: &Shape, options: &Prep<'_>) -> bool {
+/// Direct integration is reserved for well-conditioned kept quadratics.
+/// Ill-conditioned mapping, large pieces or placement cancellation use the
+/// measured certificate even though their reduction error is zero.
+fn exact(edges: &GlyphEdges, origin: Point, shape: &Shape, options: &Prep<'_>) -> bool {
     analytic(shape)
         && options.clip.and_then(|clip| clip.paths()).is_none()
-        && !outline
-            .segments()
-            .iter()
-            .any(|s| matches!(s, Segment::CubicTo { .. }))
+        && edges
+            .direct
+            .as_ref()
+            .is_some_and(|direct| direct.admits(origin))
 }
 
 /// Translation and row/intersection arithmetic can move a boundary. The
@@ -218,6 +266,14 @@ fn exact(outline: &Path, shape: &Shape, options: &Prep<'_>) -> bool {
 /// displacements inside any pixel. This broad initial bound only selects
 /// pixels for the local, original-control certificate below.
 fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Shape) -> f64 {
+    let magnitude = mapped_magnitude(outline, linear, origin);
+    let pieces = f64::from(
+        u32::try_from(outline.segments().len().max(shape.boundaries())).unwrap_or(u32::MAX),
+    );
+    384.0 * f64::EPSILON * magnitude * pieces
+}
+
+fn mapped_magnitude(outline: &Path, linear: Transform, origin: Point) -> f64 {
     let mut magnitude = origin.x.abs().max(origin.y.abs()).max(1.0);
     for segment in outline.segments() {
         let mut include = |p: Point| {
@@ -239,10 +295,7 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
             Segment::Close => {}
         }
     }
-    let pieces = f64::from(
-        u32::try_from(outline.segments().len().max(shape.boundaries())).unwrap_or(u32::MAX),
-    );
-    384.0 * f64::EPSILON * magnitude * pieces
+    magnitude
 }
 
 fn ambiguous(

@@ -12,6 +12,7 @@ fn stored(points: Vec<Point>, starts: Vec<usize>) -> Arc<GlyphEdges> {
     assert!(certified(&polygon, 0.0, &mut crate::testing::bytes()).unwrap());
     let summary = Summary::new(&polygon).unwrap();
     Arc::new(GlyphEdges {
+        direct: None,
         retained: size_of::<GlyphEdges>() + polygon.heap_bytes(),
         hull: polygon.bounds().map(|[a, b]| [a.x, a.y, b.x, b.y]),
         kind: Kind::Polygon {

@@ -137,7 +137,12 @@ quadrilateral joined to the chain of each canonical cap polygon beyond its
 end line, entered and left where the polygon's sides cross that line. Cap
 vertices behind the end line must lie across the quadrilateral within eight
 rounding units of their coordinates, so the piece differs from the
-components' union only by slivers of that width.
+components' union only by slivers of that width. Admission bounds crossing
+and side rounding by 64 rounding units at the endpoints' construction-space
+magnitude. This must fit in 1/4096 of the pen's flattening tolerance, which
+already accounts for the pen-to-device map's stretch. Otherwise the canonical
+components use row union: construction-space ulps cannot justify the shortcut
+when a large offset and magnification make them visible in device space.
 
 Uncertified rows, and rows crossed by both a mark and a path clip, go through
 one exact row union during preparation. It cuts at edge ends and crossings,
@@ -243,10 +248,15 @@ unquantized areas and quantizes both ends of their source-curve intervals,
 including reduction, mapping and translation error. An unambiguous interval
 certifies the byte that ordinary execution emits. A placement that
 integrates its outline's own quadratic segments in closed form, crossed by
-no clip path, approximates nothing: like straight edges, it carries only
-mapping, translation and kernel arithmetic error, so its bytes are the
-correctly rounded exact areas except within that margin, and it is not
-inspected. Polygon placements and reduced cubics are. Ambiguous pixels are
+no clip path, has no reduction error, but its mapping, translation and kernel
+arithmetic can still be ill-conditioned. A cached whole-outline allowance
+includes the absolute mapping products and a quadratic coefficient-scale
+bound on root residuals, integrals and cell accumulation. At each placement,
+translation is included too. Only an allowance below 1/1024 of one coverage
+level skips inspection; larger or non-finite allowances use the measured
+certificate. The admission work is cached with the linear glyph map, so
+ordinary repeated placements perform only a constant-size check. Polygon
+placements and reduced cubics are always inspected. Ambiguous pixels are
 resolved from the original stored curves in a pixel-local frame using the
 shared bounded subdivision and row-union arithmetic. Accepted control hulls
 bound the area uncertainty under the canonical clips. Integer localization

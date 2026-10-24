@@ -41,6 +41,7 @@ pub struct GlyphEdges {
     retained: usize,
     hull: Option<[f64; 4]>,
     pub(super) kind: Kind,
+    direct: Option<rounding::Direct>,
 }
 
 #[derive(Debug)]
@@ -186,10 +187,20 @@ impl GlyphEdges {
         let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
         bytes.charge_items::<Self>(1)?;
         let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        let relative = match &kind {
+            Kind::Curve { relative, .. } => Some(relative),
+            Kind::Polygon { relative, .. } => relative.as_deref(),
+        };
+        // A nonpoint spline accompanied by one canonical point contour
+        // integrates its source quadratics too. Keep the allowance on the
+        // glyph owner so both representations share the same admission.
+        let direct =
+            relative.and_then(|relative| rounding::Direct::new(outline, transform, relative));
         Ok(Self {
             retained: bytes.used(),
             hull,
             kind,
+            direct,
         })
     }
 

@@ -258,6 +258,18 @@ impl Mono {
             + f64::MIN_POSITIVE
     }
 
+    /// A placement-independent admission allowance for direct accumulation.
+    /// On a monotone piece, roots are bounded through their coordinate
+    /// residuals, rather than an inverse derivative. Coordinate operations
+    /// scale with the coefficients; H, offset-height products and the sum
+    /// of column heights scale at most quadratically. The broad allowance
+    /// includes both ends, all columns in one row, and coefficient setup.
+    /// Large pieces still use the measured per-pixel certificate.
+    pub(crate) fn arithmetic_allowance(&self) -> f64 {
+        let scale = 1.0 + self.bx.abs() + self.ax.abs() + self.by.abs() + self.ay.abs();
+        4096.0 * f64::EPSILON * scale * scale
+    }
+
     /// Error of the cell's antiderivative difference and offset-height
     /// product, before their potentially large cancellation.
     pub(crate) fn area_error(&self, times: [f64; 2], offset: f64, height: f64) -> f64 {

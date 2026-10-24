@@ -404,8 +404,8 @@ fn turns(
 /// lines: the segment is longer than the pen, and every cap vertex on or
 /// behind its end line lies across the quadrilateral. Vertices within eight
 /// rounding units of their coordinates outside its sides, and the rounding
-/// of the two crossings per end, move the boundary by slivers that narrow,
-/// within the kernel's own error.
+/// of the two crossings per end, move the boundary by slivers that narrow.
+/// Admission also bounds that rounding after the pen-to-device map.
 fn capsule(
     out: &mut PathBuilder,
     (p, q): (Point, Point),
@@ -416,6 +416,15 @@ fn capsule(
 ) -> Result<bool> {
     let radius = pen.radius;
     if radius <= 0.0 || length <= 2.0 * radius {
+        return Ok(false);
+    }
+    // The cap/end-line crossings introduce new vertices in construction
+    // space. Coordinate ulps can become visible under magnification, even
+    // for a short device-space stroke. The pen tolerance already includes
+    // the linear map's stretch; reserve only 1/4096 of it for these slivers.
+    // Sixty-four units cover the dot products, interpolation and side slack.
+    let magnitude = (p.x.abs() + p.y.abs()).max(q.x.abs() + q.y.abs()) + radius;
+    if 64.0 * f64::EPSILON * magnitude > pen.tolerance / 4096.0 {
         return Ok(false);
     }
     let before = bytes.used().saturating_sub(out.heap_bytes());
