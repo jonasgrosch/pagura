@@ -262,14 +262,14 @@ fn handoffs_reset_at_chunks_and_carried_winding_changes() {
     let input = chunked_input();
     assert!(input.len() > CHUNK);
     let (out, resolver) = differential(&input, &[FillRule::NonZero; 2]);
-    assert!(!resolver.cuts.is_empty());
+    assert_ne!(resolver.cuts, []);
     assert_eq!(area(&out), 18.0);
     assert!(resolver.frontier_successes > 0);
 }
 
 #[test]
 fn empty_singleton_and_unsupported_domains_keep_the_old_route() {
-    assert!(differential(&[], &[FillRule::NonZero]).0.is_empty());
+    assert_eq!(differential(&[], &[FillRule::NonZero]).0, []);
     let input = pieces(&chain(0.0, 2.0, 0)[..4]);
     let (out, resolver) = differential(&input, &[FillRule::NonZero]);
     assert_eq!(out.len(), 4);
