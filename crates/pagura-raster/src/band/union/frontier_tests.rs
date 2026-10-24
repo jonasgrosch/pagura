@@ -173,6 +173,7 @@ fn selected_handoffs_keep_each_original_kink_and_side_order() {
     assert_eq!(bits(&out), bits(&expected));
     assert_eq!(area(&out), 1.75);
     assert!(resolver.frontier_successes >= 3);
+    assert!(resolver.frontier_replacements >= 3);
 }
 
 #[test]
@@ -384,4 +385,68 @@ fn asymmetric_open_owners_keep_the_original_swap_and_future_growth_history() {
         assert_eq!(a, b);
         assert_eq!(actual.frontier_successes, 0);
     }
+}
+
+#[test]
+fn refused_implicit_heights_keep_the_next_rows_reservation_history() {
+    let input = pieces(&chain(0.0, 2.0, 0));
+    let rules = [FillRule::NonZero];
+    let full = observe(
+        &mut Resolver {
+            original_frontier: true,
+            ..Resolver::default()
+        },
+        &input,
+        &rules,
+        &mut Vec::new(),
+        (usize::MAX, usize::MAX),
+    );
+    // Calibrate from the old route rather than duplicate its fee formula.
+    // Stop after its endpoint initialization but before general placement.
+    let (limit, mut original, old_error) = (0..full.work)
+        .find_map(|limit| {
+            let mut resolver = Resolver {
+                original_frontier: true,
+                ..Resolver::default()
+            };
+            let observation = observe(
+                &mut resolver,
+                &input,
+                &rules,
+                &mut Vec::new(),
+                (limit, usize::MAX),
+            );
+            (observation.error.is_some()
+                && resolver.rows.len() == input.len()
+                && resolver.order.is_empty())
+            .then_some((limit, resolver, observation))
+        })
+        .expect("the old crossing stage has a charged refusal boundary");
+    assert_eq!(original.heights.len(), input.len() + 2);
+    let mut actual = Resolver::default();
+    let observed = observe(
+        &mut actual,
+        &input,
+        &rules,
+        &mut Vec::new(),
+        (limit, usize::MAX),
+    );
+    assert_eq!(observed, old_error);
+
+    // This row crosses the doubling boundary of the retained height
+    // allocation. A shorter physical length left by an error would alter
+    // its next reservation, although the first error's capacities matched.
+    let mut followup: Vec<_> = (0..8_u32)
+        .map(|n| {
+            let a = f64::from(n) * 0.125;
+            (line((0.25, a), (0.25, a + 0.125)), 0)
+        })
+        .collect();
+    followup.push((line((2.0, 1.0), (2.0, 0.0)), 0));
+    let followup = pieces(&followup);
+    let limits = (usize::MAX, usize::MAX);
+    let a = observe(&mut actual, &followup, &rules, &mut Vec::new(), limits);
+    let b = observe(&mut original, &followup, &rules, &mut Vec::new(), limits);
+    assert!(b.error.is_none());
+    assert_eq!(a, b);
 }
