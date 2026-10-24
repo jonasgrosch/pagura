@@ -142,8 +142,8 @@ impl Backdrop {
         match *self {
             Self::Transparent => out.fill(0.0),
             Self::Opaque(color) => {
+                out.fill(0.0);
                 for pixel in out.chunks_exact_mut(stride) {
-                    pixel.fill(0.0);
                     for (value, &c) in pixel.iter_mut().zip(&color).take(n) {
                         *value = c * 1.0;
                     }
@@ -155,26 +155,19 @@ impl Backdrop {
                 rect,
                 layout: source,
             } => {
-                let frame = Frame {
-                    group: 0,
-                    buffer,
-                    rect,
-                    layout: source,
-                    knockout: false,
-                    initial: Self::Transparent,
-                };
-                for (column, pixel) in (x..).zip(out.chunks_exact_mut(stride)) {
-                    pixel.fill(0.0);
-                    if let Some(index) = frame.index(column, y) {
-                        let (colors, alpha) = read.pixel(buffer, index, source);
-                        for (value, &c) in
-                            pixel.iter_mut().zip(&colors).take(n.min(source.channels()))
-                        {
-                            *value = c;
-                        }
-                        pixel[n] = alpha;
-                    }
+                out.fill(0.0);
+                let pixels = out.len() / stride;
+                let end = x.saturating_add(u32::try_from(pixels).unwrap_or(u32::MAX));
+                let (from, to) = (x.max(rect.x0), end.min(rect.x1));
+                if y < rect.y0 || y >= rect.y1 || from >= to {
+                    return;
                 }
+                let first = u32_to_usize(y - rect.y0) * u32_to_usize(rect.width())
+                    + u32_to_usize(from - rect.x0);
+                let inside = out
+                    .get_mut(u32_to_usize(from - x) * stride..u32_to_usize(to - x) * stride)
+                    .unwrap_or_default();
+                read.row(buffer, (first, source), (inside, layout));
             }
         }
     }
@@ -184,40 +177,124 @@ impl Backdrop {
 pub(crate) const CHANNELS: usize = 4 + crate::plan::MAX_SPOTS;
 
 impl Read<'_> {
-    /// The premultiplied colour and alpha of pixel `index` of `buffer`, as
-    /// unit values.
+    /// The premultiplied colour of pixel `index` of `buffer`, as unit
+    /// values, written over as many of `colors` as the buffer holds (three
+    /// for narrow buffers), and its alpha; `colors` keeps its values and
+    /// the alpha is 0 where the buffer does not hold the pixel.
     pub(crate) fn pixel(
         &self,
         buffer: Buffer,
         index: usize,
         layout: Layout,
-    ) -> ([f64; CHANNELS], f64) {
-        let mut colors = [0.0; CHANNELS];
-        let n = layout.channels().min(CHANNELS);
+        colors: &mut [f64],
+    ) -> f64 {
+        let n = layout.channels();
         let stride = layout.stride();
-        let narrow = |values: [f64; 4], colors: &mut [f64; CHANNELS]| {
-            colors[..3].copy_from_slice(&values[..3]);
+        let narrow = |values: [f64; 4], colors: &mut [f64]| {
+            for (color, &value) in colors.iter_mut().zip(&values[..3]) {
+                *color = value;
+            }
             values[3]
         };
-        let wide = |values: &[f64], begin: usize, colors: &mut [f64; CHANNELS]| {
+        let wide = |values: &[f64], begin: usize, colors: &mut [f64]| {
             values.get(begin..begin + stride).map_or(0.0, |pixel| {
-                colors[..n].copy_from_slice(&pixel[..n]);
-                pixel[layout.channels()]
+                for (color, &value) in colors.iter_mut().zip(&pixel[..n]) {
+                    *color = value;
+                }
+                pixel[n]
             })
         };
-        let alpha = match (buffer, self.page) {
-            (Buffer::Wide(offset), _) => wide(self.wide, offset + index * stride, &mut colors),
-            (Buffer::Levels(offset), _) => self.levels.get(offset + index).map_or(0.0, |v| {
-                narrow(v.map(|l| f64::from(l) / 255.0), &mut colors)
-            }),
-            (Buffer::Page, PageBuffer::F64(values)) => wide(values, index * stride, &mut colors),
-            (Buffer::Page, PageBuffer::N16(words)) => words.get(index).map_or(0.0, |w| {
-                narrow(w.map(|v| f64::from(v) / 65535.0), &mut colors)
-            }),
-            (Buffer::Page, PageBuffer::F32(levels)) => levels.get(index).map_or(0.0, |v| {
-                narrow(v.map(|l| f64::from(l) / 255.0), &mut colors)
-            }),
-        };
-        (colors, alpha)
+        match (buffer, self.page) {
+            (Buffer::Wide(offset), _) => wide(self.wide, offset + index * stride, colors),
+            (Buffer::Levels(offset), _) => self
+                .levels
+                .get(offset + index)
+                .map_or(0.0, |v| narrow(v.map(|l| f64::from(l) / 255.0), colors)),
+            (Buffer::Page, PageBuffer::F64(values)) => wide(values, index * stride, colors),
+            (Buffer::Page, PageBuffer::N16(words)) => words
+                .get(index)
+                .map_or(0.0, |w| narrow(w.map(|v| f64::from(v) / 65535.0), colors)),
+            (Buffer::Page, PageBuffer::F32(levels)) => levels
+                .get(index)
+                .map_or(0.0, |v| narrow(v.map(|l| f64::from(l) / 255.0), colors)),
+        }
+    }
+
+    /// [`Self::pixel`] of the pixels of `buffer` (of `source`'s channels)
+    /// from pixel `first`, one for each f64 pixel of `layout` in `out`: the
+    /// colour over its first channels and the alpha after them.
+    pub(crate) fn row(
+        &self,
+        buffer: Buffer,
+        (first, source): (usize, Layout),
+        (out, layout): (&mut [f64], Layout),
+    ) {
+        let n = layout.channels();
+        let pixels = out.chunks_exact_mut(layout.stride());
+        let lanes = (n.min(source.channels()), n);
+        match (buffer, self.page) {
+            (Buffer::Wide(offset), _) => wide(
+                pixels,
+                self.wide.get(offset + first * source.stride()..),
+                source,
+                lanes,
+            ),
+            (Buffer::Page, PageBuffer::F64(values)) => {
+                wide(pixels, values.get(first * source.stride()..), source, lanes);
+            }
+            (Buffer::Levels(offset), _) => narrow(
+                pixels,
+                self.levels.get(offset + first..),
+                |l: f32| f64::from(l) / 255.0,
+                lanes,
+            ),
+            (Buffer::Page, PageBuffer::N16(words)) => narrow(
+                pixels,
+                words.get(first..),
+                |v: u16| f64::from(v) / 65535.0,
+                lanes,
+            ),
+            (Buffer::Page, PageBuffer::F32(levels)) => narrow(
+                pixels,
+                levels.get(first..),
+                |l: f32| f64::from(l) / 255.0,
+                lanes,
+            ),
+        }
+    }
+}
+
+/// [`Read::row`] of f64 pixels of `source`: `channels` colour values of
+/// each over the first of its pixel in `pixels`, and its alpha after their
+/// `n` channels.
+fn wide<'a>(
+    pixels: impl Iterator<Item = &'a mut [f64]>,
+    values: Option<&[f64]>,
+    source: Layout,
+    (channels, n): (usize, usize),
+) {
+    let values = values.unwrap_or_default().chunks_exact(source.stride());
+    for (pixel, value) in pixels.zip(values) {
+        for (out, &v) in pixel.iter_mut().zip(value).take(channels) {
+            *out = v;
+        }
+        pixel[n] = value[source.channels()];
+    }
+}
+
+/// [`wide`] of narrow pixels, three colours and alpha each, as unit
+/// values.
+fn narrow<'a, T: Copy>(
+    pixels: impl Iterator<Item = &'a mut [f64]>,
+    values: Option<&[[T; 4]]>,
+    unit: impl Fn(T) -> f64,
+    (channels, n): (usize, usize),
+) {
+    for (pixel, value) in pixels.zip(values.unwrap_or_default()) {
+        let value = value.map(&unit);
+        for (out, &v) in pixel.iter_mut().zip(&value[..3]).take(channels) {
+            *out = v;
+        }
+        pixel[n] = value[3];
     }
 }

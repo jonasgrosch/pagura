@@ -915,3 +915,97 @@ fn emitted_rows_store_as_band_coverage_spans() {
         }
     }
 }
+
+/// A row of a frame backdrop holds, pixel by pixel, the colour and alpha
+/// [`Read::pixel`] gives inside the frame's rect and zeros elsewhere: every
+/// buffer format, layouts with fewer and more channels than the source, and
+/// rows that start left of, inside and right of the rect.
+#[test]
+fn backdrop_rows_read_as_their_pixels_do() {
+    use super::{Backdrop, Buffer, Frame, PageBuffer, Read};
+    let unit = |i: usize| f64::from(u32::try_from(i * 37 % 101).unwrap()) / 101.0;
+    let rect = DeviceRect {
+        x0: 3,
+        y0: 2,
+        x1: 9,
+        y1: 5,
+    };
+    let layout = |process, spots| Layout { process, spots };
+    let (gray, rgb, cmyk) = (
+        layout(Process::Gray, 0),
+        layout(Process::Rgb, 0),
+        layout(Process::Cmyk, 1),
+    );
+    let pixels = 18;
+    let wide: Vec<f64> = (0..pixels * cmyk.stride() + 7).map(unit).collect();
+    let levels: Vec<[f32; 4]> = (0..pixels + 3)
+        .map(|i| [0, 1, 2, 3].map(|c| f32::from(u16::try_from((i * 4 + c) * 29 % 256).unwrap())))
+        .collect();
+    let pages = [
+        (
+            PageBuffer::F64((0..pixels * rgb.stride()).map(unit).collect()),
+            rgb,
+        ),
+        (
+            PageBuffer::N16(
+                (0..pixels)
+                    .map(|i| {
+                        [0, 1, 2, 3].map(|c| u16::try_from((i * 4 + c) * 7919 % 65536).unwrap())
+                    })
+                    .collect(),
+            ),
+            rgb,
+        ),
+        (PageBuffer::F32(levels.clone()), rgb),
+    ];
+    for (page, page_layout) in &pages {
+        let read = Read {
+            page,
+            wide: &wide,
+            levels: &levels,
+        };
+        for (buffer, source) in [
+            (Buffer::Page, *page_layout),
+            (Buffer::Wide(5), cmyk),
+            (Buffer::Wide(0), gray),
+            (Buffer::Levels(2), rgb),
+        ] {
+            let backdrop = Backdrop::Frame {
+                buffer,
+                rect,
+                layout: source,
+            };
+            let frame = Frame {
+                group: 0,
+                buffer,
+                rect,
+                layout: source,
+                knockout: false,
+                initial: Backdrop::Transparent,
+            };
+            for target in [gray, rgb, cmyk] {
+                let (n, stride) = (target.channels(), target.stride());
+                for ((x, len), y) in [(0, 14), (5, 2), (8, 4), (10, 3)]
+                    .into_iter()
+                    .flat_map(|span| (1..6).map(move |y| (span, y)))
+                {
+                    let mut row = vec![f64::NAN; len * stride];
+                    backdrop.row(read, (x, y), target, &mut row);
+                    let mut expected = vec![0.0; len * stride];
+                    for (column, pixel) in (x..).zip(expected.chunks_exact_mut(stride)) {
+                        if let Some(index) = frame.index(column, y) {
+                            let colors = &mut pixel[..n.min(source.channels())];
+                            pixel[n] = read.pixel(buffer, index, source, colors);
+                        }
+                    }
+                    let bits = |v: &[f64]| v.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+                    assert_eq!(
+                        bits(&row),
+                        bits(&expected),
+                        "{buffer:?} {source:?} into {target:?} at ({x}, {y}) × {len}"
+                    );
+                }
+            }
+        }
+    }
+}
