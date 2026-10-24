@@ -7,8 +7,8 @@
 //! take its signed area, the others go through the exact row resolver. A
 //! mark whose row meets a boundary run is resolved there together with the
 //! clip's paths, so that their joint geometry is integrated rather than
-//! multiplied. When every such path is convex, a polygon mark strictly
-//! inside them all meets no boundary run.
+//! multiplied. When every such path is convex, a polygon mark is instead
+//! clipped to their chains, as to the rectangle.
 
 use super::cells::{Cells, STRIP};
 use super::certify::uncertified;
@@ -57,6 +57,9 @@ pub(crate) struct Paths {
     /// Broad sum of canonical boundary-evaluation uncertainty, used only
     /// to select ambiguous placement pixels before a local interval proof.
     arithmetic: f64,
+    /// The same for the convex chains' sides, which clipping evaluates
+    /// whole, beyond the rectangle.
+    chains: f64,
     strips: StripList,
     pub(crate) rows: Rows,
     /// Every path's chains when each is convex; empty otherwise.
@@ -86,7 +89,7 @@ impl Paths {
     }
 
     pub(crate) fn arithmetic_error(&self) -> f64 {
-        self.arithmetic
+        (self.arithmetic + self.chains) * (1.0 + 16.0 * f64::EPSILON)
     }
 
     fn calculate_bounds(&self) -> Option<Bounds> {
@@ -450,12 +453,13 @@ fn classify(
         bytes,
     )?;
     meter.charge(strips_list.len())?;
-    let convex = convex_chains(groups, &mut meter, bytes)?;
+    let (convex, chains) = convex_chains(groups, &mut meter, bytes)?;
     let mut paths = Paths {
         lines,
         ends,
         proof: None,
         arithmetic: 0.0,
+        chains,
         strips: strips_list,
         rows: Rows::default(),
         convex,
@@ -463,10 +467,7 @@ fn classify(
     meter.charge(paths.lines.len().saturating_add(paths.ends.len()))?;
     paths.proof = paths.calculate_bounds();
     meter.charge(paths.lines.len())?;
-    paths.arithmetic = paths.lines.iter().fold(0.0, |sum, line| {
-        let delta = line.interpolation_error();
-        (sum + 4.0 * (delta.x + delta.y)) * (1.0 + 16.0 * f64::EPSILON)
-    });
+    paths.arithmetic = uncertainty(paths.lines.iter().copied());
     let mut rules = Vec::new();
     bytes.reserve(&mut rules, paths.ends.len())?;
     rules.extend(paths.rules());
@@ -533,12 +534,13 @@ fn classify(
     Ok(paths)
 }
 
-/// Every group's chains when each is convex, else none.
+/// Every group's chains when each is convex, else none, and the arithmetic
+/// uncertainty of their sides.
 fn convex_chains(
     groups: &[(Polygon, FillRule)],
     meter: &mut Meter,
     bytes: &mut Meter,
-) -> Result<Vec<Convex>> {
+) -> Result<(Vec<Convex>, f64)> {
     let mut convex = Vec::new();
     bytes.reserve(&mut convex, groups.len())?;
     for (polygon, _) in groups {
@@ -550,7 +552,17 @@ fn convex_chains(
         };
         convex.push(chains);
     }
-    Ok(convex)
+    let sides = uncertainty(convex.iter().flat_map(Convex::sides));
+    Ok((convex, sides))
+}
+
+/// The broad interpolation uncertainty of `lines`: per line, four times its
+/// coordinate radii, summed outward.
+fn uncertainty(lines: impl Iterator<Item = Line>) -> f64 {
+    lines.fold(0.0, |sum, line| {
+        let delta = line.interpolation_error();
+        (sum + 4.0 * (delta.x + delta.y)) * (1.0 + 16.0 * f64::EPSILON)
+    })
 }
 
 /// Builds a clip row's runs from its emitted cells: touched cells and
@@ -695,6 +707,7 @@ mod tests {
             ends: vec![(100, FillRule::NonZero)],
             proof: None,
             arithmetic: 0.0,
+            chains: 0.0,
             strips,
             rows: Rows::default(),
             convex: Vec::new(),

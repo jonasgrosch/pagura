@@ -19,7 +19,7 @@ use crate::{FillRule, Path, PathBuilder, Point, Transform};
 use pagura_core::{Limits, Meter};
 
 /// A deterministic generator for test geometry.
-pub(super) struct Lcg(u64);
+pub(super) struct Lcg(pub(super) u64);
 
 impl Lcg {
     pub(super) fn next(&mut self) -> u32 {
