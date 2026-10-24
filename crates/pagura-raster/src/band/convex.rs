@@ -1,11 +1,27 @@
 //! Convex clipping paths as two chains of strictly increasing height.
 //!
 //! A convex clipping path meets every horizontal line in one interval, from
-//! its left chain to its right chain. A mark strictly inside every convex
-//! path of its clip state meets none of their boundaries, so it keeps its
-//! own edges and needs neither the joint row union nor the clip's mask.
+//! its left chain to its right chain. A mark is clipped to it as to a
+//! rectangle (8.5.4): each edge keeps its part between the chains, a part
+//! beside a chain moves horizontally onto that chain, and a part above or
+//! below the path becomes horizontal and bounds no area. That map fixes the
+//! region and moves every other point along a horizontal segment outside it,
+//! or to the top or bottom height through heights outside it, so the moved
+//! boundary winds around each point of the region as before and around no
+//! point outside: the mark's winding times the region's indicator. A winding
+//! of zero or one sign of magnitude one stays so, and a fill rule selects
+//! the same points inside the region.
+//!
+//! Each clipped piece lies on one stored line, the edge or a side of a
+//! chain, between two heights, and its ends are evaluated on that line, as
+//! the row union's sides are. Where the edge enters or leaves the region,
+//! the crossing height is interpolated as the row union interpolates its
+//! crossings; the pieces before and after it end there on their own lines,
+//! joined by a horizontal step that bounds no area. A crossing height off by
+//! a rounding unit moves area only within that unit's slab, however flat the
+//! lines meet.
 
-use super::edges::Polygon;
+use super::edges::{Line, Polygon};
 use crate::Point;
 use crate::geometry::convex_orientation;
 use pagura_core::{Meter, Result};
@@ -20,6 +36,37 @@ pub(crate) struct Convex {
     right: Vec<Point>,
     top: f64,
     bottom: f64,
+}
+
+/// A mark edge at one height: its own x and the chains' x there.
+#[derive(Debug, Clone, Copy)]
+struct At {
+    edge: f64,
+    left: f64,
+    right: f64,
+}
+
+impl At {
+    /// The line the clipped edge lies on here, chain sides `l` and `r`
+    /// holding the height: beside a chain that chain's side, else the edge.
+    fn on(self, l: usize, r: usize) -> On {
+        if self.edge < self.left {
+            On::Left(l)
+        } else if self.edge > self.right {
+            On::Right(r)
+        } else {
+            On::Edge
+        }
+    }
+}
+
+/// The stored line a clipped piece lies on: the edge, or a side of a chain
+/// by its index (see [`segment`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum On {
+    Edge,
+    Left(usize),
+    Right(usize),
 }
 
 impl Convex {
@@ -78,6 +125,13 @@ impl Convex {
         }))
     }
 
+    /// Every side of both chains.
+    pub(crate) fn sides(&self) -> impl Iterator<Item = Line> + '_ {
+        [&self.left, &self.right]
+            .into_iter()
+            .flat_map(|chain| chain.windows(2).map(|w| Line { a: w[0], b: w[1] }))
+    }
+
     /// Bytes retained.
     pub(crate) fn retained_bytes(&self) -> usize {
         (self.left.capacity() + self.right.capacity()) * size_of::<Point>()
@@ -92,6 +146,141 @@ impl Convex {
             && beside(&self.left, p) == Some(Ordering::Greater)
             && beside(&self.right, p) == Some(Ordering::Less)
     }
+
+    /// At most how many pieces [`Self::clip`] appends for `line`: the chain
+    /// points strictly within its heights divide them into intervals, and
+    /// two crossings divide each interval into at most three pieces.
+    pub(crate) fn bound(&self, line: Line) -> usize {
+        let (lo, hi) = (line.a.y.min(line.b.y), line.a.y.max(line.b.y));
+        let inner = |chain: &[Point]| {
+            chain
+                .partition_point(|p| p.y < hi)
+                .saturating_sub(chain.partition_point(|p| p.y <= lo))
+        };
+        inner(&self.left)
+            .saturating_add(inner(&self.right))
+            .saturating_mul(3)
+            .saturating_add(3)
+    }
+
+    /// Appends the pieces of `line` clipped to the region, in its direction;
+    /// `out` has room for [`Self::bound`] more. A line inside keeps its two
+    /// stored end points.
+    pub(crate) fn clip(&self, line: Line, out: &mut Vec<Line>) {
+        let reversed = line.a.y > line.b.y;
+        let (upper, lower) = if reversed {
+            (line.b, line.a)
+        } else {
+            (line.a, line.b)
+        };
+        let lo = upper.y.max(self.top);
+        let hi = lower.y.min(self.bottom);
+        if lo >= hi {
+            return;
+        }
+        let at = |y: f64, l: usize, r: usize| At {
+            edge: line.x(y),
+            left: chain_x(&self.left, l, y),
+            right: chain_x(&self.right, r, y),
+        };
+        let inside = |a: At| a.left <= a.edge && a.edge <= a.right;
+        let (mut l, mut r) = (segment(&self.left, lo), segment(&self.right, lo));
+        let mut here = at(lo, l, r);
+        // Both ends inside: by convexity, so is the line. A line without a
+        // chain point within its heights takes one step below anyway.
+        if (self.left[l].y < hi || self.right[r].y < hi)
+            && lo == upper.y
+            && hi == lower.y
+            && inside(here)
+            && inside(at(hi, segment(&self.left, hi), segment(&self.right, hi)))
+        {
+            out.push(line);
+            return;
+        }
+        let first = out.len();
+        let mut piece = |on: On, (a, b): (f64, f64)| {
+            let line = match on {
+                On::Edge => line,
+                On::Left(k) => side(&self.left, k),
+                On::Right(k) => side(&self.right, k),
+            };
+            out.push(Line {
+                a: Point::new(line.x(a), a),
+                b: Point::new(line.x(b), b),
+            });
+        };
+        // The line of the current piece and the height it starts at.
+        let mut current: Option<(On, f64)> = None;
+        let mut y = lo;
+        loop {
+            let next = self.left[l].y.min(self.right[r].y).min(hi);
+            let there = at(next, l, r);
+            // Between consecutive heights the part lies on one line.
+            let (heights, count) = heights((here, there), (y, next));
+            for pair in heights[..count].windows(2) {
+                if pair[0] == pair[1] {
+                    continue;
+                }
+                let on = at(pair[0].midpoint(pair[1]), l, r).on(l, r);
+                match current {
+                    Some((line, start)) if line != on => {
+                        piece(line, (start, pair[0]));
+                        current = Some((on, pair[0]));
+                    }
+                    Some(_) => {}
+                    None => current = Some((on, pair[0])),
+                }
+            }
+            if next >= hi {
+                break;
+            }
+            // Below `hi`, so not either chain's last point.
+            if next == self.left[l].y {
+                l += 1;
+            }
+            if next == self.right[r].y {
+                r += 1;
+            }
+            y = next;
+            here = there;
+        }
+        if let Some((line, start)) = current {
+            piece(line, (start, hi));
+        }
+        if reversed {
+            let pieces = &mut out[first..];
+            pieces.reverse();
+            for piece in pieces {
+                *piece = Line {
+                    a: piece.b,
+                    b: piece.a,
+                };
+            }
+        }
+    }
+}
+
+/// The heights from `y` to `next` and, strictly between them, where the edge
+/// crosses a chain, from the differences at both ends as the row union
+/// computes its crossings; sorted, with their count.
+fn heights((here, there): (At, At), (y, next): (f64, f64)) -> ([f64; 4], usize) {
+    let mut heights = [y, next, next, next];
+    let mut count = 1;
+    for (d0, d1) in [
+        (here.edge - here.left, there.edge - there.left),
+        (here.right - here.edge, there.right - there.edge),
+    ] {
+        if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
+            let cut = y + (next - y) * (d0 / (d0 - d1));
+            if cut > y && cut < next {
+                heights[count] = cut;
+                count += 1;
+            }
+        }
+    }
+    heights[count] = next;
+    heights[..=count].sort_unstable_by(f64::total_cmp);
+    (heights, count + 1)
 }
 
 /// The chain from the point `top` in the direction of `step`: past a
@@ -134,6 +323,19 @@ fn segment(chain: &[Point], y: f64) -> usize {
     chain
         .partition_point(|p| p.y <= y)
         .clamp(1, chain.len().saturating_sub(1).max(1))
+}
+
+/// Chain side `k`, from `chain[k - 1]` to `chain[k]`.
+fn side(chain: &[Point], k: usize) -> Line {
+    Line {
+        a: chain[k - 1],
+        b: chain[k],
+    }
+}
+
+/// The x of chain side `k` at height `y`.
+fn chain_x(chain: &[Point], k: usize, y: f64) -> f64 {
+    side(chain, k).x(y)
 }
 
 /// Whether `p` lies right (`Greater`) or left (`Less`) of the chain at its
