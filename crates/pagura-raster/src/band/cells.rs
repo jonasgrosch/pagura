@@ -29,9 +29,15 @@ pub(crate) const WIDE: usize = 4096;
 pub(crate) const WINDOW: u32 = 32;
 
 /// The widest window emitted densely: every cell of each row in one pass,
-/// without a touched bitmap. Narrow windows (glyphs, small marks) touch a
-/// large share of their cells, so the bitmap costs more than it skips.
+/// without a touched bitmap. Narrow windows with many items (glyphs, small
+/// marks) touch a large share of their cells, so the bitmap costs more than
+/// it skips.
 pub(crate) const DENSE: usize = 256;
+
+/// Columns per item of the sparsest dense window. An item touches at least
+/// two cells of each row it crosses, so a window with fewer items per column
+/// (a thin stroke across it) leaves most of its cells untouched.
+const DENSE_COLUMNS: usize = 2;
 
 /// Strip-sized cells, reused for every mark and band of a render.
 #[derive(Debug, Default)]
@@ -194,13 +200,20 @@ impl Cells {
     }
 
     /// Opens a window as [`Self::open`] does for execution: one at most
-    /// [`DENSE`] columns wide keeps no touched bitmap and [`Self::emit`]
+    /// [`DENSE`] columns wide, with at least one of its `items` per
+    /// [`DENSE_COLUMNS`] columns, keeps no touched bitmap and [`Self::emit`]
     /// visits every cell of its rows. The cells and their arithmetic are the
     /// same, so the emitted bytes are too; inspection keeps [`Self::open`],
     /// whose touched cells classify clip boundaries.
-    pub(crate) fn open_dense(&mut self, scan: (usize, usize), rows: std::ops::Range<u32>) -> bool {
+    pub(crate) fn open_dense(
+        &mut self,
+        scan: (usize, usize),
+        rows: std::ops::Range<u32>,
+        items: usize,
+    ) -> bool {
         let opened = self.open(scan, rows);
-        self.dense = opened && self.width <= DENSE;
+        self.dense =
+            opened && self.width <= DENSE && self.width <= items.saturating_mul(DENSE_COLUMNS);
         opened
     }
 
@@ -814,7 +827,7 @@ mod tests {
         let (mut marked, mut dense) = (cells(width), cells(width));
         for case in 0..200 {
             assert!(marked.open((3, width), rows.clone()));
-            assert!(dense.open_dense((3, width), rows.clone()));
+            assert!(dense.open_dense((3, width), rows.clone(), width));
             // Short flattened-curve edges, long ones across rows and
             // columns, and some reaching outside the window.
             let count = 1 + case % 24;

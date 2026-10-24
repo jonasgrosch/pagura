@@ -668,7 +668,10 @@ impl BandRasterizer {
             };
             let window = y..end.min(y.saturating_add(fit));
             y = window.end;
-            if !self.cells.open_dense(scan, window.clone()) {
+            if !self
+                .cells
+                .open_dense(scan, window.clone(), items.visits(&window))
+            {
                 continue;
             }
             let mut work = items.accumulate::<false>(&mut self.cells, &window);
@@ -806,6 +809,21 @@ impl Items<'_> {
             strips: glyph.strips.as_ref(),
             resolved,
         }
+    }
+
+    /// The items a window visits: its strip's list or every item, and the
+    /// sides of its resolved rows.
+    fn visits(&self, window: &std::ops::Range<u32>) -> usize {
+        let listed = if let Some(list) = self.strips {
+            list.strip(window.start / STRIP).len()
+        } else {
+            let lines = match &self.lines {
+                Lines::Slice { lines, point } => lines.len() + 2 * usize::from(point.is_some()),
+                Lines::Polygon(view) => view.raw_count().unwrap_or(usize::MAX),
+            };
+            lines + self.curves.len()
+        };
+        listed + self.resolved.lines(window).len()
     }
 
     /// The common accumulation for execution and preparation inspection.

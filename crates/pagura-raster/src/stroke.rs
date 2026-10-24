@@ -747,6 +747,16 @@ fn circle(
 /// from angle zero at equal angles, within the pen's tolerance; charged to
 /// `bytes`.
 fn ring(center: Point, pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let mut points = offsets(pen, limits, bytes)?;
+    for point in &mut points {
+        *point = center + *point;
+    }
+    Ok(points)
+}
+
+/// The vertices of the pen's canonical circle polygon less its centre: each
+/// vertex of [`ring`] is its centre plus one of these, and its count.
+fn offsets(pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
     let Pen { radius, tolerance } = pen;
     let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
     let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
@@ -763,10 +773,7 @@ fn ring(center: Point, pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<V
     bytes.reserve(&mut points, count as usize)?;
     points.extend((0..count).map(|i| {
         let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
-        Point::new(
-            center.x + radius * angle.cos(),
-            center.y + radius * angle.sin(),
-        )
+        Point::new(radius * angle.cos(), radius * angle.sin())
     }));
     Ok(points)
 }
