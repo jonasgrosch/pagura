@@ -175,7 +175,12 @@ coordinates are at most 2^16 in magnitude and whose height is at least
 2^-30 interpolates its crossings in plain f64, within the straight-edge
 interpolation bound below; other edges use the exact two-product form.
 Execution windows of at most 256 columns keep no touched bitmap: they
-accumulate densely and emit every cell, with the same values.
+accumulate densely and emit every cell, with the same values. A glyph
+placement's last window in a band also takes its rows in the next band, as
+far as one window reaches, into storage reserved with the rasterizer; the
+next band copies those bytes instead of walking the placement again. They
+are the same cells, so the bytes do not change, and a band rendered without
+the band before walks its placements as usual.
 
 **Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
 and 4) keeps its font outline, its linear glyph-to-device map L and its exact
