@@ -412,8 +412,22 @@ pub(super) fn heights(
             resolver.heights.push(p.hi);
         }
     }
-    resolver.crossings(pieces, total, implicit, (work, bytes))?;
-    work.charge(sort_work(resolver.heights.len() + implicit))?;
+    let result = resolver
+        .crossings(pieces, total, implicit, (work, bytes))
+        .and_then(|()| work.charge(sort_work(resolver.heights.len() + implicit)));
+    if let Err(error) = result {
+        if frontier {
+            // The former route had already written N explicit ends here.
+            // Future room() calls precede clear(), so restore that physical
+            // length even on failure. Their implicit slots were reserved
+            // before crossings, including every attempted root growth.
+            // No allocation or Meter operation is introduced.
+            for p in pieces {
+                resolver.heights.push(p.hi);
+            }
+        }
+        return Err(error);
+    }
     resolver.heights.sort_unstable_by(f64::total_cmp);
     let mut finite_grid = top.is_finite() && top + 1.0 > top;
     if frontier {
