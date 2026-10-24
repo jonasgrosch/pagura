@@ -218,6 +218,8 @@ pub(crate) struct Resolver {
     eager_midpoint_keys: bool,
     #[cfg(test)]
     original_height_sort: bool,
+    #[cfg(test)]
+    original_crossings: bool,
     heights: Vec<f64>,
     /// Column spans by start during crossing enumeration, then enclosing
     /// column spans indexed by piece ID for comparisons.
@@ -430,11 +432,6 @@ impl Resolver {
             self.heights.push(p.hi);
         }
         self.crossings(pieces, total, starts, (work, bytes))?;
-        // The four original sort packets also cover this fixed linear
-        // preparation: columns sort + initialization + bounds; rows sort
-        // + cycle visits + swaps; and each overlap count's binary queries
-        // + fold. Together at most 4*N*(floor(log2(N))+2) abstract units.
-        index_columns(&mut self.columns, pieces);
         work.charge(sort_work(self.heights.len() + starts))?;
         self.heights.sort_unstable_by(f64::total_cmp);
         if starts != 0 {
@@ -530,12 +527,20 @@ impl Resolver {
         self.columns.sort_unstable_by(by_start);
         self.rows.sort_unstable_by(by_start);
         let (across, down) = (overlapping(&self.columns), overlapping(&self.rows));
-        let spans = if down < across {
-            &self.rows
-        } else {
-            &self.columns
-        };
+        let by_rows = down < across;
         work.charge(across.min(down))?;
+        // Columns become free after their enumeration, or immediately if
+        // rows enumerate the pairs. Reuse them exactly once. The original
+        // four sort packets cover columns sort + initialization + bounds,
+        // rows sort + cycle visits + swaps, and each overlap count's
+        // binary queries + fold: 4*N*(floor(log2(N))+2) abstract units.
+        if by_rows {
+            index_columns(&mut self.columns, pieces);
+        }
+        let filter = by_rows;
+        #[cfg(test)]
+        let filter = filter && !self.original_crossings;
+        let spans = if by_rows { &self.rows } else { &self.columns };
         for (n, &(_, end, i)) in spans.iter().enumerate() {
             let p = pieces[i as usize];
             for &(start, _, j) in &spans[n + 1..] {
@@ -546,6 +551,14 @@ impl Resolver {
                 let lo = p.lo.max(q.lo);
                 let hi = p.hi.min(q.hi);
                 if lo >= hi {
+                    continue;
+                }
+                // Both overlap endpoints belong to both pieces. Strict
+                // separation over their whole intervals makes both old
+                // endpoint differences have the same weak sign; neither
+                // a strict crossing nor a height insertion is possible.
+                if filter && separated(self.columns[i as usize], self.columns[j as usize]).is_some()
+                {
                     continue;
                 }
                 let d0 = p.line.x(lo) - q.line.x(lo);
@@ -560,6 +573,9 @@ impl Resolver {
                     }
                 }
             }
+        }
+        if !by_rows {
+            index_columns(&mut self.columns, pieces);
         }
         Ok(())
     }

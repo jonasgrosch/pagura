@@ -143,6 +143,35 @@ fn column_index_cycles_do_not_displace_completed_bounds() {
     assert_eq!(column[0], expected[0]);
 }
 
+#[test]
+fn row_axis_bounds_reject_apart_pairs_and_keep_real_crossings() {
+    let input = pieces(&[
+        (line(-10.0, 0.0, -9.0, 0.4), 0),
+        (line(9.0, 0.2, 10.0, 0.6), 0),
+        (line(-10.0, 0.8, 30.0, 0.81), 0),
+        (line(-10.0, 0.85, 30.0, 0.86), 0),
+        (line(20.0, 0.65, 21.0, 0.75), 0),
+        (line(21.0, 0.65, 20.0, 0.75), 0),
+    ]);
+    let mut rows: Vec<_> = (0_u32..)
+        .zip(&input)
+        .map(|(i, p)| (p.lo, p.hi, i))
+        .collect();
+    let mut columns: Vec<_> = (0_u32..)
+        .zip(&input)
+        .map(|(i, p)| {
+            let (left, right) = p.columns();
+            (left, right, i)
+        })
+        .collect();
+    let by_start = |a: &Span, b: &Span| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2));
+    rows.sort_unstable_by(by_start);
+    columns.sort_unstable_by(by_start);
+    assert!(overlapping(&rows) < overlapping(&columns));
+    let (_, resolver) = compare_ordering(&input, &[FillRule::NonZero]);
+    assert!(resolver.heights.iter().any(|&y| y > 0.65 && y < 0.75));
+}
+
 /// The sides of row `0..1` and the work they took.
 fn sides(pieces: &[Piece], rules: &[FillRule], work: &mut Meter) -> Result<Vec<Line>> {
     let mut out = Vec::new();
@@ -195,6 +224,7 @@ fn compare_ordering(pieces: &[Piece], rules: &[FillRule]) -> (Vec<Line>, Resolve
     let mut midpoint = Resolver {
         eager_midpoint_keys: true,
         original_height_sort: true,
+        original_crossings: true,
         ..Resolver::default()
     };
     let (actual, work, bytes) = run(&mut demand);
@@ -388,6 +418,7 @@ fn demand_keys_keeps_the_original_resource_acceptance_boundary() {
         let result = Resolver {
             eager_midpoint_keys,
             original_height_sort: eager_midpoint_keys,
+            original_crossings: eager_midpoint_keys,
             ..Resolver::default()
         }
         .row(
