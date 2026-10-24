@@ -29,7 +29,7 @@ use crate::prepare::Shapes;
 use crate::source::{Pixels, Source, SpanColors};
 use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, Span};
+use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, RowOut, Span};
 use std::ops::Range;
 
 #[cfg(test)]
@@ -267,29 +267,51 @@ impl<'a> Executor<'a> {
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
+        if let Some(words) = self.opaque(mark, frame) {
+            self.store_direct(mark.cover, frame, words);
+            return;
+        }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         self.shapes
             .rasterize(self.rasterizer, mark.cover, self.band, &mut coverage);
-        let opaque = self.opaque(mark, frame);
-        self.store_coverage(mark, frame, opaque, &coverage);
+        self.store_coverage(mark, frame, &coverage);
         self.ws.coverage = coverage;
     }
 
-    /// Stores every span of `coverage` within `frame`: straight from
-    /// coverage as `opaque` words where there are some.
-    fn store_coverage(
+    /// Rasterizes `cover` straight into the N16 page as the opaque constant
+    /// colour `words`, row by row as the rasterizer emits it: one rounding
+    /// per store from each pixel's coverage, nothing else to evaluate.
+    pub(super) fn store_direct(
         &mut self,
-        mark: &Mark,
+        cover: crate::plan::Cover,
         frame: Frame,
-        opaque: Option<[u16; 4]>,
-        coverage: &BandCoverage,
+        words: [u16; 4],
     ) {
-        match opaque {
-            Some(words) => self.opaque_store(coverage, frame, words),
-            None => each_span(coverage, frame.rect, |at, cover| {
-                self.mark_span(mark, frame, at, cover);
-            }),
-        }
+        let ws = &mut *self.ws;
+        let PageBuffer::N16(page) = &mut ws.page else {
+            return;
+        };
+        let rect = frame.rect;
+        let mut out = StoreOut {
+            page,
+            extents: &mut ws.extents,
+            rect,
+            width: u32_to_usize(rect.width()),
+            words,
+            row: None,
+            stored: 0,
+        };
+        self.shapes
+            .rasterize_into(self.rasterizer, cover, self.band, &mut out);
+        let stored = out.stored;
+        ws.usage.work = ws.usage.work.saturating_add(stored);
+    }
+
+    /// Stores every span of `coverage` within `frame`.
+    fn store_coverage(&mut self, mark: &Mark, frame: Frame, coverage: &BandCoverage) {
+        each_span(coverage, frame.rect, |at, cover| {
+            self.mark_span(mark, frame, at, cover);
+        });
     }
 
     /// The words `mark` stores straight from coverage into `frame`: an
@@ -302,31 +324,6 @@ impl<'a> Executor<'a> {
             PageBuffer::N16(_) => mark.words,
             PageBuffer::F64(_) | PageBuffer::F32(_) => None,
         }
-    }
-
-    /// Opaque constant colour `words` into the N16 page: one rounding per
-    /// store straight from coverage, nothing else to evaluate.
-    fn opaque_store(&mut self, coverage: &BandCoverage, frame: Frame, words: [u16; 4]) {
-        let ws = &mut *self.ws;
-        let PageBuffer::N16(page) = &mut ws.page else {
-            return;
-        };
-        let rect = frame.rect;
-        let width = u32_to_usize(rect.width());
-        let mut stored = 0;
-        each_span(coverage, rect, |(x, y), cover| {
-            let row = u32_to_usize(y - rect.y0);
-            let column = x - rect.x0;
-            let start = row * width + u32_to_usize(column);
-            let len = cover.len();
-            if let Some(pixels) = page.get_mut(start..start + len) {
-                kernel::store_n16(pixels, words, cover.coverage());
-            }
-            let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
-            ws.extents.mark(row, column, end);
-            stored += len;
-        });
-        ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
     fn mark_span(&mut self, mark: &Mark, frame: Frame, (x, y): (u32, u32), cover: Cover<'_>) {
@@ -537,6 +534,97 @@ fn overwrite(
         extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
     }
     stored.is_some()
+}
+
+/// Coverage rows stored as they are emitted: an opaque constant colour's
+/// N16 words at each pixel's coverage, within the frame's `rect`.
+struct StoreOut<'a> {
+    page: &'a mut [[u16; 4]],
+    extents: &'a mut Extents,
+    rect: DeviceRect,
+    width: usize,
+    words: [u16; 4],
+    /// The current row within `rect`, if it lies there.
+    row: Option<usize>,
+    stored: usize,
+}
+
+/// Columns of the current row within the frame.
+struct Columns {
+    row: usize,
+    /// The first column, relative to the frame.
+    column: u32,
+    count: usize,
+    /// How many of the requested columns lie left of the first.
+    skip: usize,
+}
+
+impl StoreOut<'_> {
+    /// Columns `x .. x + len` of the current row within `rect`, if any.
+    fn columns(&self, x: u32, len: usize) -> Option<Columns> {
+        let row = self.row?;
+        let end = x.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+        let (start, stop) = (x.max(self.rect.x0), end.min(self.rect.x1));
+        (start < stop).then(|| Columns {
+            row,
+            column: start - self.rect.x0,
+            count: u32_to_usize(stop - start),
+            skip: u32_to_usize(start - x),
+        })
+    }
+
+    /// The page pixels of `columns`.
+    fn pixels(&mut self, columns: &Columns) -> Option<&mut [[u16; 4]]> {
+        let first = columns.row * self.width + u32_to_usize(columns.column);
+        self.page.get_mut(first..first + columns.count)
+    }
+
+    /// Records stores at `lo .. hi` of `columns`.
+    fn stored(&mut self, columns: &Columns, (lo, hi): (usize, usize)) {
+        let at = |k: usize| columns.column + u32::try_from(k).unwrap_or(u32::MAX);
+        self.extents.mark(columns.row, at(lo), at(hi));
+        self.stored += hi - lo;
+    }
+}
+
+impl RowOut for StoreOut<'_> {
+    fn push_row(&mut self, y: u32) {
+        self.row = (self.rect.y0..self.rect.y1)
+            .contains(&y)
+            .then(|| u32_to_usize(y - self.rect.y0));
+    }
+
+    fn put_run(&mut self, x: u32, len: u32, value: u8) {
+        let words = self.words;
+        let Some(columns) = self.columns(x, u32_to_usize(len)).filter(|_| value != 0) else {
+            return;
+        };
+        if let Some(pixels) = self.pixels(&columns) {
+            if value == u8::MAX {
+                pixels.fill(words);
+            } else {
+                kernel::store_n16_uniform(pixels, words, value);
+            }
+        }
+        self.stored(&columns, (0, columns.count));
+    }
+
+    fn put_row(&mut self, x: u32, values: &[u8]) {
+        let words = self.words;
+        let Some(columns) = self.columns(x, values.len()) else {
+            return;
+        };
+        let Some(values) = values.get(columns.skip..columns.skip + columns.count) else {
+            return;
+        };
+        // Zero coverage leaves a pixel as it is: only covered pixels count.
+        let covered = self
+            .pixels(&columns)
+            .and_then(|pixels| kernel::store_n16_runs(pixels, words, values));
+        if let Some(stretch) = covered {
+            self.stored(&columns, stretch);
+        }
+    }
 }
 
 /// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.

@@ -160,6 +160,13 @@ impl BandRasterizer {
     /// contents.
     pub fn rasterize(&mut self, mark: MarkCoverage<'_>, band: u32, out: &mut BandCoverage) {
         out.clear();
+        self.rasterize_into(mark, band, out);
+        out.finish();
+    }
+
+    /// Writes the coverage of `mark` within `band` to `out` row by row,
+    /// each pixel once, as [`Self::rasterize`] gives it.
+    pub fn rasterize_into(&mut self, mark: MarkCoverage<'_>, band: u32, out: &mut dyn RowOut) {
         let rows = self.area.band_rows(band);
         let region = self.area.region;
         match (mark.shape, mark.clip) {
@@ -183,7 +190,6 @@ impl BandRasterizer {
                 self.shape(shape, (band, rows), out);
             }
         }
-        out.finish();
     }
 
     /// The rows of `band` (`rows`) that `shape` can cover.
