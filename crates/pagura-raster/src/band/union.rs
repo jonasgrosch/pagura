@@ -80,12 +80,81 @@ struct Open {
 /// The pieces a row takes in one sweep: a row of more is cut into chunks.
 const CHUNK: usize = 64;
 
-/// A piece's place across a sub-slab, at its middle height, and its index:
-/// ordered by place, then index.
-type Place = (f64, u32);
+/// A piece's current midpoint key, evaluated only when a comparison needs it.
+/// Joining pieces are ready before their sort; survivors are invalidated in
+/// the existing retain visit. Bit-constant verticals keep their exact key.
+/// Both flags occupy the old tuple's padding.
+#[derive(Debug, Clone, Copy, Default)]
+struct Place {
+    x: f64,
+    piece: u32,
+    ready: bool,
+    constant: bool,
+}
+
+const _: () = assert!(size_of::<Place>() == size_of::<(f64, u32)>());
+const _: () = assert!(std::mem::align_of::<Place>() == std::mem::align_of::<(f64, u32)>());
+
+impl Place {
+    fn new(piece: u32, pieces: &[Piece], mid: f64) -> Self {
+        let line = pieces[piece as usize].line;
+        Self {
+            x: line.x(mid),
+            piece,
+            ready: true,
+            constant: line.a.x.to_bits() == line.b.x.to_bits(),
+        }
+    }
+
+    fn key(&mut self, pieces: &[Piece], mid: f64) -> f64 {
+        if !self.ready {
+            self.x = pieces[self.piece as usize].line.x(mid);
+            self.ready = true;
+        }
+        self.x
+    }
+}
 
 fn ordered(p: &Place, q: &Place) -> std::cmp::Ordering {
-    p.0.total_cmp(&q.0).then(p.1.cmp(&q.1))
+    p.x.total_cmp(&q.x).then(p.piece.cmp(&q.piece))
+}
+
+/// Every computed x stays in the full original endpoint range: Line::x
+/// returns an endpoint or clamps its interior result. A strict gap proves
+/// order and non-equality without evaluating either current midpoint key.
+/// Touching or overlapping ranges always use the original arithmetic.
+fn separated(p: Line, q: Line) -> Option<std::cmp::Ordering> {
+    if ![p.a.x, p.b.x, q.a.x, q.b.x].into_iter().all(f64::is_finite) {
+        return None;
+    }
+    if p.a.x.max(p.b.x) < q.a.x.min(q.b.x) {
+        Some(std::cmp::Ordering::Less)
+    } else if q.a.x.max(q.b.x) < p.a.x.min(p.b.x) {
+        Some(std::cmp::Ordering::Greater)
+    } else {
+        None
+    }
+}
+
+fn compare(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> std::cmp::Ordering {
+    if !(p.ready && q.ready)
+        && let Some(order) = separated(pieces[p.piece as usize].line, pieces[q.piece as usize].line)
+    {
+        return order;
+    }
+    p.key(pieces, mid)
+        .total_cmp(&q.key(pieces, mid))
+        .then(p.piece.cmp(&q.piece))
+}
+
+fn coincident(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> bool {
+    if !(p.ready && q.ready)
+        && separated(pieces[p.piece as usize].line, pieces[q.piece as usize].line).is_some()
+    {
+        return false;
+    }
+    // Numeric equality deliberately groups the two signs of zero together.
+    p.key(pieces, mid) == q.key(pieces, mid)
 }
 
 /// A piece's extent along one axis, `(start, end, piece)`.
@@ -99,6 +168,8 @@ fn sort_work(count: usize) -> usize {
 /// Reusable storage of the resolver.
 #[derive(Debug, Default)]
 pub(crate) struct Resolver {
+    #[cfg(test)]
+    eager_midpoint_keys: bool,
     heights: Vec<f64>,
     /// The pieces' columns and heights, `(start, end, piece)`, each by
     /// start: the sweep takes the pieces by their upper end.
@@ -337,7 +408,7 @@ impl Resolver {
                         .saturating_add(self.open.len())
                         .saturating_add(1),
                 )?;
-                self.slab(pieces, rules, segment);
+                self.slab(pieces, rules, segment, a.midpoint(b));
                 if carry {
                     self.carry_on(a, bytes)?;
                 }
@@ -436,26 +507,30 @@ impl Resolver {
         work: &mut Meter,
     ) -> Result<usize> {
         let mid = a.midpoint(b);
-        let place = |i: u32| (pieces[i as usize].line.x(mid), i);
         work.charge(self.order.len())?;
         self.order.retain_mut(|entry| {
-            *entry = place(entry.1);
-            pieces[entry.1 as usize].hi >= b
+            entry.ready = entry.constant;
+            #[cfg(test)]
+            if self.eager_midpoint_keys {
+                entry.ready = false;
+                entry.key(pieces, mid);
+            }
+            pieces[entry.piece as usize].hi >= b
         });
-        settle(&mut self.order, work)?;
+        settle(&mut self.order, pieces, mid, work)?;
         self.joining.clear();
         while let Some(&(lo, hi, i)) = self.rows.get(joined)
             && lo <= a
         {
             if hi >= b {
-                self.joining.push(place(i));
+                self.joining.push(Place::new(i, pieces, mid));
             }
             joined += 1;
         }
         if !self.joining.is_empty() {
             work.charge(sort_work(self.joining.len()).saturating_add(self.order.len()))?;
             self.joining.sort_unstable_by(ordered);
-            merge(&mut self.order, &self.joining);
+            merge(&mut self.order, &self.joining, pieces, mid);
         }
         Ok(joined)
     }
@@ -464,7 +539,7 @@ impl Resolver {
     /// in order, coincident ones together, and where coverage starts or
     /// stops, from the windings carried in `segment`. Leaves the windings
     /// right of the pieces.
-    fn slab(&mut self, pieces: &[Piece], rules: &[FillRule], segment: usize) {
+    fn slab(&mut self, pieces: &[Piece], rules: &[FillRule], segment: usize, mid: f64) {
         let groups = self.windings.len();
         let from = segment.saturating_mul(groups);
         match self.carried.get(from..from.saturating_add(groups)) {
@@ -478,13 +553,23 @@ impl Resolver {
             .zip(rules)
             .all(|(&w, &rule)| covered(w, rule));
         let mut n = 0;
-        while let Some(&(x, first)) = self.order.get(n) {
-            while let Some(&(_, i)) = self.order.get(n).filter(|o| o.0 == x) {
-                let p = pieces[i as usize];
+        while let Some(first) = self.order.get(n).map(|entry| entry.piece) {
+            let start = n;
+            // Finite validated pieces always equal themselves. Consume the
+            // first winding without forcing a separated singleton's key.
+            loop {
+                let p = pieces[self.order[n].piece as usize];
                 if let Some(w) = self.windings.get_mut(usize::from(p.group)) {
                     *w += i64::from(p.direction);
                 }
                 n += 1;
+                if n == self.order.len() {
+                    break;
+                }
+                let (before, after) = self.order.split_at_mut(n);
+                if !coincident(&mut before[start], &mut after[0], pieces, mid) {
+                    break;
+                }
             }
             let now = self
                 .windings
@@ -577,10 +662,13 @@ fn overlapping(spans: &[Span]) -> usize {
 /// Restores the order of `order` by moving entries down one at a time,
 /// charging each move: pieces that crossed at the height between two
 /// sub-slabs are one move apart per crossing.
-fn settle(order: &mut [Place], work: &mut Meter) -> Result<()> {
+fn settle(order: &mut [Place], pieces: &[Piece], mid: f64, work: &mut Meter) -> Result<()> {
     for n in 1..order.len() {
         let mut j = n;
-        while j > 0 && ordered(&order[j], &order[j - 1]).is_lt() {
+        while j > 0 && {
+            let (before, after) = order.split_at_mut(j);
+            compare(&mut after[0], &mut before[j - 1], pieces, mid).is_lt()
+        } {
             work.charge(1)?;
             order.swap(j - 1, j);
             j -= 1;
@@ -591,18 +679,19 @@ fn settle(order: &mut [Place], work: &mut Meter) -> Result<()> {
 
 /// Merges the ordered `joining` into the ordered `order`, which has room
 /// for them.
-fn merge(order: &mut Vec<Place>, joining: &[Place]) {
+fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], mid: f64) {
     let (mut i, mut j) = (order.len(), joining.len());
-    order.resize(i + j, (0.0, 0));
+    order.resize(i + j, Place::default());
     for k in (0..order.len()).rev() {
         if j == 0 {
             break;
         }
-        if i > 0 && ordered(&joining[j - 1], &order[i - 1]).is_lt() {
+        let mut next = joining[j - 1];
+        if i > 0 && compare(&mut next, &mut order[i - 1], pieces, mid).is_lt() {
             order[k] = order[i - 1];
             i -= 1;
         } else {
-            order[k] = joining[j - 1];
+            order[k] = next;
             j -= 1;
         }
     }
