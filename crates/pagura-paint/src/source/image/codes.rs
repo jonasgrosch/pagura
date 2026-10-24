@@ -285,7 +285,6 @@ impl Lanes {
         };
         let maps: [Affine; L] = std::array::from_fn(|l| self.affine[l]);
         let averages = averages.as_chunks::<N>().0;
-        colors.clear();
         colors.resize(averages.len() * L, 0.0);
         for (values, average) in colors.as_chunks_mut::<L>().0.iter_mut().zip(averages) {
             for ((value, &component), map) in values.iter_mut().zip(&component).zip(&maps) {
@@ -307,7 +306,6 @@ impl Lanes {
         };
         let tables: [&[f64; 256]; L] = std::array::from_fn(|l| &self.table[l]);
         let codes = codes.as_chunks::<N>().0;
-        colors.clear();
         colors.resize(codes.len() * L, 0.0);
         for (values, sample) in colors.as_chunks_mut::<L>().0.iter_mut().zip(codes) {
             for ((value, &component), table) in values.iter_mut().zip(&component).zip(&tables) {
@@ -410,7 +408,6 @@ impl Lanes {
     ) {
         let channels = self.channels;
         let (lower, _) = pixels.size_hint();
-        out.colors.clear();
         out.colors.resize(lower * channels, 0.0);
         if self.opaque {
             for (codes, colors) in pixels.zip(out.colors.chunks_exact_mut(channels)) {
@@ -662,7 +659,6 @@ impl Codes {
         };
         if let Some(map) = mapped {
             let mut colors = std::mem::take(&mut out.colors);
-            colors.clear();
             colors.resize(len * lanes, 0.0);
             let alpha = &mut out.alpha;
             let finish = |colors: &mut [f64], covered: &[bool]| {

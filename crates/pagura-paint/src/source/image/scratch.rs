@@ -140,6 +140,17 @@ impl ImageSampler {
     }
 }
 
+/// The first `len` values of `values`, grown with defaults where it holds
+/// fewer. It never shrinks: a span's values are written before they are
+/// read, and a short span between long ones must not make the next long
+/// one fill its storage again.
+pub(super) fn grown<T: Copy + Default>(values: &mut Vec<T>, len: usize) -> &mut [T] {
+    if values.len() < len {
+        values.resize(len, T::default());
+    }
+    &mut values[..len]
+}
+
 /// Reserves an allocation after its layout has been charged.
 pub(super) fn allocate<T>(count: usize) -> Result<Vec<T>> {
     let mut values = Vec::new();
