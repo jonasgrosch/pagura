@@ -113,15 +113,16 @@ stop between bands for a viewer. Each output pixel is quantized once onto the
 background premultiplied once. Output does not depend on band height, tiles or
 platform.
 
-During preparation, an optional coverage proof builds temporary source-derived
-bounds once for a shape placement and reuses them across its unresolved pixels.
-It borrows only the unused portion of work already reserved for a completed
-inspection. Its byte meter is capped by the preparation meter's remaining
-capacity, and every temporary owner is released before the original sequential
-certificate collector continues. Only uniquely proved byte values survive as
-hints; earlier certificates take precedence, and unsupported evidence or an
-exhausted optional meter leaves the existing collector responsible. These
-bounds do not enter the document store or the band executor.
+Once the sequential original-curve collector has certified every coverage
+byte of a glyph placement, preparation may retain complete coverage rows
+instead of rebuilding its polygon. This optional construction borrows only
+unused work from the completed inspection and the byte meter's remaining
+capacity. It preserves the shape's validation bounds and publishes only when
+its actual storage and complete execution work fit conservative lower bounds
+for the ordinary replacement. A declined attempt releases all its owners
+before that replacement continues. The rows are an authoritative coverage
+source for the common band executor; they retain no old geometry, correction
+map or proof oracle and do not enter the document store.
 
 One band driver either appends output directly into an owned `Pixmap` or
 lends a reusable RGBA band to a consumer. Output storage belongs to the call:

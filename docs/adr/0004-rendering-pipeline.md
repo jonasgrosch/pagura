@@ -229,15 +229,28 @@ bound the area uncertainty under the canonical clips. Integer localization
 retains its two-sum tails; full outward hulls must miss outward clip bounds
 before their error is omitted.
 
-When the proven byte differs from the prepared representation, only curve
-pieces whose full hulls meet those pixels are subdivided more finely. The
-replacement remains an ordinary polygon with resolved rows. Every cell of
-that replacement is inspected again, so refining one boundary cannot silently
-change a neighboring byte. Inspection, local proofs and all replacement
+When a proven byte differs from the prepared representation, preparation may
+publish complete certified coverage rows. The original collector first
+finishes in source order. An unchanged common-kernel replay supplies every
+other byte; an ordered merge supplies the original-control certificates.
+This is one complete coverage source, with implicit zeroes outside its spans,
+not corrections applied to retained geometry. It preserves the original
+validation bounds and is admitted only when its nonzero byte bounds equal
+those bounds. Its actual retained capacities and complete output work must
+fit lower bounds for the mandatory owned polygon replacement. The trial uses
+the completed inspection's single unused work allowance and current spare
+bytes; unsupported geometry or exhaustion drops every trial owner before
+the ordinary replacement continues. Certified rows are local to the prepared
+render and cannot supply raw geometry for clip classification.
+
+Otherwise, only curve pieces whose full hulls meet the differing pixels are
+subdivided more finely. This replacement remains an ordinary polygon with
+resolved rows. Every cell is inspected again, so refining one boundary cannot
+silently change a neighboring byte. Inspection, local proofs and replacement
 resolutions share one bounded work meter; scratch and overlapping old/new
 geometry are charged before allocation. Unresolved precision or exhausted
 work, segment, subdivision or memory limits refuse preparation. Execution
-has no coverage overrides, allocation or fallible refinement. A synthetic
+has no coverage overlays, allocation or fallible refinement. A synthetic
 coincident-outline composition checks coverage byte one directly and its
 three-placement composed result against the analytic byte reference.
 

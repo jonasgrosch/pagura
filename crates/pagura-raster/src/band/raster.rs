@@ -228,6 +228,9 @@ impl BandRasterizer {
                 let target = Target::of(shape);
                 self.items(&items, (target, glyph.scan, FillRule::NonZero), rows, out);
             }
+            Body::Certified(coverage) => {
+                self.work = self.work.saturating_add(coverage.emit(rows, out));
+            }
         }
     }
 
@@ -702,6 +705,11 @@ pub(crate) fn inspect(
             edges.scan,
         ),
         Body::Glyph(glyph) => (Items::glyph(glyph, &shape.resolved), glyph.scan),
+        Body::Certified(_) => {
+            return Err(Error::invalid_argument(
+                "certified coverage rows are not raw geometry",
+            ));
+        }
     };
     let target = Target::of(shape);
     let fit = cells.rows_fit(scan.1.saturating_sub(scan.0));

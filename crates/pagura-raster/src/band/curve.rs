@@ -10,8 +10,6 @@ use crate::flatten::bounded;
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
-pub(crate) mod coverage;
-
 /// Maximum sum of absolute cubic third differences per coordinate in one
 /// quadratic outline. Bounding the sum, rather than each segment, bounds
 /// the entire outline's reduction error independently of its complexity.

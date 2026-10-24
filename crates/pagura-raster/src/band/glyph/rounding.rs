@@ -14,7 +14,7 @@ use crate::{FillRule, Path, Point, Segment, Transform, quantize_unit};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 
-mod analytic;
+mod rows;
 
 const ROUNDS: i32 = 12;
 
@@ -23,7 +23,6 @@ struct Pixel {
     x: u32,
     y: u32,
     byte: u8,
-    hint: Option<u8>,
 }
 
 const _: () = assert!(size_of::<Pixel>() == 12);
@@ -34,25 +33,54 @@ struct Ambiguity {
     surplus: Option<usize>,
 }
 
-impl Ambiguity {
-    fn into_pixels(
-        mut self,
+struct Collected {
+    wrong: bool,
+    surplus: Option<usize>,
+}
+
+impl Collected {
+    /// Consumes this inspection's single optional loan after collection.
+    fn with_rows(
+        self,
         source: Source<'_>,
+        shape: Shape,
         options: &Prep<'_>,
         proven: &[Pixel],
-        bytes: &Meter,
-    ) -> Vec<Pixel> {
-        if let Some(surplus) = self.surplus.filter(|&units| units != 0) {
-            analytic::hint(
-                source,
-                options,
-                &mut self.pixels,
-                proven,
-                surplus,
-                bytes.remaining(),
-            );
-        }
-        self.pixels
+        bytes: &mut Meter,
+    ) -> Shape {
+        rows::replace(source, shape, options, proven, self.surplus, bytes)
+    }
+}
+
+impl Ambiguity {
+    fn collect(
+        self,
+        source: Source<'_>,
+        options: &Prep<'_>,
+        (targets, proven): (&mut Vec<[f64; 4]>, &mut Vec<Pixel>),
+        retained: usize,
+        Meters { work, bytes }: Meters<'_>,
+    ) -> Result<Collected> {
+        let wrong = collect_targets(
+            source,
+            self.pixels,
+            (targets, proven),
+            options,
+            Meters { work, bytes },
+        )?;
+        // Pending pixels and interval scratch have left scope. Keep exactly
+        // the old geometry/proof and the collector's two live owners charged.
+        let target_bytes = targets.capacity() * size_of::<[f64; 4]>();
+        let proven_bytes = proven.capacity() * size_of::<Pixel>();
+        bytes.refund(
+            bytes
+                .used()
+                .saturating_sub(retained + target_bytes + proven_bytes),
+        );
+        Ok(Collected {
+            wrong,
+            surplus: self.surplus,
+        })
     }
 }
 
@@ -208,6 +236,7 @@ fn analytic(shape: &Shape) -> bool {
     match &shape.body {
         Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
         Body::Edges(body) => !body.curves.is_empty(),
+        Body::Certified(_) => false,
     }
 }
 
@@ -243,6 +272,7 @@ fn support_contained(
     let scan = match &shape.body {
         Body::Glyph(body) => body.scan,
         Body::Edges(body) => body.scan,
+        Body::Certified(_) => (shape.bounds.x0 as usize, shape.bounds.x1 as usize),
     };
     let bounds = shape.bounds();
     Ok(bounds.x0 <= support.x0
@@ -295,7 +325,6 @@ pub(super) fn certify(
     let Some(source) = Source::of(edges, origin, &mut work)? else {
         return Ok(shape);
     };
-    let outline = source.outline;
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.as_ref().map_or(0, Shape::retained_bytes))?;
     let (shape, mut current_area) = guard_candidate(
@@ -321,7 +350,7 @@ pub(super) fn certify(
     // source/clip invocation, never to the returned execution geometry.
     let mut proven = Vec::new();
     for round in 0..=ROUNDS {
-        work.charge_product(outline.segments().len(), 2)?;
+        work.charge_product(source.outline.segments().len(), 2)?;
         let (error, other_error) = uncertainties(source, &shape, current_area, options);
         let proof = owned_proof.as_ref().or(shared_proof);
         let local = proof.map(|proof| Local {
@@ -329,31 +358,24 @@ pub(super) fn certify(
             origin,
             other_error,
         });
-        let pixels = ambiguous(&shape, error, local, (&mut work, &mut bytes))?
-            .into_pixels(source, options, &proven, &bytes);
-        let wrong = collect_targets(
+        let collected = ambiguous(&shape, error, local, (&mut work, &mut bytes))?.collect(
             source,
-            pixels,
-            (&mut targets, &mut proven),
             options,
+            (&mut targets, &mut proven),
+            shape.retained_bytes() + owned_proof.as_ref().map_or(0, Proof::retained_bytes),
             Meters {
                 work: &mut work,
                 bytes: &mut bytes,
             },
         )?;
-        let target_bytes = targets.capacity() * size_of::<[f64; 4]>();
-        let proven_bytes = proven.capacity() * size_of::<Pixel>();
-        // Inspection cells, pending pixels and local interval geometry have
-        // left scope. Keep the targets, original certificates, live shape
-        // and its active proof charged.
-        bytes.refund(bytes.used().saturating_sub(
-            shape.retained_bytes()
-                + target_bytes
-                + proven_bytes
-                + owned_proof.as_ref().map_or(0, Proof::retained_bytes),
-        ));
-        if !wrong {
+        if !collected.wrong {
             return Ok(Some(shape));
+        }
+        if round == 0 {
+            shape = collected.with_rows(source, shape, options, &proven, &mut bytes);
+            if matches!(&shape.body, Body::Certified(_)) {
+                return Ok(Some(shape));
+            }
         }
         if round == ROUNDS {
             break;
@@ -420,10 +442,7 @@ fn collect_targets(
         {
             proven[index].byte
         } else {
-            let byte = match pixel.hint {
-                Some(byte) => byte,
-                None => true_byte(source, pixel, options, (work, bytes))?,
-            };
+            let byte = true_byte(source, pixel, options, (work, bytes))?;
             if proven.len() == proven.capacity() {
                 work.charge(proven.len())?;
             }
@@ -610,16 +629,21 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
     384.0 * f64::EPSILON * magnitude * pieces
 }
 
+fn scan_width(shape: &Shape) -> usize {
+    match &shape.body {
+        Body::Glyph(body) => body.scan.1.saturating_sub(body.scan.0),
+        Body::Edges(body) => body.scan.1.saturating_sub(body.scan.0),
+        Body::Certified(_) => shape.bounds.width() as usize,
+    }
+}
+
 fn ambiguous(
     shape: &Shape,
     error: f64,
     local: Option<Local<'_>>,
     (work, bytes): (&mut Meter, &mut Meter),
 ) -> Result<Ambiguity> {
-    let width = match &shape.body {
-        Body::Glyph(body) => body.scan.1.saturating_sub(body.scan.0),
-        Body::Edges(body) => body.scan.1.saturating_sub(body.scan.0),
-    };
+    let width = scan_width(shape);
     let mut cells = Cells::new(width, bytes)?;
     let cell_bytes = cells.retained_bytes();
     let allowance = shape.work();
@@ -671,7 +695,6 @@ fn ambiguous(
                     x: u32::try_from(x).map_err(|_| Error::limit("glyph column exceeds u32"))?,
                     y,
                     byte: quantize_unit(area),
-                    hint: None,
                 });
             }
             Ok(())

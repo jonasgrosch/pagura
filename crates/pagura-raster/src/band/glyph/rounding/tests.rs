@@ -266,7 +266,6 @@ fn local_proof_chords_keep_nonpoint_loops_distinct_from_points() {
                 x: 0,
                 y: 0,
                 byte: 0,
-                hint: None,
             },
             (&options, 0),
             (&mut work, &mut bytes),
@@ -496,7 +495,6 @@ fn canonical_clip_interpolation_cancellation_stays_inside_the_interval() {
             x: 0,
             y: 0,
             byte: 0,
-            hint: None,
         },
         (&options, 0),
         (&mut work, &mut bytes),
@@ -572,7 +570,6 @@ fn canonical_source_line_cancellation_cannot_bypass_curve_intervals() {
             x: 0,
             y: 0,
             byte: 0,
-            hint: None,
         },
         (&options, 0),
         (&mut work, &mut bytes),
@@ -1068,7 +1065,6 @@ fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
         x: 2,
         y: 3,
         byte: quantize_unit(10.0 / 9.0 - origin.y),
-        hint: None,
     };
     assert_eq!(pixel.byte, 127);
     let mut proven = prove_original_pixel(
@@ -1086,12 +1082,8 @@ fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
     let mut hit_work = Meter::new(64, RASTER_WORK);
     let mut pending = Vec::new();
     bytes.reserve_capacity(&mut pending, 1).unwrap();
-    // An earlier original-control certificate has precedence over any hint.
-    pending.push(Pixel {
-        byte: 0,
-        hint: Some(0),
-        ..pixel
-    });
+    // The earlier original-control certificate still detects this mismatch.
+    pending.push(Pixel { byte: 0, ..pixel });
     let released = pending.capacity() * size_of::<Pixel>();
     let mut targets = Vec::new();
     assert!(
@@ -1114,50 +1106,6 @@ fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
         bytes.used(),
         proven.capacity() * size_of::<Pixel>() + targets.capacity() * size_of::<[f64; 4]>(),
     );
-}
-
-#[test]
-fn a_prepared_hint_keeps_the_original_certificate_collector() {
-    let limits = Limits::default();
-    let (edges, options) = original_reuse_fixture(&limits);
-    let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
-    let mut source_work = Meter::new(limits.raster_work, RASTER_WORK);
-    let source = Source::of(&edges, origin, &mut source_work)
-        .unwrap()
-        .unwrap();
-    // The independent integral 10/9-origin.y rounds to127. This tiny work
-    // allowance cannot repeat the original-control integration.
-    for hint in [Some(127), None] {
-        let mut work = Meter::new(64, RASTER_WORK);
-        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
-        let mut pending = Vec::new();
-        bytes.reserve_capacity(&mut pending, 1).unwrap();
-        pending.push(Pixel {
-            x: 2,
-            y: 3,
-            byte: 0,
-            hint,
-        });
-        let (mut targets, mut proven) = (Vec::new(), Vec::new());
-        let result = collect_targets(
-            source,
-            pending,
-            (&mut targets, &mut proven),
-            &options,
-            Meters {
-                work: &mut work,
-                bytes: &mut bytes,
-            },
-        );
-        match hint {
-            Some(expected) => {
-                assert!(result.unwrap());
-                assert_eq!(proven[0].byte, expected);
-                assert_eq!(targets, [[2.0, 3.0, 3.0, 4.0]]);
-            }
-            None => assert_eq!(result.unwrap_err().kind, pagura_core::ErrorKind::Limit),
-        }
-    }
 }
 
 #[test]
@@ -1201,7 +1149,6 @@ fn original_byte_certificates_do_not_survive_a_different_clip_or_call() {
                     x: 2,
                     y: 3,
                     byte: quantize_unit(exact),
-                    hint: None,
                 },
                 &options,
                 Meters {
@@ -1238,7 +1185,6 @@ fn original_byte_reuse_keeps_adjacent_work_and_byte_limits() {
         x: 2,
         y: 3,
         byte: 127,
-        hint: None,
     };
     let proven = prove_original_pixel(
         source,
@@ -1304,4 +1250,572 @@ fn original_byte_reuse_keeps_adjacent_work_and_byte_limits() {
             assert_eq!(proven[0].byte, 127);
         }
     }
+}
+
+fn complete_rows_path() -> Path {
+    complete_rows_builder().finish()
+}
+
+fn complete_rows_builder() -> PathBuilder {
+    let mut path = PathBuilder::new();
+    path.move_to(Point::default());
+    path.cubic_to(
+        Point::new(2.0, 4.0),
+        Point::new(4.0, 4.0),
+        Point::new(6.0, 0.0),
+    )
+    .unwrap();
+    // These original endpoints must remain in every flattened replacement.
+    // They supply a byte/work floor without relying on subdivision density.
+    for i in 1..=64 {
+        path.line_to(Point::new(6.0, 7.0 * f64::from(i) / 64.0))
+            .unwrap();
+    }
+    path.line_to(Point::new(0.0, 7.0)).unwrap();
+    for i in (0..64).rev() {
+        path.line_to(Point::new(0.0, 7.0 * f64::from(i) / 64.0))
+            .unwrap();
+    }
+    path.close();
+    path
+}
+
+fn complete_rows_options(limits: &Limits, band_height: u32) -> Prep<'_> {
+    Prep {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 12,
+                y1: 12,
+            },
+            band_height,
+        },
+        limits,
+        clip: None,
+    }
+}
+
+fn complete_rows_shape(path: &Path, origin: Point, options: &Prep<'_>) -> Shape {
+    let mut shape = complete_rows_bare_shape(path, origin, options);
+    // A real paid reservation with ample unused work isolates owner admission
+    // from the materiality question; every replay still checks its exact tally.
+    shape.add_work(1_000_000);
+    shape
+}
+
+fn complete_rows_bare_shape(path: &Path, origin: Point, options: &Prep<'_>) -> Shape {
+    Shape::fill(
+        path,
+        Transform {
+            e: origin.x,
+            f: origin.y,
+            ..Transform::IDENTITY
+        },
+        FillRule::NonZero,
+        &ShapeOptions {
+            area: options.area,
+            limits: options.limits,
+        },
+    )
+    .unwrap()
+    .unwrap()
+}
+
+fn complete_rows_source(path: &Path, origin: Point) -> Source<'_> {
+    Source {
+        outline: path,
+        linear: Transform::IDENTITY,
+        origin,
+        points: &[],
+        initial_area: AREA,
+        proof: None,
+    }
+}
+
+fn complete_rows_surplus(shape: &Shape) -> usize {
+    let mut cells = Cells::new(scan_width(shape), &mut crate::testing::bytes()).unwrap();
+    raster::inspect(shape, &mut cells, |_, _, _, _, _| {})
+        .unwrap()
+        .surplus(shape.work())
+        .unwrap()
+}
+
+fn complete_rows_run(shape: &Shape, area: &Area) -> (Vec<u8>, usize) {
+    let mut bytes = crate::testing::bytes();
+    let mut raster = crate::BandRasterizer::new(*area, &mut bytes).unwrap();
+    let mut band = crate::BandCoverage::with_capacity(shape.capacity(), &mut bytes).unwrap();
+    let retained = band.retained_bytes();
+    let width = area.region.width() as usize;
+    let mut values = vec![0; width * area.region.height() as usize];
+    for index in shape.bands(area) {
+        assert_eq!(raster.rasterize_run(&[shape], None, index, &mut band), 1);
+        assert_eq!(band.retained_bytes(), retained);
+        for row in band.rows() {
+            for span in row.spans() {
+                let (x, cells) = match span {
+                    crate::Span::Full { x, len } => (x, vec![255; len as usize]),
+                    crate::Span::Partial { x, coverage } => (x, coverage.to_vec()),
+                };
+                let start =
+                    (row.y - area.region.y0) as usize * width + (x - area.region.x0) as usize;
+                values[start..start + cells.len()].copy_from_slice(&cells);
+            }
+        }
+    }
+    (values, raster.work_done())
+}
+
+#[test]
+fn complete_rows_replay_original_bytes_and_keep_bounds_across_bands() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let origin = Point::new(1.25, 103.0 / 144.0 + 1e-10);
+    for band_height in [1, 3, 16, 32] {
+        let options = complete_rows_options(&limits, band_height);
+        let shape = complete_rows_shape(&path, origin, &options);
+        let bounds = shape.bounds();
+        let source = complete_rows_source(&path, origin);
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        bytes.charge(shape.retained_bytes()).unwrap();
+        let (mut targets, mut proven) = (Vec::new(), Vec::new());
+        let collected = ambiguous(&shape, f64::INFINITY, None, (&mut work, &mut bytes))
+            .unwrap()
+            .collect(
+                source,
+                &options,
+                (&mut targets, &mut proven),
+                shape.retained_bytes(),
+                Meters {
+                    work: &mut work,
+                    bytes: &mut bytes,
+                },
+            )
+            .unwrap();
+        assert!(collected.wrong);
+        let mut expected = vec![0; 12 * 12];
+        for pixel in &proven {
+            expected[pixel.y as usize * 12 + pixel.x as usize] = pixel.byte;
+        }
+        // Over local x=7/4..11/4 the original arch's mean is401/144.
+        // Its row3 coverage is175/144-origin.y, just below half a pixel.
+        assert_eq!(expected[3 * 12 + 3], 127);
+        let spent = work.used();
+        let mut ready = rows::replace(
+            source,
+            shape,
+            &options,
+            &proven,
+            collected.surplus,
+            &mut bytes,
+        );
+        assert!(matches!(&ready.body, Body::Certified(_)));
+        assert_eq!(ready.bounds(), bounds);
+        assert_eq!(work.used(), spent, "the child never charges the parent");
+        assert_eq!(
+            bytes.used(),
+            ready.retained_bytes()
+                + targets.capacity() * size_of::<[f64; 4]>()
+                + proven.capacity() * size_of::<Pixel>(),
+        );
+        ready.add_work(super::super::merged(bounds));
+        let (actual, executed) = crate::testing::raster(&options.area, Some(&ready), None);
+        assert_eq!(actual, expected);
+        assert!(executed <= ready.work());
+        let (gathered, executed) = complete_rows_run(&ready, &options.area);
+        assert_eq!(gathered, actual);
+        assert!(executed <= ready.work());
+    }
+}
+
+#[test]
+fn complete_rows_keep_canonical_point_floors_and_a_containing_clip() {
+    struct Case {
+        x: f64,
+        band_height: u32,
+        point_x: usize,
+    }
+    let limits = Limits::default();
+    let mut path = complete_rows_builder();
+    path.move_to(Point::new(7.75, 1.25));
+    path.close();
+    let edges = std::sync::Arc::new(
+        GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
+    for case in [
+        Case {
+            x: 0.25,
+            band_height: 1,
+            point_x: 8,
+        },
+        Case {
+            x: 0.25 - 2.0_f64.powi(-49),
+            band_height: 16,
+            point_x: 7,
+        },
+    ] {
+        let origin = Point::new(case.x, 0.25);
+        let options = complete_rows_options(&limits, case.band_height);
+        let mut rectangle = PathBuilder::new();
+        rectangle.rect(0.0, 0.0, 12.0, 12.0);
+        let clip = ClipShape::new(
+            &[(&rectangle.finish(), FillRule::NonZero)],
+            Transform::IDENTITY,
+            &ShapeOptions {
+                area: options.area,
+                limits: &limits,
+            },
+        )
+        .unwrap();
+        let options = Prep {
+            clip: Some(&clip),
+            ..options
+        };
+        let mut shape = super::super::placed(&edges, origin, &options)
+            .unwrap()
+            .unwrap();
+        shape.add_work(1_000_000);
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
+        assert_eq!(source.points.len(), 1);
+        let mut bytes = crate::testing::bytes();
+        bytes.charge(shape.retained_bytes()).unwrap();
+        let (mut targets, mut proven) = (Vec::new(), Vec::new());
+        let collected = ambiguous(&shape, f64::INFINITY, None, (&mut work, &mut bytes))
+            .unwrap()
+            .collect(
+                source,
+                &options,
+                (&mut targets, &mut proven),
+                shape.retained_bytes(),
+                Meters {
+                    work: &mut work,
+                    bytes: &mut bytes,
+                },
+            )
+            .unwrap();
+        let mut expected = vec![0; 12 * 12];
+        for pixel in &proven {
+            expected[pixel.y as usize * 12 + pixel.x as usize] = pixel.byte;
+        }
+        assert_eq!(expected[12 + case.point_x], 255);
+        let ready = rows::replace(
+            source,
+            shape,
+            &options,
+            &proven,
+            collected.surplus,
+            &mut bytes,
+        );
+        assert!(matches!(&ready.body, Body::Certified(_)));
+        assert_eq!(
+            crate::testing::raster(&options.area, Some(&ready), Some(&clip)).0,
+            expected
+        );
+    }
+}
+
+#[test]
+fn complete_rows_declines_restore_parent_owners_work_and_bytes() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let origin = Point::new(1.25, 0.25);
+    let options = complete_rows_options(&limits, 3);
+    for remaining in [0, limits.render_bytes] {
+        let shape = complete_rows_shape(&path, origin, &options);
+        let retained = shape.retained_bytes();
+        let work = shape.work();
+        let expected = crate::testing::raster(&options.area, Some(&shape), None).0;
+        let mut bytes = Meter::new(retained + remaining, RENDER_BYTES);
+        bytes.charge(retained).unwrap();
+        let before = bytes.clone();
+        let surplus = if remaining == 0 {
+            complete_rows_surplus(&shape)
+        } else {
+            0
+        };
+        let ready = rows::replace(
+            complete_rows_source(&path, origin),
+            shape,
+            &options,
+            &[],
+            Some(surplus),
+            &mut bytes,
+        );
+        assert!(!matches!(&ready.body, Body::Certified(_)));
+        assert_eq!((ready.retained_bytes(), ready.work()), (retained, work));
+        assert_eq!(bytes, before);
+        assert_eq!(
+            crate::testing::raster(&options.area, Some(&ready), None).0,
+            expected
+        );
+    }
+}
+
+#[test]
+fn complete_rows_replay_and_encoding_exhaustion_remain_optional() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let origin = Point::new(1.25, 0.25);
+    let options = complete_rows_options(&limits, 3);
+    let shape = complete_rows_shape(&path, origin, &options);
+    let source = complete_rows_source(&path, origin);
+    let surplus = complete_rows_surplus(&shape);
+    let mut work = Meter::new(surplus, RASTER_WORK);
+    let mut bytes = crate::testing::bytes();
+    let ready = rows::attempt(
+        source,
+        &shape,
+        &options,
+        &[],
+        surplus,
+        Meters {
+            work: &mut work,
+            bytes: &mut bytes,
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(bytes.used(), ready.heap_bytes());
+    let required = work.used();
+    drop(ready);
+    for bound in [shape.work() - surplus - 1, required - 1] {
+        let mut work = Meter::new(bound, RASTER_WORK);
+        let mut bytes = crate::testing::bytes();
+        let result = rows::attempt(
+            source,
+            &shape,
+            &options,
+            &[],
+            surplus,
+            Meters {
+                work: &mut work,
+                bytes: &mut bytes,
+            },
+        );
+        assert_eq!(result.unwrap_err().kind, pagura_core::ErrorKind::Limit);
+        assert!(work.used() <= bound);
+    }
+    assert!(!matches!(&shape.body, Body::Certified(_)));
+}
+
+#[test]
+fn complete_rows_cell_initialization_needs_its_own_unused_work() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let origin = Point::new(1.25, 0.25);
+    let options = complete_rows_options(&limits, 3);
+    let mut shape = complete_rows_bare_shape(&path, origin, &options);
+    let source = complete_rows_source(&path, origin);
+    let mut cells = Cells::new(scan_width(&shape), &mut crate::testing::bytes()).unwrap();
+    let observed = raster::inspect(&shape, &mut cells, |_, _, _, _, _| {}).unwrap();
+    drop(cells);
+    let replay = usize::MAX - observed.surplus(usize::MAX).unwrap();
+    let mut setup = Meter::new(usize::MAX, RASTER_WORK);
+    rows::floor(source, &shape, &options, &mut setup)
+        .unwrap()
+        .unwrap();
+    let mut initialized = Meter::new(usize::MAX, RENDER_BYTES);
+    Cells::charge(scan_width(&shape), &mut initialized).unwrap();
+    let loan = replay + 16 + setup.used() + initialized.used() - 1;
+    let allowance = replay + loan;
+    assert!(allowance >= shape.work());
+    shape.add_work(allowance - shape.work());
+    assert_eq!(complete_rows_surplus(&shape), loan);
+    let retained = shape.retained_bytes();
+    let work = shape.work();
+    let mut bytes = crate::testing::bytes();
+    bytes.charge(retained).unwrap();
+    let before = bytes.clone();
+    let ready = rows::replace(source, shape, &options, &[], Some(loan), &mut bytes);
+    assert!(!matches!(&ready.body, Body::Certified(_)));
+    assert_eq!((ready.retained_bytes(), ready.work()), (retained, work));
+    assert_eq!(bytes, before);
+}
+
+#[test]
+fn complete_rows_reject_missing_borders_zero_results_and_unvisited_proofs() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let origin = Point::new(1.25, 0.25);
+    let options = complete_rows_options(&limits, 3);
+    let shape = complete_rows_shape(&path, origin, &options);
+    let bounds = shape.bounds();
+    let source = complete_rows_source(&path, origin);
+    let surplus = complete_rows_surplus(&shape);
+    let mut zero = Vec::new();
+    for y in bounds.y0..bounds.y1 {
+        for x in bounds.x0..bounds.x1 {
+            zero.push(Pixel { x, y, byte: 0 });
+        }
+    }
+    let left: Vec<_> = zero.iter().copied().filter(|p| p.x == bounds.x0).collect();
+    let outside = [Pixel {
+        x: bounds.x0,
+        y: bounds.y1,
+        byte: 255,
+    }];
+    for proven in [zero.as_slice(), left.as_slice(), outside.as_slice()] {
+        assert!(
+            rows::prepare(
+                source,
+                &shape,
+                &options,
+                proven,
+                surplus,
+                limits.render_bytes
+            )
+            .is_none()
+        );
+    }
+}
+
+#[test]
+fn complete_rows_floor_keeps_clips_points_and_right_boundary_witnesses() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let origin = Point::new(1.25, 0.25);
+    let options = complete_rows_options(&limits, 3);
+    let shape = complete_rows_shape(&path, origin, &options);
+    let source = complete_rows_source(&path, origin);
+    let floor = rows::floor(source, &shape, &options, &mut crate::testing::bytes())
+        .unwrap()
+        .unwrap();
+    assert_eq!(floor.bytes, 128 * size_of::<Line>());
+    assert!(floor.work >= 24 * 128);
+    // A canonical floor corner, not the untranslated point's coordinate,
+    // extends outside the existing scan and must decline.
+    let points = [Point::new(7.75, 1.0)];
+    assert!(
+        rows::floor(
+            Source {
+                points: &points,
+                ..source
+            },
+            &shape,
+            &options,
+            &mut crate::testing::bytes()
+        )
+        .unwrap()
+        .is_none()
+    );
+    let mut clip_path = PathBuilder::new();
+    clip_path.rect(2.0, 0.0, 10.0, 12.0);
+    let clip = ClipShape::new(
+        &[(&clip_path.finish(), FillRule::NonZero)],
+        Transform::IDENTITY,
+        &ShapeOptions {
+            area: options.area,
+            limits: &limits,
+        },
+    )
+    .unwrap();
+    assert!(
+        rows::floor(
+            source,
+            &shape,
+            &Prep {
+                clip: Some(&clip),
+                ..options
+            },
+            &mut crate::testing::bytes()
+        )
+        .unwrap()
+        .is_none()
+    );
+
+    let mut retraced = PathBuilder::new();
+    retraced.move_to(Point::new(12.0, 1.25));
+    for _ in 0..64 {
+        retraced.line_to(Point::new(12.0, 1.75)).unwrap();
+        retraced.line_to(Point::new(12.0, 1.25)).unwrap();
+    }
+    retraced.close();
+    let retraced = retraced.finish();
+    let mut point_box = PathBuilder::new();
+    point_box.rect(11.0, 1.0, 1.0, 1.0);
+    let point_box = complete_rows_shape(&point_box.finish(), Point::default(), &options);
+    let points = [Point::new(11.25, 1.25)];
+    let source = Source {
+        points: &points,
+        ..complete_rows_source(&retraced, Point::default())
+    };
+    assert!(
+        support_contained(
+            source,
+            Some(&point_box),
+            &options,
+            &mut crate::testing::bytes()
+        )
+        .unwrap()
+    );
+    assert!(
+        rows::floor(source, &point_box, &options, &mut crate::testing::bytes())
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn complete_rows_floor_counts_numeric_endpoint_height_not_bits() {
+    let mut flat = PathBuilder::new();
+    flat.move_to(Point::new(1.0, -0.0));
+    flat.line_to(Point::new(2.0, 0.0)).unwrap();
+    let flat = flat.finish();
+    let source = Source {
+        linear: Transform::new(1.0, -0.0, -0.0, 1.0, 0.0, -0.0),
+        ..complete_rows_source(&flat, Point::new(0.0, -0.0))
+    };
+    let a = Point::new(1.0, -0.0) * source.linear + source.origin;
+    let b = Point::new(2.0, 0.0) * source.linear + source.origin;
+    assert_ne!(a.y.to_bits(), b.y.to_bits());
+    assert!(
+        rows::witness(source, &mut crate::testing::bytes())
+            .unwrap()
+            .is_none()
+    );
+    let mut tiny = PathBuilder::new();
+    tiny.move_to(Point::new(1.0, 1.0));
+    tiny.line_to(Point::new(2.0, 1.0_f64.next_up())).unwrap();
+    let tiny = tiny.finish();
+    let origin = Point::new(0.0, 100_000_000.0);
+    assert_eq!(
+        (origin.y + 1.0).to_bits(),
+        (origin.y + 1.0_f64.next_up()).to_bits()
+    );
+    assert!(
+        rows::witness(
+            complete_rows_source(&tiny, origin),
+            &mut crate::testing::bytes()
+        )
+        .unwrap()
+        .is_none()
+    );
+}
+
+#[test]
+fn complete_rows_leave_sources_without_original_curves_unchanged() {
+    let limits = Limits::default();
+    let options = complete_rows_options(&limits, 3);
+    let mut path = PathBuilder::new();
+    path.rect(1.25, 1.25, 4.0, 4.0);
+    let edges = std::sync::Arc::new(
+        GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
+    assert!(matches!(&edges.kind, Kind::Polygon { source: None, .. }));
+    let shape = super::super::placed(&edges, Point::default(), &options)
+        .unwrap()
+        .unwrap();
+    let expected = crate::testing::raster(&options.area, Some(&shape), None).0;
+    let before = (shape.retained_bytes(), shape.work());
+    let ready = certify(&edges, Point::default(), Some(shape), &options)
+        .unwrap()
+        .unwrap();
+    assert!(!matches!(&ready.body, Body::Certified(_)));
+    assert_eq!((ready.retained_bytes(), ready.work()), before);
+    assert_eq!(
+        crate::testing::raster(&options.area, Some(&ready), None).0,
+        expected
+    );
 }

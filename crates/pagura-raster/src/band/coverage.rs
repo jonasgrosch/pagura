@@ -3,6 +3,9 @@
 use super::Area;
 use pagura_core::{Meter, Result};
 
+mod certified;
+pub(crate) use certified::CertifiedRows;
+
 /// How much one band's coverage can hold: rows, spans and partial cells.
 /// [`BandCoverage::with_capacity`] reserves it, so that filling the
 /// coverage never allocates.

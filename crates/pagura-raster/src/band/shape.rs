@@ -5,6 +5,7 @@
 use super::cells::STRIP;
 use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
+use super::coverage::CertifiedRows;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
 use super::union::{Meters, Piece, Resolver, room};
@@ -114,6 +115,8 @@ pub(crate) enum Body {
     Edges(EdgeBody),
     /// Shared glyph geometry, translated as its edges accumulate.
     Glyph(GlyphBody),
+    /// Complete final coverage, certified before publication.
+    Certified(CertifiedRows),
 }
 
 /// One translated placement of shared glyph geometry.
@@ -146,6 +149,43 @@ pub(crate) struct EdgeBody {
     /// item.
     pub(crate) strips: Option<StripList>,
     pub(crate) scan: (usize, usize),
+}
+
+// Keep the owner within an existing geometry payload. The exact legacy
+// enum/Shape assertions below additionally check layout on every target.
+const _: () = assert!(size_of::<CertifiedRows>() <= size_of::<EdgeBody>());
+
+mod footprint {
+    use super::{
+        Area, Body, ClipShape, DeviceRect, EdgeBody, FillRule, GlyphBody, Resolved, Shape,
+    };
+    use std::mem::{align_of, size_of};
+
+    #[expect(dead_code, reason = "compiler-only copy of the previous Body layout")]
+    enum LegacyBody {
+        Edges(EdgeBody),
+        Glyph(GlyphBody),
+    }
+
+    #[expect(dead_code, reason = "compiler-only copy of the previous Shape layout")]
+    struct LegacyShape {
+        area: Area,
+        bounds: DeviceRect,
+        work: usize,
+        retained: usize,
+        rule: FillRule,
+        body: LegacyBody,
+        clip: Option<ClipShape>,
+        masked: bool,
+        resolved: Resolved,
+    }
+
+    const _: () = {
+        assert!(size_of::<Body>() == size_of::<LegacyBody>());
+        assert!(align_of::<Body>() == align_of::<LegacyBody>());
+        assert!(size_of::<Shape>() == size_of::<LegacyShape>());
+        assert!(align_of::<Shape>() == align_of::<LegacyShape>());
+    };
 }
 
 /// What preparation knows about a shape's winding.
@@ -386,11 +426,24 @@ impl Shape {
         self.retained
     }
 
+    /// Publishes complete final rows, releasing all original execution
+    /// geometry. The caller has checked identical nonzero bounds and the
+    /// final byte/work dominance guards while both owners were charged.
+    pub(crate) fn with_certified_rows(mut self, rows: CertifiedRows) -> Self {
+        debug_assert_eq!(rows.bounds(), Some(self.bounds));
+        self.work = rows.work();
+        self.retained = size_of::<Self>().saturating_add(rows.retained_bytes());
+        self.body = Body::Certified(rows);
+        self.resolved = Resolved::default();
+        self
+    }
+
     /// Boundary pieces that translation and row resolution can perturb.
     pub(crate) fn boundaries(&self) -> usize {
         let own = match &self.body {
             Body::Edges(edges) => edges.lines.len() + edges.curves.len(),
             Body::Glyph(glyph) => glyph.boundaries,
+            Body::Certified(_) => 0,
         };
         own.saturating_add(self.resolved.len())
     }
@@ -399,6 +452,9 @@ impl Shape {
     /// band, and every pixel of its width in them a partial cell and a span
     /// of its own.
     pub fn capacity(&self) -> super::Capacity {
+        if let Body::Certified(rows) = &self.body {
+            return rows.capacity();
+        }
         let rows = self.area.band_height.min(self.bounds.height()) as usize;
         let cells = rows.saturating_mul(self.bounds.width() as usize);
         super::Capacity {

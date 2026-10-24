@@ -131,6 +131,12 @@ same coverage bytes. Clips are prepared once per clip state and classified per
 band row into outside, inside and boundary runs; exact joint geometry runs only
 where mark and clip are both partial.
 
+A glyph whose complete coverage bytes are certified during preparation may
+retain those rows as its coverage source (ADR 0004). It emits through the same
+band driver and span kernels, with the same validation bounds and budgets.
+No old geometry, pixel correction map or proof oracle survives publication;
+these rows are not a document-store pixel cache.
+
 Prepared paint is a closed set chosen once per paint and render: solid,
 shading (axial, radial, function-based, mesh) and image sampler; a shading
 that paints one opaque colour is a solid. It fills a span of working
