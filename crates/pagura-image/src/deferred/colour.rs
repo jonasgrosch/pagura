@@ -15,39 +15,28 @@ pub fn uniform(input: &[u8], value: u8) -> bool {
 /// `floor(x)` of `x` clamped to `0..=255`, with NaN as 0: the byte that a
 /// saturating float-to-integer conversion of the clamped value gives.
 ///
-/// Baseline x86-64 has no saturating vector conversion, so there the value
-/// is shifted by 2^23, which leaves the nearest integer in the low mantissa
-/// bits, and one comparison turns it into the floor. Other targets convert
-/// directly. Both give the same byte for every input.
+/// Each target takes the form its vector unit handles; all give the same
+/// byte for every input. Baseline x86-64 has no saturating vector
+/// conversion, so there the value is shifted by 2^23, which leaves the
+/// nearest integer in the low mantissa bits, and one comparison turns it
+/// into the floor. WebAssembly SIMD has neither lane-wise `max` and `min`
+/// with Rust's NaN rule nor a conversion to bytes, so there the value
+/// converts to `u32` and the integer is clamped. Other targets clamp and
+/// convert directly.
 #[inline]
 #[must_use]
-#[expect(
-    clippy::manual_clamp,
-    reason = "max and min map NaN to zero, as the saturating conversion does"
-)]
 pub fn floor_byte(x: f32) -> u8 {
-    let x = x.max(0.0).min(255.0);
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        const SHIFT: f32 = 8_388_608.0;
-        let shifted = x + SHIFT;
-        let nearest = shifted - SHIFT;
-        shifted.to_bits().to_le_bytes()[0].wrapping_sub(u8::from(nearest > x))
-    }
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    {
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "the value is clamped to the byte range"
-        )]
-        let byte = x as u8;
-        byte
+    if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
+        floor_byte_shifted(x)
+    } else if cfg!(target_family = "wasm") {
+        floor_byte_widened(x)
+    } else {
+        floor_byte_clamped(x)
     }
 }
 
-/// The shifted form of [`floor_byte`], tested on every target.
-#[cfg(test)]
+/// [`floor_byte`] by a shift of 2^23.
+#[inline]
 #[expect(
     clippy::manual_clamp,
     reason = "max and min map NaN to zero, as the saturating conversion does"
@@ -58,6 +47,29 @@ fn floor_byte_shifted(x: f32) -> u8 {
     let shifted = x + SHIFT;
     let nearest = shifted - SHIFT;
     shifted.to_bits().to_le_bytes()[0].wrapping_sub(u8::from(nearest > x))
+}
+
+/// [`floor_byte`] by a saturating conversion to `u32`, clamped there.
+#[inline]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the saturating conversion and the minimum are the clamp"
+)]
+fn floor_byte_widened(x: f32) -> u8 {
+    (x as u32).min(255) as u8
+}
+
+/// [`floor_byte`] by a clamp and a saturating conversion.
+#[inline]
+#[expect(
+    clippy::manual_clamp,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "max and min map NaN to zero, as the saturating conversion does"
+)]
+fn floor_byte_clamped(x: f32) -> u8 {
+    x.max(0.0).min(255.0) as u8
 }
 
 #[inline]
@@ -193,14 +205,22 @@ mod tests {
                 special.extend([x, x.next_up(), x.next_down()]);
             }
         }
+        let forms = [
+            super::floor_byte,
+            super::floor_byte_shifted,
+            super::floor_byte_widened,
+            super::floor_byte_clamped,
+        ];
         for x in special {
-            assert_eq!(super::floor_byte(x), reference(x), "{x}");
-            assert_eq!(super::floor_byte_shifted(x), reference(x), "{x}");
+            for form in forms {
+                assert_eq!(form(x), reference(x), "{x}");
+            }
         }
         for bits in (0..=u32::MAX).step_by(4099) {
             let x = f32::from_bits(bits);
-            assert_eq!(super::floor_byte(x), reference(x), "{bits:#x}");
-            assert_eq!(super::floor_byte_shifted(x), reference(x), "{bits:#x}");
+            for form in forms {
+                assert_eq!(form(x), reference(x), "{bits:#x}");
+            }
         }
     }
 
