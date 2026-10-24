@@ -528,7 +528,8 @@ impl ImageSampler {
     /// `y` into `out`, as a store at full opacity writes opaque colours,
     /// where every pixel of the span is opaque and its colour needs no
     /// other pass: an RGB image without a mask whose pixels take nearest
-    /// samples. False, with `out` unspecified, otherwise.
+    /// samples, or exact area averages that all meet the image. False,
+    /// with nothing written, otherwise.
     pub(crate) fn words(
         &self,
         pixels: Pixels<'_>,
@@ -721,8 +722,10 @@ impl Prepared {
         }
     }
 
-    /// [`ImageSampler::words`] of opaque texels sampled nearest: the
-    /// texels, then their words.
+    /// [`ImageSampler::words`] of opaque texels sampled nearest or
+    /// averaged: the texels, then, where every pixel's alpha is 1, their
+    /// words. Bilinear weights need not sum to exactly 1, so those pixels
+    /// are filled instead.
     fn texel_words(
         &self,
         (plan, paint): (&Sampling, &Paint),
@@ -731,23 +734,28 @@ impl Prepared {
         out: &mut [[u16; 4]],
     ) -> bool {
         let lanes = 5;
-        if !paint.opaque(&self.image.image) || !plan.nearest() {
+        if !paint.opaque(&self.image.image) || self.geometry.mode() == Mode::Bilinear {
             return false;
         }
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);
         let values = scratch::grown(&mut storage, len * lanes);
         self.texels((plan, paint), pixels, scratch, lanes, values);
-        for (pixel, texel) in out.iter_mut().zip(values.as_chunks::<5>().0) {
-            *pixel = [
-                crate::kernel::opaque_word(texel[0]),
-                crate::kernel::opaque_word(texel[1]),
-                crate::kernel::opaque_word(texel[2]),
-                u16::MAX,
-            ];
+        let texels = values.as_chunks::<5>().0;
+        // A footprint that misses the image leaves its pixel transparent.
+        let opaque = texels.iter().all(|texel| texel[3] == 1.0);
+        if opaque {
+            for (pixel, texel) in out.iter_mut().zip(texels) {
+                *pixel = [
+                    crate::kernel::opaque_word(texel[0]),
+                    crate::kernel::opaque_word(texel[1]),
+                    crate::kernel::opaque_word(texel[2]),
+                    u16::MAX,
+                ];
+            }
         }
         scratch.summed = storage;
-        true
+        opaque
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.
