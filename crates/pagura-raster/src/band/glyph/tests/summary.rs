@@ -20,7 +20,6 @@ fn stored(points: Vec<Point>, starts: Vec<usize>) -> Arc<GlyphEdges> {
             points: Vec::new(),
             certified: true,
             source: None,
-            relative: None,
             summary: Some(summary),
         },
     })

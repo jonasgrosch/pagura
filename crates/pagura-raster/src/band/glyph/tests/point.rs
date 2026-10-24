@@ -1,7 +1,10 @@
+//! Outlines with one explicit closed move point: the curves of the other
+//! contours and the point's floor cell, against the canonical polygon.
+
 use super::*;
-use crate::band::glyph::{place, placed, translated};
+use crate::band::RASTER_WORK;
 use crate::band::shape::{Body, GlyphGeometry, Winding};
-use crate::{Area, ClipShape, DeviceRect, FillRule, PathBuilder, ShapeOptions};
+use crate::{Area, ClipShape, DeviceRect, ShapeOptions};
 use pagura_core::{Built, Rect, Store, StoreKey};
 
 mod windows;
@@ -51,24 +54,27 @@ fn options(limits: &Limits, band_height: u32) -> ShapeOptions<'_> {
 }
 
 fn canonical(edges: &Arc<GlyphEdges>, origin: Point, prep: &Prep<'_>) -> Shape {
-    let Kind::Polygon {
-        polygon, points, ..
+    let Kind::Curve {
+        outline, linear, ..
     } = &edges.kind
     else {
-        panic!("canonical polygon retained");
+        panic!("a curve body with its point");
     };
+    let mut bytes = crate::testing::bytes();
+    let (polygon, points) = polygon(outline, *linear, prep.limits, &mut bytes).unwrap();
+    assert_eq!(points.len(), 1);
     let shape = translated(
-        (polygon, points),
+        (&polygon, &points),
         origin,
         Winding::Check(0.0),
         prep,
-        &mut crate::testing::bytes(),
+        &mut bytes,
         None,
-        Some(edges),
+        None,
     )
     .unwrap()
     .unwrap();
-    super::super::rounding::certify(edges, origin, shape, prep).unwrap()
+    rounding::certify(edges, origin, shape, prep).unwrap()
 }
 
 #[test]
@@ -84,10 +90,7 @@ fn point_cell_preserves_winding_and_floor_origin_across_bands() {
         ] {
             let path = outline(point, reversed);
             let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-            assert!(
-                edges.relative().is_some(),
-                "projection should fit canonical overlap"
-            );
+            assert_eq!(edges.point(), Some(point));
             for band in [1, 3, 16, 32] {
                 let options = options(&limits, band);
                 let prep = Prep::new(&options, None);
@@ -158,22 +161,24 @@ fn rectangle_and_path_cuts_keep_the_canonical_fallback() {
 }
 
 #[test]
-fn fixed_constructor_overlap_refunds_declined_projection_and_keeps_layout() {
+fn a_declined_point_projection_refunds_its_pieces() {
     let limits = Limits::default();
-    let path = outline(Point::new(2.25, 1.25), false);
-    let mut bytes = Meter::new(limits.decoded_bytes, "parent");
+    let mut two = PathBuilder::new();
+    two.append(&outline(Point::new(2.25, 1.25), false), Transform::IDENTITY);
+    two.move_to(Point::new(4.25, 1.25));
+    two.close();
+    let mut bytes = crate::testing::bytes();
     bytes.charge(41).unwrap();
-    let before = bytes.used();
     assert!(
-        relative(&path, Transform::IDENTITY, &limits, 1, &mut bytes)
+        curve::point_spline(&two.finish(), Transform::IDENTITY, &limits, &mut bytes)
             .unwrap()
             .is_none()
     );
-    assert_eq!(bytes.used(), before);
+    assert_eq!(bytes.used(), 41);
     assert!(
         size_of::<crate::band::shape::GlyphBody>() <= size_of::<crate::band::shape::EdgeBody>()
     );
-    assert_eq!(size_of::<curve::Spline>(), 2 * size_of::<Vec<usize>>());
+    assert_eq!(size_of::<Spline>(), 2 * size_of::<Vec<usize>>());
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -183,7 +188,7 @@ impl StoreKey for Key {
 }
 
 #[test]
-fn fixed_overlap_selects_the_same_projection_across_decoded_limits_and_store_states() {
+fn the_point_projection_is_the_same_across_decoded_limits_and_store_states() {
     let path = outline(Point::new(2.25, 1.25), false);
     let limits = Limits::default();
     let build = |decoded_bytes| {
@@ -242,56 +247,67 @@ fn fixed_overlap_selects_the_same_projection_across_decoded_limits_and_store_sta
 }
 
 #[test]
-fn only_explicit_closed_move_points_are_omitted() {
+fn only_one_explicit_closed_move_point_is_projected() {
     let limits = Limits::default();
-    let path = outline(Point::new(2.25, 1.25), false);
-    assert!(
-        curve::spline(
-            &path,
-            Transform::IDENTITY,
-            &limits,
-            &mut crate::testing::bytes()
-        )
-        .unwrap()
-        .is_none()
+    let linear = Transform::new(2.0, 0.0, 0.0, -3.0, 0.0, 0.0);
+    let point = Point::new(2.25, 1.25);
+    let path = outline(point, false);
+    let build = |path: &Path, keep: bool| {
+        let mut bytes = crate::testing::bytes();
+        if keep {
+            curve::spline(path, linear, &limits, &mut bytes)
+                .unwrap()
+                .map(|_| None)
+        } else {
+            curve::point_spline(path, linear, &limits, &mut bytes)
+                .unwrap()
+                .map(|(_, point)| Some(point))
+        }
+    };
+    assert_eq!(build(&path, true), None);
+    // The point as the polygon classifies it: its source point mapped.
+    assert_eq!(build(&path, false), Some(Some(point * linear)));
+    let (_, points) = polygon(&path, linear, &limits, &mut crate::testing::bytes()).unwrap();
+    assert_eq!(points, [point * linear]);
+    let declined = |segments: &dyn Fn(&mut PathBuilder)| {
+        let mut path = PathBuilder::new();
+        segments(&mut path);
+        build(&path.finish(), false)
+    };
+    // A point alone, a point drawn by a segment, two points, and a move
+    // that another move follows.
+    assert_eq!(
+        declined(&|p| {
+            p.move_to(point);
+            p.close();
+        }),
+        None
     );
-    assert!(
-        curve::nonpoint_spline(
-            &path,
-            Transform::IDENTITY,
-            &limits,
-            &mut crate::testing::bytes()
-        )
-        .unwrap()
-        .is_some()
+    assert_eq!(
+        declined(&|p| {
+            p.move_to(point);
+            p.line_to(point).unwrap();
+            p.close();
+        }),
+        None
     );
-    let mut path = PathBuilder::new();
-    path.move_to(Point::new(2.0, 2.0));
-    path.close();
-    assert!(
-        curve::nonpoint_spline(
-            &path.finish(),
-            Transform::IDENTITY,
-            &limits,
-            &mut crate::testing::bytes()
-        )
-        .unwrap()
-        .is_none()
-    );
-    let mut path = PathBuilder::new();
-    path.move_to(Point::new(2.0, 2.0));
-    path.line_to(Point::new(2.0, 2.0)).unwrap();
-    path.close();
-    assert!(
-        curve::nonpoint_spline(
-            &path.finish(),
-            Transform::IDENTITY,
-            &limits,
-            &mut crate::testing::bytes()
-        )
-        .unwrap()
-        .is_none()
-    );
+    for second in [true, false] {
+        assert_eq!(
+            declined(&|p| {
+                p.append(&outline(point, false), Transform::IDENTITY);
+                p.move_to(Point::new(4.25, 1.25));
+                if second {
+                    p.close();
+                } else {
+                    p.move_to(Point::new(5.0, 1.0));
+                    p.line_to(Point::new(6.0, 2.0)).unwrap();
+                    p.line_to(Point::new(5.0, 3.0)).unwrap();
+                    p.close();
+                }
+            }),
+            None
+        );
+    }
 }
 
 #[test]
@@ -300,7 +316,7 @@ fn source_metadata_is_bounded_and_execution_layouts_are_unchanged() {
     use crate::band::shape::{EdgeBody, Resolved};
     #[expect(dead_code, reason = "only the prior layout is compared")]
     enum OldKind {
-        Curve(curve::Spline, Relative, Arc<Path>, Transform),
+        Curve(Spline, Relative, Arc<Path>, Transform),
         Polygon(Polygon, Vec<Point>, bool, Option<(Arc<Path>, Transform)>),
     }
     #[expect(dead_code, reason = "only the prior layout is compared")]
@@ -336,8 +352,8 @@ fn source_metadata_is_bounded_and_execution_layouts_are_unchanged() {
     }
     // Source scalar facts are charged in GlyphEdges::new; execution keeps
     // the same inline body and shape, with no new per-placement owner.
-    assert!(size_of::<Kind>() <= size_of::<OldKind>() + size_of::<super::super::Summary>());
-    assert!(size_of::<GlyphEdges>() <= size_of::<OldEdges>() + size_of::<super::super::Summary>());
+    assert!(size_of::<Kind>() <= size_of::<OldKind>() + size_of::<Summary>());
+    assert!(size_of::<GlyphEdges>() <= size_of::<OldEdges>() + size_of::<Summary>());
     assert_eq!(size_of::<Body>(), size_of::<OldBody>());
     assert_eq!(size_of::<Shape>(), size_of::<OldShape>());
     eprintln!(
@@ -365,12 +381,10 @@ fn point_cell_checks_the_complete_work_and_fixed_placement_bytes() {
         .unwrap()
         .unwrap();
     let needed_work = shape.work();
-    let needed_bytes = size_of::<Shape>();
-    assert_eq!(shape.retained_bytes(), needed_bytes);
+    assert_eq!(shape.retained_bytes(), size_of::<Shape>());
     assert!(shape.resolved.is_empty());
     let limits = Limits {
         raster_work: needed_work,
-        render_bytes: needed_bytes,
         ..limits
     };
     let setup = options(&limits, 3);
@@ -379,26 +393,12 @@ fn point_cell_checks_the_complete_work_and_fixed_placement_bytes() {
         .unwrap();
     let (_, spent) = crate::testing::raster(&setup.area, Some(&same), None);
     assert!(spent <= needed_work);
-    for limits in [
-        Limits {
-            raster_work: needed_work - 1,
-            ..limits
-        },
-        Limits {
-            render_bytes: needed_bytes - 1,
-            ..limits
-        },
-    ] {
-        let setup = options(&limits, 3);
-        let error = placed(&edges, Point::default(), &Prep::new(&setup, None)).unwrap_err();
-        assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
-        assert_eq!(
-            error.message,
-            if limits.raster_work < needed_work {
-                RASTER_WORK
-            } else {
-                crate::band::RENDER_BYTES
-            }
-        );
-    }
+    let limits = Limits {
+        raster_work: needed_work - 1,
+        ..limits
+    };
+    let setup = options(&limits, 3);
+    let error = placed(&edges, Point::default(), &Prep::new(&setup, None)).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.message, RASTER_WORK);
 }

@@ -311,54 +311,8 @@ fn long_horizontal_contours_keep_owned_storage_when_raw_visits_exceed_work() {
 }
 
 #[test]
-fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
+fn shared_polygons_with_a_point_keep_their_cancellation() {
     let limits = Limits::default();
-    let mut path = PathBuilder::new();
-    path.append(&arch(), Transform::IDENTITY);
-    // A canonical polygon requires its area-bound selector even when the
-    // source also offers a certified nonpoint projection.
-    path.move_to(Point::new(6.25, 2.75));
-    path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-    assert!(edges.curved());
-    for band in [1, 3, 16, 32] {
-        let options = ShapeOptions {
-            area: area(16, band),
-            limits: &limits,
-        };
-        for origin in [Point::new(-0.25, 0.125), Point::new(0.375, 0.75)] {
-            let prep = Prep::new(&options, None);
-            let Kind::Polygon {
-                polygon, points, ..
-            } = &edges.kind
-            else {
-                panic!("canonical polygon source");
-            };
-            let shared = translated(
-                (polygon, points),
-                origin,
-                Winding::Check(0.0),
-                &prep,
-                &mut crate::testing::bytes(),
-                None,
-                Some(&edges),
-            )
-            .unwrap()
-            .unwrap();
-            let Body::Glyph(body) = &shared.body else {
-                panic!("shared polygon");
-            };
-            assert_eq!(body.geometry, crate::band::shape::GlyphGeometry::Polygon);
-            let copied = owned(&edges, origin, &prep, &mut crate::testing::bytes()).unwrap();
-            let shared = rounding::certify(&edges, origin, shared, &prep).unwrap();
-            let copied = rounding::certify(&edges, origin, copied, &prep).unwrap();
-            assert_eq!(
-                crate::testing::raster(&options.area, Some(&shared), None).0,
-                crate::testing::raster(&options.area, Some(&copied), None).0
-            );
-        }
-    }
-
     let mut path = PathBuilder::new();
     path.rect(2.0, 2.0, 6.0, 32.0);
     path.move_to(Point::new(2.0, 2.0));

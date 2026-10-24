@@ -4,7 +4,8 @@
 //! Only the linear map shapes the edges; each placement adds its device
 //! origin to every point without rounding either to a grid. An outline is
 //! integrated as quadratics when its pieces certify winding zero or one
-//! sign everywhere. Uncertified quadratic outlines and placements crossed
+//! sign everywhere, with the floor cell of one explicit closed move point
+//! when it has one. Uncertified quadratic outlines and placements crossed
 //! by a clip path use the same flattener with a whole-outline area bound.
 //! Every placement that approximates its quadratics, as a polygon or by
 //! reducing degree-elevated cubics, certifies its coverage bytes before
@@ -26,7 +27,6 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
-mod point;
 mod polygon;
 mod rounding;
 pub(super) use polygon::Summary;
@@ -47,12 +47,15 @@ pub struct GlyphEdges {
 #[derive(Debug)]
 pub(super) enum Kind {
     /// A certified spline: its pieces in contour order, for placements a
-    /// clip's rectangle cuts, and the edges a placement translates. The
-    /// outline and map stay for placements a clip path crosses, which take
-    /// its polygon.
+    /// clip's rectangle cuts, and the edges a placement translates, with
+    /// the one geometric point of an explicit closed move, whose floor cell
+    /// a placement covers (8.5.3.3.1). The outline and map stay for
+    /// placements a clip path crosses, or a rectangle cuts with a point,
+    /// which take its polygon.
     Curve {
         spline: Spline,
         relative: Relative,
+        point: Option<Point>,
         outline: Arc<Path>,
         linear: Transform,
     },
@@ -64,9 +67,6 @@ pub(super) enum Kind {
         certified: bool,
         /// Original curves retained for coverage-byte certification.
         source: Option<(Arc<Path>, Transform)>,
-        /// A certified nonpoint projection. The canonical polygon remains
-        /// the owner used by clipped and ordinary polygon placements.
-        relative: Option<Box<Relative>>,
         /// Bounds and work for uncut short placements, computed once from
         /// the canonical vertices without retaining another edge array.
         summary: Option<Summary>,
@@ -213,12 +213,24 @@ impl GlyphEdges {
         // A singular map can make a genuine point of a curve; the polygon
         // keeps the point rule.
         let regular = transform.determinant() != 0.0;
+        let curves = outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }));
         let spline = if regular {
             curve::spline(outline, transform, limits, bytes)?
         } else {
             None
         };
-        if let Some(spline) = spline {
+        let spline = match spline {
+            Some(spline) => Some((spline, None)),
+            // A curved outline's pieces without the one point of an
+            // explicit closed move.
+            None if regular && curves => curve::point_spline(outline, transform, limits, bytes)?
+                .map(|(spline, point)| (spline, Some(point))),
+            None => None,
+        };
+        if let Some((spline, point)) = spline {
             if spline_certified(&spline, bytes)? {
                 let relative = Relative::new(&spline, bytes)?;
                 // The outline's allocation includes the Arc counters and
@@ -228,6 +240,7 @@ impl GlyphEdges {
                 return Ok(Kind::Curve {
                     spline,
                     relative,
+                    point,
                     outline,
                     linear: transform,
                 });
@@ -243,17 +256,7 @@ impl GlyphEdges {
         } else {
             None
         };
-        let source_available = regular
-            && outline
-                .segments()
-                .iter()
-                .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
-            && curve::quadratic_outline(outline, transform);
-        let relative = if source_available && points.len() == 1 {
-            point::relative(outline, transform, limits, polygon.vertices(), bytes)?
-        } else {
-            None
-        };
+        let source_available = regular && curves && curve::quadratic_outline(outline, transform);
         let source = if source_available {
             bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
             Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
@@ -265,7 +268,6 @@ impl GlyphEdges {
             points,
             certified,
             source,
-            relative,
             summary,
         })
     }
@@ -286,7 +288,16 @@ impl GlyphEdges {
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { relative, .. } => relative.as_deref(),
+            Kind::Polygon { .. } => None,
+        }
+    }
+
+    /// The geometric point whose floor cell a placement of those edges
+    /// covers, relative to its origin.
+    pub(crate) fn point(&self) -> Option<Point> {
+        match &self.kind {
+            Kind::Curve { point, .. } => *point,
+            Kind::Polygon { .. } => None,
         }
     }
 
@@ -482,6 +493,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
         Kind::Curve {
             spline,
             relative,
+            point,
             outline,
             linear,
         } => {
@@ -493,17 +505,19 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // No edges: nothing to cover.
                 return Ok(None);
             }
-            let hull = relative.placed_hull(origin, None)?;
+            let hull = relative.placed_hull(origin, *point)?;
             let [lo, hi] = hull;
             frame.fit([lo, hi]);
-            match (frame.rect, frame.paths) {
+            match (frame.rect, frame.paths, point) {
                 // The clip keeps it whole: its translated edges.
-                (None, None) => Shape::translated(edges, relative, origin, hull, &frame, options),
+                (None, None, _) => {
+                    Shape::translated(edges, relative, origin, hull, &frame, options)
+                }
                 // A rectangle cuts it: its pieces, clipped.
-                (Some(_), None) => pieces(spline, origin, &frame, options, &mut bytes),
-                // A clip path crosses it: its polygon, resolved with the
-                // clip's paths.
-                (_, Some(_)) => {
+                (Some(_), None, None) => pieces(spline, origin, &frame, options, &mut bytes),
+                // A clip path crosses it, or a rectangle cuts it with its
+                // point: its polygon, resolved with the clip.
+                _ => {
                     let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
                     translated(
                         (&polygon, &points),
@@ -521,7 +535,6 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             polygon,
             points,
             certified,
-            relative,
             summary,
             ..
         } => {
@@ -543,22 +556,6 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                             return Ok(shape);
                         }
                     }
-                }
-            }
-            if let (Some(relative), [point], Some(mut frame)) =
-                (relative.as_deref(), points.as_slice(), Frame::new(options))
-            {
-                let hull = relative.placed_hull(origin, Some(*point))?;
-                frame.fit(hull);
-                if frame.rect.is_none() && frame.paths.is_none() {
-                    return point::placed(
-                        (edges, relative, *point),
-                        origin,
-                        hull,
-                        &frame,
-                        options,
-                        &mut bytes,
-                    );
                 }
             }
             let winding = if *certified {

@@ -414,44 +414,42 @@ pub(crate) fn spline(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<Option<Spline>> {
-    spline_using(outline, linear, limits, bytes, PointContours::Keep)
-        .map_err(SplineError::into_error)
+    let built = spline_using(outline, linear, limits, bytes, PointContours::Keep)?;
+    Ok(built.map(|(spline, _)| spline))
 }
 
-/// A nonpoint projection for a stored polygon with one already classified
-/// MoveTo/Close point. Other geometric-point contours still decline.
-pub(crate) fn nonpoint_spline(
+/// The pieces of an outline whose one geometric point is an explicit
+/// closed move (a `MoveTo` and its `Close`), without that contour, and the
+/// point under `linear` as the polygon classifies it; `None` for any other
+/// geometric point, for more than one, or for none.
+///
+/// # Errors
+///
+/// As [`spline`].
+pub(crate) fn point_spline(
     outline: &Path,
     linear: Transform,
     limits: &Limits,
     bytes: &mut Meter,
-) -> std::result::Result<Option<Spline>, SplineError> {
-    spline_using(outline, linear, limits, bytes, PointContours::OmitExplicit)
-}
-
-/// Keeps optional byte headroom distinct from geometry/segment failures.
-#[derive(Debug)]
-pub(crate) enum SplineError {
-    Bytes(Error),
-    Segments(Error),
-    Geometry(Error),
-}
-
-impl SplineError {
-    pub(crate) fn into_error(self) -> Error {
-        match self {
-            Self::Bytes(error) | Self::Segments(error) | Self::Geometry(error) => error,
+) -> Result<Option<(Spline, Point)>> {
+    // A move followed by a move is a point of the polygon's own that the
+    // pieces do not see.
+    let segments = outline.segments();
+    if segments
+        .windows(2)
+        .any(|pair| matches!(pair, [Segment::MoveTo(_), Segment::MoveTo(_)]))
+    {
+        return Ok(None);
+    }
+    match spline_using(outline, linear, limits, bytes, PointContours::OmitExplicit)? {
+        Some((spline, Some(point))) => Ok(Some((spline, point))),
+        Some((spline, None)) => {
+            bytes.refund(spline.retained_bytes());
+            Ok(None)
         }
+        None => Ok(None),
     }
 }
-
-impl From<Error> for SplineError {
-    fn from(error: Error) -> Self {
-        Self::Geometry(error)
-    }
-}
-
-type BuildResult<T> = std::result::Result<T, SplineError>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PointContours {
@@ -459,17 +457,17 @@ enum PointContours {
     OmitExplicit,
 }
 
+/// The pieces, and the one explicit closed move point omitted, if exactly
+/// one was.
 fn spline_using(
     outline: &Path,
     linear: Transform,
     limits: &Limits,
     bytes: &mut Meter,
     point_contours: PointContours,
-) -> BuildResult<Option<Spline>> {
+) -> Result<Option<(Spline, Option<Point>)>> {
     if outline.segments().len() > limits.path_segments {
-        return Err(SplineError::Segments(Error::limit(
-            "path segment budget exceeded",
-        )));
+        return Err(Error::limit("path segment budget exceeded"));
     }
     if !quadratic_outline(outline, linear) || !reducible_with_rounding(outline, linear) {
         return Ok(None);
@@ -480,13 +478,14 @@ fn spline_using(
         limits,
         bytes,
         point_contours,
+        omitted: (0, None),
     };
     let result = builder.path(outline, linear);
     let retained = result
         .as_ref()
         .ok()
         .and_then(Option::as_ref)
-        .map_or(0, Spline::retained_bytes);
+        .map_or(0, |(spline, _)| spline.retained_bytes());
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
@@ -496,31 +495,27 @@ struct Builder<'a> {
     limits: &'a Limits,
     bytes: &'a mut Meter,
     point_contours: PointContours,
+    /// Explicit closed move points left out, and the first of them.
+    omitted: (usize, Option<Point>),
 }
 
 impl Builder<'_> {
-    fn push(&mut self, piece: Piece) -> BuildResult<()> {
+    fn push(&mut self, piece: Piece) -> Result<()> {
         if self.spline.pieces.len() >= self.limits.path_segments {
-            return Err(SplineError::Segments(Error::limit(
-                "quadratic edge budget exceeded",
-            )));
+            return Err(Error::limit("quadratic edge budget exceeded"));
         }
-        self.bytes
-            .reserve_capacity(&mut self.spline.pieces, 1)
-            .map_err(SplineError::Bytes)?;
+        self.bytes.reserve_capacity(&mut self.spline.pieces, 1)?;
         self.spline.pieces.push(piece);
         Ok(())
     }
 
-    fn begin(&mut self) -> BuildResult<()> {
-        self.bytes
-            .reserve_capacity(&mut self.spline.starts, 1)
-            .map_err(SplineError::Bytes)?;
+    fn begin(&mut self) -> Result<()> {
+        self.bytes.reserve_capacity(&mut self.spline.starts, 1)?;
         self.spline.starts.push(self.spline.pieces.len());
         Ok(())
     }
 
-    fn line(&mut self, a: Point, b: Point) -> BuildResult<()> {
+    fn line(&mut self, a: Point, b: Point) -> Result<()> {
         if a != b {
             self.push(Piece::Line(Line { a, b }))?;
         }
@@ -529,7 +524,7 @@ impl Builder<'_> {
 
     /// The midpoint quadratic of a degree-elevated cubic. The whole
     /// outline's third differences have already been bounded.
-    fn cubic(&mut self, [a, b, c, d]: [Point; 4]) -> BuildResult<()> {
+    fn cubic(&mut self, [a, b, c, d]: [Point; 4]) -> Result<()> {
         let control = add(lerp(a, d, 0.5), scale(add(sub(b, a), sub(c, d)), 0.75));
         self.quadratic(Quadratic {
             points: [a, control, d],
@@ -539,7 +534,7 @@ impl Builder<'_> {
     /// A quadratic split at its x and y extrema into monotone pieces whose
     /// shared ends are computed once; an extremum within rounding of an end
     /// is that end.
-    fn quadratic(&mut self, curve: Quadratic) -> BuildResult<()> {
+    fn quadratic(&mut self, curve: Quadratic) -> Result<()> {
         let [_, v, a] = curve.coefficients();
         let [p0, _, p2] = curve.points;
         let mut events = [0.0, 1.0, 0.0, 0.0];
@@ -582,11 +577,13 @@ impl Builder<'_> {
         Ok(())
     }
 
-    fn path(mut self, path: &Path, transform: Transform) -> BuildResult<Option<Spline>> {
+    fn path(
+        mut self,
+        path: &Path,
+        transform: Transform,
+    ) -> Result<Option<(Spline, Option<Point>)>> {
         if path.segments().len() > self.limits.path_segments {
-            return Err(SplineError::Segments(Error::limit(
-                "path segment budget exceeded",
-            )));
+            return Err(Error::limit("path segment budget exceeded"));
         }
         let mut start = None;
         let mut current = None;
@@ -643,8 +640,10 @@ impl Builder<'_> {
                             && segments == 0
                         {
                             // This contour has emitted no piece. Keep no
-                            // empty start in the nonpoint projection.
+                            // empty start, only its point.
                             self.spline.starts.pop();
+                            self.omitted.0 += 1;
+                            self.omitted.1.get_or_insert(a);
                         } else if !self.finish(a, b, degenerate)? {
                             return Ok(None);
                         }
@@ -661,9 +660,10 @@ impl Builder<'_> {
         {
             return Ok(None);
         }
+        let point = self.omitted.1.filter(|_| self.omitted.0 == 1);
         Ok(
             (self.point_contours == PointContours::Keep || !self.spline.pieces.is_empty())
-                .then_some(self.spline),
+                .then_some((self.spline, point)),
         )
     }
 
@@ -677,7 +677,7 @@ impl Builder<'_> {
         (a, from): (Point, Option<Point>),
         degenerate: &mut bool,
         map: impl Fn(Point) -> Result<Point>,
-    ) -> BuildResult<(Option<Point>, Point)> {
+    ) -> Result<(Option<Point>, Point)> {
         match segment {
             Segment::LineTo(p) => {
                 *degenerate &= from == Some(p);
@@ -707,7 +707,7 @@ impl Builder<'_> {
 
     /// Closes a contour; `false` for a geometric point, which keeps the
     /// polygon's point rule.
-    fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> BuildResult<bool> {
+    fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> Result<bool> {
         if degenerate {
             return Ok(false);
         }

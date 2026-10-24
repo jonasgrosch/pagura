@@ -235,7 +235,10 @@ classification come from the L-mapped endpoints and controls before
 approximation and translation: coincident approximating vertices do not turn
 a curve into a point, while a singular L can produce a genuine point, which
 encloses its translated floor cell (8.5.3.3.1). A final open one-point
-contour is omitted. Each glyph is a separate nonzero fill composited in
+contour is omitted. A curved outline whose only point is one explicit
+closed move keeps its other contours' quadratics and adds the point's floor
+cell to them; a placement that a clip cuts takes the outline's polygon.
+Each glyph is a separate nonzero fill composited in
 content order, including overlap and knockout (9.3.6, 9.3.8, 11.4.6). Glyphs
 of a run share preparation and accumulate into one band row only where no
 pixel receives coverage from two of them, never as a union. Strokes and text
