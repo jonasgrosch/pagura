@@ -28,8 +28,6 @@ use super::edges::Line;
 use crate::FillRule;
 use pagura_core::{Error, Meter, Result};
 
-mod frontier;
-
 /// One edge's part within the row being resolved.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Piece {
@@ -83,8 +81,9 @@ struct Open {
 const CHUNK: usize = 64;
 
 /// A piece's current midpoint key, evaluated only when a comparison needs it.
-/// Joining pieces are ready before their sort; survivors are invalidated in
-/// the existing retain visit. Bit-constant verticals keep their exact key.
+/// Multiple joining pieces are ready before their sort; a singleton waits
+/// for a comparison. Survivors are invalidated in the existing retain visit.
+/// Bit-constant verticals keep a key only after it was actually evaluated.
 /// All flags and the radius code occupy the old tuple's padding.
 #[derive(Debug, Clone, Copy, Default)]
 struct Place {
@@ -109,6 +108,22 @@ impl Place {
             piece,
             ready: true,
             constant,
+            approximate: false,
+            radius_code,
+        }
+    }
+
+    /// Retains a full-source radius while the midpoint key is pending.
+    /// A singleton interpolates only when a key consumer needs it. A
+    /// constant remains pending until its exact key
+    /// was actually read; its placeholder is never an exact zero.
+    fn deferred(piece: u32, pieces: &[Piece], radius_code: u8) -> Self {
+        let line = &pieces[piece as usize].line;
+        Self {
+            x: 0.0,
+            piece,
+            ready: false,
+            constant: line.a.x.to_bits() == line.b.x.to_bits(),
             approximate: false,
             radius_code,
         }
@@ -296,26 +311,15 @@ fn sort_work(count: usize) -> usize {
 
 /// Reusable storage of the resolver.
 #[derive(Debug, Default)]
-#[cfg_attr(
-    test,
-    expect(
-        clippy::struct_excessive_bools,
-        reason = "independent full-path test oracles"
-    )
-)]
 pub(crate) struct Resolver {
     #[cfg(test)]
     eager_midpoint_keys: bool,
     #[cfg(test)]
+    eager_joining_keys: bool,
+    #[cfg(test)]
     original_height_sort: bool,
     #[cfg(test)]
     original_crossings: bool,
-    #[cfg(test)]
-    original_frontier: bool,
-    #[cfg(test)]
-    frontier_successes: usize,
-    #[cfg(test)]
-    frontier_replacements: usize,
     heights: Vec<f64>,
     /// Column spans by start during crossing enumeration, or enclosing
     /// column spans indexed by piece ID when heights enumerate the pairs.
@@ -354,24 +358,10 @@ pub(crate) struct Resolver {
 /// whether the current sub-slab keeps it.
 #[derive(Debug, Clone, Copy, Default)]
 struct Slot {
-    from: f64,
-    position: u32,
-    side_position: u16,
-    side: i8,
-    kept: bool,
-}
-
-#[expect(dead_code, reason = "compiler-only copy of the previous Slot layout")]
-struct LegacySlot {
     side: i32,
     from: f64,
     kept: bool,
 }
-
-const _: () = {
-    assert!(size_of::<Slot>() == size_of::<LegacySlot>());
-    assert!(align_of::<Slot>() == align_of::<LegacySlot>());
-};
 
 /// The meters a row is charged to: work, and the bytes of the resolver's
 /// scratch and of the sides it appends.
@@ -387,15 +377,6 @@ pub(crate) fn room<T>(values: &mut Vec<T>, extra: usize, bytes: &mut Meter) -> R
 }
 
 impl Resolver {
-    fn frontier_enabled(&self) -> bool {
-        let _ = self;
-        #[cfg(test)]
-        if self.original_frontier || self.original_height_sort {
-            return false;
-        }
-        true
-    }
-
     /// Appends to `out` the sides of the covered set of row `top..top + 1`
     /// of `pieces`, where group `g` is inside under `rules[g]` and a point
     /// is covered when every group is inside.
@@ -533,7 +514,30 @@ impl Resolver {
         work.charge_product(sort_work(count), 4)?;
         room(&mut self.columns, count, bytes)?;
         room(&mut self.rows, count, bytes)?;
-        let frontier = frontier::heights(self, pieces, total, top, (work, bytes))?;
+        let breaks = self.carry.len().saturating_sub(1);
+        room(&mut self.heights, 2 * count + 2 + breaks, bytes)?;
+        self.heights.clear();
+        self.heights.extend([top, top + 1.0]);
+        self.heights.extend_from_slice(&self.carry[1..]);
+        // Start heights will already be ordered in `rows`. Keep them
+        // implicit until the final merge instead of sorting them twice.
+        let starts = count;
+        #[cfg(test)]
+        let starts = if self.original_height_sort { 0 } else { starts };
+        for p in pieces {
+            #[cfg(test)]
+            if self.original_height_sort {
+                self.heights.push(p.lo);
+            }
+            self.heights.push(p.hi);
+        }
+        self.crossings(pieces, total, starts, (work, bytes))?;
+        work.charge(sort_work(self.heights.len() + starts))?;
+        self.heights.sort_unstable_by(f64::total_cmp);
+        if starts != 0 {
+            merge_heights(&mut self.heights, &self.rows);
+        }
+        self.heights.dedup();
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
         self.windings.resize(rules.len(), 0);
@@ -554,25 +558,13 @@ impl Resolver {
         self.after.clear();
         self.carried_after.clear();
         let (mut joined, mut segment) = (0, 0);
-        let mut frontier =
-            frontier::Sweep::new(frontier && count < usize::from(u16::MAX) && rules.len() <= 256);
         for k in 1..self.heights.len() {
             let (a, b) = (self.heights[k - 1], self.heights[k]);
             if b > a {
                 while self.carry.get(segment + 1).is_some_and(|&y| y <= a) {
                     segment += 1;
                 }
-                // This is place's original entry fee, before any possible
-                // swap/join fee. A failed attempt consumes it in the full
-                // route; no logical work is refunded or newly charged.
-                let before = self.order.len();
-                work.charge(before)?;
-                if frontier.attempt(self, pieces, (a, b), joined, segment, (out, work, bytes))? {
-                    joined += usize::from(frontier.replaced());
-                    continue;
-                }
-                joined = self.place_prepaid(pieces, (a, b), joined, work)?;
-                let expired = before - (self.order.len() - self.joining.len());
+                joined = self.place(pieces, (a, b), joined, work)?;
                 work.charge(
                     self.order
                         .len()
@@ -584,7 +576,6 @@ impl Resolver {
                     self.carry_on(a, bytes)?;
                 }
                 self.join(pieces, a, (out, bytes))?;
-                frontier.fallback(expired, segment);
             }
         }
         for open in self.open.drain(..) {
@@ -690,7 +681,7 @@ impl Resolver {
     /// anew and dropped where they ended, their order restored (they swap
     /// only where they crossed, at `a`), and those starting at `a` merged
     /// in. Returns how many pieces, by upper end, have joined.
-    fn place_prepaid(
+    fn place(
         &mut self,
         pieces: &[Piece],
         (a, b): (f64, f64),
@@ -698,8 +689,9 @@ impl Resolver {
         work: &mut Meter,
     ) -> Result<usize> {
         let mid = a.midpoint(b);
+        work.charge(self.order.len())?;
         self.order.retain_mut(|entry| {
-            entry.ready = entry.constant;
+            entry.ready &= entry.constant;
             entry.approximate = false;
             #[cfg(test)]
             if self.eager_midpoint_keys {
@@ -714,7 +706,20 @@ impl Resolver {
             && lo <= a
         {
             if hi >= b {
-                self.joining.push(Place::new(i, pieces, mid));
+                // A second entrant makes the sort compare distinct entries.
+                // Evaluate the pending first key before that second key,
+                // preserving source order without another pass over them.
+                if let [first] = self.joining.as_mut_slice() {
+                    first.key(pieces, mid);
+                }
+                let pending = self.joining.is_empty();
+                #[cfg(test)]
+                let pending = pending && !self.eager_joining_keys;
+                self.joining.push(if pending {
+                    Place::deferred(i, pieces, key_radius(&pieces[i as usize]))
+                } else {
+                    Place::new(i, pieces, mid)
+                });
             }
             joined += 1;
         }
@@ -749,12 +754,7 @@ impl Resolver {
             // Finite validated pieces always equal themselves. Consume the
             // first winding without forcing a separated singleton's key.
             loop {
-                let id = self.order[n].piece as usize;
-                if self.frontier_enabled() {
-                    self.slots[id].position = u32::try_from(n).unwrap_or(u32::MAX);
-                    self.slots[id].side_position = u16::MAX;
-                }
-                let p = pieces[id];
+                let p = pieces[self.order[n].piece as usize];
                 if let Some(w) = self.windings.get_mut(usize::from(p.group)) {
                     *w += i64::from(p.direction);
                 }
@@ -767,19 +767,12 @@ impl Resolver {
                     break;
                 }
             }
-            if self.frontier_enabled() && n == start + 1 {
-                self.slots[first as usize].position |= frontier::SINGLETON;
-            }
             let now = self
                 .windings
                 .iter()
                 .zip(rules)
                 .all(|(&w, &rule)| covered(w, rule));
             if now != inside {
-                if self.frontier_enabled() {
-                    self.slots[first as usize].side_position =
-                        u16::try_from(self.sides.len()).unwrap_or(u16::MAX);
-                }
                 self.sides.push((first, if now { 1 } else { -1 }));
                 inside = now;
             }
@@ -796,25 +789,22 @@ impl Resolver {
         (out, bytes): (&mut Vec<Line>, &mut Meter),
     ) -> Result<()> {
         for open in &self.open {
-            let slot = &mut self.slots[open.piece as usize];
-            slot.side = if open.side > 0 { 1 } else { -1 };
-            slot.from = open.from;
-            slot.kept = false;
+            self.slots[open.piece as usize] = Slot {
+                side: open.side,
+                from: open.from,
+                kept: false,
+            };
         }
         self.next.clear();
         for &(piece, side) in &self.sides {
             let slot = &mut self.slots[piece as usize];
-            slot.kept = i32::from(slot.side) == side;
+            slot.kept = slot.side == side;
             let from = if slot.kept { slot.from } else { a };
             self.next.push(Open { piece, side, from });
         }
         for open in self.open.drain(..) {
-            let slot = &mut self.slots[open.piece as usize];
-            let kept = slot.kept;
-            slot.side = 0;
-            slot.from = 0.0;
-            slot.kept = false;
-            if !kept {
+            let slot = std::mem::take(&mut self.slots[open.piece as usize]);
+            if !slot.kept {
                 let line = pieces[open.piece as usize].line;
                 push_side((&mut *out, &mut *bytes), line, open.side, (open.from, a))?;
             }
@@ -909,17 +899,23 @@ fn settle(order: &mut [Place], pieces: &[Piece], mid: f64, work: &mut Meter) -> 
 fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], mid: f64) {
     let (mut i, mut j) = (order.len(), joining.len());
     order.resize(i + j, Place::default());
+    let Some(&last) = joining.last() else {
+        return;
+    };
+    let mut next = last;
     for k in (0..order.len()).rev() {
         if j == 0 {
             break;
         }
-        let mut next = joining[j - 1];
         if i > 0 && compare(&mut next, &mut order[i - 1], pieces, mid).is_lt() {
             order[k] = order[i - 1];
             i -= 1;
         } else {
             order[k] = next;
             j -= 1;
+            if j > 0 {
+                next = joining[j - 1];
+            }
         }
     }
 }
@@ -964,5 +960,4 @@ fn covered(winding: i64, rule: FillRule) -> bool {
 mod tests;
 
 #[cfg(test)]
-#[path = "union/frontier_tests.rs"]
-mod frontier_tests;
+mod joining_tests;

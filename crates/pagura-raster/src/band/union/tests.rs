@@ -377,6 +377,7 @@ fn compare_ordering(pieces: &[Piece], rules: &[FillRule]) -> (Vec<Line>, Resolve
     let mut demand = Resolver::default();
     let mut midpoint = Resolver {
         eager_midpoint_keys: true,
+        eager_joining_keys: true,
         original_height_sort: true,
         original_crossings: true,
         ..Resolver::default()
@@ -570,6 +571,7 @@ fn demand_keys_keeps_the_original_resource_acceptance_boundary() {
         let mut bytes = Meter::new(byte_limit, "bytes");
         let result = Resolver {
             eager_midpoint_keys,
+            eager_joining_keys: eager_midpoint_keys,
             original_height_sort: eager_midpoint_keys,
             original_crossings: eager_midpoint_keys,
             ..Resolver::default()
