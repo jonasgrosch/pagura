@@ -37,6 +37,7 @@ mod tests;
 
 /// Coverage stored directly: an ordinary mark or a keyed glyph whose
 /// rows can be kept for the next band.
+#[derive(Debug, Clone, Copy)]
 enum DirectCoverage {
     Mark(crate::plan::Cover),
     Glyph(u32),
@@ -289,7 +290,7 @@ impl<'a> Executor<'a> {
     /// Rasterizes `cover` straight into the N16 page as the opaque constant
     /// colour `words`, row by row as the rasterizer emits it: one rounding
     /// per store from each pixel's coverage, nothing else to evaluate.
-    pub(super) fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, words: [u16; 4]) {
+    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, words: [u16; 4]) {
         let ws = &mut *self.ws;
         let PageBuffer::N16(page) = &mut ws.page else {
             return;
