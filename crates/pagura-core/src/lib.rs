@@ -11,7 +11,8 @@
 //! - [`text_string`], the PDF text-string and PDFDocEncoding codec;
 //! - [`Diagnostics::repair_once`], [`Error::within`] and [`ResultExt`] for
 //!   reporting with context;
-//! - [`convert`], lossless integer widening;
+//! - [`convert`], lossless integer widening and rounding to unsigned
+//!   integers;
 //! - [`Store`], the one budgeted cache of reusable rendering values.
 //!
 //! This crate has no knowledge of files, revisions or rendering. It is the

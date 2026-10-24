@@ -4,6 +4,8 @@
 //! once to the buffer's format; F32 mark stores evaluate `x += a·(t − x)`.
 //! Colours are premultiplied with the background embedded.
 
+use pagura_core::convert::{round_f32_u8, round_u8, round_u16};
+
 use super::Colors;
 
 /// `floor(x / 255)` for `x ≤ 255 · 65535 + 127` without a division:
@@ -38,17 +40,8 @@ pub(crate) fn n16_bytes(out: &mut [[u8; 4]], words: &[[u16; 4]]) {
 #[inline(never)]
 pub(crate) fn f32_bytes(out: &mut [[u8; 4]], levels: &[[f32; 4]]) {
     for (byte, &level) in out.as_flattened_mut().iter_mut().zip(levels.as_flattened()) {
-        *byte = level_byte(level);
+        *byte = round_f32_u8(level);
     }
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a level rounded and clamped to a byte"
-)]
-fn level_byte(level: f32) -> u8 {
-    level.round().clamp(0.0, 255.0) as u8
 }
 
 /// Stores an opaque colour, already encoded as N16 `words`, at `coverage`
@@ -160,16 +153,11 @@ fn mix(source: u32, backdrop: u32, (c, rest): (u32, u32)) -> u16 {
 /// The N16 word of a unit value: `257 × L` for its level `L = 255·v`,
 /// rounded, moved to the adjacent word where needed so that the final
 /// nearest byte is `round(L)` (no double rounding at half levels).
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a clamped unit value scaled to 0..65535"
-)]
 pub(crate) fn word(value: f64) -> u16 {
     let level = value.clamp(0.0, 1.0) * 255.0;
-    let word = (level * 257.0).round() as u16;
+    let word = round_u16(level * 257.0);
     let byte = (u32::from(word) + 128) / 257;
-    let nearest = level.round() as u32;
+    let nearest = u32::from(round_u8(level));
     match byte.cmp(&nearest) {
         std::cmp::Ordering::Greater => word - 1,
         std::cmp::Ordering::Less => word + 1,
@@ -180,12 +168,6 @@ pub(crate) fn word(value: f64) -> u16 {
 /// A dynamic store into N16 words: `(1 − a)·x + a·t` for the target
 /// `t = 65535·c` evaluated in f64 and rounded once to the nearest word.
 pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a value clamped to the word range"
-    )]
-    let round = |value: f64| value.clamp(0.0, 65535.0).round() as u16;
     if let Colors::Strided { values, stride: 3 } = *colors
         && full(alpha)
     {
@@ -193,28 +175,21 @@ pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &
         overwrite_n16(pixels, values);
         return;
     }
-    dynamic(pixels, colors, alpha, 65535.0, round, f64::from);
+    dynamic(pixels, colors, alpha, 65535.0, round_u16, f64::from);
 }
 
 /// The word a store at full opacity writes for colour value `value`:
-/// `65535·value` clamped and rounded. `max` and `min` clamp as `clamp`
-/// does, with a NaN to zero, which is also its word.
+/// `65535·value` clamped and rounded. The rounding conversion saturates and
+/// takes a NaN to zero, which is also its word, so it is the clamp.
 #[inline]
-#[expect(
-    clippy::manual_clamp,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "unlike clamp, max and min vectorize, and NaN gives the same word"
-)]
 pub(crate) fn opaque_word(value: f64) -> u16 {
-    (value.max(0.0).min(1.0) * 65535.0).round() as u16
+    round_u16(value * 65535.0)
 }
 
 /// The words of opaque colours, three values a pixel, over `pixels`: a
-/// store at full opacity, the word of each target `65535·c`. `max` and
-/// `min` clamp as `clamp` does, with a NaN to zero, which is also its word;
-/// the target then needs no clamp to the word range. Eight pixels at a
-/// time, their 24 values convert as one run, which vectorizes.
+/// store at full opacity, the word of each target `65535·c`, clamped by
+/// [`opaque_word`]'s saturating conversion. Eight pixels at a time, their 24
+/// values convert as one run, which vectorizes.
 pub(crate) fn overwrite_n16(pixels: &mut [[u16; 4]], values: &[f64]) {
     let word = opaque_word;
     let (blocks, last) = pixels.as_chunks_mut::<8>();
