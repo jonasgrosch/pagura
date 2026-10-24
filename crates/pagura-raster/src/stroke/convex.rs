@@ -1,8 +1,9 @@
 //! Boundaries of convex closed miter strokes (ISO 32000-2, 8.4.3.4).
 
+use super::Outline;
+use crate::Point;
 use crate::flatten::bounded;
 use crate::geometry::convex_orientation;
-use crate::{PathBuilder, Point};
 use pagura_core::{Error, Limits, Meter, Result};
 
 // Shorter closed runs keep their components.
@@ -119,7 +120,7 @@ fn build_boundaries(
 }
 
 pub(super) fn append(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     contours: &[Vec<Point>; 2],
     limits: &Limits,
     bytes: &mut Meter,
@@ -139,8 +140,7 @@ pub(super) fn append(
         for &p in contour {
             bounded(p)?;
         }
-        out.reserve(contour.len() + 1, bytes)?;
-        out.polygon(contour.iter().copied());
+        out.add_polygon(contour, false, limits, bytes)?;
     }
     Ok(())
 }
@@ -170,6 +170,7 @@ fn buffer(capacity: usize, bytes: &mut Meter) -> Result<Vec<Point>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PathBuilder;
 
     fn polygon(angles: impl Iterator<Item = f64>, radius: f64) -> Vec<Point> {
         angles

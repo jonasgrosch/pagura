@@ -279,13 +279,20 @@ impl Shape {
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
-        let (outline, outline_transform, tiling) = match adjustment {
+        let (mut polygon, tiling) = match adjustment {
             Adjustment::Adjusted => {
                 let (outline, t) =
                     crate::adjust::outline(&path, device, stroke, limits, &mut bytes)?;
-                (outline, t, Tiling::Components)
+                let polygon = match Polygon::from_lines(&outline, t, limits, &mut bytes)? {
+                    Some(polygon) => polygon,
+                    None => Polygon::from_path(&outline, t, limits, &mut bytes)?,
+                };
+                let released = outline.retained_bytes();
+                drop(outline);
+                bytes.refund(released);
+                (polygon, Tiling::Components)
             }
-            Adjustment::None => crate::stroke::pieces(
+            Adjustment::None => crate::stroke::polygon_pieces(
                 &path,
                 device,
                 stroke,
@@ -294,16 +301,8 @@ impl Shape {
                 &mut bytes,
             )?,
         };
-        let mut polygon =
-            match Polygon::from_lines(&outline, outline_transform, limits, &mut bytes)? {
-                Some(polygon) => polygon,
-                None => Polygon::from_path(&outline, outline_transform, limits, &mut bytes)?,
-            };
-        let released = path
-            .retained_bytes()
-            .saturating_add(outline.retained_bytes());
+        let released = path.retained_bytes();
         drop(path);
-        drop(outline);
         bytes.refund(released);
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,

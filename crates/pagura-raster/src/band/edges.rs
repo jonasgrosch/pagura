@@ -207,6 +207,74 @@ pub(crate) struct Polygon {
     pub(crate) points_cells: bool,
 }
 
+/// Outline polygons mapped to device space as a stroker makes them: the
+/// polygon [`Polygon::from_lines`] makes of the path they would form under
+/// `transform`, built without the path.
+pub(crate) struct Mapped {
+    polygon: Polygon,
+    transform: Transform,
+    /// The segments of that path.
+    segments: usize,
+}
+
+impl Mapped {
+    pub(crate) fn new(transform: Transform) -> Self {
+        Self {
+            polygon: Polygon::default(),
+            transform,
+            segments: 0,
+        }
+    }
+
+    pub(crate) fn finish(self) -> Polygon {
+        self.polygon
+    }
+}
+
+impl crate::stroke::Outline for Mapped {
+    fn len(&self) -> usize {
+        self.segments
+    }
+
+    fn heap_bytes(&self) -> usize {
+        self.polygon.heap_bytes()
+    }
+
+    /// One closed contour, as [`Polygon::from_lines`] takes it: points that
+    /// all coincide enclose their floor cell, other points map one by one.
+    fn add_polygon(
+        &mut self,
+        points: &[Point],
+        reversed: bool,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let Some(&first) = points.first() else {
+            return Ok(());
+        };
+        self.segments = self.segments.saturating_add(points.len() + 1);
+        if points.iter().all(|&p| p == first) {
+            let p = first * self.transform;
+            bounded(p)?;
+            return self.polygon.cell(p, limits, bytes);
+        }
+        self.polygon.begin(limits, points.len(), bytes)?;
+        let mut map = |point: Point| -> Result<()> {
+            let p = point * self.transform;
+            bounded(p)?;
+            self.polygon.points.push(p);
+            Ok(())
+        };
+        if reversed {
+            points.iter().rev().try_for_each(|&p| map(p))?;
+        } else {
+            points.iter().try_for_each(|&p| map(p))?;
+        }
+        self.polygon.end();
+        Ok(())
+    }
+}
+
 /// The points of a path of lines' longest contour, its points in all and its
 /// contours, as [`Polygon::from_lines`] collects them: a line after a close
 /// reopens a contour at the subpath start.

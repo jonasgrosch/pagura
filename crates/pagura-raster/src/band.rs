@@ -44,6 +44,7 @@ mod union;
 
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, RowOut, Span};
+pub(crate) use edges::{Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
 pub use shape::Shape;

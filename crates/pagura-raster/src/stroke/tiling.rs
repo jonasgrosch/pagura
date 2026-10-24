@@ -20,8 +20,8 @@
 //! may meet), are not proven to tile: their union is still the stroke, and
 //! the rasterizer certifies or resolves its windings.
 
-use super::{Pen, Run, cap, join, offsets, polygon};
-use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
+use super::{Outline, Pen, Run, cap, join, offsets, polygon};
+use crate::{LineCap, LineJoin, Point, Stroke};
 use pagura_core::{Error, Limits, Meter, Result};
 
 /// The inner side of one turn: the miter point's offset from the joint, the
@@ -64,7 +64,7 @@ impl Joint {
 /// joint overlaps and the centreline is proven not to return within the pen
 /// of itself.
 pub(super) fn append(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     run: &Run,
     pen: Pen,
     stroke: &Stroke,
@@ -514,7 +514,7 @@ impl Caps {
 /// it holds, `[start, end]`, as one outline: from the start's right corner
 /// along the right side, around the end, and back along the left side.
 fn capped(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     ((p, start), (q, finish)): ((Point, Joint), (Point, Joint)),
     direction: Point,
     radius: f64,
@@ -624,7 +624,7 @@ fn beyond(
 /// One segment's piece between its joints: the inner miter point on a
 /// turn's inner side (through the joint itself), the normal elsewhere.
 fn piece(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     ((p, start), (q, finish)): ((Point, Joint), (Point, Joint)),
     direction: Point,
     radius: f64,
