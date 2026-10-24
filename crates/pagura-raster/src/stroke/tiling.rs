@@ -9,7 +9,8 @@
 //! its angular grid is part of the canonical outline. A circle overlaps its
 //! end piece, so an open round-capped run is proven only where each end
 //! segment holds its circle behind the end line: the end piece then takes
-//! the part of the circle beyond its end, and the circle is not drawn.
+//! the part of the circle beyond its end, and the circle is not drawn. A
+//! point's two round caps are one circle.
 //! Pieces that meet share their vertices bit for bit. Their nonzero filled
 //! set is the components'; where proven, every point is covered once. A
 //! reversal, or a turn tighter than the pen around a short segment, takes the components'
@@ -75,13 +76,16 @@ pub(super) fn append(
         let Pen { radius, .. } = pen;
         let points = centreline(run, bytes)?;
         let [first, .., last] = points.as_slice() else {
+            // A point's two caps; two round caps are the same circle.
             if let Some(&point) = points.first() {
                 let tangent = run.tangent;
                 let back = Point::new(-tangent.x, -tangent.y);
                 cap(out, point, tangent, pen, stroke.cap, limits, bytes)?;
-                cap(out, point, back, pen, stroke.cap, limits, bytes)?;
+                if stroke.cap != LineCap::Round {
+                    cap(out, point, back, pen, stroke.cap, limits, bytes)?;
+                }
             }
-            return Ok(stroke.cap != LineCap::Round);
+            return Ok(true);
         };
         let joints = Joints {
             closed: run.closed,
@@ -408,16 +412,20 @@ fn turns(
 }
 
 /// The chains beyond its end lines of an open round-capped run's cap
-/// polygons, start then end, where each end segment holds its cap: it is
-/// longer than the pen radius plus whatever its other end needs along it
-/// (the other cap, or a turn's inner reach), and every cap vertex on or
-/// behind its end line lies across its piece. The circle behind the end line
-/// then lies within the end piece, which reaches past nothing else, so the
-/// end piece and the chain beyond together cover what the piece and the
-/// circle did, once. Vertices within eight rounding units of their
-/// coordinates outside the piece's sides, and the rounding of the two
-/// crossings per end, move the boundary by slivers that narrow, within the
-/// kernel's own error. `None` when an end does not hold its cap.
+/// polygons, start then end, where each end segment holds its cap and every
+/// cap vertex on or behind its end line lies across its piece. Then the cap
+/// polygon behind the end line lies within the end piece, which reaches past
+/// nothing else, so the end piece and the chain beyond together cover what
+/// the piece and the polygon did, once.
+///
+/// An end segment of a longer run holds its cap when it is longer than the
+/// pen radius plus a turn's inner reach at its other end. A lone segment
+/// holds both: of each cap polygon, what lies beyond the other end line is
+/// within sqrt(r^2 - length^2) of that end, inside the other polygon, whose
+/// sides lie r cos(pi/n) from its centre. Vertices within eight rounding
+/// units of their coordinates outside the piece's sides, and the rounding of
+/// the two crossings per end, move the boundary by slivers that narrow,
+/// within the kernel's own error. `None` when an end does not hold its cap.
 fn held_caps(
     (first, last): (Point, Point),
     segments: &[(Point, f64)],
@@ -432,19 +440,32 @@ fn held_caps(
     else {
         return Ok(None);
     };
+    let lone = segments.len() == 1;
     let reach = |j: usize| turns.get(j).and_then(|t| t.turn()).map_or(0.0, |t| t.reach);
-    let (start_need, finish_need) = if segments.len() == 1 {
-        (2.0 * radius, 2.0 * radius)
-    } else {
-        (radius + reach(1), radius + reach(segments.len() - 1))
-    };
-    if radius <= 0.0 || start_length <= start_need || finish_length <= finish_need {
+    if radius <= 0.0
+        || !lone
+            && (start_length <= radius + reach(1)
+                || finish_length <= radius + reach(segments.len() - 1))
+    {
         return Ok(None);
     }
     let before = bytes.used();
     let result = (|| {
         let near = ring(first, pen, limits, bytes)?;
         let far = ring(last, pen, limits, bytes)?;
+        if lone {
+            let count = f64::from(u32::try_from(near.len()).unwrap_or(u32::MAX));
+            let slack = 8.0
+                * f64::EPSILON
+                * (first.x.abs() + first.y.abs() + last.x.abs() + last.y.abs() + radius);
+            let inner = radius * (std::f64::consts::PI / count).cos() - slack;
+            let spill = ((radius - start_length) * (radius + start_length))
+                .max(0.0)
+                .sqrt();
+            if spill >= inner {
+                return Ok(None);
+            }
+        }
         let mut chains = Vec::new();
         bytes.reserve(&mut chains, near.len() + far.len() + 4)?;
         if !beyond(&near, first, -start, radius, &mut chains) {
@@ -876,18 +897,18 @@ mod tests {
     }
 
     #[test]
-    fn round_cap_circles_keep_open_runs_unproven() {
+    fn round_caps_not_held_keep_open_runs_unproven() {
         let limits = Limits::default();
-        for (points, dash_array) in [
-            (vec![(8.0, 8.0), (8.0, 8.0)], vec![]),
-            (vec![(8.0, 8.0), (8.125, 8.0)], vec![]),
-            (vec![(8.0, 8.0), (18.0, 8.0)], vec![0.0, 3.0]),
+        // A segment too short for either circle to lie within the other
+        // beyond its end line, and an end segment shorter than the pen.
+        for points in [
+            vec![(8.0, 8.0), (8.031_25, 8.0)],
+            vec![(8.0, 8.0), (18.0, 8.0), (18.5, 8.0)],
         ] {
             let path = polyline(&points, false);
             let stroke = Stroke {
                 width: 2.0,
                 cap: LineCap::Round,
-                dash_array,
                 ..Stroke::default()
             };
             let (_, _, tiling) = pieces(
@@ -901,6 +922,31 @@ mod tests {
             .unwrap();
             assert_eq!(tiling, Tiling::Unproven);
             components_kept(&path, &stroke);
+        }
+    }
+
+    #[test]
+    fn a_point_takes_its_round_cap_circle_once() {
+        let limits = Limits::default();
+        // A zero-length segment, and zero-length dashes whose pens stay apart.
+        for (points, dash_array) in [
+            (vec![(8.0, 8.0), (8.0, 8.0)], vec![]),
+            (vec![(8.0, 8.0), (18.0, 8.0)], vec![0.0, 3.0]),
+        ] {
+            let path = polyline(&points, false);
+            let stroke = Stroke {
+                width: 2.0,
+                cap: LineCap::Round,
+                dash_array,
+                ..Stroke::default()
+            };
+            let (components, pen) =
+                crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
+            let (tiles, _, tiling) = tiled(&path, Transform::IDENTITY, &stroke);
+            assert_eq!(tiling, Tiling::Proven);
+            assert_eq!(tiles.segments().len() * 2, components.segments().len());
+            assert_eq!(exact(&tiles, pen), exact(&components, pen));
+            assert_eq!(cells(&path, &stroke), exact(&components, pen));
         }
     }
 
@@ -929,7 +975,9 @@ mod tests {
             } else {
                 std::f64::consts::TAU * next()
             };
-            let length = width * (1.01 + 2.0 * next());
+            // From a fraction of the pen radius, where each circle beyond
+            // the other end line lies within the other, to well past it.
+            let length = width * (0.15 + 3.0 * next());
             let (x, y) = (12.0 + 24.0 * next(), 12.0 + 24.0 * next());
             let path = polyline(
                 &[

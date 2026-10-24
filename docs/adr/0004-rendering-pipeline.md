@@ -141,7 +141,11 @@ line, entered and left where the polygon's sides cross that line, and the
 cap polygon is not drawn. Cap vertices behind the end line must lie across
 the piece within eight rounding units of their coordinates, so the piece
 differs from the components' union only by slivers of that width. A lone
-segment longer than the pen holds both caps as one convex piece.
+segment holds both caps as one convex piece where each cap polygon's part
+beyond the other end line, which lies within sqrt(r^2 - L^2) of that end,
+is inside the other polygon's inscribed circle of radius r cos(pi/n), less
+eight rounding units; for segments at least as long as the pen radius that
+part is empty. A point's two round caps are the same polygon, drawn once.
 
 Uncertified rows, and rows crossed by both a mark and a path clip, go through
 one exact row union during preparation. It cuts at edge ends and crossings,
