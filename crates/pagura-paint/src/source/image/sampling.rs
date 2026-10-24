@@ -117,8 +117,9 @@ impl Sampling {
         }
     }
 
-    /// Writes summed texels of `span` under `geometry`, with exact opaque
-    /// alpha and shape wherever a footprint meets the image.
+    /// Writes summed texels of `span` under `geometry`, every value of
+    /// `out`, with exact opaque alpha and shape wherever a footprint meets
+    /// the image.
     pub(super) fn fill(
         &self,
         geometry: &Geometry,
@@ -164,7 +165,6 @@ impl Sampling {
             });
             return;
         }
-        out.fill(0.0);
         let finish = |out: &mut [f64], covered: &[bool]| {
             if lanes > n {
                 for (pixel, &covered) in out.chunks_exact_mut(lanes).zip(covered) {

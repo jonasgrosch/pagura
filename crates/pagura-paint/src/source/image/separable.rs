@@ -15,7 +15,7 @@
 //! read them again.
 
 use super::geometry::{Footprint, Geometry, Mode};
-use super::scratch::allocate;
+use super::scratch::{allocate, grown};
 use crate::source::Pixels;
 use pagura_core::{Meter, Result};
 
@@ -208,12 +208,7 @@ impl<V: Copy + Default> RowCache<V> {
             self.next = index + 1;
             if let Some(kept) = self.entries.get_mut(index) {
                 // Filling writes every value.
-                let length = (end - first) * n;
-                if kept.values.len() != length {
-                    kept.values.clear();
-                    kept.values.resize(length, V::default());
-                }
-                if fill(&mut kept.values, &mut self.runs) {
+                if fill(grown(&mut kept.values, (end - first) * n), &mut self.runs) {
                     (kept.row, kept.first, kept.end) = (y, first, end);
                 } else {
                     // A row that cannot be read is not kept.
@@ -566,8 +561,8 @@ impl Separable {
     /// `y`, [`Rows::width`] values each, into the first values of each of
     /// `len` pixels of `stride` values of `out`, or with `None` into
     /// scratch, and hands `finish` the values written and for each pixel
-    /// whether its footprint meets the image; the other pixels keep their
-    /// values, zeros in scratch.
+    /// whether its footprint meets the image; the other pixels' values are
+    /// zeros.
     pub(super) fn average<R: Rows>(
         &self,
         rows: &R,
@@ -588,12 +583,10 @@ impl Separable {
                 ..
             } = scratch;
             let n = rows.width();
-            averages.clear();
             let (values, stride) = if let Some((values, stride)) = out {
                 (values, stride.max(n))
             } else {
-                averages.resize(len * n, 0.0);
-                (averages.as_mut_slice(), n)
+                (grown(averages, len * n), n)
             };
             covered.clear();
             covered.resize(len, false);
@@ -605,6 +598,7 @@ impl Separable {
                 && n > 0
             {
                 let Buffers { cache, sums, .. } = R::Value::pick(codes, texels);
+                let sums = grown(sums, (end - first) * n);
                 let span = Span {
                     feet,
                     first,
@@ -615,13 +609,28 @@ impl Separable {
                 let out = (&mut *values, covered.as_mut_slice());
                 if R::Value::EXACT && whole && across.whole() {
                     // Whole samples sum as integers throughout.
-                    let work = Work { cache, sums, runs };
+                    let work = Work {
+                        cache,
+                        sums: &mut *sums,
+                        runs,
+                    };
                     sum_rows(rows, &across, (first, end), work);
                     span.columns::<R::Value>(Reduced::Sums(sums), out, map);
                 } else {
+                    let lines = grown(lines, (end - first) * n);
                     let work = Work { cache, sums, runs };
-                    reduce_rows(rows, &across, (first, end), work, lines);
+                    reduce_rows(rows, &across, (first, end), work, &mut *lines);
                     span.columns::<R::Value>(Reduced::Lines(lines), out, map);
+                }
+            }
+            // Only covered pixels were written.
+            for (pixel, _) in values
+                .chunks_exact_mut(stride.max(1))
+                .zip(covered.iter())
+                .filter(|(_, covered)| !**covered)
+            {
+                if let Some(values) = pixel.get_mut(..n) {
+                    values.fill(0.0);
                 }
             }
             finish(values, covered);
@@ -860,7 +869,7 @@ fn integers<const N: usize, V: Value>(cells: impl Iterator<Item = [V::Sum; N]>) 
 /// and runs of background and other columns.
 struct Work<'a, V: Value> {
     cache: &'a mut RowCache<V>,
-    sums: &'a mut Vec<V::Sum>,
+    sums: &'a mut [V::Sum],
     runs: &'a mut Runs,
 }
 
@@ -876,7 +885,6 @@ fn sum_rows<R: Rows>(
     let n = rows.width();
     let length = (end - first) * n;
     // The first row, or a background run, assigns every sum.
-    sums.resize(length, Default::default());
     let (top, bottom) = (index(across.first), index(across.end) - 1);
     if let Some(background) = background(rows, (top, bottom), (first, end), runs) {
         let mut constant = [<R::Value as Value>::Sum::default(); super::geometry::MAX_LANES];
@@ -922,13 +930,11 @@ fn reduce_rows<R: Rows>(
         sums: between,
         runs,
     }: Work<'_, R::Value>,
-    lines: &mut Vec<f64>,
+    lines: &mut [f64],
 ) {
     let n = rows.width();
     let length = (end - first) * n;
     // The first row, or a background run, assigns every line.
-    lines.resize(length, 0.0);
-    between.resize(length, Default::default());
     let (top, bottom) = (index(across.first), index(across.end) - 1);
     let weights = (across.first_weight, across.last_weight);
     if let Some(background) = background(rows, (top, bottom), (first, end), runs) {
