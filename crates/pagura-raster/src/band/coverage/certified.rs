@@ -159,6 +159,33 @@ impl CertifiedRows {
         self.coverage.retained_bytes()
     }
 
+    /// Removes spare capacity only when the retained-byte floor requires it.
+    /// A failed attempt must be discarded with its private meters.
+    pub(crate) fn fit_heap(
+        &mut self,
+        limit: usize,
+        work: &mut Meter,
+        bytes: &mut Meter,
+    ) -> Result<bool> {
+        if self.heap_bytes() <= limit {
+            return Ok(true);
+        }
+        work.charge(4)?;
+        let logical = std::mem::size_of_val(self.coverage.rows.as_slice())
+            .checked_add(std::mem::size_of_val(self.coverage.spans.as_slice()))
+            .and_then(|n| n.checked_add(self.coverage.cells.len()))
+            .ok_or(Error::limit("certified coverage storage exceeds usize"))?;
+        if logical > limit {
+            return Ok(false);
+        }
+        compact(&mut self.coverage.rows, work, bytes)?;
+        compact(&mut self.coverage.spans, work, bytes)?;
+        compact(&mut self.coverage.cells, work, bytes)?;
+        // Exact reservation may still provide spare capacity. Check what is
+        // actually retained, rather than assuming the requested capacity.
+        Ok(self.heap_bytes() <= limit)
+    }
+
     pub(crate) fn retained_bytes(&self) -> usize {
         self.heap_bytes()
     }
@@ -245,6 +272,27 @@ fn reserve<T>(
     bytes.charge_items::<T>(len)?;
     bytes.reserve(values, target - len)?;
     bytes.charge_items::<T>(values.capacity().saturating_sub(target))?;
+    bytes.refund(old.saturating_mul(size_of::<T>()));
+    Ok(())
+}
+
+/// Keeps the old allocation charged until its fallible replacement has been
+/// paid, filled and installed, then physically dropped. Only integer records
+/// and coverage bytes use this helper; their logical contents never change.
+fn compact<T: Copy>(values: &mut Vec<T>, work: &mut Meter, bytes: &mut Meter) -> Result<()> {
+    let old = values.capacity();
+    let len = values.len();
+    if len == old {
+        return Ok(());
+    }
+    work.charge(4)?;
+    work.charge(len)?;
+    let mut replacement = Vec::new();
+    bytes.reserve(&mut replacement, len)?;
+    bytes.charge_items::<T>(replacement.capacity().saturating_sub(len))?;
+    replacement.extend_from_slice(values);
+    let retired = std::mem::replace(values, replacement);
+    drop(retired);
     bytes.refund(old.saturating_mul(size_of::<T>()));
     Ok(())
 }
@@ -370,6 +418,102 @@ mod tests {
             );
         }
         (emitted, spent)
+    }
+
+    fn logical_bytes(rows: &CertifiedRows) -> usize {
+        std::mem::size_of_val(rows.coverage.rows.as_slice())
+            + std::mem::size_of_val(rows.coverage.spans.as_slice())
+            + rows.coverage.cells.len()
+    }
+
+    #[test]
+    fn certified_rows_compaction_preserves_bytes_bounds_work_and_band_capacity() {
+        let (mut rows, mut area, allocated) = fixture();
+        let expected = emitted(&rows, &area).0;
+        let metadata = (rows.bounds(), rows.capacity(), rows.work());
+        let limit = logical_bytes(&rows);
+        assert!(allocated > limit);
+        let mut work = Meter::new(1 << 20, "work");
+        let mut bytes = Meter::new(1 << 20, "bytes");
+        bytes.charge(allocated).unwrap();
+        assert!(rows.fit_heap(limit, &mut work, &mut bytes).unwrap());
+        assert_eq!(bytes.used(), rows.heap_bytes());
+        assert!(rows.heap_bytes() <= limit);
+        assert_eq!((rows.bounds(), rows.capacity(), rows.work()), metadata);
+        for height in [1, 3, 4, 7, 32] {
+            area.band_height = height;
+            rows.finish(&area, &mut work).unwrap();
+            let (actual, spent) = emitted(&rows, &area);
+            assert_eq!(actual, expected);
+            assert_eq!(rows.work(), metadata.2);
+            assert!(spent <= rows.work());
+        }
+    }
+
+    #[test]
+    fn certified_rows_compaction_skips_fitting_and_impossible_owners() {
+        let (mut rows, area, allocated) = fixture();
+        let expected = emitted(&rows, &area).0;
+        let mut work = Meter::new(0, "work");
+        let mut bytes = Meter::new(allocated, "bytes");
+        bytes.charge(allocated).unwrap();
+        assert!(rows.fit_heap(allocated, &mut work, &mut bytes).unwrap());
+        assert_eq!(work.used(), 0);
+        let mut work = Meter::new(1 << 20, "work");
+        let limit = logical_bytes(&rows) - 1;
+        assert!(!rows.fit_heap(limit, &mut work, &mut bytes).unwrap());
+        assert_eq!(bytes.used(), allocated);
+        assert_eq!(rows.heap_bytes(), allocated);
+        assert_eq!(emitted(&rows, &area).0, expected);
+    }
+
+    #[test]
+    fn certified_rows_compaction_pays_old_new_overlap_before_each_copy() {
+        for after_first in [false, true] {
+            let (mut rows, area, allocated) = fixture();
+            let expected = emitted(&rows, &area).0;
+            let first = std::mem::size_of_val(rows.coverage.rows.as_slice());
+            let first_old = rows.coverage.rows.capacity() * size_of::<super::super::RowSpans>();
+            let second = std::mem::size_of_val(rows.coverage.spans.as_slice());
+            let first_peak = allocated + first;
+            let second_peak = allocated + first - first_old + second;
+            assert!(second_peak > first_peak);
+            let peak = if after_first { second_peak } else { first_peak };
+            let mut bytes = Meter::new(peak - 1, "bytes");
+            bytes.charge(allocated).unwrap();
+            let mut work = Meter::new(1 << 20, "work");
+            let limit = logical_bytes(&rows);
+            assert!(rows.fit_heap(limit, &mut work, &mut bytes).is_err());
+            assert!(bytes.used() < peak);
+            assert_eq!(bytes.used(), rows.heap_bytes());
+            assert_eq!(emitted(&rows, &area).0, expected);
+            if after_first {
+                assert!(rows.heap_bytes() < allocated);
+            } else {
+                assert_eq!(rows.heap_bytes(), allocated);
+            }
+        }
+    }
+
+    #[test]
+    fn certified_rows_compaction_refuses_an_unpaid_copy_without_changing_coverage() {
+        let (mut rows, _, allocated) = fixture();
+        let mut paid = Meter::new(1 << 20, "work");
+        let mut bytes = Meter::new(1 << 20, "bytes");
+        bytes.charge(allocated).unwrap();
+        let limit = logical_bytes(&rows);
+        assert!(rows.fit_heap(limit, &mut paid, &mut bytes).unwrap());
+
+        let (mut rows, area, allocated) = fixture();
+        let expected = emitted(&rows, &area).0;
+        let metadata = (rows.bounds(), rows.capacity(), rows.work());
+        let mut unpaid = Meter::new(paid.used() - 1, "work");
+        let mut bytes = Meter::new(1 << 20, "bytes");
+        bytes.charge(allocated).unwrap();
+        assert!(rows.fit_heap(limit, &mut unpaid, &mut bytes).is_err());
+        assert_eq!(bytes.used(), rows.heap_bytes());
+        assert_eq!((rows.bounds(), rows.capacity(), rows.work()), metadata);
+        assert_eq!(emitted(&rows, &area).0, expected);
     }
 
     #[test]

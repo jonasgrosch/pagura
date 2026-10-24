@@ -1679,6 +1679,23 @@ fn complete_rows_reject_missing_borders_zero_results_and_unvisited_proofs() {
 }
 
 #[test]
+fn complete_rows_floor_counts_only_mandatory_multi_strip_storage() {
+    let limits = Limits::default();
+    let path = complete_rows_path();
+    let mut options = complete_rows_options(&limits, 3);
+    options.area.region.y1 = 40;
+    for (y, index) in [(0.25, 0), (15.25, (128 + 3) * size_of::<u32>())] {
+        let origin = Point::new(1.25, y);
+        let shape = complete_rows_shape(&path, origin, &options);
+        let source = complete_rows_source(&path, origin);
+        let floor = rows::floor(source, &shape, &options, &mut crate::testing::bytes())
+            .unwrap()
+            .unwrap();
+        assert_eq!(floor.bytes, 128 * size_of::<Line>() + index);
+    }
+}
+
+#[test]
 fn complete_rows_floor_keeps_clips_points_and_right_boundary_witnesses() {
     let limits = Limits::default();
     let path = complete_rows_path();

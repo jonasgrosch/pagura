@@ -15,8 +15,8 @@ use crate::flatten::MAX_COORDINATE;
 use crate::{Point, Segment, quantize_unit};
 use pagura_core::{Error, Meter, Result};
 
-/// The owned lines and execution work every successful full replacement must
-/// retain/spend for the counted nonhorizontal original endpoint pairs.
+/// Storage and execution work every successful full replacement must retain
+/// or spend for the counted nonhorizontal original endpoint pairs.
 pub(super) struct Floor {
     pub(super) bytes: usize,
     pub(super) work: usize,
@@ -132,9 +132,12 @@ pub(super) fn attempt(
     }
     encoded.rows.finish(&options.area, work)?;
     work.charge(4)?;
-    Ok((encoded.rows.bounds() == Some(shape.bounds())
-        && encoded.rows.heap_bytes() <= floor.bytes
-        && encoded.rows.work() <= floor.work)
+    if encoded.rows.bounds() != Some(shape.bounds()) || encoded.rows.work() > floor.work {
+        return Ok(None);
+    }
+    Ok(encoded
+        .rows
+        .fit_heap(floor.bytes, work, bytes)?
         .then_some(encoded.rows))
 }
 
@@ -228,6 +231,7 @@ pub(super) fn floor(
         .checked_add(width / 64)
         .and_then(|row| row.checked_add(6))
         .and_then(|row| row.checked_mul(bounds.height() as usize));
+    work.charge(4)?;
     // The final corrected nonzero bbox must equal these bounds. Any accepted
     // full replacement therefore has at least this height and scan width;
     // Shape::edges reserves this row overhead besides its 4*line_work.
@@ -235,9 +239,27 @@ pub(super) fn floor(
         .lines
         .checked_mul(24)
         .and_then(|lines| lines.checked_add(overhead?));
+    // A containing replacement spans at least these global strips. When it
+    // spans more than one, Shape::edges must retain a StripList: every counted
+    // raw line has an entry, besides the strips+1 offsets. Resolved coverage
+    // does not remove those raw entries. Single-strip shapes need no index.
+    let Some(last) = bounds.y1.checked_sub(1).filter(|&last| last >= bounds.y0) else {
+        return Ok(None);
+    };
+    let strips = edges::strips((bounds.y0, last));
+    let index = if strips > 1 {
+        witness
+            .lines
+            .checked_add(strips)
+            .and_then(|n| n.checked_add(1))
+            .and_then(|n| n.checked_mul(size_of::<u32>()))
+    } else {
+        Some(0)
+    };
     Ok(witness
         .lines
         .checked_mul(size_of::<Line>())
+        .and_then(|bytes| bytes.checked_add(index?))
         .zip(work)
         .map(|(bytes, work)| Floor { bytes, work }))
 }
