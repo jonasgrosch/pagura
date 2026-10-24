@@ -427,7 +427,9 @@ pub(super) struct TableTexels<'a, C> {
 impl<C: Codes> TableTexels<'_, C> {
     fn texel(&self, index: usize) -> &[f64] {
         let start = usize::from(self.codes.code(index)) * self.lanes;
-        self.table.get(start..start + self.lanes).unwrap_or(&[])
+        self.table
+            .get(start..start + self.lanes)
+            .unwrap_or(&[0.0; MAX_LANES])
     }
 }
 
@@ -441,9 +443,7 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
-        for (out, value) in out.iter_mut().zip(self.texel(index)) {
-            *out = *value;
-        }
+        copy_texel(out, self.texel(index));
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
@@ -659,10 +659,9 @@ impl<T: Texels> Texels for Fused<'_, T> {
         let Some(stride) = out.len().checked_div(count).filter(|&n| n > 1) else {
             return;
         };
-        let mut values = self.values.borrow_mut();
-        values.clear();
-        values.resize(count * (stride - 1), 0.0);
-        self.texels.row(row, cells, &mut values);
+        let mut storage = self.values.borrow_mut();
+        let values = super::scratch::grown(&mut storage, count * (stride - 1));
+        self.texels.row(row, cells, values);
         let mut opacities = [0.0; 256];
         let mut start = 0;
         while start < count {

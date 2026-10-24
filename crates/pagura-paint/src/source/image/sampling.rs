@@ -4,6 +4,7 @@
 use super::contour::{self, Contour};
 use super::geometry::{Geometry, Mode, Texels};
 use super::separable::{self, RowCache, Rows, Separable};
+use super::texels::copy_texel;
 use crate::source::Pixels;
 use pagura_core::{Meter, Result};
 
@@ -117,8 +118,9 @@ impl Sampling {
         }
     }
 
-    /// Writes summed texels of `span` under `geometry`, with exact opaque
-    /// alpha and shape wherever a footprint meets the image.
+    /// Writes summed texels of `span` under `geometry`, every value of
+    /// `out`, with exact opaque alpha and shape wherever a footprint meets
+    /// the image.
     pub(super) fn fill(
         &self,
         geometry: &Geometry,
@@ -157,19 +159,18 @@ impl Sampling {
                     .zip(pixels.chunks_exact(n.max(1)))
                 {
                     if let Some((values, rest)) = pixel.split_at_mut_checked(n) {
-                        values.copy_from_slice(source);
-                        rest.fill(1.0);
+                        copy_texel(values, source);
+                        opaque_lanes(rest, 1.0);
                     }
                 }
             });
             return;
         }
-        out.fill(0.0);
         let finish = |out: &mut [f64], covered: &[bool]| {
             if lanes > n {
                 for (pixel, &covered) in out.chunks_exact_mut(lanes).zip(covered) {
                     if let Some(rest) = pixel.get_mut(n..) {
-                        rest.fill(f64::from(u8::from(covered)));
+                        opaque_lanes(rest, f64::from(u8::from(covered)));
                     }
                 }
             }
@@ -181,6 +182,16 @@ impl Sampling {
             Some((out, lanes)),
             (|average| average, finish),
         );
+    }
+}
+
+/// Sets the alpha and shape that follow an opaque texel's colours: two
+/// stores rather than a fill call per pixel.
+#[inline]
+fn opaque_lanes(rest: &mut [f64], value: f64) {
+    match rest {
+        [alpha, shape] => (*alpha, *shape) = (value, value),
+        rest => rest.fill(value),
     }
 }
 

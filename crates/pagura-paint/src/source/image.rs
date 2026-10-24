@@ -564,10 +564,10 @@ impl ImageSampler {
         let len = pixels.len;
         let channels = self.channels;
         out.channels = channels;
-        out.alpha.clear();
         let Some(prepared) = &self.prepared else {
             out.colors.clear();
             out.colors.resize(len * channels, 0.0);
+            out.alpha.clear();
             out.alpha.resize(len, 0.0);
             if let Some(shape) = shape {
                 shape.clear();
@@ -580,6 +580,7 @@ impl ImageSampler {
         let (plan, paint) = match &prepared.plan {
             Plan::Texels { sampling, paint } => (sampling, paint),
             Plan::Codes(codes) => {
+                out.alpha.clear();
                 if let sampling::Scratch::Separable(storage) = &mut scratch.plan {
                     codes.fill(&prepared.image.image, pixels, storage, out, shape);
                 }
@@ -604,46 +605,86 @@ impl ImageSampler {
             }
         }
         let stride = lanes + usize::from(fused);
-        let mut summed = std::mem::take(&mut scratch.summed);
-        summed.resize(len * stride, 0.0);
-        prepared.texels((plan, paint), pixels, scratch, lanes, &mut summed);
-        out.colors.resize(len * channels, 0.0);
-        let mut shape = shape;
+        let mut storage = std::mem::take(&mut scratch.summed);
+        let summed = scratch::grown(&mut storage, len * stride);
+        prepared.texels((plan, paint), pixels, scratch, lanes, summed);
+        let straight = Straight {
+            summed,
+            stride,
+            channels,
+            mask: mask.map(|mask| Weight {
+                fused,
+                scales_shape: mask.scales_shape,
+            }),
+        };
+        match channels {
+            1 => straight.write::<1>(out, shape),
+            3 => straight.write::<3>(out, shape),
+            4 => straight.write::<4>(out, shape),
+            _ => straight.write::<0>(out, shape),
+        }
+        scratch.summed = storage;
+    }
+}
+
+/// A span's summed texels, `stride` values a pixel, as straight colours.
+struct Straight<'a> {
+    summed: &'a [f64],
+    stride: usize,
+    channels: usize,
+    mask: Option<Weight>,
+}
+
+/// How a mask's opacity weights each texel.
+#[derive(Clone, Copy)]
+struct Weight {
+    /// Whether the opacity is the value ahead of the texel's, rather than
+    /// the alpha sampled already.
+    fused: bool,
+    /// Whether it also scales shape.
+    scales_shape: bool,
+}
+
+impl Straight<'_> {
+    /// Pushes each pixel's straight colours, `C` of them (any number for
+    /// 0), onto `out.colors`, writes its alpha over `out.alpha` and pushes
+    /// its shape onto `shape`.
+    fn write<const C: usize>(&self, out: &mut SpanColors, mut shape: Option<&mut Vec<f64>>) {
+        let channels = if C == 0 { self.channels } else { C };
+        let SpanColors { colors, alpha, .. } = out;
+        colors.clear();
         if let Some(shape) = shape.as_deref_mut() {
             shape.clear();
         }
-        let scales_shape = mask.is_some_and(|mask| mask.scales_shape);
-        for i in 0..len {
-            let base = i * stride;
-            let texel = &summed[base..base + stride];
-            let (factor, texel) = match (mask, fused) {
-                (Some(_), true) => (Some(texel[0]), &texel[1..]),
-                (Some(_), false) => (Some(out.alpha[i]), texel),
-                (None, _) => (None, texel),
+        for (texel, alpha) in self.summed.chunks_exact(self.stride).zip(alpha) {
+            let (factor, texel) = match self.mask {
+                Some(Weight { fused: true, .. }) => (Some(texel[0]), &texel[1..]),
+                Some(Weight { fused: false, .. }) => (Some(*alpha), texel),
+                None => (None, texel),
             };
-            let color = &mut out.colors[i * channels..(i + 1) * channels];
-            texels::copy_texel(color, texel);
-            let (mut alpha, mut own) = (texel[channels], texel[channels + 1]);
+            let start = colors.len();
+            colors.extend_from_slice(&texel[..channels]);
+            let color = &mut colors[start..];
+            let (mut opacity, mut own) = (texel[channels], texel[channels + 1]);
             if let Some(factor) = factor {
                 for value in color.iter_mut() {
                     *value *= factor;
                 }
-                alpha *= factor;
-                if scales_shape {
+                opacity *= factor;
+                if self.mask.is_some_and(|mask| mask.scales_shape) {
                     own *= factor;
                 }
             }
-            if alpha != 1.0 {
+            if opacity != 1.0 {
                 for value in color.iter_mut() {
-                    *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
+                    *value = if opacity > 0.0 { *value / opacity } else { 0.0 };
                 }
             }
-            out.alpha[i] = alpha;
+            *alpha = opacity;
             if let Some(shape) = shape.as_deref_mut() {
                 shape.push(own);
             }
         }
-        scratch.summed = summed;
     }
 }
 
@@ -694,9 +735,9 @@ impl Prepared {
             return false;
         }
         let len = out.len();
-        let mut values = std::mem::take(&mut scratch.summed);
-        values.resize(len * lanes, 0.0);
-        self.texels((plan, paint), pixels, scratch, lanes, &mut values);
+        let mut storage = std::mem::take(&mut scratch.summed);
+        let values = scratch::grown(&mut storage, len * lanes);
+        self.texels((plan, paint), pixels, scratch, lanes, values);
         for (pixel, texel) in out.iter_mut().zip(values.as_chunks::<5>().0) {
             *pixel = [
                 crate::kernel::opaque_word(texel[0]),
@@ -705,7 +746,7 @@ impl Prepared {
                 u16::MAX,
             ];
         }
-        scratch.summed = values;
+        scratch.summed = storage;
         true
     }
 
