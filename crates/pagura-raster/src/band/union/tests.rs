@@ -19,6 +19,130 @@ fn pieces(lines: &[(Line, u8)]) -> Vec<Piece> {
         .collect()
 }
 
+fn key_columns(pieces: &[Piece]) -> Vec<Span> {
+    let mut columns: Vec<_> = (0_u32..)
+        .zip(pieces)
+        .map(|(i, p)| {
+            let (left, right) = p.columns();
+            (left, right, i)
+        })
+        .collect();
+    columns.reverse();
+    index_columns(&mut columns, pieces);
+    columns
+}
+
+#[test]
+fn indexed_columns_reuses_clipped_ranges_for_long_diagonals() {
+    let input = pieces(&[
+        (line(0.0, 0.0, 1000.0, 1000.0), 0),
+        (line(1002.0, 1000.0, 2.0, 0.0), 0),
+    ]);
+    let columns = key_columns(&input);
+    assert_eq!((columns[0].2, columns[1].2), (0, 1));
+    assert!(columns[0].1 < columns[1].0);
+    let mut a = Place::default();
+    let mut b = Place {
+        piece: 1,
+        ..Place::default()
+    };
+    assert!(compare(&mut a, &mut b, &input, &columns, 0.5).is_lt());
+    assert!(!coincident(&mut a, &mut b, &input, &columns, 0.5));
+    assert!(!a.ready && !b.ready);
+    let mut lines = polygon(
+        &[(0.0, 0.0), (2.0, 0.0), (1002.0, 1000.0), (1000.0, 1000.0)],
+        0,
+    );
+    lines.extend(polygon(
+        &[(8.0, 0.125), (9.0, 0.125), (9.0, 0.625), (8.0, 0.625)],
+        0,
+    ));
+    compare_ordering(&pieces(&lines), &[FillRule::NonZero]);
+}
+
+#[test]
+fn key_bounds_enclose_cancellation_and_subnormal_interpolation() {
+    let n = 549_755_813_888.0;
+    let tiny = f64::from_bits(1);
+    let witnesses = [
+        line(-n, -n, n, n + 1.0 / 8192.0),
+        line(-1.0e12, 0.0, 1.0e12, 1.0),
+        line(-2.0, 0.5, 2.0, 0.5 + f64::EPSILON),
+        line(0.25, 0.0, 0.75, 3.0 * tiny),
+        line(-tiny, 0.0, tiny, 1.0),
+        line(-0.0, tiny, 0.0, 2.0 * tiny),
+    ];
+    for line in witnesses {
+        let p = Piece::new(line, 0.0, 0).unwrap();
+        let (left, right) = key_bounds(&p, p.columns());
+        for step in 0..=64 {
+            let t = f64::from(step) / 64.0;
+            let y = (p.lo * (1.0 - t) + p.hi * t).clamp(p.lo, p.hi);
+            let x = line.x(y);
+            assert!(left <= x && x <= right, "{p:?}, y={y:?}, x={x:?}");
+        }
+    }
+}
+
+#[test]
+fn unsupported_key_bounds_keep_the_original_fallback() {
+    for (line, lo, hi) in [
+        (line(2.0e12, 0.0, 3.0e12, 1.0), 0.0, 1.0),
+        (line(1.0, 2.0e12, 2.0, 2.0e12 + 1.0), 2.0e12, 2.0e12 + 1.0),
+        (line(1.0, 0.0, 2.0, 1.0), -1.0, 2.0),
+    ] {
+        let p = Piece {
+            line,
+            lo,
+            hi,
+            direction: 1,
+            group: 0,
+        };
+        assert_eq!(key_bounds(&p, (1.25, 1.75)), (line.a.x, line.b.x));
+    }
+    for x in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let p = Piece {
+            line: line(x, 0.0, 1.0, 1.0),
+            lo: 0.0,
+            hi: 1.0,
+            direction: 1,
+            group: 0,
+        };
+        let (left, right) = key_bounds(&p, (0.0, 1.0));
+        let range = (left, right, 0);
+        assert_eq!((left, right), (f64::NEG_INFINITY, f64::INFINITY));
+        assert!(separated(range, (2.0, 3.0, 1)).is_none());
+        assert!(separated((2.0, 3.0, 1), range).is_none());
+    }
+}
+
+#[test]
+fn column_index_cycles_do_not_displace_completed_bounds() {
+    let pieces = pieces(&[
+        (line(0.0, 0.0, 1000.0, 1000.0), 0),
+        (line(2.0, 0.0, 1002.0, 1000.0), 0),
+        (line(4.0, 0.0, 1004.0, 1000.0), 0),
+        (line(6.0, 0.0, 1006.0, 1000.0), 0),
+    ]);
+    let expected = key_columns(&pieces);
+    for permutation in [[1, 2, 3, 0], [2, 0, 3, 1], [0, 2, 1, 3]] {
+        let mut columns: Vec<_> = permutation
+            .into_iter()
+            .map(|i| {
+                let (left, right) = pieces[i as usize].columns();
+                (left, right, i)
+            })
+            .collect();
+        index_columns(&mut columns, &pieces);
+        assert_eq!(columns, expected);
+    }
+    index_columns(&mut [], &[]);
+    let p = &pieces[..1];
+    let mut column = vec![(p[0].columns().0, p[0].columns().1, 0)];
+    index_columns(&mut column, p);
+    assert_eq!(column[0], expected[0]);
+}
+
 /// The sides of row `0..1` and the work they took.
 fn sides(pieces: &[Piece], rules: &[FillRule], work: &mut Meter) -> Result<Vec<Line>> {
     let mut out = Vec::new();
@@ -165,15 +289,17 @@ fn rounding_ties_without_a_crossing_keep_midpoint_ordering() {
             .collect::<Vec<_>>(),
         [(1.0, 0), (1.0, 1)]
     );
-    assert!(separated(lines[1].0, lines[0].0).is_none());
+    let columns = key_columns(&pieces(&lines));
+    assert!(separated(columns[1], columns[0]).is_none());
 }
 
 #[test]
 fn demand_keys_rejects_unproved_signed_zero_relations() {
     let mixed = line(-0.0, f64::from_bits(1), 0.0, f64::from_bits(2));
     let constant = line(-0.0, 0.0, -0.0, 1.0);
-    assert!(separated(mixed, constant).is_none());
-    assert!(separated(constant, mixed).is_none());
+    let columns = key_columns(&pieces(&[(mixed, 0), (constant, 0)]));
+    assert!(separated(columns[0], columns[1]).is_none());
+    assert!(separated(columns[1], columns[0]).is_none());
     let (_, resolver) = compare_ordering(
         &pieces(&[(mixed, 0), (constant, 0), (line(2.0, 1.0, 2.0, 0.0), 0)]),
         &[FillRule::NonZero],
@@ -190,6 +316,7 @@ fn demand_keys_distinguish_order_from_numeric_zero_equality() {
         (line(-0.0, 0.0, -0.0, 1.0), 0),
         (line(0.0, 1.0, 0.0, 0.0), 0),
     ]);
+    let columns = key_columns(&pieces);
     let mut a = Place {
         piece: 0,
         ..Place::default()
@@ -198,11 +325,11 @@ fn demand_keys_distinguish_order_from_numeric_zero_equality() {
         piece: 1,
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &pieces, 0.5).is_lt());
+    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.5).is_lt());
     assert!(a.ready && b.ready);
     assert_eq!(a.x.to_bits(), (-0.0_f64).to_bits());
     assert_eq!(b.x.to_bits(), 0.0_f64.to_bits());
-    assert!(coincident(&mut a, &mut b, &pieces, 0.5));
+    assert!(coincident(&mut a, &mut b, &pieces, &columns, 0.5));
 }
 
 #[test]
@@ -211,6 +338,7 @@ fn demand_keys_recompute_ambiguous_survivors_at_each_midpoint() {
         (line(1.0 + f64::EPSILON, 0.0, 1.0, 1.0), 0),
         (line(1.0, 1.0, 1.0, 0.0), 0),
     ]);
+    let columns = key_columns(&pieces);
     let mut a = Place {
         piece: 0,
         ..Place::default()
@@ -219,11 +347,11 @@ fn demand_keys_recompute_ambiguous_survivors_at_each_midpoint() {
         piece: 1,
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &pieces, 0.25).is_gt());
-    assert!(!coincident(&mut a, &mut b, &pieces, 0.25));
+    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.25).is_gt());
+    assert!(!coincident(&mut a, &mut b, &pieces, &columns, 0.25));
     (a.ready, b.ready) = (false, false);
-    assert!(compare(&mut a, &mut b, &pieces, 0.75).is_lt());
-    assert!(coincident(&mut a, &mut b, &pieces, 0.75));
+    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.75).is_lt());
+    assert!(coincident(&mut a, &mut b, &pieces, &columns, 0.75));
 }
 
 #[test]
@@ -232,6 +360,7 @@ fn demand_keys_leave_proven_separation_unevaluated() {
         (line(-4.0, 0.0, -3.0, 1.0), 0),
         (line(1.0, 1.0, 0.0, 0.0), 0),
     ]);
+    let columns = key_columns(&pieces);
     let mut a = Place {
         piece: 0,
         ..Place::default()
@@ -240,8 +369,8 @@ fn demand_keys_leave_proven_separation_unevaluated() {
         piece: 1,
         ..Place::default()
     };
-    assert!(compare(&mut a, &mut b, &pieces, 0.5).is_lt());
-    assert!(!coincident(&mut a, &mut b, &pieces, 0.5));
+    assert!(compare(&mut a, &mut b, &pieces, &columns, 0.5).is_lt());
+    assert!(!coincident(&mut a, &mut b, &pieces, &columns, 0.5));
     assert!(!a.ready && !b.ready);
 }
 

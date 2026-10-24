@@ -97,12 +97,13 @@ const _: () = assert!(align_of::<Place>() == align_of::<(f64, u32)>());
 
 impl Place {
     fn new(piece: u32, pieces: &[Piece], mid: f64) -> Self {
-        let line = pieces[piece as usize].line;
+        let constant =
+            pieces[piece as usize].line.a.x.to_bits() == pieces[piece as usize].line.b.x.to_bits();
         Self {
-            x: line.x(mid),
+            x: pieces[piece as usize].line.x(mid),
             piece,
             ready: true,
-            constant: line.a.x.to_bits() == line.b.x.to_bits(),
+            constant,
         }
     }
 
@@ -119,26 +120,27 @@ fn ordered(p: &Place, q: &Place) -> std::cmp::Ordering {
     p.x.total_cmp(&q.x).then(p.piece.cmp(&q.piece))
 }
 
-/// Every computed x stays in the full original endpoint range: Line::x
-/// returns an endpoint or clamps its interior result. A strict gap proves
-/// order and non-equality without evaluating either current midpoint key.
-/// Touching or overlapping ranges always use the original arithmetic.
-fn separated(p: Line, q: Line) -> Option<std::cmp::Ordering> {
-    if ![p.a.x, p.b.x, q.a.x, q.b.x].into_iter().all(f64::is_finite) {
-        return None;
-    }
-    if p.a.x.max(p.b.x) < q.a.x.min(q.b.x) {
+/// A strict gap between precomputed enclosures proves order and
+/// non-equality. Touching or overlapping ranges use the original keys.
+fn separated(p: Span, q: Span) -> Option<std::cmp::Ordering> {
+    if p.1 < q.0 {
         Some(std::cmp::Ordering::Less)
-    } else if q.a.x.max(q.b.x) < p.a.x.min(p.b.x) {
+    } else if q.1 < p.0 {
         Some(std::cmp::Ordering::Greater)
     } else {
         None
     }
 }
 
-fn compare(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> std::cmp::Ordering {
+fn compare(
+    p: &mut Place,
+    q: &mut Place,
+    pieces: &[Piece],
+    columns: &[Span],
+    mid: f64,
+) -> std::cmp::Ordering {
     if !(p.ready && q.ready)
-        && let Some(order) = separated(pieces[p.piece as usize].line, pieces[q.piece as usize].line)
+        && let Some(order) = separated(columns[p.piece as usize], columns[q.piece as usize])
     {
         return order;
     }
@@ -147,9 +149,9 @@ fn compare(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> std::cmp
         .then(p.piece.cmp(&q.piece))
 }
 
-fn coincident(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> bool {
+fn coincident(p: &mut Place, q: &mut Place, pieces: &[Piece], columns: &[Span], mid: f64) -> bool {
     if !(p.ready && q.ready)
-        && separated(pieces[p.piece as usize].line, pieces[q.piece as usize].line).is_some()
+        && separated(columns[p.piece as usize], columns[q.piece as usize]).is_some()
     {
         return false;
     }
@@ -159,6 +161,50 @@ fn coincident(p: &mut Place, q: &mut Place, pieces: &[Piece], mid: f64) -> bool 
 
 /// A piece's extent along one axis, `(start, end, piece)`.
 type Span = (f64, f64, u32);
+
+/// Encloses every literal midpoint key over this piece's heights, reusing
+/// the endpoint keys already evaluated for crossing enumeration.
+fn key_bounds(piece: &Piece, (left, right): (f64, f64)) -> (f64, f64) {
+    let Line { a, b } = piece.line;
+    if ![a.x, b.x].into_iter().all(f64::is_finite) {
+        return (f64::NEG_INFINITY, f64::INFINITY);
+    }
+    let full = (a.x.min(b.x), a.x.max(b.x));
+    let (top, bottom) = (a.y.min(b.y), a.y.max(b.y));
+    if ![a.x, a.y, b.x, b.y]
+        .into_iter()
+        .all(|value| value.abs() <= 1.0e12)
+        || !(top < bottom && top <= piece.lo && piece.lo < piece.hi && piece.hi <= bottom)
+    {
+        return full;
+    }
+    // For this guarded domain the literal normalized interpolation is
+    // within 384*2^-53*M of the exact affine line, M=1+|a.x|+|b.x|.
+    // This new comparison-only allowance exceeds 500*2^-53*M, including
+    // its own rounding. One allowance transports an endpoint and one an
+    // interior key. Computed interpolation need not be monotone.
+    let error = (256.0 * f64::EPSILON) * ((1.0 + a.x.abs()) + b.x.abs());
+    let radius = 2.0 * error;
+    (
+        (left - radius).next_down().max(full.0),
+        (right + radius).next_up().min(full.1),
+    )
+}
+
+/// Reuses the finished crossing table as ID-indexed key enclosures. Each
+/// swap fixes a new ID, so there are at most N-1 swaps and N fixed bodies.
+/// No already fixed slot can be displaced by another unique ID.
+fn index_columns(columns: &mut [Span], pieces: &[Piece]) {
+    debug_assert_eq!(columns.len(), pieces.len());
+    for i in 0..columns.len() {
+        while columns[i].2 as usize != i {
+            let target = columns[i].2 as usize;
+            columns.swap(i, target);
+        }
+        let bounds = key_bounds(&pieces[i], (columns[i].0, columns[i].1));
+        (columns[i].0, columns[i].1) = bounds;
+    }
+}
 
 /// Work units for sorting `count` values and passing over them once.
 fn sort_work(count: usize) -> usize {
@@ -173,9 +219,10 @@ pub(crate) struct Resolver {
     #[cfg(test)]
     original_height_sort: bool,
     heights: Vec<f64>,
-    /// The pieces' columns and heights, `(start, end, piece)`, each by
-    /// start: the sweep takes the pieces by their upper end.
+    /// Column spans by start during crossing enumeration, then enclosing
+    /// column spans indexed by piece ID for comparisons.
     columns: Vec<Span>,
+    /// Height spans by start: the sweep takes pieces by their upper end.
     rows: Vec<Span>,
     /// The pieces spanning the current sub-slab, in order across it.
     order: Vec<Place>,
@@ -383,6 +430,11 @@ impl Resolver {
             self.heights.push(p.hi);
         }
         self.crossings(pieces, total, starts, (work, bytes))?;
+        // The four original sort packets also cover this fixed linear
+        // preparation: columns sort + initialization + bounds; rows sort
+        // + cycle visits + swaps; and each overlap count's binary queries
+        // + fold. Together at most 4*N*(floor(log2(N))+2) abstract units.
+        index_columns(&mut self.columns, pieces);
         work.charge(sort_work(self.heights.len() + starts))?;
         self.heights.sort_unstable_by(f64::total_cmp);
         if starts != 0 {
@@ -534,7 +586,7 @@ impl Resolver {
             }
             pieces[entry.piece as usize].hi >= b
         });
-        settle(&mut self.order, pieces, mid, work)?;
+        settle(&mut self.order, pieces, &self.columns, mid, work)?;
         self.joining.clear();
         while let Some(&(lo, hi, i)) = self.rows.get(joined)
             && lo <= a
@@ -547,7 +599,7 @@ impl Resolver {
         if !self.joining.is_empty() {
             work.charge(sort_work(self.joining.len()).saturating_add(self.order.len()))?;
             self.joining.sort_unstable_by(ordered);
-            merge(&mut self.order, &self.joining, pieces, mid);
+            merge(&mut self.order, &self.joining, pieces, &self.columns, mid);
         }
         Ok(joined)
     }
@@ -584,7 +636,13 @@ impl Resolver {
                     break;
                 }
                 let (before, after) = self.order.split_at_mut(n);
-                if !coincident(&mut before[start], &mut after[0], pieces, mid) {
+                if !coincident(
+                    &mut before[start],
+                    &mut after[0],
+                    pieces,
+                    &self.columns,
+                    mid,
+                ) {
                     break;
                 }
             }
@@ -700,12 +758,18 @@ fn merge_heights(heights: &mut Vec<f64>, rows: &[Span]) {
 /// Restores the order of `order` by moving entries down one at a time,
 /// charging each move: pieces that crossed at the height between two
 /// sub-slabs are one move apart per crossing.
-fn settle(order: &mut [Place], pieces: &[Piece], mid: f64, work: &mut Meter) -> Result<()> {
+fn settle(
+    order: &mut [Place],
+    pieces: &[Piece],
+    columns: &[Span],
+    mid: f64,
+    work: &mut Meter,
+) -> Result<()> {
     for n in 1..order.len() {
         let mut j = n;
         while j > 0 && {
             let (before, after) = order.split_at_mut(j);
-            compare(&mut after[0], &mut before[j - 1], pieces, mid).is_lt()
+            compare(&mut after[0], &mut before[j - 1], pieces, columns, mid).is_lt()
         } {
             work.charge(1)?;
             order.swap(j - 1, j);
@@ -717,7 +781,7 @@ fn settle(order: &mut [Place], pieces: &[Piece], mid: f64, work: &mut Meter) -> 
 
 /// Merges the ordered `joining` into the ordered `order`, which has room
 /// for them.
-fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], mid: f64) {
+fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], columns: &[Span], mid: f64) {
     let (mut i, mut j) = (order.len(), joining.len());
     order.resize(i + j, Place::default());
     for k in (0..order.len()).rev() {
@@ -725,7 +789,7 @@ fn merge(order: &mut Vec<Place>, joining: &[Place], pieces: &[Piece], mid: f64) 
             break;
         }
         let mut next = joining[j - 1];
-        if i > 0 && compare(&mut next, &mut order[i - 1], pieces, mid).is_lt() {
+        if i > 0 && compare(&mut next, &mut order[i - 1], pieces, columns, mid).is_lt() {
             order[k] = order[i - 1];
             i -= 1;
         } else {
