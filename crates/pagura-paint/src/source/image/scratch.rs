@@ -87,7 +87,7 @@ impl ImageSampler {
     pub(crate) fn scratch_layout(&self) -> Layout {
         let Some(prepared) = self.prepared.as_ref() else {
             return Layout {
-                plan: sampling::Layout::Points,
+                plan: sampling::Layout::Points(0),
                 mask: None,
                 memo: None,
                 summed: 0,
