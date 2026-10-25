@@ -570,11 +570,10 @@ fn icc_range(range: [[f64; 2]; 4]) -> Result<[[f64; 2]; 4]> {
 
 /// PDF Table 65 constrains source values before any alternate substitution.
 fn clip_icc(components: &[f64], range: &[[f64; 2]; 4]) -> [f64; 4] {
-    let mut clipped = [0.0; 4];
-    for (i, (out, [low, high])) in clipped.iter_mut().zip(range).enumerate() {
-        *out = components.get(i).copied().unwrap_or(0.0).clamp(*low, *high);
-    }
-    clipped
+    std::array::from_fn(|i| {
+        let [low, high] = range[i];
+        components.get(i).copied().unwrap_or(0.0).clamp(low, high)
+    })
 }
 
 impl Source {
