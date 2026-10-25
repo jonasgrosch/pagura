@@ -210,6 +210,7 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         stack,
         sizes: Sizes::default(),
         scratch: 0,
+        helpers: 0,
     };
     reserve_output(&plan, budget)?;
     let sizes = sizes(&plan, rows, transfers);
@@ -218,6 +219,13 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let before = budget.bytes.used();
     BandRasterizer::charge(area, &mut budget.bytes)?;
     plan.scratch = workspace.saturating_add(budget.bytes.used() - before);
+    // Helper threads hold a scratch each within what the render may still
+    // hold, so they never change the charges or the error (ADR 0035).
+    plan.helpers = budget
+        .bytes
+        .remaining()
+        .checked_div(plan.scratch)
+        .unwrap_or(usize::MAX);
     plan.sizes = Sizes {
         rows: band_rows,
         ..sizes

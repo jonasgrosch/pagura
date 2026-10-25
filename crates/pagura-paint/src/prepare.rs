@@ -18,7 +18,7 @@ mod storage;
 
 pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes};
 
-use crate::execute::{Rendering, Scratch};
+use crate::execute::{Rendering, Scratch, Worker};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
@@ -212,6 +212,51 @@ impl PreparedScene {
             shapes: &self.shapes,
             workspace,
             rasterizer,
+            helpers: Vec::new(),
         })
     }
+
+    /// Renders of this scene in the first of `scratches` on the calling
+    /// thread, with a helper thread in each further scratch (ADR 0035). The
+    /// bytes do not depend on how many threads render.
+    ///
+    /// Helpers take only the room `render_bytes` has left after preparation,
+    /// a scratch reservation each, and no more than the region has bands
+    /// beyond the first. Scratches beyond that, or that cannot be allocated,
+    /// stay unused, so charges and errors do not depend on the number of
+    /// scratches. WebAssembly renders on the calling thread alone.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::with_scratch`] for the first scratch, and
+    /// `InvalidArgument` for none.
+    pub fn with_scratches<'a>(&'a self, scratches: &'a mut [Scratch]) -> Result<Rendering<'a>> {
+        let Some((first, rest)) = scratches.split_first_mut() else {
+            return Err(Error::invalid_argument("no scratch to render in"));
+        };
+        let bands = self.plan.area.bands().len();
+        let count = if THREADS {
+            rest.len()
+                .min(self.plan.helpers)
+                .min(bands.saturating_sub(1))
+        } else {
+            0
+        };
+        let mut rendering = self.with_scratch(first)?;
+        if rendering.helpers.try_reserve_exact(count).is_ok() {
+            let helpers = rest.iter_mut().take(count).map_while(|scratch| {
+                let (workspace, rasterizer) = scratch.fit(&self.plan).ok()?;
+                Some(Worker {
+                    workspace,
+                    rasterizer,
+                })
+            });
+            rendering.helpers.extend(helpers);
+        }
+        Ok(rendering)
+    }
 }
+
+/// Whether renders may use helper threads: WebAssembly stays on the calling
+/// thread (ADR 0035).
+const THREADS: bool = !cfg!(target_family = "wasm");

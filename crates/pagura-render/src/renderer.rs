@@ -69,7 +69,7 @@ impl<'a> Renderer<'a> {
         scene: &Scene,
         (options, tile): (&RenderOptions, Option<Tile>),
         scratch: &mut Scratch,
-        stop: impl FnMut(u32) -> bool,
+        stop: impl FnMut(u32) -> bool + Send,
     ) -> Result<(Pixmap, Completion)> {
         let prepared = self.prepare(scene, (options, tile))?;
         self.draw(&prepared, scratch, stop)
@@ -103,7 +103,7 @@ impl<'a> Renderer<'a> {
         self,
         prepared: &PreparedScene,
         scratch: &mut Scratch,
-        stop: impl FnMut(u32) -> bool,
+        stop: impl FnMut(u32) -> bool + Send,
     ) -> Result<(Pixmap, Completion)> {
         let region = prepared.region();
         let (width, height) = (region.width(), region.height());

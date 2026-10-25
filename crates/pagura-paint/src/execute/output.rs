@@ -39,20 +39,36 @@ pub(super) fn record(
 /// RGBA8, whole rows of the region.
 pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mut Vec<u8>) {
     let width = u32_to_usize(plan.area.region.width());
+    let start = out.len();
+    out.resize(start + rows.len() * width * 4, fill(plan).unwrap_or(0));
+    write_rows(plan, ws, out.get_mut(start..).unwrap_or_default());
+}
+
+/// Writes the band's rows of the page buffer over `band`, whole rows of the
+/// region, as [`write`] appends them.
+pub(super) fn write_into(plan: &Plan, ws: &mut Workspace, band: &mut [u8]) {
+    if let Some(byte) = fill(plan) {
+        band.fill(byte);
+    }
+    write_rows(plan, ws, band);
+}
+
+/// One fill of the whole band, written over while it is still in cache:
+/// cheaper than filling a surface beforehand, and than appending row by
+/// row. A background of one repeated byte, as white and transparent are, is
+/// that fill; any other is written where no store reached.
+fn fill(plan: &Plan) -> Option<u8> {
+    let background = plan.output.background;
+    let [byte, ..] = background;
+    background.iter().all(|&b| b == byte).then_some(byte)
+}
+
+/// Writes the band's rows over `band`, which holds the fill.
+fn write_rows(plan: &Plan, ws: &mut Workspace, band: &mut [u8]) {
+    let width = u32_to_usize(plan.area.region.width());
     let output = &plan.output;
     let mut preview = Preview::default();
-    // One fill of the whole band, written over while it is still in cache:
-    // cheaper than filling a surface beforehand, and than appending row by
-    // row. A background of one repeated byte, as white and transparent
-    // are, is that fill; any other is written where no store reached.
-    let [byte, ..] = output.background;
-    let uniform = output.background.iter().all(|&b| b == byte);
-    let start = out.len();
-    out.resize(
-        start + rows.len() * width * 4,
-        if uniform { byte } else { 0 },
-    );
-    let band = out.get_mut(start..).unwrap_or_default();
+    let uniform = fill(plan).is_some();
     for (band_row, row) in band.chunks_exact_mut(width * 4).enumerate() {
         let row = row.as_chunks_mut::<4>().0;
         // Columns no store reached still hold the background.

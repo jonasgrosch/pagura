@@ -31,6 +31,7 @@ use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, RowOut, Span};
 use std::ops::Range;
+use std::sync::{Mutex, PoisonError};
 
 #[cfg(test)]
 mod tests;
@@ -62,6 +63,87 @@ pub struct Rendering<'a> {
     pub(crate) shapes: &'a Shapes,
     pub(crate) workspace: &'a mut Workspace,
     pub(crate) rasterizer: &'a mut BandRasterizer,
+    /// The storage of each helper thread (ADR 0035); none renders on the
+    /// calling thread alone.
+    pub(crate) helpers: Vec<Worker<'a>>,
+}
+
+/// One thread's storage: its workspace and band rasterizer.
+#[derive(Debug)]
+pub(crate) struct Worker<'a> {
+    pub(crate) workspace: &'a mut Workspace,
+    pub(crate) rasterizer: &'a mut BandRasterizer,
+}
+
+/// Bands handed out in order with their output rows, each asked of `stop`
+/// first, until it stops the render.
+struct Queue<I, S> {
+    area: pagura_raster::Area,
+    bands: I,
+    stop: S,
+    stopped: Option<u32>,
+}
+
+impl<'o, I, S> Queue<I, S>
+where
+    I: Iterator<Item = (u32, &'o mut [u8])>,
+    S: FnMut(u32) -> bool,
+{
+    /// The next band and its rows of the output, unless the render stopped.
+    fn next(&mut self) -> Option<(u32, &'o mut [u8])> {
+        if self.stopped.is_some() {
+            return None;
+        }
+        let (band, rows) = self.bands.next()?;
+        let row = self.area.band_rows(band).start;
+        if (self.stop)(row) {
+            self.stopped = Some(row);
+            return None;
+        }
+        Some((band, rows))
+    }
+}
+
+impl Worker<'_> {
+    /// Executes `band`, leaving its rows in the page buffer; false for a
+    /// band without rows in the region.
+    fn execute(&mut self, (plan, shapes): (&Plan, &Shapes), band: u32) -> bool {
+        let rows = plan.area.band_rows(band);
+        if rows.is_empty() {
+            return false;
+        }
+        let mut executor = Executor {
+            plan,
+            ws: self.workspace,
+            shapes,
+            rasterizer: self.rasterizer,
+            band,
+            rows,
+            first: plan.area.bands().start,
+        };
+        executor.page();
+        true
+    }
+
+    /// Renders bands from `queue` into their rows until none is left. The
+    /// lock is held only to take a band.
+    fn run<'o, I, S>(&mut self, scene: (&Plan, &Shapes), queue: &Mutex<Queue<I, S>>)
+    where
+        I: Iterator<Item = (u32, &'o mut [u8])>,
+        S: FnMut(u32) -> bool,
+    {
+        self.workspace.restart();
+        self.rasterizer.restart();
+        loop {
+            let next = queue.lock().unwrap_or_else(PoisonError::into_inner).next();
+            let Some((band, rows)) = next else {
+                return;
+            };
+            if self.execute(scene, band) {
+                output::write_into(scene.0, self.workspace, rows);
+            }
+        }
+    }
 }
 
 impl Rendering<'_> {
@@ -84,15 +166,79 @@ impl Rendering<'_> {
     }
 
     /// Renders bands as [`Self::render`] does, asking `stop` with the next
-    /// band's first row before each band.
+    /// band's first row before each band, in order.
+    ///
+    /// With helpers ([`PreparedScene::with_scratches`]), every thread takes
+    /// the next band as it finishes one and writes its own rows: the bytes
+    /// are those of one thread. `stop` is then asked on whichever thread
+    /// takes the band, still in band order, and the rows of every band
+    /// before a stop are rendered.
+    ///
+    /// [`PreparedScene::with_scratches`]: crate::PreparedScene::with_scratches
     pub fn render_until(
         &mut self,
         rows: &mut Vec<u8>,
-        stop: impl FnMut(u32) -> bool,
+        stop: impl FnMut(u32) -> bool + Send,
     ) -> Completion {
+        if !self.helpers.is_empty() {
+            return self.render_shared(rows, stop);
+        }
         match self.render_each(rows, stop, |_, _| Ok::<(), std::convert::Infallible>(())) {
             Ok(completion) => completion,
             Err(never) => match never {},
+        }
+    }
+
+    /// Renders on the calling thread and every helper, each taking the next
+    /// band as it finishes one (ADR 0035).
+    fn render_shared(
+        &mut self,
+        rows: &mut Vec<u8>,
+        stop: impl FnMut(u32) -> bool + Send,
+    ) -> Completion {
+        let scene = (self.plan, self.shapes);
+        let area = self.plan.area;
+        let row_bytes = u32_to_usize(area.region.width()) * 4;
+        // Every band's rows exist before any is written, so that each thread
+        // writes rows of its own.
+        let start = rows.len();
+        rows.resize(start + row_bytes * u32_to_usize(area.region.height()), 0);
+        let mut rest = rows.get_mut(start..).unwrap_or_default();
+        let bands = area.bands().map_while(move |band| {
+            let len = area.band_rows(band).len() * row_bytes;
+            let (band_rows, tail) = std::mem::take(&mut rest).split_at_mut_checked(len)?;
+            rest = tail;
+            Some((band, band_rows))
+        });
+        let queue = Mutex::new(Queue {
+            area,
+            bands,
+            stop,
+            stopped: None,
+        });
+        std::thread::scope(|scope| {
+            for helper in &mut self.helpers {
+                let queue = &queue;
+                // A helper that cannot start leaves its bands to the others.
+                let _ = std::thread::Builder::new()
+                    .spawn_scoped(scope, move || helper.run(scene, queue));
+            }
+            Worker {
+                workspace: &mut *self.workspace,
+                rasterizer: &mut *self.rasterizer,
+            }
+            .run(scene, &queue);
+        });
+        let stopped = queue
+            .into_inner()
+            .unwrap_or_else(PoisonError::into_inner)
+            .stopped;
+        match stopped {
+            Some(row) => {
+                rows.truncate(start + u32_to_usize(row - area.region.y0) * row_bytes);
+                Completion::Stopped { row }
+            }
+            None => Completion::Complete,
         }
     }
 
@@ -104,7 +250,8 @@ impl Rendering<'_> {
     ///
     /// As [`Self::render_until`], `stop` is asked before each band. Every
     /// call starts again at the region's first row, including after a stop
-    /// or consumer error.
+    /// or consumer error. Bands are rendered on the calling thread alone,
+    /// whatever helpers the rendering has.
     ///
     /// # Errors
     ///
@@ -131,16 +278,23 @@ impl Rendering<'_> {
         mut stop: impl FnMut(u32) -> bool,
         mut consume: impl FnMut(Range<u32>, &mut Vec<u8>) -> Result<(), E>,
     ) -> Result<Completion, E> {
-        let area = self.plan.area;
-        self.workspace.restart();
-        self.rasterizer.restart();
+        let plan = self.plan;
+        let area = plan.area;
+        let mut worker = Worker {
+            workspace: &mut *self.workspace,
+            rasterizer: &mut *self.rasterizer,
+        };
+        worker.workspace.restart();
+        worker.rasterizer.restart();
         for band in area.bands() {
             let rows = area.band_rows(band);
             let row = rows.start;
             if stop(row) {
                 return Ok(Completion::Stopped { row });
             }
-            Executor::band(self, band, output);
+            if worker.execute((plan, self.shapes), band) {
+                output::write(plan, worker.workspace, &rows, output);
+            }
             consume(rows, output)?;
         }
         Ok(Completion::Complete)
@@ -175,28 +329,7 @@ pub(crate) struct Executor<'a> {
     first: u32,
 }
 
-impl<'a> Executor<'a> {
-    /// Executes `band` of `rendering` and appends its rows to `out`.
-    fn band(rendering: &'a mut Rendering<'_>, band: u32, out: &mut Vec<u8>) {
-        let plan = rendering.plan;
-        let rows = plan.area.band_rows(band);
-        if rows.is_empty() {
-            return;
-        }
-        let first = plan.area.bands().start;
-        let mut executor = Executor {
-            plan,
-            ws: rendering.workspace,
-            shapes: rendering.shapes,
-            rasterizer: rendering.rasterizer,
-            band,
-            rows,
-            first,
-        };
-        executor.page();
-        output::write(executor.plan, executor.ws, &executor.rows, out);
-    }
-
+impl Executor<'_> {
     fn page(&mut self) {
         let plan = self.plan;
         let region = plan.area.region;
