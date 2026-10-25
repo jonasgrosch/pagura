@@ -336,6 +336,17 @@ fn flattened(
     flattened_with(outline, transform, limits, bytes, None)
 }
 
+/// Each curve's share of the polygon's area allowance of 1/4096 pixel: the
+/// area its accepted hulls can cover together.
+fn area_share(outline: &Path) -> f64 {
+    let curves = outline
+        .segments()
+        .iter()
+        .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
+        .count();
+    1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX))
+}
+
 fn flattened_with(
     outline: &Path,
     transform: Transform,
@@ -349,12 +360,7 @@ fn flattened_with(
         // 1/4096 pixel: less than 0.063 levels, also after clipping. Local
         // interval proofs retain that bound only where hulls meet targets;
         // disjoint hulls may keep their chords without moving target winding.
-        let curves = outline
-            .segments()
-            .iter()
-            .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
-            .count();
-        Flatness::Area(1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
+        Flatness::Area(area_share(outline))
     } else {
         Flatness::Distance
     };

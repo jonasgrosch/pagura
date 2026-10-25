@@ -4,7 +4,7 @@
 //! quadratics integrated in closed form skip inspection only while a cached
 //! arithmetic allowance stays small at their actual placement.
 
-use super::{GlyphEdges, Kind, Relative, flattened_with, translated};
+use super::{GlyphEdges, Kind, Relative, area_share, flattened_with, translated};
 use crate::band::cells::Cells;
 use crate::band::clip::Paths;
 use crate::band::edges::{self, Bounds, Line};
@@ -134,20 +134,29 @@ pub(super) fn certify(
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
+    let shares = Shares::new(outline, linear, &mut bytes)?;
+    let share_bytes = shares
+        .as_ref()
+        .map_or(0, |shares| shares.boxes.capacity() * size_of::<[f64; 4]>());
     for round in 0..=ROUNDS {
         work.charge_product(outline.segments().len(), 2)?;
-        let base = if analytic(&shape) {
-            curve::reduction_area(outline, linear)
-        } else {
-            AREA
-        };
         let placement = placement_error(outline, linear, origin, &shape);
         let clip = options
             .clip
             .and_then(|clip| clip.paths())
             .map_or(0.0, Paths::arithmetic_error);
-        let error = base + placement + clip;
-        let pending = ambiguous(&shape, error, (&mut work, &mut bytes))?;
+        let bound = match &shares {
+            _ if analytic(&shape) => {
+                Bound::Whole(curve::reduction_area(outline, linear) + placement + clip)
+            }
+            Some(shares) => Bound::Shared {
+                shares,
+                origin,
+                rest: placement + clip,
+            },
+            None => Bound::Whole(AREA + placement + clip),
+        };
+        let pending = ambiguous(&shape, &bound, (&mut work, &mut bytes))?;
         let mut wrong = false;
         for pixel in pending {
             let expected = true_byte(source, pixel, options, (&mut work, &mut bytes))?;
@@ -168,11 +177,12 @@ pub(super) fn certify(
         }
         let target_bytes = targets.capacity() * size_of::<[f64; 4]>();
         // Inspection cells, pending pixels and local interval geometry have
-        // left scope. Keep the target allocation and the live shape charged.
+        // left scope. Keep the shares, the target allocation and the live
+        // shape charged.
         bytes.refund(
             bytes
                 .used()
-                .saturating_sub(shape.retained_bytes() + target_bytes),
+                .saturating_sub(shape.retained_bytes() + target_bytes + share_bytes),
         );
         if !wrong {
             return Ok(shape);
@@ -302,9 +312,68 @@ fn mapped_magnitude(outline: &Path, linear: Transform, origin: Point) -> f64 {
     magnitude
 }
 
+/// Each curve's share of a polygon's area allowance and the boxes of the
+/// hulls that spend it, relative to the glyph origin.
+struct Shares {
+    share: f64,
+    boxes: Vec<[f64; 4]>,
+}
+
+impl Shares {
+    /// `None` for an outline with cubics, whose reduced quadratics may
+    /// leave their control boxes.
+    fn new(outline: &Path, linear: Transform, bytes: &mut Meter) -> Result<Option<Self>> {
+        if outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. }))
+        {
+            return Ok(None);
+        }
+        let mut boxes = Vec::new();
+        bytes.reserve(&mut boxes, outline.segments().len())?;
+        boxes.extend(crate::flatten::curve_boxes(outline, linear));
+        Ok(Some(Self {
+            share: area_share(outline),
+            boxes,
+        }))
+    }
+
+    /// The area allowance the hulls of a placement at `origin` can spend
+    /// in pixels `x0..x1` of row `y`.
+    fn within(&self, origin: Point, y: u32, (x0, x1): (u32, u32)) -> f64 {
+        let pixels = [
+            (f64::from(x0) - origin.x).next_down(),
+            (f64::from(y) - origin.y).next_down(),
+            (f64::from(x1) - origin.x).next_up(),
+            (f64::from(y) + 1.0 - origin.y).next_up(),
+        ];
+        let meeting = self
+            .boxes
+            .iter()
+            .filter(|&&bounds| Hull { bounds, area: 0.0 }.intersects(pixels));
+        outward(f64::from(u32::try_from(meeting.count()).unwrap_or(u32::MAX)) * self.share)
+    }
+}
+
+/// How far a placement's area can be from the original outline's, apart
+/// from the arithmetic of its cells.
+enum Bound<'a> {
+    /// One bound for every pixel.
+    Whole(f64),
+    /// The polygon's area allowance, which a pixel's curves can spend only
+    /// as far as their hulls meet it, plus `rest`.
+    Shared {
+        shares: &'a Shares,
+        origin: Point,
+        rest: f64,
+    },
+}
+
+/// The pixels whose byte the shape's area within `bound` leaves in doubt.
 fn ambiguous(
     shape: &Shape,
-    error: f64,
+    bound: &Bound<'_>,
     (work, bytes): (&mut Meter, &mut Meter),
 ) -> Result<Vec<Pixel>> {
     let width = match &shape.body {
@@ -317,19 +386,38 @@ fn ambiguous(
     let mut pending = Vec::new();
     let mut failure = None;
     raster::inspect(shape, &mut cells, |y, x0, x1, area, arithmetic| {
-        let error = outward(error + arithmetic);
         // Signed winding can exceed one in the canonical point cell.
         // Clamp the certificate center before adding uncertainty, so a
         // saturated raw area cannot hide an original-control error.
         let center = area.clamp(0.0, 1.0);
-        if failure.is_some()
-            || (area.is_finite()
+        let certain = |error: f64| {
+            let error = outward(error + arithmetic);
+            area.is_finite()
                 && error.is_finite()
-                && quantize_unit(center - error) == quantize_unit(center + error))
-        {
+                && quantize_unit(center - error) == quantize_unit(center + error)
+        };
+        let whole = match *bound {
+            Bound::Whole(error) => error,
+            Bound::Shared { rest, .. } => AREA + rest,
+        };
+        if failure.is_some() || certain(whole) {
             return;
         }
         let result = (|| {
+            if let Bound::Shared {
+                shares,
+                origin,
+                rest,
+            } = *bound
+            {
+                work.charge(shares.boxes.len())?;
+                let column =
+                    |x| u32::try_from(x).map_err(|_| Error::limit("glyph column exceeds u32"));
+                let columns = (column(x0)?, column(x1)?);
+                if certain(shares.within(origin, y, columns) + rest) {
+                    return Ok(());
+                }
+            }
             work.charge(x1 - x0)?;
             bytes.reserve_capacity(&mut pending, x1 - x0)?;
             for x in x0..x1 {
@@ -698,6 +786,45 @@ mod tests {
     use pagura_core::Limits;
 
     #[test]
+    fn a_pixel_spends_only_the_shares_of_the_curves_that_reach_it() {
+        // Two quadratic bumps far apart, then a straight side.
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.0, 0.0));
+        path.quad_to(Point::new(1.0, 2.0), Point::new(2.0, 0.0))
+            .unwrap();
+        path.line_to(Point::new(20.0, 0.0)).unwrap();
+        path.quad_to(Point::new(21.0, 2.0), Point::new(22.0, 0.0))
+            .unwrap();
+        path.close();
+        let path = path.finish();
+        let shares = Shares::new(&path, Transform::IDENTITY, &mut crate::testing::bytes())
+            .unwrap()
+            .unwrap();
+        assert_eq!(shares.boxes.len(), 2);
+        let share = AREA / 2.0;
+        let origin = Point::new(100.25, 50.5);
+        let within = |x: u32, y: u32, n: u32| shares.within(origin, y, (x, x + n));
+        assert_eq!(within(110, 50, 1), 0.0);
+        assert!((share..1.01 * share).contains(&within(101, 50, 1)));
+        assert!((2.0 * share..1.01 * AREA).contains(&within(100, 50, 30)));
+        // Below the bumps' boxes.
+        assert_eq!(within(100, 60, 30), 0.0);
+        // Reduced cubics may leave their control boxes.
+        let mut cubic = PathBuilder::new();
+        cubic.move_to(Point::new(0.0, 0.0));
+        cubic
+            .cubic_to(
+                Point::new(1.0, 1.0),
+                Point::new(2.0, 1.0),
+                Point::new(3.0, 0.0),
+            )
+            .unwrap();
+        let cubic = cubic.finish();
+        let none = Shares::new(&cubic, Transform::IDENTITY, &mut crate::testing::bytes());
+        assert!(none.unwrap().is_none());
+    }
+
+    #[test]
     fn mixed_rows_keep_original_curve_and_point_enclosures() {
         let limits = Limits::default();
         let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
@@ -829,7 +956,8 @@ mod tests {
         for uncertainty in [1.0 / 255.0, f64::NAN, f64::INFINITY] {
             let mut work = Meter::new(limits.raster_work, RASTER_WORK);
             let mut bytes = crate::testing::bytes();
-            let pending = ambiguous(&shape, uncertainty, (&mut work, &mut bytes)).unwrap();
+            let pending =
+                ambiguous(&shape, &Bound::Whole(uncertainty), (&mut work, &mut bytes)).unwrap();
             let pixel = *pending.iter().find(|p| p.x == 2 && p.y == 4).unwrap();
             assert_eq!(pixel.byte, 255);
             let source = Source::of(&edges, Point::default(), &mut work)
@@ -957,7 +1085,7 @@ mod tests {
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         assert_eq!(
-            ambiguous(&prepared, 0.0, (&mut work, &mut bytes))
+            ambiguous(&prepared, &Bound::Whole(0.0), (&mut work, &mut bytes))
                 .unwrap()
                 .len(),
             1,
@@ -1044,7 +1172,7 @@ mod tests {
             RENDER_BYTES,
         );
         tight.charge(bytes.used()).unwrap();
-        let pending = ambiguous(&shape, AREA, (&mut work, &mut tight)).unwrap();
+        let pending = ambiguous(&shape, &Bound::Whole(AREA), (&mut work, &mut tight)).unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(tight.used(), shape.retained_bytes() + size_of::<Pixel>());
     }
