@@ -34,7 +34,7 @@ pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
     ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels,
+    SampleTexels, Strategy, TableTexels, WordCodes,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -108,7 +108,7 @@ impl Paint {
     fn opaque(&self, image: &DecodedImage) -> bool {
         match self {
             Self::Colors(paint) => match &paint.1 {
-                Strategy::Table(_, opaque) => *opaque,
+                Strategy::Table(_, opaque) | Strategy::Indexed(_, _, opaque) => *opaque,
                 Strategy::Rgb(_) => matches!(image.samples, Samples::Bytes(_)),
                 Strategy::Memo(layout) => layout.opaque(),
                 Strategy::General => false,
@@ -165,7 +165,12 @@ impl Plan {
         if let Paint::Colors(paint) = &mut paint
             && let Strategy::Memo(layout) = &mut paint.1
         {
-            layout.fit(image, mask.map(|mask| &mask.image.image), work, bytes)?;
+            let opaque = layout.opaque();
+            let mask = mask.map(|mask| &mask.image.image);
+            if let Some(indexed) = layout.fit(image, mask, work, bytes)? {
+                let source = (&paint.0, usize::from(image.components), opaque);
+                paint.1 = indexed.strategy(source, bytes, functions)?;
+            }
         }
         // Keep work and function admission before stencil recolouring, as
         // when the caller applied its solid colour after preparation.
@@ -808,6 +813,15 @@ impl Prepared {
                 Strategy::Table(table, opaque) => {
                     self.table(plan, pixels, &mut buffers, (table, lanes, *opaque), out);
                 }
+                Strategy::Indexed(indexes, table, opaque) => {
+                    let texels = TableTexels {
+                        codes: WordCodes(indexes),
+                        table,
+                        lanes,
+                        opaque: *opaque,
+                    };
+                    self.sample(plan, pixels, &mut buffers, &texels, out);
+                }
                 Strategy::Rgb(tables) => {
                     if let Samples::Bytes(bytes) = &image.samples {
                         let texels = RgbTexels {
@@ -1168,7 +1182,7 @@ fn fast_lanes(
                 codes::Lanes::single(table, lanes, codes, *opaque, bytes)
             }
             Strategy::Rgb(tables) => codes::Lanes::rgb(tables, bytes),
-            Strategy::Memo(_) | Strategy::General => Ok(None),
+            Strategy::Memo(_) | Strategy::Indexed(..) | Strategy::General => Ok(None),
         },
     }
 }
