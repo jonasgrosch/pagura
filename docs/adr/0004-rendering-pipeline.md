@@ -282,16 +282,20 @@ closed-form integration of monotone quadratics with no piece-count cap.
 Uncertified quadratic outlines and quadratic placements crossed by a path
 clip use de Casteljau subdivision of the original stored curves, each
 quadratic as its elevated cubic. Each
-accepted chord and its curve lie in their shared control hull. The sum of
-those hull areas is at most 1/4096 square pixel over the whole outline;
-subdivision divides each curve's allowance between its two children. The
+accepted chord and its curve lie in their shared control hull. Each curve's
+hulls have at most its share of 1/4096 square pixel in area, divided among
+the outline's curves; subdivision divides each curve's share between its
+two children. Where every placement certifies its bytes (below), the
+allowance is divided among at most eight curves, so the sum over the whole
+outline can exceed 1/4096 square pixel but not in a pixel that meets at
+most eight curves. The
 hull determinants include outward error allowances for multiplication,
 cancellation, mapping and accumulated subdivision rounding; an uncertain
-zero determinant cannot certify zero area. Thus
-the symmetric difference, in any pixel and under any clip or fill rule,
-is less than 0.063 levels. This gives the fallback the same true-curve
-reference without depending on a distance tolerance or on the number of
-boundaries in a cell. Segment and subdivision limits still apply; an
+zero determinant cannot certify zero area. Thus, in a pixel whose curves
+hold at most 1/4096 square pixel together, the symmetric difference under
+any clip or fill rule is less than 0.063 levels. This gives the fallback the
+same true-curve reference without depending on a distance tolerance or on
+the number of boundaries in a cell. Segment and subdivision limits still apply; an
 unattainable bound returns a limit error.
 
 Neither area allowance alone certifies a coverage byte. A curve and a fine
