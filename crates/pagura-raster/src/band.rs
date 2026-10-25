@@ -39,6 +39,7 @@ mod glyph;
 mod raster;
 mod rect;
 mod row;
+mod scratch;
 mod shape;
 mod union;
 
@@ -47,6 +48,7 @@ pub use coverage::{BandCoverage, Capacity, CoverageRow, RowOut, Span};
 pub(crate) use edges::{Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
+pub use scratch::ShapeScratch;
 pub use shape::Shape;
 pub(crate) use shape::{RASTER_WORK, RENDER_BYTES};
 
@@ -147,6 +149,9 @@ pub struct ShapeOptions<'a> {
     pub area: Area,
     /// Per-fill budgets (`path_segments`, `raster_work`, `mask_sources`).
     pub limits: &'a Limits,
+    /// Buffers the render's shapes take turns with; without, each makes its
+    /// own.
+    pub scratch: Option<&'a ShapeScratch>,
 }
 
 /// What preparing one shape needs: the render's options and the clip state
@@ -156,6 +161,7 @@ pub(crate) struct Prep<'a> {
     pub(crate) area: Area,
     pub(crate) limits: &'a Limits,
     pub(crate) clip: Option<&'a ClipShape>,
+    pub(crate) scratch: Option<&'a ShapeScratch>,
 }
 
 impl<'a> Prep<'a> {
@@ -164,6 +170,7 @@ impl<'a> Prep<'a> {
             area: options.area,
             limits: options.limits,
             clip,
+            scratch: options.scratch,
         }
     }
 }

@@ -18,7 +18,7 @@ use super::certify::{doubtful, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
-use super::{Prep, RENDER_BYTES};
+use super::{Prep, RENDER_BYTES, ShapeScratch};
 use crate::flatten::{
     CurveStack, Flatness, Inspection, Polyline, bounded, flatten_inspected, flatten_with,
 };
@@ -224,6 +224,20 @@ impl GlyphEdges {
     /// Returns a `Limit` error for an outline beyond `limits` and
     /// `InvalidArgument` for a non-finite map.
     pub fn new(outline: &Path, linear: [f64; 4], limits: &Limits) -> Result<Self> {
+        Self::new_in(outline, linear, limits, None)
+    }
+
+    /// [`Self::new`] with the buffers a render's shapes take turns with.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::new`].
+    pub fn new_in(
+        outline: &Path,
+        linear: [f64; 4],
+        limits: &Limits,
+        scratch: Option<&ShapeScratch>,
+    ) -> Result<Self> {
         let [a, b, c, d] = linear;
         let transform = Transform::new(a, b, c, d, 0.0, 0.0);
         if !transform.is_finite() {
@@ -235,7 +249,7 @@ impl GlyphEdges {
         let hull = control_hull(outline, transform);
         let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
         bytes.charge_items::<Self>(1)?;
-        let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        let kind = Self::geometry(outline, transform, limits, scratch, &mut bytes)?;
         Ok(Self {
             retained: bytes.used(),
             hull,
@@ -247,6 +261,7 @@ impl GlyphEdges {
         outline: &Path,
         transform: Transform,
         limits: &Limits,
+        scratch: Option<&ShapeScratch>,
         bytes: &mut Meter,
     ) -> Result<Kind> {
         // A singular map can make a genuine point of a curve; the polygon
@@ -272,7 +287,7 @@ impl GlyphEdges {
         if let Some((spline, point)) = spline {
             // The certificate reads the curves the placements integrate.
             let relative = Relative::new(&spline, bytes)?;
-            if spline_certified(&spline, &relative.curves, bytes)? {
+            if spline_certified(&spline, &relative.curves, scratch, bytes)? {
                 let source = rounding::Proof::new(outline, transform, Some(&relative), bytes)?;
                 return Ok(Kind::Curve {
                     spline,
@@ -287,7 +302,7 @@ impl GlyphEdges {
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let doubtful = if points.is_empty() {
-            doubtful(&polygon, 0.0, bytes)?
+            doubtful(&polygon, 0.0, scratch, bytes)?
         } else {
             None
         };

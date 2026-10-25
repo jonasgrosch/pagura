@@ -63,6 +63,7 @@ fn config(region: DeviceRect, band_height: u32, limits: &Limits) -> ShapeOptions
             band_height,
         },
         limits,
+        scratch: None,
     }
 }
 

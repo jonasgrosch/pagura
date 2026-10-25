@@ -53,6 +53,7 @@ fn geometry_factories_refuse_without_an_allocation_allowance() {
             band_height: 4,
         },
         limits: &limits,
+        scratch: None,
     };
     let fill = Shape::fill(&path, Transform::IDENTITY, FillRule::NonZero, &options).unwrap_err();
     let clip =

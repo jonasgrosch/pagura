@@ -196,6 +196,7 @@ fn rasterize(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Err
     let options = ShapeOptions {
         area: *area,
         limits: &limits,
+        scratch: None,
     };
     let device = Transform::new(scale, 0.0, 0.0, -scale, 0.0, f64::from(area.region.y1));
     let mut sum = 0_u64;

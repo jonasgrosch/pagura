@@ -637,7 +637,11 @@ fn emitted_glyph_byte(
     let shape = pagura_raster::Shape::glyph(
         &Arc::new(geometry),
         Point::default(),
-        &pagura_raster::ShapeOptions { area, limits },
+        &pagura_raster::ShapeOptions {
+            area,
+            limits,
+            scratch: None,
+        },
     )
     .unwrap()
     .unwrap();

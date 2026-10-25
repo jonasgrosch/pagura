@@ -321,6 +321,7 @@ impl Planner<'_> {
             let options = ShapeOptions {
                 area: self.area,
                 limits: &limits,
+                scratch: Some(&self.scratch),
             };
             let prepared = self.shapes.clip(&paths, scope.transform, &options, bytes);
             let released = paths.capacity() * size_of::<(&Path, FillRule)>();
@@ -350,6 +351,7 @@ impl Planner<'_> {
                 let options = ShapeOptions {
                     area: self.area,
                     limits: &limits,
+                    scratch: Some(&self.scratch),
                 };
                 let prepared = self
                     .shapes

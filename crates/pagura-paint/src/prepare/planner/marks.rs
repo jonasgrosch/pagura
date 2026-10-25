@@ -463,6 +463,7 @@ impl Planner<'_> {
         let options = ShapeOptions {
             area: self.area,
             limits: &limits,
+            scratch: Some(&self.scratch),
         };
         let prepared = match geometry {
             Geometry::Fill(path, rule) => {
@@ -524,6 +525,7 @@ impl Planner<'_> {
         let options = ShapeOptions {
             area: self.area,
             limits: &limits,
+            scratch: Some(&self.scratch),
         };
         let prepared = self.shapes.fill(
             &path,

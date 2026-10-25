@@ -53,6 +53,7 @@ fn an_empty_resolved_row_still_masks_the_original_polygon() {
     let options = ShapeOptions {
         area,
         limits: &limits,
+        scratch: None,
     };
     let shape = Shape::polygon(
         polygon,
@@ -98,6 +99,7 @@ fn round_capped(points: &[(f64, f64)]) -> Shape {
             band_height: 32,
         },
         limits: &limits,
+        scratch: None,
     };
     Shape::stroke(
         &path,
@@ -161,6 +163,7 @@ fn a_glyph_point_cell_resolves_only_its_overlap_row() {
     let options = ShapeOptions {
         area,
         limits: &limits,
+        scratch: None,
     };
     let shape = Shape::glyph(&edges, Point::default(), &options)
         .unwrap()
@@ -204,15 +207,24 @@ fn a_work_limited_point_cell_sweep_keeps_full_resolution() {
         .unwrap();
     // Disjoint rectangles with many distinct end heights exhaust the
     // bounded sweep even before the point cell is added.
-    assert!(uncertified(&polygon, 0.0, &mut bytes).unwrap().is_none());
+    assert!(
+        uncertified(&polygon, 0.0, None, &mut bytes)
+            .unwrap()
+            .is_none()
+    );
     polygon
         .cell(Point::new(388.3, 1.2), &limits, &mut bytes)
         .unwrap();
-    assert!(uncertified(&polygon, 0.0, &mut bytes).unwrap().is_none());
+    assert!(
+        uncertified(&polygon, 0.0, None, &mut bytes)
+            .unwrap()
+            .is_none()
+    );
     let area = super::super::tests::area(0, 0, 400, 36, 4);
     let options = ShapeOptions {
         area,
         limits: &limits,
+        scratch: None,
     };
     let shape = Shape::polygon(
         polygon,

@@ -107,11 +107,30 @@ impl Meter {
     /// As [`Self::reserve`], before changing the vector when the temporary
     /// overlap would exceed the budget.
     pub fn reserve_capacity<T>(&mut self, values: &mut Vec<T>, additional: usize) -> Result<()> {
+        let mut capacity = values.capacity();
+        self.reserve_charged(values, &mut capacity, additional)
+    }
+
+    /// [`Self::reserve_capacity`] for a vector of which only `charged`
+    /// values of capacity are charged, such as one reused from an earlier
+    /// owner, which this owner did not pay for. Charges and refunds are
+    /// those of a vector with capacity `charged`, which follows the growth;
+    /// `values` itself grows only when it holds less.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::reserve_capacity`].
+    pub fn reserve_charged<T>(
+        &mut self,
+        values: &mut Vec<T>,
+        charged: &mut usize,
+        additional: usize,
+    ) -> Result<()> {
         let need = values
             .len()
             .checked_add(additional)
             .ok_or(Error::limit(self.message))?;
-        let capacity = values.capacity();
+        let capacity = *charged;
         if need <= capacity {
             return Ok(());
         }
@@ -134,6 +153,7 @@ impl Meter {
             .try_reserve_exact(target - values.len())
             .map_err(|_| Error::limit(self.message))?;
         self.refund(capacity.saturating_mul(size_of::<T>()));
+        *charged = target;
         Ok(())
     }
 
@@ -253,5 +273,26 @@ mod tests {
         values.pop();
         meter.reserve_capacity(&mut values, 1).unwrap();
         assert_eq!(meter.used(), 20, "spare capacity was already charged");
+    }
+
+    #[test]
+    fn a_reused_vector_is_charged_as_a_new_one() {
+        let (mut new, mut reused) = (Meter::new(40, MESSAGE), Meter::new(40, MESSAGE));
+        let mut fresh: Vec<u32> = Vec::new();
+        let mut kept: Vec<u32> = Vec::with_capacity(64);
+        let mut charged = 0;
+        for _ in 0..5 {
+            new.reserve_capacity(&mut fresh, 1).unwrap();
+            reused.reserve_charged(&mut kept, &mut charged, 1).unwrap();
+            fresh.push(0);
+            kept.push(0);
+            assert_eq!((reused.used(), charged), (new.used(), fresh.capacity()));
+        }
+        assert_eq!(kept.capacity(), 64, "kept capacity is used");
+        let error = reused
+            .reserve_charged(&mut kept, &mut charged, 4)
+            .unwrap_err();
+        assert_eq!(error.message, MESSAGE);
+        assert!(new.reserve_capacity(&mut fresh, 4).is_err());
     }
 }

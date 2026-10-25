@@ -73,6 +73,7 @@ fn options(region: DeviceRect, limits: &Limits) -> ShapeOptions<'_> {
             band_height: 16,
         },
         limits,
+        scratch: None,
     }
 }
 

@@ -44,7 +44,11 @@ pub fn area(x0: u32, y0: u32, x1: u32, y1: u32, band_height: u32) -> Area {
 
 /// Exact options of `area`.
 pub fn options(area: Area, limits: &Limits) -> ShapeOptions<'_> {
-    ShapeOptions { area, limits }
+    ShapeOptions {
+        area,
+        limits,
+        scratch: None,
+    }
 }
 
 /// The pixels of a region.

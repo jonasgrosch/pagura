@@ -9,7 +9,7 @@ use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, OutlineKey, Pen};
 use pagura_raster::{
     BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, MarkCoverage, Path,
-    Point, RowOut, Shape, ShapeOptions, Transform,
+    Point, RowOut, Shape, ShapeOptions, ShapeScratch, Transform,
 };
 use std::sync::Arc;
 
@@ -173,7 +173,7 @@ impl<'a> ShapeBuilder<'a> {
     ) -> Result<Option<Prepared>> {
         let key = match handle.filter(|&i| self.handles.get(u32_to_usize(i)).is_some()) {
             Some(key) => key,
-            None => self.edges(source, linear, bytes)?,
+            None => self.edges(source, linear, options.scratch, bytes)?,
         };
         *handle = Some(key);
         let edges =
@@ -189,8 +189,8 @@ impl<'a> ShapeBuilder<'a> {
             ..*options.limits
         };
         let options = ShapeOptions {
-            area: options.area,
             limits: &limits,
+            ..*options
         };
         let shape = Shape::glyph_with_clip(edges, origin, self.current_clip(), &options)?;
         self.shape(shape, bytes)
@@ -199,7 +199,13 @@ impl<'a> ShapeBuilder<'a> {
     /// The edges of `source` under `linear`, from this preparation or the
     /// store. They are a value of the store: they cost the render nothing,
     /// found or built (ADR 0016).
-    fn edges(&mut self, source: &GlyphSource, linear: [f64; 4], bytes: &mut Meter) -> Result<u32> {
+    fn edges(
+        &mut self,
+        source: &GlyphSource,
+        linear: [f64; 4],
+        scratch: Option<&ShapeScratch>,
+        bytes: &mut Meter,
+    ) -> Result<u32> {
         let key = EdgesKey::new(source, linear);
         if let Some(&handle) = self.edges.get(&key) {
             return Ok(handle);
@@ -209,7 +215,7 @@ impl<'a> ShapeBuilder<'a> {
         bytes.reserve_capacity(&mut self.handles, 1)?;
         let limits = self.limits;
         let edges = self.store.get_or_build(key, || {
-            let edges = GlyphEdges::new(&source.outline, linear, limits)?;
+            let edges = GlyphEdges::new_in(&source.outline, linear, limits, scratch)?;
             let bytes = edges.retained_bytes();
             Ok(Built {
                 value: edges,
@@ -269,8 +275,8 @@ impl<'a> ShapeBuilder<'a> {
             ..*options.limits
         };
         let options = ShapeOptions {
-            area: options.area,
             limits: &limits,
+            ..*options
         };
         let clip = match ClipShape::new(paths, transform, &options) {
             Ok(clip) => clip,
@@ -465,6 +471,7 @@ mod tests {
                     band_height: 1,
                 },
                 limits,
+                scratch: None,
             },
         )
         .unwrap()
@@ -520,7 +527,7 @@ mod tests {
         };
         let mut bytes = Meter::new(1 << 20, "shape memory");
         builder
-            .edges(&source, [1.0, 0.0, 0.0, 1.0], &mut bytes)
+            .edges(&source, [1.0, 0.0, 0.0, 1.0], None, &mut bytes)
             .unwrap();
         for _ in 0..3 {
             builder.shape(Some(rectangle(&limits)), &mut bytes).unwrap();
@@ -550,7 +557,7 @@ mod tests {
         let mut none = Meter::new(0, "shape memory");
         assert_eq!(
             builder
-                .edges(&source, [1.0, 0.0, 0.0, 1.0], &mut none)
+                .edges(&source, [1.0, 0.0, 0.0, 1.0], None, &mut none)
                 .unwrap_err()
                 .kind,
             ErrorKind::Limit
@@ -558,7 +565,7 @@ mod tests {
         assert_eq!(store.retained_bytes(), 0);
         let mut bytes = Meter::new(1 << 20, "shape memory");
         builder
-            .edges(&source, [1.0, 0.0, 0.0, 1.0], &mut bytes)
+            .edges(&source, [1.0, 0.0, 0.0, 1.0], None, &mut bytes)
             .unwrap();
         let fresh = ShapeBuilder::new(&store, &limits);
         let mut handle = None;

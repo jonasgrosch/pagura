@@ -981,6 +981,7 @@ mod tests {
                     },
                     limits: &limits,
                     clip: None,
+                    scratch: None,
                 };
                 let shape = super::super::placed(&edges, origin, &options)
                     .unwrap()
@@ -1053,6 +1054,7 @@ mod tests {
             },
             limits: &limits,
             clip: None,
+            scratch: None,
         };
         let shape = super::super::placed(&edges, Point::default(), &options)
             .unwrap()
@@ -1105,6 +1107,7 @@ mod tests {
             &ShapeOptions {
                 area,
                 limits: &limits,
+                scratch: None,
             },
         )
         .unwrap();
@@ -1112,6 +1115,7 @@ mod tests {
             area,
             limits: &limits,
             clip: Some(&clip),
+            scratch: None,
         };
         let start = Point::new(0.125, 0.125);
         for (control, expected) in [(Point::new(0.25, 0.25), 0), (start, 16)] {
@@ -1175,6 +1179,7 @@ mod tests {
             },
             limits: &limits,
             clip: None,
+            scratch: None,
         };
         // Recover z=M(1-t) from x=0 using the original quadratic, then
         // integrate its pixel-local polynomial. This avoids H(tb)-H(ta)
@@ -1250,6 +1255,7 @@ mod tests {
             },
             limits: &limits,
             clip: None,
+            scratch: None,
         };
         let shape = super::super::placed(&edges, Point::default(), &options)
             .unwrap()
@@ -1315,6 +1321,7 @@ mod tests {
             &ShapeOptions {
                 area,
                 limits: &limits,
+                scratch: None,
             },
         )
         .unwrap();
@@ -1343,6 +1350,7 @@ mod tests {
             area,
             limits: &limits,
             clip: Some(&clip),
+            scratch: None,
         };
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
@@ -1410,6 +1418,7 @@ mod tests {
             area,
             limits: &limits,
             clip: None,
+            scratch: None,
         };
         let source = Source {
             outline: &path,

@@ -24,7 +24,7 @@ use pagura_color::{Process, Target};
 use pagura_core::hash::FastMap;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Name, Position, Result, Store};
 use pagura_interpret::{MaskId, Node, NodeId, Paint, Scene};
-use pagura_raster::{Area, DeviceRect, Path, Transform};
+use pagura_raster::{Area, DeviceRect, Path, ShapeScratch, Transform};
 use std::sync::Arc;
 
 /// A prepared solid paint's identity.
@@ -73,6 +73,8 @@ pub(crate) struct Planner<'s> {
     clips: FastMap<clips::Key, clips::State>,
     /// Prepared clips by their paths, which clip states share.
     built_clips: clips::Built,
+    /// The buffers the shapes take turns with.
+    scratch: ShapeScratch,
     /// The clip state looked up last: marks in a row usually share one.
     last_clip: Option<(clips::Key, clips::State)>,
     solids: FastMap<SolidKey, u32>,
@@ -224,6 +226,7 @@ impl<'s> Planner<'s> {
             crop,
             clips: FastMap::default(),
             built_clips: FastMap::default(),
+            scratch: ShapeScratch::default(),
             last_clip: None,
             solids: FastMap::default(),
             masks: FastMap::default(),

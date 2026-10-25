@@ -122,6 +122,7 @@ fn exact_page_and_coverage_owners_keep_pointers_and_charges() {
         &ShapeOptions {
             area: plan.area,
             limits: &limits,
+            scratch: None,
         },
     )
     .unwrap()

@@ -45,12 +45,21 @@ pub(super) fn area(x0: u32, y0: u32, x1: u32, y1: u32, band_height: u32) -> Area
 }
 
 pub(super) fn options<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {
-    Prep { area, limits, clip }
+    Prep {
+        area,
+        limits,
+        clip,
+        scratch: None,
+    }
 }
 
 /// The public options of `area`.
 pub(super) fn public(area: Area, limits: &Limits) -> ShapeOptions<'_> {
-    ShapeOptions { area, limits }
+    ShapeOptions {
+        area,
+        limits,
+        scratch: None,
+    }
 }
 
 /// Rasterizes `shape` over `area` at several band heights and sub-regions,

@@ -24,6 +24,7 @@ pub(crate) fn path_shapes(area: Area, paths: &[Path]) -> Shapes {
     let options = ShapeOptions {
         area,
         limits: &limits,
+        scratch: None,
     };
     let mut builder = ShapeBuilder::new(&store, &limits);
     let mut bytes = Meter::new(limits.render_bytes, "test shape bytes");

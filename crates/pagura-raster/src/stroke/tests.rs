@@ -182,6 +182,7 @@ fn adjusted_pieces_cover_the_fitted_components() {
             band_height: 16,
         },
         limits: &limits,
+        scratch: None,
     };
     let coverage = |shape: Option<Shape>| match shape {
         Some(shape) => crate::testing::raster(&options.area, Some(&shape), None).0,

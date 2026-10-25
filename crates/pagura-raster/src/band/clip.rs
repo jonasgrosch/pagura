@@ -17,7 +17,7 @@ use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
 use super::shape::RENDER_BYTES;
 use super::union::{Meters, Piece, Resolver, room};
-use super::{DeviceRect, Prep, ShapeOptions};
+use super::{DeviceRect, Prep, ShapeOptions, ShapeScratch};
 use crate::{FillRule, Path, Point, Transform, quantize_unit};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
@@ -390,6 +390,7 @@ struct Boundaries {
 fn boundaries(
     groups: &[(Polygon, FillRule)],
     rect: Option<Bounds>,
+    scratch: Option<&ShapeScratch>,
     meter: &mut Meter,
     bytes: &mut Meter,
 ) -> Result<Boundaries> {
@@ -417,7 +418,7 @@ fn boundaries(
         let end = u32::try_from(lines.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
         ends.push((end, *rule));
         if groups.len() == 1 {
-            doubtful = uncertified(polygon, 0.0, bytes)?;
+            doubtful = uncertified(polygon, 0.0, scratch, bytes)?;
         }
     }
     Ok(Boundaries {
@@ -441,7 +442,7 @@ fn classify(
         lines,
         ends,
         doubtful,
-    } = boundaries(groups, rect, &mut meter, bytes)?;
+    } = boundaries(groups, rect, options.scratch, &mut meter, bytes)?;
     let rows_of = |l: &Line| edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds);
     let strips_list = StripList::new(
         (bounds.y0, bounds.y1),
@@ -641,6 +642,7 @@ mod tests {
         let options = ShapeOptions {
             area,
             limits: &limits,
+            scratch: None,
         };
         let mut path = PathBuilder::new();
         path.move_to(Point::new(0.95, 0.0));

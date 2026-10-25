@@ -63,6 +63,7 @@ fn tall_and_wide_mixed_bodies_bound_work_in_every_band_grid() {
                                 band_height,
                             },
                             limits: &limits,
+                            scratch: None,
                         };
                         let shape =
                             place(&edges, Point::new(3.137, 2.271), &Prep::new(&options, None))
@@ -138,6 +139,7 @@ fn current_placed_range_errors_are_independent_of_bands_and_store_state() {
                     band_height,
                 },
                 limits: &limits,
+                scratch: None,
             };
             for edges in [&cold, &warm] {
                 let actual =
@@ -186,6 +188,7 @@ fn a_point_left_of_the_output_region_keeps_the_full_scan_prefix() {
                         band_height,
                     },
                     limits: &limits,
+                    scratch: None,
                 };
                 let origin = Point::new(0.0, 0.271);
                 let shape = place(&edges, origin, &Prep::new(&full, None))
@@ -204,6 +207,7 @@ fn a_point_left_of_the_output_region_keeps_the_full_scan_prefix() {
                             band_height,
                         },
                         limits: &limits,
+                        scratch: None,
                     };
                     let shape = place(&edges, origin, &Prep::new(&cropped, None))
                         .unwrap()

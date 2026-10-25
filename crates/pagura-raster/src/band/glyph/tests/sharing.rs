@@ -78,6 +78,7 @@ fn polygon_placements_share_short_and_indexed_geometry_with_identical_work() {
             let options = ShapeOptions {
                 area: area(48, band),
                 limits: &limits,
+                scratch: None,
             };
             for origin in [
                 Point::new(-0.25, 0.25),
@@ -122,6 +123,7 @@ fn cutting_clips_and_rebuilt_polygons_keep_owned_edges() {
         let options = ShapeOptions {
             area: area(48, band),
             limits: &limits,
+            scratch: None,
         };
         let rectangle = Path::rect(Rect::from_corners(3.5, 0.0, 12.0, 45.0).unwrap());
         let mut path = PathBuilder::new();
@@ -174,6 +176,7 @@ fn translated_horizontal_collapse_keeps_the_same_boundaries_and_cells() {
                 band_height: band,
             },
             limits: &limits,
+            scratch: None,
         };
         let (shared, _) = equivalent(&edges, Point::new(0.0, f64::from(top)), &options, None);
         assert!(matches!(shared.body, Body::Glyph(_)));
@@ -187,6 +190,7 @@ fn sharing_refunds_only_dropped_edges_and_never_pins_on_refusal() {
     let options = ShapeOptions {
         area: area(48, 7),
         limits: &limits,
+        scratch: None,
     };
     let prep = Prep::new(&options, None);
     let mut old_bytes = crate::testing::bytes();
@@ -261,6 +265,7 @@ fn held_polygon_sources_follow_existing_store_pinning_and_nonadmission() {
         let options = ShapeOptions {
             area: area(48, 3),
             limits: &limits,
+            scratch: None,
         };
         let (shared, _) = equivalent(&edges, Point::default(), &options, None);
         drop(edges);
@@ -296,6 +301,7 @@ fn long_horizontal_contours_keep_owned_storage_when_raw_visits_exceed_work() {
         let options = ShapeOptions {
             area: area(16, band),
             limits: &limits,
+            scratch: None,
         };
         let (shape, _) = equivalent(&edges, Point::default(), &options, None);
         assert!(matches!(shape.body, Body::Edges(_)));
@@ -318,6 +324,7 @@ fn shared_polygons_with_a_point_keep_their_cancellation() {
     let options = ShapeOptions {
         area: area(48, 3),
         limits: &limits,
+        scratch: None,
     };
     let (shared, _) = equivalent(&edges, Point::new(0.25, 0.25), &options, None);
     assert!(matches!(shared.body, Body::Glyph(_)));
@@ -337,6 +344,7 @@ fn negative_zero_origins_keep_shared_and_owned_cell_arithmetic() {
         let options = ShapeOptions {
             area: area(16, band),
             limits: &limits,
+            scratch: None,
         };
         equivalent(&edges, Point::new(-0.0, -0.0), &options, None);
     }

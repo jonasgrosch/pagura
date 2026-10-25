@@ -50,6 +50,7 @@ fn options(limits: &Limits, band_height: u32) -> ShapeOptions<'_> {
             band_height,
         },
         limits,
+        scratch: None,
     }
 }
 

@@ -461,7 +461,7 @@ impl Shape {
         let doubtful = match winding {
             Winding::Certified => Some(Vec::new()),
             Winding::Check(_) if triangle => Some(Vec::new()),
-            Winding::Check(margin) => uncertified(&polygon, margin, bytes)?,
+            Winding::Check(margin) => uncertified(&polygon, margin, options.scratch, bytes)?,
             Winding::Unknown => None,
         };
         let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());

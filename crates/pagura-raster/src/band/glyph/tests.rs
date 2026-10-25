@@ -110,6 +110,7 @@ fn coverage_inspection_charges_temporary_cells_and_cumulative_work() {
         area,
         limits: &limits,
         clip: None,
+        scratch: None,
     };
     let origin = Point::new(1.2, 1.3);
     let base = placed(&edges, origin, &options).unwrap().unwrap();

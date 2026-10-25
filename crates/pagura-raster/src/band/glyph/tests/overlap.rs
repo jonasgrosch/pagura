@@ -61,6 +61,7 @@ fn resolved_overlaps_place_the_bytes_of_resolving_each_placement() {
             band_height: 16,
         },
         limits: &limits,
+        scratch: None,
     };
     let prep = Prep::new(&options, None);
     for (first, second) in [(false, false), (true, true), (false, true)] {
@@ -107,6 +108,7 @@ fn clipped_placements_keep_the_polygon() {
             band_height: 16,
         },
         limits: &limits,
+        scratch: None,
     };
     let rectangle = Path::rect(Rect::from_corners(0.0, 0.0, 9.5, 32.0).unwrap());
     let clip = ClipShape::new(

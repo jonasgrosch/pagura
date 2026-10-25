@@ -61,7 +61,11 @@ impl Vector {
             region,
             band_height: 3,
         };
-        let options = ShapeOptions { area, limits };
+        let options = ShapeOptions {
+            area,
+            limits,
+            scratch: None,
+        };
         let clips: Vec<(&Path, FillRule)> = self.clips.iter().map(|c| (c, self.rule)).collect();
         let clip = (!clips.is_empty())
             .then(|| ClipShape::new(&clips, Transform::IDENTITY, &options).unwrap());
