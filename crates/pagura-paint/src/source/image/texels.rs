@@ -823,11 +823,14 @@ impl<'a> SampleKeys<'a> {
     }
 }
 
-/// The memo's first probe, shared with capacity discovery.
+/// The memo's first probe, shared with capacity discovery. The mask is
+/// applied before narrowing: on 32-bit targets the shifted hash can exceed
+/// `usize`, and every such key would otherwise probe from slot 0.
 #[inline]
 fn hash_slot(key: u64, mask: usize) -> usize {
     let hash = key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 29;
-    usize::try_from(hash).unwrap_or(0) & mask
+    let mask = u64::try_from(mask).unwrap_or(u64::MAX);
+    usize::try_from(hash & mask).unwrap_or(0)
 }
 
 /// Texels by sample key: open addressing into slots that hold a key and
