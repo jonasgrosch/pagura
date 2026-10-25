@@ -4,6 +4,58 @@
 use super::*;
 use crate::Point;
 
+#[test]
+fn ordering_refuses_before_spending_unavailable_work() {
+    let original = [(3.0, 0), (2.0, 1), (1.0, 2)];
+    for budget in 0..=3 {
+        let mut order = original;
+        let mut work = Meter::new(budget, "ordering work");
+        let result = settle(&mut order, &mut work);
+        assert_eq!(result.is_ok(), budget == 3);
+        assert_eq!(work.used(), budget);
+        let remaining = order
+            .iter()
+            .enumerate()
+            .map(|(i, a)| {
+                order[i + 1..]
+                    .iter()
+                    .filter(|b| ordered(a, b).is_gt())
+                    .count()
+            })
+            .sum::<usize>();
+        assert_eq!(remaining, 3 - budget);
+    }
+    // Sorting already ordered values returns every reserved unit.
+    let mut order = [(1.0, 0), (2.0, 1)];
+    let mut work = Meter::new(usize::MAX, "ordering work");
+    work.charge(7).unwrap();
+    settle(&mut order, &mut work).unwrap();
+    assert_eq!(work.used(), 7);
+
+    let mut order = vec![(3.0, 0)];
+    let mut joining = [(2.0, 1), (1.0, 2)];
+    let before = (order.clone(), joining);
+    let mut tiny = Meter::new(sort_work(joining.len()) + order.len() - 1, "joining work");
+    let result = arrange((&mut order, &mut joining), f64::from, &mut tiny);
+    assert!(result.is_err());
+    assert_eq!((order, joining), before);
+}
+
+#[test]
+fn uncertain_plain_order_charges_both_passes() {
+    // Coincident edges force exact placement after the plain pass.
+    let pieces = pieces(&[(line(0.5, 0.0, 0.5, 1.0), 0); 2]);
+    let mut resolver = Resolver {
+        rows: vec![(0.0, 1.0, 0), (0.0, 1.0, 1)],
+        lanes: pieces.iter().map(|p| Lane::new(p.line)).collect(),
+        ..Resolver::default()
+    };
+    let mut work = Meter::new(usize::MAX, "placement work");
+    resolver.place(&pieces, (0.0, 1.0), 0, &mut work).unwrap();
+    assert_eq!(work.used(), 2 * sort_work(pieces.len()));
+    assert_eq!(resolver.order, [(0.5, 0), (0.5, 1)]);
+}
+
 fn line(x0: f64, y0: f64, x1: f64, y1: f64) -> Line {
     Line {
         a: Point::new(x0, y0),
