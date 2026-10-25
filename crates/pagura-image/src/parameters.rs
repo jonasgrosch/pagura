@@ -233,10 +233,14 @@ pub(crate) fn unpack_with_diagnostics(
         values.resize(count, 0);
         return Ok(Samples::Words(values));
     }
-    let mut values = vec![0; count];
-    if bits == 8 {
-        values[..data.len()].copy_from_slice(data);
+    let values = if bits == 8 {
+        // The samples are the data, short data padded: each written once.
+        let mut values = Vec::with_capacity(count);
+        values.extend_from_slice(data);
+        values.resize(count, 0);
+        values
     } else {
+        let mut values = vec![0; count];
         let per_byte = 8 / usize::from(bits);
         let mask = 255 >> (8 - bits);
         for (row, output) in data
@@ -249,7 +253,8 @@ pub(crate) fn unpack_with_diagnostics(
                 }
             }
         }
-    }
+        values
+    };
     Ok(Samples::Bytes(values))
 }
 
