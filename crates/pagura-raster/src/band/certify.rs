@@ -451,7 +451,7 @@ pub(crate) fn spline_certified(
     result
 }
 
-fn spline_sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<bool>> {
+fn spline_runs(spline: &Spline, bytes: &mut Meter) -> Result<(Vec<Down>, Vec<Run>, f64)> {
     let mut downs: Vec<Down> = Vec::new();
     let mut runs: Vec<Run> = Vec::new();
     let count = spline
@@ -474,6 +474,11 @@ fn spline_sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<O
             bytes,
         )?;
     }
+    Ok((downs, runs, magnitude))
+}
+
+fn spline_sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<bool>> {
+    let (downs, runs, magnitude) = spline_runs(spline, bytes)?;
     let mut work = Work {
         done: 0,
         cap: spline.pieces.len().saturating_mul(32).saturating_add(1024),
