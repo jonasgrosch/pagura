@@ -18,6 +18,7 @@
 use super::curve::{Mono, Piece, Spline};
 use super::edges::Polygon;
 use crate::Point;
+use crate::geometry::{greater, lesser};
 use pagura_core::{Meter, Result};
 
 #[derive(Debug, Clone, Copy)]
@@ -191,13 +192,13 @@ fn sweep(
                     return Ok(None);
                 }
                 range = [
-                    range[0].min(points[segment].x),
-                    range[1].max(points[segment].x),
+                    lesser(range[0], points[segment].x),
+                    greater(range[1], points[segment].x),
                 ];
             }
             let end = at(points, segment, hi).0;
             a.x = middle.unwrap_or_else(|| at(points, segment, mid).0);
-            a.range = [range[0].min(end), range[1].max(end)];
+            a.range = [lesser(range[0], end), greater(range[1], end)];
         }
         active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
         let first = *sign.get_or_insert(active.first().is_some_and(|a| a.chain.up));
@@ -514,10 +515,10 @@ fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
                 }
                 if piece.b.y >= hi || k + 1 >= end {
                     let x = piece.x(hi).0;
-                    range = [range[0].min(x), range[1].max(x)];
+                    range = [lesser(range[0], x), greater(range[1], x)];
                     break;
                 }
-                range = [range[0].min(piece.b.x), range[1].max(piece.b.x)];
+                range = [lesser(range[0], piece.b.x), greater(range[1], piece.b.x)];
                 k += 1;
             }
             a.3 = range;

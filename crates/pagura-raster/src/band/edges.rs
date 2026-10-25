@@ -8,6 +8,7 @@
 use super::DeviceRect;
 use super::cells::STRIP;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
+use crate::geometry::{greater, lesser};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -24,6 +25,12 @@ pub(crate) const PLAIN_HEIGHT: f64 = 1.0 / 1_073_741_824.0;
 pub(crate) struct Line {
     pub(crate) a: Point,
     pub(crate) b: Point,
+}
+
+/// `x` clamped to the closed interval between `a` and `b`.
+#[inline]
+fn clamp_between(x: f64, a: f64, b: f64) -> f64 {
+    lesser(greater(x, lesser(a, b)), greater(a, b))
 }
 
 impl Line {
@@ -60,7 +67,7 @@ impl Line {
             let quotient = numerator / height;
             let (back, error) = product(quotient, height);
             let x = quotient + (((numerator - back) + tail - error) - quotient * low) / height;
-            x.max(top.x.min(bottom.x)).min(top.x.max(bottom.x))
+            clamp_between(x, top.x, bottom.x)
         }
     }
 
@@ -78,8 +85,10 @@ impl Line {
             (self.b, self.a)
         };
         let height = bottom.y - top.y;
-        let plain = top.x.abs().max(bottom.x.abs()) <= PLAIN_LIMIT
-            && top.y.abs().max(bottom.y.abs()) <= PLAIN_LIMIT
+        let plain = top.x.abs() <= PLAIN_LIMIT
+            && bottom.x.abs() <= PLAIN_LIMIT
+            && top.y.abs() <= PLAIN_LIMIT
+            && bottom.y.abs() <= PLAIN_LIMIT
             && height >= PLAIN_HEIGHT;
         if !plain {
             return self.x(y);
@@ -91,9 +100,11 @@ impl Line {
         } else if top.x == bottom.x {
             top.x
         } else {
-            (top.x + (y - top.y) * ((bottom.x - top.x) / height))
-                .max(top.x.min(bottom.x))
-                .min(top.x.max(bottom.x))
+            clamp_between(
+                top.x + (y - top.y) * ((bottom.x - top.x) / height),
+                top.x,
+                bottom.x,
+            )
         }
     }
 
@@ -713,10 +724,10 @@ impl Polygon {
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         for p in &self.points {
-            lo.x = lo.x.min(p.x);
-            lo.y = lo.y.min(p.y);
-            hi.x = hi.x.max(p.x);
-            hi.y = hi.y.max(p.y);
+            lo.x = lesser(lo.x, p.x);
+            lo.y = lesser(lo.y, p.y);
+            hi.x = greater(hi.x, p.x);
+            hi.y = greater(hi.y, p.y);
         }
         (lo.x <= hi.x && lo.y <= hi.y).then_some([lo, hi])
     }

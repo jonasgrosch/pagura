@@ -11,6 +11,7 @@ use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
 use super::union::{Meters, Piece, Resolver, room};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
+use crate::geometry::{greater, lesser};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
@@ -946,8 +947,8 @@ fn shared_work(
 fn scan_columns(xs: impl Iterator<Item = f64>, width: usize) -> (usize, usize) {
     let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
     for x in xs {
-        lo = lo.min(x);
-        hi = hi.max(x);
+        lo = lesser(lo, x);
+        hi = greater(hi, x);
     }
     columns(lo, hi, width)
 }
@@ -1011,10 +1012,10 @@ impl<'a> Frame<'a> {
         let mut lo = crate::Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = crate::Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         for p in points {
-            lo.x = lo.x.min(p.x);
-            lo.y = lo.y.min(p.y);
-            hi.x = hi.x.max(p.x);
-            hi.y = hi.y.max(p.y);
+            lo.x = lesser(lo.x, p.x);
+            lo.y = lesser(lo.y, p.y);
+            hi.x = greater(hi.x, p.x);
+            hi.y = greater(hi.y, p.y);
         }
         if lo.x > hi.x || lo.y > hi.y {
             return None;
