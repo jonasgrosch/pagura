@@ -43,6 +43,14 @@ enum DirectCoverage {
     Glyph(u32),
 }
 
+/// An opaque constant colour as a narrow page stores it: N16 words or F32
+/// levels.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum Opaque {
+    N16([u16; 4]),
+    F32([f32; 4]),
+}
+
 /// A prepared scene with scratch storage sized for it: what every band's
 /// execution works with. Paint execution cannot fail; an output consumer
 /// can return its own error.
@@ -197,12 +205,8 @@ impl<'a> Executor<'a> {
             y1: self.rows.end,
         };
         let ws = &mut *self.ws;
-        ws.page.reset(
-            &mut ws.extents,
-            (area(rect), u32_to_usize(rect.width())),
-            plan.output.background,
-            plan.output.layout,
-        );
+        ws.page
+            .reset(area(rect), plan.output.background, plan.output.layout);
         self.ws.selection.fill(0);
         let Some(page) = plan.groups.first() else {
             return;
@@ -276,8 +280,8 @@ impl<'a> Executor<'a> {
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
-        if let Some(words) = self.opaque(mark, frame) {
-            self.store_direct(DirectCoverage::Mark(mark.cover), frame, words);
+        if let Some(color) = self.opaque(mark, frame) {
+            self.store_direct(DirectCoverage::Mark(mark.cover), frame, color);
             return;
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
@@ -287,35 +291,33 @@ impl<'a> Executor<'a> {
         self.ws.coverage = coverage;
     }
 
-    /// Rasterizes `cover` straight into the N16 page as the opaque constant
-    /// colour `words`, row by row as the rasterizer emits it: one rounding
-    /// per store from each pixel's coverage, nothing else to evaluate.
-    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, words: [u16; 4]) {
-        let ws = &mut *self.ws;
-        let PageBuffer::N16(page) = &mut ws.page else {
-            return;
-        };
-        let rect = frame.rect;
-        let mut out = StoreOut {
-            page,
-            extents: &mut ws.extents,
-            rect,
-            width: u32_to_usize(rect.width()),
-            words,
-            row: None,
-            stored: 0,
-        };
-        match cover {
-            DirectCoverage::Mark(cover) => {
-                self.shapes
-                    .rasterize_into(self.rasterizer, cover, self.band, &mut out);
-            }
+    /// Rasterizes `cover` straight into the narrow page as the opaque
+    /// constant `color`, row by row as the rasterizer emits it: one store
+    /// from each pixel's coverage, nothing else to evaluate.
+    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, color: Opaque) {
+        let (shapes, band) = (self.shapes, self.band);
+        let rasterizer = &mut *self.rasterizer;
+        let mut rasterize = |out: &mut dyn RowOut| match cover {
+            DirectCoverage::Mark(cover) => shapes.rasterize_into(rasterizer, cover, band, out),
             DirectCoverage::Glyph(shape) => {
-                self.shapes
-                    .rasterize_glyph_into(self.rasterizer, shape, self.band, &mut out);
+                shapes.rasterize_glyph_into(rasterizer, shape, band, out);
             }
-        }
-        let stored = out.stored;
+        };
+        let ws = &mut *self.ws;
+        let extents = &mut ws.extents;
+        let stored = match (&mut ws.page, color) {
+            (PageBuffer::N16(page), Opaque::N16(words)) => {
+                let mut out = StoreOut::new(page, extents, frame.rect, words);
+                rasterize(&mut out);
+                out.stored
+            }
+            (PageBuffer::F32(page), Opaque::F32(levels)) => {
+                let mut out = StoreOut::new(page, extents, frame.rect, levels);
+                rasterize(&mut out);
+                out.stored
+            }
+            _ => return,
+        };
         ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
@@ -326,15 +328,23 @@ impl<'a> Executor<'a> {
         });
     }
 
-    /// The words `mark` stores straight from coverage into `frame`: an
-    /// opaque constant colour into the N16 page.
-    pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<[u16; 4]> {
+    /// The colour `mark` stores straight from coverage into `frame`: an
+    /// opaque constant colour into a narrow page, whose stores of a span
+    /// take nothing else into account.
+    pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<Opaque> {
         if mark.records || frame.buffer != Buffer::Page {
             return None;
         }
+        let words = mark.words?;
         match &self.ws.page {
-            PageBuffer::N16(_) => mark.words,
-            PageBuffer::F64(_) | PageBuffer::F32(_) => None,
+            PageBuffer::N16(_) => Some(Opaque::N16(words)),
+            PageBuffer::F32(_) => {
+                let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
+                paint
+                    .constant()
+                    .map(|(color, _)| Opaque::F32(kernel::levels(color)))
+            }
+            PageBuffer::F64(_) => None,
         }
     }
 
@@ -548,14 +558,48 @@ fn overwrite(
     stored.is_some()
 }
 
-/// Coverage rows stored as they are emitted: an opaque constant colour's
-/// N16 words at each pixel's coverage, within the frame's `rect`.
-struct StoreOut<'a> {
-    page: &'a mut [[u16; 4]],
+/// A narrow page pixel that an opaque constant colour is stored into at a
+/// coverage byte: N16 words or F32 levels.
+trait Narrow: Copy {
+    /// Stores `color` at coverage `c` into every pixel.
+    fn uniform(pixels: &mut [Self], color: Self, c: u8);
+    /// Stores `color` at `coverage`, which leaves pixels at zero as they
+    /// are; the pixels from the first to past the last one with coverage.
+    fn runs(pixels: &mut [Self], color: Self, coverage: &[u8]) -> Option<(usize, usize)>;
+}
+
+impl Narrow for [u16; 4] {
+    #[inline]
+    fn uniform(pixels: &mut [Self], words: Self, c: u8) {
+        kernel::store_n16_uniform(pixels, words, c);
+    }
+
+    #[inline]
+    fn runs(pixels: &mut [Self], words: Self, coverage: &[u8]) -> Option<(usize, usize)> {
+        kernel::store_n16_runs(pixels, words, coverage)
+    }
+}
+
+impl Narrow for [f32; 4] {
+    #[inline]
+    fn uniform(pixels: &mut [Self], levels: Self, c: u8) {
+        kernel::store_f32_uniform(pixels, levels, c);
+    }
+
+    #[inline]
+    fn runs(pixels: &mut [Self], levels: Self, coverage: &[u8]) -> Option<(usize, usize)> {
+        kernel::store_f32_runs(pixels, levels, coverage)
+    }
+}
+
+/// Coverage rows stored as they are emitted: an opaque constant colour at
+/// each pixel's coverage, within the frame's `rect`.
+struct StoreOut<'a, P> {
+    page: &'a mut [P],
     extents: &'a mut Extents,
     rect: DeviceRect,
     width: usize,
-    words: [u16; 4],
+    color: P,
     /// The current row within `rect`, if it lies there.
     row: Option<usize>,
     stored: usize,
@@ -571,7 +615,20 @@ struct Columns {
     skip: usize,
 }
 
-impl StoreOut<'_> {
+impl<'a, P: Narrow> StoreOut<'a, P> {
+    /// Stores of `color` into `page`, the pixels of `rect` row by row.
+    fn new(page: &'a mut [P], extents: &'a mut Extents, rect: DeviceRect, color: P) -> Self {
+        Self {
+            page,
+            extents,
+            rect,
+            width: u32_to_usize(rect.width()),
+            color,
+            row: None,
+            stored: 0,
+        }
+    }
+
     /// Columns `x .. x + len` of the current row within `rect`, if any.
     fn columns(&self, x: u32, len: usize) -> Option<Columns> {
         let row = self.row?;
@@ -586,7 +643,7 @@ impl StoreOut<'_> {
     }
 
     /// The page pixels of `columns`.
-    fn pixels(&mut self, columns: &Columns) -> Option<&mut [[u16; 4]]> {
+    fn pixels(&mut self, columns: &Columns) -> Option<&mut [P]> {
         let first = columns.row * self.width + u32_to_usize(columns.column);
         self.page.get_mut(first..first + columns.count)
     }
@@ -599,7 +656,7 @@ impl StoreOut<'_> {
     }
 }
 
-impl RowOut for StoreOut<'_> {
+impl<P: Narrow> RowOut for StoreOut<'_, P> {
     fn push_row(&mut self, y: u32) {
         self.row = (self.rect.y0..self.rect.y1)
             .contains(&y)
@@ -607,22 +664,22 @@ impl RowOut for StoreOut<'_> {
     }
 
     fn put_run(&mut self, x: u32, len: u32, value: u8) {
-        let words = self.words;
+        let color = self.color;
         let Some(columns) = self.columns(x, u32_to_usize(len)).filter(|_| value != 0) else {
             return;
         };
         if let Some(pixels) = self.pixels(&columns) {
             if value == u8::MAX {
-                pixels.fill(words);
+                pixels.fill(color);
             } else {
-                kernel::store_n16_uniform(pixels, words, value);
+                P::uniform(pixels, color, value);
             }
         }
         self.stored(&columns, (0, columns.count));
     }
 
     fn put_row(&mut self, x: u32, values: &[u8]) {
-        let words = self.words;
+        let color = self.color;
         let Some(columns) = self.columns(x, values.len()) else {
             return;
         };
@@ -632,7 +689,7 @@ impl RowOut for StoreOut<'_> {
         // Zero coverage leaves a pixel as it is: only covered pixels count.
         let covered = self
             .pixels(&columns)
-            .and_then(|pixels| kernel::store_n16_runs(pixels, words, values));
+            .and_then(|pixels| P::runs(pixels, color, values));
         if let Some(stretch) = covered {
             self.stored(&columns, stretch);
         }
@@ -768,23 +825,12 @@ fn opacity(
     }
     if let Some(coverage) = coverage {
         for ((a, s), &c) in alpha.iter_mut().zip(shape.iter_mut()).zip(coverage) {
-            let factor = UNIT[usize::from(c)];
+            let factor = kernel::UNIT[usize::from(c)];
             *a *= factor;
             *s *= factor;
         }
     }
 }
-
-/// `c / 255` for every coverage byte, as the division gives it.
-const UNIT: [f64; 256] = {
-    let mut unit = [0.0; 256];
-    let mut c = 0;
-    while c < 256 {
-        unit[c] = c as f64 / 255.0;
-        c += 1;
-    }
-    unit
-};
 
 /// Constant alpha and soft mask (11.6.4.3): alpha always, shape too under
 /// `AIS` (11.6.4.4).

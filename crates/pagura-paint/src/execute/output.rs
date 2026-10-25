@@ -58,7 +58,7 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
         // Columns no store reached still hold the background.
         let (lo, hi) = ws
             .extents
-            .get(band_row)
+            .take(band_row)
             .map_or((0, 0), |(lo, hi)| (lo.min(width), hi.min(width)));
         let (head, rest) = row.split_at_mut(lo);
         let (row, tail) = rest.split_at_mut(hi - lo);
@@ -90,6 +90,9 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
                 }
             }
         }
+        // Restored while in cache, for the next band.
+        ws.page
+            .restore(first..end, output.background, output.layout);
         ws.usage.work = ws.usage.work.saturating_add(width);
     }
 }

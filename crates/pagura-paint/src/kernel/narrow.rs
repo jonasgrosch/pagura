@@ -78,6 +78,7 @@ pub(crate) fn store_n16(pixels: &mut [[u16; 4]], words: [u16; 4], coverage: Opti
 /// as they are and eight at 255 take the words, so only mixed stretches
 /// evaluate stores. Returns the pixels from the first to past the last one
 /// with coverage, if any. `pixels` and `coverage` have equal lengths.
+#[inline]
 pub(crate) fn store_n16_runs(
     pixels: &mut [[u16; 4]],
     words: [u16; 4],
@@ -262,6 +263,44 @@ fn dynamic<T: Copy>(
     }
 }
 
+/// `c / 255` for every coverage byte, as the division gives it.
+pub(crate) const UNIT: [f64; 256] = {
+    let mut unit = [0.0; 256];
+    let mut c = 0;
+    while c < 256 {
+        unit[c] = c as f64 / 255.0;
+        c += 1;
+    }
+    unit
+};
+
+/// [`store_f32`] of an opaque constant colour's `target` levels at one
+/// coverage byte `c` for every pixel: the opacity `c / 255` of a store from
+/// coverage.
+pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], target: [f32; 4], c: u8) {
+    let alpha = single(UNIT[usize::from(c)]);
+    for pixel in pixels {
+        lerp(pixel, target, alpha);
+    }
+}
+
+/// [`store_f32_uniform`] at `coverage`, which leaves pixels at zero as they
+/// are. Returns the pixels from the first to past the last one with
+/// coverage, if any. `pixels` and `coverage` have equal lengths.
+pub(crate) fn store_f32_runs(
+    pixels: &mut [[f32; 4]],
+    target: [f32; 4],
+    coverage: &[u8],
+) -> Option<(usize, usize)> {
+    let first = coverage.iter().position(|&c| c != 0)?;
+    let last = coverage.iter().rposition(|&c| c != 0).unwrap_or(first);
+    let (pixels, coverage) = (pixels.get_mut(first..=last)?, coverage.get(first..=last)?);
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        lerp(pixel, target, single(UNIT[usize::from(c)]));
+    }
+    Some((first, last + 1))
+}
+
 /// Stores `colors` at `alpha` into F32 levels on 0..255: full opacity
 /// overwrites, other stores evaluate `x += a·(t − x)` in f32.
 pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
@@ -284,7 +323,8 @@ pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f
     }
 }
 
-fn levels(color: &[f64]) -> [f32; 4] {
+/// The F32 levels of an opaque colour.
+pub(crate) fn levels(color: &[f64]) -> [f32; 4] {
     let at = |i: usize| level(color.get(i).copied().unwrap_or(0.0));
     [at(0), at(1), at(2), 255.0]
 }

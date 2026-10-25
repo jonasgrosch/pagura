@@ -1,4 +1,4 @@
-//! Glyph runs (ADR 0004 §4). An opaque constant colour on the N16 page
+//! Glyph runs (ADR 0004 §4). An opaque constant colour on a narrow page
 //! stores each placement as the rasterizer emits it, in content order.
 //! Otherwise placements whose bounds meet no other placement's are
 //! rasterized together: the producer merges their rows, each pixel holding
@@ -20,10 +20,10 @@ impl Executor<'_> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
-        if let Some(words) = self.opaque(mark, frame) {
+        if let Some(color) = self.opaque(mark, frame) {
             for glyph in &run.glyphs {
                 if self.meets(glyph, frame) {
-                    self.store_direct(DirectCoverage::Glyph(glyph.shape), frame, words);
+                    self.store_direct(DirectCoverage::Glyph(glyph.shape), frame, color);
                 }
             }
             return;
