@@ -10,7 +10,7 @@ mod formats;
 mod hulls;
 
 use formats::{F64_STORE, FOOTPRINTS, MARGIN};
-use hulls::{extent, hulls, unite};
+use hulls::{Outlines, extent, hulls, unite};
 
 use crate::format::Format;
 use crate::plan::Layout;
@@ -113,6 +113,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs, bytes: &mut Meter) -> Result
         masks: FastMap::default(),
         cells: FastMap::default(),
         open: Vec::new(),
+        outlines: Outlines::default(),
         transfers: false,
     };
     let result = survey.finish(bytes);
@@ -327,6 +328,8 @@ struct Survey<'s> {
     masks: FastMap<(MaskId, Process), usize>,
     cells: FastMap<(PatternId, Process), usize>,
     open: Vec<(MaskId, Process)>,
+    /// Glyph outline hulls computed so far.
+    outlines: Outlines,
     transfers: bool,
 }
 
@@ -409,13 +412,14 @@ impl Survey<'_> {
             // Footprints matter for dynamic stores, and the extent of a
             // group, whose result is a dynamic store of its parent.
             let (hulls, extent) = if dynamic(kind, state) {
-                let hulls = hulls(scene, node, context.transform, bytes)?;
+                let hulls = hulls(scene, node, context.transform, (&mut self.outlines, bytes))?;
                 let extent = hulls.iter().fold(None, |extent, &hull| unite(extent, hull));
                 (hulls, extent)
             } else if self.buffers[buffer].page {
                 (Vec::new(), None)
             } else {
-                (Vec::new(), extent(scene, node, context.transform, bytes)?)
+                let extent = extent(scene, node, context.transform, (&mut self.outlines, bytes))?;
+                (Vec::new(), extent)
             };
             let stores = Stores {
                 kind,
