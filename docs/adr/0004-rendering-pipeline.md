@@ -155,6 +155,10 @@ Uncertified rows, and rows crossed by both a mark and a non-convex path clip,
 go through one exact row union during preparation. It cuts at edge ends and crossings,
 keeps the active edges ordered across each slab, and emits the boundaries of
 the area in which every group (mark and clipping paths, 8.5.4) is inside.
+Edges are ordered by the exact two-product interpolation. A slab first
+orders them by the kernel's plain interpolation and keeps that order where
+neighbours lie apart by more than twice its bound, since every comparison
+then agrees with the exact one.
 These straight boundary pieces have winding zero or one and use the same
 cell kernel. Dense rows are partitioned by column with carried windings;
 each partition covers the same set and adds no boundary at its cut. The

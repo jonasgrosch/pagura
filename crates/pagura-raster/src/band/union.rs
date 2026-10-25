@@ -24,7 +24,7 @@
 //! rather than every crossing and end of the row times every piece across
 //! it. Coverage continuing across a cut needs no side there.
 
-use super::edges::Line;
+use super::edges::{Line, PLAIN_HEIGHT, PLAIN_LIMIT};
 use crate::FillRule;
 use pagura_core::{Error, Meter, Result};
 
@@ -77,6 +77,9 @@ struct Open {
     from: f64,
 }
 
+/// The fewest pieces a sweep places by plain interpolation first.
+const PLAIN_PIECES: usize = 32;
+
 /// The pieces a row takes in one sweep: a row of more is cut into chunks.
 const CHUNK: usize = 64;
 
@@ -104,8 +107,12 @@ pub(crate) struct Resolver {
     /// start: the sweep takes the pieces by their upper end.
     columns: Vec<Span>,
     rows: Vec<Span>,
-    /// The pieces spanning the current sub-slab, in order across it.
+    /// The pieces' edges prepared for plain interpolation.
+    lanes: Vec<Lane>,
+    /// The pieces spanning the current sub-slab, in order across it, and
+    /// that order as the sub-slab above left it.
     order: Vec<Place>,
+    above: Vec<Place>,
     /// The pieces joining at the current sub-slab.
     joining: Vec<Place>,
     windings: Vec<i64>,
@@ -307,9 +314,16 @@ impl Resolver {
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
         self.windings.resize(rules.len(), 0);
-        for v in [&mut self.order, &mut self.joining] {
+        for v in [&mut self.order, &mut self.above, &mut self.joining] {
             v.clear();
             room(v, count, bytes)?;
+        }
+        // A few pieces cross a sub-slab or two each: preparing their lanes
+        // costs more than placing them exactly.
+        self.lanes.clear();
+        if count >= PLAIN_PIECES {
+            room(&mut self.lanes, count, bytes)?;
+            self.lanes.extend(pieces.iter().map(|p| Lane::new(p.line)));
         }
         for v in [&mut self.open, &mut self.next] {
             v.clear();
@@ -428,6 +442,11 @@ impl Resolver {
     /// anew and dropped where they ended, their order restored (they swap
     /// only where they crossed, at `a`), and those starting at `a` merged
     /// in. Returns how many pieces, by upper end, have joined.
+    ///
+    /// Pieces are placed by plain interpolation first. Where neighbours stay
+    /// apart by more than their bounds, every comparison agrees with the
+    /// exact places, so the order, the moves restoring it and the absence of
+    /// coincident pieces are theirs; elsewhere the exact places are taken.
     fn place(
         &mut self,
         pieces: &[Piece],
@@ -436,26 +455,45 @@ impl Resolver {
         work: &mut Meter,
     ) -> Result<usize> {
         let mid = a.midpoint(b);
-        let place = |i: u32| (pieces[i as usize].line.x(mid), i);
         work.charge(self.order.len())?;
-        self.order.retain_mut(|entry| {
-            *entry = place(entry.1);
-            pieces[entry.1 as usize].hi >= b
-        });
-        settle(&mut self.order, work)?;
+        self.order.retain(|&(_, i)| pieces[i as usize].hi >= b);
         self.joining.clear();
         while let Some(&(lo, hi, i)) = self.rows.get(joined)
             && lo <= a
         {
             if hi >= b {
-                self.joining.push(place(i));
+                self.joining.push((0.0, i));
             }
             joined += 1;
         }
+        let staying = self.order.len();
+        let exact = |i: u32| pieces[i as usize].line.x(mid);
+        let moves = if self.lanes.is_empty() {
+            arrange((&mut self.order, &mut self.joining), exact)
+        } else {
+            self.above.clear();
+            self.above.extend_from_slice(&self.order);
+            let lanes = &self.lanes;
+            let plain = |i: u32| lanes[i as usize].x(pieces[i as usize].line, mid);
+            let moves = arrange((&mut self.order, &mut self.joining), plain);
+            let mut right = f64::NEG_INFINITY;
+            let apart = self.order.iter().all(|&(x, i)| {
+                let error = lanes[i as usize].error;
+                let left = x - error;
+                let apart = right < left;
+                right = x + error;
+                apart
+            });
+            if apart {
+                moves
+            } else {
+                std::mem::swap(&mut self.order, &mut self.above);
+                arrange((&mut self.order, &mut self.joining), exact)
+            }
+        };
+        work.charge(moves)?;
         if !self.joining.is_empty() {
-            work.charge(sort_work(self.joining.len()).saturating_add(self.order.len()))?;
-            self.joining.sort_unstable_by(ordered);
-            merge(&mut self.order, &self.joining);
+            work.charge(sort_work(self.joining.len()).saturating_add(staying))?;
         }
         Ok(joined)
     }
@@ -574,19 +612,85 @@ fn overlapping(spans: &[Span]) -> usize {
         .fold(0, usize::saturating_add)
 }
 
-/// Restores the order of `order` by moving entries down one at a time,
-/// charging each move: pieces that crossed at the height between two
+/// Places the pieces from above and those joining by `x`, restores the
+/// order of the former and merges in the latter. Returns the moves
+/// restoring the order.
+fn arrange((order, joining): (&mut Vec<Place>, &mut [Place]), x: impl Fn(u32) -> f64) -> usize {
+    for entry in order.iter_mut() {
+        entry.0 = x(entry.1);
+    }
+    let moves = settle(order);
+    if !joining.is_empty() {
+        for entry in joining.iter_mut() {
+            entry.0 = x(entry.1);
+        }
+        joining.sort_unstable_by(ordered);
+        merge(order, joining);
+    }
+    moves
+}
+
+/// An edge prepared for the cell kernel's plain interpolation, and how far
+/// that can be from [`Line::x`]; the exact form where it does not apply.
+#[derive(Debug, Clone, Copy)]
+struct Lane {
+    top: crate::Point,
+    slope: f64,
+    range: (f64, f64),
+    error: f64,
+    exact: bool,
+}
+
+impl Lane {
+    fn new(line: Line) -> Self {
+        let (top, bottom) = if line.a.y < line.b.y {
+            (line.a, line.b)
+        } else {
+            (line.b, line.a)
+        };
+        let height = bottom.y - top.y;
+        let exact = top.x.abs().max(bottom.x.abs()) > PLAIN_LIMIT
+            || top.y.abs().max(bottom.y.abs()) > PLAIN_LIMIT
+            || height < PLAIN_HEIGHT;
+        Self {
+            top,
+            slope: (bottom.x - top.x) / height,
+            range: (top.x.min(bottom.x), top.x.max(bottom.x)),
+            error: if exact {
+                0.0
+            } else {
+                2.0 * line.interpolation_error().x
+            },
+            exact,
+        }
+    }
+
+    /// The edge's x at a height within it.
+    fn x(&self, line: Line, y: f64) -> f64 {
+        if self.exact {
+            line.x(y)
+        } else {
+            (self.top.x + (y - self.top.y) * self.slope)
+                .max(self.range.0)
+                .min(self.range.1)
+        }
+    }
+}
+
+/// Restores the order of `order` by moving entries down one at a time, and
+/// returns the moves: pieces that crossed at the height between two
 /// sub-slabs are one move apart per crossing.
-fn settle(order: &mut [Place], work: &mut Meter) -> Result<()> {
+fn settle(order: &mut [Place]) -> usize {
+    let mut moves = 0;
     for n in 1..order.len() {
         let mut j = n;
         while j > 0 && ordered(&order[j], &order[j - 1]).is_lt() {
-            work.charge(1)?;
+            moves += 1;
             order.swap(j - 1, j);
             j -= 1;
         }
     }
-    Ok(())
+    moves
 }
 
 /// Merges the ordered `joining` into the ordered `order`, which has room
