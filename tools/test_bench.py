@@ -435,8 +435,11 @@ class IsolationTests(unittest.TestCase):
 
     def test_installer_is_out_of_tree_and_uses_pinned_toolchain(self):
         with tempfile.TemporaryDirectory() as folder:
+            flags = ["-C", "target-cpu=x86-64-v2"]
             with patch.object(competitors, "CACHE", Path(folder)), patch.object(competitors, "run") as run, \
-                    patch.object(competitors.shutil, "which", return_value="uv"), patch("builtins.print"):
+                    patch.object(competitors.shutil, "which", return_value="uv"), patch("builtins.print"), \
+                    patch.object(competitors, "native_rustflags", return_value=("x86_64-unknown-linux-gnu", flags)), \
+                    patch.dict(os.environ, {"RUSTFLAGS": "-C target-cpu=native"}):
                 competitors.setup()
             sync = next(call for call in run.call_args_list if call.args[0][0] == "uv")
             self.assertEqual(sync.args[0], ["uv", "sync", "--locked", "--only-group", "bench"])
@@ -445,8 +448,24 @@ class IsolationTests(unittest.TestCase):
             self.assertNotIn("+1.97.0", cargo.args[0])
             self.assertEqual(cargo.kwargs["env"]["CARGO_HOME"], str(Path(folder) / "cargo-home"))
             self.assertEqual(cargo.kwargs["cwd"], Path(folder) / "hayro-adapter")
+            # Pagura's native flags replace inherited ones, and the build records them.
+            self.assertEqual(cargo.kwargs["env"]["CARGO_ENCODED_RUSTFLAGS"], "-C\x1ftarget-cpu=x86-64-v2")
+            self.assertNotIn("RUSTFLAGS", cargo.kwargs["env"])
+            self.assertEqual(read_json(Path(folder) / competitors.HAYRO_BUILD)["rustflags"], flags)
             self.assertEqual((Path(folder) / "hayro-adapter/Cargo.lock").read_bytes(),
                              (engine_tools.ADAPTERS / "hayro/Cargo.lock").read_bytes())
+
+    def test_hayro_identity_reports_its_recorded_build_flags_outside_the_artifacts(self):
+        record = {"host": "x86_64-unknown-linux-gnu", "rustflags": ["-C", "target-cpu=x86-64-v2"]}
+        version = subprocess.CompletedProcess([], 0, "pagura-hayro-competitor 0.8.0", "")
+        with tempfile.TemporaryDirectory() as folder, patch.object(engine_tools, "CACHE", Path(folder)), \
+                patch.object(engine_tools.subprocess, "run", return_value=version), \
+                patch.dict(os.environ, {"PAGURA_HAYRO": ""}):
+            self.assertNotIn("build", engine_tools.identify("hayro", ["hayro"]))
+            (Path(folder) / competitors.HAYRO_BUILD).write_text(json.dumps(record))
+            identity = engine_tools.identify("hayro", ["hayro"])
+        self.assertEqual(identity["build"], record)
+        self.assertEqual(list(identity["artifacts"]), [str(engine_tools.ADAPTERS / "hayro/Cargo.lock")])
 
     @unittest.skipIf(os.name == "nt", "the fake cargo and engine are POSIX #! executables, which Windows cannot run")
     def test_regression_build_pairing_and_cleanup_in_disposable_repository(self):
