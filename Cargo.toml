@@ -98,6 +98,18 @@ lto = "thin"
 codegen-units = 1
 overflow-checks = true
 
+# The rasterizer and compositor run the hot loops on validated, budgeted
+# geometry and buffers, and CONTRIBUTING requires their arithmetic that can
+# overflow to be explicit (checked, saturating or wrapping). Native release
+# builds therefore drop the implicit checks there; the wasm32 target turns
+# them back on in .cargo/config.toml, where `usize` is 32 bits. Parsers and
+# decoders, which read hostile bytes, keep them everywhere.
+[profile.release.package.pagura-raster]
+overflow-checks = false
+
+[profile.release.package.pagura-paint]
+overflow-checks = false
+
 [profile.bench]
 inherits = "release"
 debug = 1

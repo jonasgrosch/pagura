@@ -120,7 +120,10 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     log = output / "build.log"
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
              "--bin", "pagura", "--bin", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
-    wasi_env = dict(env, CARGO_ENCODED_RUSTFLAGS="-C\x1ftarget-feature=+simd128")
+    # The explicit environment replaces .cargo/config.toml, including the
+    # overflow checks that the native release package overrides turn off.
+    wasi_flags = ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"]
+    wasi_env = dict(env, CARGO_ENCODED_RUSTFLAGS="\x1f".join(wasi_flags))
     if include_wasm:
         checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura-host",
                  "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=wasi_env)
@@ -134,7 +137,7 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
                    "-C", "codegen-units=1", "-L", f"dependency={deps}", "--extern", f"pagura={libraries[0]}",
                    ROOT / "benchmarks/adapters/wasm_convert.rs", "-o", artifacts / name]
         if triple == "wasm32-wasip1":
-            command += ["-C", "target-feature=+simd128"]
+            command += wasi_flags
         checked(command, log, env=env)
     if include_wasm:
         checked([wasmtime, "compile", "-C", "cache=n", "-C", "parallel-compilation=n",
@@ -147,7 +150,7 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
         "features": ["bundled-data"], "native_rustflags": "target baseline; inherited RUSTFLAGS cleared",
         "native_target_features": features,
         "wasm_target_features": target_features(toolchain, "wasm32-wasip1", env, "-C", "target-feature=+simd128") if include_wasm else None,
-        "wasm_rustflags": "-C target-feature=+simd128" if include_wasm else None,
+        "wasm_rustflags": " ".join(wasi_flags) if include_wasm else None,
         "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n" if include_wasm else None,
         "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes()) if include_wasm else None})
     return target / host / "release/pagura", artifacts
