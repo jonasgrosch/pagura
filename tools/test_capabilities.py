@@ -22,9 +22,9 @@ class InventoryTests(unittest.TestCase):
     def test_committed_source_inventory_is_valid_but_has_no_runtime_verdicts(self):
         cap.validate(self.data, cap.ROOT)
         text = cap.render(self.data)
-        self.assertIn("G00 is in progress", text)
+        self.assertIn("G00 source inventory is complete", text)
         self.assertIn("not executed feature tests", text)
-        self.assertIn("All competitor cells remain unprobed", text)
+        self.assertIn("All competitor family cells remain unprobed", text)
 
     def test_missing_baseline_is_not_inapplicability(self):
         del self.data["capabilities"][0]["comparisons"]["pdfium"]
@@ -74,10 +74,39 @@ class InventoryTests(unittest.TestCase):
         self.data["feature_tags"][tag]["sources"] = ["wrong.rs"]
         self.rejects("source locations changed")
 
-    def test_declarations_cannot_be_promoted_to_confirmed_gaps(self):
+    def test_reviews_require_evidence_and_known_owners(self):
         tag = next(iter(self.data["feature_tags"]))
-        self.data["feature_tags"][tag]["review"] = "gap"
-        self.rejects("no call-site adjudication evidence")
+        self.data["feature_tags"][tag]["evidence"] = []
+        self.rejects("missing adjudication evidence")
+        self.data = copy.deepcopy(self.original)
+        self.data["feature_tags"][tag]["capability"] = "missing.owner"
+        self.rejects("unknown capability owner")
+
+    def test_review_locator_cannot_silently_move(self):
+        tag = next(iter(self.data["feature_tags"]))
+        self.data["feature_tags"][tag]["evidence"][0]["needle"] = "nonexistent call site 738beef"
+        self.rejects("stale evidence locator")
+
+    def test_incomplete_manual_reviews_are_not_completion(self):
+        tag = next(iter(self.data["feature_tags"]))
+        self.data["feature_tags"][tag]["review"] = "unreviewed"
+        self.rejects("unreviewed or invalid disposition")
+        self.data = copy.deepcopy(self.original)
+        self.data["capabilities"][0]["surfaces"]["host"] = "unreviewed"
+        self.rejects("invalid surface state")
+
+    def test_requirement_and_api_operations_cannot_be_unassigned(self):
+        identity = self.data["capabilities"][0]["requirements"][0]
+        for row in self.data["capabilities"]:
+            row["requirements"] = [item for item in row["requirements"] if item != identity]
+        self.rejects("unassigned requirements")
+        self.data = copy.deepcopy(self.original)
+        self.data["api_inventory"]["pdfium"]["operations"]["unknown.feature"] = "API"
+        self.rejects("unassigned API operation")
+
+    def test_api_inventory_retains_all_baselines(self):
+        del self.data["api_inventory"]["quartz"]
+        self.rejects("incomplete baseline API inventory")
 
     def test_malformed_schema_and_surfaces_fail(self):
         self.data["schema"] = True

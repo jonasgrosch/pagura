@@ -14,10 +14,11 @@ Library support, PDF integration and viewer support are listed separately where
 they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
-G00 is underway in the [checked inventory](CAPABILITIES.md). It records scoped
-source observations and a tag-review queue; all competitor cells are unprobed.
-Its checks prevent stale source evidence and missing baseline cells, but do not
-execute PDF feature tests or establish parity.
+G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
+43 capability families, all 90 literal tags reviewed, and all 332 requirement IDs assigned.
+It includes API families without tags and separates library, CLI, host and viewer support.
+All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
+The source check detects stale evidence and missing ownership, not runtime parity.
 
 ## Capability matrix
 
@@ -111,7 +112,7 @@ percentage of the PDF standard implemented.
 The [requirement registries](../references/requirements/) retain normative
 locators, tests and review status. Broad security, form, text, CMS and host
 summaries were corrected where this audit established stale claims; the complete
-registry reconciliation remains G00 work. A `gaps` string or declared feature
+future registry/API discoveries reopen the inventory. A `gaps` string or declared feature
 tag alone is not a current capability verdict. The parity plan requires checking
 live call sites and testing all new claims. A primary-text audit is
 separate from an execution test and from corpus compatibility.

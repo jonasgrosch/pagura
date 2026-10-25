@@ -1,20 +1,23 @@
 """Validate the source capability inventory and its generated review view (G00).
 
-No engines run here. Schema 1 records source inspection and unprobed comparison
-cells only; executable evidence and applicability decisions belong to G01.
+No engines run here. Schema 2 records adjudicated source observations, API
+families and unprobed comparison cells; executable evidence belongs to G01.
 """
 import argparse
 import hashlib
 import json
 import re
+from collections import Counter
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = Path("benchmarks/capabilities.json")
 VIEW = Path("docs/CAPABILITIES.md")
 LITERAL = re.compile(r'Feature::new\s*\(\s*"([^"\\]+)"\s*\)')
 SURFACES = {"library", "cli", "host", "viewer"}
-STATES = {"implemented", "partial", "missing", "unreviewed"}
+STATES = {"implemented", "partial", "missing"}
+REVIEWS = {"gap", "boundary", "dispatch", "dormant", "mixed"}
 
 
 def require(condition, message: str) -> None:
@@ -80,10 +83,10 @@ def strings(value, label: str, *, nonempty: bool = True) -> list[str]:
 
 
 def validate(data, root: Path) -> None:
-    require(isinstance(data, dict) and type(data.get("schema")) is int and data["schema"] == 1, "unsupported capability schema")
-    require(set(data) == {"schema", "audited_revision", "evidence_kind", "engines", "source_files", "capabilities", "feature_tags"}, "unexpected capability inventory fields")
+    require(isinstance(data, dict) and type(data.get("schema")) is int and data["schema"] == 2, "unsupported capability schema")
+    require(set(data) == {"schema", "audited_revision", "evidence_kind", "engines", "source_files", "capabilities", "feature_tags", "api_inventory"}, "unexpected capability inventory fields")
     require(re.fullmatch(r"[0-9a-f]{40}", data.get("audited_revision", "")), "expected audited commit SHA")
-    require(data.get("evidence_kind") == "source-inspection", "schema 1 is source inspection only")
+    require(data.get("evidence_kind") == "source-inspection", "schema 2 is source inspection only")
     engines = read_json(root / "benchmarks/policy.json")["required_engines"]
     require(data.get("engines") == engines, "baseline engines differ from the release policy")
     packages = set(re.findall(r"^## ([A-Z]\d{2}) —", (root / "docs/COMPETITIVE_PARITY.md").read_text(encoding="utf-8"), re.M))
@@ -101,6 +104,7 @@ def validate(data, root: Path) -> None:
         raise ValueError("empty capability inventory")
     seen = set()
     used_sources = set()
+    assigned_requirements = set()
     for row in rows:
         require(isinstance(row, dict), "capability row must be an object")
         require(set(row) == {"id", "package", "operation", "feature", "owners", "surfaces", "implemented", "remaining", "sources", "tests", "requirements", "fixtures", "comparisons"}, "unexpected capability row fields")
@@ -119,9 +123,10 @@ def validate(data, root: Path) -> None:
         # No supported/N/A status can be inferred from marketing or source tags.
         comparisons = row.get("comparisons")
         require(isinstance(comparisons, dict) and set(comparisons) == set(engines), f"{identity}: missing baseline comparison")
-        require(all(value == "unprobed" for value in comparisons.values()), f"{identity}: schema 1 cannot assert runtime support or N/A; add G01 evidence first")
+        require(all(value == "unprobed" for value in comparisons.values()), f"{identity}: source inventory cannot assert runtime support or N/A; link G01 evidence separately")
         required = strings(row.get("requirements"), f"{identity}.requirements", nonempty=False)
         require(set(required) <= requirements.keys(), f"{identity}: unknown requirement IDs")
+        assigned_requirements.update(required)
         cases = strings(row.get("fixtures"), f"{identity}.fixtures", nonempty=False)
         require(set(cases) <= fixtures.keys(), f"{identity}: unknown fixture IDs")
         for field in ("sources", "tests"):
@@ -135,6 +140,7 @@ def validate(data, root: Path) -> None:
                 relative = registry[identifier]
                 require(relative in sources, f"{identity}: unhashed registry/manifest: {relative}")
                 used_sources.add(relative)
+    require(assigned_requirements == set(requirements), "unassigned requirements; update the capability inventory")
     candidates = data.get("feature_tags")
     if not isinstance(candidates, dict):
         raise ValueError("missing feature-tag review queue")
@@ -143,8 +149,34 @@ def validate(data, root: Path) -> None:
     for tag, locations in discovered.items():
         record = candidates[tag]
         require(isinstance(record, dict) and record.get("sources") == locations, f"{tag}: source locations changed")
-        require(set(record) == {"sources", "review"}, f"{tag}: unexpected tag record fields")
-        require(record.get("review") == "unreviewed", f"{tag}: schema 1 has no call-site adjudication evidence")
+        require(set(record) == {"sources", "review", "capability", "rationale", "evidence"}, f"{tag}: unexpected tag record fields")
+        require(record.get("review") in REVIEWS, f"{tag}: unreviewed or invalid disposition")
+        require(record.get("capability") in seen, f"{tag}: unknown capability owner")
+        require(isinstance(record.get("rationale"), str) and record["rationale"].strip(), f"{tag}: missing review rationale")
+        for path in locations:
+            require(path in sources, f"{tag}: unhashed declaration: {path}")
+            used_sources.add(path)
+        evidence = record.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            raise ValueError(f"{tag}: missing adjudication evidence")
+        for item in evidence:
+            require(isinstance(item, dict) and set(item) == {"path", "needle"}, f"{tag}: invalid evidence locator")
+            path, needle = item["path"], item["needle"]
+            require(path in sources, f"{tag}: unhashed call-site evidence: {path}")
+            require(isinstance(needle, str) and needle.strip() and needle in local_file(root, path).read_text(encoding="utf-8"), f"{tag}: stale evidence locator: {path}")
+            used_sources.add(path)
+    inventory = data.get("api_inventory")
+    if not isinstance(inventory, dict) or set(inventory) != set(engines):
+        raise ValueError("incomplete baseline API inventory")
+    for engine, record in inventory.items():
+        require(isinstance(record, dict) and set(record) == {"sources", "scope", "operations"}, f"{engine}: invalid API inventory")
+        require(isinstance(record["scope"], str) and record["scope"].strip(), f"{engine}: missing API review scope")
+        for url in strings(record["sources"], f"{engine}.sources"):
+            parsed = urlparse(url)
+            require(parsed.scheme == "https" and parsed.netloc and not parsed.username and not parsed.password, f"{engine}: invalid public API source")
+        operations = record["operations"]
+        require(isinstance(operations, dict) and bool(operations) and set(operations) <= seen, f"{engine}: unassigned API operation")
+        require(all(isinstance(value, str) and value.strip() for value in operations.values()), f"{engine}: missing API operation locator")
     require(used_sources == set(sources), "unreferenced source hashes in inventory")
 
 
@@ -155,12 +187,15 @@ def render(data) -> str:
         "# Capability inventory — G00 review view", "",
         "Generated from [capabilities.json](../benchmarks/capabilities.json) by",
         "`uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.", "",
-        f"Source audit: `{data['audited_revision']}`. G00 is in progress.",
-        "These are scoped source observations, not executed feature tests or a complete inventory.",
+        f"Source audit: `{data['audited_revision']}`. G00 source inventory is complete for this revision.",
+        "These are scoped source observations, not executed feature tests or a proof of full PDF coverage.",
         "Library includes lower-level crate APIs; each row states its remaining public integration.",
         "Linked tests/fixtures exist; listing them does not claim a fresh pass.",
-        "All competitor cells remain unprobed. Schema 1 intentionally cannot record runtime",
-        "support or N/A until G01 defines the probe evidence contract.", "",
+        "All competitor family cells remain unprobed. Individual G01 probe results are separate:",
+        "passing one fixture never promotes an entire family to supported or establishes parity.", "",
+        "All literal tags have a manual disposition, every requirement ID has an owner, and",
+        "discovered baseline API families are assigned below. New APIs, extensions, dynamic",
+        "tags or hidden configurations reopen this inventory; unknown applicability stays open.", "",
         "Source hashes cover UTF-8 text with LF-normalized newlines for checkout portability;",
         "they are not executable/binary identities. Regeneration never refreshes evidence hashes.", "",
         "[Plan and acceptance gates](COMPETITIVE_PARITY.md) · [Capability summary](STATUS.md)", "",
@@ -173,15 +208,34 @@ def render(data) -> str:
         lines.append(f"| `{row['id']}` / {row['package']} | {cell(row['feature'])} | {states} | {cell(row['implemented'])} | {cell(row['remaining'])} |")
     lines += ["", "## Baseline probes", "", "| Baseline | Unprobed capability cells |", "|---|---:|"]
     lines += [f"| {engine} | {len(data['capabilities'])} |" for engine in data["engines"]]
-    lines += ["", "## Feature-tag review queue", "",
+    lines += ["", "## Requirement ownership", "",
+              f"All {len(set(identifier for row in data['capabilities'] for identifier in row['requirements']))} registered requirement IDs map to capability rows in the ledger.",
+              "Ownership does not change normative verification status or certify the linked tests.", "",
+              "## Baseline API discovery", "",
+              "Documentation identifies operations to probe, not supported results. All six engines",
+              "remain in every comparison denominator, including APIs without an adapter.", "",
+              "| Baseline / sources | Review scope | Discovered API → capability |", "|---|---|---|"]
+    for engine, record in data["api_inventory"].items():
+        links = ", ".join(f"[source {index + 1}]({url})" for index, url in enumerate(record["sources"]))
+        operations = "; ".join(f"{cell(api)} → `{identity}`" for identity, api in record["operations"].items())
+        lines.append(f"| {engine}: {links} | {cell(record['scope'])} | {operations} |")
+    counts = Counter(record["review"] for record in data["feature_tags"].values())
+    lines += ["", "## Feature-tag dispositions", "",
+              ", ".join(f"**{count} {kind}**" for kind, count in sorted(counts.items())) + ".", "",
+              "`gap`: live unsupported subvariant; `boundary`: policy, invalid/unknown input or API",
+              "boundary needing a concrete interoperability case; `dispatch`: handled in another",
+              "layer; `dormant`: no live refusal caller found; `mixed`: multiple meanings.",
+              "None is a competitor verdict. Boundaries stay assigned for G01 probes; dormant",
+              "does not imply every related feature is implemented.", "",
               "This lexical scan finds literal `Feature::new` uses under crate `src` directories,",
               "excluding separate test files. Inline tests/comments may be included; macros, dynamic",
-              "tags and untagged API gaps require manual review. A declaration is neither a reachable",
-              "refusal nor a missing feature. Classify its call sites before assigning feature work.", "",
-              "| Candidate | Source declarations | Review |", "|---|---|---|"]
+              "tags and untagged APIs require continuing manual review. The review inspected symbol",
+              "uses, aliases and helper calls; the checker verifies locators and hashes, not reachability.", "",
+              "| Tag / disposition | Owner | Review and evidence |", "|---|---|---|"]
     for tag, record in sorted(data["feature_tags"].items()):
-        sources = ", ".join(f"[{path}](../{path})" for path in record["sources"])
-        lines.append(f"| `{tag}` | {sources} | {record['review']} |")
+        paths = dict.fromkeys(item["path"] for item in record["evidence"])
+        sources = ", ".join(f"[{Path(path).name}](../{path})" for path in paths)
+        lines.append(f"| `{tag}` / {record['review']} | `{record['capability']}` | {cell(record['rationale'])} {sources} |")
     return "\n".join(lines) + "\n"
 
 
@@ -203,8 +257,8 @@ def main() -> None:
     except (ValueError, KeyError, TypeError, OSError) as error:
         parser.exit(1, f"Capability inventory: {error}\n")
     print(f"Capability inventory valid: {len(data['capabilities'])} source observations, "
-          f"{len(data['feature_tags'])} unreviewed tag candidates, "
-          f"{len(data['capabilities']) * len(data['engines'])} unprobed comparison cells. G00 remains open.")
+          f"{len(data['feature_tags'])} reviewed tags, "
+          f"{len(data['capabilities']) * len(data['engines'])} unprobed family comparison cells.")
 
 
 if __name__ == "__main__":

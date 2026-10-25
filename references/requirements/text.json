@@ -326,7 +326,7 @@
       "tests": [
         "text/embedded-cid-variable-codes"
       ],
-      "gaps": "Text-state operators, BT/ET, positioning and painting belong to pagura-render and are outside this registry's execution tests.",
+      "gaps": "Text-state operators, BT/ET and positioning now belong to pagura-interpret; painting belongs to pagura-paint. These remain outside this registry's PDF binding tests; earlier verification records retain their historical crate names.",
       "verification": {
         "rule": "Simple strings use one byte per glyph; composite strings use CMap codes; only single-byte code 32 is eligible for word spacing.",
         "implementation": "ISO decoder interface agrees; text-state operator execution remains in pagura-render",

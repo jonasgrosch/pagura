@@ -11,12 +11,13 @@ cross-platform/resolution/concurrency aggregation still block release.
 
 ## Capability inventory (G00)
 
-`capabilities.json` is the initial source-inspection ledger for the
+`capabilities.json` is the reviewed source-inspection ledger for the
 [competitive plan](../docs/COMPETITIVE_PARITY.md). Its generated
 [review view](../docs/CAPABILITIES.md) separates library, CLI, host and viewer
-support. Literal feature tags are review candidates, not confirmed gaps.
-Every baseline cell is explicitly unprobed; schema 1 rejects supported/unsupported
-or N/A claims until G01 defines executable probe evidence and build identities.
+support. All 90 literal tags have manual dispositions with hashed call-site evidence.
+The 43 capability families own all 332 registered requirements and include untagged APIs.
+Every baseline family cell is explicitly unprobed; schema 2 rejects runtime support
+or N/A claims. G01 fixture-level results and build identities are recorded separately.
 
 ```sh
 uv run --locked --offline python tools/capabilities.py --check
@@ -25,12 +26,13 @@ uv run --locked --offline python tools/capabilities.py
 ```
 
 The check validates IDs, owners, packages, fixture/requirement references,
-LF-normalized source hashes, the literal-tag snapshot and the generated view.
+LF-normalized source hashes, tag dispositions/locators, requirement/API ownership
+and the generated view.
 Regeneration never refreshes source hashes or reclassifies a tag automatically.
 When source evidence changes, review the affected observations before updating
 their hashes. Tests/fixtures are references to existing evidence, not new run
-results. The scan is lexical: inline tests/comments may appear; macros, dynamic
-tags, live call-site classification and untagged APIs still need G00 review.
+results. The scan is lexical; the manual review followed symbol uses, aliases
+and decoder dispatch. New dynamic tags or APIs reopen the inventory.
 No competitor download, engine invocation or product behavior change occurs.
 
 ## Offline checks and explicit competitor setup

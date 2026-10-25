@@ -36,7 +36,7 @@
         "pagura-core diagnostic",
         "classic/trailing-bytes"
       ],
-      "gaps": "xref reconstruction and the ADR 0003 repair catalogue"
+      "gaps": "Reported reconstruction and the ADR 0003 repair catalogue exist; compatibility breadth and ambiguous/irrecoverable input remain bounded. See document-repairs and the specific recovery entries."
     },
     {
       "id": "xref-streams",
@@ -590,7 +590,7 @@
         "Unresolvable child references are omitted only below a usable root, with tree.structure or tree.cycle reported. Dangling or cyclic Limits references are treated as malformed bounds. Limit errors are always propagated.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "7.9.6; Table 36; 7.9.7; Table 37",
@@ -622,7 +622,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.3.2.2; Table 149; 12.3.2.4; J.3.3; J.3.4",
@@ -654,7 +654,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.3.3; Tables 150-152; 7.9.2.2; D.3",
@@ -690,7 +690,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.5.6.5; Table 176; 12.5.4; Table 168; 12.6.2; 12.6.4.2; 12.6.4.3; 12.6.4.6; 12.6.4.8; Tables 210-211; 12.6.4.12; 12.6.4.17",
@@ -720,7 +720,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.4.2; Table 161; 7.9.7",

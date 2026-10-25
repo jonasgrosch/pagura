@@ -114,12 +114,16 @@ sizes the valid, baseline-supported cases.
 
 Owner: `references/requirements`, `docs`, `benchmarks`; depends on no new product code.
 
-- **Started:** `benchmarks/capabilities.json`, its generated
-  [review view](CAPABILITIES.md), and `tools/capabilities.py --check` now track
-  26 scoped source observations, 90 literal-tag candidates and 156 unprobed
-  comparison cells. Source hashes, fixture/requirement references and view drift
-  are checked in `tools/check.py`. Schema 1 accepts source inspection only;
-  it cannot turn a tag into a confirmed gap or an unprobed baseline into N/A.
+- **Source inventory complete at `19059e684`:** `benchmarks/capabilities.json`,
+  the generated [review view](CAPABILITIES.md), and `tools/capabilities.py --check`
+  cover 43 capability families, all 90 reviewed literal tags, all 332 registered
+  requirement IDs and all six baseline API inventories. There are 258 unprobed
+  family cells. Schema 2 requires dispositions, source locators/hashes, ownership
+  and complete surface states; it does not infer runtime support or N/A.
+- The review includes dispatch guards (including Huffman JBIG2), dormant tags,
+  policy/unknown-input boundaries, actual refusals and untagged service APIs.
+  Later discoveries reopen G00. G01 results stay scoped to the executed fixture,
+  operation, configuration and engine identity rather than promoting a family.
 - Extend the ledger and checked human-readable view. Each completed row
   records ID, operation, feature/subvariant, source locator, current Pagura layer,
   missing integration, work package, competitor build/API, fixtures, oracle,
