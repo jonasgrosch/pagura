@@ -13,6 +13,7 @@
 
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
+use crate::source::copy_values;
 use pagura_color::{ColorSpace, Converter};
 use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
@@ -449,7 +450,7 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
-        copy_texel(out, self.texel(index));
+        copy_values(out, self.texel(index));
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
@@ -684,7 +685,7 @@ impl<T: Texels> Texels for Fused<'_, T> {
             {
                 if let Some((first, rest)) = pixel.split_first_mut() {
                     *first = opacity;
-                    copy_texel(rest, value);
+                    copy_values(rest, value);
                 }
             }
             start += take;
@@ -989,7 +990,7 @@ impl Memo {
             }
             if let Some(entry) = self.slots.get_mut(at..at + stride) {
                 entry[0] = wanted;
-                copy_texel(&mut entry[1..], &self.spare[..held]);
+                copy_values(&mut entry[1..], &self.spare[..held]);
             }
         }
         self.slots.get(at + 1..at + stride).unwrap_or(&[])
@@ -1114,34 +1115,11 @@ impl Texels for MemoTexels<'_> {
             let key = self.samples.get(index);
             if previous != Some(key) {
                 let held = memo.get(key, |texel| self.convert(index, components, texel));
-                copy_texel(&mut last, held);
+                copy_values(&mut last, held);
                 previous = Some(key);
             }
-            copy_texel(values, &last);
+            copy_values(values, &last);
         }
-    }
-}
-
-/// Copies the first values of `from` into `to`, as many as both hold: a
-/// fixed-size move for the common counts, where a copy call per texel
-/// costs more than the copy.
-#[inline]
-pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
-    #[inline]
-    fn fixed<const N: usize>(to: &mut [f64], from: &[f64]) {
-        if let (Some(to), Some(from)) = (to.first_chunk_mut::<N>(), from.first_chunk::<N>()) {
-            *to = *from;
-        }
-    }
-    match to.len().min(from.len()) {
-        0 => {}
-        1 => fixed::<1>(to, from),
-        2 => fixed::<2>(to, from),
-        3 => fixed::<3>(to, from),
-        4 => fixed::<4>(to, from),
-        5 => fixed::<5>(to, from),
-        6 => fixed::<6>(to, from),
-        n => to[..n].copy_from_slice(&from[..n]),
     }
 }
 

@@ -452,12 +452,12 @@ impl ImageSampler {
         match paint {
             Paint::Stencil(table) => {
                 let code = usize::from(image.samples.get(0).unwrap_or(0));
-                texels::copy_texel(texel, table.get(code * lanes..).unwrap_or(&[]));
+                super::copy_values(texel, table.get(code * lanes..).unwrap_or(&[]));
             }
             Paint::Colors(paint) => {
                 if let Strategy::Table(table, _) = &paint.1 {
                     let code = usize::from(image.samples.get(0).unwrap_or(0));
-                    texels::copy_texel(
+                    super::copy_values(
                         texel,
                         table.get(code * lanes..(code + 1) * lanes).unwrap_or(&[]),
                     );

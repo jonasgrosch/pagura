@@ -5,8 +5,7 @@ use super::contour::{self, Contour};
 use super::geometry::{BilinearRows, Geometry, Mode, Texels};
 use super::scratch::allocate;
 use super::separable::{self, RowCache, Rows, Separable};
-use super::texels::copy_texel;
-use crate::source::Pixels;
+use crate::source::{Pixels, copy_values};
 use pagura_core::{Meter, Result};
 
 /// Exactly one way to sample a placement, selected during preparation.
@@ -162,7 +161,7 @@ impl Sampling {
                     .zip(pixels.chunks_exact(n.max(1)))
                 {
                     if let Some((values, rest)) = pixel.split_at_mut_checked(n) {
-                        copy_texel(values, source);
+                        copy_values(values, source);
                         opaque_lanes(rest, 1.0);
                     }
                 }
