@@ -310,9 +310,8 @@ pub(super) enum Strategy {
     /// mask's opacity code where a Matte is removed and the embedded
     /// opacity code), kept in a memo.
     Memo(MemoLayout),
-    /// Each sample's index into a table per distinct colour tuple, and
-    /// whether every entry is opaque.
-    Indexed(Vec<u16>, Vec<f64>, bool),
+    /// Each sample's index into a table per distinct colour tuple.
+    Indexed(Palette),
     /// Every texel computed from its sample.
     General,
 }
@@ -393,9 +392,7 @@ impl Strategy {
     pub(super) fn bytes(&self) -> usize {
         match self {
             Self::Table(table, _) => table.capacity() * size_of::<f64>(),
-            Self::Indexed(indexes, table, _) => {
-                indexes.capacity() * size_of::<u16>() + table.capacity() * size_of::<f64>()
-            }
+            Self::Indexed(palette) => palette.bytes(),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
             Self::Memo(_) | Self::General => 0,
         }
@@ -1065,8 +1062,42 @@ impl Indexed {
             }
             colors.texel(&codes[..components], Extra::default(), texel);
         }
+        // Nearest samples of opaque RGB texels store as their entry's words.
+        let mut words = Vec::new();
+        if opaque && lanes == 5 {
+            words = super::reserved(keys.len(), bytes)?;
+            words.extend(table.chunks_exact(lanes).map(|texel| {
+                let word = crate::kernel::opaque_word;
+                [word(texel[0]), word(texel[1]), word(texel[2]), u16::MAX]
+            }));
+        }
         bytes.refund(keys.capacity() * size_of::<u64>());
-        Ok(Strategy::Indexed(indexes, table, opaque))
+        Ok(Strategy::Indexed(Palette {
+            indexes,
+            table,
+            words,
+            opaque,
+        }))
+    }
+}
+
+/// An indexed source: each sample's index, the texel of each index (every
+/// lane), and for opaque RGB texels the N16 words a store at full opacity
+/// writes for them.
+#[derive(Debug)]
+pub(super) struct Palette {
+    pub(super) indexes: Vec<u16>,
+    pub(super) table: Vec<f64>,
+    pub(super) words: Vec<[u16; 4]>,
+    /// Whether every texel has alpha and shape 1.
+    pub(super) opaque: bool,
+}
+
+impl Palette {
+    fn bytes(&self) -> usize {
+        self.indexes.capacity() * size_of::<u16>()
+            + self.table.capacity() * size_of::<f64>()
+            + self.words.capacity() * size_of::<[u16; 4]>()
     }
 }
 

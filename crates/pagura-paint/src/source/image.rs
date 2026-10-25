@@ -108,7 +108,8 @@ impl Paint {
     fn opaque(&self, image: &DecodedImage) -> bool {
         match self {
             Self::Colors(paint) => match &paint.1 {
-                Strategy::Table(_, opaque) | Strategy::Indexed(_, _, opaque) => *opaque,
+                Strategy::Table(_, opaque) => *opaque,
+                Strategy::Indexed(palette) => palette.opaque,
                 Strategy::Rgb(_) => matches!(image.samples, Samples::Bytes(_)),
                 Strategy::Memo(layout) => layout.opaque(),
                 Strategy::General => false,
@@ -556,6 +557,12 @@ impl ImageSampler {
                 _ => false,
             },
             Plan::Texels { sampling, paint } => {
+                if let (Sampling::Separable(plan), Paint::Colors(colors)) = (sampling, paint)
+                    && let Strategy::Indexed(palette) = &colors.1
+                    && let Some(words) = prepared.palette_words(plan, palette, pixels, out)
+                {
+                    return words;
+                }
                 prepared.texel_words((sampling, paint), pixels, scratch, out)
             }
         }
@@ -752,6 +759,22 @@ impl Prepared {
         }
     }
 
+    /// [`ImageSampler::words`] of nearest samples of an image indexed into
+    /// `palette` under `plan`, or `None` where the placement or palette
+    /// does not allow them. Out of line, so that the path of other sources
+    /// stays as it was.
+    #[inline(never)]
+    fn palette_words(
+        &self,
+        plan: &separable::Separable,
+        palette: &texels::Palette,
+        pixels: Pixels<'_>,
+        out: &mut [[u16; 4]],
+    ) -> Option<bool> {
+        let (row, cells) = plan.nearest_samples(pixels)?;
+        entry_words(palette, (row, self.image.image.width), cells, out).then_some(true)
+    }
+
     /// [`ImageSampler::words`] of opaque texels sampled nearest or
     /// averaged: the texels, then, where every pixel's alpha is 1, their
     /// words. Bilinear weights need not sum to exactly 1, so those pixels
@@ -813,12 +836,12 @@ impl Prepared {
                 Strategy::Table(table, opaque) => {
                     self.table(plan, pixels, &mut buffers, (table, lanes, *opaque), out);
                 }
-                Strategy::Indexed(indexes, table, opaque) => {
+                Strategy::Indexed(palette) => {
                     let texels = TableTexels {
-                        codes: WordCodes(indexes),
-                        table,
+                        codes: WordCodes(&palette.indexes),
+                        table: &palette.table,
                         lanes,
-                        opaque: *opaque,
+                        opaque: palette.opaque,
                     };
                     self.sample(plan, pixels, &mut buffers, &texels, out);
                 }
@@ -901,6 +924,40 @@ impl Prepared {
             Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
         }
     }
+}
+
+/// Writes the words of nearest samples `cells` of source row `row` of an
+/// image `width` samples wide through their palette entries: the words
+/// [`Prepared::texel_words`] writes for those entries' texels. False,
+/// with nothing written, where the palette has no words or a sample is
+/// missing.
+fn entry_words(
+    palette: &texels::Palette,
+    (row, width): (usize, u32),
+    cells: &[u32],
+    out: &mut [[u16; 4]],
+) -> bool {
+    let width = usize::try_from(width).unwrap_or(usize::MAX);
+    let line = row
+        .checked_mul(width)
+        .and_then(|start| palette.indexes.get(start..start.checked_add(width)?));
+    let Some(line) = line.filter(|_| cells.len() == out.len() && !palette.words.is_empty()) else {
+        return false;
+    };
+    if cells
+        .iter()
+        .any(|&cell| separable::index(cell) >= line.len())
+    {
+        return false;
+    }
+    // Every index names an entry, which has its words.
+    for (pixel, &cell) in out.iter_mut().zip(cells) {
+        let id = line
+            .get(separable::index(cell))
+            .map_or(0, |&id| usize::from(id));
+        *pixel = palette.words.get(id).copied().unwrap_or_default();
+    }
+    true
 }
 
 /// The image decoded for painting through the store: one-bit samples

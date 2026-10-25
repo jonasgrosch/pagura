@@ -1246,7 +1246,8 @@ fn words_store_as_opaque_spans_do() {
 }
 
 /// A large source of few colours, indexed at preparation, samples bit for
-/// bit as its memo does: opaque and colour-keyed, retained and replacing.
+/// bit as its memo does, and writes the same words: opaque and
+/// colour-keyed, retained and replacing.
 #[test]
 fn indexed_sources_sample_as_their_memo_does() {
     let palette = [
@@ -1276,8 +1277,14 @@ fn indexed_sources_sample_as_their_memo_does() {
     );
     let mut keyed = case(rgb.clone());
     keyed.key = Some(vec![[150, 255], [0, 40], [0, 255]]);
-    let mut indexed = 0;
-    for (case, target) in [(&case(rgb), 4), (&keyed, 3)] {
+    let lab = pagura_color::cie::Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0; 4]);
+    let lab = Case {
+        space: Some(ColorSpace::Calibrated(Arc::new(lab.unwrap()))),
+        decode: vec![[0.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]],
+        ..case(rgb.clone())
+    };
+    let (mut indexed, mut written) = (0, 0);
+    for (case, target) in [(&case(rgb), 4), (&keyed, 3), (&lab, 3)] {
         for unit_to_device in placements(case.image.width, case.image.height) {
             let fast = sampler(case, unit_to_device, target);
             let mut memo = sampler(case, unit_to_device, target);
@@ -1315,8 +1322,17 @@ fn indexed_sources_sample_as_their_memo_does() {
                 assert_eq!(bits(&a.colors), bits(&b.colors), "{}", context());
                 assert_eq!(bits(&a.alpha), bits(&b.alpha), "{}", context());
                 assert_eq!(bits(&a_shape), bits(&b_shape), "{}", context());
+                let short = (x0..x1).step_by(5).map(|x| (x, 3));
+                for (x, len) in std::iter::once((x0, len)).chain(short) {
+                    let pixels = Pixels::new(x, y, len);
+                    let (mut a, mut b) = (vec![[0u16; 4]; len], vec![[0u16; 4]; len]);
+                    let wrote = fast.words(pixels, &mut fast_storage, &mut a);
+                    assert_eq!(wrote, memo.words(pixels, &mut memo_storage, &mut b));
+                    assert_eq!(a, b, "words of {}", context());
+                    written += usize::from(wrote);
+                }
             }
         }
     }
-    assert!(indexed > 0);
+    assert!(indexed > 0 && written > 0);
 }
