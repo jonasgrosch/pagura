@@ -2,6 +2,64 @@ use super::*;
 use crate::PathBuilder;
 
 #[test]
+fn colliding_relink_keys_use_bounded_lookup_and_release_the_table() {
+    let sides: Vec<_> = (0..1024_u32)
+        .map(|i| ((i64::from(i) << 32, i64::from(i)), i as usize))
+        .collect();
+    assert!(sides.iter().all(|&(key, _)| slot(key) == 0));
+    let mut bytes = crate::testing::bytes();
+    bytes.charge(7).unwrap();
+    let firsts = Firsts::new(&sides, &mut bytes).unwrap();
+    assert!(firsts.places.is_empty());
+    assert_eq!(bytes.used(), 7);
+    for (i, &(key, _)) in sides.iter().enumerate() {
+        assert_eq!(firsts.get(&sides, key), i);
+    }
+    for key in [(-1, 0), (1, 0), (i64::MAX, i64::MAX)] {
+        assert_eq!(firsts.get(&sides, key), sides.len());
+    }
+}
+
+#[test]
+fn many_sides_at_one_vertex_keep_the_previous_link_order() {
+    for count in [8, 64, 257] {
+        let origin = (0_i64, 0_i64);
+        let mut keys = vec![origin; count];
+        keys.extend((1..=count).rev().map(|i| (i64::try_from(i).unwrap(), 0)));
+        let next: Vec<_> = (count..2 * count).collect();
+        let points = vec![Point::default(); count];
+        let mut kept: Vec<_> = (0..count).map(|i| (origin, i)).collect();
+        let mut previous: Vec<_> = kept
+            .iter()
+            .map(|&(from, a)| {
+                let to = keys[next[a]];
+                Keyed {
+                    lo: from.min(to),
+                    hi: from.max(to),
+                    forward: from <= to,
+                    from,
+                    to,
+                    a: points[a],
+                }
+            })
+            .collect();
+        previous.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+        previous.sort_unstable_by_key(|e| e.from);
+        shared_order(
+            &mut kept,
+            (&keys, &next, &points),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
+        assert!(
+            kept.iter()
+                .zip(&previous)
+                .all(|(&(_, a), e)| keys[next[a]] == e.to)
+        );
+    }
+}
+
+#[test]
 fn line_paths_skip_flattening_with_its_contours() {
     let limits = Limits::default();
     let t = Transform::new(1.5, 0.25, -0.5, 2.0, 3.0, -1.0);

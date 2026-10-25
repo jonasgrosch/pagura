@@ -776,11 +776,15 @@ fn uncancelled(
 }
 
 /// The first place of each start key among sides ordered by start key, in
-/// an open-addressed table of places.
+/// an open-addressed table of places. An empty table uses the sorted sides
+/// directly when collisions exceed the probe bound.
 struct Firsts {
     places: Vec<usize>,
     mask: usize,
 }
+
+/// Colliding keys fall back to the sorted sides instead of quadratic probing.
+const RELINK_PROBES: usize = 16;
 
 impl Firsts {
     fn new(sides: &[((i64, i64), usize)], bytes: &mut Meter) -> Result<Self> {
@@ -798,7 +802,18 @@ impl Firsts {
                 continue;
             }
             let mut slot = slot(side.0) & mask;
+            let mut probes = 0;
             while places[slot] != usize::MAX {
+                probes += 1;
+                if probes == RELINK_PROBES {
+                    let released = places.capacity() * size_of::<usize>();
+                    drop(places);
+                    bytes.refund(released);
+                    return Ok(Self {
+                        places: Vec::new(),
+                        mask: 0,
+                    });
+                }
                 slot = (slot + 1) & mask;
             }
             places[slot] = place;
@@ -809,13 +824,24 @@ impl Firsts {
     /// The first place of the sides starting at `key`, or past them all.
     fn get(&self, sides: &[((i64, i64), usize)], key: (i64, i64)) -> usize {
         let mut slot = slot(key) & self.mask;
-        while let Some(&place) = self.places.get(slot).filter(|&&p| p != usize::MAX) {
+        for _ in 0..RELINK_PROBES {
+            let Some(&place) = self.places.get(slot) else {
+                break;
+            };
+            if place == usize::MAX {
+                return sides.len();
+            }
             if sides[place].0 == key {
                 return place;
             }
             slot = (slot + 1) & self.mask;
         }
-        sides.len()
+        let first = sides.partition_point(|&(from, _)| from < key);
+        if sides.get(first).is_some_and(|&(from, _)| from == key) {
+            first
+        } else {
+            sides.len()
+        }
     }
 }
 
@@ -860,8 +886,16 @@ fn shared_order(
         // The sorts moved sides only among those of one start.
         sides.clear();
         sides.extend(same.iter().map(|&(_, a)| a));
+        if sides.len() > RELINK_PROBES {
+            sides.sort_unstable_by_key(|&a| (keys[next[a]], a));
+        }
         for (place, e) in same.iter_mut().zip(&links[first..]) {
-            if let Some(&a) = sides.iter().find(|&&a| keys[next[a]] == e.to) {
+            let found = if sides.len() > RELINK_PROBES {
+                sides.get(sides.partition_point(|&a| keys[next[a]] < e.to))
+            } else {
+                sides.iter().find(|&&a| keys[next[a]] == e.to)
+            };
+            if let Some(&a) = found.filter(|&&a| keys[next[a]] == e.to) {
                 place.1 = a;
             }
         }
