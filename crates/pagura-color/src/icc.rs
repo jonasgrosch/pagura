@@ -227,18 +227,19 @@ impl Profile {
         intent: Intent,
         arithmetic: &mut Arithmetic,
     ) -> [f64; 3] {
-        let mut values = [0.0; 4];
-        for (i, (value, &input)) in values.iter_mut().zip(inputs).enumerate() {
-            *value = if self.lab_input {
-                if i == 0 {
-                    input.clamp(0.0, 100.0) / 100.0
+        let values = std::array::from_fn(|i| {
+            inputs.get(i).map_or(0.0, |&input| {
+                if self.lab_input {
+                    if i == 0 {
+                        input.clamp(0.0, 100.0) / 100.0
+                    } else {
+                        (input.clamp(-128.0, 127.0) + 128.0) / 255.0
+                    }
                 } else {
-                    (input.clamp(-128.0, 127.0) + 128.0) / 255.0
+                    input.clamp(0.0, 1.0)
                 }
-            } else {
-                input.clamp(0.0, 1.0)
-            };
-        }
+            })
+        });
         let mut xyz = transform.evaluate(values, arithmetic);
         if intent == Intent::Absolute {
             // ICC 6.3.2: recover media-absolute colorimetry from relative PCS.
@@ -287,10 +288,7 @@ impl Forward {
                 }
             }
             Self::Matrix { matrix, curves } => {
-                let mut linear = [0.0; 3];
-                for (i, curve) in curves.iter().enumerate() {
-                    linear[i] = curve.evaluate(values[i], arithmetic);
-                }
+                let linear = std::array::from_fn(|i| curves[i].evaluate(values[i], arithmetic));
                 cie::map(*matrix, linear)
             }
             Self::Lut(lut, encoding) => encoding.decode(lut.evaluate(values)),

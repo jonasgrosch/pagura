@@ -414,7 +414,14 @@ impl Function {
                 delta,
                 exponent,
             } => {
-                let x = self.input(input, 0).powf(*exponent);
+                let x = self.input(input, 0);
+                // `x¹` is `x` exactly, so the common linear interpolation
+                // (`N` 1) skips the `pow` call.
+                let x = if *exponent == 1.0 {
+                    x
+                } else {
+                    power(x, *exponent)
+                };
                 for ((out, &low), &delta) in values.iter_mut().zip(c0).zip(delta) {
                     *out = low + x * delta;
                 }
@@ -505,6 +512,13 @@ impl Stitching {
         }
         Ok(true)
     }
+}
+
+/// `x^exponent`, out of line: inlined, `powf` has no side effects, and the
+/// compiler computes it ahead of the test that skips it.
+#[inline(never)]
+fn power(x: f64, exponent: f64) -> f64 {
+    x.powf(exponent)
 }
 
 /// Maps `value` linearly from `from` onto `to` (7.10.2, Interpolate); a

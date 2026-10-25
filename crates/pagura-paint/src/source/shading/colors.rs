@@ -2,6 +2,7 @@
 //! colours) and the prepared conversion into the target.
 
 use super::{Input, PaintContext, Parts};
+use crate::source::copy_values;
 use pagura_color::{Converter, Function, MAX_CHANNELS, MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Result};
 use pagura_interpret::ShadingFunction;
@@ -160,13 +161,13 @@ impl Colors {
                 .zip(&*key)
                 .all(|(a, b)| a.to_bits() == b.to_bits());
         if same && let Some(color) = sample.color.get(..out.len()) {
-            out.copy_from_slice(color);
+            copy_values(out, color);
             return;
         }
         self.convert(&sample.input, out);
-        key.copy_from_slice(input);
+        copy_values(key, input);
         if let Some(color) = sample.color.get_mut(..out.len()) {
-            color.copy_from_slice(out);
+            copy_values(color, out);
             sample.last = Some(n);
         }
     }
