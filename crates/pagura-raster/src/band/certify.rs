@@ -76,13 +76,14 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
     }
     let mut points = Vec::new();
     let mut chains = Vec::new();
-    let mut magnitude = 1.0_f64;
+    let mut magnitude = [1.0_f64; 2];
     for contour in polygon.contours() {
         for p in contour {
-            magnitude = magnitude.max(p.x.abs()).max(p.y.abs());
+            magnitude = [magnitude[0].max(p.x.abs()), magnitude[1].max(p.y.abs())];
         }
         split(contour, &mut points, &mut chains, bytes)?;
     }
+    let magnitude = magnitude[0].max(magnitude[1]);
     let mut work = Work {
         done: 0,
         cap: polygon.vertices().saturating_mul(32).saturating_add(1024),
@@ -173,31 +174,29 @@ fn sweep(
         }
         let mid = lo.midpoint(hi);
         for a in &mut active {
+            // A step per segment passed, counted once the chain is walked.
+            let passed = a.segment;
             while points[a.segment + 1].y <= lo {
                 a.segment += 1;
-                if work.add(1).is_none() {
-                    return Ok(None);
-                }
             }
             let mut segment = a.segment;
             let start = at(points, segment, lo).0;
             let mut range = [start, start];
-            let mut middle = None;
-            while points[segment + 1].y < hi {
-                if middle.is_none() && points[segment + 1].y >= mid {
-                    middle = Some(at(points, segment, mid).0);
+            let mut walk = |to: f64| {
+                while points[segment + 1].y < to {
+                    segment += 1;
+                    range = [
+                        lesser(range[0], points[segment].x),
+                        greater(range[1], points[segment].x),
+                    ];
                 }
-                segment += 1;
-                if work.add(1).is_none() {
-                    return Ok(None);
-                }
-                range = [
-                    lesser(range[0], points[segment].x),
-                    greater(range[1], points[segment].x),
-                ];
+                segment
+            };
+            a.x = at(points, walk(mid), mid).0;
+            let end = at(points, walk(hi), hi).0;
+            if work.add(segment - passed).is_none() {
+                return Ok(None);
             }
-            let end = at(points, segment, hi).0;
-            a.x = middle.unwrap_or_else(|| at(points, segment, mid).0);
             a.range = [lesser(range[0], end), greater(range[1], end)];
         }
         active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
@@ -245,70 +244,62 @@ fn split(
     chains: &mut Vec<Chain>,
     bytes: &mut Meter,
 ) -> Result<()> {
-    let n = vertices.len();
-    let direction = |i: usize| {
-        let (a, b) = (vertices[i].y, vertices[(i + 1) % n].y);
-        if a < b {
-            1
-        } else if a > b {
-            -1
-        } else {
-            0
-        }
-    };
-    let Some(first) =
-        (0..n).find(|&i| direction(i) != 0 && direction((i + n - 1) % n) != direction(i))
-    else {
+    let Some(&last) = vertices.last() else {
         return Ok(());
     };
-    let mut count = 0_usize;
-    let mut previous = 0;
-    for step in 0..n {
-        let d = direction((first + step) % n);
+    let n = vertices.len();
+    let next = |i: usize| if i + 1 == n { 0 } else { i + 1 };
+    let direction = |a: Point, b: Point| i8::from(a.y < b.y) - i8::from(a.y > b.y);
+    // One pass finds the first side that starts a chain and counts the
+    // points the chains take: one per side with height, one more per chain.
+    let (mut previous, mut first, mut count) = (direction(last, vertices[0]), None, 0_usize);
+    let mut tally = |i: usize, d: i8| {
         if d != 0 {
-            count += 1 + usize::from(d != previous);
+            let starts = d != previous;
+            first = first.or(starts.then_some(i));
+            count += 1 + usize::from(starts);
         }
         previous = d;
+    };
+    for (i, side) in vertices.windows(2).enumerate() {
+        tally(i, direction(side[0], side[1]));
     }
+    tally(n - 1, direction(last, vertices[0]));
+    let Some(mut i) = first else {
+        return Ok(());
+    };
     bytes.reserve_capacity(points, count)?;
-    let mut current: Option<Chain> = None;
-    for step in 0..n {
-        let i = (first + step) % n;
-        let up = match direction(i) {
-            0 => {
-                close(current.take(), points, chains, bytes)?;
-                continue;
-            }
-            d => d > 0,
-        };
-        if let Some(chain) = current.as_mut().filter(|c| c.up == up) {
-            chain.end += 1;
-        } else {
-            close(current.take(), points, chains, bytes)?;
-            points.push(vertices[i]);
-            current = Some(Chain {
-                start: points.len() - 1,
-                end: points.len() + 1,
-                up,
-            });
+    // Each run of sides with one direction is a chain of its vertices.
+    let mut left = n;
+    while left > 0 {
+        let d = direction(vertices[i], vertices[next(i)]);
+        let mut end = next(i);
+        left -= 1;
+        if d == 0 {
+            i = end;
+            continue;
         }
-        points.push(vertices[(i + 1) % n]);
-    }
-    close(current, points, chains, bytes)
-}
-
-fn close(
-    chain: Option<Chain>,
-    points: &mut [Point],
-    chains: &mut Vec<Chain>,
-    bytes: &mut Meter,
-) -> Result<()> {
-    if let Some(chain) = chain {
-        if !chain.up {
-            points[chain.start..chain.end].reverse();
+        while left > 0 && direction(vertices[end], vertices[next(end)]) == d {
+            end = next(end);
+            left -= 1;
+        }
+        let start = points.len();
+        if i < end {
+            points.extend_from_slice(&vertices[i..=end]);
+        } else {
+            points.extend_from_slice(&vertices[i..]);
+            points.extend_from_slice(&vertices[..=end]);
+        }
+        if d < 0 {
+            points[start..].reverse();
         }
         bytes.reserve_capacity(chains, 1)?;
-        chains.push(chain);
+        chains.push(Chain {
+            start,
+            end: points.len(),
+            up: d > 0,
+        });
+        i = end;
     }
     Ok(())
 }
@@ -334,54 +325,66 @@ fn apart(
     margins: Margins,
     work: &mut Work,
 ) -> bool {
+    // A value `at` gives lies within its segment's x range widened by
+    // 4ε·magnitude, far below `rounding`. Where the current segments' ranges
+    // stay twice `rounding` apart, the comparison below would pass, as the
+    // margin is not negative.
+    let clear = 2.0 * margins.rounding;
     let mut y = lo;
-    loop {
-        let (left, exact_left) = at(points, i, y);
-        let (right, exact_right) = at(points, j, y);
-        let d = right - left;
-        let separated = if !(exact_left && exact_right) {
-            d > margins.rounding
-        } else if y == lo || y == hi {
-            // Identical vertices may touch at a slab's ends; distinct ones
-            // keep the margin.
-            d == 0.0 || d > margins.vertices.max(-0.0)
-        } else {
-            d > margins.vertices
-        };
-        if !separated {
-            return false;
+    let (mut ends, mut steps) = ([points[i + 1].y, points[j + 1].y], 0);
+    let separated = loop {
+        let left = greater(points[i].x, points[i + 1].x);
+        if left + clear >= lesser(points[j].x, points[j + 1].x) {
+            let (left, exact_left) = at(points, i, y);
+            let (right, exact_right) = at(points, j, y);
+            let d = right - left;
+            let separated = if !(exact_left && exact_right) {
+                d > margins.rounding
+            } else if y == lo || y == hi {
+                // Identical vertices may touch at a slab's ends; distinct
+                // ones keep the margin.
+                d == 0.0 || d > margins.vertices.max(-0.0)
+            } else {
+                d > margins.vertices
+            };
+            if !separated {
+                break false;
+            }
         }
         if y == hi {
-            return true;
+            break true;
         }
-        if points[i + 1].y == y {
-            i += 1;
+        // Past `lo`, `y` is the lower segment end: the segments ending
+        // there pass it.
+        if y > lo {
+            let [a, b] = ends;
+            (i, j) = (i + usize::from(a <= b), j + usize::from(b <= a));
+            ends = [points[i + 1].y, points[j + 1].y];
         }
-        if points[j + 1].y == y {
-            j += 1;
-        }
-        if work.add(1).is_none() {
-            return false;
-        }
-        y = points[i + 1].y.min(points[j + 1].y).min(hi);
-    }
+        steps += 1;
+        y = ends[0].min(ends[1]).min(hi);
+    };
+    // Past the cap, the certificate fails whatever this pair holds.
+    work.add(steps).is_some() && separated
 }
 
 /// One y-monotone piece of a spline chain, oriented downward (`a.y <
-/// b.y`): a line, or a monotone quadratic.
+/// b.y`): a line, or a monotone quadratic, by its index in the spline's
+/// curves.
 #[derive(Debug, Clone, Copy)]
 struct Down {
-    curve: Option<Mono>,
+    curve: Option<usize>,
     a: Point,
     b: Point,
 }
 
 impl Down {
-    /// The piece oriented downward, and whether it ran downward.
-    fn new(piece: Piece) -> Option<(Self, bool)> {
+    /// The piece oriented downward, and whether it ran downward; a curve is
+    /// the spline's curve `curve`.
+    fn new(piece: Piece, curve: usize) -> Option<(Self, bool)> {
         let (curve, a, b) = match piece {
             Piece::Line(line) => (None, line.a, line.b),
-            Piece::Curve(q) => (Some(Mono::new(q)), q.points[0], q.points[2]),
+            Piece::Curve(q) => (Some(curve), q.points[0], q.points[2]),
         };
         if a.y == b.y {
             return None;
@@ -392,31 +395,31 @@ impl Down {
     }
 
     /// x at height `y` within the piece, and whether it is an end's value.
-    fn x(&self, y: f64) -> (f64, bool) {
+    fn x(&self, curves: &[Mono], y: f64) -> (f64, bool) {
         if y <= self.a.y {
             return (self.a.x, y == self.a.y);
         }
         if y >= self.b.y {
             return (self.b.x, y == self.b.y);
         }
-        match &self.curve {
+        match self.curve {
             None => (
                 self.a.x + (y - self.a.y) / (self.b.y - self.a.y) * (self.b.x - self.a.x),
                 false,
             ),
-            Some(m) => (m.x_at(y), false),
+            Some(c) => (curves[c].x_at(y), false),
         }
     }
 
     /// The directions bounding the piece seen from its end at height `v`,
     /// away from it: toward its control (or along it) and along its chord
     /// to height `far`.
-    fn fan(&self, v: f64, far: f64) -> [Point; 2] {
+    fn fan(&self, curves: &[Mono], v: f64, far: f64) -> [Point; 2] {
         let vertex = if v == self.a.y { self.a } else { self.b };
-        let end = Point::new(self.x(far).0, far);
+        let end = Point::new(self.x(curves, far).0, far);
         let chord = Point::new(end.x - vertex.x, end.y - vertex.y);
-        let control = self.curve.map_or(chord, |m| {
-            let c = m.control();
+        let control = self.curve.map_or(chord, |c| {
+            let c = curves[c].control();
             Point::new(c.x - vertex.x, c.y - vertex.y)
         });
         [control, chord]
@@ -437,14 +440,18 @@ struct Run {
 /// where they overlap, and at a shared end by the fans of their control and
 /// chord directions, which meet only at the end when strictly ordered.
 /// Steps are capped as the polygon's are; doubt leaves it uncertified.
-pub(crate) fn spline_certified(spline: &Spline, bytes: &mut Meter) -> Result<bool> {
+pub(crate) fn spline_certified(
+    spline: &Spline,
+    curves: &[Mono],
+    bytes: &mut Meter,
+) -> Result<bool> {
     let before = bytes.used();
-    let result = spline_sweep(spline, bytes).map(|ok| ok.is_some_and(|ok| ok));
+    let result = spline_sweep(spline, curves, bytes).map(|ok| ok.is_some_and(|ok| ok));
     bytes.refund(bytes.used().saturating_sub(before));
     result
 }
 
-fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
+fn spline_sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<bool>> {
     let mut downs: Vec<Down> = Vec::new();
     let mut runs: Vec<Run> = Vec::new();
     let count = spline
@@ -456,9 +463,16 @@ fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
         })
         .count();
     bytes.reserve(&mut downs, count)?;
-    let mut magnitude = 1.0_f64;
+    let (mut magnitude, mut curve) = (1.0_f64, 0);
     for contour in spline.contours() {
-        split_pieces(contour, &mut downs, &mut runs, &mut magnitude, bytes)?;
+        split_pieces(
+            contour,
+            &mut curve,
+            &mut downs,
+            &mut runs,
+            &mut magnitude,
+            bytes,
+        )?;
     }
     let mut work = Work {
         done: 0,
@@ -503,7 +517,7 @@ fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
                 a.1 += 1;
             }
             let mut k = a.1;
-            let first = downs[k].x(lo).0;
+            let first = downs[k].x(curves, lo).0;
             let mut range = [first, first];
             loop {
                 if work.add(1).is_none() {
@@ -511,10 +525,10 @@ fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
                 }
                 let piece = &downs[k];
                 if piece.a.y <= mid && mid <= piece.b.y {
-                    a.2 = piece.x(mid).0;
+                    a.2 = piece.x(curves, mid).0;
                 }
                 if piece.b.y >= hi || k + 1 >= end {
-                    let x = piece.x(hi).0;
+                    let x = piece.x(curves, hi).0;
                     range = [lesser(range[0], x), greater(range[1], x)];
                     break;
                 }
@@ -539,7 +553,7 @@ fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
             }
             let left = (w[0].1, runs[w[0].0].end);
             let right = (w[1].1, runs[w[1].0].end);
-            match chains_apart(&downs, (left, right), (lo, hi), margin, &mut work) {
+            match chains_apart((&downs, curves), (left, right), (lo, hi), margin, &mut work) {
                 Some(true) => {}
                 Some(false) => return Ok(Some(false)),
                 None => return Ok(None),
@@ -555,16 +569,27 @@ fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
 /// chains.
 fn split_pieces(
     contour: &[Piece],
+    curve: &mut usize,
     downs: &mut Vec<Down>,
     runs: &mut Vec<Run>,
     magnitude: &mut f64,
     bytes: &mut Meter,
 ) -> Result<()> {
     let n = contour.len();
-    let direction = |p: &Piece| match Down::new(*p) {
-        Some((_, true)) => 1,
-        Some((_, false)) => -1,
-        None => 0,
+    // The spline's index of the contour's first curve; `curve` moves past
+    // its last.
+    let curved = |p: &Piece| usize::from(matches!(p, Piece::Curve(_)));
+    let first_curve = *curve;
+    *curve += contour.iter().map(curved).sum::<usize>();
+    let direction = |p: &Piece| {
+        let [a, b] = p.ends();
+        if a.y == b.y {
+            0
+        } else if a.y < b.y {
+            1
+        } else {
+            -1
+        }
     };
     // A contour without height bounds no area.
     let Some(first) = (0..n).find(|&i| {
@@ -593,9 +618,12 @@ fn split_pieces(
         }
         Ok(())
     };
-    for step in 0..n {
-        let piece = contour[(first + step) % n];
-        let Some((down_piece, down)) = Down::new(piece) else {
+    let mut next = first_curve + contour[..first].iter().map(curved).sum::<usize>();
+    for k in (first..n).chain(0..first) {
+        let piece = contour[k];
+        let index = if k == 0 { first_curve } else { next };
+        next = index + curved(&piece);
+        let Some((down_piece, down)) = Down::new(piece, index) else {
             close(&mut current, downs, runs, bytes)?;
             continue;
         };
@@ -617,7 +645,7 @@ fn split_pieces(
 /// Whether the right chain stays right of the left one on the open slab
 /// `(lo, hi)`; each chain is given by its piece at `lo` and its end.
 fn chains_apart(
-    downs: &[Down],
+    (downs, curves): (&[Down], &[Mono]),
     ((mut i, ie), (mut j, je)): ((usize, usize), (usize, usize)),
     (lo, hi): (f64, f64),
     margin: f64,
@@ -636,8 +664,7 @@ fn chains_apart(
             return Some(false);
         }
         if !pieces_apart(
-            &downs[i],
-            &downs[j],
+            (&downs[i], &downs[j], curves),
             (a, b),
             (a == lo, b == hi),
             margin,
@@ -656,8 +683,7 @@ fn chains_apart(
 /// monotone parts, halved up to `depth` times; at a shared end of the slab
 /// by their fans.
 fn pieces_apart(
-    left: &Down,
-    right: &Down,
+    (left, right, curves): (&Down, &Down, &[Mono]),
     (a, b): (f64, f64),
     ends: (bool, bool),
     margin: f64,
@@ -665,10 +691,10 @@ fn pieces_apart(
     depth: u32,
 ) -> Option<bool> {
     work.add(1)?;
-    let (la, left_a) = left.x(a);
-    let (lb, left_b) = left.x(b);
-    let (ra, right_a) = right.x(a);
-    let (rb, right_b) = right.x(b);
+    let (la, left_a) = left.x(curves, a);
+    let (lb, left_b) = left.x(curves, b);
+    let (ra, right_a) = right.x(curves, a);
+    let (rb, right_b) = right.x(curves, b);
     // Identical ends may touch at the slab's ends.
     let touch_a = ends.0 && left_a && right_a && la == ra;
     let touch_b = ends.1 && left_b && right_b && lb == rb;
@@ -680,7 +706,8 @@ fn pieces_apart(
     }
     if touch_a || touch_b {
         let (v, far) = if touch_a { (a, b) } else { (b, a) };
-        if fans_apart(left.fan(v, far), right.fan(v, far), far > v, margin) {
+        let fans = (left.fan(curves, v, far), right.fan(curves, v, far));
+        if fans_apart(fans.0, fans.1, far > v, margin) {
             return Some(true);
         }
     }
@@ -690,16 +717,14 @@ fn pieces_apart(
     let m = a.midpoint(b);
     Some(
         pieces_apart(
-            left,
-            right,
+            (left, right, curves),
             (a, m),
             (ends.0, false),
             margin,
             work,
             depth - 1,
         )? && pieces_apart(
-            left,
-            right,
+            (left, right, curves),
             (m, b),
             (false, ends.1),
             margin,
@@ -822,11 +847,13 @@ mod tests {
         let mut bytes = Meter::new(source + 2 * size_of::<Down>() - 1, "certificate bytes");
         bytes.charge(source).unwrap();
         assert_eq!(
-            spline_certified(&spline, &mut bytes).unwrap_err().message,
+            spline_certified(&spline, &[], &mut bytes)
+                .unwrap_err()
+                .message,
             "certificate bytes"
         );
         assert_eq!(bytes.used(), source);
-        assert!(spline_certified(&spline, &mut construction).unwrap());
+        assert!(spline_certified(&spline, &[], &mut construction).unwrap());
         assert_eq!(construction.used(), source);
     }
 

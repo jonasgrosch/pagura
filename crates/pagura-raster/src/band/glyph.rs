@@ -136,6 +136,10 @@ impl Relative {
         })
     }
 
+    fn retained_bytes(&self) -> usize {
+        self.lines.capacity() * size_of::<Line>() + self.curves.capacity() * size_of::<Mono>()
+    }
+
     fn placed_hull(&self, origin: Point, point: Option<Point>) -> Result<[Point; 2]> {
         let [lo, hi] = self.hull;
         let mut lo = lo + origin;
@@ -230,8 +234,9 @@ impl GlyphEdges {
             None => None,
         };
         if let Some((spline, point)) = spline {
-            if spline_certified(&spline, bytes)? {
-                let relative = Relative::new(&spline, bytes)?;
+            // The certificate reads the curves the placements integrate.
+            let relative = Relative::new(&spline, bytes)?;
+            if spline_certified(&spline, &relative.curves, bytes)? {
                 // The outline's allocation includes the Arc counters and
                 // Path, whose segment vector is charged separately.
                 bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
@@ -244,8 +249,8 @@ impl GlyphEdges {
                     linear: transform,
                 });
             }
-            let released = spline.retained_bytes();
-            drop(spline);
+            let released = spline.retained_bytes() + relative.retained_bytes();
+            drop((spline, relative));
             bytes.refund(released);
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;

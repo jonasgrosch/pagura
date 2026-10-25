@@ -327,7 +327,14 @@ impl Polygon {
 
     /// Every contour side in source order, including horizontal sides.
     pub(crate) fn sides(&self) -> impl Iterator<Item = Line> {
-        self.indexed_sides().map(|(_, line)| line)
+        self.contours().flat_map(|contour| {
+            let closing = contour.last().zip(contour.first());
+            contour
+                .windows(2)
+                .map(|side| (&side[0], &side[1]))
+                .chain(closing)
+                .map(|(&a, &b)| Line { a, b })
+        })
     }
 
     /// Source-ordered sides with keys that recover both endpoints in O(1).

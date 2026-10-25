@@ -93,7 +93,10 @@ impl Summary {
     reason = "finite nonnegative ceiling checked against u32 before conversion"
 )]
 fn extent(a: f64, b: f64, rounding: f64) -> Option<u32> {
-    let span = ((a - b).abs().next_up() + 2.0 * rounding).next_up().ceil();
+    // `next_up` of a value that is not negative, or NaN or infinite, which
+    // stay unbounded.
+    let up = |x: f64| f64::from_bits(x.to_bits() + 1);
+    let span = up(up((a - b).abs()) + 2.0 * rounding).ceil();
     (span.is_finite() && (0.0..=f64::from(u32::MAX)).contains(&span)).then_some(span as u32)
 }
 
