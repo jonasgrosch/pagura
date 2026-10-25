@@ -99,7 +99,8 @@ impl Meter {
     /// The vector's existing capacity must already be charged. Growth
     /// includes the old and replacement allocations until reservation
     /// succeeds, then returns the old capacity to the budget. It doubles
-    /// capacity when that fits, otherwise reserves only the needed room.
+    /// capacity, from at least as many values as `Vec` first allocates,
+    /// when that fits, otherwise reserves only the needed room.
     ///
     /// # Errors
     ///
@@ -114,7 +115,12 @@ impl Meter {
         if need <= capacity {
             return Ok(());
         }
-        let preferred = need.max(capacity.saturating_mul(2));
+        let smallest = match size_of::<T>() {
+            1 => 8,
+            2..=1024 => 4,
+            _ => 1,
+        };
+        let preferred = need.max(capacity.saturating_mul(2)).max(smallest);
         let target = if preferred
             .checked_mul(size_of::<T>())
             .is_some_and(|bytes| bytes <= self.remaining())
@@ -220,6 +226,17 @@ mod tests {
         assert_eq!((values.capacity(), meter.used()), (capacity, 16));
         assert!(meter.reserve_capacity(&mut values, usize::MAX).is_err());
         assert_eq!((values.capacity(), meter.used()), (capacity, 16));
+    }
+
+    #[test]
+    fn growth_from_empty_reserves_a_few_values() {
+        let mut meter = Meter::new(1024, MESSAGE);
+        let mut values: Vec<u32> = Vec::new();
+        meter.reserve_capacity(&mut values, 1).unwrap();
+        assert_eq!((values.capacity(), meter.used()), (4, 16));
+        let mut bytes: Vec<u8> = Vec::new();
+        meter.reserve_capacity(&mut bytes, 1).unwrap();
+        assert_eq!((bytes.capacity(), meter.used()), (8, 24));
     }
 
     #[test]
