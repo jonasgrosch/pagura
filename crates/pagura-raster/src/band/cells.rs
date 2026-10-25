@@ -339,7 +339,11 @@ impl Cells {
         self.rounding.bound(self.width)
     }
 
-    #[inline]
+    #[expect(
+        clippy::inline_always,
+        reason = "every flattened glyph edge takes this path inside the edge loop"
+    )]
+    #[inline(always)]
     fn line_with<const MEASURE: bool>(&mut self, line: Line) -> usize {
         let Line { a, b } = line;
         if a.y == b.y {
@@ -365,6 +369,18 @@ impl Cells {
             }
             return 1 + self.piece::<MEASURE>(r, upper.x, lower.x, (lower.y - upper.y) * d);
         }
+        self.line_rows::<MEASURE>(line, (upper, lower, d))
+    }
+
+    /// [`Self::line_with`] for an edge across rows, out of line: the edge
+    /// loops inline only the one-row case.
+    #[inline(never)]
+    fn line_rows<const MEASURE: bool>(
+        &mut self,
+        line: Line,
+        (upper, lower, d): (Point, Point, f64),
+    ) -> usize {
+        let Line { a, b } = line;
         let mut visited = 0;
         // The crossing of a row's lower side is the next row's upper one:
         // computed once, the same value either way.
@@ -403,10 +419,27 @@ impl Cells {
         self.curve_with::<true>(curve, origin)
     }
 
+    /// Adds `curves` moved by `origin` as [`Self::curve`] does, each that
+    /// can reach the window, in one loop. Returns the cells and rows visited.
+    pub(crate) fn curves<const MEASURE: bool>(&mut self, curves: &[Mono], origin: Point) -> usize {
+        let mut visited = 0;
+        for m in curves {
+            if self.reaches(m.x0.min(m.x1) + origin.x) {
+                visited += self.curve_with::<MEASURE>(m, origin);
+            }
+        }
+        visited
+    }
+
     #[expect(
         clippy::cast_possible_truncation,
         reason = "bounded device coordinates are within i64"
     )]
+    #[expect(
+        clippy::inline_always,
+        reason = "glyph curves take this path inside the curve loop"
+    )]
+    #[inline(always)]
     fn curve_with<const MEASURE: bool>(&mut self, curve: &Mono, origin: Point) -> usize {
         let m = curve;
         let (x0, y0) = (m.x0 + origin.x, m.y0 + origin.y);

@@ -168,6 +168,7 @@ impl<'a> PolygonLines<'a> {
 
     /// Every placed side in [`Self::indexed`] order, without keys: one pass
     /// over the stored contours, then the point cells' sides.
+    #[inline]
     pub(crate) fn for_each(self, mut visit: impl FnMut(Line)) {
         let points = &self.polygon.points;
         for (contour, &start) in self.polygon.starts.iter().enumerate() {
