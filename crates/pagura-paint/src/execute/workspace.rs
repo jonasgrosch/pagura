@@ -192,6 +192,12 @@ impl Extents {
         }
     }
 
+    /// The painted columns of `row`, if any.
+    pub(crate) fn get(&self, row: usize) -> Option<(u32, u32)> {
+        let &[lo, hi] = self.rows.get(row)?;
+        (lo < hi).then_some((lo, hi))
+    }
+
     /// The painted columns of `row`, if any, forgotten for the next band.
     pub(crate) fn take(&mut self, row: usize) -> Option<(usize, usize)> {
         let [lo, hi] = std::mem::replace(self.rows.get_mut(row)?, EMPTY);

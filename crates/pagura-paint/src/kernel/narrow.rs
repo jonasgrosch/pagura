@@ -232,23 +232,14 @@ fn dynamic<T: Copy>(
     round: impl Fn(f64) -> T,
     widen: impl Fn(T) -> f64,
 ) {
-    let store = |pixel: &mut [T; 4], color: &[f64], a: f64| {
-        if a == 0.0 {
-            return;
-        }
-        for (i, out) in pixel.iter_mut().enumerate() {
-            let target = if i == 3 {
-                scale
-            } else {
-                color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0) * scale
-            };
-            *out = round((1.0 - a) * widen(*out) + a * target);
-        }
+    let store = |pixel: &mut [T; 4], targets: [f64; 4], a: f64| {
+        mix_dynamic(pixel, targets, a, &round, &widen);
     };
     match *colors {
         Colors::Constant(color) => {
+            let targets = targets(color, scale);
             for (pixel, &a) in pixels.iter_mut().zip(alpha) {
-                store(pixel, color, a);
+                store(pixel, targets, a);
             }
         }
         Colors::Strided { values, stride } => {
@@ -257,9 +248,69 @@ fn dynamic<T: Copy>(
                 .zip(values.chunks(stride.max(1)))
                 .zip(alpha)
             {
-                store(pixel, color, a);
+                store(pixel, targets(color, scale), a);
             }
         }
+    }
+}
+
+/// The targets of a dynamic store of `color`: its clamped values and full
+/// alpha on `0 .. scale`.
+pub(crate) fn targets(color: &[f64], scale: f64) -> [f64; 4] {
+    let at = |i: usize| color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0) * scale;
+    [at(0), at(1), at(2), scale]
+}
+
+/// One dynamic store, `(1 − a)·x + a·t` rounded once; none at `a = 0`.
+#[inline]
+fn mix_dynamic<T: Copy>(
+    pixel: &mut [T; 4],
+    targets: [f64; 4],
+    a: f64,
+    round: impl Fn(f64) -> T,
+    widen: impl Fn(T) -> f64,
+) {
+    if a == 0.0 {
+        return;
+    }
+    for (out, target) in pixel.iter_mut().zip(targets) {
+        *out = round((1.0 - a) * widen(*out) + a * target);
+    }
+}
+
+/// Dynamic N16 stores of a constant colour's `targets` at `coverage`, at
+/// the opacity `c / 255 · alpha` a span's coverage and constant alpha give
+/// it. Returns the pixels from the first to past the last one with
+/// coverage, if any. `pixels` and `coverage` have equal lengths.
+pub(crate) fn dynamic_n16_runs(
+    pixels: &mut [[u16; 4]],
+    (targets, alpha): ([f64; 4], f64),
+    coverage: &[u8],
+) -> Option<(usize, usize)> {
+    let first = coverage.iter().position(|&c| c != 0)?;
+    let last = coverage.iter().rposition(|&c| c != 0).unwrap_or(first);
+    let (pixels, coverage) = (pixels.get_mut(first..=last)?, coverage.get(first..=last)?);
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        mix_dynamic(
+            pixel,
+            targets,
+            UNIT[usize::from(c)] * alpha,
+            round_u16,
+            f64::from,
+        );
+    }
+    Some((first, last + 1))
+}
+
+/// [`dynamic_n16_runs`] with one coverage byte `c` for every pixel.
+pub(crate) fn dynamic_n16_uniform(
+    pixels: &mut [[u16; 4]],
+    (targets, alpha): ([f64; 4], f64),
+    c: u8,
+) {
+    let a = UNIT[usize::from(c)] * alpha;
+    for pixel in pixels {
+        mix_dynamic(pixel, targets, a, round_u16, f64::from);
     }
 }
 
@@ -274,11 +325,11 @@ pub(crate) const UNIT: [f64; 256] = {
     unit
 };
 
-/// [`store_f32`] of an opaque constant colour's `target` levels at one
-/// coverage byte `c` for every pixel: the opacity `c / 255` of a store from
-/// coverage.
-pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], target: [f32; 4], c: u8) {
-    let alpha = single(UNIT[usize::from(c)]);
+/// [`store_f32`] of a constant colour's `target` levels at one coverage
+/// byte `c` for every pixel: the opacity `c / 255 · alpha` a span's
+/// coverage and constant alpha give it.
+pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], (target, alpha): ([f32; 4], f64), c: u8) {
+    let alpha = single(UNIT[usize::from(c)] * alpha);
     for pixel in pixels {
         lerp(pixel, target, alpha);
     }
@@ -289,14 +340,14 @@ pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], target: [f32; 4], c: u8
 /// coverage, if any. `pixels` and `coverage` have equal lengths.
 pub(crate) fn store_f32_runs(
     pixels: &mut [[f32; 4]],
-    target: [f32; 4],
+    (target, alpha): ([f32; 4], f64),
     coverage: &[u8],
 ) -> Option<(usize, usize)> {
     let first = coverage.iter().position(|&c| c != 0)?;
     let last = coverage.iter().rposition(|&c| c != 0).unwrap_or(first);
     let (pixels, coverage) = (pixels.get_mut(first..=last)?, coverage.get(first..=last)?);
     for (pixel, &c) in pixels.iter_mut().zip(coverage) {
-        lerp(pixel, target, single(UNIT[usize::from(c)]));
+        lerp(pixel, target, single(UNIT[usize::from(c)] * alpha));
     }
     Some((first, last + 1))
 }
