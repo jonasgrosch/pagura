@@ -4,6 +4,7 @@ import collections
 import json
 import os
 import random
+import re
 import shutil
 import statistics
 import subprocess
@@ -49,8 +50,69 @@ def target_features(toolchain, host, env, *flags):
                   for line in cfg.splitlines() if line.startswith('target_feature="'))
 
 
+def cfg_matches(key, cfg):
+    """Evaluate a Cargo `cfg(...)` table key against `rustc --print cfg` lines; unknown syntax fails."""
+    tokens = re.findall(r'"[^"]*"|\w+|[(),=]', key)
+    position = 0
+
+    def take(expected=None):
+        nonlocal position
+        if position == len(tokens) or expected not in (None, tokens[position]):
+            raise ValueError(f"unsupported cfg key in .cargo/config.toml: {key}")
+        position += 1
+        return tokens[position - 1]
+
+    def predicate():
+        name = take()
+        if name in ("all", "any", "not"):
+            take("(")
+            values = []
+            while position < len(tokens) and tokens[position] != ")":
+                values.append(predicate())
+                if position < len(tokens) and tokens[position] == ",":
+                    take(",")
+            take(")")
+            if name == "not" and len(values) != 1:
+                raise ValueError(f"unsupported cfg key in .cargo/config.toml: {key}")
+            return not values[0] if name == "not" else (all if name == "all" else any)(values)
+        if position < len(tokens) and tokens[position] == "=":
+            take("=")
+            return f"{name}={take()}" in cfg
+        return name in cfg
+
+    take("cfg")
+    take("(")
+    matched = predicate()
+    take(")")
+    if position != len(tokens):
+        raise ValueError(f"unsupported cfg key in .cargo/config.toml: {key}")
+    return matched
+
+
+def config_rustflags(config, triple, cfg):
+    """The rustflags Cargo takes from `config` for `triple`: every matching target table, else build.rustflags."""
+    flags = []
+    for key, table in config.get("target", {}).items():
+        if key == triple or (key.startswith("cfg(") and cfg_matches(key, cfg)):
+            value = table.get("rustflags", [])
+            flags += value.split() if isinstance(value, str) else value
+    if not flags:
+        value = config.get("build", {}).get("rustflags", [])
+        flags = value.split() if isinstance(value, str) else value
+    return list(flags)
+
+
+def repository_rustflags(toolchain, triple, env):
+    """The repository's `.cargo/config.toml` flags for `triple`, resolved here so that builds pass them
+    explicitly and inherited RUSTFLAGS or a user-level Cargo configuration cannot reach the build."""
+    config = tomllib.loads((ROOT / ".cargo/config.toml").read_text())
+    cfg = subprocess.check_output(toolchain + ["rustc", "--print", "cfg", "--target", triple],
+                                  cwd=ROOT, env=env, text=True).splitlines()
+    return config_rustflags(config, triple, cfg)
+
+
 def build_x86_v3(output, toolchain, host, env):
-    """Keep the optional ISA track isolated from the portable headline build."""
+    """Keep the optional ISA track isolated from the headline build."""
     track = {"status": "unavailable", "target": host, "rustflags": "-C target-cpu=x86-64-v3"}
     if not host.startswith("x86_64-"):
         return {**track, "reason": "x86-64-v3 requires an x86_64 host"}
@@ -115,15 +177,18 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     env = dict(os.environ, CARGO_TARGET_DIR=str(target))
     for name in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS"):
         env.pop(name, None)
-    env["CARGO_ENCODED_RUSTFLAGS"] = ""  # override per-target/global Cargo config too
-    features = target_features(toolchain, host, env)
+    # The repository's flags, passed explicitly: they replace inherited and user-level flags.
+    flags = {host: repository_rustflags(toolchain, host, env)}
+    if include_wasm:
+        flags["wasm32-wasip1"] = repository_rustflags(toolchain, "wasm32-wasip1", env)
+    flagged = {triple: dict(env, CARGO_ENCODED_RUSTFLAGS="\x1f".join(values)) for triple, values in flags.items()}
+    features = target_features(toolchain, host, env, *flags[host])
     log = output / "build.log"
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
-             "--bin", "pagura", "--bin", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
-    wasi_env = dict(env, CARGO_ENCODED_RUSTFLAGS="-C\x1ftarget-feature=+simd128")
+             "--bin", "pagura", "--bin", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=flagged[host])
     if include_wasm:
         checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura-host",
-                 "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=wasi_env)
+                 "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=flagged["wasm32-wasip1"])
     targets = [(host, "native-control")] + ([("wasm32-wasip1", "convert.wasm")] if include_wasm else [])
     for triple, name in targets:
         deps = target / triple / "release/deps"
@@ -132,9 +197,7 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
             raise ValueError("ambiguous facade library in clean benchmark target")
         command = toolchain + ["rustc", "--edition=2024", "--target", triple, "-O", "-C", "lto=thin",
                    "-C", "codegen-units=1", "-L", f"dependency={deps}", "--extern", f"pagura={libraries[0]}",
-                   ROOT / "benchmarks/adapters/wasm_convert.rs", "-o", artifacts / name]
-        if triple == "wasm32-wasip1":
-            command += ["-C", "target-feature=+simd128"]
+                   ROOT / "benchmarks/adapters/wasm_convert.rs", "-o", artifacts / name, *flags[triple]]
         checked(command, log, env=env)
     if include_wasm:
         checked([wasmtime, "compile", "-C", "cache=n", "-C", "parallel-compilation=n",
@@ -144,10 +207,10 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     if x86_v3:
         tracks[X86_V3] = build_x86_v3(output, toolchain, host, env)
     atomic_json(output / "compiler.json", {"rustc": info, "host": host, "native_tracks": tracks,
-        "features": ["bundled-data"], "native_rustflags": "target baseline; inherited RUSTFLAGS cleared",
-        "native_target_features": features,
-        "wasm_target_features": target_features(toolchain, "wasm32-wasip1", env, "-C", "target-feature=+simd128") if include_wasm else None,
-        "wasm_rustflags": "-C target-feature=+simd128" if include_wasm else None,
+        "features": ["bundled-data"], "rustflags_source": ".cargo/config.toml; inherited and user-level flags replaced",
+        "native_rustflags": flags[host], "native_target_features": features,
+        "wasm_target_features": target_features(toolchain, "wasm32-wasip1", env, *flags["wasm32-wasip1"]) if include_wasm else None,
+        "wasm_rustflags": flags["wasm32-wasip1"] if include_wasm else None,
         "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n" if include_wasm else None,
         "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes()) if include_wasm else None})
     return target / host / "release/pagura", artifacts
@@ -156,14 +219,15 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
 def native_simd(host, features):
     """Describe compiler-enabled SIMD, rather than the hardware's capabilities."""
     if host.startswith("x86_64-"):
-        enabled = ("sse2" in features, "avx2" in features, any(item.startswith("avx512") for item in features))
+        enabled = ("sse2" in features, "sse4.1" in features, "avx2" in features,
+                   any(item.startswith("avx512") for item in features))
         detail = ", ".join(f"{name} {'enabled' if present else 'disabled'}"
-                           for name, present in zip(("SSE2", "AVX2", "AVX-512"), enabled))
+                           for name, present in zip(("SSE2", "SSE4.1", "AVX2", "AVX-512"), enabled))
     elif host.startswith("aarch64-"):
         detail = "NEON enabled" if "neon" in features else "NEON disabled"
     else:
         detail = "target features: " + (", ".join(features) or "none")
-    return f"compiler autovectorization at {host} target baseline: {detail}"
+    return f"compiler autovectorization for {host} with the repository's target flags: {detail}"
 
 
 def page_metadata(manifest):
@@ -275,7 +339,7 @@ def idle_record(machine, path, node, *, smoke):
 
 
 def timed_engines(selected, bases):
-    """The optional x86-64-v3 build is a Pagura row, timed whenever portable Pagura is."""
+    """The optional x86-64-v3 build is a Pagura row, timed whenever headline Pagura is."""
     if X86_V3 not in bases or "pagura" not in selected:
         return selected
     native = tuple(name for name in selected if name not in WASM)
@@ -446,7 +510,7 @@ def parse_args(argv=None):
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--smoke", action="store_true", help="two pages, 72 dpi, three samples and one warmup")
     parser.add_argument("--pagura-x86-64-v3", action="store_true",
-                        help="add a separate x86-64-v3 row when the host supports it; portable Pagura stays the reference")
+                        help="add a separate x86-64-v3 row when the host supports it; headline Pagura stays the reference")
     parser.add_argument("--dpi300-pages", type=int, choices=(20, 40), default=20)
     parser.add_argument("--seed", type=int, default=52018)
     parser.add_argument("--timebox-seconds", type=int, default=7200)
