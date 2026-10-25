@@ -19,7 +19,7 @@ pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
 pub use workspace::Scratch;
 pub(crate) use workspace::{
-    Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace, coverage_capacity,
+    Extents, MaskCache, PageBand, PageBuffer, Sizes, Usage, Workspace, coverage_capacity,
 };
 
 use crate::kernel::{self, Colors, Mode, Sources};
@@ -35,22 +35,78 @@ use std::ops::Range;
 #[cfg(test)]
 mod tests;
 
-/// Coverage stored directly: an ordinary mark or a keyed glyph whose
-/// rows can be kept for the next band.
-#[derive(Debug, Clone, Copy)]
-enum DirectCoverage {
-    Mark(crate::plan::Cover),
-    Glyph(u32),
+/// An admitted constant store and the matching page storage, borrowed
+/// together so execution cannot pair a colour with the wrong format.
+enum Direct<'a> {
+    N16(StoreOut<'a, [u16; 4]>),
+    Dynamic(StoreOut<'a, Dynamic>),
+    F32(StoreOut<'a, Levels>),
 }
 
-/// A constant colour as a narrow page stores it straight from coverage:
-/// opaque N16 words, or at a constant alpha N16 dynamic stores or F32
-/// levels.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum Direct {
-    N16([u16; 4]),
-    Dynamic(Dynamic),
-    F32(Levels),
+impl<'a> Direct<'a> {
+    fn new(plan: &Plan, page: &'a mut PageBand, mark: &Mark, frame: Frame) -> Option<Self> {
+        let compositing = &mark.compositing;
+        if mark.records
+            || frame.buffer != Buffer::Page
+            || compositing.mask.is_some()
+            || compositing.blend != pagura_interpret::BlendMode::Normal
+            || compositing.overprint != 0
+        {
+            return None;
+        }
+        let paint = plan.paints.get(u32_to_usize(mark.paint))?;
+        let (color, _) = paint
+            .constant()
+            .filter(|(color, _)| color.len() >= frame.layout.channels())?;
+        let alpha = compositing.alpha;
+        let background = plan.output.background;
+        let (pixels, extents) = page.parts_mut();
+        Some(match (pixels, mark.words) {
+            (PageBuffer::N16(page), words) => {
+                let background = background.map(|b| u16::from(b) * 257);
+                match words {
+                    Some(words) => Self::N16(StoreOut::new(
+                        page,
+                        extents,
+                        frame.rect,
+                        (words, background),
+                    )),
+                    None => Self::Dynamic(StoreOut::new(
+                        page,
+                        extents,
+                        frame.rect,
+                        (Dynamic(kernel::targets(color, 65535.0), alpha), background),
+                    )),
+                }
+            }
+            (PageBuffer::F32(page), _) => Self::F32(StoreOut::new(
+                page,
+                extents,
+                frame.rect,
+                (
+                    Levels(kernel::levels(color), alpha),
+                    background.map(f32::from),
+                ),
+            )),
+            (PageBuffer::F64(_), _) => return None,
+        })
+    }
+
+    /// Emits coverage into the admitted store and counts the pixels written.
+    fn rasterize(&mut self, rasterize: impl FnOnce(&mut dyn RowOut)) -> usize {
+        fn emit<S: Stores>(
+            out: &mut StoreOut<'_, S>,
+            rasterize: impl FnOnce(&mut dyn RowOut),
+        ) -> usize {
+            rasterize(out);
+            std::mem::take(&mut out.stored)
+        }
+        match self {
+            Self::N16(out) => emit(out, rasterize),
+            Self::Dynamic(out) => emit(out, rasterize),
+            Self::F32(out) => emit(out, rasterize),
+        }
+    }
 }
 
 /// A prepared scene with scratch storage sized for it: what every band's
@@ -282,8 +338,12 @@ impl<'a> Executor<'a> {
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
-        if let Some(color) = self.direct(mark, frame) {
-            self.store_direct(DirectCoverage::Mark(mark.cover), frame, color);
+        if let Some(mut direct) = Direct::new(self.plan, &mut self.ws.page, mark, frame) {
+            let stored = direct.rasterize(|out| {
+                self.shapes
+                    .rasterize_into(self.rasterizer, mark.cover, self.band, out);
+            });
+            self.ws.usage.work = self.ws.usage.work.saturating_add(stored);
             return;
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
@@ -293,81 +353,11 @@ impl<'a> Executor<'a> {
         self.ws.coverage = coverage;
     }
 
-    /// Rasterizes `cover` straight into the narrow page as the constant
-    /// `color`, row by row as the rasterizer emits it: one store from each
-    /// pixel's coverage, nothing else to evaluate.
-    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, color: Direct) {
-        let (shapes, band) = (self.shapes, self.band);
-        let rasterizer = &mut *self.rasterizer;
-        let mut rasterize = |out: &mut dyn RowOut| match cover {
-            DirectCoverage::Mark(cover) => shapes.rasterize_into(rasterizer, cover, band, out),
-            DirectCoverage::Glyph(shape) => {
-                shapes.rasterize_glyph_into(rasterizer, shape, band, out);
-            }
-        };
-        let background = self.plan.output.background;
-        let (words, levels) = (
-            background.map(|b| u16::from(b) * 257),
-            background.map(f32::from),
-        );
-        let ws = &mut *self.ws;
-        let extents = &mut ws.extents;
-        let stored = match (&mut ws.page, color) {
-            (PageBuffer::N16(page), Direct::N16(color)) => {
-                let mut out = StoreOut::new(page, extents, frame.rect, (color, words));
-                rasterize(&mut out);
-                out.stored
-            }
-            (PageBuffer::N16(page), Direct::Dynamic(color)) => {
-                let mut out = StoreOut::new(page, extents, frame.rect, (color, words));
-                rasterize(&mut out);
-                out.stored
-            }
-            (PageBuffer::F32(page), Direct::F32(color)) => {
-                let mut out = StoreOut::new(page, extents, frame.rect, (color, levels));
-                rasterize(&mut out);
-                out.stored
-            }
-            _ => return,
-        };
-        ws.usage.work = ws.usage.work.saturating_add(stored);
-    }
-
     /// Stores every span of `coverage` within `frame`.
     fn store_coverage(&mut self, mark: &Mark, frame: Frame, coverage: &BandCoverage) {
         each_span(coverage, frame.rect, |at, cover| {
             self.mark_span(mark, frame, at, cover);
         });
-    }
-
-    /// The colour `mark` stores straight from coverage into `frame`: a
-    /// constant colour into a narrow page that only coverage and constant
-    /// alpha reduce, whose stores of a span take nothing else into account.
-    /// N16 stores it as a span does: as words when opaque, else dynamically.
-    pub(super) fn direct(&self, mark: &Mark, frame: Frame) -> Option<Direct> {
-        let compositing = &mark.compositing;
-        if mark.records
-            || frame.buffer != Buffer::Page
-            || compositing.mask.is_some()
-            || compositing.blend != pagura_interpret::BlendMode::Normal
-            || compositing.overprint != 0
-        {
-            return None;
-        }
-        let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
-        let (color, _) = paint
-            .constant()
-            .filter(|(color, _)| color.len() >= frame.layout.channels())?;
-        let alpha = compositing.alpha;
-        match (&self.ws.page, mark.words) {
-            (PageBuffer::N16(_), Some(words)) => Some(Direct::N16(words)),
-            (PageBuffer::N16(_), None) => Some(Direct::Dynamic(Dynamic(
-                kernel::targets(color, 65535.0),
-                alpha,
-            ))),
-            (PageBuffer::F32(_), _) => Some(Direct::F32(Levels(kernel::levels(color), alpha))),
-            (PageBuffer::F64(_), _) => None,
-        }
     }
 
     fn mark_span(&mut self, mark: &Mark, frame: Frame, (x, y): (u32, u32), cover: Cover<'_>) {
@@ -424,15 +414,10 @@ impl<'a> Executor<'a> {
             && compositing.blend == pagura_interpret::BlendMode::Normal
             && preserve == 0
             && let Colors::Strided { values, stride: 3 } = colors
-            && overwrite(
-                (&mut ws.page, &mut ws.extents),
-                frame,
-                Pixels::new(x, y, len),
-                |pixels| {
-                    kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
-                    true
-                },
-            )
+            && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
+                kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
+                true
+            })
         {
             ws.usage.work = ws.usage.work.saturating_add(len);
             return;
@@ -461,7 +446,6 @@ impl<'a> Executor<'a> {
         store(
             &mut Target {
                 page: &mut ws.page,
-                extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
                 initial: &mut ws.initial,
@@ -498,7 +482,7 @@ fn fill_colors(
     // A mark stores into F32 levels through `kernel::level` alone.
     let levels = match frame.buffer {
         Buffer::Levels(_) => true,
-        Buffer::Page => matches!(ws.page, PageBuffer::F32(_)),
+        Buffer::Page => matches!(ws.page.pixels(), PageBuffer::F32(_)),
         Buffer::Wide(_) => false,
     };
     let pixels = Pixels {
@@ -554,12 +538,9 @@ fn paint_words(
         && compositing.mask.is_none()
         && compositing.blend == pagura_interpret::BlendMode::Normal
         && compositing.overprint == 0
-        && overwrite(
-            (&mut ws.page, &mut ws.extents),
-            frame,
-            Pixels::new(x, y, len),
-            |pixels| paint.words(Pixels::new(x, y, len), scratch, pixels),
-        );
+        && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
+            paint.words(Pixels::new(x, y, len), scratch, pixels)
+        });
     if written {
         ws.usage.work = ws.usage.work.saturating_add(len);
     }
@@ -571,7 +552,7 @@ fn paint_words(
 /// with nothing stored, where the frame is not a narrow page or `write`
 /// gives none.
 fn overwrite(
-    (page, extents): (&mut PageBuffer, &mut Extents),
+    band: &mut PageBand,
     frame: Frame,
     pixels: Pixels<'_>,
     write: impl FnOnce(&mut [[u16; 4]]) -> bool,
@@ -580,6 +561,7 @@ fn overwrite(
     let Some(start) = frame.index(x, y).filter(|_| frame.buffer == Buffer::Page) else {
         return false;
     };
+    let (page, extents) = band.parts_mut();
     let stored = match page {
         PageBuffer::N16(page) => page
             .get_mut(start..start + len)
@@ -982,8 +964,7 @@ pub(crate) fn apply(
 
 /// The buffers a store may write.
 pub(crate) struct Target<'a> {
-    pub(crate) page: &'a mut PageBuffer,
-    pub(crate) extents: &'a mut Extents,
+    pub(crate) page: &'a mut PageBand,
     pub(crate) wide: &'a mut [f64],
     pub(crate) levels: &'a mut [[f32; 4]],
     pub(crate) initial: &'a mut Vec<f64>,
@@ -1017,7 +998,7 @@ pub(crate) fn store(
             return;
         };
         let read = Read {
-            page: &*target.page,
+            page: target.page.pixels(),
             wide: &*target.wide,
             levels: &*target.levels,
         };
@@ -1045,8 +1026,9 @@ pub(crate) fn store(
             let row = u32_to_usize(y - frame.rect.y0);
             let start_column = x - frame.rect.x0;
             let end_column = start_column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
-            target.extents.mark(row, start_column, end_column);
-            page(target.page, (start, stride), (sources, mode), initial, kind);
+            let (pixels, extents) = target.page.parts_mut();
+            extents.mark(row, start_column, end_column);
+            page(pixels, (start, stride), (sources, mode), initial, kind);
         }
     }
 }

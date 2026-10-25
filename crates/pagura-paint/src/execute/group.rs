@@ -86,7 +86,7 @@ impl Executor<'_> {
             Buffer::Wide(offset) => {
                 let (below, above) = ws.wide.split_at_mut(offset);
                 let read = Read {
-                    page: &ws.page,
+                    page: ws.page.pixels(),
                     wide: below,
                     levels: &ws.levels,
                 };
@@ -174,7 +174,6 @@ impl Executor<'_> {
         store(
             &mut Target {
                 page: &mut ws.page,
-                extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
                 initial: &mut ws.initial,
@@ -239,7 +238,7 @@ fn sources(
     if let Buffer::Wide(offset) = child.buffer {
         let (below, _) = ws.wide.split_at(offset);
         let read = Read {
-            page: &ws.page,
+            page: ws.page.pixels(),
             wide: below,
             levels: &ws.levels,
         };

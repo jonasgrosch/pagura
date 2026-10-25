@@ -14,6 +14,7 @@ use crate::band::{Prep, RASTER_WORK, RENDER_BYTES, curve, raster};
 use crate::flatten::{Hull, Inspection};
 use crate::{FillRule, Path, Point, Segment, Transform, quantize_unit};
 use pagura_core::{Error, Meter, Result};
+use std::sync::Arc;
 
 const ROUNDS: i32 = 12;
 
@@ -21,6 +22,69 @@ const ROUNDS: i32 = 12;
 /// ordinary kernel's rounding margin. This is an arithmetic admission
 /// bound, not a source-curve approximation allowance.
 const DIRECT: f64 = 1.0 / (255.0 * 1024.0);
+
+/// Original controls and reusable certification facts for one linear map.
+/// The Arc replaces the original Path's Arc; placement data stays borrowed.
+#[derive(Debug)]
+pub(in crate::band) struct Proof {
+    pub(super) outline: Path,
+    pub(super) linear: Transform,
+    direct: Option<Direct>,
+    curved: bool,
+    share: f64,
+    whole: f64,
+    shares: Option<Shares>,
+}
+
+impl Proof {
+    pub(super) fn new(
+        outline: &Path,
+        linear: Transform,
+        relative: Option<&Relative>,
+        bytes: &mut Meter,
+    ) -> Result<Arc<Self>> {
+        bytes.charge(size_of::<Self>() + 2 * size_of::<usize>())?;
+        let outline = outline.clone_with_bytes(bytes)?;
+        let direct = relative.and_then(|relative| Direct::new(&outline, linear, relative));
+        let curved = outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }));
+        let (curves, share) = area_share(&outline, true);
+        let whole = outward(f64::from(u32::try_from(curves).unwrap_or(u32::MAX)) * share);
+        // Ordinary analytic placements need no boxes. Cache them for the
+        // other glyphs only if the owner can retain them; a tight owner
+        // budget leaves the same transient, per-placement construction.
+        let before = bytes.used();
+        let shares = if direct.is_none() && curved {
+            if let Ok(shares) = Shares::new(&outline, (linear, share), bytes) {
+                shares
+            } else {
+                bytes.refund(bytes.used() - before);
+                None
+            }
+        } else {
+            None
+        };
+        Ok(Arc::new(Self {
+            outline,
+            linear,
+            direct,
+            curved,
+            share,
+            whole,
+            shares,
+        }))
+    }
+
+    #[cfg(test)]
+    pub(super) fn retained_bytes(&self) -> usize {
+        size_of::<Self>()
+            + 2 * size_of::<usize>()
+            + self.outline.retained_bytes()
+            + self.shares.as_ref().map_or(0, Shares::bytes)
+    }
+}
 
 /// Cached once per source outline and linear map. Kept quadratics remove
 /// reduction error, but not cancellation in H or mapping and translation.
@@ -84,31 +148,21 @@ struct Source<'a> {
 
 impl<'a> Source<'a> {
     fn of(edges: &'a GlyphEdges, origin: Point, work: &mut Meter) -> Result<Option<Self>> {
-        let (outline, linear, points) = match &edges.kind {
-            Kind::Curve {
-                outline,
-                linear,
-                point,
-                ..
-            } => (outline.as_ref(), *linear, point.as_slice()),
-            Kind::Polygon {
-                source: Some((outline, linear)),
-                points,
-                ..
-            } => (outline.as_ref(), *linear, points.as_slice()),
-            Kind::Polygon { source: None, .. } => return Ok(None),
+        let Some(proof) = edges.source() else {
+            return Ok(None);
         };
+        let points = match &edges.kind {
+            Kind::Curve { point, .. } => point.as_slice(),
+            Kind::Polygon { points, .. } => points.as_slice(),
+        };
+        let (outline, linear) = (&proof.outline, proof.linear);
         work.charge(outline.segments().len())?;
-        Ok(outline
-            .segments()
-            .iter()
-            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
-            .then_some(Self {
-                outline,
-                linear,
-                origin,
-                points,
-            }))
+        Ok(proof.curved.then_some(Self {
+            outline,
+            linear,
+            origin,
+            points,
+        }))
     }
 }
 
@@ -124,6 +178,9 @@ pub(super) fn certify(
         return Ok(shape);
     }
     let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+    let Some(proof) = edges.source() else {
+        return Ok(shape);
+    };
     let Some(source) = Source::of(edges, origin, &mut work)? else {
         return Ok(shape);
     };
@@ -133,12 +190,18 @@ pub(super) fn certify(
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
-    let (curves, share) = area_share(outline, true);
-    let whole = outward(f64::from(u32::try_from(curves).unwrap_or(u32::MAX)) * share);
-    let shares = Shares::new(outline, (linear, share), &mut bytes)?;
-    let share_bytes = shares
-        .as_ref()
-        .map_or(0, |shares| shares.boxes.capacity() * size_of::<[f64; 4]>());
+    let owned;
+    let shares = if let Some(shares) = &proof.shares {
+        // The same per-placement reservation as transient construction:
+        // caching must not change render-budget admission.
+        bytes.charge(shares.bytes())?;
+        Some(shares)
+    } else {
+        owned = Shares::new(outline, (linear, proof.share), &mut bytes)?;
+        owned.as_ref()
+    };
+    let whole = proof.whole;
+    let share_bytes = shares.as_ref().map_or(0, |shares| shares.bytes());
     for round in 0..=ROUNDS {
         work.charge_product(outline.segments().len(), 2)?;
         let placement = placement_error(outline, linear, origin, &shape);
@@ -277,8 +340,8 @@ fn exact(edges: &GlyphEdges, origin: Point, shape: &Shape, options: &Prep<'_>) -
     analytic(shape)
         && options.clip.and_then(|clip| clip.paths()).is_none()
         && edges
-            .direct
-            .as_ref()
+            .source()
+            .and_then(|source| source.direct.as_ref())
             .is_some_and(|direct| direct.admits(origin))
 }
 
@@ -323,12 +386,16 @@ fn mapped_magnitude(outline: &Path, linear: Transform, origin: Point) -> f64 {
 
 /// Each curve's share of a polygon's area allowance and the boxes of the
 /// hulls that spend it, relative to the glyph origin.
+#[derive(Debug)]
 struct Shares {
     share: f64,
     boxes: Vec<[f64; 4]>,
 }
 
 impl Shares {
+    fn bytes(&self) -> usize {
+        self.boxes.capacity() * size_of::<[f64; 4]>()
+    }
     /// `None` for an outline with cubics, whose reduced quadratics may
     /// leave their control boxes.
     fn new(
@@ -827,6 +894,21 @@ mod tests {
         assert!((2.0 * share..1.01 * AREA).contains(&within(100, 50, 30)));
         // Below the bumps' boxes.
         assert_eq!(within(100, 60, 30), 0.0);
+        // Keeping the same boxes charges their owner. If they do not fit,
+        // construction still succeeds and placements build them transiently.
+        let mut bytes = crate::testing::bytes();
+        let proof = Proof::new(&path, Transform::IDENTITY, None, &mut bytes).unwrap();
+        let cached = proof.shares.as_ref().unwrap();
+        assert_eq!(cached.boxes, shares.boxes);
+        assert_eq!(bytes.used(), proof.retained_bytes());
+        let essential = bytes.used() - cached.bytes();
+        let mut bytes = Meter::new(essential, "test");
+        let tight = Proof::new(&path, Transform::IDENTITY, None, &mut bytes).unwrap();
+        assert!(tight.shares.is_none());
+        assert_eq!(tight.whole, proof.whole);
+        assert_eq!(tight.share, proof.share);
+        assert_eq!(bytes.used(), essential);
+        assert_eq!(bytes.used(), tight.retained_bytes());
         // A certified polygon shares the allowance among at most eight
         // curves; one used as it is, among all of them.
         let mut many = PathBuilder::new();
@@ -885,8 +967,7 @@ mod tests {
             path.move_to(Point::new(2.25, 4.25));
             path.close();
             let path = path.finish();
-            let edges =
-                std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+            let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
             for band_height in [1, 3, 16, 32] {
                 let options = Prep {
                     area: Area {
@@ -958,9 +1039,8 @@ mod tests {
         path.close();
         path.move_to(Point::new(2.25, 4.25));
         path.close();
-        let edges = std::sync::Arc::new(
-            GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
-        );
+        let edges =
+            Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
         let options = Prep {
             area: Area {
                 region: DeviceRect {
@@ -1080,8 +1160,7 @@ mod tests {
         path.line_to(Point::new(m + 2.0, 0.0)).unwrap();
         path.close();
         let path = path.finish();
-        let edges =
-            std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
         assert!(edges.curved());
         let origin = Point::new(-98_302.997_063_444_05, 1.0 - m);
         let options = Prep {
@@ -1157,9 +1236,8 @@ mod tests {
             .unwrap();
             path.close();
         }
-        let edges = std::sync::Arc::new(
-            GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
-        );
+        let edges =
+            Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
         let options = Prep {
             area: Area {
                 region: DeviceRect {
@@ -1287,8 +1365,7 @@ mod tests {
             (actual - exact).abs() <= error + 1e-15,
             "clip area{actual} ±{error} excludes analytic {exact}"
         );
-        let edges =
-            std::sync::Arc::new(GlyphEdges::new(&mark, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        let edges = Arc::new(GlyphEdges::new(&mark, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
         assert_eq!(
             super::super::place(&edges, Point::default(), &options)
                 .unwrap_err()
@@ -1318,8 +1395,7 @@ mod tests {
             path.close();
         }
         let path = path.finish();
-        let edges =
-            std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
         assert!(!edges.curved());
         let area = Area {
             region: DeviceRect {

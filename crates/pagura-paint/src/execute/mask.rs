@@ -55,7 +55,7 @@ impl Executor<'_> {
             self.run(frame, above);
             let ws = &mut *self.ws;
             let read = Read {
-                page: &ws.page,
+                page: ws.page.pixels(),
                 wide: &ws.wide,
                 levels: &ws.levels,
             };

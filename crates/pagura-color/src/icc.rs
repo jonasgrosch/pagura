@@ -220,23 +220,27 @@ impl Profile {
     ) {
         const CHUNK: usize = 32;
         let count = count.max(1);
-        let out = out.as_chunks_mut::<3>().0;
         let Ok(transform) = self.forward(intent) else {
-            out.fill([0.0; 3]);
+            out.as_chunks_mut::<3>().0.fill([0.0; 3]);
             return;
         };
+        let batch = crate::batch::Batch::new((inputs, count), (out, 3));
         let arithmetic = &mut Arithmetic::default();
         let staged = !self.lab_input && intent != Intent::Absolute;
         let (Forward::Matrix { matrix, curves }, true) = (transform, staged) else {
-            for (inputs, out) in inputs.chunks_exact(count).zip(out) {
-                *out = cie::linear_srgb(self.xyz(transform, inputs, intent, arithmetic));
+            for (inputs, out) in batch.points() {
+                out.copy_from_slice(&cie::linear_srgb(
+                    self.xyz(transform, inputs, intent, arithmetic),
+                ));
             }
             return;
         };
         let mut values = [[0.0; CHUNK]; 3];
-        for (inputs, out) in inputs.chunks(CHUNK * count).zip(out.chunks_mut(CHUNK)) {
-            let len = out.len().min(inputs.len() / count);
-            for (i, inputs) in inputs.chunks_exact(count).take(len).enumerate() {
+        for chunk in batch.chunks(CHUNK) {
+            let (inputs, out) = chunk.parts();
+            let out = out.as_chunks_mut::<3>().0;
+            let len = out.len();
+            for (i, inputs) in inputs.chunks_exact(count).enumerate() {
                 for (channel, values) in values.iter_mut().enumerate() {
                     values[i] = inputs.get(channel).map_or(0.0, |&v| v.clamp(0.0, 1.0));
                 }
@@ -244,7 +248,7 @@ impl Profile {
             for (curve, values) in curves.iter().zip(&mut values) {
                 curve.evaluate_line(&mut values[..len], arithmetic);
             }
-            for (i, out) in out.iter_mut().take(len).enumerate() {
+            for (i, out) in out.iter_mut().enumerate() {
                 let xyz = cie::map(*matrix, [values[0][i], values[1][i], values[2][i]]);
                 *out = cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz));
             }

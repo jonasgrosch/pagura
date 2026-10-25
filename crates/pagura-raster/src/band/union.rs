@@ -24,7 +24,7 @@
 //! rather than every crossing and end of the row times every piece across
 //! it. Coverage continuing across a cut needs no side there.
 
-use super::edges::{Line, PLAIN_HEIGHT, PLAIN_LIMIT};
+use super::edges::Line;
 use crate::FillRule;
 use crate::geometry::{greater, lesser};
 use pagura_core::{Error, Meter, Result};
@@ -652,9 +652,7 @@ impl Lane {
             (line.b, line.a)
         };
         let height = bottom.y - top.y;
-        let exact = top.x.abs().max(bottom.x.abs()) > PLAIN_LIMIT
-            || top.y.abs().max(bottom.y.abs()) > PLAIN_LIMIT
-            || height < PLAIN_HEIGHT;
+        let exact = !line.plain();
         Self {
             top,
             slope: (bottom.x - top.x) / height,
