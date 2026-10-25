@@ -878,28 +878,25 @@ impl Items<'_> {
                 // Count every visited side, including those whose placed
                 // endpoints collapse to a horizontal line.
                 work = work.saturating_add(view.raw_count().unwrap_or(usize::MAX));
-                view.for_each(|line| {
-                    if !line.is_horizontal() {
-                        // The owned all-items path adds the default origin
-                        // to already placed endpoints; keep its signed zeros.
-                        let line = Line {
-                            a: line.a + Point::default(),
-                            b: line.b + Point::default(),
-                        };
-                        work += Self::line::<MEASURE>(cells, line);
-                    }
-                });
+                // A call per side would cost about what its one-row piece
+                // does: the side's work is inlined into the loop.
+                view.for_each(
+                    #[inline(always)]
+                    |line| {
+                        if !line.is_horizontal() {
+                            // The owned all-items path adds the default origin
+                            // to already placed endpoints; keep its signed zeros.
+                            let line = Line {
+                                a: line.a + Point::default(),
+                                b: line.b + Point::default(),
+                            };
+                            work += Self::line::<MEASURE>(cells, line);
+                        }
+                    },
+                );
             }
         }
-        for m in self.curves {
-            if cells.reaches(m.x0.min(m.x1) + origin.x) {
-                work += if MEASURE {
-                    cells.curve_measured(m, origin)
-                } else {
-                    cells.curve(m, origin)
-                };
-            }
-        }
+        work += cells.curves::<MEASURE>(self.curves, origin);
         if let Lines::Slice {
             point: Some(glyph), ..
         } = &self.lines
