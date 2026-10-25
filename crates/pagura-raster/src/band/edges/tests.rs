@@ -10,7 +10,7 @@ fn colliding_relink_keys_use_bounded_lookup_and_release_the_table() {
     let mut bytes = crate::testing::bytes();
     bytes.charge(7).unwrap();
     let firsts = Firsts::new(&sides, &mut bytes).unwrap();
-    assert!(firsts.places.is_empty());
+    assert_eq!(firsts.places, [] as [usize; 0]);
     assert_eq!(bytes.used(), 7);
     for (i, &(key, _)) in sides.iter().enumerate() {
         assert_eq!(firsts.get(&sides, key), i);
