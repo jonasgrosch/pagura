@@ -9,6 +9,30 @@ and verified outputs. A fast average cannot hide a slow or incorrect cell.
 Unbound workloads, missing engines, unattested runners and unimplemented
 cross-platform/resolution/concurrency aggregation still block release.
 
+## Capability inventory (G00)
+
+`capabilities.json` is the initial source-inspection ledger for the
+[competitive plan](../docs/COMPETITIVE_PARITY.md). Its generated
+[review view](../docs/CAPABILITIES.md) separates library, CLI, host and viewer
+support. Literal feature tags are review candidates, not confirmed gaps.
+Every baseline cell is explicitly unprobed; schema 1 rejects supported/unsupported
+or N/A claims until G01 defines executable probe evidence and build identities.
+
+```sh
+uv run --locked --offline python tools/capabilities.py --check
+# After reviewing ledger edits, regenerate the checked view:
+uv run --locked --offline python tools/capabilities.py
+```
+
+The check validates IDs, owners, packages, fixture/requirement references,
+LF-normalized source hashes, the literal-tag snapshot and the generated view.
+Regeneration never refreshes source hashes or reclassifies a tag automatically.
+When source evidence changes, review the affected observations before updating
+their hashes. Tests/fixtures are references to existing evidence, not new run
+results. The scan is lexical: inline tests/comments may appear; macros, dynamic
+tags, live call-site classification and untagged APIs still need G00 review.
+No competitor download, engine invocation or product behavior change occurs.
+
 ## Offline checks and explicit competitor setup
 
 ```sh

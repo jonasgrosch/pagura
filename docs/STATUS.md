@@ -14,6 +14,11 @@ Library support, PDF integration and viewer support are listed separately where
 they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
+G00 is underway in the [checked inventory](CAPABILITIES.md). It records scoped
+source observations and a tag-review queue; all competitor cells are unprobed.
+Its checks prevent stale source evidence and missing baseline cells, but do not
+execute PDF feature tests or establish parity.
+
 ## Capability matrix
 
 | Area | Implemented | Remaining boundary |

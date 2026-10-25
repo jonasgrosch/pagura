@@ -2,9 +2,11 @@
 
 Status: proposed implementation plan, reconciled against `render/one-pass` at
 `19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
-The documentation reconciliation is delivered; the implementation work below
-is pending. Component names identify ownership, not assigned people or active
-work. [STATUS.md](STATUS.md) records what exists now.
+The documentation reconciliation is delivered. G00 has started with the
+[checked capability inventory](CAPABILITIES.md); its call-site adjudication,
+exhaustive API inventory and all runtime comparisons remain open. Other packages
+below are pending. Component names identify ownership, not assigned people.
+[STATUS.md](STATUS.md) records what exists now.
 
 ## Baseline and consolidation
 
@@ -112,7 +114,13 @@ sizes the valid, baseline-supported cases.
 
 Owner: `references/requirements`, `docs`, `benchmarks`; depends on no new product code.
 
-- Add `benchmarks/capabilities.json` and a checked human-readable view. Each row
+- **Started:** `benchmarks/capabilities.json`, its generated
+  [review view](CAPABILITIES.md), and `tools/capabilities.py --check` now track
+  26 scoped source observations, 90 literal-tag candidates and 156 unprobed
+  comparison cells. Source hashes, fixture/requirement references and view drift
+  are checked in `tools/check.py`. Schema 1 accepts source inspection only;
+  it cannot turn a tag into a confirmed gap or an unprobed baseline into N/A.
+- Extend the ledger and checked human-readable view. Each completed row
   records ID, operation, feature/subvariant, source locator, current Pagura layer,
   missing integration, work package, competitor build/API, fixtures, oracle,
   result, source/binary/corpus hashes and last validation command.
@@ -533,8 +541,9 @@ performance superiority remain separate claims.
 Start with these reviewable changes; each includes fixtures and its ledger/status
 update. Reorder later display work using G01's measured failure frequencies.
 
-1. G00 schema, checked inventory view and registry reconciliation. No product
-   behaviour changes; classify all existing refusals and API/integration gaps.
+1. G00 schema and checked inventory view are started. Next: adjudicate the
+   candidate call sites and expand/reconcile the API and requirement inventory.
+   No product behaviour changes; classify actual refusals and integration gaps.
 2. G01 adapter controls and current corpus baseline. Publish reproducible summaries
    and the ordered queue of valid missing features, not a single success percentage.
 3. R02 embedded ICC/sYCC interpretation and colour precedence, using existing

@@ -1,0 +1,1658 @@
+{
+  "schema": 1,
+  "audited_revision": "19059e68448288ccad84a3bc2f4c6c69c5142e2f",
+  "evidence_kind": "source-inspection",
+  "engines": [
+    "pdfium",
+    "mupdf",
+    "pdfjs",
+    "poppler",
+    "hayro",
+    "quartz"
+  ],
+  "source_files": {
+    "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
+    "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
+    "corpus/manifests/paint.json": "e0898bd0997b6f264e948ac843e687742d067c339d4ea16334820b37af2d4959",
+    "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
+    "crates/pagura-appearance/src/annotation/tests.rs": "9535a7eca8ad1a1ee5e315e2e7fe6e3a23e4add357db7588a373c10c61d83d0c",
+    "crates/pagura-appearance/src/form.rs": "d33b9c7d017538680ad7e85be1c0be4ab94e9c4ba33794e53e36abeb0a23041a",
+    "crates/pagura-cli/src/commands.rs": "f196523039edec564386798a8cbdc81095fbbdb16fdd0966195243bf361fe461",
+    "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
+    "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
+    "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
+    "crates/pagura-color/src/features.rs": "d41d21ac1bb7622de6e5fb3a6955d06bfd31ab84af27ac891efc0ac04adb6bd3",
+    "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
+    "crates/pagura-document/src/features.rs": "ef3d5f167a74e2245076b32ecdda566c1c3e47c24fa082c17a0cd74a15026e29",
+    "crates/pagura-document/src/lib.rs": "c1437ec68fde850daa0c1ef9052e45eb07227d9a53586a90ab276c071bd8e86c",
+    "crates/pagura-document/src/load.rs": "c4d1639daf7f46742438c831b882d90d448ae2ef5332db53c9ea766b5ed97864",
+    "crates/pagura-document/src/navigation.rs": "bfad182ebe03026084e27c849ee17f2e6fabdc62b1d6deb35c2601982922c45e",
+    "crates/pagura-document/src/navigation/actions.rs": "92f49843f5d88df1e1d7c75e7e1ba7bc4c03497d49ab7fdcc355c07881d18bcd",
+    "crates/pagura-document/src/signatures.rs": "ddd26dd2f51712107ddb1b1e5ebea18caf1c7b3707ab6d838b34278cc9a08c6e",
+    "crates/pagura-document/src/signatures/change_tests.rs": "aa06cc1d51b037fce2b5f0f357bfa46f7e792b96f25a40cbd86c81a17aa2e809",
+    "crates/pagura-document/src/signatures/model.rs": "3a63fbb6d9aa873fe0cc5ee90a14046f0bb5d7187955c754663c762d6b98813f",
+    "crates/pagura-extract/src/features.rs": "96c570d9e51e100d7e5ec75c08607d65e22038c0f5db1c99322ee04987dbd864",
+    "crates/pagura-font/README.md": "b06d0bae9d8fdb78ad171395d94278855a71bbb14a753771d20a67ed2fec6de5",
+    "crates/pagura-font/src/lib.rs": "9a20357ed959f96ae1450c9c4bf3b74eb38631ba468ff4729de0d3e49404bb0d",
+    "crates/pagura-font/tests/vectors/static_fonts.rs": "fa510534b535daaf30a1253e84566fdaa5eabc3b3c1bd747d948bc898ff78040",
+    "crates/pagura-image/src/features.rs": "82c60039d2f352e03f87d1748bd9b55d940d96c3a4442d575eb75cd647c7c0f3",
+    "crates/pagura-image/src/jbig2/mod.rs": "0683dce08a1aac00f4fea6a9a981f00ebe79567b3437c5e7d682aa6ca768be2e",
+    "crates/pagura-image/src/jpx/mod.rs": "e451f5747dbe97d658a2832902687fcc8ae72b74bf16b11a22015af32b657be7",
+    "crates/pagura-image/src/jpx_image.rs": "d8dfbd61589f2dadef1548831573babf010eb861347f9fbc03d4e5fc6eb4c96f",
+    "crates/pagura-image/src/source.rs": "bc057ac77c521d2cf13f49cbcbc711a0f8c7042d78d25691fd55093540d56dec",
+    "crates/pagura-interpret/src/machine/annotations.rs": "258a4b488ab721b2fac962ebd4b7160b927e9a76e7ab0f0ae38f717a158ffade",
+    "crates/pagura-interpret/src/machine/image/describe.rs": "08cb77bde43ce974377d5d46636c8532241431c404ec21ec44af59d8210544c5",
+    "crates/pagura-interpret/src/resources/group.rs": "8e020418885f5fdd2376a54ab772a202fb7b01540ba6b527d48d83a23dfa0281",
+    "crates/pagura-interpret/src/resources/optional.rs": "7f4b11d80f0458cdf4e9a1c01fdcb6869ef398fc44d5ed93337e1a7465e199b1",
+    "crates/pagura-interpret/src/resources/pattern.rs": "f38e0ceeb427c250e4034f61d2bcdc13bf73b67ee7d5489b737611da3a1cb92d",
+    "crates/pagura-paint/src/execute.rs": "9a6915b506f51a374582dcf6ddbcc2b4eb57c74f3aaad21cf2d9787f598ad4c0",
+    "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
+    "crates/pagura-paint/src/prepare/planner/patterns.rs": "1e37d4341ee851c552b43510a9d97280ca62d2086f14659a6b1d680c2f4f95aa",
+    "crates/pagura-paint/src/prepare/storage.rs": "9bd79bb6706725419f663b2f76db00d3561f3deb021c27b2b2489a1c921fd54d",
+    "crates/pagura-paint/src/prepare/tests/formats.rs": "66cc22c9ae8219158c8b5b372abab98806e0a7dde0c92e56367c2b67840ef66d",
+    "crates/pagura-paint/src/prepare/tests/streaming.rs": "4b0f2831d7045dd10be103fbc6a6bbb931b0cd837e6ce11dbcbbe2926649c0da",
+    "crates/pagura-paint/src/source/image/tests.rs": "87ff805ddc7f319ef9602f45707a9bce0f8c9a40c1ec32f5c7a40a855c705526",
+    "crates/pagura-paint/src/source/image/texels.rs": "63abdd692cf82a1185be5816d107dd6a4c0ef4b4c20bb1e07e0ca600cdb8e36d",
+    "crates/pagura-pki/README.md": "78b4b7263e9b6d8dffbb680c9c7a704d5467927792da30d0a5933fa98c8262a5",
+    "crates/pagura-pki/src/validation/revocation/mod.rs": "56cd5b248aea2586f0da10540f165e2dc3393aa32ade55f52bc7f0ddba2d789e",
+    "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
+    "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
+    "crates/pagura-text/src/substitute/cid.rs": "c960f139a2f44adee03a30efb7ed71cc057b5632a60e2f2466b54c117a23ab30",
+    "crates/pagura-write/src/lib.rs": "c51a1ce95091e024ba999884b6b1f558f9723426f0c7b248cf079887d1fdbb54",
+    "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
+    "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
+    "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
+    "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
+    "crates/pagura/tests/api/document.rs": "e2e02c9095b5fb66e6411f4ada0bdbe524bfb574049ce60997889f3f89f8b577",
+    "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
+    "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
+    "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
+    "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
+    "crates/pagura/tests/api/text.rs": "de81815b47c165743e9e225f1b4b52bd078fad0024b6ef9921e6db41c47eda59",
+    "crates/pagura/tests/api/write.rs": "417bee3185cc44d223c3e64cc1986fe96f7f4792be93688dd5fb93ee1036fadc",
+    "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
+    "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
+    "references/requirements/content.json": "59264eee5c51c4865f141bf4fb6967a117a60b3c6bc23600fa13b1e6bdc107c8",
+    "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
+    "references/requirements/document.json": "5688cb16f99ed5f68cf8edee2ce49ebcfe514b57855d7ef65598a6efe4dd27fc",
+    "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
+    "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
+    "references/requirements/image.json": "3410e86abc83f72875194f80fe95c16e5719b091698d440adbfbd7d65133032a",
+    "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
+    "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
+    "references/requirements/paint.json": "0adf6b772c358b2bb39ec78c5b2ee14a40162fe37384be7d2bc9603e8de5b2a0",
+    "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
+    "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
+    "references/requirements/text.json": "41fb7d254cfe2c369546ebe19d72db4f2223c3b8f254bb408369da4aed4aef52",
+    "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
+    "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
+    "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275"
+  },
+  "capabilities": [
+    {
+      "id": "document.structure",
+      "package": "R01",
+      "operation": "open",
+      "feature": "PDF file structures and reported recovery",
+      "owners": [
+        "pagura-core",
+        "pagura-document"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction.",
+      "remaining": "Current-corpus recovery classification; external resources require a host contract.",
+      "sources": [
+        "crates/pagura-document/src/lib.rs",
+        "crates/pagura-document/src/features.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/document.rs"
+      ],
+      "requirements": [
+        "page-tree",
+        "xref-streams",
+        "object-streams",
+        "document-revisions",
+        "recovery-reported"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "document.range-input",
+      "package": "D01",
+      "operation": "load",
+      "feature": "Range and linearization-aware loading",
+      "owners": [
+        "pagura-document",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Complete-buffer opening, lazy object caches and immutable source bytes are available.",
+      "remaining": "Immutable range sources, missing-data state, scoped loading, linearization and resumable host jobs (ADR 0035 proposed).",
+      "sources": [
+        "crates/pagura-document/src/lib.rs",
+        "crates/pagura-document/src/load.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/document.rs"
+      ],
+      "requirements": [
+        "document-loading-bounds"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "security.passwords",
+      "package": "D03",
+      "operation": "open",
+      "feature": "Password security and encoding",
+      "owners": [
+        "pagura-crypto",
+        "pagura-document",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion.",
+      "remaining": "Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01.",
+      "sources": [
+        "crates/pagura-crypto/src/lib.rs",
+        "crates/pagura-document/src/features.rs",
+        "crates/pagura-cli/src/password.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "security-r2",
+        "security-r3",
+        "security-r4",
+        "security-r5-extension",
+        "security-r6",
+        "security-saslprep",
+        "password-text-encoding"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "fonts.programs",
+      "package": "R04",
+      "operation": "render",
+      "feature": "Embedded font programs",
+      "owners": [
+        "pagura-font",
+        "pagura-text"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends.",
+      "remaining": "Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory.",
+      "sources": [
+        "crates/pagura-font/README.md",
+        "crates/pagura-font/src/lib.rs"
+      ],
+      "tests": [
+        "crates/pagura-font/tests/vectors/static_fonts.rs"
+      ],
+      "requirements": [
+        "font-truetype",
+        "font-cff",
+        "font-type1"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "fonts.cid-substitution",
+      "package": "R04",
+      "operation": "render",
+      "feature": "CID font substitution",
+      "owners": [
+        "pagura-text",
+        "pagura-data"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works.",
+      "remaining": "Vertical substituted glyph forms/metrics and unavailable provider/collection coverage.",
+      "sources": [
+        "crates/pagura-text/src/substitute/cid.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "text-cid-substitution",
+        "paint-bundled-cjk-substitute"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "images.codecs",
+      "package": "R03",
+      "operation": "decode",
+      "feature": "PDF image codec variants",
+      "owners": [
+        "pagura-image",
+        "pagura-codec"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1.",
+      "remaining": "Inventory valid residual JPEG, CCITT, JBIG2 and JPX variants rather than interpreting generic filter tags as total absence.",
+      "sources": [
+        "crates/pagura-image/src/features.rs",
+        "crates/pagura-image/src/jbig2/mod.rs",
+        "crates/pagura-image/src/jpx/mod.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "image-dct",
+        "image-ccitt",
+        "image-jbig2",
+        "image-jpx"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "images.jpx-alpha",
+      "package": "R02",
+      "operation": "render",
+      "feature": "JPX embedded straight/premultiplied alpha",
+      "owners": [
+        "pagura-image",
+        "pagura-paint"
+      ],
+      "surfaces": {
+        "library": "implemented",
+        "cli": "implemented",
+        "host": "implemented",
+        "viewer": "implemented"
+      },
+      "implemented": "SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication.",
+      "remaining": "Indexed opacity/channel mapping and additional colour/layout interactions are separate remaining R02 work.",
+      "sources": [
+        "crates/pagura-image/src/jpx_image.rs",
+        "crates/pagura-paint/src/source/image/texels.rs"
+      ],
+      "tests": [
+        "crates/pagura-paint/src/source/image/tests.rs"
+      ],
+      "requirements": [
+        "jpx-pdf-contract",
+        "paint-image-masks"
+      ],
+      "fixtures": [
+        "paint/image-jpx-alpha-1",
+        "paint/image-jpx-alpha-2"
+      ],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "images.jpx-colour",
+      "package": "R02",
+      "operation": "render",
+      "feature": "JPX embedded colour interpretation",
+      "owners": [
+        "pagura-image",
+        "pagura-interpret",
+        "pagura-color"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping.",
+      "remaining": "Embedded ICC/sYCC and remaining precedence/channel-layout integration.",
+      "sources": [
+        "crates/pagura-image/src/jpx_image.rs",
+        "crates/pagura-interpret/src/machine/image/describe.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "jpx-pdf-contract",
+        "paint-image-decode"
+      ],
+      "fixtures": [
+        "paint/image-jpx-icc-explicit",
+        "image/jpx-container-colour-18"
+      ],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "colour.transparency",
+      "package": "R05",
+      "operation": "render",
+      "feature": "Group colour, transparency and overprint",
+      "owners": [
+        "pagura-color",
+        "pagura-interpret",
+        "pagura-paint"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display.",
+      "remaining": "Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations.",
+      "sources": [
+        "crates/pagura-interpret/src/resources/group.rs",
+        "crates/pagura-color/src/features.rs",
+        "crates/pagura-paint/src/execute/transfer.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/overprint.rs"
+      ],
+      "requirements": [
+        "transparency-native-components",
+        "transparency-calibrated-boundary",
+        "overprint-preview"
+      ],
+      "fixtures": [
+        "content/group-colour-DeviceGray",
+        "content/group-colour-DeviceCMYK"
+      ],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "render.graphics",
+      "package": "R06",
+      "operation": "render",
+      "feature": "Graphics combinations and exact rendering",
+      "owners": [
+        "pagura-interpret",
+        "pagura-paint",
+        "pagura-raster"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns.",
+      "remaining": "Valid singular-transform/pattern refusals and independent accuracy evidence for difficult geometry.",
+      "sources": [
+        "crates/pagura-interpret/src/resources/pattern.rs",
+        "crates/pagura-paint/src/prepare/planner/patterns.rs",
+        "crates/pagura-paint/src/prepare/storage.rs"
+      ],
+      "tests": [
+        "crates/pagura-paint/src/prepare/tests/formats.rs"
+      ],
+      "requirements": [
+        "content-vector-pipeline",
+        "content-tiling",
+        "content-compositor-precision"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "annotations.appearances",
+      "package": "V01",
+      "operation": "render",
+      "feature": "Annotation appearance synthesis",
+      "owners": [
+        "pagura-appearance",
+        "pagura-interpret"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets.",
+      "remaining": "Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states.",
+      "sources": [
+        "crates/pagura-appearance/src/annotation.rs",
+        "crates/pagura-interpret/src/machine/annotations.rs"
+      ],
+      "tests": [
+        "crates/pagura-appearance/src/annotation/tests.rs"
+      ],
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "forms.workflow",
+      "package": "V02",
+      "operation": "fill-save",
+      "feature": "AcroForm filling and persistence",
+      "owners": [
+        "pagura-document",
+        "pagura-appearance",
+        "pagura",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "unreviewed",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Text/choice/button filling, appearance generation, saved values and appearances, browser preview/discard/download.",
+      "remaining": "Rich text, broader encodings/transforms, generated button states and nested direct fields; XFA belongs to V03.",
+      "sources": [
+        "crates/pagura-appearance/src/form.rs",
+        "crates/pagura/src/editing/forms.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/editing.rs"
+      ],
+      "requirements": [
+        "forms-fill-text",
+        "forms-fill-button",
+        "forms-fill-choice",
+        "filled-form-save"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "interaction.scripts-xfa",
+      "package": "V03",
+      "operation": "interact",
+      "feature": "XFA and scripted actions",
+      "owners": [
+        "pagura-document",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Actions are inert views; XFA is detected; ordinary AcroForms have separate support.",
+      "remaining": "Explicit host capability/ADR decisions, XFA layout/data/events and baseline-supported script/action subsets.",
+      "sources": [
+        "crates/pagura-document/src/features.rs",
+        "crates/pagura-document/src/navigation/actions.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "forms-model",
+        "forms-actions"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "text.accessibility",
+      "package": "V04",
+      "operation": "extract",
+      "feature": "Text extraction and tagged accessibility",
+      "owners": [
+        "pagura-extract",
+        "pagura-text",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Geometric text/search, replacement text, a separate tagged logical view and a screen-reader-readable DOM layer.",
+      "remaining": "Logical-view integration into viewer accessibility, namespaces, remaining replacements and bidi/script reconstruction.",
+      "sources": [
+        "crates/pagura-extract/src/features.rs",
+        "web/text_layer.mjs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/text.rs"
+      ],
+      "requirements": [
+        "text-layout",
+        "text-search",
+        "text-logical-view",
+        "text-structure"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "viewer.layers-printing",
+      "package": "V05",
+      "operation": "interact",
+      "feature": "Optional content and print/export controls",
+      "owners": [
+        "pagura-interpret",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Optional-content evaluation with View usage; library/CLI overprint choices.",
+      "remaining": "Layer UI/configuration and Print/Export usage, print preferences and host/viewer overprint control.",
+      "sources": [
+        "crates/pagura-interpret/src/resources/optional.rs",
+        "crates/pagura-render/src/options.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "content-optional",
+        "content-usage",
+        "overprint-preview"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "render.band-output",
+      "package": "D01",
+      "operation": "render",
+      "feature": "Band output and cooperative stopping",
+      "owners": [
+        "pagura-paint",
+        "pagura-render",
+        "pagura-cli",
+        "pagura-host"
+      ],
+      "surfaces": {
+        "library": "implemented",
+        "cli": "partial",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "RenderContext lends final RGBA bands after preflight; fallible consumers and stops between bands; CLI streams PPM.",
+      "remaining": "Persistent pause/resume, host active-request cancellation and async backpressure; calls currently restart.",
+      "sources": [
+        "crates/pagura-render/src/context.rs",
+        "crates/pagura-paint/src/execute.rs",
+        "crates/pagura-cli/src/commands.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/streaming.rs",
+        "crates/pagura-paint/src/prepare/tests/streaming.rs"
+      ],
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "export.png",
+      "package": "D02",
+      "operation": "export",
+      "feature": "PNG/zlib output integration",
+      "owners": [
+        "pagura-codec",
+        "pagura-cli",
+        "pagura-host"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Whole-buffer PNG and DEFLATE encoders in the codec crate.",
+      "remaining": "Facade/CLI PNG output and incremental PNG/DEFLATE; extend existing algorithms and band output.",
+      "sources": [
+        "crates/pagura-codec/src/png.rs",
+        "crates/pagura-codec/src/flate/encode.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "filter-flate"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "export.image-assets",
+      "package": "D02",
+      "operation": "extract",
+      "feature": "Public image asset extraction",
+      "owners": [
+        "pagura-image",
+        "pagura-interpret",
+        "pagura"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "ImageSource describes encoded images and defers sample decoding for rendering.",
+      "remaining": "Asset/resource/occurrence inventory, exact-stream eligibility and normalized isolated-image export APIs.",
+      "sources": [
+        "crates/pagura-image/src/source.rs",
+        "crates/pagura-interpret/src/machine/image/describe.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "image-dictionaries",
+        "image-samples"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "document.services",
+      "package": "D02",
+      "operation": "inspect-edit",
+      "feature": "Typed document services",
+      "owners": [
+        "pagura-document",
+        "pagura"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Low-level immutable object access and typed navigation exist.",
+      "remaining": "Typed metadata/XMP, embedded/associated files, portfolios, thumbnails and their public workflows.",
+      "sources": [
+        "crates/pagura-document/src/lib.rs",
+        "crates/pagura-document/src/navigation.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/document.rs"
+      ],
+      "requirements": [
+        "navigation-trees"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "write.rewrite-encryption",
+      "package": "E01",
+      "operation": "save",
+      "feature": "Writing, full rewrite and encryption output",
+      "owners": [
+        "pagura-write",
+        "pagura"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "unreviewed",
+        "host": "unreviewed",
+        "viewer": "unreviewed"
+      },
+      "implemented": "Deterministic new PDF 1.7 output and classic/xref-stream incremental revisions.",
+      "remaining": "Full rewrite, object deletion/streams, PDF 2.0 output and encryption-on-write; modified saves currently require strict unencrypted input.",
+      "sources": [
+        "crates/pagura-write/src/lib.rs",
+        "crates/pagura/src/editing.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/write.rs",
+        "crates/pagura/tests/api/editing.rs"
+      ],
+      "requirements": [
+        "deterministic-writing",
+        "incremental-save"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "editing.general",
+      "package": "E02",
+      "operation": "edit",
+      "feature": "General document editing",
+      "owners": [
+        "pagura",
+        "pagura-document",
+        "pagura-appearance",
+        "web"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "unreviewed",
+        "host": "partial",
+        "viewer": "partial"
+      },
+      "implemented": "Immutable transactions, rollback, no-op byte preservation and form editing.",
+      "remaining": "Typed page/content/annotation authoring, merge/split, resource remapping, undo/redo and associated service edits.",
+      "sources": [
+        "crates/pagura/src/editing.rs",
+        "crates/pagura/src/editing/transaction.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/editing.rs"
+      ],
+      "requirements": [
+        "incremental-save",
+        "filled-form-save"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "editing.redaction",
+      "package": "E03",
+      "operation": "redact",
+      "feature": "Sanitizing redaction",
+      "owners": [
+        "pagura",
+        "pagura-write"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Incremental edits preserve prior revisions; they provide no sanitization guarantee.",
+      "remaining": "Content-aware removal plus full rewrite and independent hidden-content/canary scans.",
+      "sources": [
+        "crates/pagura/src/editing.rs",
+        "crates/pagura-write/src/lib.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "incremental-save"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "signatures.structure",
+      "package": "S01",
+      "operation": "verify",
+      "feature": "Historical signatures and structural change analysis",
+      "owners": [
+        "pagura-document",
+        "pagura"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "unreviewed",
+        "viewer": "missing"
+      },
+      "implemented": "Historical discovery, ByteRange/revision coverage and structural DocMDP/FieldMDP classification.",
+      "remaining": "Encrypted/repaired history and remaining transforms/exceptions; integrate results with save permission enforcement.",
+      "sources": [
+        "crates/pagura-document/src/signatures.rs",
+        "crates/pagura-document/src/signatures/model.rs"
+      ],
+      "tests": [
+        "crates/pagura-document/src/signatures/change_tests.rs"
+      ],
+      "requirements": [
+        "signature-byte-range",
+        "signature-revision-coverage",
+        "signature-permitted-changes"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "signatures.trust",
+      "package": "S01",
+      "operation": "verify",
+      "feature": "CMS integrity and PDF trust integration",
+      "owners": [
+        "pagura",
+        "pagura-pki",
+        "pagura-crypto",
+        "pagura-host",
+        "web"
+      ],
+      "surfaces": {
+        "library": "partial",
+        "cli": "partial",
+        "host": "unreviewed",
+        "viewer": "missing"
+      },
+      "implemented": "CMS/CAdES/RFC3161 integrity; separate host-anchored PKI path and offline complete/indirect/delta CRL APIs.",
+      "remaining": "PDF results still leave trust/time/revocation unchecked; connect real crypto and add OCSP, TSA and PAdES/LTV policy.",
+      "sources": [
+        "crates/pagura/src/signatures.rs",
+        "crates/pagura-pki/README.md",
+        "crates/pagura-pki/src/validation/revocation/mod.rs",
+        "crates/pagura-document/src/signatures/model.rs"
+      ],
+      "tests": [
+        "crates/pagura/tests/api/signatures.rs"
+      ],
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp",
+        "signature-results"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "signatures.creation",
+      "package": "S02",
+      "operation": "sign",
+      "feature": "PDF signature creation",
+      "owners": [
+        "pagura",
+        "pagura-write",
+        "pagura-host"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Verification-only primitives and original-byte-preserving incremental infrastructure.",
+      "remaining": "ADR for host signing provider, reservations, CMS/CAdES creation, timestamps and independent validation.",
+      "sources": [
+        "crates/pagura/src/signatures.rs",
+        "crates/pagura/src/editing.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "cms-integrity",
+        "incremental-save"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    },
+    {
+      "id": "profiles.validation",
+      "package": "C01",
+      "operation": "validate",
+      "feature": "PDF version/profile conformance",
+      "owners": [
+        "pagura-document",
+        "pagura"
+      ],
+      "surfaces": {
+        "library": "missing",
+        "cli": "missing",
+        "host": "missing",
+        "viewer": "missing"
+      },
+      "implemented": "Version headers and PDF/X print-intent declarations are recognized; this is not profile validation.",
+      "remaining": "Explicit PDF/A, PDF/UA, PDF/X and baseline-supported extension validators and conforming creation gates.",
+      "sources": [
+        "crates/pagura-document/src/lib.rs",
+        "crates/pagura-render/src/options.rs"
+      ],
+      "tests": [],
+      "requirements": [
+        "document-header-syntax",
+        "overprint-preview"
+      ],
+      "fixtures": [],
+      "comparisons": {
+        "pdfium": "unprobed",
+        "mupdf": "unprobed",
+        "pdfjs": "unprobed",
+        "poppler": "unprobed",
+        "hayro": "unprobed",
+        "quartz": "unprobed"
+      }
+    }
+  ],
+  "feature_tags": {
+    "annotation.appearance": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "appearance.border-style": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "appearance.default-appearance": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "appearance.font-encoding": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "appearance.text-matrix": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "appearance.update": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "appearance.widget-rotation": {
+      "sources": [
+        "crates/pagura-appearance/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "asn1.constructed-type": {
+      "sources": [
+        "crates/pagura-pki/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "asn1.universal-type": {
+      "sources": [
+        "crates/pagura-pki/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "ccitt.extension": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "colorspace.BlackPoint": {
+      "sources": [
+        "crates/pagura-color/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "colorspace.ICCBased": {
+      "sources": [
+        "crates/pagura-color/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "colorspace.unknown": {
+      "sources": [
+        "crates/pagura-color/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "document.historical-encryption": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "document.historical-source": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "edit.button-appearance": {
+      "sources": [
+        "crates/pagura/src/editing.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "edit.direct-field": {
+      "sources": [
+        "crates/pagura/src/editing.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "edit.encrypted": {
+      "sources": [
+        "crates/pagura/src/editing.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "edit.password": {
+      "sources": [
+        "crates/pagura/src/editing.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "edit.repaired": {
+      "sources": [
+        "crates/pagura/src/editing.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "edit.signed": {
+      "sources": [
+        "crates/pagura/src/editing.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "extgstate.UseBlackPtComp": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "filter.CCITTFaxDecode": {
+      "sources": [
+        "crates/pagura-codec/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "filter.DCTDecode": {
+      "sources": [
+        "crates/pagura-codec/src/lib.rs",
+        "crates/pagura-core/src/error.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "filter.JBIG2Decode": {
+      "sources": [
+        "crates/pagura-codec/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "filter.JPXDecode": {
+      "sources": [
+        "crates/pagura-codec/src/lib.rs",
+        "crates/pagura-image/src/jpx/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "filter.unknown": {
+      "sources": [
+        "crates/pagura-codec/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.cid-substitute-vertical": {
+      "sources": [
+        "crates/pagura-text/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.cmap-program": {
+      "sources": [
+        "crates/pagura-text/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.format": {
+      "sources": [
+        "crates/pagura-font/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.non-embedded": {
+      "sources": [
+        "crates/pagura-text/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.predefined-cmap": {
+      "sources": [
+        "crates/pagura-text/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.type1-postscript": {
+      "sources": [
+        "crates/pagura-font/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "font.variations": {
+      "sources": [
+        "crates/pagura-font/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "form.field-type": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "form.rich-text": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "form.xfa": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "function.calculator": {
+      "sources": [
+        "crates/pagura-color/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "graphics.singular-stroke": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "image.JPX-colour": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "image.JPX-sample-layout": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "image.embedded-alpha": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "image.inline-colour-length": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.extended-template": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.extension": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.halftone-region": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.huffman-table": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.mmr-extension": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.page-combination": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.pattern-dictionary": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.profile": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.refinement-region": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.segment-type": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.symbol-context": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.symbol-dictionary": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.symbol-refinement": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.text-layout": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.text-refinement": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.text-region": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jbig2.unknown-length": {
+      "sources": [
+        "crates/pagura-image/src/jbig2/mod.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jpeg.arithmetic": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jpeg.components": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jpeg.precision": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "jpeg.process": {
+      "sources": [
+        "crates/pagura-image/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "optionalcontent.usage": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "pattern.ExtGState": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "pattern.image-mask": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "pattern.tiling": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "predictor.dimensions": {
+      "sources": [
+        "crates/pagura-codec/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "raster.singular-pen": {
+      "sources": [
+        "crates/pagura-raster/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.Adobe-PubSec": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.CFM": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.V3": {
+      "sources": [
+        "crates/pagura-crypto/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.crypt-length": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.password-encoding": {
+      "sources": [
+        "crates/pagura-cli/src/password.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.revision": {
+      "sources": [
+        "crates/pagura-crypto/src/lib.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.unknown": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "security.version": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "shading.transform": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "signature.algorithm": {
+      "sources": [
+        "crates/pagura/src/signatures.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "stream.external": {
+      "sources": [
+        "crates/pagura-document/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "text.structure-content": {
+      "sources": [
+        "crates/pagura-extract/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "text.structure-namespace": {
+      "sources": [
+        "crates/pagura-extract/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "text.structure-replacement": {
+      "sources": [
+        "crates/pagura-extract/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "transparency.BM": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "transparency.group": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "transparency.group-colorspace": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "transparency.transfer": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "xobject.jpx-color": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    },
+    "xobject.subtype": {
+      "sources": [
+        "crates/pagura-interpret/src/features.rs"
+      ],
+      "review": "unreviewed"
+    }
+  }
+}
