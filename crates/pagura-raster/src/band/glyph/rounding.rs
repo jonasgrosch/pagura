@@ -14,7 +14,7 @@ use super::{GlyphEdges, Kind, Relative, area_share, flattened_with, point_sides,
 use crate::band::cells::Cells;
 use crate::band::clip::Paths;
 use crate::band::edges::{Bounds, Line, rows};
-use crate::band::shape::{Body, Frame, GlyphGeometry, Shape, Winding};
+use crate::band::shape::{Body, Frame, GlyphGeometry, Resolved, Shape, Winding};
 use crate::band::union::{Meters, Piece, Resolver};
 use crate::band::{DeviceRect, Prep, RASTER_WORK, RENDER_BYTES, curve, raster};
 use crate::flatten::{CurveStack, Flatness, Hull, Inspection};
@@ -201,10 +201,11 @@ pub(super) fn certify(
         if round == ROUNDS {
             break;
         }
-        shape = replacement(
-            source,
+        let rows = made(&mut known.rows, source, &mut bytes)?;
+        shape = replaced(
+            (edges, source, rows),
             shape,
-            &targets.boxes,
+            &targets,
             (options, round),
             Meters {
                 work: &mut work,
@@ -216,10 +217,11 @@ pub(super) fn certify(
 }
 
 /// The pixels found wrong so far, as the device boxes a replacement refines
-/// its curves at.
+/// its curves at, and their rows.
 #[derive(Default)]
 struct Targets {
     boxes: Vec<[f64; 4]>,
+    rows: Vec<u32>,
 }
 
 impl Targets {
@@ -235,12 +237,148 @@ impl Targets {
             bytes.reserve_capacity(&mut self.boxes, 1)?;
             self.boxes.push(target);
         }
+        if let Err(at) = self.rows.binary_search(&pixel.y) {
+            bytes.reserve_capacity(&mut self.rows, 1)?;
+            self.rows.insert(at, pixel.y);
+        }
         Ok(())
     }
 
     fn retained_bytes(&self) -> usize {
-        self.boxes.capacity() * size_of::<[f64; 4]>()
+        self.boxes.capacity() * size_of::<[f64; 4]>() + self.rows.capacity() * size_of::<u32>()
     }
+}
+
+/// The shape refined at the targets: its rows holding them where it can
+/// take them alone, else the whole replacement.
+fn replaced(
+    (edges, source, rows): (&GlyphEdges, Source<'_>, &Rows),
+    shape: Shape,
+    targets: &Targets,
+    (options, round): (&Prep<'_>, i32),
+    Meters { work, bytes }: Meters<'_>,
+) -> Result<Shape> {
+    let placed = replaced_rows(
+        (edges, source, rows),
+        shape,
+        targets,
+        (options, round),
+        Meters { work, bytes },
+    )?;
+    match placed {
+        Ok(shape) => Ok(shape),
+        Err(shape) => replacement(
+            source,
+            shape,
+            &targets.boxes,
+            (options, round),
+            Meters { work, bytes },
+        ),
+    }
+}
+
+/// The replacement of only the rows holding targets: each takes the row
+/// resolver's sides of the outline's items that reach it, flattened and
+/// refined as [`replacement`] flattens the whole outline. The cells of a
+/// row take only its own edges or sides, so the other rows keep their
+/// geometry, and the next round certifies every byte again. A shape that
+/// integrates quadratics, whose bound has no polygon allowance, a clip that
+/// can cut the outline, or a side beyond the scanned columns needs the
+/// whole replacement: the shape comes back.
+fn replaced_rows(
+    (edges, source, rows): (&GlyphEdges, Source<'_>, &Rows),
+    mut shape: Shape,
+    targets: &Targets,
+    (options, round): (&Prep<'_>, i32),
+    Meters { work, bytes }: Meters<'_>,
+) -> Result<std::result::Result<Shape, Shape>> {
+    let Source {
+        outline,
+        linear,
+        origin,
+        points,
+    } = source;
+    let slack = slack(source);
+    let unclipped =
+        edges
+            .hull
+            .zip(Frame::new(options))
+            .is_some_and(|([x0, y0, x1, y1], mut frame)| {
+                frame.fit([
+                    Point::new(x0 + origin.x - slack, y0 + origin.y - slack),
+                    Point::new(x1 + origin.x + slack, y1 + origin.y + slack),
+                ]);
+                frame.rect.is_none() && frame.paths.is_none()
+            });
+    if analytic(&shape) || !unclipped {
+        return Ok(Err(shape));
+    }
+    let before = bytes.used();
+    let scan = shape.scan();
+    let (left, right) = (scan.0 as f64, scan.1 as f64);
+    let mut resolved = Resolved::default();
+    let (mut lines, mut pieces, mut sides) = (Vec::new(), Vec::new(), Vec::new());
+    let mut resolver = Resolver::default();
+    for &y in &targets.rows {
+        let top = f64::from(y);
+        lines.clear();
+        rows.lines(
+            [top - origin.y, top + 1.0 - origin.y],
+            Making {
+                transform: linear,
+                shift: Some(origin),
+                flatness: Flatness::Area(area_share(outline, linear.determinant() != 0.0).1),
+                inspection: Inspection {
+                    hulls: None,
+                    work,
+                    rounding: 0.0,
+                    targets: &targets.boxes,
+                    offset: origin,
+                    factor: 16.0_f64.powi(-round - 1),
+                },
+            },
+            options.limits,
+            (&mut Vec::new(), &mut CurveStack::new()),
+            (&mut lines, bytes),
+        )?;
+        for &point in points {
+            // A floor cell belongs to the placed point.
+            bytes.reserve_capacity(&mut lines, 2)?;
+            lines.extend(point_sides(Point::new(
+                point.x + origin.x,
+                point.y + origin.y,
+            )));
+        }
+        pieces.clear();
+        bytes.reserve_capacity(&mut pieces, lines.len())?;
+        pieces.extend(lines.iter().filter_map(|&line| Piece::new(line, top, 0)));
+        work.charge(pieces.len())?;
+        sides.clear();
+        resolver.row(
+            &pieces,
+            &[FillRule::NonZero],
+            top,
+            (&mut sides, Meters { work, bytes }),
+        )?;
+        if sides
+            .iter()
+            .any(|side| side.a.x.min(side.b.x) < left || side.a.x.max(side.b.x) > right)
+        {
+            bytes.refund(bytes.used().saturating_sub(before));
+            return Ok(Err(shape));
+        }
+        resolved.push(y, &sides, bytes)?;
+    }
+    drop((lines, pieces, sides, resolver));
+    // Keep only the new rows charged while the shape takes them.
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before + resolved.retained_bytes()),
+    );
+    shape.replace_rows(&resolved, options.limits, bytes)?;
+    bytes.refund(resolved.retained_bytes());
+    Ok(Ok(shape))
 }
 
 fn replacement(
@@ -1864,8 +2002,8 @@ mod tests {
         let limits = Limits::default();
         let options = dense_options(&limits);
         let outline = dense();
-        // Placements at 0.65 and 0.675 have wrong polygon bytes: they are
-        // replaced before every byte certifies.
+        // Placements at 0.65 and 0.675 have wrong polygon bytes: their rows
+        // are replaced before every byte certifies.
         let mut replaced = 0;
         for linear in [[1.0, 0.0, 0.0, 1.0], [1.5, 0.0, 0.25, 1.25]] {
             let edges = std::sync::Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
@@ -1923,5 +2061,52 @@ mod tests {
                 assert_eq!(byte, alone, "pixel {x},{y}");
             }
         }
+    }
+
+    #[test]
+    fn a_replaced_row_leaves_every_other_row_as_it_was() {
+        let limits = Limits::default();
+        let options = dense_options(&limits);
+        let outline = dense();
+        let edges =
+            std::sync::Arc::new(GlyphEdges::new(&outline, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        let origin = Point::new(2.3, 1.1);
+        let shape = super::super::placed(&edges, origin, &options)
+            .unwrap()
+            .unwrap();
+        let (before, _) = crate::testing::raster(&options.area, Some(&shape), None);
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut bytes = crate::testing::bytes();
+        bytes.charge(shape.retained_bytes()).unwrap();
+        let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
+        let rows = Rows::new(source.outline, source.linear, slack(source), &mut bytes).unwrap();
+        let mut targets = Targets::default();
+        for (x, y) in [(5, 4), (8, 4), (6, 7)] {
+            targets
+                .add(Pixel { x, y, byte: 0 }, (&mut work, &mut bytes))
+                .unwrap();
+        }
+        let placed = replaced_rows(
+            (&edges, source, &rows),
+            shape,
+            &targets,
+            (&options, 0),
+            Meters {
+                work: &mut work,
+                bytes: &mut bytes,
+            },
+        )
+        .unwrap();
+        let Ok(replaced) = placed else {
+            panic!("an unclipped polygon placement replaces its rows");
+        };
+        let (after, _) = crate::testing::raster(&options.area, Some(&replaced), None);
+        for y in 0..16 {
+            let row = y * 16..(y + 1) * 16;
+            if !targets.rows.contains(&u32::try_from(y).unwrap()) {
+                assert_eq!(before[row.clone()], after[row], "row {y}");
+            }
+        }
+        assert_eq!(replaced.resolved.mask(&(0..16)), (1 << 4) | (1 << 7));
     }
 }

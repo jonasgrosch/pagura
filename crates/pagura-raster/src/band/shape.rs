@@ -85,7 +85,7 @@ impl Resolved {
         self.lines.get(start..end.max(start)).unwrap_or(&[])
     }
 
-    fn push(&mut self, y: u32, sides: &[Line], bytes: &mut Meter) -> Result<()> {
+    pub(crate) fn push(&mut self, y: u32, sides: &[Line], bytes: &mut Meter) -> Result<()> {
         // An empty resolved row still replaces the original edges.
         room(&mut self.lines, sides.len(), bytes)?;
         self.lines.extend_from_slice(sides);
@@ -104,7 +104,43 @@ impl Resolved {
         self.lines.len()
     }
 
-    fn retained_bytes(&self) -> usize {
+    /// The rows of `self` and of `new`, by row, with `new`'s sides where both
+    /// resolve a row.
+    fn merged(&self, new: &Self, bytes: &mut Meter) -> Result<Self> {
+        fn row(r: &Resolved, k: usize) -> (u32, &[Line]) {
+            let start = k.checked_sub(1).map_or(0, |k| r.rows[k].1 as usize);
+            let (y, end) = r.rows[k];
+            (y, r.lines.get(start..end as usize).unwrap_or(&[]))
+        }
+        let mut merged = Self::default();
+        room(&mut merged.rows, self.rows.len() + new.rows.len(), bytes)?;
+        room(&mut merged.lines, self.lines.len() + new.lines.len(), bytes)?;
+        let (mut i, mut j) = (0, 0);
+        while i < self.rows.len() || j < new.rows.len() {
+            let old = (i < self.rows.len()).then(|| row(self, i));
+            let added = (j < new.rows.len()).then(|| row(new, j));
+            let (y, sides) = match (old, added) {
+                (Some((a, _)), Some((b, sides))) if b <= a => {
+                    i += usize::from(a == b);
+                    j += 1;
+                    (b, sides)
+                }
+                (Some(old), _) => {
+                    i += 1;
+                    old
+                }
+                (None, Some(added)) => {
+                    j += 1;
+                    added
+                }
+                (None, None) => break,
+            };
+            merged.push(y, sides, bytes)?;
+        }
+        Ok(merged)
+    }
+
+    pub(crate) fn retained_bytes(&self) -> usize {
         (self.rows.capacity() * size_of::<(u32, u32)>())
             .saturating_add(self.lines.capacity() * size_of::<Line>())
     }
@@ -869,6 +905,42 @@ impl Shape {
                 }),
                 payload + list_bytes,
             )
+        }
+    }
+
+    /// Replaces the rows `rows` resolves, or adds them, and keeps every other
+    /// row: the cells of a row take only its own edges or sides.
+    pub(crate) fn replace_rows(
+        &mut self,
+        rows: &Resolved,
+        limits: &pagura_core::Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let right = self.area.region.x1;
+        let added = cell_work(&[], &[], rows, self.bounds, right)
+            .saturating_mul(4)
+            .saturating_add(rows.len());
+        let work = self.work.saturating_add(added);
+        if work > limits.raster_work {
+            return Err(Error::limit(RASTER_WORK));
+        }
+        let merged = self.resolved.merged(rows, bytes)?;
+        let released = self.resolved.retained_bytes();
+        self.retained = self
+            .retained
+            .saturating_sub(released)
+            .saturating_add(merged.retained_bytes());
+        self.resolved = merged;
+        bytes.refund(released);
+        self.work = work;
+        Ok(())
+    }
+
+    /// The columns the shape's cells are scanned in.
+    pub(crate) fn scan(&self) -> (usize, usize) {
+        match &self.body {
+            Body::Edges(body) => body.scan,
+            Body::Glyph(body) => body.scan,
         }
     }
 
