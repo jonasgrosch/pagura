@@ -819,35 +819,83 @@ fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
 
 /// Rows stored as the rasterizer emits them change the page as the same
 /// rows collected in a band coverage and stored span by span, and mark at
-/// least those spans' columns: N16 words and F32 levels.
+/// least those spans' columns: N16 words, N16 dynamic stores and F32 levels
+/// at a constant alpha.
 #[test]
 fn emitted_rows_store_as_band_coverage_spans() {
+    use super::{Dynamic, Levels};
     use crate::kernel::{self, Colors};
     #[expect(clippy::cast_possible_truncation, reason = "random words")]
-    emitted_rows_store_as(
-        [1_000, 20_000, 40_000, 65_535],
-        |next| [0; 4].map(|_: u16| next() as u16),
-        |pixels, words, cover| kernel::store_n16(pixels, words, cover.coverage()),
-    );
-    // The opacities a store from coverage gives: one at full coverage.
-    let alpha = |cover: super::Cover<'_>| -> Vec<f64> {
-        (0..cover.len())
-            .map(|i| kernel::UNIT[usize::from(cover.at(i))])
-            .collect()
-    };
+    let word = |next: &mut dyn FnMut() -> u64| [0; 4].map(|_: u16| next() as u16);
+    let words = [1_000, 20_000, 40_000, 65_535];
+    emitted_rows_store_as((words, [0; 4]), word, |pixels, cover| {
+        kernel::store_n16(pixels, words, cover.coverage());
+    });
     let color = [0.1, 0.6, 0.85];
-    #[expect(clippy::cast_precision_loss, reason = "random levels")]
-    emitted_rows_store_as(
-        kernel::levels(&color),
-        |next| [0.0; 4].map(|_: f32| (next() % 255_001) as f32 / 1_000.0),
-        |pixels, _, cover| kernel::store_f32(pixels, &Colors::Constant(&color), &alpha(cover)),
-    );
+    for constant in [1.0, 0.6, 0.0] {
+        // The opacities a span's coverage and constant alpha give it.
+        let alpha = |cover: super::Cover<'_>| -> Vec<f64> {
+            let compositing = Compositing {
+                alpha: constant,
+                blend: BlendMode::Normal,
+                alpha_is_shape: false,
+                mask: None,
+                overprint: 0,
+            };
+            let (mut alpha, mut shape) = (vec![0.0; cover.len()], vec![0.0; cover.len()]);
+            super::opacity((None, None), cover.coverage(), &mut alpha, &mut shape);
+            super::apply(&compositing, None, &mut alpha, &mut shape);
+            alpha
+        };
+        let colors = Colors::Constant(&color);
+        let dynamic = Dynamic(kernel::targets(&color, 65_535.0), constant);
+        emitted_rows_store_as((dynamic, [0; 4]), word, |pixels, cover| {
+            kernel::dynamic_n16(pixels, &colors, &alpha(cover));
+        });
+        #[expect(clippy::cast_precision_loss, reason = "random levels")]
+        emitted_rows_store_as(
+            (Levels(kernel::levels(&color), constant), [0.0; 4]),
+            |next| [0.0; 4].map(|_: f32| (next() % 255_001) as f32 / 1_000.0),
+            |pixels, cover| kernel::store_f32(pixels, &colors, &alpha(cover)),
+        );
+    }
 }
 
-fn emitted_rows_store_as<P: super::Narrow + PartialEq + std::fmt::Debug>(
-    color: P,
-    mut pixel: impl FnMut(&mut dyn FnMut() -> u64) -> P,
-    store: impl Fn(&mut [P], P, super::Cover<'_>),
+/// Stores of the background colour change nothing where no store reached
+/// a pixel, which holds the background already: only stored columns take
+/// them, and the rest stay unmarked for output to write as background.
+#[test]
+fn background_stores_reach_only_stored_columns() {
+    use pagura_raster::RowOut;
+    let rect = DeviceRect {
+        x0: 2,
+        y0: 0,
+        x1: 12,
+        y1: 2,
+    };
+    let white = [65_535; 4];
+    let mut page = vec![white; 20];
+    page[13] = [0, 0, 0, 65_535];
+    let mut meter = Meter::new(usize::MAX, "budget");
+    let mut extents = Extents::new(2, &mut meter).unwrap();
+    extents.mark(1, 3, 4);
+    let mut out = StoreOut::new(&mut page, &mut extents, rect, (white, white));
+    out.push_row(0);
+    out.put_run(0, 14, u8::MAX);
+    out.push_row(1);
+    out.put_row(4, &[128; 6]);
+    assert_eq!(out.stored, 1);
+    let mut expected = vec![white; 20];
+    // floor((65535·128 + 0·127 + 127) / 255)
+    expected[13] = [32_896, 32_896, 32_896, 65_535];
+    assert_eq!(page, expected);
+    assert_eq!((extents.take(0), extents.take(1)), (None, Some((3, 4))));
+}
+
+fn emitted_rows_store_as<S: super::Stores<Pixel: std::fmt::Debug>>(
+    (color, background): (S, S::Pixel),
+    mut pixel: impl FnMut(&mut dyn FnMut() -> u64) -> S::Pixel,
+    store: impl Fn(&mut [S::Pixel], super::Cover<'_>),
 ) {
     use pagura_raster::{BandCoverage, RowOut};
     let rect = DeviceRect {
@@ -866,13 +914,14 @@ fn emitted_rows_store_as<P: super::Narrow + PartialEq + std::fmt::Debug>(
     };
     let mut meter = Meter::new(usize::MAX, "budget");
     for case in 0..200 {
-        let initial: Vec<P> = (0..width * rows).map(|_| pixel(&mut next)).collect();
+        let initial: Vec<S::Pixel> = (0..width * rows).map(|_| pixel(&mut next)).collect();
         let (mut direct, mut spans) = (initial.clone(), initial);
         let mut emitted = Extents::new(rows, &mut meter).unwrap();
         let mut collected = Extents::new(rows, &mut meter).unwrap();
         let mut coverage = BandCoverage::default();
         coverage.clear();
-        let mut out = StoreOut::new(&mut direct, &mut emitted, rect, color);
+        // Random pixels hold no background: every pixel takes its stores.
+        let mut out = StoreOut::new(&mut direct, &mut emitted, rect, (color, background));
         // Rows from above the frame to below it, with gaps, full and
         // partial runs and cells, some reaching past its sides.
         for y in 8..18 {
@@ -913,7 +962,7 @@ fn emitted_rows_store_as<P: super::Narrow + PartialEq + std::fmt::Debug>(
             let row = (y - rect.y0) as usize;
             let column = x - rect.x0;
             let start = row * width + column as usize;
-            store(&mut spans[start..start + cover.len()], color, cover);
+            store(&mut spans[start..start + cover.len()], cover);
             collected.mark(row, column, column + u32::try_from(cover.len()).unwrap());
         });
         assert_eq!(direct, spans, "{case}");

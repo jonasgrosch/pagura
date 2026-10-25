@@ -43,12 +43,14 @@ enum DirectCoverage {
     Glyph(u32),
 }
 
-/// An opaque constant colour as a narrow page stores it: N16 words or F32
+/// A constant colour as a narrow page stores it straight from coverage:
+/// opaque N16 words, or at a constant alpha N16 dynamic stores or F32
 /// levels.
 #[derive(Debug, Clone, Copy)]
-pub(super) enum Opaque {
+pub(super) enum Direct {
     N16([u16; 4]),
-    F32([f32; 4]),
+    Dynamic(Dynamic),
+    F32(Levels),
 }
 
 /// A prepared scene with scratch storage sized for it: what every band's
@@ -280,7 +282,7 @@ impl<'a> Executor<'a> {
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
-        if let Some(color) = self.opaque(mark, frame) {
+        if let Some(color) = self.direct(mark, frame) {
             self.store_direct(DirectCoverage::Mark(mark.cover), frame, color);
             return;
         }
@@ -291,10 +293,10 @@ impl<'a> Executor<'a> {
         self.ws.coverage = coverage;
     }
 
-    /// Rasterizes `cover` straight into the narrow page as the opaque
-    /// constant `color`, row by row as the rasterizer emits it: one store
-    /// from each pixel's coverage, nothing else to evaluate.
-    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, color: Opaque) {
+    /// Rasterizes `cover` straight into the narrow page as the constant
+    /// `color`, row by row as the rasterizer emits it: one store from each
+    /// pixel's coverage, nothing else to evaluate.
+    fn store_direct(&mut self, cover: DirectCoverage, frame: Frame, color: Direct) {
         let (shapes, band) = (self.shapes, self.band);
         let rasterizer = &mut *self.rasterizer;
         let mut rasterize = |out: &mut dyn RowOut| match cover {
@@ -303,16 +305,26 @@ impl<'a> Executor<'a> {
                 shapes.rasterize_glyph_into(rasterizer, shape, band, out);
             }
         };
+        let background = self.plan.output.background;
+        let (words, levels) = (
+            background.map(|b| u16::from(b) * 257),
+            background.map(f32::from),
+        );
         let ws = &mut *self.ws;
         let extents = &mut ws.extents;
         let stored = match (&mut ws.page, color) {
-            (PageBuffer::N16(page), Opaque::N16(words)) => {
-                let mut out = StoreOut::new(page, extents, frame.rect, words);
+            (PageBuffer::N16(page), Direct::N16(color)) => {
+                let mut out = StoreOut::new(page, extents, frame.rect, (color, words));
                 rasterize(&mut out);
                 out.stored
             }
-            (PageBuffer::F32(page), Opaque::F32(levels)) => {
-                let mut out = StoreOut::new(page, extents, frame.rect, levels);
+            (PageBuffer::N16(page), Direct::Dynamic(color)) => {
+                let mut out = StoreOut::new(page, extents, frame.rect, (color, words));
+                rasterize(&mut out);
+                out.stored
+            }
+            (PageBuffer::F32(page), Direct::F32(color)) => {
+                let mut out = StoreOut::new(page, extents, frame.rect, (color, levels));
                 rasterize(&mut out);
                 out.stored
             }
@@ -328,23 +340,33 @@ impl<'a> Executor<'a> {
         });
     }
 
-    /// The colour `mark` stores straight from coverage into `frame`: an
-    /// opaque constant colour into a narrow page, whose stores of a span
-    /// take nothing else into account.
-    pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<Opaque> {
-        if mark.records || frame.buffer != Buffer::Page {
+    /// The colour `mark` stores straight from coverage into `frame`: a
+    /// constant colour into a narrow page that only coverage and constant
+    /// alpha reduce, whose stores of a span take nothing else into account.
+    /// N16 stores it as a span does: as words when opaque, else dynamically.
+    pub(super) fn direct(&self, mark: &Mark, frame: Frame) -> Option<Direct> {
+        let compositing = &mark.compositing;
+        if mark.records
+            || frame.buffer != Buffer::Page
+            || compositing.mask.is_some()
+            || compositing.blend != pagura_interpret::BlendMode::Normal
+            || compositing.overprint != 0
+        {
             return None;
         }
-        let words = mark.words?;
-        match &self.ws.page {
-            PageBuffer::N16(_) => Some(Opaque::N16(words)),
-            PageBuffer::F32(_) => {
-                let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
-                paint
-                    .constant()
-                    .map(|(color, _)| Opaque::F32(kernel::levels(color)))
-            }
-            PageBuffer::F64(_) => None,
+        let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
+        let (color, _) = paint
+            .constant()
+            .filter(|(color, _)| color.len() >= frame.layout.channels())?;
+        let alpha = compositing.alpha;
+        match (&self.ws.page, mark.words) {
+            (PageBuffer::N16(_), Some(words)) => Some(Direct::N16(words)),
+            (PageBuffer::N16(_), None) => Some(Direct::Dynamic(Dynamic(
+                kernel::targets(color, 65535.0),
+                alpha,
+            ))),
+            (PageBuffer::F32(_), _) => Some(Direct::F32(Levels(kernel::levels(color), alpha))),
+            (PageBuffer::F64(_), _) => None,
         }
     }
 
@@ -558,48 +580,89 @@ fn overwrite(
     stored.is_some()
 }
 
-/// A narrow page pixel that an opaque constant colour is stored into at a
-/// coverage byte: N16 words or F32 levels.
-trait Narrow: Copy {
-    /// Stores `color` at coverage `c` into every pixel.
-    fn uniform(pixels: &mut [Self], color: Self, c: u8);
-    /// Stores `color` at `coverage`, which leaves pixels at zero as they
-    /// are; the pixels from the first to past the last one with coverage.
-    fn runs(pixels: &mut [Self], color: Self, coverage: &[u8]) -> Option<(usize, usize)>;
+/// A constant colour stored into narrow page pixels at coverage bytes.
+trait Stores: Copy {
+    /// N16 words or F32 levels.
+    type Pixel: Copy + PartialEq;
+    /// The pixel a store at full coverage leaves, whatever it covers.
+    fn opaque(self) -> Option<Self::Pixel> {
+        None
+    }
+    /// Stores at coverage `c` into every pixel.
+    fn uniform(self, pixels: &mut [Self::Pixel], c: u8);
+    /// Stores at `coverage`, which leaves pixels at zero as they are; the
+    /// pixels from the first to past the last one with coverage.
+    fn runs(self, pixels: &mut [Self::Pixel], coverage: &[u8]) -> Option<(usize, usize)>;
 }
 
-impl Narrow for [u16; 4] {
-    #[inline]
-    fn uniform(pixels: &mut [Self], words: Self, c: u8) {
-        kernel::store_n16_uniform(pixels, words, c);
+impl Stores for [u16; 4] {
+    type Pixel = Self;
+
+    fn opaque(self) -> Option<Self> {
+        Some(self)
     }
 
     #[inline]
-    fn runs(pixels: &mut [Self], words: Self, coverage: &[u8]) -> Option<(usize, usize)> {
-        kernel::store_n16_runs(pixels, words, coverage)
-    }
-}
-
-impl Narrow for [f32; 4] {
-    #[inline]
-    fn uniform(pixels: &mut [Self], levels: Self, c: u8) {
-        kernel::store_f32_uniform(pixels, levels, c);
+    fn uniform(self, pixels: &mut [Self], c: u8) {
+        kernel::store_n16_uniform(pixels, self, c);
     }
 
     #[inline]
-    fn runs(pixels: &mut [Self], levels: Self, coverage: &[u8]) -> Option<(usize, usize)> {
-        kernel::store_f32_runs(pixels, levels, coverage)
+    fn runs(self, pixels: &mut [Self], coverage: &[u8]) -> Option<(usize, usize)> {
+        kernel::store_n16_runs(pixels, self, coverage)
     }
 }
 
-/// Coverage rows stored as they are emitted: an opaque constant colour at
-/// each pixel's coverage, within the frame's `rect`.
-struct StoreOut<'a, P> {
-    page: &'a mut [P],
+/// The targets of N16 dynamic stores at a constant alpha.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Dynamic([f64; 4], f64);
+
+impl Stores for Dynamic {
+    type Pixel = [u16; 4];
+
+    #[inline]
+    fn uniform(self, pixels: &mut [[u16; 4]], c: u8) {
+        kernel::dynamic_n16_uniform(pixels, (self.0, self.1), c);
+    }
+
+    #[inline]
+    fn runs(self, pixels: &mut [[u16; 4]], coverage: &[u8]) -> Option<(usize, usize)> {
+        kernel::dynamic_n16_runs(pixels, (self.0, self.1), coverage)
+    }
+}
+
+/// F32 levels at a constant alpha.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Levels([f32; 4], f64);
+
+impl Stores for Levels {
+    type Pixel = [f32; 4];
+
+    fn opaque(self) -> Option<[f32; 4]> {
+        (self.1 == 1.0).then_some(self.0)
+    }
+
+    #[inline]
+    fn uniform(self, pixels: &mut [[f32; 4]], c: u8) {
+        kernel::store_f32_uniform(pixels, (self.0, self.1), c);
+    }
+
+    #[inline]
+    fn runs(self, pixels: &mut [[f32; 4]], coverage: &[u8]) -> Option<(usize, usize)> {
+        kernel::store_f32_runs(pixels, (self.0, self.1), coverage)
+    }
+}
+
+/// Coverage rows stored as they are emitted: a constant colour at each
+/// pixel's coverage, within the frame's `rect`.
+struct StoreOut<'a, S: Stores> {
+    page: &'a mut [S::Pixel],
     extents: &'a mut Extents,
     rect: DeviceRect,
     width: usize,
-    color: P,
+    color: S,
+    /// The colour is the background, which pixels no store reached hold.
+    background: bool,
     /// The current row within `rect`, if it lies there.
     row: Option<usize>,
     stored: usize,
@@ -615,15 +678,22 @@ struct Columns {
     skip: usize,
 }
 
-impl<'a, P: Narrow> StoreOut<'a, P> {
-    /// Stores of `color` into `page`, the pixels of `rect` row by row.
-    fn new(page: &'a mut [P], extents: &'a mut Extents, rect: DeviceRect, color: P) -> Self {
+impl<'a, S: Stores> StoreOut<'a, S> {
+    /// Stores of `color` into `page`, the pixels of `rect` row by row,
+    /// where pixels no store reached hold `background`.
+    fn new(
+        page: &'a mut [S::Pixel],
+        extents: &'a mut Extents,
+        rect: DeviceRect,
+        (color, background): (S, S::Pixel),
+    ) -> Self {
         Self {
             page,
             extents,
             rect,
             width: u32_to_usize(rect.width()),
             color,
+            background: color.opaque() == Some(background),
             row: None,
             stored: 0,
         }
@@ -633,7 +703,14 @@ impl<'a, P: Narrow> StoreOut<'a, P> {
     fn columns(&self, x: u32, len: usize) -> Option<Columns> {
         let row = self.row?;
         let end = x.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
-        let (start, stop) = (x.max(self.rect.x0), end.min(self.rect.x1));
+        let (mut start, mut stop) = (x.max(self.rect.x0), end.min(self.rect.x1));
+        if self.background {
+            // A store of the background, at any coverage, leaves a pixel
+            // that holds it as it is: only stored columns can change.
+            let (lo, hi) = self.extents.get(row)?;
+            start = start.max(self.rect.x0 + lo);
+            stop = stop.min(self.rect.x0 + hi);
+        }
         (start < stop).then(|| Columns {
             row,
             column: start - self.rect.x0,
@@ -643,7 +720,7 @@ impl<'a, P: Narrow> StoreOut<'a, P> {
     }
 
     /// The page pixels of `columns`.
-    fn pixels(&mut self, columns: &Columns) -> Option<&mut [P]> {
+    fn pixels(&mut self, columns: &Columns) -> Option<&mut [S::Pixel]> {
         let first = columns.row * self.width + u32_to_usize(columns.column);
         self.page.get_mut(first..first + columns.count)
     }
@@ -656,7 +733,7 @@ impl<'a, P: Narrow> StoreOut<'a, P> {
     }
 }
 
-impl<P: Narrow> RowOut for StoreOut<'_, P> {
+impl<S: Stores> RowOut for StoreOut<'_, S> {
     fn push_row(&mut self, y: u32) {
         self.row = (self.rect.y0..self.rect.y1)
             .contains(&y)
@@ -669,10 +746,9 @@ impl<P: Narrow> RowOut for StoreOut<'_, P> {
             return;
         };
         if let Some(pixels) = self.pixels(&columns) {
-            if value == u8::MAX {
-                pixels.fill(color);
-            } else {
-                P::uniform(pixels, color, value);
+            match color.opaque().filter(|_| value == u8::MAX) {
+                Some(pixel) => pixels.fill(pixel),
+                None => color.uniform(pixels, value),
             }
         }
         self.stored(&columns, (0, columns.count));
@@ -689,7 +765,7 @@ impl<P: Narrow> RowOut for StoreOut<'_, P> {
         // Zero coverage leaves a pixel as it is: only covered pixels count.
         let covered = self
             .pixels(&columns)
-            .and_then(|pixels| P::runs(pixels, color, values));
+            .and_then(|pixels| color.runs(pixels, values));
         if let Some(stretch) = covered {
             self.stored(&columns, stretch);
         }
