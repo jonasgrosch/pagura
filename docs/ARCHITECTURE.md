@@ -30,7 +30,7 @@ oracle: only dev-dependencies name it.
 | `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits`; the primitives every parser shares (ADR 0017): `Meter`, `bytes::{Cursor, BitCursor}`, `text_string` | files, revisions, rendering |
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
 | `pagura-crypto` | `Digest` hashes (MD5, SHA-1, SHA-2), RSA and ECDSA signature verification; the standard security handler from plain parameters, with RC4 and AES internal to it (ADR 0021) | the object model beyond `ObjectId`; signing; certificates and trust |
-| `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery; navigation (12.3–12.6), interactive-form views and in-memory filling (12.7) and signature structure (12.8) as inert views | content streams, pixels, executing actions, cryptographic verification |
+| `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery; navigation (12.3–12.6), interactive-form views and in-memory filling (12.7); signature discovery/history and structural DocMDP/FieldMDP analysis (12.8) as inert views | content streams, pixels, executing actions, cryptographic verification |
 | `pagura-raster` | geometry, paths, flattening and stroke outlines; the band rasterizer: fills, strokes, glyph placements and clips prepared once per render and rasterized band by band into exact-area coverage; the `Pixmap` output surface and the one float-to-byte quantizer (ADR 0022) | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-data` | optional bundled data for fonts a PDF does not embed: standard-14 metrics and substitute outlines, predefined CMaps, CID-to-Unicode data and CJK substitutes, behind one cargo feature each, as a `Provider` with lazy caches (ADR 0009, 0026) | documents, content streams |
@@ -44,7 +44,8 @@ oracle: only dev-dependencies name it.
 | `pagura-paint` | the renderer: preparation and reservation of a scene for one region, the band executor, prepared paint, span kernels and storage formats (ADR 0034) | PDF objects, documents |
 | `pagura-render` | the thin rendering layer: `RenderContext` with its `Store`, `RenderOptions`, page recording, rendering by region and text extraction | interpretation and painting internals |
 | `pagura-reference` | test only: the slow, obviously correct f64 rasterizer and compositor for differential tests, and the exact coverage of single shapes for the band rasterizer's tests | product code |
-| `pagura-write` | deterministic serialization | parsing |
+| `pagura-write` | deterministic new-file and classic/xref-stream append serialization | parsing |
+| `pagura-pki` | ASN.1/X.509/CMS/timestamp parsing; host-anchored certificate path and offline complete/indirect/delta CRL validation using a caller-supplied signature verifier | PDF objects, cryptographic primitives, automatic trust or network access; signature creation |
 | `pagura` | the public facade: every public type, and the free functions with the feature-selected font data | — |
 | `pagura-cli` | the `pagura` command-line tool, built on the facade alone (ADR 0030) | engine crates |
 | `pagura-host` | the stdio session protocol, native and `wasm32-wasip1` | — |
@@ -155,6 +156,28 @@ existing appearance generator (ADR 0031). Full rewrite, undo/redo, signature
 permission enforcement and sanitizing redaction have separate future contracts.
 A rendered scene is never the sole editing representation. Modified incremental
 saves require strict input; repair-mode inputs require a future full rewrite.
+
+## Signature validation
+
+Document signature discovery and modification classification are structural.
+The facade adds CMS integrity verification. `pagura-pki` separately provides
+certificate-path and CRL APIs with explicit host anchors, time, policy and
+evidence. These stages are not yet integrated into PDF signature results:
+trust, revocation and validation time remain `NotCheckedYet`. S01 in the
+[competitive plan](COMPETITIVE_PARITY.md) connects the existing components and
+adds the missing policy/evidence stages; it does not reimplement path building
+or claim that preserved signed bytes establish permission to edit.
+
+## Planned source and job integration
+
+The [proposed ADR 0035](adr/0035-progressive-sources-and-streaming-jobs.md)
+and [detailed plan](plans/async-pdf-loading-and-image-streaming.md) extend the
+one-pass model with immutable range sources and resumable jobs. Current input
+still requires complete bytes. Current `RenderContext::render_bands` streams
+final bands and can stop between them, but each call restarts at the first row.
+Persistent cursors, incremental PNG, missing-data jobs and host backpressure
+remain proposed. The [capability inventory](STATUS.md) distinguishes existing
+APIs from these future contracts.
 
 ## Performance policy
 

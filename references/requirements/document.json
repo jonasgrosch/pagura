@@ -102,7 +102,7 @@
         "pagura-document unit tests",
         "corpus/manifests/document.json"
       ],
-      "gaps": "non-ASCII R6 password preparation and public-key security handlers remain unsupported"
+      "gaps": "Public-key security handlers remain unsupported. Non-ASCII R6 SASLprep is implemented in pagura-crypto; its specific requirement entries own the preparation evidence."
     },
     {
       "id": "document-header-recovery",
@@ -754,7 +754,7 @@
         "document/forms-cycle",
         "document/forms-duplicate-conflict"
       ],
-      "gaps": "Read-only; no filling, appearance generation, signature validation or XFA interpretation."
+      "gaps": "This entry covers the read-only model. Filling, appearance generation and persistence are implemented in their respective layers and tracked in forms.json and write.json. XFA interpretation and complete signature validation remain incomplete."
     },
     {
       "id": "forms-actions",

@@ -794,7 +794,7 @@
         "text/substitute-style-dingbats-italic",
         "text/substitute-style-inventory"
       ],
-      "gaps": "Non-embedded composite and multiple-master fonts remain unsupported.",
+      "gaps": "Provider-backed non-embedded CID substitution exists for supported Adobe collections (text-cid-substitution); vertical substitutes, unknown symbolic encodings/collections and multiple-master substitution remain unsupported.",
       "verification": {
         "rule": "Font descriptors identify fixed pitch, serif and italic style and weight for choosing a substitute; declared PDF widths still determine layout.",
         "implementation": "Descriptor fields checked against ISO; substitute choice is documented policy. All 24 family/style/subtype vectors preserve PDF widths and report substitution; unsafe symbolic substitutes fail.",
@@ -1476,7 +1476,7 @@
         "text/extract-composite",
         "text/extract-vertical"
       ],
-      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "gaps": "Tagged structure ordering is implemented separately by text-structure, with its own namespace/content/replacement limits. Script-specific segmentation remains future work; layout/search heuristics are explicit policy.",
       "verification": {
         "rule": "ActualText replaces enclosed characters without adding word breaks; Alt is whole-word/phrase replacement and consecutive alternatives have a word break; ReversedChars reverses each individual shown string.",
         "implementation": "agrees with the cited ISO subset and documented policies",
@@ -1524,7 +1524,7 @@
         "text/extract-composite",
         "text/extract-vertical"
       ],
-      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "gaps": "Search remains geometric and independent of the separate text-structure logical view. Script-specific segmentation remains future work; layout/search heuristics are explicit policy.",
       "verification": {
         "rule": "Search operates on extracted Unicode and replacement text; match normalization, boundaries and discretionary hyphens are reader policy.",
         "implementation": "agrees with the cited ISO subset and documented policies",
@@ -2147,7 +2147,7 @@
       }
     },
     "encoding_rule": "D.2 assignments include WinAnsi bullet aliases, space/hyphen aliases, MacRoman currency and space; D.3 defines TAB/LF/CR; D.4-D.6 provide expert and symbolic assignments. No differing code-to-name entry was found.",
-    "ownership_boundary": "BT/ET, text-state operators, positioning and rendering are owned by pagura-render; this registry checks the font decoder interface and word-spacing eligibility, not execution of those operators."
+    "ownership_boundary": "BT/ET, text-state operators and positioning are owned by pagura-interpret; pagura-paint executes prepared marks. This registry checks the font decoder interface and word-spacing eligibility, not execution of those operators."
   },
   "pending_primary_text_review": [
     {

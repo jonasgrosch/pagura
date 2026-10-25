@@ -48,7 +48,10 @@ values remain in the file: incremental editing is not redaction.
 
 Full rewrite, object deletion, undo/redo and encryption-on-write remain outside
 these foundations. See [ADR 0031](adr/0031-editing-foundations.md)
-for ownership, budgets, pending dependency review and validation evidence.
+for ownership, budgets and the original dependency/validation decisions, and
+[the parity plan](COMPETITIVE_PARITY.md#e01--full-rewrite-and-encryption-on-write)
+for the remaining implementation sequence. The document crate's structural
+DocMDP/FieldMDP analysis now exists; save policy does not yet enforce its results.
 
 ## Try in the browser
 
