@@ -197,6 +197,13 @@ impl Plan {
         self.painted
     }
 
+    pub(super) fn arithmetic(&self) -> bool {
+        match &self.kind {
+            Kind::Tints(_) | Kind::All | Kind::Nothing => true,
+            Kind::Chain(chain) => chain.arithmetic(),
+        }
+    }
+
     pub(super) fn convert(&self, components: &[f64], output: &mut [f64]) {
         let split = self.process.min(output.len());
         if self.lookup.is_none()
@@ -424,6 +431,20 @@ impl Chain {
             Terminal::Native { .. } | Terminal::All => 0,
         };
         tints.saturating_add(encode)
+    }
+
+    /// Whether no step and no terminal conversion evaluates a function or
+    /// a CIE or ICC transform.
+    fn arithmetic(&self) -> bool {
+        let terminal = match &self.terminal {
+            Terminal::Native { .. } | Terminal::All => true,
+            Terminal::Rgb { source, encode } => {
+                !matches!(source, Source::Calibrated(_) | Source::Icc { .. })
+                    && !matches!(encode, Encode::Cmyk { black, removal }
+                        if black.is_some() || removal.is_some())
+            }
+        };
+        terminal && !self.steps.iter().any(|step| matches!(step, Step::Tint(_)))
     }
 
     /// Converts `values` into the process channels `output`.
