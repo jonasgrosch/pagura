@@ -40,6 +40,7 @@ struct Active {
 /// everywhere, with neighbouring chains at least `margin` apart where they
 /// do not share a vertex. Point cells participate as their emitted square
 /// contours, with the same winding requirements as every other contour.
+#[cfg(test)]
 pub(crate) fn certified(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<bool> {
     let before = bytes.used();
     let result = uncertified(polygon, margin, bytes)
@@ -48,7 +49,7 @@ pub(crate) fn certified(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Re
     result
 }
 
-/// The heights `[lo, hi]` of the slabs [`certified`] cannot certify, merged
+/// The heights `[lo, hi]` of the slabs the certificate cannot certify, merged
 /// where they meet; every other slab holds winding 0 or the common sign.
 /// `None` when vertex indexing or the sweep's work bound is exceeded.
 /// Byte exhaustion is a typed error from `bytes`.
@@ -57,20 +58,40 @@ pub(crate) fn uncertified(
     margin: f64,
     bytes: &mut Meter,
 ) -> Result<Option<Vec<[f64; 2]>>> {
+    Ok(doubtful(polygon, margin, bytes)?.map(|doubtful| doubtful.slabs))
+}
+
+/// The slabs [`uncertified`] finds and the common sign of the others.
+pub(crate) struct Doubtful {
+    pub(crate) slabs: Vec<[f64; 2]>,
+    /// Whether the leftmost chain of every certified slab runs in
+    /// increasing y, so that their winding is 0 or 1 rather than 0 or -1.
+    pub(crate) positive: bool,
+}
+
+/// [`uncertified`] with the common sign.
+pub(crate) fn doubtful(
+    polygon: &Polygon,
+    margin: f64,
+    bytes: &mut Meter,
+) -> Result<Option<Doubtful>> {
     let before = bytes.used();
     let result = certificate(polygon, margin, bytes);
     let retained = result
         .as_ref()
         .ok()
         .and_then(Option::as_ref)
-        .map_or(0, |slabs| {
-            slabs.capacity().saturating_mul(size_of::<[f64; 2]>())
+        .map_or(0, |doubtful| {
+            doubtful
+                .slabs
+                .capacity()
+                .saturating_mul(size_of::<[f64; 2]>())
         });
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
 
-fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Option<Vec<[f64; 2]>>> {
+fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Option<Doubtful>> {
     if polygon.points.len() > u32::MAX as usize {
         return Ok(None);
     }
@@ -95,7 +116,7 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
         vertices: margin,
     };
     let mut failing = Vec::new();
-    if sweep(
+    let Some(positive) = sweep(
         &points,
         &mut chains,
         margins,
@@ -103,11 +124,13 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
         &mut failing,
         bytes,
     )?
-    .is_none()
-    {
+    else {
         return Ok(None);
-    }
-    Ok(Some(failing))
+    };
+    Ok(Some(Doubtful {
+        slabs: failing,
+        positive,
+    }))
 }
 
 /// The separation chains need: `rounding` between interpolated positions,
@@ -139,7 +162,7 @@ fn sweep(
     work: &mut Work,
     failing: &mut Vec<[f64; 2]>,
     bytes: &mut Meter,
-) -> Result<Option<()>> {
+) -> Result<Option<bool>> {
     let mut heights = Vec::new();
     bytes.reserve(&mut heights, chains.len().saturating_mul(2))?;
     heights.extend(
@@ -232,7 +255,7 @@ fn sweep(
             }
         }
     }
-    Ok(Some(()))
+    Ok(Some(sign.unwrap_or(true)))
 }
 
 // Appends the strictly y-monotone chains of one closed contour, each in
@@ -435,7 +458,7 @@ struct Run {
 }
 
 /// Whether `spline`'s winding is 0 or one common sign of magnitude one
-/// everywhere, by the sweep of [`certified`] over chains of monotone pieces:
+/// everywhere, by the sweep of [`uncertified`] over chains of monotone pieces:
 /// neighbours are compared by the x ranges of monotone sub-pieces, halved
 /// where they overlap, and at a shared end by the fans of their control and
 /// chord directions, which meet only at the end when strictly ordered.

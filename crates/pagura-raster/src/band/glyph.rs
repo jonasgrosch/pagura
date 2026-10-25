@@ -6,13 +6,15 @@
 //! integrated as quadratics when its pieces certify winding zero or one
 //! sign everywhere, with the floor cell of one explicit closed move point
 //! when it has one. Uncertified quadratic outlines and placements crossed
-//! by a clip path use the same flattener with a whole-outline area bound.
+//! by a clip path use the same flattener with a whole-outline area bound;
+//! an uncertified polygon's overlaps are resolved once, for every placement
+//! no clip cuts.
 //! Every placement that approximates its quadratics, as a polygon or by
 //! reducing degree-elevated cubics, certifies its coverage bytes before
 //! execution, refining ambiguous pixels from the original controls. General
 //! cubics retain the canonical 1/256-pixel polygon.
 
-use super::certify::{certified, spline_certified};
+use super::certify::{doubtful, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
@@ -27,6 +29,7 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
+mod overlap;
 mod polygon;
 mod rounding;
 pub(super) use polygon::Summary;
@@ -70,6 +73,9 @@ pub(super) enum Kind {
         /// Bounds and work for uncut short placements, computed once from
         /// the canonical vertices without retaining another edge array.
         summary: Option<Summary>,
+        /// An uncertified short polygon's sides with its overlaps resolved,
+        /// for the short placements no clip cuts.
+        resolved: Option<Box<Relative>>,
     },
 }
 
@@ -254,13 +260,33 @@ impl GlyphEdges {
             bytes.refund(released);
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
-        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        let doubtful = if points.is_empty() {
+            doubtful(&polygon, 0.0, bytes)?
+        } else {
+            None
+        };
+        let certified = doubtful.as_ref().is_some_and(|d| d.slabs.is_empty());
         let summary = if certified {
             Summary::new(&polygon)
         } else {
             None
         };
         let source_available = regular && curves && curve::quadratic_outline(outline, transform);
+        // Other sides than the polygon's only for placements that certify
+        // their bytes.
+        let resolved = match &doubtful {
+            Some(doubtful)
+                if source_available
+                    && !certified
+                    && polygon.bounds().is_some_and(Summary::short) =>
+            {
+                overlap::resolved(&polygon, doubtful, limits, bytes)
+            }
+            _ => None,
+        };
+        if let Some(doubtful) = doubtful {
+            bytes.refund(doubtful.slabs.capacity() * size_of::<[f64; 2]>());
+        }
         let source = if source_available {
             bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
             Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
@@ -273,6 +299,7 @@ impl GlyphEdges {
             certified,
             source,
             summary,
+            resolved,
         })
     }
 
@@ -288,11 +315,11 @@ impl GlyphEdges {
         self.retained
     }
 
-    /// The edges a certified placement translates.
+    /// The edges a certified or resolved placement translates.
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { .. } => None,
+            Kind::Polygon { resolved, .. } => resolved.as_deref(),
         }
     }
 
@@ -309,7 +336,7 @@ impl GlyphEdges {
     /// whose coverage byte is ambiguous takes the shared bounded polygon
     /// refinement before execution (ADR 0004 §4).
     pub fn curved(&self) -> bool {
-        self.relative().is_some()
+        matches!(self.kind, Kind::Curve { .. })
     }
 }
 
@@ -569,8 +596,21 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             points,
             certified,
             summary,
+            resolved,
             ..
         } => {
+            if let Some(relative) = resolved {
+                let hull = relative.placed_hull(origin, None)?;
+                let Some(mut frame) = Frame::new(options) else {
+                    return Ok(None);
+                };
+                frame.fit(hull);
+                // A window visits every side of an unlisted placement, as
+                // it does a short polygon's.
+                if Summary::short(hull) && frame.rect.is_none() && frame.paths.is_none() {
+                    return Shape::translated(edges, relative, origin, hull, &frame, options);
+                }
+            }
             if let Some(summary) = summary {
                 let hull = summary.placed_hull(origin)?;
                 if Summary::short(hull) {
