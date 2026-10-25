@@ -322,7 +322,7 @@ impl Plan {
         let mut clipped = [0.0; CHUNK * 4];
         let mut linear = [[0.0; 3]; CHUNK];
         for (components, output) in components
-            .chunks(CHUNK * count)
+            .chunks(CHUNK.saturating_mul(count))
             .zip(output.chunks_mut(CHUNK * channels))
         {
             let mut len = 0;

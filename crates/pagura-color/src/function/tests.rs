@@ -128,6 +128,36 @@ fn lines_match_point_by_point_evaluation() {
 }
 
 #[test]
+fn stitching_lines_only_touch_complete_points_with_inputs() {
+    let leaf = Arc::new(
+        Function::exponential(ExponentialFunction {
+            domain: [0.0, 1.0],
+            range: None,
+            c0: vec![0.0],
+            c1: vec![1.0],
+            exponent: 1.0,
+        })
+        .unwrap(),
+    );
+    let function = Function::stitching(StitchingFunction {
+        domain: [0.0, 1.0],
+        range: Some(vec![[0.0, 1.0]]),
+        functions: vec![leaf],
+        bounds: vec![],
+        encode: vec![[0.0, 1.0]],
+    })
+    .unwrap();
+    let mut short = [9.0; 3];
+    function.evaluate_line(&[0.25, 0.5, 0.75], &mut short, 2);
+    assert_eq!(short, [0.25, 0.0, 9.0]);
+    let mut long = [9.0; 6];
+    function.evaluate_line(&[0.25], &mut long, 2);
+    assert_eq!(long, [0.25, 0.0, 9.0, 9.0, 9.0, 9.0]);
+    function.evaluate_line(&[0.25], &mut long, usize::MAX);
+    assert_eq!(long, [0.25, 0.0, 9.0, 9.0, 9.0, 9.0]);
+}
+
+#[test]
 fn sampled_grid_points_and_byte_paths_match() {
     let mut rng = Rng::new(7);
     for case in 0..2000 {

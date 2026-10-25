@@ -477,6 +477,19 @@ fn level(v: f64) -> u32 {
 fn compare_lines(converter: &Converter, space: &ColorSpace, rng: &mut Rng, context: &str) {
     let count = space.components();
     let channels = converter.target().channels();
+    let mut untouched = vec![9.0; channels];
+    converter.convert_line(&[0.5], usize::MAX, &mut untouched);
+    assert_eq!(
+        untouched,
+        vec![9.0; channels],
+        "{context}: incomplete input"
+    );
+    converter.convert_line_rounded(&[0.5], usize::MAX, &mut untouched, level);
+    assert_eq!(
+        untouched,
+        vec![9.0; channels],
+        "{context}: incomplete rounded input"
+    );
     let colors = 1 + rng.below(70);
     let line: Vec<f64> = (0..colors).flat_map(|_| components(rng, space)).collect();
     let mut expected = vec![f64::NAN; colors * channels];

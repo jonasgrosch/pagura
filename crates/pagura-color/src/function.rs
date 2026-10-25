@@ -481,9 +481,15 @@ impl Function {
     ) {
         const CHUNK: usize = 64;
         let count = stride.min(self.outputs);
+        let points = inputs.len().min(outputs.len() / stride);
+        let inputs = &inputs[..points];
+        let outputs = &mut outputs[..points * stride];
         let mut located = [(0_usize, 0.0); CHUNK];
         let mut encoded = [0.0; CHUNK];
-        for (inputs, outputs) in inputs.chunks(CHUNK).zip(outputs.chunks_mut(CHUNK * stride)) {
+        for (inputs, outputs) in inputs
+            .chunks(CHUNK)
+            .zip(outputs.chunks_mut(CHUNK.saturating_mul(stride)))
+        {
             let located = &mut located[..inputs.len()];
             for (slot, &x) in located.iter_mut().zip(inputs) {
                 *slot = self.locate(stitching, self.input(&[x], 0));
