@@ -68,8 +68,9 @@ fn load_stream(
         offset: 0,
     };
     let mut diagnostics = Diagnostics::new(document.recovery());
+    // Shared storage made straight from the stream data: one copy at most.
     let result = FontProgram::parse_with_diagnostics(
-        data.into_owned(),
+        std::sync::Arc::<[u8]>::from(data),
         format,
         &document.limits(),
         &mut diagnostics,
