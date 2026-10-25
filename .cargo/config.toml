@@ -4,6 +4,11 @@ test-all = "test --workspace --all-targets --locked"
 lint = "clippy --workspace --all-targets --locked -- -D warnings"
 wasm = "build --locked --release -p pagura-host --target wasm32-wasip1"
 
+# x86_64 builds target x86-64-v2 (SSE4.2, SSSE3, POPCNT). The SSE2 baseline has
+# no rounding instruction, so every `floor`, `ceil` and `round` is a library call.
+[target.'cfg(target_arch = "x86_64")']
+rustflags = ["-C", "target-cpu=x86-64-v2"]
+
 # WebAssembly SIMD is enabled for autovectorization only; no intrinsics or unsafe code.
 # Overflow checks stay on for every crate here, including the two the release
 # profile exempts natively: with a 32-bit `usize`, an overflow is a trap rather
