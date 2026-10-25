@@ -537,8 +537,9 @@ impl Builder<'_> {
     fn quadratic(&mut self, curve: Quadratic) -> Result<()> {
         let [_, v, a] = curve.coefficients();
         let [p0, _, p2] = curve.points;
-        let mut events = [0.0, 1.0, 0.0, 0.0];
-        let mut count = 2;
+        // The ends and the extrema between them, in order.
+        let mut events = [0.0, 1.0, 1.0, 1.0];
+        let mut count = 1;
         for (v, a) in [(v.x, a.x), (v.y, a.y)] {
             if a != 0.0 {
                 let t = -v / (2.0 * a);
@@ -548,8 +549,10 @@ impl Builder<'_> {
                 }
             }
         }
-        let events = &mut events[..count];
-        events.sort_unstable_by(f64::total_cmp);
+        if events[1] > events[2] {
+            events.swap(1, 2);
+        }
+        let events = &events[..=count];
         let at = |t: f64| {
             if t == 0.0 {
                 p0

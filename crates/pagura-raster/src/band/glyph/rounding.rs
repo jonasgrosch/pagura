@@ -290,12 +290,14 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
 }
 
 fn mapped_magnitude(outline: &Path, linear: Transform, origin: Point) -> f64 {
-    let mut magnitude = origin.x.abs().max(origin.y.abs()).max(1.0);
+    // Per axis, so the two maxima do not wait on each other.
+    let mut magnitude = [origin.x.abs().max(origin.y.abs()).max(1.0); 2];
     for segment in outline.segments() {
         let mut include = |p: Point| {
-            magnitude = magnitude
-                .max((p.x * linear.a).abs() + (p.y * linear.c).abs() + origin.x.abs())
-                .max((p.x * linear.b).abs() + (p.y * linear.d).abs() + origin.y.abs());
+            magnitude = [
+                magnitude[0].max((p.x * linear.a).abs() + (p.y * linear.c).abs() + origin.x.abs()),
+                magnitude[1].max((p.x * linear.b).abs() + (p.y * linear.d).abs() + origin.y.abs()),
+            ];
         };
         match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => include(p),
@@ -311,7 +313,7 @@ fn mapped_magnitude(outline: &Path, linear: Transform, origin: Point) -> f64 {
             Segment::Close => {}
         }
     }
-    magnitude
+    magnitude[0].max(magnitude[1])
 }
 
 /// Each curve's share of a polygon's area allowance and the boxes of the
