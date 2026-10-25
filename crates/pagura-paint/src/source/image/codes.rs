@@ -538,7 +538,9 @@ impl Codes {
     /// Writes the N16 words of the opaque colours of device pixels
     /// `x .. x + len` of row `y` into `out`, as a store at full opacity
     /// writes them; false, with nothing written, unless the image's three
-    /// lanes are opaque and its pixels take nearest samples.
+    /// lanes are opaque and its pixels take nearest samples, or their
+    /// colours are mapped averages (see [`Self::mapped`]) whose footprints
+    /// all meet the image.
     pub(super) fn words(
         &self,
         image: &DecodedImage,
@@ -546,9 +548,6 @@ impl Codes {
         scratch: &mut super::separable::Scratch,
         out: &mut [[u16; 4]],
     ) -> bool {
-        let Some(words) = self.words.as_deref() else {
-            return false;
-        };
         let Some(grid) = Grid::new(image) else {
             return false;
         };
@@ -556,6 +555,18 @@ impl Codes {
             grid,
             components: self.components,
             complement: None,
+        };
+        if !self.separable.nearest() {
+            return match self.mapped(rows.width()) {
+                Some(map) if self.lanes.table.len() == 3 => {
+                    let map = |average| map.apply(average);
+                    self.separable.words(&rows, pixels, scratch, map, out)
+                }
+                _ => false,
+            };
+        }
+        let Some(words) = self.words.as_deref() else {
+            return false;
         };
         let n = rows.width().max(1);
         let &[a, b, c] = self.lanes.component.as_slice() else {
@@ -648,16 +659,8 @@ impl Codes {
             return;
         }
         let mut shape = shape;
-        // Lanes that are their components' codes mapped alike, or one
-        // component's code mapped and copied, take their colours as the
-        // averages are written.
         let lanes = self.lanes.table.len();
-        let mapped = match (self.lanes.direct, self.lanes.replicated) {
-            (Some(map), _) if n == lanes => Some(map),
-            (_, Some(map)) if n == 1 => Some(map),
-            _ => None,
-        };
-        if let Some(map) = mapped {
+        if let Some(map) = self.mapped(n) {
             let mut colors = std::mem::take(&mut out.colors);
             colors.resize(len * lanes, 0.0);
             let alpha = &mut out.alpha;
@@ -691,6 +694,18 @@ impl Codes {
         };
         self.separable
             .average(&rows, pixels, scratch, None, (|average| average, finish));
+    }
+
+    /// The map of averages of `n` codes per pixel to colours, for lanes that
+    /// are their components' codes mapped alike, or one component's code
+    /// mapped and copied: they take their colours as the averages are
+    /// written.
+    fn mapped(&self, n: usize) -> Option<Affine> {
+        match (self.lanes.direct, self.lanes.replicated) {
+            (Some(map), _) if n == self.lanes.table.len() => Some(map),
+            (_, Some(map)) if n == 1 => Some(map),
+            _ => None,
+        }
     }
 }
 

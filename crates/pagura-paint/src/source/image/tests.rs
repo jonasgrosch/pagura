@@ -1209,31 +1209,38 @@ fn words_store_as_opaque_spans_do() {
     let gray = case(image((13, 9), 1, 8, bytes(13 * 9, 8, 3)));
     let mut icc_like = case(image((10, 8), 3, 8, bytes(10 * 8 * 3, 8, 7)));
     icc_like.decode = vec![[0.1, 0.9], [0.0, 1.0], [1.0, 0.0]];
-    let mut written = 0;
+    let (mut written, mut averaged) = (0, 0);
     for case in [&rgb, &gray, &icc_like] {
         for target in [3, 4] {
             for unit_to_device in placements(case.image.width, case.image.height) {
                 let sampler = sampler(case, unit_to_device, target);
+                let mode = sampler.prepared.as_ref().map(|p| p.geometry.mode());
                 let mut storage = scratch(&sampler);
                 let reserved = storage.bytes();
                 let (x0, y0, x1, y1) = window(unit_to_device);
                 let len = usize::try_from(x1 - x0).unwrap();
                 let mut span = SpanColors::default();
                 for y in y0..y1 {
-                    let mut words = vec![[0u16; 4]; len];
-                    if !sampler.words(Pixels::new(x0, y, len), &mut storage, &mut words) {
-                        continue;
+                    // The whole row, and short spans that may lie inside the
+                    // image, as averages need.
+                    let short = (x0..x1).step_by(2).map(|x| (x, 3));
+                    for (x, len) in std::iter::once((x0, len)).chain(short) {
+                        let mut words = vec![[0u16; 4]; len];
+                        if !sampler.words(Pixels::new(x, y, len), &mut storage, &mut words) {
+                            continue;
+                        }
+                        written += 1;
+                        averaged += usize::from(mode != Some(super::Mode::Nearest));
+                        sampler.span(Pixels::new(x, y, len), &mut storage, &mut span);
+                        assert_eq!(storage.bytes(), reserved);
+                        assert!(span.alpha.iter().all(|&a| a == 1.0));
+                        let mut expected = vec![[0u16; 4]; len];
+                        crate::kernel::overwrite_n16(&mut expected, &span.colors);
+                        assert_eq!(words, expected, "{unit_to_device:?} row {y} at {x}");
                     }
-                    written += 1;
-                    sampler.span(Pixels::new(x0, y, len), &mut storage, &mut span);
-                    assert_eq!(storage.bytes(), reserved);
-                    assert!(span.alpha.iter().all(|&a| a == 1.0));
-                    let mut expected = vec![[0u16; 4]; len];
-                    crate::kernel::overwrite_n16(&mut expected, &span.colors);
-                    assert_eq!(words, expected, "{unit_to_device:?} row {y}");
                 }
             }
         }
     }
-    assert!(written > 0);
+    assert!(written > 0 && averaged > 0);
 }
