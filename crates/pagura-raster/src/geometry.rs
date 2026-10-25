@@ -228,6 +228,27 @@ impl Mul<Transform> for Point {
     }
 }
 
+/// The lesser of two coordinates, in one comparison: `a` if `a < b`, else
+/// `b`.
+///
+/// `f64::min` also sets a NaN operand aside. WebAssembly has no instruction
+/// for that, so there each call costs three comparisons and three selects,
+/// and the raster's hot loops make many. For the raster's finite
+/// coordinates the two agree, up to the sign of a zero result. That sign
+/// `f64::min` leaves to the platform; this gives the same zero on every
+/// target.
+#[inline]
+pub(crate) fn lesser(a: f64, b: f64) -> f64 {
+    if a < b { a } else { b }
+}
+
+/// The greater of two coordinates, in one comparison: `a` if `a > b`, else
+/// `b`, as [`lesser`] for `f64::max`.
+#[inline]
+pub(crate) fn greater(a: f64, b: f64) -> f64 {
+    if a > b { a } else { b }
+}
+
 /// The sign of every turn of the closed polygon `points` when they certify
 /// a simple convex polygon: strict turns of one sign and exactly one
 /// revolution. The error guard excludes uncertain determinants, including
@@ -257,7 +278,33 @@ pub(crate) fn convex_orientation(points: &[Point]) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Point, Transform, convex_orientation};
+    use super::{Point, Transform, convex_orientation, greater, lesser};
+
+    #[test]
+    fn lesser_and_greater_match_min_and_max_without_nan() {
+        let values = [
+            f64::MIN,
+            -1e12,
+            -1.5,
+            -f64::MIN_POSITIVE,
+            0.0,
+            f64::MIN_POSITIVE,
+            0.5,
+            1e12,
+            f64::MAX,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ];
+        for a in values {
+            for b in values {
+                assert_eq!(lesser(a, b).to_bits(), a.min(b).to_bits(), "{a} {b}");
+                assert_eq!(greater(a, b).to_bits(), a.max(b).to_bits(), "{a} {b}");
+            }
+        }
+        // Of two equal zeros, the second, on every target.
+        assert_eq!(lesser(-0.0, 0.0).to_bits(), 0.0_f64.to_bits());
+        assert_eq!(greater(0.0, -0.0).to_bits(), (-0.0_f64).to_bits());
+    }
 
     #[test]
     fn vector_operators_match_componentwise_arithmetic() {
