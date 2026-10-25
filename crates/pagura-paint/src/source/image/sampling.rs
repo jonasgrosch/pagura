@@ -2,7 +2,8 @@
 //! Integer code averages share the separable kernel in `separable`.
 
 use super::contour::{self, Contour};
-use super::geometry::{Geometry, Mode, Texels};
+use super::geometry::{BilinearRows, Geometry, Mode, Texels};
+use super::scratch::allocate;
 use super::separable::{self, RowCache, Rows, Separable};
 use super::texels::copy_texel;
 use crate::source::Pixels;
@@ -11,8 +12,10 @@ use pagura_core::{Meter, Result};
 /// Exactly one way to sample a placement, selected during preparation.
 #[derive(Debug)]
 pub(super) enum Sampling {
-    /// Nearest or bilinear samples of individual pixels.
-    Points,
+    /// Nearest or bilinear samples of individual pixels; an upright
+    /// bilinear span reads its two source rows once, at most `cells` texels
+    /// each.
+    Points { cells: usize },
     /// Upright nearest samples or exact area averages.
     Separable(Separable),
     /// Exact area averages of a turned placement.
@@ -22,7 +25,8 @@ pub(super) enum Sampling {
 /// Capacities compared before render storage is reused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Layout {
-    Points,
+    /// Values of the two rows an upright bilinear span reads.
+    Points(usize),
     Separable(separable::Layout),
     Contour(contour::Layout),
 }
@@ -30,7 +34,7 @@ pub(super) enum Layout {
 /// Mutable values owned by the caller, never by a prepared scene.
 #[derive(Debug)]
 pub(super) enum Scratch {
-    Points,
+    Points(BilinearRows),
     Separable(Box<separable::Scratch>),
     Contour(contour::Scratch),
 }
@@ -39,7 +43,7 @@ impl Layout {
     /// Bytes allocated for this sampling plan.
     pub(super) fn bytes(self) -> usize {
         match self {
-            Self::Points => 0,
+            Self::Points(values) => values.saturating_mul(size_of::<f64>()),
             Self::Separable(layout) => layout.bytes(),
             Self::Contour(layout) => layout.bytes(),
         }
@@ -48,7 +52,7 @@ impl Layout {
     /// Allocates capacities already charged by the source layout.
     pub(super) fn make(self) -> Result<Scratch> {
         Ok(match self {
-            Self::Points => Scratch::Points,
+            Self::Points(values) => Scratch::Points(BilinearRows::new(allocate(values)?)),
             Self::Separable(layout) => Scratch::Separable(Box::new(layout.make()?)),
             Self::Contour(layout) => Scratch::Contour(layout.make()?),
         })
@@ -59,7 +63,7 @@ impl Scratch {
     /// Actual capacities held for this plan.
     pub(super) fn bytes(&self) -> usize {
         match self {
-            Self::Points => 0,
+            Self::Points(rows) => rows.bytes(),
             Self::Separable(scratch) => scratch.bytes(),
             Self::Contour(scratch) => scratch.bytes(),
         }
@@ -67,8 +71,10 @@ impl Scratch {
 
     /// Invalidates rows before another render can use this storage.
     pub(super) fn reset(&mut self) {
-        if let Self::Separable(scratch) = self {
-            scratch.reset();
+        match self {
+            Self::Points(rows) => rows.reset(),
+            Self::Separable(scratch) => scratch.reset(),
+            Self::Contour(_) => {}
         }
     }
 }
@@ -90,7 +96,9 @@ impl Sampling {
         Ok(if geometry.mode() == Mode::Area {
             Self::Contour(Contour::new(geometry, columns))
         } else {
-            Self::Points
+            Self::Points {
+                cells: geometry.row_cells(columns),
+            }
         })
     }
 
@@ -98,14 +106,14 @@ impl Sampling {
     pub(super) fn bytes(&self) -> usize {
         match self {
             Self::Separable(plan) => plan.bytes(),
-            Self::Points | Self::Contour(_) => 0,
+            Self::Points { .. } | Self::Contour(_) => 0,
         }
     }
 
     /// The storage needed for at most `values` values per source sample.
     pub(super) fn layout(&self, values: usize) -> Layout {
         match self {
-            Self::Points => Layout::Points,
+            Self::Points { cells } => Layout::Points(cells.saturating_mul(2 * values)),
             Self::Separable(plan) => {
                 Layout::Separable(plan.layout(values, separable::Values::Texels))
             }
@@ -130,8 +138,8 @@ impl Sampling {
                 plan.fill(pixels, texels, out, scratch);
                 return;
             }
-            (Self::Points, Scratch::Points) => {
-                geometry.fill(pixels, texels, out);
+            (Self::Points { .. }, Scratch::Points(rows)) => {
+                geometry.fill(pixels, texels, out, rows);
                 return;
             }
             _ => {
