@@ -16,6 +16,31 @@ use std::sync::Arc;
 /// The device grid sampled for each shading.
 const SIZE: u32 = 40;
 
+/// The pixels a shading is prepared for: as many as a page's, so that a
+/// one-input stage certifies its colours ahead as it would there.
+const PIXELS: usize = 1 << 17;
+
+/// Prepares `parts` as preparation for [`PIXELS`] pixels does.
+fn prepared(
+    parts: &Parts<'_>,
+    transform: Transform,
+    context: &PaintContext<'_>,
+    usage: Use,
+) -> ShadingSource {
+    let mut bytes = Meter::new(context.limits.render_bytes, "test bytes");
+    let mut functions = Meter::new(usize::MAX, "test functions");
+    ShadingSource::new(
+        parts,
+        transform,
+        context,
+        usage,
+        (&mut bytes, &mut functions),
+    )
+    .unwrap()
+    .reserve(PIXELS, (&mut bytes, &mut functions))
+    .unwrap()
+}
+
 fn corpus() -> Vec<Parsed> {
     let root = pagura_testkit::workspace_root().join("corpus/generated");
     let mut stack = vec![root];
@@ -137,6 +162,8 @@ struct Counts {
     failed: usize,
     aligned: usize,
     shadings: usize,
+    /// Sources whose colours are certified ahead.
+    certified: usize,
 }
 
 fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
@@ -164,18 +191,9 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
         for antialias in [parsed.antialias, !parsed.antialias] {
             for usage in [Use::Operator, Use::Pattern] {
                 let parts = parts(parsed, antialias);
-                let source = ShadingSource::new(
-                    &parts,
-                    transform,
-                    &context,
-                    usage,
-                    (
-                        &mut Meter::new(limits.render_bytes, "test bytes"),
-                        &mut Meter::new(usize::MAX, "test functions"),
-                    ),
-                )
-                .unwrap();
+                let source = prepared(&parts, transform, &context, usage);
                 counts.aligned += usize::from(source.aligned.is_some());
+                counts.certified += usize::from(source.colors.certified());
                 let old = oracle::Oracle {
                     parsed,
                     converter: &converter,
@@ -274,6 +292,7 @@ fn corpus_shadings_match_the_previous_sampling() {
         failed: 0,
         aligned: 0,
         shadings: 0,
+        certified: 0,
     };
     let rgb = Target::new(Process::Rgb);
     let cmyk = Target::separated(
@@ -286,11 +305,12 @@ fn corpus_shadings_match_the_previous_sampling() {
     }
     assert!(shadings.len() >= 60, "{} shadings", shadings.len());
     assert!(
-        counts.pixels > 1_000_000 && counts.aligned > 50,
-        "{} pixels, {} failed, {} aligned, {} shadings",
+        counts.pixels > 1_000_000 && counts.aligned > 50 && counts.certified > 50,
+        "{} pixels, {} failed, {} aligned, {} certified, {} shadings",
         counts.pixels,
         counts.failed,
         counts.aligned,
+        counts.certified,
         counts.shadings
     );
 }

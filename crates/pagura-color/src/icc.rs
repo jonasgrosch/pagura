@@ -10,6 +10,7 @@ mod format;
 mod lut;
 mod mab;
 
+use crate::affine::{Affine, Undecided};
 use crate::cie::{self, D50};
 use crate::features;
 use curves::Curve;
@@ -253,6 +254,36 @@ impl Profile {
                 *out = cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz));
             }
         }
+    }
+
+    /// Encloses what [`Self::linear_total`] computes for every value of
+    /// `inputs` (see [`crate::affine`]), for a matrix/TRC model with
+    /// identity or sampled curves and a source that is not CIELAB.
+    pub(crate) fn enclose_linear(
+        &self,
+        inputs: &[Affine],
+        intent: Intent,
+    ) -> std::result::Result<[Affine; 3], Undecided> {
+        let (Ok(Forward::Matrix { matrix, curves }), false) =
+            (self.forward(intent), self.lab_input)
+        else {
+            return Err(Undecided::Unsupported);
+        };
+        let mut linear = [Affine::point(0.0); 3];
+        for (i, (out, curve)) in linear.iter_mut().zip(curves).enumerate() {
+            let value = match inputs.get(i) {
+                Some(input) => input.clamp(0.0, 1.0)?,
+                None => Affine::point(0.0),
+            };
+            *out = curve.enclose(value)?;
+        }
+        let mut xyz = cie::enclose_map(*matrix, linear);
+        if intent == Intent::Absolute {
+            for (i, value) in xyz.iter_mut().enumerate() {
+                *value = value.scale(self.white[i] / D50[i]);
+            }
+        }
+        cie::enclose_linear_srgb(cie::enclose_map(cie::D50_TO_D65, xyz))
     }
 
     /// The forward transform `intent` selects (ICC 8.10.2): the designated

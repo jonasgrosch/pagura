@@ -193,6 +193,7 @@ fn random_shadings_match_the_previous_sampling() {
         failed: 0,
         aligned: 0,
         shadings: 0,
+        certified: 0,
     };
     for case in 0..400 {
         let parsed = shading(&mut rng);
@@ -200,18 +201,9 @@ fn random_shadings_match_the_previous_sampling() {
         let converter = Converter::new(&parsed.space, &target, &composite.conversion).unwrap();
         for antialias in [false, true] {
             for usage in [Use::Operator, Use::Pattern] {
-                let source = ShadingSource::new(
-                    &parts(&parsed, antialias),
-                    transform,
-                    &context,
-                    usage,
-                    (
-                        &mut Meter::new(limits.render_bytes, "test bytes"),
-                        &mut Meter::new(usize::MAX, "test functions"),
-                    ),
-                )
-                .unwrap();
+                let source = prepared(&parts(&parsed, antialias), transform, &context, usage);
                 aligned += usize::from(source.aligned.is_some());
+                counts.certified += usize::from(source.colors.certified());
                 let old = Oracle {
                     parsed: &parsed,
                     converter: &converter,
@@ -230,9 +222,10 @@ fn random_shadings_match_the_previous_sampling() {
         }
     }
     assert!(
-        aligned > 150 && counts.pixels > 1_000_000,
-        "{aligned} {}",
-        counts.pixels
+        aligned > 150 && counts.pixels > 1_000_000 && counts.certified > 100,
+        "{aligned} {} {}",
+        counts.pixels,
+        counts.certified
     );
 }
 
@@ -388,11 +381,14 @@ fn function_work_is_reserved_per_sample() {
         )
         .unwrap()
     };
+    let mut bytes = Meter::new(limits.render_bytes, "test bytes");
     let mut meter = Meter::new(usize::MAX, "function work");
-    prepare().reserve(1000, &mut meter).unwrap();
+    prepare().reserve(1000, (&mut bytes, &mut meter)).unwrap();
     assert_eq!(meter.used(), 1000 * 4 * cost);
     let mut tight = Meter::new(1000 * 4 * cost - 1, "function work");
-    let error = prepare().reserve(1000, &mut tight).unwrap_err();
+    let error = prepare()
+        .reserve(1000, (&mut bytes, &mut tight))
+        .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
 }
 

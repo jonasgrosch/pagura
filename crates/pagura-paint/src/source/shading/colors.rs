@@ -1,10 +1,15 @@
 //! A shading's colour stage: its function (or the mesh's interpolated
 //! colours) and the prepared conversion into the target.
+//!
+//! The colours of a one-input stage kept to [`Precision::Level`] may be
+//! certified ahead ([`Ramp`]): a sample whose certified colour rounds to one
+//! level skips the evaluation, and the rest convert exactly, so levels are
+//! those of exact conversion by construction.
 
 use super::{Input, PaintContext, Parts};
 use crate::kernel;
 use crate::source::{Precision, copy_values};
-use pagura_color::{Converter, Function, MAX_CHANNELS, MAX_COMPONENTS, Painted};
+use pagura_color::{Converter, Function, MAX_CHANNELS, MAX_COMPONENTS, Painted, Ramp, RampStage};
 use pagura_core::{Error, Meter, Result};
 use pagura_interpret::ShadingFunction;
 use std::sync::Arc;
@@ -19,6 +24,8 @@ pub(super) struct Colors {
     cost: usize,
     /// The input values a conversion reads.
     inputs: usize,
+    /// Certified colours of a one-input stage; empty without.
+    ramp: Ramp,
 }
 
 /// One sample's function input, and the last input converted with its
@@ -102,12 +109,54 @@ impl Colors {
             cost: function_cost.saturating_add(converter.cost()),
             converter,
             inputs: inputs.min(MAX_COMPONENTS),
+            ramp: Ramp::default(),
         })
+    }
+
+    /// Certifies the colours of function inputs within `inputs` (bounds in
+    /// IEEE total order) ahead, in as many pieces as `samples` samples
+    /// repay; skipped where the stage has no enclosure or the meters lack
+    /// room for the most it may take.
+    pub(super) fn certify(
+        &mut self,
+        inputs: [f64; 2],
+        samples: usize,
+        (bytes, functions): (&mut Meter, &mut Meter),
+    ) {
+        let stage = match &self.functions {
+            Functions::Identity => return,
+            Functions::Single(f) => RampStage::Single(f),
+            Functions::PerComponent(fs) => RampStage::PerComponent(fs),
+        };
+        let limit = (samples / SAMPLES_PER_PIECE).min(MAX_PIECES);
+        let held = limit.saturating_mul(Ramp::piece_bytes(self.channels));
+        let enclosure = ENCLOSURE_COST.saturating_mul(self.cost);
+        if limit < MIN_PIECES
+            || held > bytes.remaining()
+            || limit.saturating_mul(4).saturating_mul(enclosure) > functions.remaining()
+        {
+            return;
+        }
+        let ramp = Ramp::new(stage, self.components, &self.converter, inputs, limit);
+        // Within the room checked above.
+        let charged = functions
+            .charge_product(ramp.enclosures(), enclosure)
+            .and_then(|()| bytes.charge(ramp.bytes()));
+        if charged.is_ok() {
+            self.ramp = ramp;
+        }
+    }
+
+    /// Whether colours are certified ahead.
+    #[cfg(test)]
+    pub(super) fn certified(&self) -> bool {
+        !self.ramp.is_empty()
     }
 
     /// Owned conversion storage and function handles; function data stays shared.
     pub(super) fn bytes(&self) -> usize {
         self.converter.owned_bytes()
+            + self.ramp.bytes()
             + match &self.functions {
                 Functions::PerComponent(fs) => fs.len() * size_of::<Arc<Function>>(),
                 Functions::Identity | Functions::Single(_) => 0,
@@ -153,6 +202,50 @@ impl Colors {
     /// [`Self::convert`] converts them one by one, for at most
     /// [`super::BATCH`] samples and a [`Self::batched`] stage.
     pub(super) fn convert_line(&self, inputs: &[f64], out: &mut [f64], precision: Precision) {
+        if precision == Precision::Level && !self.ramp.is_empty() {
+            self.convert_line_certified(inputs, out);
+        } else {
+            self.convert_line_exact(inputs, out, precision);
+        }
+    }
+
+    /// [`Self::convert_line`] at [`Precision::Level`] through the ramp,
+    /// whose stage takes one input: the samples it does not certify convert
+    /// exactly, together.
+    fn convert_line_certified(&self, inputs: &[f64], out: &mut [f64]) {
+        let channels = self.channels.max(1);
+        let mut missed = [0.0; super::BATCH];
+        let mut slots = [0_usize; super::BATCH];
+        let mut count = 0;
+        for (i, (&x, color)) in inputs
+            .iter()
+            .zip(out.chunks_exact_mut(channels))
+            .enumerate()
+        {
+            if !self.ramp.convert(x, color, level_bits)
+                && let (Some(input), Some(slot)) = (missed.get_mut(count), slots.get_mut(count))
+            {
+                (*input, *slot) = (x, i);
+                count += 1;
+            }
+        }
+        if count == 0 {
+            return;
+        }
+        let mut colors = [0.0; super::BATCH * MAX_CHANNELS];
+        let Some(colors) = colors.get_mut(..count * channels) else {
+            return;
+        };
+        self.convert_line_exact(&missed[..count], colors, Precision::Level);
+        for (&slot, color) in slots[..count].iter().zip(colors.chunks_exact(channels)) {
+            if let Some(out) = out.get_mut(slot * channels..(slot + 1) * channels) {
+                copy_values(out, color);
+            }
+        }
+    }
+
+    /// [`Self::convert_line`] by evaluation.
+    fn convert_line_exact(&self, inputs: &[f64], out: &mut [f64], precision: Precision) {
         let channels = self.channels.max(1);
         let components = self.components;
         let points = out.len() / channels;
@@ -276,6 +369,18 @@ impl Colors {
 /// The most inputs and colour components of a sample that
 /// [`Colors::convert_line`] takes.
 pub(super) const BATCH_VALUES: usize = 4;
+
+/// Samples a ramp piece must serve: building one takes about two
+/// enclosures, each about [`ENCLOSURE_COST`] evaluations, which this many
+/// certified samples repay several times over.
+const SAMPLES_PER_PIECE: usize = 32;
+
+/// The fewest and most pieces a ramp is cut into.
+const MIN_PIECES: usize = 16;
+const MAX_PIECES: usize = 4096;
+
+/// `function_work` of one enclosure in evaluations of the stage.
+const ENCLOSURE_COST: usize = 4;
 
 /// The F32 level of a colour value, as bits: what a value kept to
 /// [`Precision::Level`] must preserve.
