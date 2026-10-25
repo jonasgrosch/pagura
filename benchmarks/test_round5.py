@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import (CONTENT, V8_FLAGS, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
+from round5 import (CONTENT, V8_FLAGS, X86_V3, build, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
                     native_simd, parity, remaining_time, sha, subset_300, target_features, verify_runtime_parity,
                     wasm_command)
 from machine_record import probe, snapshot
@@ -18,6 +18,36 @@ from benchkit.engines import identify
 
 
 class MatrixContracts(unittest.TestCase):
+    def test_explicit_wasm_build_flags_keep_overflow_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            host = "aarch64-apple-darwin"
+            commands = []
+
+            def checked(command, log, *, env=None):
+                commands.append((list(map(str, command)), env))
+                if "cargo" in command:
+                    target = command[command.index("--target") + 1]
+                    release = output / "build" / target / "release"
+                    (release / "deps").mkdir(parents=True)
+                    (release / "deps/libpagura-control.rlib").write_bytes(b"library")
+                    (release / "pagura-host.wasm").write_bytes(b"host")
+
+            with patch("round5.subprocess.check_output", return_value=f"host: {host}\n"), \
+                    patch("round5.target_features", return_value=[]), patch("round5.checked", side_effect=checked):
+                build(output, "wasmtime")
+            cargo = [(command, env) for command, env in commands if "cargo" in command]
+            self.assertEqual(len(cargo), 2)
+            native, wasm = cargo
+            self.assertEqual(native[1]["CARGO_ENCODED_RUSTFLAGS"], "")
+            self.assertEqual(wasm[1]["CARGO_ENCODED_RUSTFLAGS"].split("\x1f"),
+                             ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"])
+            adapter = next(command for command, _ in commands
+                           if "rustc" in command and "wasm32-wasip1" in command)
+            self.assertIn("overflow-checks=on", adapter)
+            compiler = json.loads((output / "compiler.json").read_text())
+            self.assertEqual(compiler["wasm_rustflags"], "-C target-feature=+simd128 -C overflow-checks=on")
+
     def test_v8_compiles_the_whole_module_before_stage_timers(self):
         page = {"path": "/input/a.pdf", "dpi": 72, "page": 0}
         command = wasm_command("v8-wasi", "node", "wasmtime", Path("/artifacts"), [page], Path("/output"))
