@@ -1034,10 +1034,13 @@ impl Prepared {
                 };
                 // On the image's grid and sampled alike: the same samples
                 // and the same reconstruction (a mask has its own
-                // `Interpolate`).
+                // `Interpolate`, which an area average does not read).
+                // Every value averages alone, so the opacity is the same
+                // either way.
                 let fused = (image.image.width, image.image.height)
                     == (decoded.image.width, decoded.image.height)
-                    && image.image.interpolate == decoded.image.interpolate;
+                    && (image.image.interpolate == decoded.image.interpolate
+                        || geometry.mode() == Mode::Area);
                 Some(MaskSampling {
                     opacity: Opacity::new(&image.image, decode, bytes)?,
                     independent: if fused {
