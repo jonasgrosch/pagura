@@ -10,11 +10,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import (CONTENT, V8_FLAGS, X86_V3, build, build_x86_v3, cfg_matches, config_rustflags, cpu_summary,
-                    failure_sink, idle_record, measurement, native_simd, parity, remaining_time, sha, subset_300,
-                    target_features, verify_runtime_parity, wasm_command)
+from round5 import (CONTENT, V8_FLAGS, X86_V3, build, build_x86_v3, cpu_summary, failure_sink, idle_record,
+                    measurement, native_simd, parity, remaining_time, sha, subset_300, target_features,
+                    verify_runtime_parity, wasm_command)
 from machine_record import probe, snapshot
 from benchkit.engines import identify
+from benchkit.rustflags import cfg_matches, config_rustflags
 
 
 class MatrixContracts(unittest.TestCase):

@@ -25,7 +25,10 @@ The Python engines are the `bench` dependency group in `pyproject.toml`; setup
 runs `uv sync --locked --only-group bench` into `venv/` there, so `uv.lock` pins
 every transitive wheel by hash and `.python-version` pins the interpreter.
 The hayro adapter and checked-in lock are copied there; its isolated `CARGO_HOME`
-and target directory are also there. It uses the workspace's pinned toolchain.
+and target directory are also there. It uses the workspace's pinned toolchain
+and the native target flags `.cargo/config.toml` gives the host, resolved as
+`round5.py` resolves Pagura's; `hayro-build.json` there records them, and hayro's
+engine identity reports them as `build`.
 Node resolves packages from this same external cache. Dependency locks remain in
 `benchmarks/`. Studying other engines is allowed; copying or translating their
 implementation remains forbidden (ADR 0006).
