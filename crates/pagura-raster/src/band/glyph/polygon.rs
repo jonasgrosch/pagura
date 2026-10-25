@@ -121,6 +121,16 @@ impl<'a> PolygonLines<'a> {
         }
     }
 
+    /// The view with zero added to every placed coordinate, as the owned
+    /// all-items path adds its default origin. Adding zero to the origin
+    /// first gives the same bits, at every side and point cell corner.
+    pub(crate) fn plus_zero(self) -> Self {
+        Self {
+            origin: self.origin + Point::default(),
+            ..self
+        }
+    }
+
     /// The source side key range; unrepresentable keys keep owned geometry.
     pub(crate) fn keys(self) -> Option<usize> {
         key_count(
@@ -178,18 +188,19 @@ impl<'a> PolygonLines<'a> {
                 .get(contour + 1)
                 .copied()
                 .unwrap_or(points.len());
-            let Some(contour) = points.get(start..end) else {
+            let Some((&first, rest)) = points.get(start..end).and_then(<[Point]>::split_first)
+            else {
                 continue;
             };
-            for (i, &a) in contour.iter().enumerate() {
-                let next = if i + 1 == contour.len() { 0 } else { i + 1 };
-                if let Some(&b) = contour.get(next) {
-                    visit(Line {
-                        a: self.at(a),
-                        b: self.at(b),
-                    });
-                }
+            // Each placed vertex ends one side and starts the next.
+            let first = self.at(first);
+            let mut a = first;
+            for &b in rest {
+                let b = self.at(b);
+                visit(Line { a, b });
+                a = b;
             }
+            visit(Line { a, b: first });
         }
         for &point in self.points {
             for side in point_sides(self.at(point)) {

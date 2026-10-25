@@ -235,14 +235,13 @@ fn plain_interpolation_stays_within_the_interpolation_bound() {
         let plain = a.x.abs().max(b.x.abs()) <= PLAIN_LIMIT
             && a.y.abs().max(b.y.abs()) <= PLAIN_LIMIT
             && (hi - lo) >= PLAIN_HEIGHT;
-        let (fast, exact) = (line.kernel_x(y), line.x(y));
+        assert_eq!(line.plain(), plain, "{case}: {line:?}");
         if plain {
+            let (fast, exact) = (line.plain_x(y), line.x(y));
             assert!(
                 (fast - exact).abs() <= line.interpolation_error().x,
                 "{case}: {fast} vs {exact} for {line:?} at {y}"
             );
-        } else {
-            assert_eq!(fast.to_bits(), exact.to_bits(), "{case}: {line:?} at {y}");
         }
     }
 }

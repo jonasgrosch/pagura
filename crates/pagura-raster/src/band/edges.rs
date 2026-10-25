@@ -71,28 +71,36 @@ impl Line {
         }
     }
 
-    /// The x at height `y` as the cell kernel evaluates it. Where every
+    /// Whether the cell kernel interpolates the edge plainly: every
     /// coordinate is within [`PLAIN_LIMIT`] and the height is at least
-    /// [`PLAIN_HEIGHT`], plain f64 interpolation from the upper endpoint
-    /// stays within [`Self::interpolation_error`] of the exact value (about
-    /// 1e-12 of a pixel at ordinary device coordinates); elsewhere this is
-    /// [`Self::x`], whose rounding tails keep distant endpoints exact.
+    /// [`PLAIN_HEIGHT`]. Plain f64 interpolation from the upper endpoint,
+    /// [`Self::plain_x`], then stays within [`Self::interpolation_error`] of
+    /// the exact value (about 1e-12 of a pixel at ordinary device
+    /// coordinates); elsewhere the kernel takes [`Self::x`], whose rounding
+    /// tails keep distant endpoints exact.
     #[inline]
-    pub(crate) fn kernel_x(self, y: f64) -> f64 {
+    pub(crate) fn plain(self) -> bool {
         let (top, bottom) = if self.a.y < self.b.y {
             (self.a, self.b)
         } else {
             (self.b, self.a)
         };
-        let height = bottom.y - top.y;
-        let plain = top.x.abs() <= PLAIN_LIMIT
+        top.x.abs() <= PLAIN_LIMIT
             && bottom.x.abs() <= PLAIN_LIMIT
             && top.y.abs() <= PLAIN_LIMIT
             && bottom.y.abs() <= PLAIN_LIMIT
-            && height >= PLAIN_HEIGHT;
-        if !plain {
-            return self.x(y);
-        }
+            && bottom.y - top.y >= PLAIN_HEIGHT
+    }
+
+    /// The x at height `y` of a [`Self::plain`] edge, as the cell kernel
+    /// interpolates it.
+    #[inline]
+    pub(crate) fn plain_x(self, y: f64) -> f64 {
+        let (top, bottom) = if self.a.y < self.b.y {
+            (self.a, self.b)
+        } else {
+            (self.b, self.a)
+        };
         if y <= top.y {
             top.x
         } else if y >= bottom.y {
@@ -101,7 +109,7 @@ impl Line {
             top.x
         } else {
             clamp_between(
-                top.x + (y - top.y) * ((bottom.x - top.x) / height),
+                top.x + (y - top.y) * ((bottom.x - top.x) / (bottom.y - top.y)),
                 top.x,
                 bottom.x,
             )

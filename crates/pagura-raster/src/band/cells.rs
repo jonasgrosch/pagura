@@ -54,8 +54,6 @@ pub(crate) struct Cells {
     words: usize,
     y0: u32,
     rows: usize,
-    /// Window rows (bits from the first) that items skip.
-    skip: u32,
     /// Whether the window keeps no touched bitmap and emits every cell.
     dense: bool,
     /// Used only by the preparation-only measured entry points. The
@@ -193,7 +191,6 @@ impl Cells {
         self.words = words;
         self.y0 = rows.start;
         self.rows = count;
-        self.skip = 0;
         self.dense = false;
         self.rounding = Rounding::default();
         true
@@ -217,19 +214,95 @@ impl Cells {
         opened
     }
 
-    /// Makes items skip the window rows whose bits `mask` sets, from the
-    /// first; rows resolved at preparation take their sides instead.
-    pub(crate) fn skip(&mut self, mask: u32) {
-        self.skip = mask;
+    /// The open window for accumulation, whose items skip the window rows
+    /// that bits of `skip` set, from the first: rows resolved at
+    /// preparation take their sides instead.
+    pub(crate) fn window<const MEASURE: bool>(&mut self, skip: u32) -> Window<'_, MEASURE> {
+        // The window's cells, the same length in both: one bound covers
+        // a cell's area and cover.
+        let cells = (self.width.saturating_mul(self.rows))
+            .min(self.area.len())
+            .min(self.cover.len());
+        Window {
+            area: self.area.get_mut(..cells).unwrap_or_default(),
+            cover: self.cover.get_mut(..cells).unwrap_or_default(),
+            // A dense window marks nothing: an empty bitmap drops every mark.
+            touched: if self.dense {
+                &mut []
+            } else {
+                &mut self.touched
+            },
+            rounding: &mut self.rounding,
+            base: self.base,
+            width: self.width,
+            words: self.words,
+            y0: self.y0,
+            rows: self.rows,
+            skip,
+            dense: self.dense,
+        }
     }
 
-    /// Whether window row `r` is skipped.
+    /// Adds a straight edge to the rows it crosses, as [`Window::line`]
+    /// does, measuring its rounding. Returns the cells and rows visited.
+    pub(crate) fn line_measured(&mut self, line: Line) -> usize {
+        self.window::<true>(0).line(line)
+    }
+
+    pub(crate) fn arithmetic_error(&self) -> f64 {
+        self.rounding.bound(self.width)
+    }
+}
+
+/// The open window of [`Cells`], borrowed for one accumulation: its bounds
+/// as values and its storage as slices. An item loop keeps them in
+/// registers, where the fields of the cells would be read again after every
+/// cell an item changes.
+#[derive(Debug)]
+pub(crate) struct Window<'a, const MEASURE: bool> {
+    area: &'a mut [f64],
+    cover: &'a mut [f64],
+    touched: &'a mut [u64],
+    rounding: &'a mut Rounding,
+    base: i64,
+    width: usize,
+    words: usize,
+    y0: u32,
+    rows: usize,
+    /// Window rows (bits from the first) that items skip.
+    skip: u32,
+    dense: bool,
+}
+
+impl<const MEASURE: bool> Window<'_, MEASURE> {
+    /// The same window, for an out-of-line call to take by value: the
+    /// caller's window stays in registers.
+    #[inline]
+    fn reborrow(&mut self) -> Window<'_, MEASURE> {
+        Window {
+            area: &mut *self.area,
+            cover: &mut *self.cover,
+            touched: &mut *self.touched,
+            rounding: &mut *self.rounding,
+            ..*self
+        }
+    }
+
+    /// The window's device rows.
+    pub(crate) fn rows(&self) -> std::ops::Range<u32> {
+        let count = u32::try_from(self.rows).unwrap_or(0);
+        self.y0..self.y0 + count
+    }
+
+    /// Whether window row `r`, one of at most [`WINDOW`], is skipped.
     #[inline]
     fn skipped(&self, r: usize) -> bool {
-        u32::try_from(r)
-            .ok()
-            .and_then(|r| self.skip.checked_shr(r))
-            .is_some_and(|bits| bits & 1 != 0)
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a row of the window, below WINDOW"
+        )]
+        let r = r as u32;
+        self.skip.wrapping_shr(r) & 1 != 0
     }
 
     /// Whether an item whose leftmost point lies at `x` can change a cell of
@@ -263,30 +336,19 @@ impl Cells {
         }
     }
 
-    /// The cells and bitmap words of window row `r`, as a view whose
-    /// slices the accumulation keeps in registers.
+    /// The cells and bitmap words of window row `r`, as a view of the
+    /// window's storage from the row's first cell and word.
     #[inline]
-    fn row<const MEASURE: bool>(&mut self, r: usize) -> Row<'_, MEASURE> {
-        let cells = r.wrapping_mul(self.width);
-        // A dense window marks nothing: an empty bitmap drops every mark.
-        let words = if self.dense {
-            0..0
-        } else {
-            let first = r.wrapping_mul(self.words);
-            first..first.wrapping_add(self.words)
-        };
+    fn row(&mut self, r: usize) -> Row<'_, MEASURE> {
         Row {
-            rounding: &mut self.rounding,
             base: self.base,
-            area: self
-                .area
-                .get_mut(cells..cells.wrapping_add(self.width))
-                .unwrap_or_default(),
-            cover: self
-                .cover
-                .get_mut(cells..cells.wrapping_add(self.width))
-                .unwrap_or_default(),
-            touched: self.touched.get_mut(words).unwrap_or_default(),
+            width: self.width,
+            cell: r.wrapping_mul(self.width),
+            word: r.wrapping_mul(self.words),
+            area: &mut *self.area,
+            cover: &mut *self.cover,
+            touched: &mut *self.touched,
+            rounding: &mut *self.rounding,
         }
     }
 
@@ -298,7 +360,7 @@ impl Cells {
         reason = "every flattened glyph edge takes this path inside the edge loop"
     )]
     #[inline(always)]
-    fn piece<const MEASURE: bool>(&mut self, r: usize, xa: f64, xb: f64, h: f64) -> usize {
+    fn piece(&mut self, r: usize, xa: f64, xb: f64, h: f64) -> usize {
         if !MEASURE && self.dense {
             let (l, right) = if xa < xb { (xa, xb) } else { (xb, xa) };
             let start = l.floor();
@@ -321,39 +383,27 @@ impl Cells {
                 }
             }
         }
-        self.row::<MEASURE>(r).piece(xa, xb, h)
+        self.row(r).piece(xa, xb, h)
     }
 
     /// Adds a straight edge to the rows it crosses. Returns the cells and
     /// rows visited.
-    #[inline]
-    pub(crate) fn line(&mut self, line: Line) -> usize {
-        self.line_with::<false>(line)
-    }
-
-    pub(crate) fn line_measured(&mut self, line: Line) -> usize {
-        self.line_with::<true>(line)
-    }
-
-    pub(crate) fn arithmetic_error(&self) -> f64 {
-        self.rounding.bound(self.width)
-    }
-
     #[expect(
         clippy::inline_always,
         reason = "every flattened glyph edge takes this path inside the edge loop"
     )]
     #[inline(always)]
-    fn line_with<const MEASURE: bool>(&mut self, line: Line) -> usize {
+    pub(crate) fn line(&mut self, line: Line) -> usize {
         let Line { a, b } = line;
         if a.y == b.y {
             return 0;
         }
-        let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
         // An edge within one row is one piece between its endpoints, which
-        // interpolation returns exactly: most flattened curve edges.
-        let top = upper.y.floor();
-        if lower.y <= top + 1.0 {
+        // interpolation returns exactly: most flattened curve edges. Its
+        // arithmetic gives the same bits whichever way it runs.
+        let (upper, lower) = if a.y < b.y { (a.y, b.y) } else { (b.y, a.y) };
+        let top = upper.floor();
+        if lower <= top + 1.0 {
             let first = f64::from(self.y0);
             if top < first || top >= first + self.rows as f64 {
                 return 0;
@@ -367,20 +417,27 @@ impl Cells {
             if self.skipped(r) {
                 return 0;
             }
-            return 1 + self.piece::<MEASURE>(r, upper.x, lower.x, (lower.y - upper.y) * d);
+            return 1 + self.piece(r, a.x, b.x, b.y - a.y);
         }
-        self.line_rows::<MEASURE>(line, (upper, lower, d))
+        self.reborrow().line_rows(a, b)
     }
 
-    /// [`Self::line_with`] for an edge across rows, out of line: the edge
-    /// loops inline only the one-row case.
+    /// [`Self::line`] for an edge across rows, out of line: the edge loops
+    /// inline only the one-row case.
     #[inline(never)]
-    fn line_rows<const MEASURE: bool>(
-        &mut self,
-        line: Line,
-        (upper, lower, d): (Point, Point, f64),
-    ) -> usize {
+    fn line_rows(self, a: Point, b: Point) -> usize {
+        let line = Line { a, b };
+        if line.plain() {
+            self.rows_with(line, |y| line.plain_x(y))
+        } else {
+            self.rows_with(line, |y| line.x(y))
+        }
+    }
+
+    /// [`Self::line_rows`] with the edge's x at a height from `x_at`.
+    fn rows_with(mut self, line: Line, x_at: impl Fn(f64) -> f64) -> usize {
         let Line { a, b } = line;
+        let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
         let mut visited = 0;
         // The crossing of a row's lower side is the next row's upper one:
         // computed once, the same value either way.
@@ -389,7 +446,7 @@ impl Cells {
             if self.skipped(r) {
                 continue;
             }
-            let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
+            let top = f64::from(self.y0) + r as f64;
             let lo = upper.y.max(top);
             let hi = lower.y.min(top + 1.0);
             if lo >= hi {
@@ -397,11 +454,11 @@ impl Cells {
             }
             let xa = match carried {
                 Some((y, x)) if y == lo => x,
-                _ => line.kernel_x(lo),
+                _ => x_at(lo),
             };
-            let xb = line.kernel_x(hi);
+            let xb = x_at(hi);
             carried = Some((hi, xb));
-            visited += 1 + self.piece::<MEASURE>(r, xa, xb, (hi - lo) * d);
+            visited += 1 + self.piece(r, xa, xb, (hi - lo) * d);
         }
         visited
     }
@@ -412,20 +469,16 @@ impl Cells {
     /// side crossed, and each cell's area from the closed-form integral of
     /// x dy between them. Returns the cells and rows visited.
     pub(crate) fn curve(&mut self, curve: &Mono, origin: Point) -> usize {
-        self.curve_with::<false>(curve, origin)
-    }
-
-    pub(crate) fn curve_measured(&mut self, curve: &Mono, origin: Point) -> usize {
-        self.curve_with::<true>(curve, origin)
+        self.curve_with(curve, origin)
     }
 
     /// Adds `curves` moved by `origin` as [`Self::curve`] does, each that
     /// can reach the window, in one loop. Returns the cells and rows visited.
-    pub(crate) fn curves<const MEASURE: bool>(&mut self, curves: &[Mono], origin: Point) -> usize {
+    pub(crate) fn curves(&mut self, curves: &[Mono], origin: Point) -> usize {
         let mut visited = 0;
         for m in curves {
             if self.reaches(m.x0.min(m.x1) + origin.x) {
-                visited += self.curve_with::<MEASURE>(m, origin);
+                visited += self.curve_with(m, origin);
             }
         }
         visited
@@ -440,7 +493,7 @@ impl Cells {
         reason = "glyph curves take this path inside the curve loop"
     )]
     #[inline(always)]
-    fn curve_with<const MEASURE: bool>(&mut self, curve: &Mono, origin: Point) -> usize {
+    fn curve_with(&mut self, curve: &Mono, origin: Point) -> usize {
         let m = curve;
         let (x0, y0) = (m.x0 + origin.x, m.y0 + origin.y);
         let (x1, y1) = (m.x1 + origin.x, m.y1 + origin.y);
@@ -448,7 +501,7 @@ impl Cells {
         let mut visited = 0;
         let mut carried = None;
         for r in self.span(y0, y1) {
-            let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
+            let top = f64::from(self.y0) + r as f64;
             let lo = y0.max(top);
             let hi = y1.min(top + 1.0);
             if lo >= hi || self.skipped(r) {
@@ -469,7 +522,7 @@ impl Cells {
             let start = l.floor();
             let end = right.ceil();
             let first = start as i64;
-            let mut row = self.row::<MEASURE>(r);
+            let mut row = self.row(r);
             if MEASURE {
                 // Approximate row roots replace the exact truncation only
                 // inside horizontal residual strips. Endpoint x rounding
@@ -552,7 +605,9 @@ impl Cells {
         }
         visited
     }
+}
 
+impl Cells {
     /// Writes window row `r` to `sink`, folded by `rule`, and clears its
     /// cells: consecutive touched cells together, and each run between them
     /// once with the cover carried into it. Returns the touched cells.
@@ -680,9 +735,13 @@ impl Cells {
     }
 }
 
-/// One row of a window's cells, for [`Accumulate`].
+/// One row of a window's cells, for [`Accumulate`]: the window's storage
+/// and the row's first cell and bitmap word in it.
 struct Row<'a, const MEASURE: bool> {
     base: i64,
+    width: usize,
+    cell: usize,
+    word: usize,
     area: &'a mut [f64],
     cover: &'a mut [f64],
     touched: &'a mut [u64],
@@ -699,7 +758,7 @@ impl<const MEASURE: bool> Row<'_, MEASURE> {
 
     #[inline]
     fn mark(&mut self, x: usize) {
-        if let Some(word) = self.touched.get_mut(x / 64) {
+        if let Some(word) = self.touched.get_mut(self.word.wrapping_add(x / 64)) {
             *word |= 1 << (x % 64);
         }
     }
@@ -713,13 +772,13 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
 
     #[inline]
     fn width(&self) -> usize {
-        self.area.len()
+        self.width
     }
 
     #[inline]
     fn area_error(&mut self, column: i64, error: f64) {
         if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
-            && x < self.area.len()
+            && x < self.width
         {
             self.primitive(error);
         }
@@ -728,7 +787,8 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     #[inline]
     fn area_at(&mut self, column: i64, value: f64) {
         if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
-            && let Some(cell) = self.area.get_mut(x)
+            && x < self.width
+            && let Some(cell) = self.area.get_mut(self.cell.wrapping_add(x))
         {
             let before = *cell;
             *cell += value;
@@ -742,7 +802,9 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     #[inline]
     fn cover_at(&mut self, column: i64, value: f64) {
         let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
-        if let Some(cell) = self.cover.get_mut(x) {
+        if x < self.width
+            && let Some(cell) = self.cover.get_mut(self.cell.wrapping_add(x))
+        {
             let before = *cell;
             *cell += value;
             if MEASURE {
@@ -767,26 +829,30 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
         let first = start as i64;
         if end == start + 1.0
             && let Ok(x) = usize::try_from(first.wrapping_sub(self.base))
-            && x.wrapping_add(1) < self.area.len()
-            && x.wrapping_add(1) < self.cover.len()
+            && x.wrapping_add(1) < self.width
+            && let (Some(area), Some(cover)) = (
+                self.area.get_mut(self.cell.wrapping_add(x)),
+                self.cover
+                    .get_mut(self.cell.wrapping_add(x).wrapping_add(1)),
+            )
         {
             let value = single(xa, xb, h, start);
-            let before = self.area[x];
-            self.area[x] += value;
+            let before = *area;
+            *area += value;
             if MEASURE {
-                self.rounding.add(before, value, self.area[x]);
-                self.primitive(
+                self.rounding.add(before, value, *area);
+                self.rounding.primitive(
                     64.0 * f64::EPSILON
                         * h.abs()
                         * (xa.abs() + xb.abs() + (start + 1.0).abs() + 1.0),
                 );
             }
-            self.mark(x);
-            let before = self.cover[x + 1];
-            self.cover[x + 1] += h;
+            let before = *cover;
+            *cover += h;
             if MEASURE {
-                self.rounding.add(before, h, self.cover[x + 1]);
+                self.rounding.add(before, h, *cover);
             }
+            self.mark(x);
             self.mark(x + 1);
             return 2;
         }
@@ -815,6 +881,16 @@ mod tests {
 
     fn cells(width: usize) -> Cells {
         Cells::new(width, &mut Meter::new(usize::MAX, "budget")).unwrap()
+    }
+
+    impl Cells {
+        fn line(&mut self, line: Line) -> usize {
+            self.window::<false>(0).line(line)
+        }
+
+        fn curve_measured(&mut self, curve: &Mono, origin: Point) -> usize {
+            self.window::<true>(0).curve(curve, origin)
+        }
     }
 
     fn line(a: (f64, f64), b: (f64, f64)) -> Line {
@@ -902,7 +978,8 @@ mod tests {
         let mut measured = cells(1);
         assert!(measured.open((0, 1), 0..1));
         {
-            let mut row = measured.row::<true>(0);
+            let mut window = measured.window::<true>(0);
+            let mut row = window.row(0);
             row.area_at(0, 2.0_f64.powi(40));
             row.area_at(0, 2.0_f64.powi(-20));
             row.area_at(0, -2.0_f64.powi(40));
