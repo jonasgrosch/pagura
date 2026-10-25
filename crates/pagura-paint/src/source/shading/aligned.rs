@@ -12,6 +12,7 @@
 use super::colors::Sample;
 use super::geometry::Axial;
 use super::{Geometry, ShadingSource, Span, SpanColors, allocate};
+use crate::source::Precision;
 use pagura_color::MAX_COMPONENTS;
 use pagura_core::{Meter, Result};
 use pagura_raster::Point;
@@ -144,7 +145,12 @@ impl Aligned {
         let SpanColors { colors, alpha, .. } = out;
         let split = channels.min(colors.len());
         let (first, rest) = colors.split_at_mut(split);
-        let value = source.pixel(axial, (span.x, span.y), None, (first, &mut Sample::new()));
+        let value = source.pixel(
+            axial,
+            (span.x, span.y),
+            None,
+            (first, &mut Sample::new(Precision::Exact)),
+        );
         for chunk in rest.chunks_exact_mut(channels) {
             chunk.copy_from_slice(first);
         }
@@ -161,7 +167,7 @@ impl Aligned {
     ) {
         let channels = source.channels.max(1);
         let SpanColors { colors, alpha, .. } = out;
-        let mut sample = Sample::new();
+        let mut sample = Sample::new(Precision::Exact);
         for (i, (color, alpha)) in colors
             .chunks_exact_mut(channels)
             .zip(alpha.iter_mut())
@@ -250,7 +256,7 @@ impl Table {
         let mut alpha = allocate(count, bytes)?;
         let mut valid = allocate(count, bytes)?;
         functions.charge_product(count * source.samples(), source.colors.cost())?;
-        let mut sample = Sample::new();
+        let mut sample = Sample::new(Precision::Exact);
         for (i, ((color, alpha), valid)) in colors
             .chunks_exact_mut(channels)
             .zip(alpha.iter_mut())
@@ -291,7 +297,12 @@ impl ShadingSource {
         let Some(x) = input else {
             return 0.0;
         };
-        self.pixel(&Fixed(x), (0, 0), None, (color, &mut Sample::new()))
+        self.pixel(
+            &Fixed(x),
+            (0, 0),
+            None,
+            (color, &mut Sample::new(Precision::Exact)),
+        )
     }
 
     /// Whether device coordinates below 2³² map to parameters far from

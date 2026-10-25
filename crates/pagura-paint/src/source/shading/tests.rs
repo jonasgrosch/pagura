@@ -205,6 +205,7 @@ fn compare_grid(
     counts: &mut Counts,
 ) {
     let mut out = SpanColors::default();
+    let mut levels = SpanColors::default();
     let channels = source.channels;
     for y in 0..SIZE {
         // Two spans per row, so that spans start mid-row too.
@@ -212,11 +213,28 @@ fn compare_grid(
             let coverage: Vec<u8> = (x0..x1)
                 .map(|x| ((x * 37 + y * 101) % 256).to_le_bytes()[0])
                 .collect();
-            if boundary {
-                source.span_with_boundary(x0, y, &coverage, &mut out);
-            } else {
-                source.span(x0, y, (x1 - x0) as usize, &mut out);
+            for (out, precision) in [
+                (&mut out, Precision::Exact),
+                (&mut levels, Precision::Level),
+            ] {
+                if boundary {
+                    source.span_with_boundary(x0, y, &coverage, precision, out);
+                } else {
+                    source.span(x0, y, (x1 - x0) as usize, precision, out);
+                }
             }
+            // Colours kept to F32 levels store the levels of the exact ones.
+            let level = |v: &[f64]| {
+                v.iter()
+                    .map(|&v| crate::kernel::level(v).to_bits())
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(
+                level(&levels.colors),
+                level(&out.colors),
+                "{context} row {y}: levels"
+            );
+            assert_eq!(levels.alpha, out.alpha, "{context} row {y}: level alpha");
             for x in x0..x1 {
                 let i = (x - x0) as usize;
                 let alpha = out.alpha.get(i).copied().unwrap_or(1.0);

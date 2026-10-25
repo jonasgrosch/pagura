@@ -4,8 +4,12 @@
 //! source white to D65, the sRGB matrix, gamut clipping and the sRGB
 //! transfer curve. This is an output-device choice, not ICC processing.
 
+mod bounds;
+
 use crate::features;
 use pagura_core::{Error, Result};
+
+pub use bounds::encode_bounds;
 
 /// A 3×3 matrix applied to column vectors, row by row.
 pub type Matrix = [[f64; 3]; 3];
@@ -105,14 +109,31 @@ pub fn lab_to_xyz([l, a, b]: [f64; 3], white: [f64; 3]) -> [f64; 3] {
 
 /// Converts D65-relative XYZ to gamut-clipped, encoded sRGB.
 pub fn xyz_to_srgb(xyz: [f64; 3]) -> [f64; 3] {
-    map(XYZ_TO_LINEAR_SRGB, xyz).map(|v| {
-        let v = v.clamp(0.0, 1.0);
-        if v <= 0.003_130_8 {
-            12.92 * v
-        } else {
-            1.055 * v.powf(1.0 / 2.4) - 0.055
-        }
-    })
+    linear_srgb(xyz).map(encode)
+}
+
+/// Converts D65-relative XYZ to gamut-clipped linear sRGB, which [`encode`]
+/// takes to encoded sRGB.
+pub fn linear_srgb(xyz: [f64; 3]) -> [f64; 3] {
+    map(XYZ_TO_LINEAR_SRGB, xyz).map(|v| v.clamp(0.0, 1.0))
+}
+
+/// The sRGB transfer function (IEC 61966-2-1) of a linear value in `0..=1`.
+pub fn encode(v: f64) -> f64 {
+    if v <= LINEAR_LIMIT {
+        12.92 * v
+    } else {
+        affine(v.powf(1.0 / 2.4))
+    }
+}
+
+/// The largest linear value [`encode`] scales instead of raising.
+const LINEAR_LIMIT: f64 = 0.003_130_8;
+
+/// The encoding of a power `p = v^(1/2.4)`: increasing in `p`, also as
+/// rounded arithmetic.
+fn affine(p: f64) -> f64 {
+    1.055 * p - 0.055
 }
 
 /// A CIE-based PDF colour space (8.6.5.2–8.6.5.4) after parameter validation.
@@ -201,6 +222,11 @@ impl Calibrated {
 
     /// Converts components, clipped to the space's ranges, to encoded sRGB.
     pub fn convert(&self, components: &[f64]) -> [f64; 3] {
+        self.linear(components).map(encode)
+    }
+
+    /// The gamut-clipped linear sRGB that [`Self::convert`] encodes.
+    pub fn linear(&self, components: &[f64]) -> [f64; 3] {
         let n = |i: usize| components.get(i).copied().unwrap_or(0.0);
         let xyz = match self.model {
             Model::Gray { gamma } => self.white.map(|w| w * n(0).clamp(0.0, 1.0).powf(gamma)),
@@ -217,7 +243,7 @@ impl Calibrated {
                 self.white,
             ),
         };
-        xyz_to_srgb(map(self.adaptation, xyz))
+        linear_srgb(map(self.adaptation, xyz))
     }
 }
 

@@ -233,6 +233,49 @@ impl Converter {
         self.plan.painted()
     }
 
+    /// Converts as [`Self::convert`] does, for a caller that keeps only
+    /// `round(v)` of each output value `v`, where `round` is nondecreasing:
+    /// every value rounds as the converted value does, and a conversion that
+    /// ends in encoded sRGB raises to the transfer function's power only
+    /// where bounds of the power do not decide the rounding
+    /// ([`cie::encode_bounds`](crate::cie::encode_bounds)).
+    pub fn convert_rounded(
+        &self,
+        components: &[f64],
+        output: &mut [f64],
+        round: impl Fn(f64) -> u32,
+    ) -> Painted {
+        self.plan.convert_rounded(components, output, round);
+        self.plan.painted()
+    }
+
+    /// Converts colours of `count` components each into `output`,
+    /// [`Target::channels`] values each, as [`Self::convert`] does colour
+    /// by colour.
+    pub fn convert_line(&self, components: &[f64], count: usize, output: &mut [f64]) {
+        self.plan.convert_line(
+            (components, count),
+            (output, self.target.channels()),
+            None::<&fn(f64) -> u32>,
+        );
+    }
+
+    /// As [`Self::convert_line`], kept to `round` as
+    /// [`Self::convert_rounded`] keeps one colour.
+    pub fn convert_line_rounded(
+        &self,
+        components: &[f64],
+        count: usize,
+        output: &mut [f64],
+        round: impl Fn(f64) -> u32,
+    ) {
+        self.plan.convert_line(
+            (components, count),
+            (output, self.target.channels()),
+            Some(&round),
+        );
+    }
+
     /// The channels a colour paints under overprint mode 1 (`OPM 1`,
     /// 8.6.7): as [`Self::painted`], except that a DeviceCMYK colour in a
     /// separated CMYK target (directly, through Indexed or through an
