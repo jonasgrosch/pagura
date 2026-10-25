@@ -791,14 +791,26 @@ impl<'a> SampleKeys<'a> {
     /// equal to the one before it is not probed, so a run of equal samples
     /// is passed at once and charged with its first sample's probes.
     fn distinct(&self, work: &mut Meter, bytes: &mut Meter) -> Result<Option<usize>> {
-        const COUNT: usize = 2048;
+        const COUNT: usize = DISTINCT;
         const EMPTY: u64 = u64::MAX;
         let mut slots = Vec::new();
         bytes.reserve(&mut slots, COUNT * 2)?;
         let allocated = slots.capacity() * size_of::<u64>();
         let result = (|| {
-            work.charge(COUNT * 2)?;
             slots.resize(COUNT * 2, EMPTY);
+            let plain = match self.components {
+                1 => self.plain_distinct::<1>(&mut slots, work.remaining()),
+                2 => self.plain_distinct::<2>(&mut slots, work.remaining()),
+                3 => self.plain_distinct::<3>(&mut slots, work.remaining()),
+                4 => self.plain_distinct::<4>(&mut slots, work.remaining()),
+                _ => None,
+            };
+            if let Some((distinct, spent)) = plain {
+                work.charge(spent)?;
+                return Ok(distinct);
+            }
+            slots.fill(EMPTY);
+            work.charge(COUNT * 2)?;
             let mut distinct = 0;
             let mut index = 0;
             while index < self.count {
@@ -832,6 +844,65 @@ impl<'a> SampleKeys<'a> {
         drop(slots);
         bytes.refund(allocated);
         result
+    }
+
+    /// What [`Self::distinct`] finds and the work its scan charges, for
+    /// keys of `N` colour codes alone that every sample holds, without
+    /// charging it: one key test a sample and the probes of each run's
+    /// first, as the scan visits them. `None` where the work would exceed
+    /// `allowance` (the scan then stops where it does) or the samples are
+    /// not all present.
+    fn plain_distinct<const N: usize>(
+        &self,
+        slots: &mut [u64],
+        allowance: usize,
+    ) -> Option<(Option<usize>, usize)> {
+        const EMPTY: u64 = u64::MAX;
+        if self.matte.is_some() || self.embedded.is_some() {
+            return None;
+        }
+        let codes = self.colors.get(..self.count.checked_mul(N)?)?;
+        let mask = slots.len() - 1;
+        // The table's clearing, then per run its first sample's two units
+        // and its other samples' one; every further probe one more.
+        let fixed = slots.len();
+        let (mut distinct, mut runs, mut probes) = (0, 0usize, 0usize);
+        let mut previous = EMPTY;
+        for (index, codes) in codes.as_chunks::<N>().0.iter().enumerate() {
+            let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
+            if key == previous {
+                continue;
+            }
+            previous = key;
+            runs += 1;
+            if fixed.saturating_add(index + runs).saturating_add(probes) > allowance {
+                return None;
+            }
+            let mut slot = hash_slot(key, mask);
+            loop {
+                let held = slots[slot];
+                if held == key {
+                    break;
+                }
+                if held == EMPTY {
+                    if distinct == DISTINCT {
+                        let spent = fixed
+                            .saturating_add(index + 1 + runs)
+                            .saturating_add(probes);
+                        return (spent <= allowance).then_some((None, spent));
+                    }
+                    slots[slot] = key;
+                    distinct += 1;
+                    break;
+                }
+                slot = (slot + 1) & mask;
+                probes = probes.saturating_add(1);
+            }
+        }
+        let spent = fixed
+            .saturating_add(self.count + runs)
+            .saturating_add(probes);
+        (spent <= allowance).then_some((Some(distinct), spent))
     }
 
     /// The first sample from `from` on whose key is not `key`, the key of
@@ -878,6 +949,9 @@ fn unchanged(codes: &[u8], start: usize, stride: usize, len: usize) -> bool {
         _ => false,
     }
 }
+
+/// The most distinct keys capacity discovery counts.
+const DISTINCT: usize = 2048;
 
 /// The memo's first probe, shared with capacity discovery. The mask is
 /// applied before narrowing: on 32-bit targets the shifted hash can exceed
@@ -1046,10 +1120,11 @@ impl Memo {
     }
 
     /// The `held` values of the texel of `key`, converted by `convert` into
-    /// a texel of every lane unless held.
+    /// a texel of every lane unless held. `held` is the layout's, passed by
+    /// callers that know it as a constant.
     #[inline]
-    fn get(&mut self, key: u64, convert: impl FnOnce(&mut [f64])) -> &[f64] {
-        let held = self.layout.held;
+    fn get(&mut self, key: u64, held: usize, convert: impl FnOnce(&mut [f64])) -> &[f64] {
+        debug_assert_eq!(held, self.layout.held);
         let stride = 1 + held;
         #[expect(
             clippy::cast_precision_loss,
@@ -1127,10 +1202,48 @@ impl<'a> MemoTexels<'a> {
     fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
         let components = memo.layout.key.components;
         let key = self.samples.get(index);
-        let values = memo.get(key, |texel| self.convert(index, components, texel));
+        let held = memo.layout.held;
+        let values = memo.get(key, held, |texel| self.convert(index, components, texel));
         for (out, &value) in out.iter_mut().zip(values) {
             *out = value;
         }
+    }
+
+    /// [`Texels::row`] from sample `start` on into `out`, `H` held values a
+    /// texel, for keys of `N` colour codes alone: one lookup per run of
+    /// equal keys, with fixed-size keys and copies. False, with nothing
+    /// written, where the samples are not all present.
+    #[inline]
+    fn plain_row<const N: usize, const H: usize>(
+        &self,
+        memo: &mut Memo,
+        start: usize,
+        out: &mut [f64],
+    ) -> bool {
+        let (texels, rest) = out.as_chunks_mut::<H>();
+        let count = texels.len();
+        let codes = start
+            .checked_mul(N)
+            .zip(start.checked_add(count).and_then(|end| end.checked_mul(N)))
+            .and_then(|(first, end)| self.samples.colors.get(first..end));
+        let Some(codes) = codes.filter(|_| rest.is_empty()) else {
+            return false;
+        };
+        // No key is all ones: keys have at most 48 bits.
+        let mut previous = u64::MAX;
+        let mut last = [0.0; H];
+        for ((index, codes), texel) in (start..).zip(codes.as_chunks::<N>().0).zip(texels) {
+            let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
+            if key != previous {
+                previous = key;
+                let held = memo.get(key, H, |texel| self.convert(index, N, texel));
+                if let Some(held) = held.first_chunk::<H>() {
+                    last = *held;
+                }
+            }
+            *texel = last;
+        }
+        true
     }
 
     /// Converts sample `index` into a texel of every lane.
@@ -1189,12 +1302,26 @@ impl Texels for MemoTexels<'_> {
         let mut memo = self.memo.borrow_mut();
         let start = sample_index(u64::from(row) * u64::from(width) + u64::from(first));
         let components = memo.layout.key.components;
+        let held = memo.layout.held;
+        let plain =
+            stride == held && self.samples.matte.is_none() && self.samples.embedded.is_none();
+        if plain
+            && match (components, held) {
+                (3, 3) => self.plain_row::<3, 3>(&mut memo, start, out),
+                (3, 4) => self.plain_row::<3, 4>(&mut memo, start, out),
+                (4, 3) => self.plain_row::<4, 3>(&mut memo, start, out),
+                (4, 4) => self.plain_row::<4, 4>(&mut memo, start, out),
+                _ => false,
+            }
+        {
+            return;
+        }
         let mut previous = None;
         let mut last = [0.0; MAX_LANES];
         for (index, values) in (start..start + count).zip(out.chunks_exact_mut(stride)) {
             let key = self.samples.get(index);
             if previous != Some(key) {
-                let held = memo.get(key, |texel| self.convert(index, components, texel));
+                let held = memo.get(key, held, |texel| self.convert(index, components, texel));
                 copy_values(&mut last, held);
                 previous = Some(key);
             }
@@ -1405,7 +1532,7 @@ mod tests {
         };
         for round in 0..2 {
             for k in 0..10_000u64 {
-                let held = memo.get(k, |out| out[..3].copy_from_slice(&texel(k)));
+                let held = memo.get(k, 3, |out| out[..3].copy_from_slice(&texel(k)));
                 assert_eq!(held, texel(k), "key {k} round {round}");
             }
         }
@@ -1417,7 +1544,7 @@ mod tests {
             .unwrap();
         let mut converted = 0;
         for _ in 0..3 {
-            let held = memo.get(replacement, |out| {
+            let held = memo.get(replacement, 3, |out| {
                 converted += 1;
                 out[..3].copy_from_slice(&texel(replacement));
             });
@@ -1443,7 +1570,7 @@ mod tests {
         for key in 0..128u32 {
             let expected = [f64::from(key); 3];
             for _ in 0..2 {
-                let held = memo.get(u64::from(key), |out| {
+                let held = memo.get(u64::from(key), 3, |out| {
                     converted += 1;
                     out[..3].copy_from_slice(&expected);
                 });
@@ -1485,7 +1612,7 @@ mod tests {
             for &key in &keys {
                 let expected = [f64::from(key); 3];
                 assert_eq!(
-                    memo.get(u64::from(key), |out| {
+                    memo.get(u64::from(key), 3, |out| {
                         converted += 1;
                         out[..3].copy_from_slice(&expected);
                     }),
@@ -1523,7 +1650,7 @@ mod tests {
         for round in 0..2 {
             for k in keys.clone() {
                 for _ in 0..2 {
-                    let held = memo.get(k, |out| {
+                    let held = memo.get(k, 3, |out| {
                         converted += 1;
                         out[..3].copy_from_slice(&texel(k));
                     });
