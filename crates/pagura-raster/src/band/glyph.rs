@@ -336,15 +336,35 @@ fn flattened(
     flattened_with(outline, transform, limits, bytes, None)
 }
 
-/// Each curve's share of the polygon's area allowance of 1/4096 pixel: the
-/// area its accepted hulls can cover together.
-fn area_share(outline: &Path) -> f64 {
+/// The area allowance of a glyph polygon, in square pixels, over the whole
+/// outline or, where its bytes are certified, over a pixel that meets at
+/// most [`SHARING`] curves.
+pub(super) const AREA: f64 = 1.0 / 4096.0;
+
+/// The curves a byte-certified polygon shares [`AREA`] among: a pixel that
+/// meets more is certified from its curves' shares instead.
+const SHARING: usize = 8;
+
+/// An outline's curves and each one's share of the polygon's area
+/// allowance, the area its accepted hulls can cover together: [`AREA`]
+/// divided among every curve, or among at most [`SHARING`] where every
+/// placement certifies its bytes.
+fn area_share(outline: &Path, certified: bool) -> (usize, f64) {
     let curves = outline
         .segments()
         .iter()
         .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
-        .count();
-    1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX))
+        .count()
+        .max(1);
+    let sharing = if certified {
+        curves.min(SHARING)
+    } else {
+        curves
+    };
+    (
+        curves,
+        AREA / f64::from(u32::try_from(sharing).unwrap_or(u32::MAX)),
+    )
 }
 
 fn flattened_with(
@@ -360,7 +380,10 @@ fn flattened_with(
         // 1/4096 pixel: less than 0.063 levels, also after clipping. Local
         // interval proofs retain that bound only where hulls meet targets;
         // disjoint hulls may keep their chords without moving target winding.
-        Flatness::Area(area_share(outline))
+        // Under a regular map, every placement of a polygon with curves
+        // certifies its bytes from the original outline.
+        let certified = transform.determinant() != 0.0;
+        Flatness::Area(area_share(outline, certified).1)
     } else {
         Flatness::Distance
     };
