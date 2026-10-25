@@ -24,7 +24,7 @@ mod mesh;
 mod tests;
 
 use super::{PaintContext, SpanColors};
-use colors::Colors;
+use colors::{Colors, Sample};
 use geometry::{Axial, FunctionDomain, Radial};
 use mesh::Mesh;
 use pagura_color::{MAX_COMPONENTS, Painted};
@@ -334,7 +334,7 @@ impl ShadingSource {
     /// The general span loop, monomorphized per geometry.
     fn fill_with<S: Sampler>(&self, sampler: &S, span: Span<'_>, out: &mut SpanColors) {
         let SpanColors { colors, alpha, .. } = out;
-        let mut input = [0.0; MAX_COMPONENTS];
+        let mut sample = Sample::new();
         for (i, (color, alpha)) in colors
             .chunks_exact_mut(self.channels.max(1))
             .zip(alpha.iter_mut())
@@ -345,7 +345,7 @@ impl ShadingSource {
                 .boundary
                 .and_then(|b| b.get(i))
                 .map(|&c| f64::from(c) / 255.0);
-            *alpha = self.pixel(sampler, (x, span.y), boundary, (color, &mut input));
+            *alpha = self.pixel(sampler, (x, span.y), boundary, (color, &mut sample));
         }
     }
 
@@ -355,20 +355,20 @@ impl ShadingSource {
         sampler: &S,
         (x, y): (u32, u32),
         boundary: Option<f64>,
-        (color, input): (&mut [f64], &mut Input),
+        (color, sample): (&mut [f64], &mut Sample),
     ) -> f64 {
         if let Some(constant) = &self.constant {
-            return self.constant_pixel(sampler, (x, y), constant, (color, input));
+            return self.constant_pixel(sampler, (x, y), constant, (color, &mut sample.input));
         }
         let background = self.pattern.as_ref().and_then(|p| p.background.as_deref());
         if self.rate == 1 && background.is_none() {
-            return self.single(sampler, (x, y), (color, input));
+            return self.single(sampler, (x, y), (color, sample));
         }
         let divisor = f64::from(self.rate);
         let mut covered = 0_u32;
         let mixed = boundary.zip(background);
-        let mut sample = [0.0; pagura_color::MAX_CHANNELS];
-        let sample = sample.get_mut(..self.channels).unwrap_or_default();
+        let mut value = [0.0; pagura_color::MAX_CHANNELS];
+        let value = value.get_mut(..self.channels).unwrap_or_default();
         for sy in 0..self.rate {
             for sx in 0..self.rate {
                 let point = Point::new(
@@ -376,19 +376,19 @@ impl ShadingSource {
                     f64::from(y) + (f64::from(sy) + 0.5) / divisor,
                 ) * self.inverse;
                 let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
-                if inside && sampler.sample(point, input) {
-                    self.colors.convert(input, sample);
+                if inside && sampler.sample(point, &mut sample.input) {
+                    self.colors.convert_sample(sample, value);
                 } else if let Some(background) = background {
-                    sample.copy_from_slice(background);
+                    value.copy_from_slice(background);
                 } else {
                     continue;
                 }
                 if let Some((coverage, background)) = mixed {
-                    for ((out, &s), &b) in color.iter_mut().zip(&*sample).zip(background) {
+                    for ((out, &s), &b) in color.iter_mut().zip(&*value).zip(background) {
                         *out += coverage * s + (1.0 - coverage) * b;
                     }
                 } else {
-                    for (out, &s) in color.iter_mut().zip(&*sample) {
+                    for (out, &s) in color.iter_mut().zip(&*value) {
                         *out += s;
                     }
                 }
@@ -412,14 +412,14 @@ impl ShadingSource {
         &self,
         sampler: &S,
         (x, y): (u32, u32),
-        (color, input): (&mut [f64], &mut Input),
+        (color, sample): (&mut [f64], &mut Sample),
     ) -> f64 {
         let point = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
         let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
-        if !(inside && sampler.sample(point, input)) {
+        if !(inside && sampler.sample(point, &mut sample.input)) {
             return 0.0;
         }
-        self.colors.convert(input, color);
+        self.colors.convert_sample(sample, color);
         for out in color.iter_mut() {
             *out = (0.0 + *out) / 1.0;
         }
