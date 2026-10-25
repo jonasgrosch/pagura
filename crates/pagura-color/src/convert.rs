@@ -208,6 +208,14 @@ impl Converter {
         self.plan.cost()
     }
 
+    /// Whether converting is arithmetic on the components: device
+    /// formulas, Indexed lookups and `Range` clipping, without a tint
+    /// transform, a CIE or ICC conversion, or a black-generation or
+    /// undercolour-removal function.
+    pub fn arithmetic(&self) -> bool {
+        self.plan.arithmetic()
+    }
+
     /// The channels every colour of the space paints, as
     /// [`Self::convert`] returns them.
     pub fn painted(&self) -> Painted {
