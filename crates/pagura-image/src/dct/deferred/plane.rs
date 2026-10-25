@@ -24,6 +24,7 @@ pub(in crate::dct) struct Plane {
     /// Per block: nonzero once the block differs from the background.
     dirty: Vec<u8>,
     pitch: usize,
+    /// The block being decoded: dequantized coefficients, column by column.
     scratch: [i32; 64],
     reference: Reference,
     /// Joined zero-DC-difference and end-of-block prefixes, built at the
@@ -32,7 +33,6 @@ pub(in crate::dct) struct Plane {
     /// The last dequantized DC value and its reference sample.
     dc_cache: (i32, u8),
     background: u8,
-    blocks: usize,
 }
 
 fn filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
@@ -71,7 +71,6 @@ impl Plane {
             shortcut,
             dc_cache: (0, 128),
             background,
-            blocks,
         })
     }
 
@@ -117,20 +116,14 @@ impl Plane {
         predictor: &mut i32,
         quant: &[u16; 64],
     ) -> Result<()> {
-        let stride = self.shape.stride;
-        let index = row * stride + column;
-        if column >= stride || index >= self.blocks {
+        let Shape {
+            stride,
+            rows,
+            transposed,
+        } = self.shape;
+        if column >= stride || row >= rows {
             return Err(bits.error("JPEG block outside component"));
         }
-        // Where the block is stored: exchanged with its rows and columns.
-        let (flag, base) = if self.shape.transposed {
-            (
-                column * self.shape.rows + row,
-                (column * self.pitch + row) * 8,
-            )
-        } else {
-            (index, (row * self.pitch + column) * 8)
-        };
         if self.shortcut.is_empty() {
             let table = bits.native_shortcut(dc, ac)?;
             self.shortcut.extend_from_slice(&table);
@@ -155,21 +148,36 @@ impl Plane {
         if !nonconstant && constant == self.background {
             return Ok(());
         }
-        self.dirty[flag] = 1;
+        // Where the block is stored: exchanged with its rows and columns.
+        // A block within the plane's `stride` × `rows` has a flag and 64
+        // samples there, so these products cannot wrap.
+        let (flag, base) = if transposed {
+            (
+                column.wrapping_mul(rows).wrapping_add(row),
+                column.wrapping_mul(self.pitch).wrapping_add(row),
+            )
+        } else {
+            (
+                row.wrapping_mul(stride).wrapping_add(column),
+                row.wrapping_mul(self.pitch).wrapping_add(column),
+            )
+        };
+        *self
+            .dirty
+            .get_mut(flag)
+            .ok_or_else(|| bits.error("JPEG block outside component"))? = 1;
         let output = if nonconstant {
             let block = self.reconstruct(bits, l1)?;
-            if self.shape.transposed {
-                transpose(block)
-            } else {
-                block
-            }
+            if transposed { transpose(block) } else { block }
         } else {
             [[constant; 8]; 8]
         };
         for (y, row) in output.iter().enumerate() {
-            let start = base + y * self.pitch;
+            let start = base
+                .wrapping_mul(8)
+                .wrapping_add(y.wrapping_mul(self.pitch));
             self.samples
-                .get_mut(start..start + 8)
+                .get_mut(start..start.wrapping_add(8))
                 .ok_or_else(|| bits.error("JPEG block outside component"))?
                 .copy_from_slice(row);
         }
@@ -190,22 +198,31 @@ impl Plane {
     )]
     #[inline(never)]
     fn reconstruct(&mut self, bits: &mut Bits<'_>, l1: u64) -> Result<[[u8; 8]; 8]> {
-        let input = self.scratch.map(|v| v as f32);
+        let mut input = [[0.0; 8]; 8];
+        for (column, values) in input.iter_mut().zip(self.scratch.as_chunks::<8>().0) {
+            *column = values.map(|v| v as f32);
+        }
         let l1 = l1 as f64;
         let bound = l1 * (1.0 / 1_048_576.0) + 1.0 / 16384.0;
         let error = (bound as f32) * 1.000_000_2;
         let values = super::spatial::spatial(&input);
         let byte = crate::deferred::floor_byte;
-        let values = values.as_flattened();
-        let lower: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 - error));
-        let upper: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 + error));
-        let mut result: [[u8; 8]; 8] =
-            std::array::from_fn(|y| std::array::from_fn(|x| lower[y * 8 + x]));
-        let mut mask = 0u64;
-        if lower != upper {
-            for (i, (low, high)) in lower.iter().zip(&upper).enumerate() {
-                mask |= u64::from(low != high) << i;
-            }
+        let mut result = [[0; 8]; 8];
+        let mut upper = [0; 64];
+        for ((low, high), &value) in result
+            .as_flattened_mut()
+            .iter_mut()
+            .zip(&mut upper)
+            .zip(values.as_flattened())
+        {
+            *low = byte(value + 128.5 - error);
+            *high = byte(value + 128.5 + error);
+        }
+        // Bit `8y + x` where the bounds of sample (x, y) round apart.
+        let mut mask = 0;
+        for (low, high) in result.iter().zip(upper.as_chunks::<8>().0).rev() {
+            let differs = u64::from_le_bytes(*low) ^ u64::from_le_bytes(*high);
+            mask = mask << 8 | nonzero_bytes(differs);
         }
         if mask != 0 {
             let work = self.reference.refine(&self.scratch, mask, &mut result);
@@ -213,6 +230,13 @@ impl Plane {
         }
         Ok(result)
     }
+}
+
+/// Bit `i` set where byte `i` (little-endian) of `word` is nonzero.
+fn nonzero_bytes(word: u64) -> u64 {
+    const LOW: u64 = 0x7f7f_7f7f_7f7f_7f7f;
+    let high = ((word & LOW).wrapping_add(LOW) | word) & !LOW;
+    (high >> 7).wrapping_mul(0x0102_0408_1020_4080) >> 56
 }
 
 /// `block` with rows and columns exchanged.

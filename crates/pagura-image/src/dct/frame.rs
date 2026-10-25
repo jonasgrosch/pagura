@@ -59,8 +59,17 @@ pub(super) struct Frame {
     pub(super) precision: u8,
 }
 impl Frame {
-    /// Parses a frame header.
+    /// Parses a frame header and allocates its components' storage.
     pub(super) fn parse(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
+        let mut frame = Self::header(data, process, limits)?;
+        for c in &mut frame.components {
+            c.storage = Storage::new(c.stride * c.rows, frame.progressive, frame.precision == 12);
+        }
+        Ok(frame)
+    }
+
+    /// Parses a frame header; its components hold no storage yet.
+    pub(super) fn header(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
@@ -145,9 +154,6 @@ impl Frame {
             return Err(Error::limit("JPEG coefficient and sample budget exceeded"));
         }
         let progressive = matches!(process, 0xc2 | 0xca);
-        for c in &mut components {
-            c.storage = Storage::new(c.stride * c.rows, progressive, twelve_bit);
-        }
         Ok(Self {
             width,
             height,

@@ -158,15 +158,18 @@ fn run(
                 if decoder.frame.is_some() {
                     return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
-                let mut frame = Frame::parse(payload, marker, limits)?;
-                if let Some(native) = native {
+                let frame = if let Some(native) = native {
+                    let mut frame = Frame::header(payload, marker, limits)?;
                     deferred::prepare(
                         &mut frame,
                         (decoder.adobe, color_transform),
                         limits,
                         native,
                     )?;
-                }
+                    frame
+                } else {
+                    Frame::parse(payload, marker, limits)?
+                };
                 decoder.frame = Some(frame);
                 Ok(())
             }
