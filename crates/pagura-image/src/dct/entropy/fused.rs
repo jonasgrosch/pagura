@@ -250,7 +250,8 @@ pub(super) fn shortcut(dc: &Huffman, ac: &Huffman, bits: &mut Bits<'_>) -> Resul
     }))
 }
 
-/// Decodes directly to one dequantized block, avoiding retained coefficient planes.
+/// Decodes directly to one dequantized block, stored column by column,
+/// avoiding retained coefficient planes.
 pub(super) fn native(
     dc: &Huffman,
     ac: &Huffman,
@@ -407,6 +408,25 @@ impl<'a> Window<'a> {
         None
     }
 
+    /// Consumes and returns the next lookup entry if it is a nonzero AC
+    /// coefficient with its magnitude: symbol, total length and value.
+    #[expect(clippy::inline_always, reason = "most coefficients take this path")]
+    #[inline(always)]
+    fn coefficient(&mut self, table: &Huffman) -> Option<u32> {
+        if self.valid < 24 {
+            self.refill();
+        }
+        if self.available() < 12 {
+            return None;
+        }
+        let entry = table.wide.get(self.peek(12) as usize).copied()?;
+        // Fused, with a nonzero size: neither EOB nor ZRL.
+        (entry & 0x800f > 0x8000).then(|| {
+            self.consume(entry >> 8 & 31);
+            entry
+        })
+    }
+
     /// Adds a token's pending magnitude bits (T.81 F.2.2.1) to its value.
     #[expect(
         clippy::inline_always,
@@ -462,26 +482,30 @@ fn block(
     let mut nonconstant = false;
     let mut k = 1;
     while k < 64 {
-        let token = window.token(ac)?;
-        if token.symbol == 0 {
-            break;
-        }
-        if token.symbol == 0xf0 {
-            k += 16;
-            if k > 64 {
+        let (run, value) = if let Some(entry) = window.coefficient(ac) {
+            (entry >> 4 & 15, entry.cast_signed() >> 16)
+        } else {
+            let token = window.token(ac)?;
+            if token.symbol == 0 {
+                break;
+            }
+            if token.symbol == 0xf0 {
+                k += 16;
+                if k > 64 {
+                    return None;
+                }
+                continue;
+            }
+            let size = token.symbol & 15;
+            if size == 0 || size > 10 {
                 return None;
             }
-            continue;
-        }
-        let size = token.symbol & 15;
-        if size == 0 || size > 10 {
-            return None;
-        }
-        k += usize::from(token.symbol >> 4);
+            (u32::from(token.symbol >> 4), window.magnitude(token)?)
+        };
+        k += run as usize;
         if k >= 64 {
             return None;
         }
-        let value = window.magnitude(token)?;
         // Baseline magnitudes have at most 11 bits and quantizers 8.
         let product = value.wrapping_mul(i32::from(quant[k]));
         if !nonconstant {
@@ -489,7 +513,7 @@ fn block(
             nonconstant = true;
         }
         l1 = l1.wrapping_add(u64::from(product.unsigned_abs()));
-        output[crate::dct::transform::ORDER[k]] = product;
+        output[crate::dct::transform::COLUMN_ORDER[k]] = product;
         k += 1;
     }
     Some((nonconstant, l1))
@@ -517,7 +541,8 @@ pub(super) fn native_zero(bits: &mut Bits<'_>, shortcut: &[u32]) -> Result<bool>
         load(bits)?;
     }
     let stream = &mut bits.stream;
-    if stream.length * 8 - stream.bit < 12 {
+    // The position never passes the segment's end.
+    if stream.length.wrapping_mul(8).wrapping_sub(stream.bit) < 12 {
         return Ok(false);
     }
     let entry = shortcut[peek(stream, 12) as usize];
