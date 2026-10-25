@@ -528,8 +528,9 @@ impl ImageSampler {
     /// `y` into `out`, as a store at full opacity writes opaque colours,
     /// where every pixel of the span is opaque and its colour needs no
     /// other pass: an RGB image without a mask whose pixels take nearest
-    /// samples, or exact area averages that all meet the image. False,
-    /// with nothing written, otherwise.
+    /// samples, or exact area averages that all meet the image, also
+    /// bilinear ones where the colours follow the codes. False, with
+    /// nothing written, otherwise.
     pub(crate) fn words(
         &self,
         pixels: Pixels<'_>,
