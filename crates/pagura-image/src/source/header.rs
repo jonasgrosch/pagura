@@ -8,6 +8,7 @@ use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameter
 use pagura_codec::{Filter, FilterChain, ImageCodec};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
 use pagura_document::{Document, IndirectObject};
+use std::borrow::Cow;
 use std::sync::Arc;
 
 /// How the data after the general-purpose filters becomes samples.
@@ -74,12 +75,12 @@ impl Header {
 
 /// Reads an image XObject's dictionary and data before decoding, returning
 /// the header and the data after decryption and the general-purpose
-/// filters.
-pub(crate) fn xobject(
-    document: &Document,
+/// filters, borrowed from the document where nothing changed them.
+pub(crate) fn xobject<'a>(
+    document: &'a Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<(Header, Vec<u8>)> {
+) -> Result<(Header, Cow<'a, [u8]>)> {
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image is not a dictionary"))?;
@@ -119,17 +120,17 @@ pub(crate) fn xobject(
         stream.codec,
         Some(dictionary),
     )?;
-    Ok((header, stream.data.into_owned()))
+    Ok((header, stream.data))
 }
 
 /// Reads an inline image's dictionary and data before decoding.
-pub(crate) fn inline(
+pub(crate) fn inline<'a>(
     document: &Document,
     resources: &Dictionary,
     dictionary: &Dictionary,
-    data: &[u8],
+    data: &'a [u8],
     diagnostics: &mut Diagnostics,
-) -> Result<(Header, Vec<u8>)> {
+) -> Result<(Header, Cow<'a, [u8]>)> {
     let mut dict = inline::expanded(dictionary)?;
     if p::stencil_space(document, &dict, diagnostics)? {
         dict.remove(b"ColorSpace");
@@ -169,7 +170,7 @@ pub(crate) fn inline(
     let codec = chain.split_image();
     let data = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
     let header = read(document, &dict, &data, codec, None)?;
-    Ok((header, data.into_owned()))
+    Ok((header, data))
 }
 
 /// The checks of image dispatch and of finishing a decoded image that need
