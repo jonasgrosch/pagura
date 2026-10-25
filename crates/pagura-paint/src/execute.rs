@@ -440,8 +440,11 @@ impl<'a> Executor<'a> {
         let (Some(alpha), Some(shape)) = (ws.alpha.get_mut(..len), ws.shape.get_mut(..len)) else {
             return;
         };
-        opacity((paint_alpha, paint_shape), cover.coverage(), alpha, shape);
-        apply(compositing, mask, alpha, shape);
+        let (alpha, shape) = source_opacity(
+            (paint_alpha, paint_shape),
+            (cover, compositing, mask),
+            (alpha, shape),
+        );
         ws.usage.work = ws.usage.work.saturating_add(len);
         let mode = Mode {
             layout: frame.layout,
@@ -451,8 +454,8 @@ impl<'a> Executor<'a> {
         };
         let sources = Sources {
             colors,
-            alpha: &ws.alpha[..len],
-            shape: &ws.shape[..len],
+            alpha,
+            shape,
         };
         let kind = Store::Mark(mark.words.map(|words| (words, cover.coverage())));
         store(
@@ -906,6 +909,26 @@ fn opacity(
             *s *= factor;
         }
     }
+}
+
+/// The source alpha and shape of a span of `cover`: the paint's own over
+/// a whole span at full opacity without a soft mask, as they are; else
+/// formed in `alpha` and `shape` by [`opacity`] and [`apply`].
+fn source_opacity<'a>(
+    (paint, paint_shape): (Option<&'a [f64]>, Option<&'a [f64]>),
+    (cover, compositing, mask): (Cover<'_>, &Compositing, Option<&[f64]>),
+    (alpha, shape): (&'a mut [f64], &'a mut [f64]),
+) -> (&'a [f64], &'a [f64]) {
+    if let Some(own) = paint
+        && cover.coverage().is_none()
+        && compositing.alpha == 1.0
+        && mask.is_none()
+    {
+        return (own, paint_shape.unwrap_or(own));
+    }
+    opacity((paint, paint_shape), cover.coverage(), alpha, shape);
+    apply(compositing, mask, alpha, shape);
+    (alpha, shape)
 }
 
 /// Constant alpha and soft mask (11.6.4.3): alpha always, shape too under
