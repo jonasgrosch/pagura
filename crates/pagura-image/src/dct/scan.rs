@@ -166,13 +166,13 @@ impl Decoder {
                         } else {
                             (row, column)
                         };
-                        let index = block_row * c.stride + block_column;
                         if let Storage::Native(plane) = &mut c.storage {
                             let tables = (&self.huffman, dc, ac);
                             let block = ((block_row, block_column), &mut predictors[i]);
                             native(plane, c.quant.as_ref(), tables, block, &mut bits)?;
                             continue;
                         }
+                        let index = block_row * c.stride + block_column;
                         let block = match &mut c.storage {
                             Storage::Coefficients(blocks) => blocks
                                 .get_mut(index)

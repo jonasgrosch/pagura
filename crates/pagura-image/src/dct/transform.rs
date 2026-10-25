@@ -20,6 +20,18 @@ pub(in crate::dct) const ORDER: [usize; 64] = [
     52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
 ];
 
+/// [`ORDER`] with rows and columns exchanged: the zigzag coefficients'
+/// positions in a block stored column by column.
+pub(in crate::dct) const COLUMN_ORDER: [usize; 64] = {
+    let mut order = [0; 64];
+    let mut k = 0;
+    while k < 64 {
+        order[k] = ORDER[k] % 8 * 8 + ORDER[k] / 8;
+        k += 1;
+    }
+    order
+};
+
 /// A block's zigzag coefficients with the positions of its nonzero ones.
 #[derive(Clone, Copy)]
 pub(in crate::dct) struct Sparse<'a> {
