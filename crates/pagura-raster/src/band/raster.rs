@@ -1,6 +1,6 @@
 //! The band rasterizer: one strip of cells, reused for every mark and band.
 
-use super::cells::{Cells, STRIP, WIDE, WINDOW};
+use super::cells::{Cells, STRIP, WIDE, WINDOW, Window};
 use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
 use super::curve::Mono;
@@ -820,36 +820,33 @@ impl Items<'_> {
         listed + self.resolved.lines(window).len()
     }
 
-    /// The common accumulation for execution and preparation inspection.
+    /// The common accumulation for execution and preparation inspection,
+    /// out of line: its item loops keep the open window in registers.
+    #[inline(never)]
     fn accumulate<const MEASURE: bool>(
         &self,
         cells: &mut Cells,
         window: &std::ops::Range<u32>,
     ) -> usize {
-        let resolved = !self.resolved.is_empty();
-        if resolved {
-            cells.skip(self.resolved.mask(window));
-        }
-        let mut work = if let Some(list) = self.strips {
-            let listed = list.strip(window.start / STRIP);
-            listed.len()
-                + listed
-                    .iter()
-                    .map(|&item| self.add::<MEASURE>(cells, item as usize))
-                    .sum::<usize>()
-        } else {
-            self.all::<MEASURE>(cells)
+        let mut work = {
+            let mut cells = cells.window::<MEASURE>(self.resolved.mask(window));
+            if let Some(list) = self.strips {
+                let listed = list.strip(window.start / STRIP);
+                listed.len()
+                    + listed
+                        .iter()
+                        .map(|&item| self.add(&mut cells, item as usize))
+                        .sum::<usize>()
+            } else {
+                self.all(&mut cells)
+            }
         };
-        if resolved {
-            cells.skip(0);
+        if !self.resolved.is_empty() {
+            let mut cells = cells.window::<MEASURE>(0);
             let sides = self.resolved.lines(window);
             work += sides.len();
             for &line in sides {
-                work += if MEASURE {
-                    cells.line_measured(line)
-                } else {
-                    cells.line(line)
-                };
+                work += cells.line(line);
             }
         }
         work
@@ -857,7 +854,7 @@ impl Items<'_> {
 
     /// Adds every item to the open window: lines, curves, then any canonical
     /// point contour. Returns the work spent, one unit per item visited.
-    fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
+    fn all<const MEASURE: bool>(&self, cells: &mut Window<'_, MEASURE>) -> usize {
         let origin = self.origin.unwrap_or_default();
         let at = |p: Point| Point::new(p.x + origin.x, p.y + origin.y);
         let mut work = self.curves.len();
@@ -865,7 +862,7 @@ impl Items<'_> {
             Lines::Slice { lines, .. } => {
                 work += lines.len();
                 for l in *lines {
-                    work += Self::line::<MEASURE>(
+                    work += Self::line(
                         cells,
                         Line {
                             a: at(l.a),
@@ -879,24 +876,20 @@ impl Items<'_> {
                 // endpoints collapse to a horizontal line.
                 work = work.saturating_add(view.raw_count().unwrap_or(usize::MAX));
                 // A call per side would cost about what its one-row piece
-                // does: the side's work is inlined into the loop.
-                view.for_each(
+                // does: the side's work is inlined into the loop. The owned
+                // all-items path adds the default origin to already placed
+                // endpoints; keep its signed zeros.
+                view.plus_zero().for_each(
                     #[inline(always)]
                     |line| {
                         if !line.is_horizontal() {
-                            // The owned all-items path adds the default origin
-                            // to already placed endpoints; keep its signed zeros.
-                            let line = Line {
-                                a: line.a + Point::default(),
-                                b: line.b + Point::default(),
-                            };
-                            work += Self::line::<MEASURE>(cells, line);
+                            work += Self::line(cells, line);
                         }
                     },
                 );
             }
         }
-        work += cells.curves::<MEASURE>(self.curves, origin);
+        work += cells.curves(self.curves, origin);
         if let Lines::Slice {
             point: Some(glyph), ..
         } = &self.lines
@@ -919,7 +912,7 @@ impl Items<'_> {
                 for line in [right, left] {
                     // These are absolute canonical endpoints. Adding an
                     // origin or a default zero again changes their bits.
-                    work += Self::line::<MEASURE>(cells, line);
+                    work += Self::line(cells, line);
                 }
             }
         }
@@ -927,29 +920,31 @@ impl Items<'_> {
     }
 
     #[inline]
-    fn line<const MEASURE: bool>(cells: &mut Cells, line: Line) -> usize {
-        if !cells.reaches(line.a.x.min(line.b.x)) {
-            0
-        } else if MEASURE {
-            cells.line_measured(line)
+    fn line<const MEASURE: bool>(cells: &mut Window<'_, MEASURE>, line: Line) -> usize {
+        // Compared rather than `min`, which canonicalizes its operands.
+        let left = if line.a.x < line.b.x {
+            line.a.x
         } else {
+            line.b.x
+        };
+        if cells.reaches(left) {
             cells.line(line)
+        } else {
+            0
         }
     }
 
     /// Adds item `item` to the open window: each point plus the origin, as
     /// translating the vertices first would give. Returns the work spent.
     #[inline]
-    fn add<const MEASURE: bool>(&self, cells: &mut Cells, item: usize) -> usize {
+    fn add<const MEASURE: bool>(&self, cells: &mut Window<'_, MEASURE>, item: usize) -> usize {
         let lines = match &self.lines {
             Lines::Slice { lines, point } => {
                 debug_assert!(point.is_none());
                 lines
             }
             Lines::Polygon(view) => {
-                return view
-                    .line(item)
-                    .map_or(0, |line| Self::line::<MEASURE>(cells, line));
+                return view.line(item).map_or(0, |line| Self::line(cells, line));
             }
         };
         let at = |p: Point| match self.origin {
@@ -958,32 +953,20 @@ impl Items<'_> {
         };
         // Items right of the window change none of its cells.
         match lines.get(item) {
-            Some(l) => {
-                let line = Line {
+            Some(l) => Self::line(
+                cells,
+                Line {
                     a: at(l.a),
                     b: at(l.b),
-                };
-                if cells.reaches(line.a.x.min(line.b.x)) {
-                    if MEASURE {
-                        cells.line_measured(line)
-                    } else {
-                        cells.line(line)
-                    }
-                } else {
-                    0
-                }
-            }
+                },
+            ),
             None => self
                 .curves
                 .get(item.wrapping_sub(lines.len()))
                 .map_or(0, |m| {
                     let origin = self.origin.unwrap_or_default();
                     if cells.reaches(m.x0.min(m.x1) + origin.x) {
-                        if MEASURE {
-                            cells.curve_measured(m, origin)
-                        } else {
-                            cells.curve(m, origin)
-                        }
+                        cells.curve(m, origin)
                     } else {
                         0
                     }
