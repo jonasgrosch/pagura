@@ -741,6 +741,52 @@ fn soft_masks_with_and_without_matte_and_stencil_masks() {
     }
 }
 
+/// A mask on the image's grid with its own `Interpolate` averages with the
+/// image's footprints where the placement is minified, since an area
+/// average does not read it: every colour, alpha and shape has the bits of
+/// sampling the mask apart.
+#[test]
+fn minified_masks_with_their_own_interpolate_average_with_the_image() {
+    let rgb = image((9, 7), 3, 8, bytes(9 * 7 * 3, 8, 17));
+    let mut mask = image_mask((9, 7));
+    mask.interpolate = true;
+    for matte in [None, Some(vec![0.0; 3])] {
+        let mut soft = case(rgb.clone());
+        soft.mask = Some((mask.clone(), [0.0, 1.0], MaskUse::Soft(matte)));
+        for unit_to_device in placements(9, 7) {
+            let fused = sampler(&soft, unit_to_device, 3);
+            let mut apart = sampler(&soft, unit_to_device, 3);
+            let prepared = apart.prepared.as_deref_mut().unwrap();
+            if prepared.geometry.mode() != super::Mode::Area {
+                continue;
+            }
+            let masked = prepared.mask.as_mut().unwrap();
+            assert!(masked.independent.is_none(), "{unit_to_device:?} fuses");
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let orientation = Orientation::of(unit_to_device);
+            let inverse = unit_to_device.inverse().unwrap();
+            let geometry = super::placement(&masked.image.image, inverse, orientation).unwrap();
+            let plan = super::Sampling::new(&geometry, (x0, x1), &mut meter()).unwrap();
+            masked.independent = Some((geometry, plan));
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut a, mut b) = (scratch(&fused), scratch(&apart));
+            for y in y0..y1 {
+                let row = |sampler: &ImageSampler, storage: &mut super::ImageScratch| {
+                    let (mut colors, mut shape) = (SpanColors::default(), Vec::new());
+                    let pixels = Pixels::new(x0, y, len);
+                    sampler.span_with_shape(pixels, storage, &mut colors, &mut shape);
+                    (bits(&colors.colors), bits(&colors.alpha), bits(&shape))
+                };
+                assert_eq!(
+                    row(&fused, &mut a),
+                    row(&apart, &mut b),
+                    "{unit_to_device:?} row {y}"
+                );
+            }
+        }
+    }
+}
+
 /// An eight-bit soft mask of `size`.
 fn image_mask(size: (u32, u32)) -> DecodedImage {
     let count = usize::try_from(size.0 * size.1).unwrap();
