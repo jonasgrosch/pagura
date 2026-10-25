@@ -15,7 +15,6 @@ use crate::flatten::{Hull, Inspection};
 use crate::{FillRule, Path, Point, Segment, Transform, quantize_unit};
 use pagura_core::{Error, Meter, Result};
 
-const AREA: f64 = 1.0 / 4096.0;
 const ROUNDS: i32 = 12;
 
 /// The direct path reserves all but 1/1024 of a coverage level for the
@@ -134,7 +133,9 @@ pub(super) fn certify(
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
-    let shares = Shares::new(outline, linear, &mut bytes)?;
+    let (curves, share) = area_share(outline, true);
+    let whole = outward(f64::from(u32::try_from(curves).unwrap_or(u32::MAX)) * share);
+    let shares = Shares::new(outline, (linear, share), &mut bytes)?;
     let share_bytes = shares
         .as_ref()
         .map_or(0, |shares| shares.boxes.capacity() * size_of::<[f64; 4]>());
@@ -152,9 +153,10 @@ pub(super) fn certify(
             Some(shares) => Bound::Shared {
                 shares,
                 origin,
+                whole,
                 rest: placement + clip,
             },
-            None => Bound::Whole(AREA + placement + clip),
+            None => Bound::Whole(whole + placement + clip),
         };
         let pending = ambiguous(&shape, &bound, (&mut work, &mut bytes))?;
         let mut wrong = false;
@@ -322,7 +324,11 @@ struct Shares {
 impl Shares {
     /// `None` for an outline with cubics, whose reduced quadratics may
     /// leave their control boxes.
-    fn new(outline: &Path, linear: Transform, bytes: &mut Meter) -> Result<Option<Self>> {
+    fn new(
+        outline: &Path,
+        (linear, share): (Transform, f64),
+        bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
         if outline
             .segments()
             .iter()
@@ -333,10 +339,7 @@ impl Shares {
         let mut boxes = Vec::new();
         bytes.reserve(&mut boxes, outline.segments().len())?;
         boxes.extend(crate::flatten::curve_boxes(outline, linear));
-        Ok(Some(Self {
-            share: area_share(outline),
-            boxes,
-        }))
+        Ok(Some(Self { share, boxes }))
     }
 
     /// The area allowance the hulls of a placement at `origin` can spend
@@ -361,11 +364,12 @@ impl Shares {
 enum Bound<'a> {
     /// One bound for every pixel.
     Whole(f64),
-    /// The polygon's area allowance, which a pixel's curves can spend only
-    /// as far as their hulls meet it, plus `rest`.
+    /// The polygon's area allowance over the whole outline, which a pixel's
+    /// curves can spend only as far as their hulls meet it, plus `rest`.
     Shared {
         shares: &'a Shares,
         origin: Point,
+        whole: f64,
         rest: f64,
     },
 }
@@ -398,7 +402,7 @@ fn ambiguous(
         };
         let whole = match *bound {
             Bound::Whole(error) => error,
-            Bound::Shared { rest, .. } => AREA + rest,
+            Bound::Shared { whole, rest, .. } => whole + rest,
         };
         if failure.is_some() || certain(whole) {
             return;
@@ -408,6 +412,7 @@ fn ambiguous(
                 shares,
                 origin,
                 rest,
+                ..
             } = *bound
             {
                 work.charge(shares.boxes.len())?;
@@ -781,6 +786,7 @@ fn source_lines(
 
 #[cfg(test)]
 mod tests {
+    use super::super::AREA;
     use super::*;
     use crate::{Area, ClipShape, DeviceRect, PathBuilder, ShapeOptions};
     use pagura_core::Limits;
@@ -797,11 +803,16 @@ mod tests {
             .unwrap();
         path.close();
         let path = path.finish();
-        let shares = Shares::new(&path, Transform::IDENTITY, &mut crate::testing::bytes())
-            .unwrap()
-            .unwrap();
+        let share = area_share(&path, true).1;
+        let shares = Shares::new(
+            &path,
+            (Transform::IDENTITY, share),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(shares.boxes.len(), 2);
-        let share = AREA / 2.0;
+        assert_eq!(share, AREA / 2.0);
         let origin = Point::new(100.25, 50.5);
         let within = |x: u32, y: u32, n: u32| shares.within(origin, y, (x, x + n));
         assert_eq!(within(110, 50, 1), 0.0);
@@ -809,6 +820,18 @@ mod tests {
         assert!((2.0 * share..1.01 * AREA).contains(&within(100, 50, 30)));
         // Below the bumps' boxes.
         assert_eq!(within(100, 60, 30), 0.0);
+        // A certified polygon shares the allowance among at most eight
+        // curves; one used as it is, among all of them.
+        let mut many = PathBuilder::new();
+        many.move_to(Point::new(0.0, 0.0));
+        for i in 0..20 {
+            let x = f64::from(i);
+            many.quad_to(Point::new(x + 0.5, 1.0), Point::new(x + 1.0, 0.0))
+                .unwrap();
+        }
+        let many = many.finish();
+        assert_eq!(area_share(&many, true), (20, AREA / 8.0));
+        assert_eq!(area_share(&many, false), (20, AREA / 20.0));
         // Reduced cubics may leave their control boxes.
         let mut cubic = PathBuilder::new();
         cubic.move_to(Point::new(0.0, 0.0));
@@ -820,7 +843,11 @@ mod tests {
             )
             .unwrap();
         let cubic = cubic.finish();
-        let none = Shares::new(&cubic, Transform::IDENTITY, &mut crate::testing::bytes());
+        let none = Shares::new(
+            &cubic,
+            (Transform::IDENTITY, share),
+            &mut crate::testing::bytes(),
+        );
         assert!(none.unwrap().is_none());
     }
 
