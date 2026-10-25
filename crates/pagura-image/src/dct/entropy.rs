@@ -107,6 +107,16 @@ impl Huffman {
         Err(past.error("invalid JPEG Huffman code"))
     }
 
+    /// The code of `symbol` and its length, if the table has one.
+    pub(super) fn code_of(&self, symbol: u8) -> Option<(u64, u32)> {
+        let index = self.symbols.iter().position(|&s| s == symbol)?;
+        let (length, i) = (1..=LONGEST)
+            .zip(0..)
+            .find(|&(_, i)| index < self.offset[i] + usize::from(self.count[i]))?;
+        let code = u64::from(self.first[i]) + u64::try_from(index - self.offset[i]).ok()?;
+        Some((code, length))
+    }
+
     /// The symbol and length of the code longer than the lookup that starts
     /// the sixteen bits `window`, among codes of at most `loaded` bits.
     fn long(&self, window: usize, loaded: u32) -> Option<(u8, u32)> {
@@ -436,6 +446,11 @@ impl<'a> Bits<'a> {
     #[inline(always)]
     pub(super) fn native_zero(&mut self, shortcut: &[u32]) -> Result<bool> {
         fused::native_zero(self, shortcut)
+    }
+
+    /// Consumes the `length` bits `pattern`, if they come next.
+    pub(super) fn native_pattern(&mut self, (pattern, length): (u64, u32)) -> Result<bool> {
+        fused::native_pattern(self, pattern, length)
     }
 
     /// Decodes one baseline block into dequantized natural-order

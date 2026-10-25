@@ -554,6 +554,30 @@ pub(super) fn native_zero(bits: &mut Bits<'_>, shortcut: &[u32]) -> Result<bool>
     }
 }
 
+/// Consumes the `length` bits `pattern`, 1 ≤ length ≤ 57, if they come next
+/// within the segment.
+pub(super) fn native_pattern(bits: &mut Bits<'_>, pattern: u64, length: u32) -> Result<bool> {
+    if !bits.stream.loaded {
+        load(bits)?;
+    }
+    let stream = &mut bits.stream;
+    let length = length as usize;
+    // The position never passes the segment's end.
+    if stream.length.wrapping_mul(8).wrapping_sub(stream.bit) < length {
+        return Ok(false);
+    }
+    let at = stream.bit / 8;
+    let word = stream.bytes[at..]
+        .first_chunk::<8>()
+        .map_or(0, |bytes| u64::from_be_bytes(*bytes));
+    if (word << (stream.bit % 8)) >> (64 - length) == pattern {
+        stream.bit += length;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

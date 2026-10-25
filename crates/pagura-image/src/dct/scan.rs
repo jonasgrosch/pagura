@@ -13,6 +13,8 @@ pub(super) struct Scan {
     pub(super) end: usize,
     pub(super) high: u8,
     pub(super) low: u8,
+    /// An MCU of background blocks ([`background_mcu`]).
+    background: Option<((u64, u32), usize)>,
 }
 impl Scan {
     fn geometry(&self, frame: &super::Frame) -> Result<(usize, usize)> {
@@ -39,7 +41,7 @@ impl Scan {
         Ok(geometry)
     }
 
-    fn parse(data: &[u8], frame: &mut super::Frame) -> Result<Self> {
+    fn parse(data: &[u8], frame: &mut super::Frame, tables: &[Option<Huffman>; 8]) -> Result<Self> {
         let n = usize::from(*data.first().ok_or(Error::syntax("missing JPEG scan"))?);
         if n == 0 || n > frame.components.len() || data.len() != 1 + 2 * n + 3 {
             return Err(Error::syntax("invalid JPEG scan component count"));
@@ -100,6 +102,7 @@ impl Scan {
             }
         }
         Ok(Self {
+            background: background_mcu(frame, &selected, tables),
             selected,
             start,
             end,
@@ -122,7 +125,7 @@ impl Decoder {
             .frame
             .as_mut()
             .ok_or(Error::syntax("JPEG scan before frame"))?;
-        let scan = Scan::parse(payload, frame)?;
+        let scan = Scan::parse(payload, frame, &self.huffman)?;
         let interleaved = scan.selected.len() > 1;
         let (cols, rows) = scan.geometry(frame)?;
         let mut bits = entropy_bits(frame, data, offset, limits, self.work);
@@ -136,8 +139,7 @@ impl Decoder {
                 )
             })
             .transpose()?;
-        let mut predictors = [0i32; 4];
-        let (mut eob, mut sequence) = (0u32, 0u8);
+        let (mut predictors, mut eob, mut sequence) = ([0i32; 4], 0u32, 0u8);
         let idct = (!frame.progressive).then(Idct::new);
         // Sequential blocks share one buffer, cleared after each block.
         let mut sequential = [0; 64];
@@ -148,6 +150,10 @@ impl Decoder {
                     ((&mut bits, arithmetic.as_mut()), &mut self.padding_reported);
                 restart(entropy, (eob, &mut sequence), (diagnostics, reported))?;
                 predictors.fill(0);
+            }
+            if let Some(blocks) = skip(&scan, (mcu, frame), &predictors, &mut bits)? {
+                self.work = block_work(self.work, blocks, limits)?;
+                continue;
             }
             for &(i, dc, ac) in &scan.selected {
                 let c = &mut frame.components[i];
@@ -160,7 +166,7 @@ impl Decoder {
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {
-                        self.work = block_work(self.work, limits)?;
+                        self.work = block_work(self.work, 1, limits)?;
                         let (block_row, block_column) = if interleaved {
                             (row * c.v + y, column * c.h + x)
                         } else {
@@ -272,9 +278,9 @@ fn restart(
     Ok(())
 }
 
-/// Charges one data unit's 64 coefficients against the work budget.
-fn block_work(work: usize, limits: &Limits) -> Result<usize> {
-    work.checked_add(64)
+/// Charges data units' 64 coefficients each against the work budget.
+fn block_work(work: usize, units: usize, limits: &Limits) -> Result<usize> {
+    work.checked_add(64 * units)
         .filter(|&w| w <= limits.operations)
         .ok_or(Error::limit("JPEG scan work budget exceeded"))
 }
@@ -301,6 +307,55 @@ fn entropy_bits<'a>(
         );
     }
     bits
+}
+
+/// The entropy bits of an MCU of native blocks that each repeat their
+/// previous DC with an immediate end of block, and its block count, when
+/// they fit one 57-bit window.
+fn background_mcu(
+    frame: &super::Frame,
+    selected: &[(usize, usize, usize)],
+    tables: &[Option<Huffman>; 8],
+) -> Option<((u64, u32), usize)> {
+    let (mut pattern, mut length, mut blocks) = (0u64, 0u32, 0usize);
+    for &(i, dc, ac) in selected {
+        let c = &frame.components[i];
+        if !matches!(c.storage, Storage::Native(_)) {
+            return None;
+        }
+        let (zero, zero_length) = tables.get(dc)?.as_ref()?.code_of(0)?;
+        let (end, end_length) = tables.get(ac)?.as_ref()?.code_of(0)?;
+        for _ in 0..if selected.len() > 1 { c.h * c.v } else { 1 } {
+            length += zero_length + end_length;
+            if length > 57 {
+                return None;
+            }
+            pattern = (pattern << zero_length | zero) << end_length | end;
+            blocks += 1;
+        }
+    }
+    Some(((pattern, length), blocks))
+}
+
+/// Consumes MCU `mcu` when it is the scan's background MCU and every
+/// component's previous block is background, returning its block count.
+/// Such an MCU leaves planes and predictors as they are; only its work is
+/// charged. The first MCU latches the quantizers.
+fn skip(
+    scan: &Scan,
+    (mcu, frame): (usize, &super::Frame),
+    predictors: &[i32; 4],
+    bits: &mut Bits<'_>,
+) -> Result<Option<usize>> {
+    let Some((pattern, blocks)) = scan.background.filter(|_| mcu > 0) else {
+        return Ok(None);
+    };
+    let ready = scan.selected.iter().all(|&(i, _, _)| {
+        let c = &frame.components[i];
+        matches!((&c.storage, &c.quant), (Storage::Native(plane), Some(quant))
+            if plane.at_background(predictors[i], quant))
+    });
+    Ok((ready && bits.native_pattern(pattern)?).then_some(blocks))
 }
 
 /// Decodes the block at (row, column) of a component held in a native plane.
@@ -818,6 +873,7 @@ mod tests {
                 end: 63,
                 high: 0,
                 low: 0,
+                background: None,
             };
             let Some(data) = data(
                 &mut random,

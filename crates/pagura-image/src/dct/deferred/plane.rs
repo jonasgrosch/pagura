@@ -105,6 +105,14 @@ impl Plane {
             + self.shortcut.capacity() * size_of::<u32>()
     }
 
+    /// Whether a block that repeats the previous DC with an immediate end of
+    /// block is background. The predictor/quantizer product is in the
+    /// baseline range.
+    pub(in crate::dct) fn at_background(&self, predictor: i32, quant: &[u16; 64]) -> bool {
+        self.dc_cache.1 == self.background
+            && predictor.wrapping_mul(i32::from(quant[0])) == self.dc_cache.0
+    }
+
     /// Decodes the block at (`row`, `column`) of this component and stores its
     /// samples.
     pub(in crate::dct) fn decode(
@@ -128,12 +136,7 @@ impl Plane {
             let table = bits.native_shortcut(dc, ac)?;
             self.shortcut.extend_from_slice(&table);
         }
-        // A background block repeats the previous DC with an immediate end
-        // of block. The predictor/quantizer product is in the baseline range.
-        if self.dc_cache.1 == self.background
-            && predictor.wrapping_mul(i32::from(quant[0])) == self.dc_cache.0
-            && bits.native_zero(&self.shortcut)?
-        {
+        if self.at_background(*predictor, quant) && bits.native_zero(&self.shortcut)? {
             return Ok(());
         }
         let (nonconstant, l1) =
