@@ -801,9 +801,10 @@ impl<'a> SampleKeys<'a> {
             let mut distinct = 0;
             let mut index = 0;
             while index < self.count {
+                // The sample and its first probe, before inspecting either.
+                work.charge(2)?;
                 let key = self.get(index);
                 let mut slot = hash_slot(key, slots.len() - 1);
-                let mut probes = 1;
                 loop {
                     let held = slots[slot];
                     if held == key {
@@ -811,7 +812,6 @@ impl<'a> SampleKeys<'a> {
                     }
                     if held == EMPTY {
                         if distinct == COUNT {
-                            work.charge(1 + probes)?;
                             return Ok(None);
                         }
                         slots[slot] = key;
@@ -819,10 +819,11 @@ impl<'a> SampleKeys<'a> {
                         break;
                     }
                     slot = (slot + 1) & (slots.len() - 1);
-                    probes += 1;
+                    work.charge(1)?;
                 }
-                let end = self.run_end(key, index + 1);
-                work.charge(end - index + probes)?;
+                // Never scan more samples than the remaining allowance.
+                let end = self.run_end(key, index + 1, work.remaining());
+                work.charge(end - index - 1)?;
                 index = end;
             }
             Ok(Some(distinct))
@@ -833,13 +834,15 @@ impl<'a> SampleKeys<'a> {
     }
 
     /// The first sample from `from` on whose key is not `key`, the key of
-    /// every sample from the one before `from`; `count` if there is none.
+    /// every sample from the one before `from`; stops at `count` or after
+    /// `allowance` samples when no different key has been found.
     /// Short runs end sample by sample; past those, blocks of samples whose
     /// codes equal the ones before them in every plane are passed at once.
-    fn run_end(&self, key: u64, from: usize) -> usize {
+    fn run_end(&self, key: u64, from: usize, allowance: usize) -> usize {
         const BLOCK: usize = 16;
         let c = self.components;
-        let short = from.saturating_add(BLOCK / 2).min(self.count);
+        let limit = from.saturating_add(allowance).min(self.count);
+        let short = from.saturating_add(BLOCK / 2).min(limit);
         let mut end = from;
         while end < short && self.get(end) == key {
             end += 1;
@@ -847,7 +850,7 @@ impl<'a> SampleKeys<'a> {
         if end < short {
             return end;
         }
-        while end + BLOCK <= self.count
+        while limit - end >= BLOCK
             && unchanged(self.colors, end * c, c, BLOCK * c)
             && [self.matte, self.embedded]
                 .into_iter()
@@ -856,7 +859,7 @@ impl<'a> SampleKeys<'a> {
         {
             end += BLOCK;
         }
-        while end < self.count && self.get(end) == key {
+        while end < limit && self.get(end) == key {
             end += 1;
         }
         end
@@ -1262,6 +1265,28 @@ mod tests {
         assert_eq!(layout, before);
         assert_eq!(bytes.used(), 0);
         assert!(work.used() < 4096 + 3 * 3000);
+    }
+
+    #[test]
+    fn capacity_discovery_stops_a_run_at_its_work_allowance() {
+        // Missing plane samples have the zero key, including an arbitrarily
+        // long run. No unavailable work may be spent walking to its end.
+        let keys = SampleKeys {
+            components: 1,
+            count: usize::MAX,
+            colors: &[],
+            matte: None,
+            embedded: None,
+        };
+        let mut work = Meter::new(4099, "sample work");
+        let mut bytes = Meter::new(usize::MAX, "sample bytes");
+        bytes.charge(7).unwrap();
+        assert_eq!(
+            keys.distinct(&mut work, &mut bytes).unwrap_err().message,
+            "sample work"
+        );
+        assert_eq!(work.used(), 4099);
+        assert_eq!(bytes.used(), 7);
     }
 
     /// Skipping runs finds what probing sample by sample finds, for the
