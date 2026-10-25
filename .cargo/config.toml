@@ -5,5 +5,8 @@ lint = "clippy --workspace --all-targets --locked -- -D warnings"
 wasm = "build --locked --release -p pagura-host --target wasm32-wasip1"
 
 # WebAssembly SIMD is enabled for autovectorization only; no intrinsics or unsafe code.
+# Overflow checks stay on for every crate here, including the two the release
+# profile exempts natively: with a 32-bit `usize`, an overflow is a trap rather
+# than output that silently differs from native.
 [target.wasm32-wasip1]
-rustflags = ["-C", "target-feature=+simd128"]
+rustflags = ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"]
