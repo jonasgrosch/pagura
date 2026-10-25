@@ -221,13 +221,15 @@ impl Plane {
             *low = byte(value + 128.5 - error);
             *high = byte(value + 128.5 + error);
         }
-        // Bit `8y + x` where the bounds of sample (x, y) round apart.
-        let mut mask = 0;
-        for (low, high) in result.iter().zip(upper.as_chunks::<8>().0).rev() {
-            let differs = u64::from_le_bytes(*low) ^ u64::from_le_bytes(*high);
-            mask = mask << 8 | nonzero_bytes(differs);
-        }
-        if mask != 0 {
+        let apart = (result.as_flattened().iter().zip(&upper))
+            .fold(0, |any, (&low, &high)| any | (low ^ high));
+        if apart != 0 {
+            // Bit `8y + x` where the bounds of sample (x, y) round apart.
+            let mut mask = 0;
+            for (low, high) in result.iter().zip(upper.as_chunks::<8>().0).rev() {
+                let differs = u64::from_le_bytes(*low) ^ u64::from_le_bytes(*high);
+                mask = mask << 8 | nonzero_bytes(differs);
+            }
             let work = self.reference.refine(&self.scratch, mask, &mut result);
             bits.charge_refinement(work)?;
         }
