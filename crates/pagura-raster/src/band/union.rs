@@ -466,16 +466,15 @@ impl Resolver {
             }
             joined += 1;
         }
-        let staying = self.order.len();
         let exact = |i: u32| pieces[i as usize].line.x(mid);
-        let moves = if self.lanes.is_empty() {
-            arrange((&mut self.order, &mut self.joining), exact)
+        if self.lanes.is_empty() {
+            arrange((&mut self.order, &mut self.joining), exact, work)?;
         } else {
             self.above.clear();
             self.above.extend_from_slice(&self.order);
             let lanes = &self.lanes;
             let plain = |i: u32| lanes[i as usize].x(pieces[i as usize].line, mid);
-            let moves = arrange((&mut self.order, &mut self.joining), plain);
+            arrange((&mut self.order, &mut self.joining), plain, work)?;
             let mut right = f64::NEG_INFINITY;
             let apart = self.order.iter().all(|&(x, i)| {
                 let error = lanes[i as usize].error;
@@ -484,16 +483,12 @@ impl Resolver {
                 right = x + error;
                 apart
             });
-            if apart {
-                moves
-            } else {
+            if !apart {
                 std::mem::swap(&mut self.order, &mut self.above);
-                arrange((&mut self.order, &mut self.joining), exact)
+                // The unsuccessful plain pass has spent its work too.
+                work.charge(self.order.len())?;
+                arrange((&mut self.order, &mut self.joining), exact, work)?;
             }
-        };
-        work.charge(moves)?;
-        if !self.joining.is_empty() {
-            work.charge(sort_work(self.joining.len()).saturating_add(staying))?;
         }
         Ok(joined)
     }
@@ -613,13 +608,20 @@ fn overlapping(spans: &[Span]) -> usize {
 }
 
 /// Places the pieces from above and those joining by `x`, restores the
-/// order of the former and merges in the latter. Returns the moves
-/// restoring the order.
-fn arrange((order, joining): (&mut Vec<Place>, &mut [Place]), x: impl Fn(u32) -> f64) -> usize {
+/// order of the former and merges in the latter, charging each stage before
+/// it runs, including a plain pass that must later be retried exactly.
+fn arrange(
+    (order, joining): (&mut Vec<Place>, &mut [Place]),
+    x: impl Fn(u32) -> f64,
+    work: &mut Meter,
+) -> Result<()> {
+    if !joining.is_empty() {
+        work.charge(sort_work(joining.len()).saturating_add(order.len()))?;
+    }
     for entry in order.iter_mut() {
         entry.0 = x(entry.1);
     }
-    let moves = settle(order);
+    settle(order, work)?;
     if !joining.is_empty() {
         for entry in joining.iter_mut() {
             entry.0 = x(entry.1);
@@ -627,7 +629,7 @@ fn arrange((order, joining): (&mut Vec<Place>, &mut [Place]), x: impl Fn(u32) ->
         joining.sort_unstable_by(ordered);
         merge(order, joining);
     }
-    moves
+    Ok(())
 }
 
 /// An edge prepared for the cell kernel's plain interpolation, and how far
@@ -677,20 +679,27 @@ impl Lane {
     }
 }
 
-/// Restores the order of `order` by moving entries down one at a time, and
-/// returns the moves: pieces that crossed at the height between two
-/// sub-slabs are one move apart per crossing.
-fn settle(order: &mut [Place]) -> usize {
-    let mut moves = 0;
+/// Restores the order of `order` by moving entries down one at a time:
+/// pieces that crossed between sub-slabs are one move apart per crossing.
+/// Reserve the remaining work before starting, spend at most that many
+/// moves, then return the unused reservation to the meter.
+fn settle(order: &mut [Place], work: &mut Meter) -> Result<()> {
+    let mut remaining = work.remaining();
+    work.charge(remaining)?;
     for n in 1..order.len() {
         let mut j = n;
         while j > 0 && ordered(&order[j], &order[j - 1]).is_lt() {
-            moves += 1;
+            if remaining == 0 {
+                // The reservation exhausted the meter; refuse before the move.
+                return work.charge(1);
+            }
+            remaining -= 1;
             order.swap(j - 1, j);
             j -= 1;
         }
     }
-    moves
+    work.refund(remaining);
+    Ok(())
 }
 
 /// Merges the ordered `joining` into the ordered `order`, which has room
