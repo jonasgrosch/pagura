@@ -206,6 +206,10 @@ pub(crate) struct Mono {
     h4: f64,
     /// +1 when the piece runs downward in its own direction, else -1.
     pub(crate) direction: f64,
+    /// The heights the piece covers, `y0..=y1` unless it is restricted to
+    /// part of them: its ends there take the roots a row boundary takes.
+    pub(crate) top: f64,
+    pub(crate) bottom: f64,
 }
 
 impl Mono {
@@ -235,7 +239,31 @@ impl Mono {
             h3: (2.0 * bx * ay + ax * by) / 3.0,
             h4: ax * ay * 0.5,
             direction,
+            top: p0.y,
+            bottom: p2.y,
         }
+    }
+
+    /// The same curve over heights `top..bottom` within its own, running
+    /// downward for `direction` +1 and upward for -1.
+    pub(crate) fn restricted(&self, top: f64, bottom: f64, direction: f64) -> Self {
+        debug_assert!(self.y0 <= top && top < bottom && bottom <= self.y1);
+        Self {
+            direction,
+            top,
+            bottom,
+            ..*self
+        }
+    }
+
+    /// Whether `other` traces the same curve over the same heights, in
+    /// either direction.
+    pub(crate) fn same_curve(&self, other: &Self) -> bool {
+        *self
+            == Self {
+                direction: self.direction,
+                ..*other
+            }
     }
 
     /// H(t).

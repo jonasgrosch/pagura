@@ -7,14 +7,15 @@
 //! sign everywhere, with the floor cell of one explicit closed move point
 //! when it has one. Uncertified quadratic outlines and placements crossed
 //! by a clip path use the same flattener with a whole-outline area bound;
-//! an uncertified polygon's overlaps are resolved once, for every placement
-//! no clip cuts.
+//! an uncertified spline's overlaps are resolved once into the boundary of
+//! its covered set, kept as parts of its own curves, for every placement no
+//! clip cuts, and failing that an uncertified polygon's.
 //! Every placement that approximates its quadratics, as a polygon or by
 //! reducing degree-elevated cubics, certifies its coverage bytes before
 //! execution, refining ambiguous pixels from the original controls. General
 //! cubics retain the canonical 1/256-pixel polygon.
 
-use super::certify::{doubtful, spline_certified};
+use super::certify::{covered, doubtful, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
@@ -58,6 +59,16 @@ pub(super) enum Kind {
         spline: Spline,
         relative: Relative,
         point: Option<Point>,
+        source: Arc<rounding::Proof>,
+    },
+    /// An uncertified spline's covered set: the parts of its chains where
+    /// the winding changes between zero and not zero, turned so that it
+    /// winds one, and the area by which they can miss it. Every placement
+    /// certifies its bytes against the outline; one a clip cuts takes the
+    /// outline's polygon.
+    Union {
+        relative: Relative,
+        allowance: f64,
         source: Arc<rounding::Proof>,
     },
     /// The polygon at the flattening tolerance with its geometric points'
@@ -181,6 +192,32 @@ impl Relative {
         })
     }
 
+    /// From the parts of a covered set: their extent includes each
+    /// curve's whole x range.
+    fn parts(lines: Vec<Line>, curves: Vec<Mono>) -> Self {
+        let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
+        let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
+        let mut work = 0_usize;
+        let chords = lines.iter().copied().chain(curves.iter().map(|m| Line {
+            a: Point::new(m.x0, m.top),
+            b: Point::new(m.x1, m.bottom),
+        }));
+        for chord in chords {
+            for p in [chord.a, chord.b] {
+                lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+                hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
+            }
+            let rows = rows_reached((chord.a.y.min(chord.b.y), chord.a.y.max(chord.b.y)));
+            work = work.saturating_add(edges::line_work(chord, rows, usize::MAX).saturating_mul(4));
+        }
+        Self {
+            lines,
+            curves,
+            hull: [lo, hi],
+            work,
+        }
+    }
+
     fn retained_bytes(&self) -> usize {
         self.lines.capacity() * size_of::<Line>() + self.curves.capacity() * size_of::<Mono>()
     }
@@ -281,10 +318,42 @@ impl GlyphEdges {
                     source,
                 });
             }
+            // Its covered set where every placement certifies its bytes
+            // against the outline's curves, unless it has a point cell.
+            let union = if point.is_none() && curves && curve::quadratic_outline(outline, transform)
+            {
+                covered(&spline, &relative.curves, bytes)?
+            } else {
+                None
+            };
             let released = spline.retained_bytes() + relative.retained_bytes();
             drop((spline, relative));
             bytes.refund(released);
+            if let Some(union) = union {
+                return Ok(Kind::Union {
+                    relative: Relative::parts(union.lines, union.curves),
+                    allowance: union.allowance,
+                    source: rounding::Proof::new(outline, transform, None, bytes)?,
+                });
+            }
         }
+        Self::polygon_kind(outline, transform, limits, bytes)
+    }
+
+    /// The polygon of an outline no spline represents, with an uncertified
+    /// short polygon's overlaps resolved once where its placements certify
+    /// their bytes.
+    fn polygon_kind(
+        outline: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Kind> {
+        let regular = transform.determinant() != 0.0;
+        let curves = outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }));
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let doubtful = if points.is_empty() {
             doubtful(&polygon, 0.0, bytes)?
@@ -335,7 +404,7 @@ impl GlyphEdges {
 
     fn source(&self) -> Option<&rounding::Proof> {
         match &self.kind {
-            Kind::Curve { source, .. } => Some(source),
+            Kind::Curve { source, .. } | Kind::Union { source, .. } => Some(source),
             Kind::Polygon { state, .. } => state.source(),
         }
     }
@@ -355,7 +424,7 @@ impl GlyphEdges {
     /// The edges a certified or resolved placement translates.
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
-            Kind::Curve { relative, .. } => Some(relative),
+            Kind::Curve { relative, .. } | Kind::Union { relative, .. } => Some(relative),
             Kind::Polygon { state, .. } => state.relative(),
         }
     }
@@ -365,7 +434,7 @@ impl GlyphEdges {
     pub(crate) fn point(&self) -> Option<Point> {
         match &self.kind {
             Kind::Curve { point, .. } => *point,
-            Kind::Polygon { .. } => None,
+            Kind::Union { .. } | Kind::Polygon { .. } => None,
         }
     }
 
@@ -373,7 +442,7 @@ impl GlyphEdges {
     /// whose coverage byte is ambiguous takes the shared bounded polygon
     /// refinement before execution (ADR 0004 §4).
     pub fn curved(&self) -> bool {
-        matches!(self.kind, Kind::Curve { .. })
+        matches!(self.kind, Kind::Curve { .. } | Kind::Union { .. })
     }
 }
 
@@ -613,21 +682,23 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 (Some(_), None, None) => pieces(spline, origin, &frame, options, &mut bytes),
                 // A clip path crosses it, or a rectangle cuts it with its
                 // point: its polygon, resolved with the clip.
-                _ => {
-                    let (polygon, points) =
-                        polygon(&source.outline, source.linear, options.limits, &mut bytes)?;
-                    translated(
-                        (&polygon, &points),
-                        origin,
-                        Winding::Check(0.0),
-                        options,
-                        &mut bytes,
-                        None,
-                        None,
-                    )
-                }
+                _ => clipped(
+                    (&source.outline, source.linear),
+                    origin,
+                    options,
+                    &mut bytes,
+                ),
             }
         }
+        Kind::Union {
+            relative, source, ..
+        } => union_placed(
+            edges,
+            relative,
+            (&source.outline, source.linear),
+            origin,
+            options,
+        ),
         Kind::Polygon {
             polygon,
             points,
@@ -677,6 +748,52 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             )
         }
     }
+}
+
+/// A placement of a covered set: its translated parts where the clip keeps
+/// it whole, else the outline's polygon, resolved with the clip.
+fn union_placed(
+    edges: &Arc<GlyphEdges>,
+    relative: &Relative,
+    source: (&Path, Transform),
+    origin: Point,
+    options: &Prep<'_>,
+) -> Result<Option<Shape>> {
+    let Some(mut frame) = Frame::new(options) else {
+        return Ok(None);
+    };
+    let [lo, hi] = relative.hull;
+    if lo.x > hi.x {
+        // No parts: nothing to cover.
+        return Ok(None);
+    }
+    let hull = relative.placed_hull(origin, None)?;
+    frame.fit(hull);
+    if frame.rect.is_none() && frame.paths.is_none() {
+        return Shape::translated(edges, relative, origin, hull, &frame, options);
+    }
+    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+    clipped(source, origin, options, &mut bytes)
+}
+
+/// A placement of the polygon of `outline` under `linear` moved to
+/// `origin`, resolved with the clip.
+fn clipped(
+    (outline, linear): (&Path, Transform),
+    origin: Point,
+    options: &Prep<'_>,
+    bytes: &mut Meter,
+) -> Result<Option<Shape>> {
+    let (polygon, points) = polygon(outline, linear, options.limits, bytes)?;
+    translated(
+        (&polygon, &points),
+        origin,
+        Winding::Check(0.0),
+        options,
+        bytes,
+        None,
+        None,
+    )
 }
 
 /// A placement of a certified spline through its pieces moved to `origin`

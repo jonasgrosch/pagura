@@ -21,6 +21,9 @@ use crate::Point;
 use crate::geometry::{greater, lesser};
 use pagura_core::{Meter, Result};
 
+mod cover;
+pub(crate) use cover::covered;
+
 #[derive(Debug, Clone, Copy)]
 struct Chain {
     start: usize,
@@ -581,7 +584,13 @@ fn spline_sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<O
             }
             let left = (w[0].1, runs[w[0].0].end);
             let right = (w[1].1, runs[w[1].0].end);
-            match chains_apart((&downs, curves), (left, right), (lo, hi), margin, &mut work) {
+            match chains_apart(
+                (&downs, curves),
+                (left, right),
+                (lo, hi),
+                (margin, 12),
+                &mut work,
+            ) {
                 Some(true) => {}
                 Some(false) => return Ok(Some(false)),
                 None => return Ok(None),
@@ -671,12 +680,13 @@ fn split_pieces(
 }
 
 /// Whether the right chain stays right of the left one on the open slab
-/// `(lo, hi)`; each chain is given by its piece at `lo` and its end.
+/// `(lo, hi)`, halving curved pieces up to `depth` times; each chain is
+/// given by its piece at `lo` and its end.
 fn chains_apart(
     (downs, curves): (&[Down], &[Mono]),
     ((mut i, ie), (mut j, je)): ((usize, usize), (usize, usize)),
     (lo, hi): (f64, f64),
-    margin: f64,
+    (margin, depth): (f64, u32),
     work: &mut Work,
 ) -> Option<bool> {
     let mut a = lo;
@@ -697,7 +707,7 @@ fn chains_apart(
             (a == lo, b == hi),
             margin,
             work,
-            12,
+            depth,
         )? {
             return Some(false);
         }
