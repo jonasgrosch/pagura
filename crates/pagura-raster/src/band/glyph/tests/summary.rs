@@ -1,4 +1,5 @@
 use super::*;
+use crate::band::certify::certified;
 use crate::band::shape::{Body, GlyphGeometry};
 use crate::{Area, ClipShape, DeviceRect, ShapeOptions};
 use pagura_core::Rect;
@@ -21,6 +22,7 @@ fn stored(points: Vec<Point>, starts: Vec<usize>) -> Arc<GlyphEdges> {
             certified: true,
             source: None,
             summary: Some(summary),
+            resolved: None,
         },
     })
 }

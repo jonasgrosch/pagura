@@ -230,11 +230,13 @@ fn replacement(
     )?;
     let polygon_bytes = polygon.heap_bytes() + points.capacity() * size_of::<Point>();
     bytes.refund(bytes.used().saturating_sub(before + polygon_bytes));
-    // Old geometry stays charged until its replacement is fully ready.
+    // Old geometry stays charged until its replacement is fully ready. As
+    // for any polygon placement, only the rows its winding certificate
+    // leaves in doubt are resolved; the next round certifies the bytes.
     let prepared = translated(
         (&polygon, &points),
         source.origin,
-        Winding::Unknown,
+        Winding::Check(0.0),
         options,
         bytes,
         Some(work),
@@ -260,7 +262,10 @@ fn replacement(
 /// Whether `shape` integrates quadratics in closed form.
 fn analytic(shape: &Shape) -> bool {
     match &shape.body {
-        Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
+        Body::Glyph(body) => {
+            body.geometry == GlyphGeometry::Relative
+                && matches!(body.edges.kind, Kind::Curve { .. })
+        }
         Body::Edges(body) => !body.curves.is_empty(),
     }
 }
