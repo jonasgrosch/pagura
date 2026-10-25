@@ -42,8 +42,7 @@ const DENSE_COLUMNS: usize = 2;
 /// Strip-sized cells, reused for every mark and band of a render.
 #[derive(Debug, Default)]
 pub(crate) struct Cells {
-    area: Vec<f64>,
-    cover: Vec<f64>,
+    grid: Vec<Cell>,
     touched: Vec<u64>,
     /// One row's folded touched cells, handed on together.
     bytes: Vec<u8>,
@@ -61,6 +60,15 @@ pub(crate) struct Cells {
     /// Used only by the preparation-only measured entry points. The
     /// ordinary kernel specializes measurement away at compile time.
     rounding: Rounding,
+}
+
+/// A cell's signed area within it and the cover carried into it from the
+/// left, side by side: a piece inside one cell adds to its area and to the
+/// next cell's cover, usually on one cache line.
+#[derive(Debug, Default, Clone, Copy)]
+struct Cell {
+    area: f64,
+    cover: f64,
 }
 
 #[derive(Debug, Default)]
@@ -124,12 +132,10 @@ impl Cells {
     pub(crate) fn new(width: usize, bytes: &mut Meter) -> Result<Self> {
         let (cells, words) = Self::sizes(width)?;
         let mut storage = Self::default();
-        bytes.reserve(&mut storage.area, cells)?;
-        bytes.reserve(&mut storage.cover, cells)?;
+        bytes.reserve(&mut storage.grid, cells)?;
         bytes.reserve(&mut storage.touched, words)?;
         bytes.reserve(&mut storage.bytes, width)?;
-        storage.area.resize(cells, 0.0);
-        storage.cover.resize(cells, 0.0);
+        storage.grid.resize(cells, Cell::default());
         storage.touched.resize(words, 0);
         storage.bytes.resize(width, 0);
         Ok(storage)
@@ -138,8 +144,7 @@ impl Cells {
     /// Charges `bytes` with what [`Self::new`] reserves.
     pub(crate) fn charge(width: usize, bytes: &mut Meter) -> Result<()> {
         let (cells, words) = Self::sizes(width)?;
-        bytes.charge_items::<f64>(cells)?;
-        bytes.charge_items::<f64>(cells)?;
+        bytes.charge_items::<Cell>(cells)?;
         bytes.charge_items::<u64>(words)?;
         bytes.charge_items::<u8>(width)
     }
@@ -152,7 +157,7 @@ impl Cells {
         let cells = (narrow * rows).max(width);
         let words = (narrow / 64 + 1) * rows;
         let words = words.max(width / 64 + 1);
-        if cells.checked_mul(2 * size_of::<f64>()).is_none() {
+        if cells.checked_mul(size_of::<Cell>()).is_none() {
             return Err(Error::limit("raster cells exceed usize"));
         }
         Ok((cells, words))
@@ -163,13 +168,14 @@ impl Cells {
     /// least one.
     pub(crate) fn rows_fit(&self, width: usize) -> u32 {
         let words = width / 64 + 1;
-        let fit = (self.area.len() / width.max(1)).min(self.touched.len() / words);
+        let fit = (self.grid.len() / width.max(1)).min(self.touched.len() / words);
         u32::try_from(fit).unwrap_or(WINDOW).clamp(1, WINDOW)
     }
 
     pub(crate) fn retained_bytes(&self) -> usize {
-        (self.area.capacity() + self.cover.capacity())
-            .saturating_mul(size_of::<f64>())
+        self.grid
+            .capacity()
+            .saturating_mul(size_of::<Cell>())
             .saturating_add(self.touched.capacity().saturating_mul(size_of::<u64>()))
             .saturating_add(self.bytes.capacity())
     }
@@ -183,7 +189,7 @@ impl Cells {
         let count = rows.len();
         if count > WINDOW as usize
             || width > self.bytes.len()
-            || width.saturating_mul(count) > self.area.len()
+            || width.saturating_mul(count) > self.grid.len()
             || words.saturating_mul(count) > self.touched.len()
         {
             return false;
@@ -278,12 +284,8 @@ impl Cells {
         Row {
             rounding: &mut self.rounding,
             base: self.base,
-            area: self
-                .area
-                .get_mut(cells..cells.wrapping_add(self.width))
-                .unwrap_or_default(),
-            cover: self
-                .cover
+            cells: self
+                .grid
                 .get_mut(cells..cells.wrapping_add(self.width))
                 .unwrap_or_default(),
             touched: self.touched.get_mut(words).unwrap_or_default(),
@@ -312,11 +314,9 @@ impl Cells {
                 && x.wrapping_add(1) < self.width
             {
                 let k = r.wrapping_mul(self.width).wrapping_add(x);
-                if let (Some(area), Some(cover)) =
-                    (self.area.get_mut(k), self.cover.get_mut(k.wrapping_add(1)))
-                {
-                    *area += single(xa, xb, h, start);
-                    *cover += h;
+                if let Some([cell, next, ..]) = self.grid.get_mut(k..) {
+                    cell.area += single(xa, xb, h, start);
+                    next.cover += h;
                     return 2;
                 }
             }
@@ -578,7 +578,7 @@ impl Cells {
                 let x = w * 64 + bits.trailing_zeros() as usize;
                 bits &= bits - 1;
                 let i = cells + x;
-                let (Some(a), Some(c)) = (self.area.get_mut(i), self.cover.get_mut(i)) else {
+                let Some(cell) = self.grid.get_mut(i) else {
                     continue;
                 };
                 if position < x {
@@ -589,8 +589,9 @@ impl Cells {
                     let value = map(base + position, base + x, cover, false);
                     sink.run(base + position, base + x, value);
                 }
-                cover += std::mem::take(c);
-                let value = std::mem::take(a) + cover;
+                let Cell { area, cover: step } = std::mem::take(cell);
+                cover += step;
+                let value = area + cover;
                 if pending == 0 {
                     start = x;
                 }
@@ -623,22 +624,19 @@ impl Cells {
         mut map: impl FnMut(usize, usize, f64, bool) -> u8,
     ) -> usize {
         let end = cells.wrapping_add(self.width);
-        let (Some(area), Some(cover), Some(bytes)) = (
-            self.area.get_mut(cells..end),
-            self.cover.get_mut(cells..end),
+        let (Some(cells), Some(bytes)) = (
+            self.grid.get_mut(cells..end),
             self.bytes.get_mut(..self.width),
         ) else {
             return 0;
         };
         let mut sum = 0.0;
         let mut touched = 0;
-        for (x, ((a, c), byte)) in area
-            .iter_mut()
-            .zip(cover.iter_mut())
-            .zip(bytes.iter_mut())
-            .enumerate()
-        {
-            let (part, step) = (std::mem::take(a), std::mem::take(c));
+        for (x, (cell, byte)) in cells.iter_mut().zip(bytes.iter_mut()).enumerate() {
+            let Cell {
+                area: part,
+                cover: step,
+            } = std::mem::take(cell);
             let hit = part != 0.0 || step != 0.0;
             touched += usize::from(hit);
             sum += step;
@@ -658,8 +656,7 @@ impl Cells {
 /// One row of a window's cells, for [`Accumulate`].
 struct Row<'a, const MEASURE: bool> {
     base: i64,
-    area: &'a mut [f64],
-    cover: &'a mut [f64],
+    cells: &'a mut [Cell],
     touched: &'a mut [u64],
     rounding: &'a mut Rounding,
 }
@@ -688,13 +685,13 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
 
     #[inline]
     fn width(&self) -> usize {
-        self.area.len()
+        self.cells.len()
     }
 
     #[inline]
     fn area_error(&mut self, column: i64, error: f64) {
         if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
-            && x < self.area.len()
+            && x < self.cells.len()
         {
             self.primitive(error);
         }
@@ -703,12 +700,12 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     #[inline]
     fn area_at(&mut self, column: i64, value: f64) {
         if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
-            && let Some(cell) = self.area.get_mut(x)
+            && let Some(cell) = self.cells.get_mut(x)
         {
-            let before = *cell;
-            *cell += value;
+            let before = cell.area;
+            cell.area += value;
             if MEASURE {
-                self.rounding.add(before, value, *cell);
+                self.rounding.add(before, value, cell.area);
             }
             self.mark(x);
         }
@@ -717,11 +714,11 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     #[inline]
     fn cover_at(&mut self, column: i64, value: f64) {
         let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
-        if let Some(cell) = self.cover.get_mut(x) {
-            let before = *cell;
-            *cell += value;
+        if let Some(cell) = self.cells.get_mut(x) {
+            let before = cell.cover;
+            cell.cover += value;
             if MEASURE {
-                self.rounding.add(before, value, *cell);
+                self.rounding.add(before, value, cell.cover);
             }
             self.mark(x);
         }
@@ -742,26 +739,25 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
         let first = start as i64;
         if end == start + 1.0
             && let Ok(x) = usize::try_from(first.wrapping_sub(self.base))
-            && x.wrapping_add(1) < self.area.len()
-            && x.wrapping_add(1) < self.cover.len()
+            && let Some([cell, next, ..]) = self.cells.get_mut(x..)
         {
             let value = single(xa, xb, h, start);
-            let before = self.area[x];
-            self.area[x] += value;
+            let before = cell.area;
+            cell.area += value;
             if MEASURE {
-                self.rounding.add(before, value, self.area[x]);
-                self.primitive(
+                self.rounding.add(before, value, cell.area);
+                self.rounding.primitive(
                     64.0 * f64::EPSILON
                         * h.abs()
                         * (xa.abs() + xb.abs() + (start + 1.0).abs() + 1.0),
                 );
             }
-            self.mark(x);
-            let before = self.cover[x + 1];
-            self.cover[x + 1] += h;
+            let before = next.cover;
+            next.cover += h;
             if MEASURE {
-                self.rounding.add(before, h, self.cover[x + 1]);
+                self.rounding.add(before, h, next.cover);
             }
+            self.mark(x);
             self.mark(x + 1);
             return 2;
         }
@@ -968,7 +964,7 @@ mod tests {
             [(0, 1, 0), (1, 2, 191), (2, 5, 255), (5, 6, 128), (6, 8, 0)]
         );
         assert!(c.touched.iter().all(|&w| w == 0));
-        assert!(c.area.iter().chain(&c.cover).all(|&v| v == 0.0));
+        assert!(c.grid.iter().all(|v| v.area == 0.0 && v.cover == 0.0));
     }
 
     #[test]
@@ -1020,7 +1016,7 @@ mod tests {
                 b.inspect(row, |x0, x1, area| inspected[x0..x1].fill(fold(area, rule)));
                 assert_eq!(inspected, emitted);
             }
-            assert!(b.area.iter().chain(&b.cover).all(|&v| v == 0.0));
+            assert!(b.grid.iter().all(|v| v.area == 0.0 && v.cover == 0.0));
             assert!(b.touched.iter().all(|&v| v == 0));
         }
     }
