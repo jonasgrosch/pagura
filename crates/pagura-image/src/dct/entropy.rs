@@ -144,10 +144,12 @@ fn extend(raw: u32, size: u8) -> i32 {
     }
 }
 
+/// Parses Huffman table definitions. With `wide`, also builds native-plane
+/// lookups, whose AC entries join coefficient pairs with `pairs`.
 pub(super) fn tables(
     mut payload: &[u8],
     tables: &mut [Option<Huffman>; 8],
-    wide: bool,
+    (wide, pairs): (bool, bool),
 ) -> Result<()> {
     while let Some((&info, rest)) = payload.split_first() {
         if info >> 4 > 1 || info & 15 > 3 {
@@ -195,7 +197,7 @@ pub(super) fn tables(
             code *= 2;
         }
         let prefixes = if wide {
-            fused::wide_table(&first, &count_by_length, &offsets, symbols, ac).to_vec()
+            fused::wide_table(&first, &count_by_length, &offsets, symbols, (ac, pairs)).to_vec()
         } else {
             Vec::new()
         };
@@ -546,7 +548,7 @@ mod tests {
             payload[usize::from(length)] = 1;
             payload.push(122);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books, false).unwrap();
+            tables(&payload, &mut books, (false, false)).unwrap();
             let book = books[0].as_ref().unwrap();
             for leading in 0..8usize {
                 let size = (leading + usize::from(length)).div_ceil(8);
@@ -654,7 +656,7 @@ mod tests {
             payload.extend_from_slice(&[1; 16]);
             payload.extend_from_slice(symbols);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books, false).unwrap();
+            tables(&payload, &mut books, (false, false)).unwrap();
             let book = books[usize::from(class >> 4) * 4].as_ref().unwrap();
             for window in 0..=u16::MAX {
                 let mut data = Vec::new();

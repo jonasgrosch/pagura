@@ -861,7 +861,7 @@ mod tests {
             let sizes_used = payload.len() - 17;
             payload.extend(table(&mut random, 0x10, &pairs));
             let mut books = std::array::from_fn(|_| None);
-            if crate::dct::entropy::tables(&payload, &mut books, false).is_err() {
+            if crate::dct::entropy::tables(&payload, &mut books, (false, false)).is_err() {
                 continue;
             }
             let (Some(dc), Some(ac)) = (books[0].as_ref(), books[4].as_ref()) else {
