@@ -13,6 +13,7 @@
 
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
+use crate::source::copy_values;
 use pagura_color::{ColorSpace, Converter};
 use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
@@ -449,7 +450,7 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
-        copy_texel(out, self.texel(index));
+        copy_values(out, self.texel(index));
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
@@ -684,7 +685,7 @@ impl<T: Texels> Texels for Fused<'_, T> {
             {
                 if let Some((first, rest)) = pixel.split_first_mut() {
                     *first = opacity;
-                    copy_texel(rest, value);
+                    copy_values(rest, value);
                 }
             }
             start += take;
@@ -841,10 +842,14 @@ fn hash_slot(key: u64, mask: usize) -> usize {
 
 /// Texels by sample key: open addressing into slots that hold a key and
 /// its `held` values together, so that a lookup reads one place. Keys have
-/// at most 48 bits, so each is held exactly as an f64. The memo holds at
-/// most one texel per 16 samples of its image (at least 4096, at most
-/// [`MemoLayout::CAP`]), so that what it reserves stays near the decoded samples'
-/// own size; a sample past them is converted without being kept.
+/// at most 48 bits, so each is held exactly as an f64. The initial retention
+/// limit is one texel per 16 samples, clamped between 4096 and
+/// [`MemoLayout::CAP`] and tightened for small palettes. The retaining table
+/// reserves twice that limit, rounded up to a power of two.
+/// The first miss at the limit switches to direct lookup and
+/// replacement in each key's first slot. No later lookup probes the
+/// filling table, so misses terminate even when every slot is occupied.
+/// A palette that fits still keeps every key, including displaced keys.
 ///
 /// An arithmetic conversion costs less than a lookup that misses the
 /// cache, as one into a large table of a photograph does. Its memo
@@ -857,6 +862,7 @@ pub(super) struct MemoLayout {
     key: Key,
     opaque: bool,
     held: usize,
+    /// Keys retained by probing before a miss switches to direct lookup.
     limit: usize,
     /// Whether a key takes its first slot from the one held there, rather
     /// than a free slot while fewer than `limit` are held.
@@ -868,6 +874,7 @@ pub(super) struct MemoLayout {
 pub(super) struct Memo {
     layout: MemoLayout,
     slots: Vec<f64>,
+    /// Initial probe-table entries; `limit + 1` marks direct lookup.
     len: usize,
     /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
@@ -877,7 +884,7 @@ pub(super) struct Memo {
 const FREE: f64 = -1.0;
 
 impl MemoLayout {
-    /// The most texels kept.
+    /// The largest initial retention limit.
     pub(super) const CAP: usize = 1 << 20;
 
     /// The most slots of a replacing memo: about half a megabyte of RGB or
@@ -902,7 +909,7 @@ impl MemoLayout {
         self.opaque
     }
 
-    /// Bytes of the fixed table, whose slots stay at most half full.
+    /// Bytes of the fixed table; probing ends while it is at most half full.
     pub(super) fn bytes(self) -> usize {
         size_of::<Memo>().saturating_add(self.values().saturating_mul(size_of::<f64>()))
     }
@@ -973,23 +980,24 @@ impl Memo {
             reason = "keys have at most 48 bits, which f64 holds exactly"
         )]
         let wanted = key as f64;
-        let slot = if self.layout.replacing {
-            hash_slot(key, self.slots.len() / stride - 1)
-        } else {
+        let probing = !self.layout.replacing && self.len <= self.layout.limit;
+        let slot = if probing {
             self.slot(key, wanted)
+        } else {
+            hash_slot(key, self.slots.len() / stride - 1)
         };
-        let at = slot * stride;
+        let mut at = slot * stride;
         if self.slots.get(at).copied() != Some(wanted) {
             convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
-            if !self.layout.replacing {
-                if self.len >= self.layout.limit {
-                    return &self.spare[..held];
+            if probing {
+                if self.len == self.layout.limit {
+                    at = hash_slot(key, self.slots.len() / stride - 1) * stride;
                 }
                 self.len += 1;
             }
             if let Some(entry) = self.slots.get_mut(at..at + stride) {
                 entry[0] = wanted;
-                copy_texel(&mut entry[1..], &self.spare[..held]);
+                copy_values(&mut entry[1..], &self.spare[..held]);
             }
         }
         self.slots.get(at + 1..at + stride).unwrap_or(&[])
@@ -1114,34 +1122,11 @@ impl Texels for MemoTexels<'_> {
             let key = self.samples.get(index);
             if previous != Some(key) {
                 let held = memo.get(key, |texel| self.convert(index, components, texel));
-                copy_texel(&mut last, held);
+                copy_values(&mut last, held);
                 previous = Some(key);
             }
-            copy_texel(values, &last);
+            copy_values(values, &last);
         }
-    }
-}
-
-/// Copies the first values of `from` into `to`, as many as both hold: a
-/// fixed-size move for the common counts, where a copy call per texel
-/// costs more than the copy.
-#[inline]
-pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
-    #[inline]
-    fn fixed<const N: usize>(to: &mut [f64], from: &[f64]) {
-        if let (Some(to), Some(from)) = (to.first_chunk_mut::<N>(), from.first_chunk::<N>()) {
-            *to = *from;
-        }
-    }
-    match to.len().min(from.len()) {
-        0 => {}
-        1 => fixed::<1>(to, from),
-        2 => fixed::<2>(to, from),
-        3 => fixed::<3>(to, from),
-        4 => fixed::<4>(to, from),
-        5 => fixed::<5>(to, from),
-        6 => fixed::<6>(to, from),
-        n => to[..n].copy_from_slice(&from[..n]),
     }
 }
 
@@ -1235,9 +1220,9 @@ mod tests {
     }
 
     /// The memo reserves less than eight bytes a sample of its image, and
-    /// past its limit it converts every sample anew, alike.
+    /// past its limit a new key replaces its first slot.
     #[test]
-    fn the_memo_stays_near_its_samples_and_converts_past_its_limit() {
+    fn the_memo_stays_near_its_samples_and_replaces_past_its_limit() {
         let key = Key {
             components: 3,
             matte: false,
@@ -1257,7 +1242,90 @@ mod tests {
                 assert_eq!(held, texel(k), "key {k} round {round}");
             }
         }
-        assert_eq!(memo.len, memo.layout.limit);
+        assert_eq!(memo.len, memo.layout.limit + 1);
+        let stride = 1 + memo.layout.held;
+        let mask = memo.slots.len() / stride - 1;
+        let replacement = (20_000..30_000u64)
+            .find(|&key| memo.slots[super::hash_slot(key, mask) * stride] != super::FREE)
+            .unwrap();
+        let mut converted = 0;
+        for _ in 0..3 {
+            let held = memo.get(replacement, |out| {
+                converted += 1;
+                out[..3].copy_from_slice(&texel(replacement));
+            });
+            assert_eq!(held, texel(replacement));
+        }
+        assert_eq!((converted, memo.len), (1, memo.layout.limit + 1));
+    }
+
+    /// Filling every reserved slot must not turn a later miss into an
+    /// unbounded probe. Adjacent repeats still use the converted texel.
+    #[test]
+    fn a_full_retaining_memo_switches_to_direct_lookup() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let mut layout = MemoLayout::new(key, (3, true), 0, false);
+        layout.limit = 4;
+        let mut memo = layout.make().unwrap();
+        let mut converted = 0;
+        for key in 0..128u32 {
+            let expected = [f64::from(key); 3];
+            for _ in 0..2 {
+                let held = memo.get(u64::from(key), |out| {
+                    converted += 1;
+                    out[..3].copy_from_slice(&expected);
+                });
+                assert_eq!(held, expected);
+            }
+        }
+        assert_eq!(converted, 128);
+        assert_eq!(memo.len, layout.limit + 1);
+        assert!(
+            memo.slots
+                .chunks_exact(1 + layout.held)
+                .all(|slot| slot[0] != super::FREE)
+        );
+        memo.reset();
+        assert_eq!(memo.len, 0);
+        assert!(memo.slots.iter().all(|&value| value == super::FREE));
+    }
+
+    /// Reaching the limit does not discard displaced palette entries:
+    /// only a new key can switch the memo to direct lookup.
+    #[test]
+    fn a_fitting_palette_keeps_its_displaced_entries() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let mut layout = MemoLayout::new(key, (3, true), 0, false);
+        layout.limit = 4;
+        let mut memo = layout.make().unwrap();
+        let mask = memo.slots.len() / (1 + layout.held) - 1;
+        let keys: Vec<_> = (0..1024u32)
+            .filter(|&key| super::hash_slot(u64::from(key), mask) == 0)
+            .take(layout.limit)
+            .collect();
+        assert_eq!(keys.len(), layout.limit);
+        let mut converted = 0;
+        for _ in 0..3 {
+            for &key in &keys {
+                let expected = [f64::from(key); 3];
+                assert_eq!(
+                    memo.get(u64::from(key), |out| {
+                        converted += 1;
+                        out[..3].copy_from_slice(&expected);
+                    }),
+                    expected
+                );
+            }
+        }
+        assert_eq!((converted, memo.len), (layout.limit, layout.limit));
     }
 
     /// A replacing memo stays within its slots however large its image,

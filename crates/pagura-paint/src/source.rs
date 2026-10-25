@@ -428,3 +428,26 @@ impl Source {
         }
     }
 }
+
+/// Copies the first values of `from` into `to`, as many as both hold: a
+/// fixed-size move for the common counts, where a copy call per texel
+/// or sample costs more than the copy.
+#[inline]
+pub(crate) fn copy_values(to: &mut [f64], from: &[f64]) {
+    #[inline]
+    fn fixed<const N: usize>(to: &mut [f64], from: &[f64]) {
+        if let (Some(to), Some(from)) = (to.first_chunk_mut::<N>(), from.first_chunk::<N>()) {
+            *to = *from;
+        }
+    }
+    match to.len().min(from.len()) {
+        0 => {}
+        1 => fixed::<1>(to, from),
+        2 => fixed::<2>(to, from),
+        3 => fixed::<3>(to, from),
+        4 => fixed::<4>(to, from),
+        5 => fixed::<5>(to, from),
+        6 => fixed::<6>(to, from),
+        n => to[..n].copy_from_slice(&from[..n]),
+    }
+}
