@@ -10,6 +10,7 @@
 //! does not depend on which span asks for it.
 
 use crate::source::Pixels;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Result};
 use pagura_raster::{Point, Transform};
 
@@ -286,24 +287,52 @@ impl Geometry {
         }
     }
 
+    /// The texels a bilinear span over device `columns` reads from each of
+    /// its two source rows when the placement is upright, which
+    /// [`Self::fill`] then reads once a span; 0 otherwise.
+    pub(super) fn row_cells(&self, (x0, x1): (u32, u32)) -> usize {
+        let t = self.inverse;
+        if self.mode != Mode::Bilinear || t.b != 0.0 || t.c != 0.0 {
+            return 0;
+        }
+        // A pixel's left tap moves at most |a| cells a column, and the
+        // right tap adds one; `reaches` keeps the extent finite.
+        let cells = (t.a.abs() * f64::from(x1.saturating_sub(x0))).ceil() + 2.0;
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "a finite, non-negative count capped by the image width"
+        )]
+        let cells = cells.min(f64::from(self.width)) as usize;
+        cells
+    }
+
     /// Writes the values of device pixels `x .. x + len` of row `y`, each
-    /// `texels.lanes()` values, into `out`.
-    pub(super) fn fill(&self, pixels: Pixels<'_>, texels: &impl Texels, out: &mut [f64]) {
+    /// `texels.lanes()` values, into `out`; `rows` keeps the source rows
+    /// of upright bilinear spans.
+    pub(super) fn fill(
+        &self,
+        pixels: Pixels<'_>,
+        texels: &impl Texels,
+        out: &mut [f64],
+        rows: &mut BilinearRows,
+    ) {
         let Pixels { x, y, len, .. } = pixels;
         let lanes = texels.lanes();
         let opaque = texels.opaque();
-        let pixels = out.chunks_exact_mut(lanes).take(len);
         match self.mode {
             Mode::Nearest => {
-                for (value, px) in pixels.zip(x..) {
+                for (value, px) in out.chunks_exact_mut(lanes).take(len).zip(x..) {
                     let (color, rest) = value.split_at_mut(lanes - usize::from(opaque) * 2);
                     texels.get(self.nearest(px, y), color);
                     rest.fill(1.0);
                 }
             }
             Mode::Bilinear => {
-                for (value, px) in pixels.zip(x..) {
-                    self.bilinear(px, y, texels, value);
+                if !self.bilinear_rows(pixels, texels, out, rows) {
+                    for (value, px) in out.chunks_exact_mut(lanes).take(len).zip(x..) {
+                        self.bilinear(px, y, texels, value);
+                    }
                 }
             }
             // Minified placements average through their separable or
@@ -320,6 +349,59 @@ impl Geometry {
     fn nearest(&self, x: u32, y: u32) -> usize {
         let center = self.center(x, y);
         self.index(center.x.floor(), center.y.floor())
+    }
+
+    /// [`Self::bilinear`] for a span of an upright placement. The inverse's
+    /// cross terms are signed zeros, so a pixel centre's sample `y` is
+    /// `±0 + d·y + f`, the same for every column (and its floor and fraction
+    /// with it), while its `x` depends on the column alone. Every pixel thus
+    /// takes its taps from the same two source rows, read once through
+    /// `rows`, and, rounding being monotone, from the columns between those
+    /// of the first and last pixel. Each tap adds its texel as
+    /// [`Texels::add`] does, in the same order, so every pixel has the bits
+    /// of [`Self::bilinear`]. False, with nothing written, where `rows`
+    /// cannot hold the span's rows.
+    fn bilinear_rows(
+        &self,
+        Pixels { x, y, len, .. }: Pixels<'_>,
+        texels: &impl Texels,
+        out: &mut [f64],
+        rows: &mut BilinearRows,
+    ) -> bool {
+        let t = self.inverse;
+        if t.b != 0.0 || t.c != 0.0 || len == 0 {
+            return false;
+        }
+        let lanes = texels.lanes();
+        let n = lanes - usize::from(texels.opaque()) * 2;
+        let right = self.width.saturating_sub(1);
+        let last = x.saturating_add(u32::try_from(len - 1).unwrap_or(u32::MAX));
+        let (first, last) = (self.center(x, y), self.center(last, y));
+        let (a, b) = ((first.x - 0.5).floor(), (last.x - 0.5).floor());
+        let begin = coordinate(a.min(b), right);
+        let end = coordinate(a.max(b) + 1.0, right) + 1;
+        let top = (first.y - 0.5).floor();
+        let lines = [top, top + 1.0].map(|line| coordinate(line, self.height.saturating_sub(1)));
+        let Some((upper, lower)) = rows.read(texels, (lines, self.width), (begin, end), n) else {
+            return false;
+        };
+        let span = RowTaps {
+            geometry: self,
+            y,
+            fy: (first.y - 0.5) - top,
+            begin,
+            rows: (upper, lower),
+        };
+        let out = out.chunks_exact_mut(lanes).take(len).zip(x..);
+        match n {
+            1 => span.fill::<1>(out, texels, n),
+            3 => span.fill::<3>(out, texels, n),
+            4 => span.fill::<4>(out, texels, n),
+            5 => span.fill::<5>(out, texels, n),
+            6 => span.fill::<6>(out, texels, n),
+            _ => span.fill::<0>(out, texels, n),
+        }
+        true
     }
 
     fn bilinear(&self, x: u32, y: u32, texels: &impl Texels, out: &mut [f64]) {
@@ -346,6 +428,165 @@ impl Geometry {
         let x = coordinate(x, self.width.saturating_sub(1));
         let y = coordinate(y, self.height.saturating_sub(1));
         sample_index(u64::from(y) * u64::from(self.width) + u64::from(x))
+    }
+}
+
+/// The source rows upright bilinear spans read, kept for the next span:
+/// two slots of half the capacity each.
+#[derive(Debug, Default)]
+pub(super) struct BilinearRows {
+    values: Vec<f64>,
+    kept: [Option<Kept>; 2],
+}
+
+/// The texels a slot holds: source row `line`, columns `begin..end`, `n`
+/// values each.
+#[derive(Debug, Clone, Copy)]
+struct Kept {
+    line: u32,
+    begin: u32,
+    end: u32,
+    n: usize,
+}
+
+impl BilinearRows {
+    /// Rows in `values`, whose capacity the caller has charged.
+    pub(super) fn new(values: Vec<f64>) -> Self {
+        Self {
+            values,
+            kept: [None; 2],
+        }
+    }
+
+    pub(super) fn bytes(&self) -> usize {
+        self.values.capacity() * size_of::<f64>()
+    }
+
+    /// Forgets the rows read, before the storage serves another render.
+    pub(super) fn reset(&mut self) {
+        self.kept = [None; 2];
+    }
+
+    /// Whether a span has read rows.
+    #[cfg(test)]
+    pub(super) fn read_any(&self) -> bool {
+        self.kept.iter().any(Option::is_some)
+    }
+
+    /// The texels of the source rows `lines` of an image `width` samples
+    /// wide over `cells`, `n` values each: from the slots that hold them, or
+    /// read into the others. `None` where a slot cannot hold them.
+    fn read(
+        &mut self,
+        texels: &impl Texels,
+        (lines, width): ([u32; 2], u32),
+        (begin, end): (u32, u32),
+        n: usize,
+    ) -> Option<(&[f64], &[f64])> {
+        let slot = self.values.capacity() / 2;
+        let values = usize::try_from(end - begin).ok()?.checked_mul(n)?;
+        if values > slot {
+            return None;
+        }
+        let holds = |kept: Option<Kept>, line: u32| {
+            kept.is_some_and(|k| k.line == line && k.n == n && k.begin <= begin && end <= k.end)
+        };
+        let mut found = lines.map(|line| (0..2).find(|&s| holds(self.kept[s], line)));
+        let all = super::scratch::grown(&mut self.values, 2 * slot);
+        for i in 0..2 {
+            if found[i].is_some() {
+                continue;
+            }
+            // The slot the other row does not take.
+            let s = found[1 - i].map_or(0, |other| 1 - other);
+            texels.row(
+                (lines[i], width),
+                (begin, end),
+                &mut all[s * slot..s * slot + values],
+            );
+            self.kept[s] = Some(Kept {
+                line: lines[i],
+                begin,
+                end,
+                n,
+            });
+            found[i] = Some(s);
+            if lines[1 - i] == lines[i] {
+                found[1 - i] = Some(s);
+            }
+        }
+        let row = |s: Option<usize>| {
+            let s = s.unwrap_or(0);
+            let from = self.kept[s].map_or(0, |k| u32_to_usize(begin - k.begin) * n);
+            let at = s * slot + from;
+            all.get(at..at + values).unwrap_or(&[])
+        };
+        Some((row(found[0]), row(found[1])))
+    }
+}
+
+/// The two source rows of an upright bilinear span, read from column
+/// `begin`, and the fraction of the row its pixel centres share.
+struct RowTaps<'a> {
+    geometry: &'a Geometry,
+    y: u32,
+    fy: f64,
+    begin: u32,
+    rows: (&'a [f64], &'a [f64]),
+}
+
+impl<'a> RowTaps<'a> {
+    /// Writes the pixels of `out`, texels of `N` values (`n` for 0) summed
+    /// from the rows; a pixel with a tap outside them takes
+    /// [`Geometry::bilinear`].
+    fn fill<'o, const N: usize>(
+        &self,
+        out: impl Iterator<Item = (&'o mut [f64], u32)>,
+        texels: &impl Texels,
+        n: usize,
+    ) {
+        let n = if N == 0 { n } else { N };
+        let geometry = self.geometry;
+        let (upper, lower) = self.rows;
+        let right = geometry.width.saturating_sub(1);
+        let texel = |row: &'a [f64], column: f64| {
+            let cell = usize::try_from(coordinate(column, right).checked_sub(self.begin)?).ok()?;
+            row.get(cell * n..(cell + 1) * n)
+        };
+        let fy = self.fy;
+        for (value, px) in out {
+            let sx = geometry.center(px, self.y).x - 0.5;
+            let left = sx.floor();
+            let fx = sx - left;
+            let weights = [
+                (1.0 - fx) * (1.0 - fy),
+                fx * (1.0 - fy),
+                (1.0 - fx) * fy,
+                fx * fy,
+            ];
+            let taps = [
+                texel(upper, left),
+                texel(upper, left + 1.0),
+                texel(lower, left),
+                texel(lower, left + 1.0),
+            ];
+            let [Some(t0), Some(t1), Some(t2), Some(t3)] = taps else {
+                geometry.bilinear(px, self.y, texels, value);
+                continue;
+            };
+            let (color, rest) = value.split_at_mut(n);
+            for ((((sum, v0), v1), v2), v3) in color.iter_mut().zip(t0).zip(t1).zip(t2).zip(t3) {
+                let mut value = 0.0 + v0 * weights[0];
+                value += v1 * weights[1];
+                value += v2 * weights[2];
+                value += v3 * weights[3];
+                *sum = value;
+            }
+            let alpha = 0.0 + weights[0] + weights[1] + weights[2] + weights[3];
+            for slot in rest {
+                *slot = alpha;
+            }
+        }
     }
 }
 

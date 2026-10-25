@@ -8,7 +8,7 @@
 //! same device-space double, so every colour, alpha and shape must agree
 //! bit for bit.
 
-use super::geometry::Geometry;
+use super::geometry::{BilinearRows, Geometry, Texels};
 use super::texels::{Opacity, OpacityTexels, SampleTexels};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
 use crate::source::{Pixels, SpanColors};
@@ -769,6 +769,102 @@ fn interpolated_images() {
     let mut gray = case(image((7, 5), 1, 8, bytes(35, 8, 37)));
     gray.image.interpolate = true;
     agree(&gray, 3);
+}
+
+/// Upright bilinear spans read their two source rows once, and every
+/// pixel keeps the bits of adding its four texels one at a time: magnified,
+/// mirrored and nearly unit placements, taps clamped at the image's edges,
+/// texels with and without their opaque alpha and shape lanes.
+#[test]
+fn upright_bilinear_rows_add_as_single_texels_do() {
+    let mut gray = case(image((7, 5), 1, 8, bytes(35, 8, 41)));
+    gray.image.interpolate = true;
+    // A soft mask on the image's grid keeps converted texels.
+    let mask = image((7, 5), 1, 8, bytes(35, 8, 43));
+    gray.mask = Some((mask, [0.0, 1.0], MaskUse::Soft(None)));
+    let Samples::Bytes(codes) = &gray.image.samples else {
+        panic!("byte samples");
+    };
+    let table: Vec<f64> = (0..256u16)
+        .flat_map(|c| {
+            let v = f64::from(c) / 255.0;
+            [v, v / 3.0, 1.0 - v, 1.0, 1.0]
+        })
+        .collect();
+    let opaque = super::texels::TableTexels {
+        codes: super::texels::ByteCodes(codes),
+        table: &table,
+        lanes: 5,
+        opaque: true,
+    };
+    let (w, h) = (7.0, 5.0);
+    for unit_to_device in [
+        Transform::new(3.7 * w, 0.0, 0.0, 3.3 * h, 0.4, 0.3),
+        Transform::new(-2.9 * w, 0.0, 0.0, -2.1 * h, 0.5 + 2.9 * w, 0.25 + 2.1 * h),
+        Transform::new(w * 1.000_000_000_2, 0.0, 0.0, h * 1.5, 0.0, 0.0),
+    ] {
+        let sampler = sampler(&gray, unit_to_device, 3);
+        let prepared = sampler.prepared.as_deref().unwrap();
+        let geometry = &prepared.geometry;
+        let super::Plan::Texels {
+            paint: Paint::Colors(paint),
+            ..
+        } = &prepared.plan
+        else {
+            panic!("colour texels");
+        };
+        let general = SampleTexels::new(&prepared.image.image, &paint.0, None);
+        let mask = prepared.mask.as_ref().unwrap();
+        let mut values = Vec::new();
+        let fused = super::texels::Fused {
+            texels: &general,
+            mask: OpacityTexels {
+                mask: &mask.image.image,
+                opacity: &mask.opacity,
+            },
+            values: std::cell::RefCell::new(&mut values),
+        };
+        let (x0, y0, x1, y1) = window(unit_to_device);
+        let cells = geometry.row_cells((x0, x1));
+        assert!(cells > 0, "{unit_to_device:?} reads rows");
+        // Each source keeps its rows from span to span and row to row.
+        let kept = |lanes: usize| BilinearRows::new(Vec::with_capacity(2 * cells * lanes));
+        let mut rows = [kept(general.lanes()), kept(fused.lanes()), kept(5)];
+        for y in y0..y1 {
+            for (x, len) in partitions(x0, usize::try_from(x1 - x0).unwrap(), y) {
+                let pixels = Pixels::new(x, y, len);
+                let check = |texels: &dyn Fn(&mut [f64], &mut BilinearRows),
+                             lanes,
+                             rows: &mut _| {
+                    let (mut read, mut single) = (vec![0.0; len * lanes], vec![0.0; len * lanes]);
+                    texels(&mut read, rows);
+                    texels(&mut single, &mut BilinearRows::default());
+                    assert!(rows.read_any(), "the span reads its rows");
+                    assert_eq!(
+                        bits(&read),
+                        bits(&single),
+                        "{unit_to_device:?} ({x}, {y}) {len}"
+                    );
+                };
+                let [general_rows, fused_rows, opaque_rows] = &mut rows;
+                check(
+                    &|out, rows| geometry.fill(pixels, &general, out, rows),
+                    general.lanes(),
+                    general_rows,
+                );
+                check(
+                    &|out, rows| geometry.fill(pixels, &fused, out, rows),
+                    fused.lanes(),
+                    fused_rows,
+                );
+                check(
+                    &|out, rows| geometry.fill(pixels, &opaque, out, rows),
+                    5,
+                    opaque_rows,
+                );
+            }
+        }
+    }
 }
 
 #[test]

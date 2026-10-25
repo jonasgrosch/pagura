@@ -68,7 +68,7 @@ fn non_affine_stencil_keeps_its_selected_bilinear_separable() {
     let geometry = geometry::Geometry::new((2, 2), true, Transform::scale(0.125, 0.125)).unwrap();
     assert!(matches!(
         super::super::Sampling::new(&geometry, (0, 8), &mut meter()).unwrap(),
-        super::super::Sampling::Points,
+        super::super::Sampling::Points { .. },
     ));
     let mut bytes = meter();
     let paint = stencil_paint(&image, &mut bytes).unwrap();
