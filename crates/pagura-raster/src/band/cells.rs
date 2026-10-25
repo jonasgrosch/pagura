@@ -524,6 +524,9 @@ impl Cells {
     /// cells: consecutive touched cells together, and each run between them
     /// once with the cover carried into it. Returns the touched cells.
     pub(crate) fn emit(&mut self, r: usize, rule: FillRule, sink: &mut impl Sink) -> usize {
+        if self.dense {
+            return self.emit_dense(r, rule, sink);
+        }
         self.emit_with(r, sink, |_, _, value, _| fold(value, rule))
     }
 
@@ -558,11 +561,9 @@ impl Cells {
         sink: &mut impl Sink,
         mut map: impl FnMut(usize, usize, f64, bool) -> u8,
     ) -> usize {
+        debug_assert!(!self.dense, "inspection opens marked windows");
         let base = usize::try_from(self.base).unwrap_or(0);
         let cells = r.wrapping_mul(self.width);
-        if self.dense {
-            return self.emit_dense(cells, base, sink, map);
-        }
         let words = r.wrapping_mul(self.words)..(r + 1).wrapping_mul(self.words);
         let mut cover = 0.0;
         let mut position = 0;
@@ -612,16 +613,13 @@ impl Cells {
         touched
     }
 
-    /// [`Self::emit_with`] for a dense window: every cell of the row from the
+    /// [`Self::emit`] for a dense window: every cell of the row from the
     /// left, with the same prefix sum, handed on as one run of bytes. Cells
-    /// that received nothing count as untouched.
-    fn emit_dense(
-        &mut self,
-        cells: usize,
-        base: usize,
-        sink: &mut impl Sink,
-        mut map: impl FnMut(usize, usize, f64, bool) -> u8,
-    ) -> usize {
+    /// that received nothing count as untouched. The loop keeps no column,
+    /// so the running sum is all that one cell passes to the next.
+    fn emit_dense(&mut self, r: usize, rule: FillRule, sink: &mut impl Sink) -> usize {
+        let base = usize::try_from(self.base).unwrap_or(0);
+        let cells = r.wrapping_mul(self.width);
         let end = cells.wrapping_add(self.width);
         let (Some(area), Some(cover), Some(bytes)) = (
             self.area.get_mut(cells..end),
@@ -632,17 +630,11 @@ impl Cells {
         };
         let mut sum = 0.0;
         let mut touched = 0;
-        for (x, ((a, c), byte)) in area
-            .iter_mut()
-            .zip(cover.iter_mut())
-            .zip(bytes.iter_mut())
-            .enumerate()
-        {
+        for ((a, c), byte) in area.iter_mut().zip(cover.iter_mut()).zip(bytes.iter_mut()) {
             let (part, step) = (std::mem::take(a), std::mem::take(c));
-            let hit = part != 0.0 || step != 0.0;
-            touched += usize::from(hit);
+            touched += usize::from(part != 0.0 || step != 0.0);
             sum += step;
-            *byte = map(base + x, base + x + 1, part + sum, hit);
+            *byte = fold(part + sum, rule);
         }
         sink.cells(base, bytes);
         touched
