@@ -550,7 +550,7 @@ fn axial_span_timing() {
                         // it without calling the source per span.
                         break;
                     }
-                    source.span(0, y, 512, &mut out);
+                    source.span(0, y, 512, Precision::Exact, &mut out);
                     checksum += out.colors[y as usize % 512];
                 }
                 times.push(start.elapsed().as_secs_f64() * 1e3);

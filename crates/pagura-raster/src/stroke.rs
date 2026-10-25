@@ -4,7 +4,7 @@
 //! Flattening is measured after the CTM; constructing the pen before the CTM
 //! preserves elliptical pens under nonuniform transforms.
 
-use crate::band::{RASTER_WORK, RENDER_BYTES};
+use crate::band::{Mapped, Polygon, RASTER_WORK, RENDER_BYTES};
 use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{Path, PathBuilder, Point, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
@@ -162,6 +162,56 @@ pub(crate) enum Tiling {
     Components,
 }
 
+/// Where a stroke's outline polygons go as the stroker makes them, in its
+/// construction space: a path, or the device polygon of that path.
+pub(crate) trait Outline {
+    /// The segments of the path so far: each polygon's points and a close.
+    fn len(&self) -> usize;
+
+    /// Heap bytes of the output so far.
+    fn heap_bytes(&self) -> usize;
+
+    /// Appends the closed polygon through `points`, in reverse order when
+    /// `reversed`; the points are bounded and the budget checked.
+    ///
+    /// # Errors
+    ///
+    /// Returns exhausted budgets, and geometry beyond the working range.
+    fn add_polygon(
+        &mut self,
+        points: &[Point],
+        reversed: bool,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()>;
+}
+
+impl Outline for PathBuilder {
+    fn len(&self) -> usize {
+        Self::len(self)
+    }
+
+    fn heap_bytes(&self) -> usize {
+        Self::heap_bytes(self)
+    }
+
+    fn add_polygon(
+        &mut self,
+        points: &[Point],
+        reversed: bool,
+        _: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        self.reserve(points.len() + 1, bytes)?;
+        if reversed {
+            self.polygon(points.iter().rev().copied());
+        } else {
+            self.polygon(points.iter().copied());
+        }
+        Ok(())
+    }
+}
+
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
@@ -175,14 +225,16 @@ pub(crate) fn outline(
         stroke,
         limits,
         (Tiling::Components, TOLERANCE),
+        |_| PathBuilder::new(),
         bytes,
     )
-    .map(|(path, transform, _)| (path, transform))
+    .map(|(mut path, transform, _)| (path.finish(), transform))
 }
 
 /// The outline as pieces where every run admits them at least as well as
 /// `accept`, else as components, and how far its pieces tile; round caps
 /// and joins are flattened within the device tolerance `tolerance`.
+#[cfg(test)]
 pub(crate) fn pieces(
     path: &Path,
     transform: Transform,
@@ -191,17 +243,50 @@ pub(crate) fn pieces(
     (accept, tolerance): (Tiling, f64),
     bytes: &mut Meter,
 ) -> Result<(Path, Transform, Tiling)> {
-    outline_with(path, transform, stroke, limits, (accept, tolerance), bytes)
+    outline_with(
+        path,
+        transform,
+        stroke,
+        limits,
+        (accept, tolerance),
+        |_| PathBuilder::new(),
+        bytes,
+    )
+    .map(|(mut path, transform, tiling)| (path.finish(), transform, tiling))
 }
 
-fn outline_with(
+/// [`pieces`] as the device polygon of the outline: the polygon that
+/// [`Polygon::from_lines`] makes of the outline under its transform, built
+/// as the stroker makes each piece.
+pub(crate) fn polygon_pieces(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    (accept, tolerance): (Tiling, f64),
+    bytes: &mut Meter,
+) -> Result<(Polygon, Tiling)> {
+    outline_with(
+        path,
+        transform,
+        stroke,
+        limits,
+        (accept, tolerance),
+        Mapped::new,
+        bytes,
+    )
+    .map(|(mapped, _, tiling)| (mapped.finish(), tiling))
+}
+
+fn outline_with<O: Outline>(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
     (accept, device_tolerance): (Tiling, f64),
+    fresh: impl Fn(Transform) -> O,
     bytes: &mut Meter,
-) -> Result<(Path, Transform, Tiling)> {
+) -> Result<(O, Transform, Tiling)> {
     let before = bytes.used();
     let result = construct(
         path,
@@ -209,23 +294,25 @@ fn outline_with(
         stroke,
         limits,
         (accept, device_tolerance),
+        fresh,
         bytes,
     );
-    let retained = result
-        .as_ref()
-        .map_or(0, |(path, _, _)| path.retained_bytes());
+    let retained = result.as_ref().map_or(0, |(out, _, _)| out.heap_bytes());
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
 
-fn construct(
+/// The outline in `fresh(t)`, `t` the transform from construction space
+/// to device space, which it also returns.
+fn construct<O: Outline>(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
     (accept, device_tolerance): (Tiling, f64),
+    fresh: impl Fn(Transform) -> O,
     bytes: &mut Meter,
-) -> Result<(Path, Transform, Tiling)> {
+) -> Result<(O, Transform, Tiling)> {
     validate(stroke, limits)?;
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
@@ -295,7 +382,7 @@ fn construct(
     // Pieces replace the components when every run admits them; they cover
     // the same set.
     if accept < Tiling::Components {
-        let mut tiles = PathBuilder::new();
+        let mut tiles = fresh(pen_transform);
         let mut tiling = if tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke, bytes)? {
             Tiling::Proven
         } else {
@@ -321,17 +408,17 @@ fn construct(
             tiling = tiling.max(built);
         }
         if tiling <= accept {
-            return Ok((tiles.finish(), pen_transform, tiling));
+            return Ok((tiles, pen_transform, tiling));
         }
         let released = tiles.heap_bytes();
         drop(tiles);
         bytes.refund(released);
     }
-    let mut components = PathBuilder::new();
+    let mut components = fresh(pen_transform);
     for (run, _) in &runs {
         draw(&mut components, run, pen, stroke, limits, bytes)?;
     }
-    Ok((components.finish(), pen_transform, Tiling::Components))
+    Ok((components, pen_transform, Tiling::Components))
 }
 
 /// Clean the repeated closing vertex before attempting convex boundaries.
@@ -546,7 +633,7 @@ fn dash_length(stroke: &Stroke, index: usize) -> f64 {
 }
 
 pub(crate) fn draw(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     run: &Run,
     pen: Pen,
     stroke: &Stroke,
@@ -609,7 +696,7 @@ pub(crate) fn draw(
 }
 
 fn join(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     point: Point,
     tangents: [Point; 2],
     pen: Pen,
@@ -642,7 +729,7 @@ fn join(
 }
 
 fn round_join(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     point: Point,
     normals: [Point; 2],
     pen: Pen,
@@ -695,7 +782,7 @@ fn round_join(
 }
 
 fn cap(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     point: Point,
     direction: Point,
     pen: Pen,
@@ -721,7 +808,7 @@ fn cap(
 }
 
 fn circle(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     center: Point,
     pen: Pen,
     limits: &Limits,
@@ -729,31 +816,10 @@ fn circle(
 ) -> Result<()> {
     let before = bytes.used().saturating_sub(out.heap_bytes());
     let result = (|| {
-        let Pen { radius, tolerance } = pen;
-        if radius == 0.0 {
+        if pen.radius == 0.0 {
             return Ok(());
         }
-        let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
-        let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
-        if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX)
-        {
-            return Err(Error::limit("round stroke subdivision budget exceeded"));
-        }
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "integer count is bounded by the u32-compatible path budget below"
-        )]
-        let count = count as u32;
-        let mut points = Vec::new();
-        bytes.reserve(&mut points, count as usize)?;
-        points.extend((0..count).map(|i| {
-            let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
-            Point::new(
-                center.x + radius * angle.cos(),
-                center.y + radius * angle.sin(),
-            )
-        }));
+        let points = ring(center, pen, limits, bytes)?;
         polygon(out, &points, limits, bytes)
     })();
     bytes.refund(
@@ -764,8 +830,43 @@ fn circle(
     result
 }
 
+/// The pen's canonical circle polygon around `center`, counterclockwise
+/// from angle zero at equal angles, within the pen's tolerance; charged to
+/// `bytes`.
+fn ring(center: Point, pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let mut points = offsets(pen, limits, bytes)?;
+    for point in &mut points {
+        *point = center + *point;
+    }
+    Ok(points)
+}
+
+/// The vertices of the pen's canonical circle polygon less its centre: each
+/// vertex of [`ring`] is its centre plus one of these, and its count.
+fn offsets(pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let Pen { radius, tolerance } = pen;
+    let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
+    let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
+    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
+        return Err(Error::limit("round stroke subdivision budget exceeded"));
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "integer count is bounded by the u32-compatible path budget above"
+    )]
+    let count = count as u32;
+    let mut points = Vec::new();
+    bytes.reserve(&mut points, count as usize)?;
+    points.extend((0..count).map(|i| {
+        let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
+        Point::new(radius * angle.cos(), radius * angle.sin())
+    }));
+    Ok(points)
+}
+
 fn polygon(
-    out: &mut PathBuilder,
+    out: &mut impl Outline,
     points: &[Point],
     limits: &Limits,
     bytes: &mut Meter,
@@ -788,14 +889,8 @@ fn polygon(
         .zip(points.iter().skip(1).chain(std::iter::once(&first)))
         .map(|(&a, &b)| (a - first).cross(b - first))
         .sum();
-    out.reserve(points.len() + 1, bytes)?;
     // Every component polygon is positively oriented (module comment).
-    if area < 0.0 {
-        out.polygon(points.iter().rev().copied());
-    } else {
-        out.polygon(points.iter().copied());
-    }
-    Ok(())
+    out.add_polygon(points, area < 0.0, limits, bytes)
 }
 
 #[cfg(test)]

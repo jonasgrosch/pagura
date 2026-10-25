@@ -2,13 +2,14 @@
 //! sources (ADR 0013), stroked glyphs as strokes of their outlines.
 
 use super::SceneRecorder;
+use super::owned;
 use crate::device::{Glyph, GlyphRun, OutlineKey};
 use crate::model::{Composite, FillStroke, GroupAttributes, GroupCause};
 use crate::scene::{
     GlyphSource, GlyphsNode, Group, GroupRole, MarkInfo, Node, NodeId, PaintId, Placement, StateId,
 };
 use pagura_core::hash::FastMap;
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Meter, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 use std::sync::Arc;
 
@@ -30,6 +31,16 @@ pub(super) struct Glyphs {
     hulls: FastMap<SourceKey, [Point; 2]>,
     /// The fill-and-stroke group states derived for interned state pairs.
     derived: FastMap<(StateId, StateId), FillStroke>,
+}
+
+impl Glyphs {
+    /// All of this state is temporary; the scene owns the source tables.
+    pub(super) fn retained_bytes(&self, bytes: &Meter) -> Result<usize> {
+        Ok(bytes.map_bytes(&self.sources)?
+            + bytes.map_bytes(&self.hulls)?
+            + bytes.map_bytes(&self.derived)?
+            + self.derived.values().map(owned::fill_stroke).sum::<usize>())
+    }
 }
 
 /// What the filled glyphs of one run share: their paint and mark, and the
@@ -90,7 +101,6 @@ impl SceneRecorder {
             return Err(Error::syntax("path arithmetic overflow"));
         }
         self.marks.charge(1)?;
-        self.bytes.charge_items::<Placement>(1)?;
         let sources = &mut self.glyphs.sources;
         let Some(Node::Glyphs(glyphs)) = self.nodes.get_mut(node.index()) else {
             return Err(Error::invalid_argument("glyphs node expected"));
@@ -100,9 +110,9 @@ impl SceneRecorder {
         } else {
             let source = u32::try_from(glyphs.sources.len())
                 .map_err(|_| Error::limit("glyph source count exceeded"))?;
-            self.bytes.charge_items::<GlyphSource>(1)?;
-            self.bytes
-                .charge_items::<Segment>(outline.segments().len())?;
+            self.bytes.charge(owned::path(outline))?;
+            self.bytes.reserve_capacity(&mut glyphs.sources, 1)?;
+            self.bytes.reserve_map_capacity(sources, 1)?;
             glyphs.sources.push(GlyphSource {
                 outline: Arc::clone(outline),
                 key: glyph.outline_key,
@@ -118,8 +128,10 @@ impl SceneRecorder {
             .last()
             .is_none_or(|&(_, position)| position != glyph.position)
         {
+            self.bytes.reserve_capacity(&mut glyphs.positions, 1)?;
             glyphs.positions.push((index, glyph.position));
         }
+        self.bytes.reserve_capacity(&mut glyphs.placements, 1)?;
         glyphs.placements.push(Placement { source, origin });
         Ok(())
     }
@@ -153,7 +165,7 @@ impl SceneRecorder {
             return Ok(*hull);
         }
         let hull = hull(outline, linear)?;
-        self.bytes.charge_items::<(SourceKey, [Point; 2])>(1)?;
+        self.bytes.reserve_map_capacity(&mut self.glyphs.hulls, 1)?;
         self.glyphs.hulls.insert(key, hull);
         Ok(hull)
     }
@@ -195,6 +207,8 @@ impl SceneRecorder {
             0,
         )?;
         self.glyphs.open = Some(node);
+        // A whole-table clear resets all control bytes, unlike individual
+        // removals that leave tombstones. Its charged capacity is reusable.
         self.glyphs.sources.clear();
         Ok(node)
     }
@@ -221,8 +235,8 @@ impl SceneRecorder {
         }
         let paint = self.paint(Some(paint))?;
         let mark = self.mark(&state)?;
-        let path = Arc::new(user_path(outline, glyph.transform)?);
-        self.stroke_node(&path, pen, paint, mark)
+        let path = user_path(outline, glyph.transform, &mut self.bytes)?;
+        self.stroke_owned(&path, pen, paint, mark)
     }
 
     /// A glyph filled and stroked: a group of a fill and a stroke of its
@@ -247,12 +261,26 @@ impl SceneRecorder {
         let states = if let Some(states) = self.glyphs.derived.get(&key) {
             states.clone()
         } else {
+            // FillStroke may create two opaque members in addition to the
+            // default group Arc. Bound those roots before constructing them;
+            // sharing nested function payloads is conservatively charged per
+            // retained Composite owner, as it is in the state table.
+            let candidate = owned::composite(fill_state.composite)
+                .saturating_mul(2)
+                .saturating_add(owned::composite(stroke_state.composite))
+                .saturating_add(owned::composite(&Composite::default()));
+            self.bytes.charge(candidate)?;
+            self.bytes
+                .reserve_map_capacity(&mut self.glyphs.derived, 1)?;
             let opaque = Arc::new(Composite::default());
             let states = FillStroke::new(fill_state.composite, stroke_state.composite, &opaque);
+            let retained = owned::fill_stroke(&states);
+            drop(opaque);
+            self.bytes.refund(candidate.saturating_sub(retained));
             self.glyphs.derived.insert(key, states.clone());
             states
         };
-        let path = Arc::new(user_path(outline, glyph.transform)?);
+        let path = user_path(outline, glyph.transform, &mut self.bytes)?;
         let mut group_state = fill_state;
         group_state.composite = &states.group;
         let mark = self.mark(&group_state)?;
@@ -275,26 +303,28 @@ impl SceneRecorder {
         member.composite = &states.fill;
         let paint = self.paint(run.paint.fill)?;
         let mark = self.mark(&member)?;
-        self.fill_node(&path, FillRule::NonZero, paint, mark)?;
+        self.fill_owned(&path, FillRule::NonZero, paint, mark)?;
         self.stroke_glyph(run, glyph, outline, Some(&states.stroke))?;
         self.close(super::Open::Group)
     }
 }
 
 /// A glyph outline in default user space, every point finite.
-fn user_path(outline: &Path, transform: Transform) -> Result<Path> {
-    let path = outline.transformed(transform);
+fn user_path(outline: &Path, transform: Transform, bytes: &mut Meter) -> Result<Arc<Path>> {
+    bytes.charge(owned::ARC + size_of::<Path>())?;
+    let path = outline.transformed_with_bytes(transform, bytes)?;
     for segment in path.segments() {
         let points: &[Point] = match segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => std::slice::from_ref(p),
             Segment::CubicTo { c1, c2, end } => &[*c1, *c2, *end],
+            Segment::QuadTo { control, end } => &[*control, *end],
             Segment::Close => &[],
         };
         if points.iter().any(|p| !p.is_finite()) {
             return Err(Error::syntax("path arithmetic overflow"));
         }
     }
-    Ok(path)
+    Ok(Arc::new(path))
 }
 
 /// The box of every on- and off-curve point of `outline` under `linear`.
@@ -310,15 +340,32 @@ fn hull(outline: &Path, linear: Transform) -> Result<[Point; 2]> {
         high = Point::new(high.x.max(p.x), high.y.max(p.y));
         Ok(())
     };
+    // A quadratic records its elevated controls, which its polygon uses.
+    let (mut start, mut current) = (Point::default(), Point::default());
     for segment in outline.segments() {
         match *segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => record(p)?,
+            Segment::MoveTo(p) => {
+                record(p)?;
+                (start, current) = (p, p);
+            }
+            Segment::LineTo(p) => {
+                record(p)?;
+                current = p;
+            }
             Segment::CubicTo { c1, c2, end } => {
                 record(c1)?;
                 record(c2)?;
                 record(end)?;
+                current = end;
             }
-            Segment::Close => {}
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(current, control, end);
+                record(c1)?;
+                record(c2)?;
+                record(end)?;
+                current = end;
+            }
+            Segment::Close => current = start,
         }
     }
     Ok([low, high])

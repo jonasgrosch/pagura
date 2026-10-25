@@ -127,7 +127,9 @@ The band rasterizer accumulates a mark's edges per band into a dense row of
 f64 cells with a touched-cell bitmap and no sorting (ADR 0004 §4); cells
 with conflicting windings go to the exact local resolver; glyph quadratics
 are integrated against the true curve; interiors leave as full spans. For the same flattened geometry every exact producer yields the
-same coverage bytes. Clips are prepared once per clip state and classified per
+same coverage bytes. An opaque constant colour on an N16 or F32 page stores
+each row as the rasterizer emits it, with the same store per pixel; other
+marks collect the band's coverage spans first. Clips are prepared once per clip state and classified per
 band row into outside, inside and boundary runs; exact joint geometry runs only
 where mark and clip are both partial.
 

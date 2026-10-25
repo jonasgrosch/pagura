@@ -25,7 +25,10 @@ The Python engines are the `bench` dependency group in `pyproject.toml`; setup
 runs `uv sync --locked --only-group bench` into `venv/` there, so `uv.lock` pins
 every transitive wheel by hash and `.python-version` pins the interpreter.
 The hayro adapter and checked-in lock are copied there; its isolated `CARGO_HOME`
-and target directory are also there. It uses the workspace's pinned toolchain.
+and target directory are also there. It uses the workspace's pinned toolchain
+and the native target flags `.cargo/config.toml` gives the host, resolved as
+`round5.py` resolves Pagura's; `hayro-build.json` there records them, and hayro's
+engine identity reports them as `build`.
 Node resolves packages from this same external cache. Dependency locks remain in
 `benchmarks/`. Studying other engines is allowed; copying or translating their
 implementation remains forbidden (ADR 0006).
@@ -151,16 +154,20 @@ module instead, so V8's process ratio rises while its stage ratio falls. Compare
 cells only within one setting; `summary.md` repeats this note whenever V8 is timed. Wasmtime
 49.0.3 uses a locally generated, hash-recorded Cranelift AOT artifact (optimization
 level 2, parallel compilation disabled). Never load an untrusted AOT artifact.
-Both use explicit SIMD128 compiler flags; native uses compiler autovectorization
-at the Rust target baseline. The compiler's enabled target features are recorded:
-NEON on aarch64, and SSE2 (without AVX2 or AVX-512) on default x86_64 targets.
-Inherited Rust target flags are cleared. Other engines' ISA dispatch is not audited.
+The native and WASM builds use the repository's `.cargo/config.toml` flags for
+their target, as `cargo build` in the repository does: native code relies on
+compiler autovectorization, and WASM gets SIMD128. The harness resolves the
+flags itself and passes them through `CARGO_ENCODED_RUSTFLAGS`, so inherited
+`RUSTFLAGS` and user-level Cargo configuration never reach the build.
+`compiler.json` records the flags (`native_rustflags`, `wasm_rustflags`) and the
+compiler's enabled target features, such as NEON on aarch64 and SSE2/SSE4.1
+(without AVX2 or AVX-512) for x86-64-v2. Other engines' ISA dispatch is not audited.
 
 The optional `round5.py --pagura-x86-64-v3` track builds a separate
 `pagura-x86-64-v3` binary with `RUSTFLAGS="-C target-cpu=x86-64-v3"` in an
 isolated target directory. It appears under that name in its own comparison
-rows; portable `pagura` remains the headline and paired reference. The optional
-track must match the portable build's pixels exactly in every block, including
+rows; headline `pagura` remains the paired reference. The optional
+track must match the headline build's pixels exactly in every block, including
 warmups, before ratios can be reported. It is reported unavailable on other
 architectures or x86 hosts missing the required instructions. Compiler-enabled
 target features, host feature checks and flags are retained in `compiler.json`

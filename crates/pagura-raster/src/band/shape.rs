@@ -1,14 +1,17 @@
 //! Marks prepared for the band rasterizer: fills, strokes and glyph
-//! placements in device space, clipped by their clip state's rectangle,
-//! with the rows their signed area does not determine already resolved.
+//! placements in device space, clipped by their clip state's rectangle and
+//! convex paths, with the rows their signed area does not determine already
+//! resolved.
 
 use super::cells::STRIP;
 use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
+use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
 use super::union::{Meters, Piece, Resolver, room};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
+use crate::geometry::{greater, lesser};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
@@ -123,8 +126,17 @@ pub(crate) struct GlyphBody {
     pub(crate) origin: crate::Point,
     pub(crate) scan: (usize, usize),
     pub(crate) strips: Option<StripList>,
-    /// Nonhorizontal placed edges and curves, before resolved sides.
+    pub(crate) geometry: GlyphGeometry,
+    /// Boundary count for placement-error certification, before resolved
+    /// sides, including any canonical point contour.
     boundaries: usize,
+}
+
+/// Which retained source this placement actually accumulates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GlyphGeometry {
+    Relative,
+    Polygon,
 }
 
 /// Straight edges and monotone quadratics, listed by strip, and the
@@ -268,13 +280,20 @@ impl Shape {
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
-        let (outline, outline_transform, tiling) = match adjustment {
+        let (mut polygon, tiling) = match adjustment {
             Adjustment::Adjusted => {
                 let (outline, t) =
                     crate::adjust::outline(&path, device, stroke, limits, &mut bytes)?;
-                (outline, t, Tiling::Components)
+                let polygon = match Polygon::from_lines(&outline, t, limits, &mut bytes)? {
+                    Some(polygon) => polygon,
+                    None => Polygon::from_path(&outline, t, limits, &mut bytes)?,
+                };
+                let released = outline.retained_bytes();
+                drop(outline);
+                bytes.refund(released);
+                (polygon, Tiling::Components)
             }
-            Adjustment::None => crate::stroke::pieces(
+            Adjustment::None => crate::stroke::polygon_pieces(
                 &path,
                 device,
                 stroke,
@@ -283,16 +302,8 @@ impl Shape {
                 &mut bytes,
             )?,
         };
-        let mut polygon =
-            match Polygon::from_lines(&outline, outline_transform, limits, &mut bytes)? {
-                Some(polygon) => polygon,
-                None => Polygon::from_path(&outline, outline_transform, limits, &mut bytes)?,
-            };
-        let released = path
-            .retained_bytes()
-            .saturating_add(outline.retained_bytes());
+        let released = path.retained_bytes();
         drop(path);
-        drop(outline);
         bytes.refund(released);
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
@@ -430,6 +441,18 @@ impl Shape {
             return Ok(None);
         };
         frame.fit(hull);
+        if let Some(paths) = frame.paths {
+            // A mark strictly inside every convex clipping path meets none
+            // of their boundaries.
+            work.charge(
+                paths
+                    .convex()
+                    .map_or(0, |convex| convex.len().saturating_mul(polygon.vertices())),
+            )?;
+            if paths.contain(&polygon.points) {
+                frame.paths = None;
+            }
+        }
         // Only the original, uncut stored polygon can supply these edges.
         let shared = shared.filter(|_| frame.rect.is_none() && frame.paths.is_none());
         // The heights the winding certificate leaves in doubt: none when
@@ -462,6 +485,22 @@ impl Shape {
                 clipped
             }
             None => all,
+        };
+        // A mark crossing convex clipping paths is clipped to them as to
+        // the rectangle, and then meets no clip row.
+        let lines = match frame.paths.and_then(Paths::convex) {
+            Some(convex) => {
+                let hull = Bounds {
+                    left: hull[0].x,
+                    top: hull[0].y,
+                    right: hull[1].x,
+                    bottom: hull[1].y,
+                };
+                let clipped = clip_convex(lines, (convex, hull), work, bytes)?;
+                frame.paths = None;
+                clipped
+            }
+            None => lines,
         };
         let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
             return Ok(None);
@@ -571,20 +610,15 @@ impl Shape {
 
     /// A placement of a certified glyph within `frame`, which keeps every
     /// pixel the glyph can touch: its relative edges and the origin, with
-    /// no geometry work and no allocation.
+    /// no owned geometry and no allocation.
     pub(crate) fn translated(
         edges: &std::sync::Arc<super::GlyphEdges>,
         relative: &super::glyph::Relative,
         origin: crate::Point,
+        [lo, hi]: [crate::Point; 2],
         frame: &Frame<'_>,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let o = origin;
-        let [lo, hi] = relative.hull;
-        let (lo, hi) = (
-            crate::Point::new(lo.x + o.x, lo.y + o.y),
-            crate::Point::new(hi.x + o.x, hi.y + o.y),
-        );
         let Some(bounds) = frame.bounds([lo, hi].into_iter()) else {
             return Ok(None);
         };
@@ -594,12 +628,86 @@ impl Shape {
         let words = columns / 64 + 2;
         // Each window of a band visits every item once, at most as often as
         // the placement has rows.
-        let items = relative.lines.len() + relative.curves.len();
+        let point = edges.point().map(|point| point + origin);
+        let items = relative
+            .lines
+            .len()
+            .saturating_add(relative.curves.len())
+            .saturating_add(usize::from(point.is_some()).saturating_mul(2));
         let rows = bounds.height() as usize;
+        // Each point side visits one row. Use the same primitive/emission
+        // bound as the relative body's edges; item visits include both
+        // sides in every window, even when the point is outside it.
+        let point_work = point.map_or(0, |point| {
+            super::glyph::point_sides(point)
+                .into_iter()
+                .filter_map(|line| {
+                    line_rows(&line, bounds, options.area.region.x1)
+                        .map(|rows| line_work(line, rows, width).saturating_mul(4))
+                })
+                .fold(0_usize, usize::saturating_add)
+        });
         let work = relative
             .work
+            .saturating_add(point_work)
             .saturating_add(rows.saturating_mul(words + columns + 4))
             .saturating_add(rows.saturating_mul(items));
+        Self::shared_glyph(
+            edges,
+            origin,
+            (bounds, scan),
+            (GlyphGeometry::Relative, items),
+            work,
+            frame,
+            options,
+        )
+    }
+
+    /// A short certified polygon with source-fixed bounds and work. Its
+    /// raw sides use the same accumulation as any shared polygon body.
+    pub(crate) fn polygon_glyph(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        summary: super::glyph::Summary,
+        origin: crate::Point,
+        [lo, hi]: [crate::Point; 2],
+        frame: &Frame<'_>,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
+        let Some(bounds) = frame.bounds([lo, hi].into_iter()) else {
+            return Ok(None);
+        };
+        let super::glyph::Kind::Polygon { polygon, .. } = &edges.kind else {
+            unreachable!("canonical polygon source");
+        };
+        let width = super::row::width(options.area.region.x1)?;
+        let scan = columns(lo.x, hi.x, width);
+        let work = summary
+            .work(
+                polygon.vertices(),
+                (bounds.height() as usize, scan.1.saturating_sub(scan.0)),
+            )
+            .ok_or(Error::limit(RASTER_WORK))?;
+        Self::shared_glyph(
+            edges,
+            origin,
+            (bounds, scan),
+            (GlyphGeometry::Polygon, summary.boundaries()),
+            work,
+            frame,
+            options,
+        )
+    }
+
+    /// The common owner and limit check for allocation-free placements.
+    fn shared_glyph(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        origin: crate::Point,
+        (bounds, scan): (DeviceRect, (usize, usize)),
+        (geometry, boundaries): (GlyphGeometry, usize),
+        work: usize,
+        frame: &Frame<'_>,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }
@@ -614,7 +722,8 @@ impl Shape {
                 origin,
                 scan,
                 strips: None,
-                boundaries: items,
+                geometry,
+                boundaries,
             }),
             clip: frame.clip.cloned(),
             masked: false,
@@ -745,6 +854,7 @@ impl Shape {
                     origin,
                     scan,
                     strips: list,
+                    geometry: GlyphGeometry::Polygon,
                     boundaries: count,
                 }),
                 list_bytes,
@@ -837,8 +947,8 @@ fn shared_work(
 fn scan_columns(xs: impl Iterator<Item = f64>, width: usize) -> (usize, usize) {
     let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
     for x in xs {
-        lo = lo.min(x);
-        hi = hi.max(x);
+        lo = lesser(lo, x);
+        hi = greater(hi, x);
     }
     columns(lo, hi, width)
 }
@@ -871,8 +981,9 @@ impl<'a> Frame<'a> {
 
     /// Drops what the clip cannot change for geometry within `hull`: a
     /// rectangle containing it needs no edge clipping, and rows inside
-    /// across every pixel it can touch need no overlay or analysis. A mark
-    /// within the page crop thus meets no clip at all.
+    /// across every pixel it can touch, or convex paths containing it, need
+    /// no overlay or analysis. A mark within the page crop thus meets no
+    /// clip at all.
     pub(crate) fn fit(&mut self, [lo, hi]: [crate::Point; 2]) {
         let hull = Bounds {
             left: lo.x,
@@ -883,10 +994,15 @@ impl<'a> Frame<'a> {
         if self.rect.is_some_and(|r| r.contains(hull)) {
             self.rect = None;
         }
-        if self
-            .paths
-            .is_some_and(|p| p.rows.inside(edges::pixels([lo, hi], self.limit, false)))
-        {
+        let corners = [
+            lo,
+            crate::Point::new(hi.x, lo.y),
+            hi,
+            crate::Point::new(lo.x, hi.y),
+        ];
+        if self.paths.is_some_and(|p| {
+            p.rows.inside(edges::pixels([lo, hi], self.limit, false)) || p.contain(&corners)
+        }) {
             self.paths = None;
         }
     }
@@ -896,10 +1012,10 @@ impl<'a> Frame<'a> {
         let mut lo = crate::Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = crate::Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         for p in points {
-            lo.x = lo.x.min(p.x);
-            lo.y = lo.y.min(p.y);
-            hi.x = hi.x.max(p.x);
-            hi.y = hi.y.max(p.y);
+            lo.x = lesser(lo.x, p.x);
+            lo.y = lesser(lo.y, p.y);
+            hi.x = greater(hi.x, p.x);
+            hi.y = greater(hi.y, p.y);
         }
         if lo.x > hi.x || lo.y > hi.y {
             return None;
@@ -916,6 +1032,68 @@ impl<'a> Frame<'a> {
                 .fold(0, usize::saturating_add)
         })
     }
+}
+
+/// The pieces of `lines` within every path of `convex`, each path clipping
+/// the pieces the previous one left, and within the mark's `hull`.
+fn clip_convex(
+    mut lines: Vec<Line>,
+    (convex, hull): (&[Convex], Bounds),
+    work: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<Vec<Line>> {
+    for chains in convex {
+        work.charge(lines.len())?;
+        let mut clipped = Vec::new();
+        room(&mut clipped, lines.len(), bytes)?;
+        // Contour order: each line usually starts where the last one ended.
+        let mut last = None;
+        for &line in &lines {
+            let start = match last {
+                Some((end, inside)) if end == line.a => inside,
+                _ => chains.contains(line.a),
+            };
+            let end = chains.contains(line.b);
+            last = Some((line.b, end));
+            // Both ends strictly inside: by convexity, so is the line.
+            if start && end {
+                room(&mut clipped, 1, bytes)?;
+                clipped.push(line);
+                continue;
+            }
+            let bound = chains.bound(line);
+            work.charge(bound)?;
+            room(&mut clipped, bound, bytes)?;
+            chains.clip(line, &mut clipped);
+        }
+        let released = lines.capacity() * size_of::<Line>();
+        drop(lines);
+        bytes.refund(released);
+        lines = clipped;
+    }
+    // Parts moved along a nearly horizontal chain side can reach far beside
+    // the mark; its hull box clips them back, as the rectangle does.
+    work.charge(lines.len())?;
+    let beside = |l: &Line| l.a.x.min(l.b.x) < hull.left || l.a.x.max(l.b.x) > hull.right;
+    if lines.iter().any(beside) {
+        let mut kept = Vec::new();
+        room(&mut kept, lines.len(), bytes)?;
+        for &line in &lines {
+            if beside(&line) {
+                room(&mut kept, 3, bytes)?;
+                edges::clip_line(line, hull, &mut kept)?;
+            } else {
+                room(&mut kept, 1, bytes)?;
+                kept.push(line);
+            }
+        }
+        kept.retain(|l| !l.is_horizontal());
+        let released = lines.capacity() * size_of::<Line>();
+        drop(lines);
+        bytes.refund(released);
+        lines = kept;
+    }
+    Ok(lines)
 }
 
 /// The rows of `bounds` a line has area in, as `(first, last)`.
@@ -978,13 +1156,30 @@ fn resolve(
             }
             _ => 1,
         };
-        work.charge(pieces.len())?;
-        sides.clear();
-        let meters = Meters { work, bytes };
-        resolver.row(&pieces, &rules[..groups], top, (&mut sides, meters))?;
-        resolved.push(y, &sides, bytes)?;
+        resolve_pieces(
+            &pieces,
+            &rules[..groups],
+            y,
+            (&mut resolver, &mut sides, &mut resolved),
+            Meters { work, bytes },
+        )?;
     }
     Ok(resolved)
+}
+
+/// Shared winding resolution and retained-row assembly for polygon and
+/// joint clip preparation.
+fn resolve_pieces(
+    pieces: &[Piece],
+    rules: &[FillRule],
+    y: u32,
+    (resolver, sides, resolved): (&mut Resolver, &mut Vec<Line>, &mut Resolved),
+    Meters { work, bytes }: Meters<'_>,
+) -> Result<()> {
+    work.charge(pieces.len())?;
+    sides.clear();
+    resolver.row(pieces, rules, f64::from(y), (sides, Meters { work, bytes }))?;
+    resolved.push(y, sides, bytes)
 }
 
 #[cfg(test)]

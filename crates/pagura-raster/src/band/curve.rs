@@ -1,9 +1,10 @@
 //! Glyph boundaries integrated against their true curve (8.5.2.2, 8.5.3.3).
 //!
-//! A TrueType quadratic arrives as a degree-elevated cubic. Its midpoint
-//! quadratic recovers it up to rounding; general cubic outlines keep their
-//! canonical polygon. Quadratics split at coordinate extrema and integrate
-//! x(t)y'(t) between pixel crossings in closed form ([`Mono`]).
+//! A TrueType quadratic arrives as itself ([`Segment::QuadTo`]). A cubic
+//! that is a degree-elevated quadratic is recovered by its midpoint
+//! quadratic up to rounding; general cubic outlines keep their canonical
+//! polygon. Quadratics split at coordinate extrema and integrate x(t)y'(t)
+//! between pixel crossings in closed form ([`Mono`]).
 
 use super::edges::{Bounds, Line};
 use crate::flatten::bounded;
@@ -40,6 +41,7 @@ pub(crate) fn quadratic_outline(outline: &Path, linear: Transform) -> bool {
                 difference.y += third.y.abs();
                 current = d;
             }
+            Segment::QuadTo { end, .. } => current = end * linear,
             Segment::Close => current = start,
         }
     }
@@ -95,6 +97,8 @@ fn reduction_errors(outline: &Path, linear: Transform) -> [f64; 2] {
                 }
                 current = end;
             }
+            // Kept exact: nothing to reduce.
+            Segment::QuadTo { end, .. } => current = end,
             Segment::Close => current = start,
         }
     }
@@ -254,6 +258,18 @@ impl Mono {
             + f64::MIN_POSITIVE
     }
 
+    /// A placement-independent admission allowance for direct accumulation.
+    /// On a monotone piece, roots are bounded through their coordinate
+    /// residuals, rather than an inverse derivative. Coordinate operations
+    /// scale with the coefficients; H, offset-height products and the sum
+    /// of column heights scale at most quadratically. The broad allowance
+    /// includes both ends, all columns in one row, and coefficient setup.
+    /// Large pieces still use the measured per-pixel certificate.
+    pub(crate) fn arithmetic_allowance(&self) -> f64 {
+        let scale = 1.0 + self.bx.abs() + self.ax.abs() + self.by.abs() + self.ay.abs();
+        4096.0 * f64::EPSILON * scale * scale
+    }
+
     /// Error of the cell's antiderivative difference and offset-height
     /// product, before their potentially large cancellation.
     pub(crate) fn area_error(&self, times: [f64; 2], offset: f64, height: f64) -> f64 {
@@ -398,6 +414,58 @@ pub(crate) fn spline(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<Option<Spline>> {
+    let built = spline_using(outline, linear, limits, bytes, PointContours::Keep)?;
+    Ok(built.map(|(spline, _)| spline))
+}
+
+/// The pieces of an outline whose one geometric point is an explicit
+/// closed move (a `MoveTo` and its `Close`), without that contour, and the
+/// point under `linear` as the polygon classifies it; `None` for any other
+/// geometric point, for more than one, or for none.
+///
+/// # Errors
+///
+/// As [`spline`].
+pub(crate) fn point_spline(
+    outline: &Path,
+    linear: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Option<(Spline, Point)>> {
+    // A move followed by a move is a point of the polygon's own that the
+    // pieces do not see.
+    let segments = outline.segments();
+    if segments
+        .windows(2)
+        .any(|pair| matches!(pair, [Segment::MoveTo(_), Segment::MoveTo(_)]))
+    {
+        return Ok(None);
+    }
+    match spline_using(outline, linear, limits, bytes, PointContours::OmitExplicit)? {
+        Some((spline, Some(point))) => Ok(Some((spline, point))),
+        Some((spline, None)) => {
+            bytes.refund(spline.retained_bytes());
+            Ok(None)
+        }
+        None => Ok(None),
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PointContours {
+    Keep,
+    OmitExplicit,
+}
+
+/// The pieces, and the one explicit closed move point omitted, if exactly
+/// one was.
+fn spline_using(
+    outline: &Path,
+    linear: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+    point_contours: PointContours,
+) -> Result<Option<(Spline, Option<Point>)>> {
     if outline.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
@@ -409,13 +477,15 @@ pub(crate) fn spline(
         spline: Spline::default(),
         limits,
         bytes,
+        point_contours,
+        omitted: (0, None),
     };
     let result = builder.path(outline, linear);
     let retained = result
         .as_ref()
         .ok()
         .and_then(Option::as_ref)
-        .map_or(0, Spline::retained_bytes);
+        .map_or(0, |(spline, _)| spline.retained_bytes());
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
@@ -424,6 +494,9 @@ struct Builder<'a> {
     spline: Spline,
     limits: &'a Limits,
     bytes: &'a mut Meter,
+    point_contours: PointContours,
+    /// Explicit closed move points left out, and the first of them.
+    omitted: (usize, Option<Point>),
 }
 
 impl Builder<'_> {
@@ -464,8 +537,9 @@ impl Builder<'_> {
     fn quadratic(&mut self, curve: Quadratic) -> Result<()> {
         let [_, v, a] = curve.coefficients();
         let [p0, _, p2] = curve.points;
-        let mut events = [0.0, 1.0, 0.0, 0.0];
-        let mut count = 2;
+        // The ends and the extrema between them, in order.
+        let mut events = [0.0, 1.0, 1.0, 1.0];
+        let mut count = 1;
         for (v, a) in [(v.x, a.x), (v.y, a.y)] {
             if a != 0.0 {
                 let t = -v / (2.0 * a);
@@ -475,8 +549,10 @@ impl Builder<'_> {
                 }
             }
         }
-        let events = &mut events[..count];
-        events.sort_unstable_by(f64::total_cmp);
+        if events[1] > events[2] {
+            events.swap(1, 2);
+        }
+        let events = &events[..=count];
         let at = |t: f64| {
             if t == 0.0 {
                 p0
@@ -504,7 +580,11 @@ impl Builder<'_> {
         Ok(())
     }
 
-    fn path(mut self, path: &Path, transform: Transform) -> Result<Option<Spline>> {
+    fn path(
+        mut self,
+        path: &Path,
+        transform: Transform,
+    ) -> Result<Option<(Spline, Option<Point>)>> {
         if path.segments().len() > self.limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
@@ -539,10 +619,9 @@ impl Builder<'_> {
                     segments = 0;
                     self.begin()?;
                 }
-                Segment::LineTo(p) => {
-                    let source = p;
-                    let p = map(p)?;
-                    let a = current.ok_or(Error::invalid_argument("line has no current point"))?;
+                Segment::LineTo(_) | Segment::CubicTo { .. } | Segment::QuadTo { .. } => {
+                    let a =
+                        current.ok_or(Error::invalid_argument("segment has no current point"))?;
                     if closed {
                         start = Some(a);
                         degenerate = true;
@@ -550,33 +629,25 @@ impl Builder<'_> {
                         closed = false;
                         self.begin()?;
                     }
-                    degenerate &= source_current == Some(source);
-                    source_current = Some(source);
-                    self.line(a, p)?;
-                    current = Some(p);
-                    segments += 1;
-                }
-                Segment::CubicTo { c1, c2, end } => {
-                    let a = current.ok_or(Error::invalid_argument("curve has no current point"))?;
-                    if closed {
-                        start = Some(a);
-                        degenerate = true;
-                        segments = 0;
-                        closed = false;
-                        self.begin()?;
-                    }
-                    degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == source_current);
-                    source_current = Some(end);
-                    let (b, c, d) = (map(c1)?, map(c2)?, map(end)?);
-                    self.cubic([a, b, c, d])?;
-                    current = Some(d);
+                    let (source, end) =
+                        self.draw(*segment, (a, source_current), &mut degenerate, map)?;
+                    (source_current, current) = (source, Some(end));
                     segments += 1;
                 }
                 Segment::Close => {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
                     {
-                        if !self.finish(a, b, degenerate)? {
+                        if self.point_contours == PointContours::OmitExplicit
+                            && degenerate
+                            && segments == 0
+                        {
+                            // This contour has emitted no piece. Keep no
+                            // empty start, only its point.
+                            self.spline.starts.pop();
+                            self.omitted.0 += 1;
+                            self.omitted.1.get_or_insert(a);
+                        } else if !self.finish(a, b, degenerate)? {
                             return Ok(None);
                         }
                         current = Some(a);
@@ -592,7 +663,49 @@ impl Builder<'_> {
         {
             return Ok(None);
         }
-        Ok(Some(self.spline))
+        let point = self.omitted.1.filter(|_| self.omitted.0 == 1);
+        Ok(
+            (self.point_contours == PointContours::Keep || !self.spline.pieces.is_empty())
+                .then_some((self.spline, point)),
+        )
+    }
+
+    /// Adds the pieces of a line or curve from the mapped point `a`, the
+    /// source point `from`, and returns its source and mapped ends; a move
+    /// or close adds nothing. Clears `degenerate` unless every source
+    /// control repeats `from`.
+    fn draw(
+        &mut self,
+        segment: Segment,
+        (a, from): (Point, Option<Point>),
+        degenerate: &mut bool,
+        map: impl Fn(Point) -> Result<Point>,
+    ) -> Result<(Option<Point>, Point)> {
+        match segment {
+            Segment::LineTo(p) => {
+                *degenerate &= from == Some(p);
+                let d = map(p)?;
+                self.line(a, d)?;
+                Ok((Some(p), d))
+            }
+            Segment::CubicTo { c1, c2, end } => {
+                *degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == from);
+                let (b, c, d) = (map(c1)?, map(c2)?, map(end)?);
+                self.cubic([a, b, c, d])?;
+                Ok((Some(end), d))
+            }
+            Segment::QuadTo { control, end } => {
+                // A point as the elevated cubic's controls classify it.
+                *degenerate &= from.is_some_and(|from| {
+                    let [c1, c2] = Segment::elevated(from, control, end);
+                    [c1, c2, end].iter().all(|p| *p == from)
+                });
+                let (b, d) = (map(control)?, map(end)?);
+                self.quadratic(Quadratic { points: [a, b, d] })?;
+                Ok((Some(end), d))
+            }
+            Segment::MoveTo(_) | Segment::Close => Ok((from, a)),
+        }
     }
 
     /// Closes a contour; `false` for a geometric point, which keeps the

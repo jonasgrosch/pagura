@@ -182,7 +182,12 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
             Output::File(path) => path.clone(),
             Output::Directory(directory) => image_path(directory, page),
         };
+        #[expect(
+            clippy::large_stack_arrays,
+            reason = "one fixed 48 KiB output packing buffer, independent of input dimensions"
+        )]
         let mut rgb = [0; RGB_CHUNK_BYTES];
+        let mut used = 0;
         let mut file: Option<File> = None;
         let mut emit = emit_started.elapsed();
         // Each page is visited once: its scene is dropped after rendering
@@ -208,7 +213,7 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
                             empty.insert(opened)
                         }
                     };
-                    write_rgb(file, pixels, &mut rgb)
+                    write_rgb(file, pixels, &mut rgb, &mut used)
                 })();
                 emit += emit_started.elapsed();
                 written
@@ -216,12 +221,21 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
         );
         drop(scene);
         let emit_started = Instant::now();
+        // A successful stop keeps its completed bands. On any earlier engine
+        // or consumer error, discard the tail without another writer call.
+        let finished = if matches!(&rendered, Ok(Ok(_))) {
+            file.as_mut()
+                .map_or(Ok(()), |file| drain_rgb(file, &rgb, &mut used))
+        } else {
+            Ok(())
+        };
         drop(file);
         emit += emit_started.elapsed();
         // Sink work is interleaved with execution. Measure all of it in
         // emit, including conversion and file close, rather than render.
         let render = page_started.elapsed().saturating_sub(emit);
         rendered??;
+        finished?;
         stages.push(Stage { page, render, emit });
     }
     if conversion.timings == Timings::Print {
@@ -236,8 +250,9 @@ fn image_path(directory: &Path, page: usize) -> std::path::PathBuf {
     directory.join(format!("page-{:04}.ppm", page + 1))
 }
 
-/// A fixed encoding chunk, independent of the page or band dimensions.
-const RGB_CHUNK_BYTES: usize = 3 * 4096;
+/// The sole fixed packing buffer, shared across bands and independent of
+/// page dimensions. Its complete chunks are written without a second copy.
+const RGB_CHUNK_BYTES: usize = 3 * 16_384;
 
 /// Binary PPM (P6) starts with the dimensions of the complete page.
 fn write_ppm_header(out: &mut impl Write, (width, height): (u32, u32)) -> std::io::Result<()> {
@@ -250,15 +265,41 @@ fn write_rgb(
     out: &mut impl Write,
     rgba: &[u8],
     rgb: &mut [u8; RGB_CHUNK_BYTES],
+    used: &mut usize,
 ) -> std::io::Result<()> {
-    let (pixels, rest) = rgba.as_chunks::<4>();
+    let (mut pixels, rest) = rgba.as_chunks::<4>();
     debug_assert_eq!(rest, []);
-    for pixels in pixels.chunks(rgb.len() / 3) {
-        for (target, pixel) in rgb.as_chunks_mut::<3>().0.iter_mut().zip(pixels) {
+    debug_assert!(*used <= rgb.len() && used.is_multiple_of(3));
+    while !pixels.is_empty() {
+        let count = pixels.len().min((rgb.len() - *used) / 3);
+        let (next, remaining) = pixels.split_at(count);
+        for (target, pixel) in rgb[*used..][..count * 3]
+            .as_chunks_mut::<3>()
+            .0
+            .iter_mut()
+            .zip(next)
+        {
             debug_assert_eq!(pixel[3], 255);
             target.copy_from_slice(&pixel[..3]);
         }
-        out.write_all(&rgb[..pixels.len() * 3])?;
+        *used += count * 3;
+        if *used == rgb.len() {
+            drain_rgb(out, rgb, used)?;
+        }
+        pixels = remaining;
+    }
+    Ok(())
+}
+
+/// Drains only on explicit success paths. There is no Drop-time writer.
+fn drain_rgb(
+    out: &mut impl Write,
+    rgb: &[u8; RGB_CHUNK_BYTES],
+    used: &mut usize,
+) -> std::io::Result<()> {
+    if *used != 0 {
+        out.write_all(&rgb[..*used])?;
+        *used = 0;
     }
     Ok(())
 }
@@ -289,122 +330,4 @@ fn write_timings(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{RGB_CHUNK_BYTES, run, write_ppm_header, write_rgb};
-    use crate::args::{Command, Source};
-    use crate::failure::Failure;
-    use pagura::Recovery;
-    use pagura_testkit::fixture_path;
-
-    fn source(area: &str, file: &str, recovery: Recovery) -> Source {
-        Source {
-            path: fixture_path(area, file),
-            password: Vec::new(),
-            recovery,
-        }
-    }
-
-    fn output(command: &Command) -> Result<String, Failure> {
-        let mut out = Vec::new();
-        run(command, &mut out)?;
-        Ok(String::from_utf8(out).unwrap())
-    }
-
-    #[test]
-    fn streamed_ppm_header_and_payload_keep_pixel_order_across_chunks_and_calls() {
-        let mut actual = Vec::new();
-        let mut rgb = [0; RGB_CHUNK_BYTES];
-        write_ppm_header(&mut actual, (3, 2)).unwrap();
-        write_rgb(&mut actual, &[1, 2, 3, 255, 11, 22, 33, 255], &mut rgb).unwrap();
-        write_rgb(
-            &mut actual,
-            &[
-                101, 102, 103, 255, 10, 20, 30, 255, 0, 127, 255, 255, 255, 254, 253, 255,
-            ],
-            &mut rgb,
-        )
-        .unwrap();
-        assert_eq!(actual, b"P6\n3 2\n255\n\x01\x02\x03\x0b\x16\x21\x65\x66\x67\x0a\x14\x1e\x00\x7f\xff\xff\xfe\xfd");
-        let pixels: Vec<u8> = [[1, 2, 3, 255], [101, 102, 103, 255]]
-            .into_iter()
-            .cycle()
-            .take(RGB_CHUNK_BYTES / 3 + 3)
-            .flatten()
-            .collect();
-        actual.clear();
-        write_rgb(&mut actual, &pixels, &mut rgb).unwrap();
-        let expected = pagura::Pixmap::from_premultiplied(
-            u32::try_from(pixels.len() / 4).unwrap(),
-            1,
-            pixels,
-            pagura::Limits::default(),
-        )
-        .unwrap()
-        .to_rgb_over(pagura::Rgba8::WHITE);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn a_failed_write_stops_rgb_encoding() {
-        struct Failed;
-        impl std::io::Write for Failed {
-            fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
-                Err(std::io::Error::other("sink failed"))
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
-        let mut rgb = [0; RGB_CHUNK_BYTES];
-        let error = write_rgb(&mut Failed, &[1, 2, 3, 255], &mut rgb).unwrap_err();
-        assert_eq!(error.to_string(), "sink failed");
-    }
-
-    #[test]
-    fn inspect_reports_counts_and_diagnostics_as_one_json_line() {
-        let trailing = source("classic", "trailing-bytes.pdf", Recovery::Repair);
-        let line = output(&Command::Inspect(trailing.clone())).unwrap();
-        assert!(line.starts_with("{\"schema\":2,\"pages\":1,"), "{line}");
-        assert!(
-            line.ends_with(",\"repairs\":[\"file.trailing-bytes\"],\"information\":[]}\n"),
-            "{line}"
-        );
-        let strict = Source {
-            recovery: Recovery::Strict,
-            ..trailing
-        };
-        let Err(Failure::Engine(error)) = output(&Command::Inspect(strict)) else {
-            panic!("strict inspect accepted trailing bytes");
-        };
-        assert_eq!(
-            error.repair.map(pagura::Repair::as_str),
-            Some("file.trailing-bytes")
-        );
-    }
-
-    #[test]
-    fn text_rejects_a_page_outside_the_document_before_printing() {
-        let command = Command::Text {
-            source: source("text", "extract-tj.pdf", Recovery::Repair),
-            page: Some(1),
-        };
-        let Err(Failure::Request(message)) = output(&command) else {
-            panic!("page 1 of a one-page document");
-        };
-        assert_eq!(message, "page 1 outside the document's 1 pages");
-    }
-
-    #[test]
-    fn help_version_and_licenses_print_to_the_output() {
-        assert!(
-            output(&Command::Help)
-                .unwrap()
-                .contains("Exit status: 0 on")
-        );
-        assert!(output(&Command::Version).unwrap().starts_with("pagura "));
-        let licenses = output(&Command::Licenses).unwrap();
-        for (subject, _) in pagura::notices() {
-            assert!(licenses.contains(subject), "{subject}");
-        }
-    }
-}
+mod tests;

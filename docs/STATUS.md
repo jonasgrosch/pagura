@@ -70,6 +70,13 @@ profile for thumbnails and first paint is on the roadmap.
   within one level (`crates/pagura-raster/tests/exact`), at every band height
   and on sub-regions.
 
+Extreme coordinate scales can exhaust glyph coverage certification, including
+for kept TrueType quadratics. If the requested coverage byte cannot be certified
+within the subdivision and precision bounds, preparation returns a `Limit`
+(`curve subdivision depth exceeded` or `unresolved curve coverage interval`).
+The large-coordinate quadratic regression in `crates/pagura-raster/tests/exact`
+exercises this refusal as well as accurately rendered smaller cases.
+
 ## Overprint display policy
 
 `RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;

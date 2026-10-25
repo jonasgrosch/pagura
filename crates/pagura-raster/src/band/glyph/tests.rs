@@ -1,4 +1,7 @@
+mod overlap;
+mod point;
 mod sharing;
+mod summary;
 
 use super::*;
 use crate::PathBuilder;

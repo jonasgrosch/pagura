@@ -7,7 +7,10 @@ accumulation, bounded storage, direct glyph curves, direct opaque images and
 signed-area glyph coverage). The history of this file keeps them and their
 evidence. Section 4's coverage producers were brought in line with the
 implementation on 2026-10-22, and the fast parameters and their accuracy gate
-were retired the same day (section 8).
+were retired the same day (section 8). On 2026-10-24 TrueType quadratics
+became their own path segments, integrated without per-placement
+certification, and round caps that their end segments hold became part of
+the end pieces (section 4).
 
 ## Decision
 
@@ -128,18 +131,72 @@ successive chain ends and alternate in direction from one common sign, so
 the winding is zero or that sign with magnitude one. For quadratics the
 certificate bounds the curves themselves, including their tangent fans at
 shared vertices. Doubt leaves the shape uncertified. Stroke pieces that are
-proved to meet without overlap are certified by construction.
+proved to meet without overlap are certified by construction. An open
+round-capped run is proved where its joints are and each end segment holds
+its cap: the segment is longer than the pen radius plus what its other end
+needs along it (the other cap's radius, or a turn's inner reach), so the
+cap polygon's part behind the end line lies within the end piece. The end
+piece then takes the chain of the canonical cap polygon beyond its end
+line, entered and left where the polygon's sides cross that line, and the
+cap polygon is not drawn. Cap vertices behind the end line must lie across
+the piece within eight rounding units of their coordinates, so the piece
+differs from the components' union only by slivers of that width. A lone
+segment holds both caps as one convex piece where each cap polygon's part
+beyond the other end line, which lies within sqrt(r^2 - L^2) of that end,
+is inside the other polygon's inscribed circle of radius r cos(pi/n), less
+eight rounding units; for segments at least as long as the pen radius that
+part is empty. A point's two round caps are the same polygon, drawn once.
+Cap admission also bounds crossing and side rounding by 64 rounding units at
+the endpoints' construction-space magnitude. This must fit in 1/4096 of the
+pen's flattening tolerance, which already accounts for device stretch;
+otherwise the run keeps the canonical components and their row union.
 
-Uncertified rows, and rows crossed by both a mark and a path clip, go through
-one exact row union during preparation. It cuts at edge ends and crossings,
+Uncertified rows, and rows crossed by both a mark and a non-convex path clip,
+go through one exact row union during preparation. It cuts at edge ends and crossings,
 keeps the active edges ordered across each slab, and emits the boundaries of
 the area in which every group (mark and clipping paths, 8.5.4) is inside.
+Edges are ordered by the exact two-product interpolation. A slab first
+orders them by the kernel's plain interpolation and keeps that order where
+neighbours lie apart by more than twice its bound, since every comparison
+then agrees with the exact one.
 These straight boundary pieces have winding zero or one and use the same
 cell kernel. Dense rows are partitioned by column with carried windings;
 each partition covers the same set and adds no boundary at its cut. The
 work and scratch reservations are charged before each allocation or sweep.
 Clips are prepared once per clip state into outside, inside and boundary
 runs. Rectangular clips clip edges geometrically before accumulation.
+
+**Convex clip paths.** A clipping path that is one contour certified simple
+and convex (repeated points ignored; turns of one sign beyond eight rounding
+units of their products, and one revolution, as for convex stroke outlines)
+is also kept as its left and right chains, each of strictly increasing
+height. When every path of a clip state is convex, a polygon mark never meets
+their boundary runs. A mark whose hull box, or failing that every vertex,
+lies strictly inside every path, by orientation signs certified against
+their rounding, keeps its own edges and drops the paths. Any other mark is
+clipped to each path in turn as to the rectangle: an edge keeps its part
+between the chains, a part beside a chain is replaced by that chain's sides
+at the same heights, and a part above or below the path becomes horizontal
+and bounds no area. That map fixes the region and moves every other point
+along a horizontal segment outside it, or vertically through heights outside
+it, so the moved boundary has the mark's winding inside the region and none
+outside: windings of zero or one sign of magnitude one stay so, and either
+fill rule selects the region's part of the mark. Each piece lies on one
+stored line, the edge or a chain side, and its ends are evaluated on that
+line at event heights. Crossing heights use the row union's interpolation of
+the two lines' differences; the pieces meeting there end on their own lines
+and are joined by a horizontal step, so a crossing height off by a rounding
+unit moves area only within that unit's slab, however flat the lines meet.
+Parts moved along a nearly horizontal side can reach far beside the mark, so
+the pieces are then clipped to the mark's hull box, as to the rectangle.
+Curves meet such clips only as the polygon every path-clipped mark already
+uses, and glyph placements are still inspected against their source curves
+under the canonical clips, with the chain sides' interpolation uncertainty
+added to the clip's. The rasterized bytes equal the row union's on the
+benchmark pages at 72, 150 and 300 dpi, the catalogued pages and the
+conformance fixtures, and the exact-oracle clip tests find no differing
+pixel; marks along a chain side, through chain points and across nearly
+horizontal sides are tested separately.
 
 A subpath whose points all coincide covers the pixel under them
 (8.5.3.3.1), and a fill whose region is empty with a boundary paints that
@@ -156,7 +213,20 @@ order, prefix sums left to right from column 0, cells indexed by global device
 column) and no kernel uses fused multiply-add, so a cell is a function of the
 geometry, the cell and the rule alone: band height, region and platform
 select which cells are visited, never their arithmetic. Certification and
-row union depend only on the geometry and the clip state.
+row union depend only on the geometry and the clip state. An edge whose
+coordinates are at most 2^16 in magnitude and whose height is at least
+2^-30 interpolates its crossings in plain f64, within the straight-edge
+interpolation bound below; other edges use the exact two-product form.
+Execution windows of at most 256 columns with at least one item per two
+columns keep no touched bitmap: they accumulate densely and emit every
+cell, with the same values. A thin stroke across a wider window touches
+few of its cells and keeps the bitmap.
+A glyph
+placement's last window in a band also takes its rows in the next band, as
+far as one window reaches, into storage reserved with the rasterizer; the
+next band copies those bytes instead of walking the placement again. They
+are the same cells, so the bytes do not change, and a band rendered without
+the band before walks its placements as usual.
 
 **Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
 and 4) keeps its font outline, its linear glyph-to-device map L and its exact
@@ -169,7 +239,10 @@ classification come from the L-mapped endpoints and controls before
 approximation and translation: coincident approximating vertices do not turn
 a curve into a point, while a singular L can produce a genuine point, which
 encloses its translated floor cell (8.5.3.3.1). A final open one-point
-contour is omitted. Each glyph is a separate nonzero fill composited in
+contour is omitted. A curved outline whose only point is one explicit
+closed move keeps its other contours' quadratics and adds the point's floor
+cell to them; a placement that a clip cuts takes the outline's polygon.
+Each glyph is a separate nonzero fill composited in
 content order, including overlap and knockout (9.3.6, 9.3.8, 11.4.6). Glyphs
 of a run share preparation and accumulate into one band row only where no
 pixel receives coverage from two of them, never as a union. Strokes and text
@@ -178,10 +251,14 @@ clipping follow the path rules.
 **Glyph reference.** A quadratic outline is referenced against its original
 stored curve at its exact device position (8.5.2.2, 9.3.6), independently of
 the renderer's certificate, its clip state and its selected representation.
-TrueType quadratics arrive as degree-elevated cubics. In device space the
-sum of absolute third differences -P0 + 3P1 - 3P2 + P3 over the entire outline
-must be at most 2^-24 pixels per coordinate. This defines its source-curve
-reference independently of certification. Analytic reduction additionally
+TrueType quadratics arrive as quadratic path segments and are integrated as
+themselves. Every polygon flattens a quadratic as its degree-elevated cubic,
+whose controls round once more than the source's; the flattener's hull
+allowance includes that rounding. A cubic outline may also be a quadratic
+one: in device space the sum of absolute third differences
+-P0 + 3P1 - 3P2 + P3 over the entire outline must be at most 2^-24 pixels per
+coordinate. This defines its source-curve reference independently of
+certification. Analytic reduction of such cubics additionally
 includes a conservative 64-rounding-unit allowance for the absolute products
 of the original controls and linear map, third-difference evaluation and
 midpoint-control construction. Absolute products retain their scale when a
@@ -203,17 +280,22 @@ cannot increase this symmetric difference. Certified outlines use
 closed-form integration of monotone quadratics with no piece-count cap.
 
 Uncertified quadratic outlines and quadratic placements crossed by a path
-clip use de Casteljau subdivision of the original stored cubics. Each
-accepted chord and its curve lie in their shared control hull. The sum of
-those hull areas is at most 1/4096 square pixel over the whole outline;
-subdivision divides each curve's allowance between its two children. The
+clip use de Casteljau subdivision of the original stored curves, each
+quadratic as its elevated cubic. Each
+accepted chord and its curve lie in their shared control hull. Each curve's
+hulls have at most its share of 1/4096 square pixel in area, divided among
+the outline's curves; subdivision divides each curve's share between its
+two children. Where every placement certifies its bytes (below), the
+allowance is divided among at most eight curves, so the sum over the whole
+outline can exceed 1/4096 square pixel but not in a pixel that meets at
+most eight curves. The
 hull determinants include outward error allowances for multiplication,
 cancellation, mapping and accumulated subdivision rounding; an uncertain
-zero determinant cannot certify zero area. Thus
-the symmetric difference, in any pixel and under any clip or fill rule,
-is less than 0.063 levels. This gives the fallback the same true-curve
-reference without depending on a distance tolerance or on the number of
-boundaries in a cell. Segment and subdivision limits still apply; an
+zero determinant cannot certify zero area. Thus, in a pixel whose curves
+hold at most 1/4096 square pixel together, the symmetric difference under
+any clip or fill rule is less than 0.063 levels. This gives the fallback the
+same true-curve reference without depending on a distance tolerance or on
+the number of boundaries in a cell. Segment and subdivision limits still apply; an
 unattainable bound returns a limit error.
 
 Neither area allowance alone certifies a coverage byte. A curve and a fine
@@ -222,8 +304,24 @@ that one-byte difference in separate glyph placements can exceed the scene's
 one-level contract. Preparation therefore inspects the common cell kernel's
 unquantized areas and quantizes both ends of their source-curve intervals,
 including reduction, mapping and translation error. An unambiguous interval
-certifies the byte that ordinary execution emits. Ambiguous pixels are
-resolved from the original stored cubics in a pixel-local frame using the
+certifies the byte that ordinary execution emits. A placement that
+integrates its outline's own quadratic segments in closed form, crossed by
+no clip path, has no reduction error, but its mapping, translation and kernel
+arithmetic can still be ill-conditioned. A cached whole-outline allowance
+includes the absolute mapping products and a quadratic coefficient-scale
+bound on root residuals, integrals and cell accumulation. At each placement,
+translation is included too. Only an allowance below 1/1024 of one coverage
+level skips inspection; larger or non-finite allowances use the measured
+certificate. The admission work is cached with the linear glyph map, so
+ordinary repeated placements perform only a constant-size check. Polygon
+placements and reduced cubics are always inspected. A polygon pixel that the
+whole-outline allowance leaves ambiguous is checked again against the shares
+of only the curves whose boxes meet it: subdivision keeps a curve's controls
+within its control box, so the box's mapped corners, widened by the mapping
+and hull rounding of the deepest subdivision, contain every hull that spends
+its share. Outlines with cubics keep the whole allowance, since their reduced
+quadratics may leave their control boxes. Ambiguous pixels are
+resolved from the original stored curves in a pixel-local frame using the
 shared bounded subdivision and row-union arithmetic. Accepted control hulls
 bound the area uncertainty under the canonical clips. Integer localization
 retains its two-sum tails; full outward hulls must miss outward clip bounds
@@ -301,8 +399,8 @@ certification, and preserve the same geometry in sub-region requests.
 A general cubic's displacement tolerance alone does not bound area when
 several edges share a pixel, so its outline retains the canonical 1/256-pixel
 polygon as its reference. Singular linear maps retain the polygon's
-geometric-point rule. The independent test oracle keeps the stored cubic
-segments and integrates their covered lengths by adaptive Gauss-Legendre
+geometric-point rule. The independent test oracle keeps the stored quadratic
+and cubic segments and integrates their covered lengths by adaptive Gauss-Legendre
 quadrature. The slow differential reference bounds its own original-curve
 polygon's total control-hull area by 1/65536 square pixel; it never adopts
 the renderer's certificate or a path-clip exception. That initial area

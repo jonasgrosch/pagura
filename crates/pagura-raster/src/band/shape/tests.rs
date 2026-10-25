@@ -34,10 +34,52 @@ fn empty_resolved_rows_also_need_storage() {
 }
 
 #[test]
-fn round_cap_overlap_resolves_only_uncertified_rows() {
+fn an_empty_resolved_row_still_masks_the_original_polygon() {
+    let limits = Limits::default();
     let mut path = crate::PathBuilder::new();
-    path.move_to(Point::new(8.0, 5.0));
-    path.line_to(Point::new(8.0, 105.0)).unwrap();
+    path.move_to(Point::default());
+    path.line_to(Point::new(0.0, 2.0)).unwrap();
+    path.line_to(Point::new(1.0, 2.0)).unwrap();
+    path.line_to(Point::new(1.0, 0.0)).unwrap();
+    path.close();
+    let mut bytes = crate::testing::bytes();
+    let mut polygon = Polygon::from_lines(&path.finish(), Transform::IDENTITY, &limits, &mut bytes)
+        .unwrap()
+        .unwrap();
+    polygon
+        .cell(Point::new(0.25, 0.25), &limits, &mut bytes)
+        .unwrap();
+    let area = super::super::tests::area(0, 0, 2, 3, 2);
+    let options = ShapeOptions {
+        area,
+        limits: &limits,
+    };
+    let shape = Shape::polygon(
+        polygon,
+        FillRule::NonZero,
+        Winding::Unknown,
+        &Prep::new(&options, None),
+        &mut bytes,
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(shape.resolved.mask(&(0..1)), 1);
+    assert_eq!(shape.resolved.lines(&(0..1)), []);
+    let (pixels, work) = crate::testing::raster(&area, Some(&shape), None);
+    assert_eq!(pixels, [0, 0, 255, 0, 0, 0]);
+    assert!(work <= shape.work());
+}
+
+fn round_capped(points: &[(f64, f64)]) -> Shape {
+    let mut path = crate::PathBuilder::new();
+    for (i, &(x, y)) in points.iter().enumerate() {
+        if i == 0 {
+            path.move_to(Point::new(x, y));
+        } else {
+            path.line_to(Point::new(x, y)).unwrap();
+        }
+    }
     let path = path.finish();
     let stroke = Stroke {
         width: 4.0,
@@ -57,7 +99,7 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
         },
         limits: &limits,
     };
-    let shape = Shape::stroke(
+    Shape::stroke(
         &path,
         &stroke,
         Transform::IDENTITY,
@@ -66,9 +108,16 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
         &options,
     )
     .unwrap()
-    .unwrap();
-    // The canonical full circles overlap the body near its ends. Their
-    // uncertain rows still resolve, but the long middle is signed area.
+    .unwrap()
+}
+
+#[test]
+fn round_cap_overlap_resolves_only_uncertified_rows() {
+    // An end segment shorter than the pen radius cannot hold its cap, so
+    // the run keeps the canonical full circles, which overlap the body near
+    // its ends. Their uncertain rows still resolve, but the long middle is
+    // signed area.
+    let shape = round_capped(&[(8.0, 5.0), (8.0, 55.0), (8.0, 105.0), (8.0, 106.5)]);
     assert_ne!(shape.resolved.rows, []);
     assert!(shape.resolved.rows.len() < shape.bounds.height() as usize / 4);
     assert!(
@@ -78,6 +127,23 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
             .iter()
             .all(|&(y, _)| !(9..=100).contains(&y))
     );
+}
+
+#[test]
+fn a_lone_round_capped_segment_is_one_convex_piece() {
+    let shape = round_capped(&[(8.0, 5.0), (8.0, 105.0)]);
+    assert_eq!(shape.resolved.rows, []);
+}
+
+#[test]
+fn end_segments_holding_their_round_caps_resolve_nothing() {
+    for points in [
+        [(8.0, 5.0), (8.0, 55.0), (8.0, 105.0)],
+        [(6.0, 5.0), (10.0, 55.0), (6.0, 105.0)],
+    ] {
+        let shape = round_capped(&points);
+        assert_eq!(shape.resolved.rows, [], "{points:?}");
+    }
 }
 
 #[test]

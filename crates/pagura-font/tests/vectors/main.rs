@@ -125,6 +125,11 @@ fn check_vector(
                     )
                     .unwrap();
             }
+            "q" => {
+                builder
+                    .quad_to(Point::new(n(1), n(2)), Point::new(n(3), n(4)))
+                    .unwrap();
+            }
             "h" => {
                 builder.close();
             }
@@ -385,6 +390,10 @@ fn compare_segment(a: Segment, b: Segment, name: &str) {
             point(a, d);
             point(b, e);
             point(c, f);
+        }
+        (Segment::QuadTo { control: a, end: b }, Segment::QuadTo { control: c, end: d }) => {
+            point(a, c);
+            point(b, d);
         }
         (Segment::Close, Segment::Close) => {}
         _ => panic!("{name}: segment kinds differ"),

@@ -8,6 +8,8 @@ use pagura_document::Rotation;
 use pagura_extract::TextRenderingMode;
 use pagura_raster::{Adjustment, PathBuilder, Stroke, Transform};
 
+mod ownership;
+
 fn page() -> PageInfo {
     PageInfo {
         object: pagura_core::ObjectId::new(3, 0),

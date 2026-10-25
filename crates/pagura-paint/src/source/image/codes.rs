@@ -285,7 +285,6 @@ impl Lanes {
         };
         let maps: [Affine; L] = std::array::from_fn(|l| self.affine[l]);
         let averages = averages.as_chunks::<N>().0;
-        colors.clear();
         colors.resize(averages.len() * L, 0.0);
         for (values, average) in colors.as_chunks_mut::<L>().0.iter_mut().zip(averages) {
             for ((value, &component), map) in values.iter_mut().zip(&component).zip(&maps) {
@@ -307,7 +306,6 @@ impl Lanes {
         };
         let tables: [&[f64; 256]; L] = std::array::from_fn(|l| &self.table[l]);
         let codes = codes.as_chunks::<N>().0;
-        colors.clear();
         colors.resize(codes.len() * L, 0.0);
         for (values, sample) in colors.as_chunks_mut::<L>().0.iter_mut().zip(codes) {
             for ((value, &component), table) in values.iter_mut().zip(&component).zip(&tables) {
@@ -410,7 +408,6 @@ impl Lanes {
     ) {
         let channels = self.channels;
         let (lower, _) = pixels.size_hint();
-        out.colors.clear();
         out.colors.resize(lower * channels, 0.0);
         if self.opaque {
             for (codes, colors) in pixels.zip(out.colors.chunks_exact_mut(channels)) {
@@ -541,7 +538,9 @@ impl Codes {
     /// Writes the N16 words of the opaque colours of device pixels
     /// `x .. x + len` of row `y` into `out`, as a store at full opacity
     /// writes them; false, with nothing written, unless the image's three
-    /// lanes are opaque and its pixels take nearest samples.
+    /// lanes are opaque and its pixels take nearest samples, or their
+    /// colours are mapped averages (see [`Self::mapped`]) whose footprints
+    /// all meet the image.
     pub(super) fn words(
         &self,
         image: &DecodedImage,
@@ -549,9 +548,6 @@ impl Codes {
         scratch: &mut super::separable::Scratch,
         out: &mut [[u16; 4]],
     ) -> bool {
-        let Some(words) = self.words.as_deref() else {
-            return false;
-        };
         let Some(grid) = Grid::new(image) else {
             return false;
         };
@@ -559,6 +555,18 @@ impl Codes {
             grid,
             components: self.components,
             complement: None,
+        };
+        if !self.separable.nearest() {
+            return match self.mapped(rows.width()) {
+                Some(map) if self.lanes.table.len() == 3 => {
+                    let map = |average| map.apply(average);
+                    self.separable.words(&rows, pixels, scratch, map, out)
+                }
+                _ => false,
+            };
+        }
+        let Some(words) = self.words.as_deref() else {
+            return false;
         };
         let n = rows.width().max(1);
         let &[a, b, c] = self.lanes.component.as_slice() else {
@@ -651,18 +659,9 @@ impl Codes {
             return;
         }
         let mut shape = shape;
-        // Lanes that are their components' codes mapped alike, or one
-        // component's code mapped and copied, take their colours as the
-        // averages are written.
         let lanes = self.lanes.table.len();
-        let mapped = match (self.lanes.direct, self.lanes.replicated) {
-            (Some(map), _) if n == lanes => Some(map),
-            (_, Some(map)) if n == 1 => Some(map),
-            _ => None,
-        };
-        if let Some(map) = mapped {
+        if let Some(map) = self.mapped(n) {
             let mut colors = std::mem::take(&mut out.colors);
-            colors.clear();
             colors.resize(len * lanes, 0.0);
             let alpha = &mut out.alpha;
             let finish = |colors: &mut [f64], covered: &[bool]| {
@@ -695,6 +694,18 @@ impl Codes {
         };
         self.separable
             .average(&rows, pixels, scratch, None, (|average| average, finish));
+    }
+
+    /// The map of averages of `n` codes per pixel to colours, for lanes that
+    /// are their components' codes mapped alike, or one component's code
+    /// mapped and copied: they take their colours as the averages are
+    /// written.
+    fn mapped(&self, n: usize) -> Option<Affine> {
+        match (self.lanes.direct, self.lanes.replicated) {
+            (Some(map), _) if n == self.lanes.table.len() => Some(map),
+            (_, Some(map)) if n == 1 => Some(map),
+            _ => None,
+        }
     }
 }
 

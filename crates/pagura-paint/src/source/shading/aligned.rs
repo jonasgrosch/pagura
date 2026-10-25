@@ -9,8 +9,10 @@
 //! everything computed from it, is bit-identical along the shared direction.
 //! Samples whose projection `u` is zero are evaluated pixel by pixel.
 
+use super::colors::Sample;
 use super::geometry::Axial;
 use super::{Geometry, ShadingSource, Span, SpanColors, allocate};
+use crate::source::Precision;
 use pagura_color::MAX_COMPONENTS;
 use pagura_core::{Meter, Result};
 use pagura_raster::Point;
@@ -147,7 +149,7 @@ impl Aligned {
             axial,
             (span.x, span.y),
             None,
-            (first, &mut [0.0; MAX_COMPONENTS]),
+            (first, &mut Sample::new(Precision::Exact)),
         );
         for chunk in rest.chunks_exact_mut(channels) {
             chunk.copy_from_slice(first);
@@ -165,6 +167,7 @@ impl Aligned {
     ) {
         let channels = source.channels.max(1);
         let SpanColors { colors, alpha, .. } = out;
+        let mut sample = Sample::new(Precision::Exact);
         for (i, (color, alpha)) in colors
             .chunks_exact_mut(channels)
             .zip(alpha.iter_mut())
@@ -188,12 +191,7 @@ impl Aligned {
                 Class::Before => &self.before,
                 Class::After => &self.after,
                 Class::Other => {
-                    *alpha = source.pixel(
-                        axial,
-                        (x, span.y),
-                        None,
-                        (color, &mut [0.0; MAX_COMPONENTS]),
-                    );
+                    *alpha = source.pixel(axial, (x, span.y), None, (color, &mut sample));
                     continue;
                 }
             };
@@ -258,6 +256,7 @@ impl Table {
         let mut alpha = allocate(count, bytes)?;
         let mut valid = allocate(count, bytes)?;
         functions.charge_product(count * source.samples(), source.colors.cost())?;
+        let mut sample = Sample::new(Precision::Exact);
         for (i, ((color, alpha), valid)) in colors
             .chunks_exact_mut(channels)
             .zip(alpha.iter_mut())
@@ -270,7 +269,7 @@ impl Table {
                 (p.x - axial.start.x) * axial.delta.x != 0.0
             });
             if *valid {
-                *alpha = source.pixel(axial, (x, 0), None, (color, &mut [0.0; MAX_COMPONENTS]));
+                *alpha = source.pixel(axial, (x, 0), None, (color, &mut sample));
             }
         }
         Ok(Some(Self {
@@ -298,7 +297,12 @@ impl ShadingSource {
         let Some(x) = input else {
             return 0.0;
         };
-        self.pixel(&Fixed(x), (0, 0), None, (color, &mut [0.0; MAX_COMPONENTS]))
+        self.pixel(
+            &Fixed(x),
+            (0, 0),
+            None,
+            (color, &mut Sample::new(Precision::Exact)),
+        )
     }
 
     /// Whether device coordinates below 2³² map to parameters far from

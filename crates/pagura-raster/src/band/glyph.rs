@@ -4,13 +4,17 @@
 //! Only the linear map shapes the edges; each placement adds its device
 //! origin to every point without rounding either to a grid. An outline is
 //! integrated as quadratics when its pieces certify winding zero or one
-//! sign everywhere. Uncertified quadratic outlines and placements crossed
+//! sign everywhere, with the floor cell of one explicit closed move point
+//! when it has one. Uncertified quadratic outlines and placements crossed
 //! by a clip path use the same flattener with a whole-outline area bound;
-//! every quadratic placement certifies its coverage bytes before execution,
-//! refining ambiguous pixels from the original controls. General cubics
-//! retain the canonical 1/256-pixel polygon.
+//! an uncertified polygon's overlaps are resolved once, for every placement
+//! no clip cuts.
+//! Every placement that approximates its quadratics, as a polygon or by
+//! reducing degree-elevated cubics, certifies its coverage bytes before
+//! execution, refining ambiguous pixels from the original controls. General
+//! cubics retain the canonical 1/256-pixel polygon.
 
-use super::certify::{certified, spline_certified};
+use super::certify::{doubtful, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
@@ -25,9 +29,11 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
+mod overlap;
 mod polygon;
 mod rounding;
-pub(crate) use polygon::PolygonLines;
+pub(super) use polygon::Summary;
+pub(crate) use polygon::{PolygonLines, point_sides};
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
@@ -38,17 +44,21 @@ pub struct GlyphEdges {
     retained: usize,
     hull: Option<[f64; 4]>,
     pub(super) kind: Kind,
+    direct: Option<rounding::Direct>,
 }
 
 #[derive(Debug)]
 pub(super) enum Kind {
     /// A certified spline: its pieces in contour order, for placements a
-    /// clip's rectangle cuts, and the edges a placement translates. The
-    /// outline and map stay for placements a clip path crosses, which take
-    /// its polygon.
+    /// clip's rectangle cuts, and the edges a placement translates, with
+    /// the one geometric point of an explicit closed move, whose floor cell
+    /// a placement covers (8.5.3.3.1). The outline and map stay for
+    /// placements a clip path crosses, or a rectangle cuts with a point,
+    /// which take its polygon.
     Curve {
         spline: Spline,
         relative: Relative,
+        point: Option<Point>,
         outline: Arc<Path>,
         linear: Transform,
     },
@@ -60,6 +70,12 @@ pub(super) enum Kind {
         certified: bool,
         /// Original curves retained for coverage-byte certification.
         source: Option<(Arc<Path>, Transform)>,
+        /// Bounds and work for uncut short placements, computed once from
+        /// the canonical vertices without retaining another edge array.
+        summary: Option<Summary>,
+        /// An uncertified short polygon's sides with its overlaps resolved,
+        /// for the short placements no clip cuts.
+        resolved: Option<Box<Relative>>,
     },
 }
 
@@ -125,6 +141,26 @@ impl Relative {
             work,
         })
     }
+
+    fn retained_bytes(&self) -> usize {
+        self.lines.capacity() * size_of::<Line>() + self.curves.capacity() * size_of::<Mono>()
+    }
+
+    fn placed_hull(&self, origin: Point, point: Option<Point>) -> Result<[Point; 2]> {
+        let [lo, hi] = self.hull;
+        let mut lo = lo + origin;
+        let mut hi = hi + origin;
+        bounded(lo)?;
+        bounded(hi)?;
+        if let Some(point) = point {
+            let point = point + origin;
+            bounded(point)?;
+            let [a, _, b, _] = Polygon::cell_corners(point);
+            lo = Point::new(lo.x.min(a.x), lo.y.min(a.y));
+            hi = Point::new(hi.x.max(b.x), hi.y.max(b.y));
+        }
+        Ok([lo, hi])
+    }
 }
 
 /// The rows, counted from the edge's own first one, that an edge spanning
@@ -161,10 +197,19 @@ impl GlyphEdges {
         let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
         bytes.charge_items::<Self>(1)?;
         let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        let relative = match &kind {
+            Kind::Curve { relative, .. } => Some(relative),
+            Kind::Polygon { .. } => None,
+        };
+        // A curve body with a point contour integrates its quadratics too.
+        // Cache their arithmetic allowance once on the glyph owner.
+        let direct =
+            relative.and_then(|relative| rounding::Direct::new(outline, transform, relative));
         Ok(Self {
             retained: bytes.used(),
             hull,
             kind,
+            direct,
         })
     }
 
@@ -177,14 +222,27 @@ impl GlyphEdges {
         // A singular map can make a genuine point of a curve; the polygon
         // keeps the point rule.
         let regular = transform.determinant() != 0.0;
+        let curves = outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }));
         let spline = if regular {
             curve::spline(outline, transform, limits, bytes)?
         } else {
             None
         };
-        if let Some(spline) = spline {
-            if spline_certified(&spline, bytes)? {
-                let relative = Relative::new(&spline, bytes)?;
+        let spline = match spline {
+            Some(spline) => Some((spline, None)),
+            // A curved outline's pieces without the one point of an
+            // explicit closed move.
+            None if regular && curves => curve::point_spline(outline, transform, limits, bytes)?
+                .map(|(spline, point)| (spline, Some(point))),
+            None => None,
+        };
+        if let Some((spline, point)) = spline {
+            // The certificate reads the curves the placements integrate.
+            let relative = Relative::new(&spline, bytes)?;
+            if spline_certified(&spline, &relative.curves, bytes)? {
                 // The outline's allocation includes the Arc counters and
                 // Path, whose segment vector is charged separately.
                 bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
@@ -192,23 +250,44 @@ impl GlyphEdges {
                 return Ok(Kind::Curve {
                     spline,
                     relative,
+                    point,
                     outline,
                     linear: transform,
                 });
             }
-            let released = spline.retained_bytes();
-            drop(spline);
+            let released = spline.retained_bytes() + relative.retained_bytes();
+            drop((spline, relative));
             bytes.refund(released);
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
-        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
-        let source = if regular
-            && outline
-                .segments()
-                .iter()
-                .any(|s| matches!(s, Segment::CubicTo { .. }))
-            && curve::quadratic_outline(outline, transform)
-        {
+        let doubtful = if points.is_empty() {
+            doubtful(&polygon, 0.0, bytes)?
+        } else {
+            None
+        };
+        let certified = doubtful.as_ref().is_some_and(|d| d.slabs.is_empty());
+        let summary = if certified {
+            Summary::new(&polygon)
+        } else {
+            None
+        };
+        let source_available = regular && curves && curve::quadratic_outline(outline, transform);
+        // Other sides than the polygon's only for placements that certify
+        // their bytes.
+        let resolved = match &doubtful {
+            Some(doubtful)
+                if source_available
+                    && !certified
+                    && polygon.bounds().is_some_and(Summary::short) =>
+            {
+                overlap::resolved(&polygon, doubtful, limits, bytes)
+            }
+            _ => None,
+        };
+        if let Some(doubtful) = doubtful {
+            bytes.refund(doubtful.slabs.capacity() * size_of::<[f64; 2]>());
+        }
+        let source = if source_available {
             bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
             Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
         } else {
@@ -219,6 +298,8 @@ impl GlyphEdges {
             points,
             certified,
             source,
+            summary,
+            resolved,
         })
     }
 
@@ -234,11 +315,19 @@ impl GlyphEdges {
         self.retained
     }
 
-    /// The edges a certified placement translates.
-    #[cfg(test)]
+    /// The edges a certified or resolved placement translates.
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
+            Kind::Polygon { resolved, .. } => resolved.as_deref(),
+        }
+    }
+
+    /// The geometric point whose floor cell a placement of those edges
+    /// covers, relative to its origin.
+    pub(crate) fn point(&self) -> Option<Point> {
+        match &self.kind {
+            Kind::Curve { point, .. } => *point,
             Kind::Polygon { .. } => None,
         }
     }
@@ -279,6 +368,37 @@ fn flattened(
     flattened_with(outline, transform, limits, bytes, None)
 }
 
+/// The area allowance of a glyph polygon, in square pixels, over the whole
+/// outline or, where its bytes are certified, over a pixel that meets at
+/// most [`SHARING`] curves.
+pub(super) const AREA: f64 = 1.0 / 4096.0;
+
+/// The curves a byte-certified polygon shares [`AREA`] among: a pixel that
+/// meets more is certified from its curves' shares instead.
+const SHARING: usize = 8;
+
+/// An outline's curves and each one's share of the polygon's area
+/// allowance, the area its accepted hulls can cover together: [`AREA`]
+/// divided among every curve, or among at most [`SHARING`] where every
+/// placement certifies its bytes.
+fn area_share(outline: &Path, certified: bool) -> (usize, f64) {
+    let curves = outline
+        .segments()
+        .iter()
+        .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
+        .count()
+        .max(1);
+    let sharing = if certified {
+        curves.min(SHARING)
+    } else {
+        curves
+    };
+    (
+        curves,
+        AREA / f64::from(u32::try_from(sharing).unwrap_or(u32::MAX)),
+    )
+}
+
 fn flattened_with(
     outline: &Path,
     transform: Transform,
@@ -292,12 +412,10 @@ fn flattened_with(
         // 1/4096 pixel: less than 0.063 levels, also after clipping. Local
         // interval proofs retain that bound only where hulls meet targets;
         // disjoint hulls may keep their chords without moving target winding.
-        let curves = outline
-            .segments()
-            .iter()
-            .filter(|s| matches!(s, Segment::CubicTo { .. }))
-            .count();
-        Flatness::Area(1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
+        // Under a regular map, every placement of a polygon with curves
+        // certifies its bytes from the original outline.
+        let certified = transform.determinant() != 0.0;
+        Flatness::Area(area_share(outline, certified).1)
     } else {
         Flatness::Distance
     };
@@ -376,15 +494,32 @@ fn control_hull(outline: &Path, transform: Transform) -> Option<[f64; 4]> {
             Some([x0, y0, x1, y1]) => [x0.min(p.x), y0.min(p.y), x1.max(p.x), y1.max(p.y)],
         });
     };
+    // A quadratic counts its elevated controls, as the cubic it once was.
+    let (mut start, mut current) = (Point::default(), Point::default());
     for segment in outline.segments() {
         match *segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => add(p),
+            Segment::MoveTo(p) => {
+                add(p);
+                (start, current) = (p, p);
+            }
+            Segment::LineTo(p) => {
+                add(p);
+                current = p;
+            }
             Segment::CubicTo { c1, c2, end } => {
                 add(c1);
                 add(c2);
                 add(end);
+                current = end;
             }
-            Segment::Close => {}
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(current, control, end);
+                add(c1);
+                add(c2);
+                add(end);
+                current = end;
+            }
+            Segment::Close => current = start,
         }
     }
     hull
@@ -418,6 +553,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
         Kind::Curve {
             spline,
             relative,
+            point,
             outline,
             linear,
         } => {
@@ -429,19 +565,19 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // No edges: nothing to cover.
                 return Ok(None);
             }
-            let lo = Point::new(lo.x + origin.x, lo.y + origin.y);
-            let hi = Point::new(hi.x + origin.x, hi.y + origin.y);
-            bounded(lo)?;
-            bounded(hi)?;
+            let hull = relative.placed_hull(origin, *point)?;
+            let [lo, hi] = hull;
             frame.fit([lo, hi]);
-            match (frame.rect, frame.paths) {
+            match (frame.rect, frame.paths, point) {
                 // The clip keeps it whole: its translated edges.
-                (None, None) => Shape::translated(edges, relative, origin, &frame, options),
+                (None, None, _) => {
+                    Shape::translated(edges, relative, origin, hull, &frame, options)
+                }
                 // A rectangle cuts it: its pieces, clipped.
-                (Some(_), None) => pieces(spline, origin, &frame, options, &mut bytes),
-                // A clip path crosses it: its polygon, resolved with the
-                // clip's paths.
-                (_, Some(_)) => {
+                (Some(_), None, None) => pieces(spline, origin, &frame, options, &mut bytes),
+                // A clip path crosses it, or a rectangle cuts it with its
+                // point: its polygon, resolved with the clip.
+                _ => {
                     let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
                     translated(
                         (&polygon, &points),
@@ -459,8 +595,42 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             polygon,
             points,
             certified,
+            summary,
+            resolved,
             ..
         } => {
+            if let Some(relative) = resolved {
+                let hull = relative.placed_hull(origin, None)?;
+                let Some(mut frame) = Frame::new(options) else {
+                    return Ok(None);
+                };
+                frame.fit(hull);
+                // A window visits every side of an unlisted placement, as
+                // it does a short polygon's.
+                if Summary::short(hull) && frame.rect.is_none() && frame.paths.is_none() {
+                    return Shape::translated(edges, relative, origin, hull, &frame, options);
+                }
+            }
+            if let Some(summary) = summary {
+                let hull = summary.placed_hull(origin)?;
+                if Summary::short(hull) {
+                    let Some(mut frame) = Frame::new(options) else {
+                        return Ok(None);
+                    };
+                    if frame.paths.is_none() {
+                        frame.fit(hull);
+                        if frame.rect.is_none() {
+                            let shape = Shape::polygon_glyph(
+                                edges, *summary, origin, hull, &frame, options,
+                            )?;
+                            if let Some(shape) = &shape {
+                                bytes.charge(shape.retained_bytes())?;
+                            }
+                            return Ok(shape);
+                        }
+                    }
+                }
+            }
             let winding = if *certified {
                 Winding::Certified
             } else {
@@ -591,10 +761,13 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [Polyline]) -> 
     let mut index = 0;
     let mut occupied = false;
     let mut closed = false;
+    let (mut start, mut current) = (Point::default(), Point::default());
     for segment in outline.segments() {
-        if (closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }))
-            || (occupied && matches!(segment, Segment::MoveTo(_)))
-        {
+        let reopens = matches!(
+            segment,
+            Segment::LineTo(_) | Segment::CubicTo { .. } | Segment::QuadTo { .. }
+        );
+        if (closed && reopens) || (occupied && matches!(segment, Segment::MoveTo(_))) {
             index += 1;
             occupied = false;
             closed = false;
@@ -608,19 +781,31 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [Polyline]) -> 
         let first = contour.points.first().copied().unwrap_or_default() * transform;
         let same = |point: Point| point * transform == first;
         match *segment {
-            Segment::MoveTo(_) => {
+            Segment::MoveTo(point) => {
                 occupied = true;
                 closed = false;
+                (start, current) = (point, point);
             }
             Segment::LineTo(point) => {
                 contour.degenerate &= same(point);
                 occupied = true;
+                current = point;
             }
             Segment::CubicTo { c1, c2, end } => {
                 contour.degenerate &= [c1, c2, end].into_iter().all(same);
                 occupied = true;
+                current = end;
             }
-            Segment::Close => closed = true,
+            Segment::QuadTo { control, end } => {
+                let [c1, c2] = Segment::elevated(current, control, end);
+                contour.degenerate &= [c1, c2, end].into_iter().all(same);
+                occupied = true;
+                current = end;
+            }
+            Segment::Close => {
+                closed = true;
+                current = start;
+            }
         }
     }
     Ok(())

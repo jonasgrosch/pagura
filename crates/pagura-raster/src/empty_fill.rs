@@ -463,6 +463,18 @@ fn linear_curves(path: &Path) -> Result<bool> {
                 }
                 current = end;
             }
+            Segment::QuadTo { control, end } => {
+                for p in [control, end] {
+                    bounded(p)?;
+                }
+                let controls = [current, control, end];
+                if let Some(&other) = controls.iter().find(|&&p| p != current)
+                    && !controls.iter().all(|&p| collinear(current, other, p))
+                {
+                    return Ok(false);
+                }
+                current = end;
+            }
             Segment::Close => current = start,
         }
     }

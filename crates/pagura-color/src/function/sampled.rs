@@ -54,6 +54,20 @@ struct Weights {
 }
 
 impl Sampled {
+    pub(super) fn retained_bytes(&self) -> usize {
+        [
+            size_of::<Self>(),
+            size_of_val(self.domain.as_ref()),
+            size_of_val(self.size.as_ref()),
+            self.data.len(),
+            2 * size_of::<usize>(),
+            size_of_val(self.encode.as_ref()),
+            size_of_val(self.decode.as_ref()),
+        ]
+        .into_iter()
+        .fold(0, usize::saturating_add)
+    }
+
     pub(super) fn new(
         parameters: SampledFunction,
         outputs: usize,
@@ -204,14 +218,15 @@ impl Sampled {
             self.data.get(start..start.wrapping_add(n)).unwrap_or(&[])
         };
         let a = tuple(low);
+        let unit = |byte: u8| UNIT[usize::from(byte)];
         if t == 0.0 {
             for (out, &a) in output.iter_mut().zip(a) {
-                *out = f64::from(a) / 255.0;
+                *out = unit(a);
             }
         } else {
             let b = tuple((low + 1).min(size - 1));
             for ((out, &a), &b) in output.iter_mut().zip(a).zip(b) {
-                *out = (1.0 - t) * (f64::from(a) / 255.0) + t * (f64::from(b) / 255.0);
+                *out = (1.0 - t) * unit(a) + t * unit(b);
             }
         }
     }
@@ -315,6 +330,17 @@ impl Weights {
         Self { values, len: 4 }
     }
 }
+
+/// `byte / 255` for every byte, as the division gives it.
+const UNIT: [f64; 256] = {
+    let mut unit = [0.0; 256];
+    let mut byte = 0;
+    while byte < 256 {
+        unit[byte] = byte as f64 / 255.0;
+        byte += 1;
+    }
+    unit
+};
 
 /// One input dimension of the grid.
 #[derive(Clone, Copy)]

@@ -2,6 +2,7 @@
 
 mod glyphs;
 mod intern;
+mod owned;
 
 use crate::device::{
     Device, FillMark, GlyphRun, GroupInfo, ImageMark, MarkState, Needs, PageInfo, ShadingMark,
@@ -78,11 +79,18 @@ impl SceneRecorder {
     /// # Errors
     ///
     /// Returns `InvalidArgument` when no complete page was recorded.
-    pub fn finish(self) -> Result<Scene> {
+    pub fn finish(mut self) -> Result<Scene> {
         let Some((page, print_intent)) = self.page.filter(|_| self.finished) else {
             return Err(Error::invalid_argument("no complete page was recorded"));
         };
-        let (clips, states, paints, pens) = self.interner.into_tables();
+        // Recording indexes and open stacks own no part of the finished scene.
+        // Drop their allocations before returning their charges.
+        let released = self.glyphs.retained_bytes(&self.bytes)?
+            + self.stack.capacity() * size_of::<(Open, GroupId)>();
+        drop(self.glyphs);
+        drop(self.stack);
+        self.bytes.refund(released);
+        let (clips, states, paints, pens) = self.interner.into_tables(&mut self.bytes)?;
         Ok(Scene {
             page,
             print_intent,
@@ -130,36 +138,37 @@ impl SceneRecorder {
     fn push(&mut self, node: Node, marks: usize) -> Result<NodeId> {
         let group = self.current()?;
         self.marks.charge(marks)?;
-        self.bytes.charge_items::<Node>(1)?;
-        self.bytes.charge_items::<NodeId>(1)?;
         let id = NodeId(
             u32::try_from(self.nodes.len())
                 .map_err(|_| Error::limit("scene node count exceeded"))?,
         );
-        self.nodes
-            .try_reserve(1)
-            .map_err(|_| Error::limit("scene allocation failed"))?;
-        self.nodes.push(node);
+        self.bytes.reserve_capacity(&mut self.nodes, 1)?;
         let children = &mut self
             .groups
             .get_mut(group.index())
             .ok_or(Error::invalid_argument("unknown scene group"))?
             .children;
-        children
-            .try_reserve(1)
-            .map_err(|_| Error::limit("scene allocation failed"))?;
+        self.bytes.reserve_capacity(children, 1)?;
+        self.nodes.push(node);
         children.push(id);
         Ok(id)
     }
 
     fn charge_path(&mut self, path: &Path) -> Result<()> {
-        self.bytes
-            .charge_items::<pagura_raster::Segment>(path.segments().len())
+        self.bytes.charge(owned::path(path))
     }
 
     /// Opens a group of `role`, as a node of the current group for a
     /// transparency group.
     fn open(&mut self, group: Group, open: Open) -> Result<GroupId> {
+        if let Some(bbox) = &group.bbox {
+            self.charge_path(bbox)?;
+        }
+        self.open_owned(group, open)
+    }
+
+    /// Opens a group whose bounding path, if any, is already charged.
+    fn open_owned(&mut self, group: Group, open: Open) -> Result<GroupId> {
         let id = GroupId(
             u32::try_from(self.groups.len())
                 .map_err(|_| Error::limit("scene group count exceeded"))?,
@@ -167,13 +176,8 @@ impl SceneRecorder {
         if open == Open::Group {
             self.push(Node::Group(id), 0)?;
         }
-        if let Some(bbox) = &group.bbox {
-            self.charge_path(bbox)?;
-        }
-        self.bytes.charge_items::<Group>(1)?;
-        self.groups
-            .try_reserve(1)
-            .map_err(|_| Error::limit("scene allocation failed"))?;
+        self.bytes.reserve_capacity(&mut self.groups, 1)?;
+        self.bytes.reserve_capacity(&mut self.stack, 1)?;
         self.groups.push(group);
         self.stack.push((open, id));
         Ok(id)
@@ -195,6 +199,17 @@ impl SceneRecorder {
         mark: MarkInfo,
     ) -> Result<()> {
         self.charge_path(path)?;
+        self.fill_owned(path, rule, paint, mark)
+    }
+
+    /// Records a fill whose path is already charged.
+    fn fill_owned(
+        &mut self,
+        path: &Arc<Path>,
+        rule: FillRule,
+        paint: PaintId,
+        mark: MarkInfo,
+    ) -> Result<()> {
         self.push(
             Node::Fill(FillNode {
                 path: Arc::clone(path),
@@ -215,6 +230,17 @@ impl SceneRecorder {
         mark: MarkInfo,
     ) -> Result<()> {
         self.charge_path(path)?;
+        self.stroke_owned(path, pen, paint, mark)
+    }
+
+    /// Records a stroke whose path is already charged.
+    fn stroke_owned(
+        &mut self,
+        path: &Arc<Path>,
+        pen: &Arc<crate::model::Pen>,
+        paint: PaintId,
+        mark: MarkInfo,
+    ) -> Result<()> {
         let pen = self.interner.pen(pen, &mut self.bytes)?;
         self.push(
             Node::Stroke(StrokeNode {
@@ -239,10 +265,8 @@ impl Device for SceneRecorder {
             return Err(Error::invalid_argument("the recorder holds a page"));
         }
         self.page = Some((PageSpace::of(page), page.print_intent));
-        let state = self.interner.state(
-            &Arc::new(crate::model::Composite::default()),
-            &mut self.bytes,
-        )?;
+        self.bytes.charge_items::<Scene>(1)?;
+        let state = self.interner.page_state(&mut self.bytes)?;
         self.root = self.open(
             Group {
                 role: GroupRole::Page,
@@ -305,7 +329,7 @@ impl Device for SceneRecorder {
             .map(|paint| self.paint(Some(paint)))
             .transpose()?;
         let info = self.mark(&mark.state)?;
-        self.bytes.charge(mark.image.source.retained_bytes())?;
+        self.bytes.charge(owned::image(mark.image))?;
         self.push(
             Node::Image(ImageNode {
                 image: Arc::clone(mark.image),
@@ -323,10 +347,7 @@ impl Device for SceneRecorder {
             return Ok(());
         }
         let info = self.mark(&mark.state)?;
-        self.bytes
-            .charge(crate::resources::shading::retained_bytes(
-                &mark.shading.kind,
-            ))?;
+        self.bytes.charge(owned::shading(mark.shading))?;
         self.push(
             Node::Shading(ShadingNode {
                 shading: Arc::clone(mark.shading),
@@ -378,7 +399,14 @@ impl Device for SceneRecorder {
             },
             Open::Mask,
         )?;
-        self.bytes.charge_items::<SoftMask>(1)?;
+        self.bytes.reserve_capacity(&mut self.masks, 1)?;
+        self.bytes.charge(
+            mask.backdrop
+                .map_or(0, pagura_color::Components::heap_bytes),
+        )?;
+        if let Some(transfer) = mask.transfer {
+            self.bytes.charge(owned::function(transfer))?;
+        }
         self.masks.push(SoftMask {
             group,
             kind: mask.kind,
@@ -400,19 +428,21 @@ impl Device for SceneRecorder {
             ));
         }
         let mark = self.page_mark()?;
-        let cell = self.open(
+        self.bytes.charge(owned::ARC + size_of::<Path>())?;
+        let bbox = Arc::new(Path::rect_with_bytes(tiling.bbox, &mut self.bytes)?);
+        let cell = self.open_owned(
             Group {
                 role: GroupRole::Tiling,
                 cause: GroupCause::Document,
                 attributes: GroupAttributes::default(),
-                bbox: Some(Arc::new(Path::rect(tiling.bbox))),
+                bbox: Some(bbox),
                 view: None,
                 children: Vec::new(),
                 mark,
             },
             Open::Tiling,
         )?;
-        self.bytes.charge_items::<Tiling>(1)?;
+        self.bytes.reserve_capacity(&mut self.tilings, 1)?;
         self.tilings.push(Tiling {
             cell,
             bbox: tiling.bbox,

@@ -114,39 +114,33 @@ impl PageBuffer {
         fits.then_some(self)
     }
 
-    /// Starts a band of `count` pixels in rows of `width`: transparent, or
-    /// for narrow storage the premultiplied background. Only the columns
-    /// the previous band painted are restored; the rest still hold it.
-    pub(crate) fn reset(
-        &mut self,
-        extents: &mut Extents,
-        (count, width): (usize, usize),
-        background: [u8; 4],
-        layout: Layout,
-    ) {
+    /// Starts a band of `count` pixels: transparent, or for narrow storage
+    /// the premultiplied background. The first band of a render fills them;
+    /// later bands find them restored by output ([`Self::restore`]).
+    pub(crate) fn reset(&mut self, count: usize, background: [u8; 4], layout: Layout) {
         let words = background.map(|b| u16::from(b) * 257);
         let levels = background.map(f32::from);
         let stride = layout.stride();
-        for (row, extent) in extents.rows.iter_mut().enumerate() {
-            let [lo, hi] = *extent;
-            *extent = EMPTY;
-            if lo >= hi {
-                continue;
-            }
-            let (lo, hi) = (
-                row * width + u32_to_usize(lo),
-                row * width + u32_to_usize(hi),
-            );
-            match self {
-                Self::F64(values) => fill(values, lo * stride..hi * stride, 0.0),
-                Self::N16(pixels) => fill(pixels, lo..hi, words),
-                Self::F32(pixels) => fill(pixels, lo..hi, levels),
-            }
-        }
         match self {
             Self::F64(values) => grow(values, count * stride, 0.0),
             Self::N16(pixels) => grow(pixels, count, words),
             Self::F32(pixels) => grow(pixels, count, levels),
+        }
+    }
+
+    /// Restores pixels `range` to what [`Self::reset`] gives them. Output
+    /// does so right after reading them, while they are still in cache.
+    pub(crate) fn restore(
+        &mut self,
+        range: std::ops::Range<usize>,
+        background: [u8; 4],
+        layout: Layout,
+    ) {
+        let stride = layout.stride();
+        match self {
+            Self::F64(values) => fill(values, range.start * stride..range.end * stride, 0.0),
+            Self::N16(pixels) => fill(pixels, range, background.map(|b| u16::from(b) * 257)),
+            Self::F32(pixels) => fill(pixels, range, background.map(f32::from)),
         }
     }
 
@@ -184,7 +178,7 @@ pub(crate) struct Extents {
 }
 
 impl Extents {
-    fn new(rows: usize, bytes: &mut Meter) -> Result<Self> {
+    pub(super) fn new(rows: usize, bytes: &mut Meter) -> Result<Self> {
         let mut values = reserve(rows, bytes)?;
         values.resize(rows, EMPTY);
         Ok(Self { rows: values })
@@ -199,8 +193,14 @@ impl Extents {
     }
 
     /// The painted columns of `row`, if any.
-    pub(crate) fn get(&self, row: usize) -> Option<(usize, usize)> {
-        let [lo, hi] = *self.rows.get(row)?;
+    pub(crate) fn get(&self, row: usize) -> Option<(u32, u32)> {
+        let &[lo, hi] = self.rows.get(row)?;
+        (lo < hi).then_some((lo, hi))
+    }
+
+    /// The painted columns of `row`, if any, forgotten for the next band.
+    pub(crate) fn take(&mut self, row: usize) -> Option<(usize, usize)> {
+        let [lo, hi] = std::mem::replace(self.rows.get_mut(row)?, EMPTY);
         (lo < hi).then(|| (u32_to_usize(lo), u32_to_usize(hi)))
     }
 }

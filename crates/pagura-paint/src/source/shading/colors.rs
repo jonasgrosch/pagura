@@ -2,7 +2,9 @@
 //! colours) and the prepared conversion into the target.
 
 use super::{Input, PaintContext, Parts};
-use pagura_color::{Converter, Function, MAX_COMPONENTS, Painted};
+use crate::kernel;
+use crate::source::{Precision, copy_values};
+use pagura_color::{Converter, Function, MAX_CHANNELS, MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Result};
 use pagura_interpret::ShadingFunction;
 use std::sync::Arc;
@@ -15,6 +17,34 @@ pub(super) struct Colors {
     converter: Converter,
     channels: usize,
     cost: usize,
+    /// The input values a conversion reads.
+    inputs: usize,
+}
+
+/// One sample's function input, and the last input converted with its
+/// colour: inputs equal bit for bit convert to equal colours, so a run of
+/// them (an extended axis, a flat stretch of a function) converts once.
+pub(super) struct Sample {
+    pub(super) input: Input,
+    /// The input values the last conversion read; `None` before one.
+    last: Option<usize>,
+    key: Input,
+    color: [f64; MAX_CHANNELS],
+    /// How precisely converted colours are kept.
+    precision: Precision,
+}
+
+impl Sample {
+    /// A sample whose colours are kept to `precision`.
+    pub(super) fn new(precision: Precision) -> Self {
+        Self {
+            input: [0.0; MAX_COMPONENTS],
+            last: None,
+            key: [0.0; MAX_COMPONENTS],
+            color: [0.0; MAX_CHANNELS],
+            precision,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -60,12 +90,18 @@ impl Colors {
                 fs.iter().fold(0_usize, |c, f| c.saturating_add(f.cost()))
             }
         };
+        let inputs = match &functions {
+            Functions::Identity => components,
+            Functions::Single(f) => f.inputs(),
+            Functions::PerComponent(fs) => fs.iter().map(|f| f.inputs()).max().unwrap_or(0),
+        };
         Ok(Self {
             functions,
             components,
             channels: context.target.channels(),
             cost: function_cost.saturating_add(converter.cost()),
             converter,
+            inputs: inputs.min(MAX_COMPONENTS),
         })
     }
 
@@ -101,10 +137,62 @@ impl Colors {
         self.converter.painted()
     }
 
-    /// The colour of one sample's function input.
-    pub(super) fn convert(&self, input: &Input, out: &mut [f64]) {
+    /// The input values a conversion reads.
+    pub(super) fn inputs(&self) -> usize {
+        self.inputs
+    }
+
+    /// Whether [`Self::convert_line`] takes this stage's samples: at most
+    /// [`BATCH_VALUES`] inputs and components.
+    pub(super) fn batched(&self) -> bool {
+        self.inputs <= BATCH_VALUES && (1..=BATCH_VALUES).contains(&self.components)
+    }
+
+    /// The colours of several samples' function inputs, `inputs` values
+    /// each, into `out`, `channels` values each, kept to `precision`: as
+    /// [`Self::convert`] converts them one by one, for at most
+    /// [`super::BATCH`] samples and a [`Self::batched`] stage.
+    pub(super) fn convert_line(&self, inputs: &[f64], out: &mut [f64], precision: Precision) {
+        let channels = self.channels.max(1);
+        let components = self.components;
+        let points = out.len() / channels;
+        let mut values = [0.0; super::BATCH * BATCH_VALUES];
+        let Some(values) = values.get_mut(..points * components) else {
+            return;
+        };
+        match &self.functions {
+            Functions::Single(f) if f.inputs() == 1 => {
+                f.evaluate_line(inputs, values, components);
+            }
+            _ => {
+                let n = self.inputs.max(1);
+                for (input, values) in inputs
+                    .chunks_exact(n)
+                    .zip(values.chunks_exact_mut(components))
+                {
+                    self.evaluate(input, values);
+                }
+            }
+        }
+        match precision {
+            Precision::Exact => self.converter.convert_line(values, components, out),
+            Precision::Level => {
+                self.converter
+                    .convert_line_rounded(values, components, out, level_bits);
+            }
+        }
+    }
+
+    /// The colour of one sample's function input, kept to `precision`.
+    pub(super) fn convert(&self, input: &Input, out: &mut [f64], precision: Precision) {
         let mut values = [0.0; MAX_COMPONENTS];
         let values = values.get_mut(..self.components).unwrap_or_default();
+        self.evaluate(input, values);
+        self.finish(values, out, precision);
+    }
+
+    /// The colour components of one sample's function input.
+    fn evaluate(&self, input: &[f64], values: &mut [f64]) {
         match &self.functions {
             Functions::Identity => {
                 values.copy_from_slice(input.get(..values.len()).unwrap_or_default());
@@ -116,7 +204,36 @@ impl Colors {
                 }
             }
         }
-        self.converter.convert(values, out);
+    }
+
+    /// The colour of colour components, kept to `precision`.
+    fn finish(&self, values: &[f64], out: &mut [f64], precision: Precision) {
+        match precision {
+            Precision::Exact => self.converter.convert(values, out),
+            Precision::Level => self.converter.convert_rounded(values, out, level_bits),
+        };
+    }
+
+    /// [`Self::convert`] of `sample.input`: the last colour again when the
+    /// input values it reads are those of the last conversion.
+    pub(super) fn convert_sample(&self, sample: &mut Sample, out: &mut [f64]) {
+        let n = self.inputs;
+        let (input, key) = (&sample.input[..n], &mut sample.key[..n]);
+        let same = sample.last == Some(n)
+            && input
+                .iter()
+                .zip(&*key)
+                .all(|(a, b)| a.to_bits() == b.to_bits());
+        if same && let Some(color) = sample.color.get(..out.len()) {
+            copy_values(out, color);
+            return;
+        }
+        self.convert(&sample.input, out, sample.precision);
+        copy_values(key, input);
+        if let Some(color) = sample.color.get_mut(..out.len()) {
+            copy_values(color, out);
+            sample.last = Some(n);
+        }
     }
 
     /// The colour of explicit components, such as a `Background`.
@@ -156,7 +273,17 @@ impl Colors {
     }
 }
 
+/// The most inputs and colour components of a sample that
+/// [`Colors::convert_line`] takes.
+pub(super) const BATCH_VALUES: usize = 4;
+
+/// The F32 level of a colour value, as bits: what a value kept to
+/// [`Precision::Level`] must preserve.
+fn level_bits(value: f64) -> u32 {
+    kernel::level(value).to_bits()
+}
+
 /// The inputs a function reads from a sample.
-fn arguments<'a>(input: &'a Input, function: &Function) -> &'a [f64] {
+fn arguments<'a>(input: &'a [f64], function: &Function) -> &'a [f64] {
     input.get(..function.inputs()).unwrap_or(input)
 }

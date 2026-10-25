@@ -58,7 +58,7 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
         // Columns no store reached still hold the background.
         let (lo, hi) = ws
             .extents
-            .get(band_row)
+            .take(band_row)
             .map_or((0, 0), |(lo, hi)| (lo.min(width), hi.min(width)));
         let (head, rest) = row.split_at_mut(lo);
         let (row, tail) = rest.split_at_mut(hi - lo);
@@ -82,15 +82,61 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
             PageBuffer::F64(values) => {
                 let stride = output.layout.stride();
                 let pixels = values.get(first * stride..).unwrap_or_default();
+                let pixels = pixels.chunks_exact(stride);
                 let selection = ws.selection.get(first..).unwrap_or_default();
-                for (k, (out, pixel)) in row.iter_mut().zip(pixels.chunks_exact(stride)).enumerate()
-                {
-                    let select = selection.get(k).copied().unwrap_or(0);
-                    *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
+                let plain = output.spots.is_empty() && output.transfers.is_empty();
+                match output.layout.channels() {
+                    1 if plain => self::plain::<1>(output, row, pixels),
+                    3 if plain => self::plain::<3>(output, row, pixels),
+                    4 if plain => self::plain::<4>(output, row, pixels),
+                    _ => {
+                        for (k, (out, pixel)) in row.iter_mut().zip(pixels).enumerate() {
+                            let select = selection.get(k).copied().unwrap_or(0);
+                            *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
+                        }
+                    }
                 }
             }
         }
+        // Restored while in cache, for the next band.
+        ws.page
+            .restore(first..end, output.background, output.layout);
         ws.usage.work = ws.usage.work.saturating_add(width);
+    }
+}
+
+/// [`wide`] of a row's pixels of `N` process channels, without spot
+/// channels or transfer functions: their bytes follow from colour and
+/// alpha alone, so a pixel equal to the one before it, as neighbours in
+/// flat areas and magnified images are, takes that one's bytes.
+fn plain<'a, const N: usize>(
+    output: &Output,
+    row: &mut [[u8; 4]],
+    pixels: impl Iterator<Item = &'a [f64]>,
+) {
+    let process = output.layout.process;
+    let mut last: Option<(&[f64; N], f64, [u8; 4])> = None;
+    for (out, pixel) in row.iter_mut().zip(pixels) {
+        let Some((color, &[alpha, ..])) = pixel.split_first_chunk::<N>() else {
+            continue;
+        };
+        if let Some((previous, previous_alpha, bytes)) = last
+            && previous_alpha.to_bits() == alpha.to_bits()
+            && previous
+                .iter()
+                .zip(color)
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+        {
+            *out = bytes;
+            continue;
+        }
+        *out = if alpha == 0.0 {
+            output.background
+        } else {
+            let straight = color.map(|c| (c / alpha).clamp(0.0, 1.0));
+            over(output.background, process::rgb(process, &straight), alpha)
+        };
+        last = Some((color, alpha, *out));
     }
 }
 
@@ -231,5 +277,37 @@ mod tests {
                 quantize_unit(0.5 + 64.0 / 255.0 * 0.5),
             ]
         );
+    }
+
+    #[test]
+    fn plain_rows_give_the_bytes_of_each_pixel() {
+        // Pairs of equal pixels, signed zeros, values past alpha, NaN.
+        let samples = [0.0, -0.0, 0.2, 0.5, 1.0, 1.25, f64::NAN];
+        for process in [Process::Gray, Process::Rgb, Process::Cmyk] {
+            let output = Output {
+                layout: crate::plan::Layout { process, spots: 0 },
+                background: [255, 128, 0, 192],
+                spots: Vec::new(),
+                transfers: Vec::new(),
+            };
+            let n = output.layout.channels();
+            let mut values = Vec::new();
+            for k in 0..64 {
+                let pick = |i: usize| samples[(k / 2 + i) % samples.len()];
+                values.extend((0..n).map(pick));
+                values.extend([pick(k % 3), 0.0, 0.0]);
+            }
+            let pixels = values.chunks_exact(output.layout.stride());
+            let mut row = vec![[0; 4]; 64];
+            match n {
+                1 => plain::<1>(&output, &mut row, pixels.clone()),
+                3 => plain::<3>(&output, &mut row, pixels.clone()),
+                _ => plain::<4>(&output, &mut row, pixels.clone()),
+            }
+            let (mut preview, mut usage) = (Preview::default(), Usage::default());
+            for (bytes, pixel) in row.iter().zip(pixels) {
+                assert_eq!(*bytes, wide(&output, pixel, 0, &mut preview, &mut usage));
+            }
+        }
     }
 }

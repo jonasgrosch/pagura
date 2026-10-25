@@ -264,6 +264,10 @@ fn validate(path: &Path) -> Result<()> {
                 finite(c2)?;
                 finite(end)?;
             }
+            Segment::QuadTo { control, end } => {
+                finite(control)?;
+                finite(end)?;
+            }
             Segment::Close => {}
         }
     }

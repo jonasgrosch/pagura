@@ -158,15 +158,18 @@ fn run(
                 if decoder.frame.is_some() {
                     return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
-                let mut frame = Frame::parse(payload, marker, limits)?;
-                if let Some(native) = native {
+                let frame = if let Some(native) = native {
+                    let mut frame = Frame::header(payload, marker, limits)?;
                     deferred::prepare(
                         &mut frame,
                         (decoder.adobe, color_transform),
                         limits,
                         native,
                     )?;
-                }
+                    frame
+                } else {
+                    Frame::parse(payload, marker, limits)?
+                };
                 decoder.frame = Some(frame);
                 Ok(())
             }
@@ -179,7 +182,10 @@ fn run(
                 "JPEG lossless or hierarchical process is unsupported",
             )),
             0xdb => quant_tables(payload, &mut decoder.quant),
-            0xc4 => entropy::tables(payload, &mut decoder.huffman, decoder.native),
+            0xc4 => {
+                let pairs = deferred::paired(decoder.frame.as_ref());
+                entropy::tables(payload, &mut decoder.huffman, (decoder.native, pairs))
+            }
             0xcc => decoder.conditioning.define(payload),
             0xdd if payload.len() == 2 => {
                 decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));

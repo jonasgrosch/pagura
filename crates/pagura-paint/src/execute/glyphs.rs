@@ -1,13 +1,16 @@
-//! Glyph runs (ADR 0004 §4). Placements whose bounds meet no other
-//! placement's are rasterized together: the producer merges their rows,
-//! each pixel holding the coverage of the one placement that can cover it
-//! and zero in the gaps, and each merged span stores at once. The other
-//! placements store one by one in content order. Every pixel thus receives
-//! the stores it would receive with one item per placement, in the same
-//! order, plus zero-coverage stores at the gaps, which leave every format
-//! as it is. Results are byte-identical.
+//! Glyph runs (ADR 0004 §4). A constant colour on a narrow page stores
+//! each placement as the rasterizer emits it, in content order.
+//! Otherwise placements whose bounds meet no other placement's are
+//! rasterized together: the producer merges their rows, each pixel holding
+//! the coverage of the one placement that can cover it and zero in the
+//! gaps, and each merged span stores at once. The other placements store
+//! one by one in content order. Every pixel thus receives the stores it
+//! would receive with one item per placement, in the same order, plus
+//! zero-coverage stores at the gaps, which leave every format as it is.
+//! Results are byte-identical. In all paths, a placement that crosses into
+//! the next band keeps its rows there instead of being walked again.
 
-use super::{Executor, Frame, Tops};
+use super::{DirectCoverage, Executor, Frame, Tops};
 use crate::plan::{Glyph, Item, Run, intersect};
 
 impl Executor<'_> {
@@ -17,7 +20,14 @@ impl Executor<'_> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
-        let opaque = self.opaque(mark, frame);
+        if let Some(color) = self.direct(mark, frame) {
+            for glyph in &run.glyphs {
+                if self.meets(glyph, frame) {
+                    self.store_direct(DirectCoverage::Glyph(glyph.shape), frame, color);
+                }
+            }
+            return;
+        }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         let mut alone = std::mem::take(&mut self.ws.run_shapes);
         alone.clear();
@@ -37,19 +47,15 @@ impl Executor<'_> {
                 &mut coverage,
             );
             next += taken.max(1);
-            self.store_coverage(mark, frame, opaque, &coverage);
+            self.store_coverage(mark, frame, &coverage);
         }
         for glyph in &run.glyphs {
             if glyph.alone || !self.meets(glyph, frame) {
                 continue;
             }
-            let cover = crate::plan::Cover {
-                shape: Some(glyph.shape),
-                clip: mark.cover.clip,
-            };
             self.shapes
-                .rasterize(self.rasterizer, cover, self.band, &mut coverage);
-            self.store_coverage(mark, frame, opaque, &coverage);
+                .rasterize_glyph(self.rasterizer, glyph.shape, self.band, &mut coverage);
+            self.store_coverage(mark, frame, &coverage);
         }
         self.ws.coverage = coverage;
         self.ws.run_shapes = alone;

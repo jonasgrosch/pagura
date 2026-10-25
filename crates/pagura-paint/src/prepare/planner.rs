@@ -496,7 +496,7 @@ fn target_names(separations: &overprint::Separations, bytes: &mut Meter) -> Resu
         });
     }
     let mut names = Vec::new();
-    bytes.reserve_capacity(&mut names, separations.spots.len())?;
+    bytes.reserve(&mut names, separations.spots.len())?;
     for (name, _) in &separations.spots {
         bytes.charge(name.heap_bytes())?;
         names.push(name.clone());

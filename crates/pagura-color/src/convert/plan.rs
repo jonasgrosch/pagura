@@ -3,7 +3,7 @@
 //! buffer without allocation.
 
 use super::{Colorants, Conversion, Painted, Process, Target};
-use crate::cie::Calibrated;
+use crate::cie::{self, Calibrated};
 use crate::function::Function;
 use crate::icc::{Intent, Profile};
 use crate::space::{ColorSpace, Colorant, Indexed, MAX_COMPONENTS};
@@ -197,6 +197,13 @@ impl Plan {
         self.painted
     }
 
+    pub(super) fn arithmetic(&self) -> bool {
+        match &self.kind {
+            Kind::Tints(_) | Kind::All | Kind::Nothing => true,
+            Kind::Chain(chain) => chain.arithmetic(),
+        }
+    }
+
     pub(super) fn convert(&self, components: &[f64], output: &mut [f64]) {
         let split = self.process.min(output.len());
         if self.lookup.is_none()
@@ -241,6 +248,113 @@ impl Plan {
         }
     }
 
+    /// As [`Self::convert`], for a caller that keeps only `round` of each
+    /// value: a conversion that ends in encoded sRGB, written as RGB without
+    /// any step before it, takes the transfer function's power only where
+    /// [`cie::encode_bounds`] does not decide the rounding, and writes the
+    /// lower bound otherwise.
+    pub(super) fn convert_rounded(
+        &self,
+        components: &[f64],
+        output: &mut [f64],
+        round: impl Fn(f64) -> u32,
+    ) {
+        let linear = match &self.kind {
+            Kind::Chain(chain) if self.lookup.is_none() && chain.steps.is_empty() => {
+                chain.linear(components.get(..MAX_COMPONENTS).unwrap_or(components))
+            }
+            _ => None,
+        };
+        let Some(linear) = linear else {
+            self.convert(components, output);
+            return;
+        };
+        let (process, spots) = output.split_at_mut(self.process.min(output.len()));
+        for (out, v) in process.iter_mut().zip(linear) {
+            *out = encode_rounded(v, &round);
+        }
+        spots.fill(1.0);
+    }
+
+    /// Converts colours of `count` components each into `output`,
+    /// `channels` values each, as [`Self::convert`] does colour by colour,
+    /// or with `round` as [`Self::convert_rounded`] does. An ICC conversion
+    /// into RGB without a step before it is applied a stage at a time over
+    /// the whole line.
+    pub(super) fn convert_line<R: Fn(f64) -> u32>(
+        &self,
+        (components, count): (&[f64], usize),
+        (output, channels): (&mut [f64], usize),
+        round: Option<&R>,
+    ) {
+        const CHUNK: usize = 32;
+        let (count, channels) = (count.max(1), channels.max(1));
+        let icc = match &self.kind {
+            Kind::Chain(chain) if self.lookup.is_none() && chain.steps.is_empty() => {
+                match &chain.terminal {
+                    Terminal::Rgb {
+                        source:
+                            Source::Icc {
+                                profile,
+                                intent,
+                                range,
+                                count: used,
+                            },
+                        encode: Encode::Rgb,
+                    } => Some((profile, *intent, range, *used)),
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        let Some((profile, intent, range, used)) = icc else {
+            for (components, output) in components
+                .chunks_exact(count)
+                .zip(output.chunks_exact_mut(channels))
+            {
+                match round {
+                    Some(round) => self.convert_rounded(components, output, round),
+                    None => self.convert(components, output),
+                }
+            }
+            return;
+        };
+        let mut clipped = [0.0; CHUNK * 4];
+        let mut linear = [[0.0; 3]; CHUNK];
+        for (components, output) in components
+            .chunks(CHUNK.saturating_mul(count))
+            .zip(output.chunks_mut(CHUNK * channels))
+        {
+            let mut len = 0;
+            for (components, clipped) in components
+                .chunks_exact(count)
+                .zip(clipped.chunks_exact_mut(used.max(1)))
+            {
+                for (clipped, value) in clipped.iter_mut().zip(clip_icc(components, range)) {
+                    *clipped = value;
+                }
+                len += 1;
+            }
+            let linear = &mut linear[..len];
+            profile.linear_line(
+                &clipped[..len * used],
+                used,
+                intent,
+                linear.as_flattened_mut(),
+            );
+            for (linear, output) in linear.iter().zip(output.chunks_exact_mut(channels)) {
+                let (process, spots) = output.split_at_mut(self.process.min(output.len()));
+                for (out, &v) in process.iter_mut().zip(linear) {
+                    *out = match round {
+                        Some(round) => encode_rounded(v, round),
+                        None => cie::encode(v),
+                    };
+                }
+                spots.fill(1.0);
+            }
+        }
+    }
+
     pub(super) fn nonzero(&self, components: &[f64]) -> Painted {
         let Kind::Chain(chain) = &self.kind else {
             return self.painted;
@@ -262,6 +376,16 @@ impl Plan {
             }
         }
         Painted(painted)
+    }
+}
+
+/// The encoding of linear value `v`, or where `round` of it is all that
+/// matters, a value that rounds alike, found without the transfer function's
+/// power where its bounds decide the rounding.
+fn encode_rounded(v: f64, round: &impl Fn(f64) -> u32) -> f64 {
+    match cie::encode_bounds(v) {
+        Some([low, high]) if round(low) == round(high) => low,
+        _ => cie::encode(v),
     }
 }
 
@@ -426,6 +550,32 @@ impl Chain {
         tints.saturating_add(encode)
     }
 
+    /// Whether no step and no terminal conversion evaluates a function or
+    /// a CIE or ICC transform.
+    fn arithmetic(&self) -> bool {
+        let terminal = match &self.terminal {
+            Terminal::Native { .. } | Terminal::All => true,
+            Terminal::Rgb { source, encode } => {
+                !matches!(source, Source::Calibrated(_) | Source::Icc { .. })
+                    && !matches!(encode, Encode::Cmyk { black, removal }
+                        if black.is_some() || removal.is_some())
+            }
+        };
+        terminal && !self.steps.iter().any(|step| matches!(step, Step::Tint(_)))
+    }
+
+    /// The gamut-clipped linear sRGB that [`Self::finish`] encodes and
+    /// writes as RGB, or `None` when it ends otherwise.
+    fn linear(&self, values: &[f64]) -> Option<[f64; 3]> {
+        match &self.terminal {
+            Terminal::Rgb {
+                source,
+                encode: Encode::Rgb,
+            } => source.linear(values),
+            _ => None,
+        }
+    }
+
     /// Converts `values` into the process channels `output`.
     fn apply(&self, mut values: Values, output: &mut [f64]) {
         for step in &self.steps {
@@ -549,14 +699,31 @@ fn icc_range(range: [[f64; 2]; 4]) -> Result<[[f64; 2]; 4]> {
 
 /// PDF Table 65 constrains source values before any alternate substitution.
 fn clip_icc(components: &[f64], range: &[[f64; 2]; 4]) -> [f64; 4] {
-    let mut clipped = [0.0; 4];
-    for (i, (out, [low, high])) in clipped.iter_mut().zip(range).enumerate() {
-        *out = components.get(i).copied().unwrap_or(0.0).clamp(*low, *high);
-    }
-    clipped
+    std::array::from_fn(|i| {
+        let [low, high] = range[i];
+        components.get(i).copied().unwrap_or(0.0).clamp(low, high)
+    })
 }
 
 impl Source {
+    /// The gamut-clipped linear sRGB of `values` for the colorimetric
+    /// sources, which [`Self::rgb`] encodes.
+    fn linear(&self, slice: &[f64]) -> Option<[f64; 3]> {
+        match self {
+            Self::Calibrated(space) => Some(space.linear(slice)),
+            Self::Icc {
+                profile,
+                intent,
+                range,
+                count,
+            } => {
+                let clipped = clip_icc(slice, range);
+                Some(profile.linear_total(clipped.get(..*count).unwrap_or(&[]), *intent))
+            }
+            Self::Gray | Self::Rgb | Self::Cmyk | Self::Inverse => None,
+        }
+    }
+
     /// Encoded sRGB of `values`.
     fn rgb(&self, slice: &[f64]) -> [f64; 3] {
         let n = |i: usize| slice.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);

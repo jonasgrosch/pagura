@@ -15,7 +15,7 @@
 //! read them again.
 
 use super::geometry::{Footprint, Geometry, Mode};
-use super::scratch::allocate;
+use super::scratch::{allocate, grown};
 use crate::source::Pixels;
 use pagura_core::{Meter, Result};
 
@@ -208,12 +208,7 @@ impl<V: Copy + Default> RowCache<V> {
             self.next = index + 1;
             if let Some(kept) = self.entries.get_mut(index) {
                 // Filling writes every value.
-                let length = (end - first) * n;
-                if kept.values.len() != length {
-                    kept.values.clear();
-                    kept.values.resize(length, V::default());
-                }
-                if fill(&mut kept.values, &mut self.runs) {
+                if fill(grown(&mut kept.values, (end - first) * n), &mut self.runs) {
                     (kept.row, kept.first, kept.end) = (y, first, end);
                 } else {
                     // A row that cannot be read is not kept.
@@ -405,6 +400,8 @@ pub(super) struct Separable {
     whole: bool,
     /// Whether the planned nearest samples step by one sample.
     consecutive: bool,
+    /// Whether the planned footprints that meet the image step one way.
+    monotone: bool,
 }
 
 impl Separable {
@@ -493,6 +490,7 @@ impl Separable {
             x0,
             whole: whole(&feet),
             consecutive: consecutive(&cells),
+            monotone: monotone(&feet),
             feet,
             cells,
         }))
@@ -546,6 +544,9 @@ impl Separable {
                     2 => pick::<2, R::Value>(cells, gathered),
                     3 => pick::<3, R::Value>(cells, gathered),
                     4 => pick::<4, R::Value>(cells, gathered),
+                    // CMYK texels, with a fused mask opacity or alpha.
+                    5 => pick::<5, R::Value>(cells, gathered),
+                    6 => pick::<6, R::Value>(cells, gathered),
                     _ => {
                         let (values, cells, first) = cells;
                         for (out, &cell) in gathered.chunks_exact_mut(n.max(1)).zip(cells) {
@@ -566,8 +567,8 @@ impl Separable {
     /// `y`, [`Rows::width`] values each, into the first values of each of
     /// `len` pixels of `stride` values of `out`, or with `None` into
     /// scratch, and hands `finish` the values written and for each pixel
-    /// whether its footprint meets the image; the other pixels keep their
-    /// values, zeros in scratch.
+    /// whether its footprint meets the image; the other pixels' values are
+    /// zeros.
     pub(super) fn average<R: Rows>(
         &self,
         rows: &R,
@@ -585,26 +586,23 @@ impl Separable {
                 runs,
                 codes,
                 texels,
-                ..
             } = scratch;
             let n = rows.width();
-            averages.clear();
             let (values, stride) = if let Some((values, stride)) = out {
                 (values, stride.max(n))
             } else {
-                averages.resize(len * n, 0.0);
-                (averages.as_mut_slice(), n)
+                (grown(averages, len * n), n)
             };
             covered.clear();
             covered.resize(len, false);
             let feet = self.feet(pixels);
-            let whole = self.whole;
             let across = row(&self.geometry, self.taps, y);
-            if let Some((first, end)) = extent(feet)
+            if let Some((first, end)) = self.extent(feet)
                 && across.first < across.end
                 && n > 0
             {
-                let Buffers { cache, sums, .. } = R::Value::pick(codes, texels);
+                let buffers = (lines, runs, R::Value::pick(codes, texels));
+                let reduced = self.reduce(rows, &across, (first, end), buffers);
                 let span = Span {
                     feet,
                     first,
@@ -613,19 +611,113 @@ impl Separable {
                     stride,
                 };
                 let out = (&mut *values, covered.as_mut_slice());
-                if R::Value::EXACT && whole && across.whole() {
-                    // Whole samples sum as integers throughout.
-                    let work = Work { cache, sums, runs };
-                    sum_rows(rows, &across, (first, end), work);
-                    span.columns::<R::Value>(Reduced::Sums(sums), out, map);
-                } else {
-                    let work = Work { cache, sums, runs };
-                    reduce_rows(rows, &across, (first, end), work, lines);
-                    span.columns::<R::Value>(Reduced::Lines(lines), out, map);
+                span.columns::<R::Value>(reduced, out, map);
+            }
+            // Only covered pixels were written.
+            for (pixel, _) in values
+                .chunks_exact_mut(stride.max(1))
+                .zip(covered.iter())
+                .filter(|(_, covered)| !**covered)
+            {
+                if let Some(values) = pixel.get_mut(..n) {
+                    values.fill(0.0);
                 }
             }
             finish(values, covered);
         }
+    }
+
+    /// Writes the N16 words of device pixels `x .. x + out.len()` of row
+    /// `y` into `out`, as a store at full opacity writes opaque colours:
+    /// those of `map` of each pixel's [`Rows::width`] averages, one copied
+    /// to all three channels or one per channel. False, with nothing
+    /// written, unless every pixel's footprint meets the image.
+    pub(super) fn words<R: Rows>(
+        &self,
+        rows: &R,
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
+        map: impl Fn(f64) -> f64 + Copy,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let n = rows.width();
+        let feet = self.feet(pixels);
+        let across = row(&self.geometry, self.taps, pixels.y);
+        let Some((first, end)) = self.extent(feet) else {
+            return false;
+        };
+        if !matches!(n, 1 | 3)
+            || feet.len() != out.len()
+            || across.first >= across.end
+            || feet.iter().any(|foot| foot.first >= foot.end)
+        {
+            return false;
+        }
+        let Scratch {
+            lines,
+            runs,
+            codes,
+            texels,
+            ..
+        } = scratch;
+        let buffers = (lines, runs, R::Value::pick(codes, texels));
+        let reduced = self.reduce(rows, &across, (first, end), buffers);
+        let span = Span {
+            feet,
+            first,
+            scale: across.normalization,
+            n,
+            stride: n,
+        };
+        if n == 1 {
+            span.words::<1, R::Value>(reduced, out, map);
+        } else {
+            span.words::<3, R::Value>(reduced, out, map);
+        }
+        true
+    }
+
+    /// Reduces the source rows of the row footprint `across` for the source
+    /// columns `first..end`: to their sums where every weight is whole,
+    /// else to weighted lines.
+    fn reduce<'s, R: Rows>(
+        &self,
+        rows: &R,
+        across: &Footprint,
+        (first, end): (usize, usize),
+        (lines, runs, buffers): (&'s mut Vec<f64>, &'s mut Runs, &'s mut Buffers<R::Value>),
+    ) -> Reduced<'s, <R::Value as Value>::Sum> {
+        let length = (end - first) * rows.width();
+        let Buffers { cache, sums, .. } = buffers;
+        let sums = grown(sums, length);
+        if R::Value::EXACT && self.whole && across.whole() {
+            // Whole samples sum as integers throughout.
+            let work = Work {
+                cache,
+                sums: &mut *sums,
+                runs,
+            };
+            sum_rows(rows, across, (first, end), work);
+            Reduced::Sums(sums)
+        } else {
+            let lines = grown(lines, length);
+            let work = Work { cache, sums, runs };
+            reduce_rows(rows, across, (first, end), work, &mut *lines);
+            Reduced::Lines(lines)
+        }
+    }
+
+    /// The samples `first..end` that `feet`, planned footprints, span: on
+    /// a monotone plan those of the outermost footprints that meet the
+    /// image, without visiting the others.
+    fn extent(&self, feet: &[Footprint]) -> Option<(usize, usize)> {
+        if !self.monotone {
+            return extent(feet);
+        }
+        let mut met = feet.iter().filter(|foot| foot.first < foot.end);
+        let a = met.next()?;
+        let b = met.next_back().unwrap_or(a);
+        Some((index(a.first.min(b.first)), index(a.end.max(b.end))))
     }
 
     /// The planned footprints of `pixels`.
@@ -702,57 +794,84 @@ impl Span<'_> {
         map: impl Fn(f64) -> f64 + Copy,
     ) {
         let n = self.n;
-        let at = (offset, out, map);
+        let (averages, covered) = out;
+        let pixels = averages.chunks_exact_mut(self.stride.max(1));
+        let write = |(pixel, covered): (&mut [f64], &mut bool), sums: [f64; N]| {
+            if let Some(values) = pixel
+                .get_mut(offset..)
+                .and_then(<[f64]>::first_chunk_mut::<N>)
+            {
+                *covered = true;
+                for (value, sum) in values.iter_mut().zip(sums) {
+                    *value = map(sum);
+                }
+            }
+        };
+        let to = (pixels.zip(covered.iter_mut()), write);
         match (reduced, n == N) {
-            (Reduced::Sums(sums), true) => self.pixels::<N, _>(sums, at, |cells, _| {
+            (Reduced::Sums(sums), true) => self.pixels::<N, _, _>(sums, to, |cells, _| {
                 integers::<N, V>(cells.as_chunks::<N>().0.iter().copied())
             }),
-            (Reduced::Sums(sums), false) => self.pixels::<N, _>(sums, at, |cells, _| {
+            (Reduced::Sums(sums), false) => self.pixels::<N, _, _>(sums, to, |cells, _| {
                 integers::<N, V>(strided(cells, n, offset))
             }),
-            (Reduced::Lines(lines), true) => self.pixels::<N, _>(lines, at, |cells, foot| {
+            (Reduced::Lines(lines), true) => self.pixels::<N, _, _>(lines, to, |cells, foot| {
                 line::<N>(cells.as_chunks::<N>().0, foot)
             }),
-            (Reduced::Lines(lines), false) => self.pixels::<N, _>(lines, at, |cells, foot| {
+            (Reduced::Lines(lines), false) => self.pixels::<N, _, _>(lines, to, |cells, foot| {
                 weighted::<N>(strided(cells, n, offset), foot)
             }),
         }
     }
 
-    /// Writes values `offset .. offset + N` of each covered pixel: `map` of
-    /// `sum` of its footprint's cells of `reduced`, scaled by both
-    /// normalizations.
+    /// Writes the N16 words of each pixel's opaque colour, `map` of its `N`
+    /// averages of `reduced`; one average is every channel's.
+    fn words<const N: usize, V: Value>(
+        &self,
+        reduced: Reduced<'_, V::Sum>,
+        out: &mut [[u16; 4]],
+        map: impl Fn(f64) -> f64 + Copy,
+    ) {
+        let write = |pixel: &mut [u16; 4], sums: [f64; N]| {
+            let words = sums.map(|sum| crate::kernel::opaque_word(map(sum)));
+            *pixel = [words[0], words[N / 2], words[N - 1], u16::MAX];
+        };
+        let to = (out.iter_mut(), write);
+        match reduced {
+            Reduced::Sums(sums) => self.pixels::<N, _, _>(sums, to, |cells, _| {
+                integers::<N, V>(cells.as_chunks::<N>().0.iter().copied())
+            }),
+            Reduced::Lines(lines) => self.pixels::<N, _, _>(lines, to, |cells, foot| {
+                line::<N>(cells.as_chunks::<N>().0, foot)
+            }),
+        }
+    }
+
+    /// Hands `write` the output of each pixel whose footprint meets the
+    /// image with `sum` of its footprint's cells of `reduced`, scaled by
+    /// both normalizations.
     #[expect(
         clippy::inline_always,
         reason = "called per pixel; a call per pixel costs a quarter of the span"
     )]
     #[inline(always)]
-    fn pixels<const N: usize, T>(
+    fn pixels<const N: usize, T, O>(
         &self,
         reduced: &[T],
-        (offset, (averages, covered), map): (usize, (&mut [f64], &mut [bool]), impl Fn(f64) -> f64),
+        (outputs, mut write): (impl Iterator<Item = O>, impl FnMut(O, [f64; N])),
         sum: impl Fn(&[T], &Footprint) -> [f64; N],
     ) {
         let n = self.n;
-        let pixels = averages.chunks_exact_mut(self.stride.max(1));
-        for ((foot, pixel), covered) in self.feet.iter().zip(pixels).zip(covered.iter_mut()) {
+        for (foot, output) in self.feet.iter().zip(outputs) {
             if foot.first >= foot.end {
                 continue;
             }
             let cells = (index(foot.first) - self.first) * n..(index(foot.end) - self.first) * n;
-            let (Some(cells), Some(values)) = (
-                reduced.get(cells),
-                pixel
-                    .get_mut(offset..)
-                    .and_then(<[f64]>::first_chunk_mut::<N>),
-            ) else {
+            let Some(cells) = reduced.get(cells) else {
                 continue;
             };
-            *covered = true;
             let factor = foot.normalization * self.scale;
-            for (value, sum) in values.iter_mut().zip(sum(cells, foot)) {
-                *value = map(sum * factor);
-            }
+            write(output, sum(cells, foot).map(|sum| sum * factor));
         }
     }
 }
@@ -860,7 +979,7 @@ fn integers<const N: usize, V: Value>(cells: impl Iterator<Item = [V::Sum; N]>) 
 /// and runs of background and other columns.
 struct Work<'a, V: Value> {
     cache: &'a mut RowCache<V>,
-    sums: &'a mut Vec<V::Sum>,
+    sums: &'a mut [V::Sum],
     runs: &'a mut Runs,
 }
 
@@ -876,7 +995,6 @@ fn sum_rows<R: Rows>(
     let n = rows.width();
     let length = (end - first) * n;
     // The first row, or a background run, assigns every sum.
-    sums.resize(length, Default::default());
     let (top, bottom) = (index(across.first), index(across.end) - 1);
     if let Some(background) = background(rows, (top, bottom), (first, end), runs) {
         let mut constant = [<R::Value as Value>::Sum::default(); super::geometry::MAX_LANES];
@@ -922,13 +1040,11 @@ fn reduce_rows<R: Rows>(
         sums: between,
         runs,
     }: Work<'_, R::Value>,
-    lines: &mut Vec<f64>,
+    lines: &mut [f64],
 ) {
     let n = rows.width();
     let length = (end - first) * n;
     // The first row, or a background run, assigns every line.
-    lines.resize(length, 0.0);
-    between.resize(length, Default::default());
     let (top, bottom) = (index(across.first), index(across.end) - 1);
     let weights = (across.first_weight, across.last_weight);
     if let Some(background) = background(rows, (top, bottom), (first, end), runs) {
@@ -1083,6 +1199,23 @@ fn footprint(taps: Taps, pixel: u32, (scale, offset, maximum): (f64, f64, u32)) 
 fn whole(feet: &[Footprint]) -> bool {
     feet.iter()
         .all(|foot| foot.first >= foot.end || foot.whole())
+}
+
+/// Whether the footprints that meet the image step one way along the row:
+/// their first and end samples both never decrease, or both never
+/// increase.
+fn monotone(feet: &[Footprint]) -> bool {
+    let mut met = feet.iter().filter(|foot| foot.first < foot.end);
+    let Some(mut previous) = met.next() else {
+        return true;
+    };
+    let (mut up, mut down) = (true, true);
+    for foot in met {
+        up &= previous.first <= foot.first && previous.end <= foot.end;
+        down &= previous.first >= foot.first && previous.end >= foot.end;
+        previous = foot;
+    }
+    up || down
 }
 
 /// Whether sample columns step by one.

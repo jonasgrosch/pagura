@@ -46,62 +46,74 @@ pub(crate) trait Accumulate {
     fn area_error(&mut self, _column: i64, _error: f64) {}
 
     /// Adds a straight piece within one row, from x `xa` to `xb`, of signed
-    /// height `h`.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "device coordinates are bounded by 10^12, within i64"
-    )]
+    /// height `h`. Returns the cells visited.
     fn piece(&mut self, xa: f64, xb: f64, h: f64) -> usize {
-        let (l, r) = if xa < xb { (xa, xb) } else { (xb, xa) };
-        let start = l.floor();
-        let end = r.ceil();
-        let first = start as i64;
-        if end <= start + 1.0 {
-            if end == start {
-                // Vertical on a column boundary: every cell from it on lies
-                // right of the piece.
-                self.cover_at(first, h);
-                return 1;
-            }
-            #[expect(clippy::manual_midpoint, reason = "bounded coordinates; one rounding")]
-            let middle = (xa + xb) * 0.5;
-            self.area_at(first, h * ((start + 1.0) - middle));
-            self.area_error(
-                first,
-                64.0 * f64::EPSILON * h.abs() * (xa.abs() + xb.abs() + (start + 1.0).abs() + 1.0),
-            );
-            self.cover_at(first + 1, h);
-            return 2;
-        }
-        let last = end as i64;
-        let s = h / (r - l);
-        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
-        let from = first.max(self.base());
-        let to = last.min(self.base().saturating_add(width));
-        for column in from..to {
-            let c = column as f64;
-            let x0 = l.max(c);
-            let x1 = r.min(c + 1.0);
-            let near = (c + 1.0) - x0;
-            let far = (c + 1.0) - x1;
-            let right = s * ((x0 - l) + (near * near - far * far) * 0.5);
-            self.area_at(column, right);
-            self.area_error(
-                column,
-                64.0 * f64::EPSILON
-                    * (h.abs()
-                        + s.abs()
-                            * (x0.abs()
-                                + l.abs()
-                                + near * near
-                                + far * far
-                                + (near.abs() + far.abs())
-                                    * ((c + 1.0).abs() + x0.abs() + x1.abs()))),
-            );
-        }
-        self.cover_at(last, h);
-        usize::try_from(to - from).unwrap_or(0) + 1
+        piece_into(self, xa, xb, h)
     }
+}
+
+/// The area of a piece from `xa` to `xb` of height `h` inside the cell
+/// from `start`, left of the cell's right side.
+#[inline]
+pub(crate) fn single(xa: f64, xb: f64, h: f64, start: f64) -> f64 {
+    #[expect(clippy::manual_midpoint, reason = "bounded coordinates; one rounding")]
+    let middle = (xa + xb) * 0.5;
+    h * ((start + 1.0) - middle)
+}
+
+/// The arithmetic of [`Accumulate::piece`], for accumulators that try a
+/// faster equivalent of a common case first.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "device coordinates are bounded by 10^12, within i64"
+)]
+pub(crate) fn piece_into<A: Accumulate + ?Sized>(acc: &mut A, xa: f64, xb: f64, h: f64) -> usize {
+    let (l, r) = if xa < xb { (xa, xb) } else { (xb, xa) };
+    let start = l.floor();
+    let end = r.ceil();
+    let first = start as i64;
+    if end <= start + 1.0 {
+        if end == start {
+            // Vertical on a column boundary: every cell from it on lies
+            // right of the piece.
+            acc.cover_at(first, h);
+            return 1;
+        }
+        acc.area_at(first, single(xa, xb, h, start));
+        acc.area_error(
+            first,
+            64.0 * f64::EPSILON * h.abs() * (xa.abs() + xb.abs() + (start + 1.0).abs() + 1.0),
+        );
+        acc.cover_at(first + 1, h);
+        return 2;
+    }
+    let last = end as i64;
+    let s = h / (r - l);
+    let width = i64::try_from(acc.width()).unwrap_or(i64::MAX);
+    let from = first.max(acc.base());
+    let to = last.min(acc.base().saturating_add(width));
+    for column in from..to {
+        let c = column as f64;
+        let x0 = l.max(c);
+        let x1 = r.min(c + 1.0);
+        let near = (c + 1.0) - x0;
+        let far = (c + 1.0) - x1;
+        let right = s * ((x0 - l) + (near * near - far * far) * 0.5);
+        acc.area_at(column, right);
+        acc.area_error(
+            column,
+            64.0 * f64::EPSILON
+                * (h.abs()
+                    + s.abs()
+                        * (x0.abs()
+                            + l.abs()
+                            + near * near
+                            + far * far
+                            + (near.abs() + far.abs()) * ((c + 1.0).abs() + x0.abs() + x1.abs()))),
+        );
+    }
+    acc.cover_at(last, h);
+    usize::try_from(to - from).unwrap_or(0) + 1
 }
 
 /// The coverage a winding integral gives under `rule`.

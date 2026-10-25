@@ -175,8 +175,9 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
     let mut raster = BandRasterizer::new(area, &mut bytes).unwrap();
     let mut band = BandCoverage::with_capacity(Capacity::band(&area), &mut bytes).unwrap();
     let mut got = vec![0_u8; 2000 * 40];
+    let keyed: Vec<(u32, &Shape)> = (0..).zip(kept.iter().copied()).collect();
     for b in area.bands() {
-        let mut rest = &kept[..];
+        let mut rest = &keyed[..];
         while !rest.is_empty() {
             let taken = raster.rasterize_run(rest, None, b, &mut band);
             assert!(taken >= 1);
@@ -211,8 +212,14 @@ fn add(band: &BandCoverage, page: &mut [u8]) {
     }
 }
 
-/// A stored quadratic arch with overlapping copies or many short pieces.
+/// A stored quadratic arch with overlapping copies or many short pieces,
+/// as degree-elevated cubics.
 fn arches(copies: u32, segments: u32) -> Path {
+    arches_of(copies, segments, false)
+}
+
+/// [`arches`], kept quadratic when `quadratic`.
+fn arches_of(copies: u32, segments: u32, quadratic: bool) -> Path {
     let mut path = PathBuilder::new();
     for copy in 0..copies {
         let x = f64::from(copy) * 0.23;
@@ -224,12 +231,16 @@ fn arches(copies: u32, segments: u32) -> Path {
             let endpoint = Point::new(x + 8.0 * hi, 16.0 * hi * (1.0 - hi));
             let h = hi - lo;
             let control = previous + Point::new(4.0 * h, 8.0 * (1.0 - 2.0 * lo) * h);
-            path.cubic_to(
-                previous + (control - previous) * (2.0 / 3.0),
-                endpoint + (control - endpoint) * (2.0 / 3.0),
-                endpoint,
-            )
-            .unwrap();
+            if quadratic {
+                path.quad_to(control, endpoint).unwrap();
+            } else {
+                path.cubic_to(
+                    previous + (control - previous) * (2.0 / 3.0),
+                    endpoint + (control - endpoint) * (2.0 / 3.0),
+                    endpoint,
+                )
+                .unwrap();
+            }
             previous = endpoint;
         }
         path.close();
@@ -296,6 +307,54 @@ fn quadratic_placements_meet_the_true_curve_with_many_pieces_and_overlaps() {
         }
     }
     eprintln!("true-curve placement maximum error: {maximum:.9} levels");
+}
+
+#[test]
+fn kept_quadratics_round_correctly_without_inspection() {
+    // A single arch and many pieces integrate their own quadratics; the
+    // overlapping copies take the inspected polygon. Every byte is the
+    // correctly rounded true area, as the elevated cubics' certified bytes.
+    let limits = Limits::default();
+    let area = area(0, 0, 32, 24, 16);
+    let mut rng = Lcg(321);
+    for (copies, segments) in [(1, 1), (1, 40), (2, 1)] {
+        let quadratic = arches_of(copies, segments, true);
+        let elevated = arches(copies, segments);
+        for linear in [
+            [1.0, 0.0, 0.0, 1.0],
+            [0.9, 0.17, -0.1, -1.2],
+            [1.1, -0.3, 0.21, 0.8],
+        ] {
+            let kept = Arc::new(GlyphEdges::new(&quadratic, linear, &limits).unwrap());
+            assert_eq!(kept.curved(), copies == 1);
+            let reduced = Arc::new(GlyphEdges::new(&elevated, linear, &limits).unwrap());
+            for _ in 0..4 {
+                let origin = Point::new(rng.grid(8.0, 10.0, 4096), rng.grid(10.0, 12.0, 4096));
+                let prep = options(area, &limits, None);
+                let shape = glyph::place(&kept, origin, &prep).unwrap().unwrap();
+                let (pixels, work) = raster(&area, Some(&shape), None);
+                assert!(work <= shape.work());
+                let shape = glyph::place(&reduced, origin, &prep).unwrap().unwrap();
+                assert_eq!(pixels, raster(&area, Some(&shape), None).0);
+                let [a, b, c, d] = linear;
+                let exact = oracle::areas(
+                    &quadratic,
+                    Transform::new(a, b, c, d, origin.x, origin.y),
+                    FillRule::NonZero,
+                );
+                for y in 0..24 {
+                    for x in 0..32 {
+                        let level = exact.at(x, y) * 255.0;
+                        let value = f64::from(pixels[y as usize * 32 + x as usize]);
+                        assert!(
+                            (value - level).abs() <= 0.5 + 1e-9,
+                            "{x},{y}: {value} vs {level}, linear {linear:?}, origin {origin:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[test]

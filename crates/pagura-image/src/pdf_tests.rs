@@ -380,6 +380,26 @@ fn retained_jpx_metadata_capacity_counts_against_the_adapter_budget() {
 }
 
 #[test]
+fn short_eight_bit_data_ends_in_zero_samples() {
+    let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
+    let samples = crate::parameters::unpack_with_diagnostics(
+        &[7, 8, 9],
+        2,
+        2,
+        1,
+        8,
+        &Limits::default(),
+        &mut diagnostics,
+    )
+    .unwrap();
+    assert_eq!(samples, Samples::Bytes(vec![7, 8, 9, 0]));
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(crate::tags::DATA_SHORT)
+    );
+}
+
+#[test]
 fn zero_byte_fill_preserves_the_high_byte_of_an_incomplete_word() {
     let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
     let samples = crate::parameters::unpack_with_diagnostics(

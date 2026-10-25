@@ -6,6 +6,7 @@ mod composition;
 mod formats;
 mod functions;
 mod invariance;
+mod mixed;
 mod patterns;
 mod runs;
 mod streaming;

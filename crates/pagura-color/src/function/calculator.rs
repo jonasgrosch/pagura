@@ -123,6 +123,10 @@ enum Node {
 }
 
 impl Program {
+    pub(super) fn heap_bytes(&self) -> usize {
+        size_of_val(self.code.as_ref())
+    }
+
     /// Parses, validates and compiles `text` for `inputs` inputs and
     /// `outputs` results.
     pub(super) fn new(text: &[u8], inputs: usize, outputs: usize, limits: &Limits) -> Result<Self> {

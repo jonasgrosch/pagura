@@ -182,12 +182,23 @@ fn peek(stream: &Stream, count: u8) -> u32 {
     ((word << (stream.bit % 8)) >> (64 - count)) as u32
 }
 
+/// Twelve-bit prefix lookups. A DC entry holds the code's symbol, its
+/// length and, when its magnitude fits the prefix (flag 0x8000), the
+/// magnitude's value (bits 16–31) and the length with it.
+///
+/// An AC entry where the prefix starts with a coefficient of nonzero size
+/// whose magnitude fits holds its length with the magnitude (bits 0–3), its
+/// run (4–7), the advance from the run's start to the last coefficient
+/// (8–12, the run) and its value (13–23). With `pairs`, a following
+/// coefficient that fits as well and whose value fits a byte joins it:
+/// their total length, the advance to it and its value (24–31). Any other
+/// AC code has its symbol (8–15) and code length (16–20), bits 0–3 clear.
 pub(super) fn wide_table(
     first: &[u32; 16],
     count: &[u8; 16],
     offsets: &[usize; 16],
     symbols: &[u8],
-    ac: bool,
+    (ac, pairs): (bool, bool),
 ) -> [u32; 4096] {
     let mut table = [0u32; 4096];
     for length in 1..=12usize {
@@ -195,36 +206,62 @@ pub(super) fn wide_table(
             let code = (first[length - 1] as usize + i) << (12 - length);
             let symbol = symbols[offsets[length - 1] + i];
             let size = usize::from(if ac { symbol & 15 } else { symbol });
-            for (suffix, entry) in table[code..code + (1 << (12 - length))]
-                .iter_mut()
-                .enumerate()
-            {
-                *entry = u32::from(symbol) | (u32::try_from(length).unwrap_or(12) << 8);
-                if size <= if ac { 10 } else { 11 } && length + size <= 12 {
-                    let magnitude = (suffix >> (12 - length - size)) & ((1 << size) - 1);
-                    let value = i32::try_from(magnitude).unwrap_or(0);
-                    let value = if size > 0 && value < (1 << (size - 1)) {
-                        value + 1 - (1 << size)
-                    } else {
-                        value
-                    };
-                    let value = i16::try_from(value).unwrap_or(0);
-                    *entry = u32::from(symbol)
-                        | 0x8000
-                        | (u32::try_from(length + size).unwrap_or(12) << 8)
-                        | (u32::from(u16::from_ne_bytes(value.to_ne_bytes())) << 16);
+            let entries = &mut table[code..code + (1 << (12 - length))];
+            let (symbol, run) = (u32::from(symbol), u32::from(symbol >> 4));
+            let (bits, used) = (
+                u32::try_from(length).unwrap_or(12),
+                u32::try_from(size).unwrap_or(0),
+            );
+            // The magnitude's value in a slot's suffix bits (T.81 F.2.2.1).
+            let value = |suffix: usize| {
+                let magnitude = (suffix >> (12 - length - size)) & ((1 << size) - 1);
+                let value = i32::try_from(magnitude).unwrap_or(0);
+                let value = if size > 0 && value < (1 << (size - 1)) {
+                    value + 1 - (1 << size)
+                } else {
+                    value
+                };
+                u32::from(u16::from_ne_bytes(
+                    i16::try_from(value).unwrap_or(0).to_ne_bytes(),
+                ))
+            };
+            let slots = entries.iter_mut().enumerate();
+            match (ac, size <= if ac { 10 } else { 11 } && length + size <= 12) {
+                (false, true) => {
+                    let entry = symbol | 0x8000 | (bits + used) << 8;
+                    slots.for_each(|(suffix, slot)| *slot = entry | value(suffix) << 16);
                 }
+                (true, true) if size > 0 => {
+                    // An AC value has at most eleven bits.
+                    let entry = (bits + used) | run << 4 | run << 8;
+                    slots.for_each(|(suffix, slot)| *slot = entry | (value(suffix) & 0x7ff) << 13);
+                }
+                (false, false) => entries.fill(symbol | bits << 8),
+                (true, _) => entries.fill(symbol << 8 | bits << 16),
             }
         }
+    }
+    if ac && pairs {
+        let single = table;
+        table = std::array::from_fn(|prefix| pair(&single, prefix));
     }
     table
 }
 
-#[derive(Clone, Copy)]
-struct Token {
-    symbol: u8,
-    value: i16,
-    pending: u8,
+/// The AC entry of `prefix` joined with the coefficient that follows, when
+/// both fit the prefix and the second value fits a byte.
+fn pair(table: &[u32; 4096], prefix: usize) -> u32 {
+    let entry = table[prefix];
+    let length = entry & 15;
+    let next = table[(prefix << length) & 4095];
+    let value = (next << 8).cast_signed() >> 21;
+    match i8::try_from(value) {
+        Ok(value) if length != 0 && next & 15 != 0 && length + (next & 15) <= 12 => {
+            let advance = 1 + (next >> 4 & 15);
+            entry + (next & 15) + (advance << 8) + (u32::from(value.cast_unsigned()) << 24)
+        }
+        _ => entry,
+    }
 }
 
 /// Joins a DC magnitude and its following EOB into one twelve-bit prefix.
@@ -242,15 +279,16 @@ pub(super) fn shortcut(dc: &Huffman, ac: &Huffman, bits: &mut Bits<'_>) -> Resul
             return 0;
         }
         let following = ac.wide[(prefix << used) & 4095];
-        let length = ((following >> 8) & 31) as usize;
-        if following & 0x80ff != 0x8000 || length + used > 12 {
+        let length = ((following >> 16) & 31) as usize;
+        if following & 0xff0f != 0 || length == 0 || length + used > 12 {
             return 0;
         }
         (entry & 0xffff_0000) | u32::try_from(used + length).unwrap_or(0)
     }))
 }
 
-/// Decodes directly to one dequantized block, avoiding retained coefficient planes.
+/// Decodes directly to one dequantized block, stored column by column,
+/// avoiding retained coefficient planes.
 pub(super) fn native(
     dc: &Huffman,
     ac: &Huffman,
@@ -279,26 +317,30 @@ pub(super) fn native(
             return Ok((false, u64::from(output[0].unsigned_abs())));
         }
     }
-    native_inner(dc, ac, &mut bits.stream, predictor, output, quant)
-        .ok_or_else(|| bits.error("invalid JPEG native entropy"))
+    let window = Window::new(&stream.bytes, stream.bit);
+    // A block that used bits past the segment fails.
+    let (result, bit) = block((dc, ac), window, predictor, output, quant)
+        .filter(|&(_, bit)| bit <= stream.length * 8)
+        .ok_or_else(|| bits.error("invalid JPEG native entropy"))?;
+    bits.stream.bit = bit;
+    Ok(result)
 }
+
 /// A 64-bit window on the unstuffed segment at bit `bit`, refilled with one
-/// load. The segment's eight padding bytes make every load in bounds while
-/// `bit` is within it; reads past its end are rejected by `limit`.
+/// load. Bits past the segment read as zeros, so a block decodes without
+/// testing for the segment's end until it is complete.
 struct Window<'a> {
     bytes: &'a [u8],
     bit: usize,
-    limit: usize,
     word: u64,
     valid: u32,
 }
 
 impl<'a> Window<'a> {
-    fn new(stream: &'a Stream) -> Self {
+    fn new(bytes: &'a [u8], bit: usize) -> Self {
         let mut window = Self {
-            bytes: &stream.bytes,
-            bit: stream.bit,
-            limit: stream.length * 8,
+            bytes,
+            bit,
             word: 0,
             valid: 0,
         };
@@ -306,7 +348,8 @@ impl<'a> Window<'a> {
         window
     }
 
-    /// Holds at least 57 bits from `bit` on.
+    /// Holds at least 57 bits from `bit` on. The segment's eight padding
+    /// bytes make every load within it whole.
     #[expect(
         clippy::inline_always,
         reason = "one load serves several entropy tokens"
@@ -314,18 +357,14 @@ impl<'a> Window<'a> {
     #[inline(always)]
     fn refill(&mut self) {
         let at = self.bit / 8;
-        let word = self.bytes[at..at + 8]
-            .first_chunk::<8>()
+        let word = self
+            .bytes
+            .get(at..at + 8)
+            .and_then(<[u8]>::first_chunk::<8>)
             .map_or(0, |bytes| u64::from_be_bytes(*bytes));
         let skip = u32::from(self.bit.to_le_bytes()[0] & 7);
         self.word = word << skip;
         self.valid = 64 - skip;
-    }
-
-    // `bit` never passes `limit`, `count` never exceeds `valid` or 32, and
-    // shifts stay below 64, so the window's arithmetic cannot wrap.
-    fn available(&self) -> usize {
-        self.limit.wrapping_sub(self.bit)
     }
 
     /// The next `count` bits, 1 ≤ count ≤ `valid`.
@@ -337,162 +376,136 @@ impl<'a> Window<'a> {
         self.word.wrapping_shr(64u32.wrapping_sub(count)) as u32
     }
 
+    // A block consumes at most 1,700 bits, `count` never exceeds `valid`,
+    // and shifts stay below 64, so the window's arithmetic cannot wrap.
     fn consume(&mut self, count: u32) {
         self.bit = self.bit.wrapping_add(count as usize);
         self.word = self.word.wrapping_shl(count);
         self.valid = self.valid.wrapping_sub(count);
     }
 
-    /// Reads `count` ≤ 24 bits, or None past the segment.
-    fn read(&mut self, count: u32) -> Option<u32> {
-        if count == 0 {
-            return Some(0);
-        }
-        if count as usize > self.available() {
-            return None;
-        }
-        if self.valid < count {
-            self.refill();
-        }
-        let value = self.peek(count);
-        self.consume(count);
-        Some(value)
-    }
-
-    /// The next Huffman token. Afterwards at least eleven bits of a pending
-    /// magnitude remain in the window.
+    /// The symbol and value of the code at the window: `code`'s symbol and
+    /// code length, or one decoded from the canonical table. None for an
+    /// invalid code or a magnitude of more than eleven bits.
     #[expect(
         clippy::inline_always,
-        reason = "token return overhead dominates the per-coefficient loop"
+        reason = "the window stays in the block decoder's registers"
     )]
     #[inline(always)]
-    fn token(&mut self, table: &Huffman) -> Option<Token> {
-        if self.valid < 24 {
+    fn token(&mut self, table: &Huffman, code: Option<(u8, u32)>, ac: bool) -> Option<(u8, i32)> {
+        if self.valid < 32 {
             self.refill();
         }
-        let (mut code, mut start) = (0u32, 0usize);
-        if self.available() >= 12 {
-            code = self.peek(12);
-            let entry = table.wide[code as usize];
-            if entry != 0 {
-                self.consume((entry >> 8) & 31);
-                let symbol = entry.to_le_bytes()[0];
-                let pending = (symbol & 15) & 0u8.wrapping_sub(u8::from(entry & 0x8000 == 0));
-                return Some(Token {
-                    symbol,
-                    value: i16::from_ne_bytes(u16::try_from(entry >> 16).ok()?.to_ne_bytes()),
-                    pending,
-                });
-            }
-            self.consume(12);
-            start = 12;
-        }
-        for length in start..16 {
-            code = code * 2 + self.read(1)?;
-            if let Some(relative) = code
-                .checked_sub(table.first[length])
-                .filter(|&v| v < u32::from(table.count[length]))
-            {
-                let symbol = table.symbols[table.offset[length] + relative as usize];
-                if self.valid < 11 {
-                    self.refill();
-                }
-                return Some(Token {
-                    symbol,
-                    value: 0,
-                    pending: symbol & 15,
-                });
-            }
-        }
-        None
-    }
-
-    /// Adds a token's pending magnitude bits (T.81 F.2.2.1) to its value.
-    #[expect(
-        clippy::inline_always,
-        reason = "magnitude extraction is on every nonzero coefficient"
-    )]
-    #[inline(always)]
-    fn magnitude(&mut self, token: Token) -> Option<i32> {
-        let size = u32::from(token.pending);
-        if size as usize > self.available() {
+        let (symbol, length) = match code {
+            Some(code) => code,
+            None => (1..=16).find_map(|length| {
+                let i = length as usize - 1;
+                let relative = self
+                    .peek(length)
+                    .checked_sub(table.first[i])
+                    .filter(|&v| v < u32::from(table.count[i]))?;
+                Some((table.symbols[table.offset[i] + relative as usize], length))
+            })?,
+        };
+        self.consume(length);
+        let size = if ac { symbol & 15 } else { symbol };
+        if size > 11 {
             return None;
         }
-        // Pending magnitudes have at most eleven bits, which `token` leaves in
-        // the window. Reading one bit even for none removes a branch.
-        let raw = self.peek(size.max(1)) & 0u32.wrapping_sub(u32::from(size != 0));
-        self.consume(size);
-        let negative = 0i32.wrapping_sub(i32::from(raw < 1u32.wrapping_shl(size) >> 1));
-        let correction = negative & 1i32.wrapping_sub(1i32.wrapping_shl(size));
-        Some(i32::from(token.value).wrapping_add(i32::try_from(raw).ok()?.wrapping_add(correction)))
+        let raw = if size == 0 {
+            0
+        } else {
+            self.peek(u32::from(size))
+        };
+        self.consume(u32::from(size));
+        Some((symbol, super::extend(raw, size)))
     }
 }
 
-fn native_inner(
-    dc: &Huffman,
-    ac: &Huffman,
-    stream: &mut Stream,
-    predictor: &mut i32,
-    output: &mut [i32; 64],
-    quant: &[u16; 64],
-) -> Option<(bool, u64)> {
-    let mut window = Window::new(stream);
-    let result = block(dc, ac, &mut window, predictor, output, quant);
-    stream.bit = window.bit;
-    result
-}
-
+/// Decodes a block's DC difference into `predictor` and its dequantized
+/// coefficients into `output`, column by column. Returns whether an AC
+/// coefficient is nonzero, the coefficients' L1 norm and the bit after
+/// the block, or None for invalid entropy; the caller rejects a block
+/// read past the segment.
+#[inline(never)]
 fn block(
-    dc: &Huffman,
-    ac: &Huffman,
-    window: &mut Window<'_>,
+    (dc, ac): (&Huffman, &Huffman),
+    mut window: Window<'_>,
     predictor: &mut i32,
     output: &mut [i32; 64],
     quant: &[u16; 64],
-) -> Option<(bool, u64)> {
-    let token = window.token(dc)?;
-    if token.symbol > 11 {
-        return None;
-    }
+) -> Option<((bool, u64), usize)> {
+    let dc_prefixes: &[u32; 4096] = dc.wide.as_slice().try_into().ok()?;
+    let ac_prefixes: &[u32; 4096] = ac.wide.as_slice().try_into().ok()?;
+    let entry = dc_prefixes[window.peek(12) as usize];
+    let difference = if entry & 0x8000 != 0 {
+        window.consume(entry >> 8 & 31);
+        entry.cast_signed() >> 16
+    } else {
+        let [symbol, length, ..] = entry.to_le_bytes();
+        let code = (entry != 0).then_some((symbol, u32::from(length)));
+        window.token(dc, code, false)?.1
+    };
     *predictor = predictor
-        .checked_add(window.magnitude(token)?)
+        .checked_add(difference)
         .filter(|&v| (-2048..2048).contains(&v))?;
     output[0] = *predictor * i32::from(quant[0]);
-    let mut l1 = u64::from(output[0].unsigned_abs());
-    let mut nonconstant = false;
+    let constant = u64::from(output[0].unsigned_abs());
+    let mut l1 = constant;
+    output[1..].fill(0);
+    // Stores the coefficient at zigzag position `k`.
+    let mut store = |k: usize, value: i32| {
+        // Baseline magnitudes have at most 11 bits and quantizers 8.
+        let product = value.wrapping_mul(i32::from(quant[k]));
+        l1 = l1.wrapping_add(u64::from(product.unsigned_abs()));
+        output[crate::dct::transform::COLUMN_ORDER[k]] = product;
+    };
     let mut k = 1;
     while k < 64 {
-        let token = window.token(ac)?;
-        if token.symbol == 0 {
+        if window.valid < 12 {
+            window.refill();
+        }
+        let entry = ac_prefixes[window.peek(12) as usize];
+        // One or two coefficients, unless the block ends before the last.
+        // A single one stores a zero second value at its own position first.
+        let last = k + (entry >> 8 & 31) as usize;
+        if entry & 15 != 0 && last < 64 {
+            window.consume(entry & 15);
+            store(last, entry.cast_signed() >> 24);
+            store(
+                k + (entry >> 4 & 15) as usize,
+                (entry << 8).cast_signed() >> 21,
+            );
+            k = last + 1;
+            continue;
+        }
+        // Any other code, or coefficients decoded one at a time.
+        let [_, symbol, length, _] = entry.to_le_bytes();
+        let code =
+            (entry != 0 && entry.trailing_zeros() >= 4).then_some((symbol, u32::from(length)));
+        let (symbol, value) = window.token(ac, code, true)?;
+        if symbol == 0 {
             break;
         }
-        if token.symbol == 0xf0 {
+        if symbol == 0xf0 {
             k += 16;
             if k > 64 {
                 return None;
             }
             continue;
         }
-        let size = token.symbol & 15;
-        if size == 0 || size > 10 {
+        if !(1..=10).contains(&(symbol & 15)) {
             return None;
         }
-        k += usize::from(token.symbol >> 4);
+        k += usize::from(symbol >> 4);
         if k >= 64 {
             return None;
         }
-        let value = window.magnitude(token)?;
-        // Baseline magnitudes have at most 11 bits and quantizers 8.
-        let product = value.wrapping_mul(i32::from(quant[k]));
-        if !nonconstant {
-            output[1..].fill(0);
-            nonconstant = true;
-        }
-        l1 = l1.wrapping_add(u64::from(product.unsigned_abs()));
-        output[crate::dct::transform::ORDER[k]] = product;
+        store(k, value);
         k += 1;
     }
-    Some((nonconstant, l1))
+    // Quantizers are nonzero, so any nonzero AC coefficient adds to `l1`.
+    Some(((l1 != constant, l1), window.bit))
 }
 
 /// Charges selectively repeated reference arithmetic against the JPEG work cap.
@@ -517,12 +530,37 @@ pub(super) fn native_zero(bits: &mut Bits<'_>, shortcut: &[u32]) -> Result<bool>
         load(bits)?;
     }
     let stream = &mut bits.stream;
-    if stream.length * 8 - stream.bit < 12 {
+    // The position never passes the segment's end.
+    if stream.length.wrapping_mul(8).wrapping_sub(stream.bit) < 12 {
         return Ok(false);
     }
     let entry = shortcut[peek(stream, 12) as usize];
     if entry >> 16 == 0 && entry & 255 != 0 {
         stream.bit += (entry & 255) as usize;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Consumes the `length` bits `pattern`, 1 ≤ length ≤ 57, if they come next
+/// within the segment.
+pub(super) fn native_pattern(bits: &mut Bits<'_>, pattern: u64, length: u32) -> Result<bool> {
+    if !bits.stream.loaded {
+        load(bits)?;
+    }
+    let stream = &mut bits.stream;
+    let length = length as usize;
+    // The position never passes the segment's end.
+    if stream.length.wrapping_mul(8).wrapping_sub(stream.bit) < length {
+        return Ok(false);
+    }
+    let at = stream.bit / 8;
+    let word = stream.bytes[at..]
+        .first_chunk::<8>()
+        .map_or(0, |bytes| u64::from_be_bytes(*bytes));
+    if (word << (stream.bit % 8)) >> (64 - length) == pattern {
+        stream.bit += length;
         Ok(true)
     } else {
         Ok(false)

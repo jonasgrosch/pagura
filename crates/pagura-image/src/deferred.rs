@@ -13,8 +13,8 @@ mod colour;
 mod packed;
 mod planar;
 
-pub(crate) use colour::floor_byte;
 pub use colour::ycbcr;
+pub(crate) use colour::{floor_byte, offset};
 pub use packed::Packed;
 pub use planar::Planar;
 

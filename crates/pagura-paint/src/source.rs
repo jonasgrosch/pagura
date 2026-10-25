@@ -110,18 +110,32 @@ pub(crate) struct Pixels<'a> {
     /// `Background` in ([`BBoxUse::Boundary`]): the outline's coverage of
     /// each pixel.
     pub(crate) boundary: Option<&'a [u8]>,
+    /// How precisely the span's colours are kept.
+    pub(crate) precision: Precision,
 }
 
 impl Pixels<'_> {
-    /// A span without a shading-pattern boundary.
+    /// A span without a shading-pattern boundary, kept exactly.
     pub(crate) fn new(x: u32, y: u32, len: usize) -> Self {
         Self {
             x,
             y,
             len,
             boundary: None,
+            precision: Precision::Exact,
         }
     }
+}
+
+/// How precisely a span's colour values are kept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Precision {
+    /// Every value as computed.
+    Exact,
+    /// Only each value's F32 level ([`crate::kernel::level`]), as a store
+    /// into F32 levels keeps it: a value may be any other with the same
+    /// level.
+    Level,
 }
 
 impl Source {
@@ -243,7 +257,8 @@ impl Source {
             unit_to_device,
             context,
             pixels,
-            ImageBudgets {
+            stencil,
+            &mut ImageBudgets {
                 bytes: &mut *remaining,
                 work,
                 functions: &mut *functions,
@@ -251,10 +266,6 @@ impl Source {
         )?;
         let mut bytes = Meter::new(remaining.remaining(), "render memory budget exceeded");
         bytes.charge(sampler.bytes())?;
-        let sampler = match stencil {
-            Some((color, painted)) => sampler.with_stencil_color(color, painted, &mut bytes)?,
-            None => sampler,
-        };
         Ok(match sampler.constant(&mut bytes, functions)? {
             Some((color, painted)) => Self::Solid { color, painted },
             None => Self::Image(sampler),
@@ -357,6 +368,7 @@ impl Source {
             y,
             len,
             boundary,
+            precision,
         } = pixels;
         match self {
             Self::Solid { color, painted } => {
@@ -369,8 +381,8 @@ impl Source {
                 out.painted = *painted;
             }
             Self::Shading(shading) => match boundary {
-                Some(boundary) => shading.span_with_boundary(x, y, boundary, out),
-                None => shading.span(x, y, len, out),
+                Some(boundary) => shading.span_with_boundary(x, y, boundary, precision, out),
+                None => shading.span(x, y, len, precision, out),
             },
             Self::Image(image) => {
                 let Some(scratch) = scratch.image.as_deref_mut() else {
@@ -429,5 +441,28 @@ impl Source {
             Self::Image(image) => image.repairs(),
             Self::Solid { .. } | Self::Shading(_) => &[],
         }
+    }
+}
+
+/// Copies the first values of `from` into `to`, as many as both hold: a
+/// fixed-size move for the common counts, where a copy call per texel
+/// or sample costs more than the copy.
+#[inline]
+pub(crate) fn copy_values(to: &mut [f64], from: &[f64]) {
+    #[inline]
+    fn fixed<const N: usize>(to: &mut [f64], from: &[f64]) {
+        if let (Some(to), Some(from)) = (to.first_chunk_mut::<N>(), from.first_chunk::<N>()) {
+            *to = *from;
+        }
+    }
+    match to.len().min(from.len()) {
+        0 => {}
+        1 => fixed::<1>(to, from),
+        2 => fixed::<2>(to, from),
+        3 => fixed::<3>(to, from),
+        4 => fixed::<4>(to, from),
+        5 => fixed::<5>(to, from),
+        6 => fixed::<6>(to, from),
+        n => to[..n].copy_from_slice(&from[..n]),
     }
 }

@@ -24,6 +24,7 @@ pub(crate) fn path(path: &Path, transform: Transform) -> Option<Hull> {
         let (a, b, c) = match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => (Some(p), None, None),
             Segment::CubicTo { c1, c2, end } => (Some(c1), Some(c2), Some(end)),
+            Segment::QuadTo { control, end } => (Some(control), Some(end), None),
             Segment::Close => (None, None, None),
         };
         [a, b, c]

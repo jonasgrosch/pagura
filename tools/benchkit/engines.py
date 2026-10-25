@@ -7,7 +7,7 @@ import tempfile
 import tomllib
 from contextlib import contextmanager
 from pathlib import Path
-from competitors import CACHE
+from competitors import CACHE, HAYRO_BUILD
 from .config import ROOT, ADAPTERS, sha
 
 
@@ -69,8 +69,13 @@ def identify(name, command):
         artifacts = {str(p): sha(p.read_bytes()) for p in sorted(set(files))}
         if name in ("pdfium", "mupdf"):
             artifacts[str(ROOT / "uv.lock") + "#bench"] = sha(locked_group(ROOT / "uv.lock"))
-        return {"status": "available", "version": (result.stdout + result.stderr).strip(),
-                "command": command, "artifacts": artifacts}
+        identity = {"status": "available", "version": (result.stdout + result.stderr).strip(),
+                    "command": command, "artifacts": artifacts}
+        # Build flags as `tools/competitors.py setup` recorded them, beside (not in) the hashed artifacts.
+        record = CACHE / HAYRO_BUILD
+        if name == "hayro" and not os.environ.get("PAGURA_HAYRO") and record.is_file():
+            identity["build"] = json.loads(record.read_text())
+        return identity
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         return {"status": "unavailable", "reason": str(error), "command": command,
                 "hint": ("build Pagura offline with cargo build --release --locked --offline --bin pagura" if name == "pagura"

@@ -441,6 +441,10 @@ fn segment_bits(segment: Segment) -> (u8, [u64; 6]) {
             (2, [x1, y1, x2, y2, x, y])
         }
         Segment::Close => (3, [0; 6]),
+        Segment::QuadTo { control, end } => {
+            let ((x1, y1), (x, y)) = (bits(control), bits(end));
+            (4, [x1, y1, x, y, 0, 0])
+        }
     }
 }
 

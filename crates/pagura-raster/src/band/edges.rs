@@ -8,14 +8,29 @@
 use super::DeviceRect;
 use super::cells::STRIP;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
+use crate::geometry::{greater, lesser};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
+
+/// The largest coordinate magnitude, in device pixels, at which the cell
+/// kernel interpolates edges in plain f64 (2^16).
+pub(crate) const PLAIN_LIMIT: f64 = 65_536.0;
+
+/// The smallest edge height the cell kernel interpolates in plain f64:
+/// shorter heights could overflow the slope.
+pub(crate) const PLAIN_HEIGHT: f64 = 1.0 / 1_073_741_824.0;
 
 /// A straight edge in device space, in contour order.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Line {
     pub(crate) a: Point,
     pub(crate) b: Point,
+}
+
+/// `x` clamped to the closed interval between `a` and `b`.
+#[inline]
+fn clamp_between(x: f64, a: f64, b: f64) -> f64 {
+    lesser(greater(x, lesser(a, b)), greater(a, b))
 }
 
 impl Line {
@@ -52,7 +67,52 @@ impl Line {
             let quotient = numerator / height;
             let (back, error) = product(quotient, height);
             let x = quotient + (((numerator - back) + tail - error) - quotient * low) / height;
-            x.max(top.x.min(bottom.x)).min(top.x.max(bottom.x))
+            clamp_between(x, top.x, bottom.x)
+        }
+    }
+
+    /// Whether the cell kernel interpolates the edge plainly: every
+    /// coordinate is within [`PLAIN_LIMIT`] and the height is at least
+    /// [`PLAIN_HEIGHT`]. Plain f64 interpolation from the upper endpoint,
+    /// [`Self::plain_x`], then stays within [`Self::interpolation_error`] of
+    /// the exact value (about 1e-12 of a pixel at ordinary device
+    /// coordinates); elsewhere the kernel takes [`Self::x`], whose rounding
+    /// tails keep distant endpoints exact.
+    #[inline]
+    pub(crate) fn plain(self) -> bool {
+        let (top, bottom) = if self.a.y < self.b.y {
+            (self.a, self.b)
+        } else {
+            (self.b, self.a)
+        };
+        top.x.abs() <= PLAIN_LIMIT
+            && bottom.x.abs() <= PLAIN_LIMIT
+            && top.y.abs() <= PLAIN_LIMIT
+            && bottom.y.abs() <= PLAIN_LIMIT
+            && bottom.y - top.y >= PLAIN_HEIGHT
+    }
+
+    /// The x at height `y` of a [`Self::plain`] edge, as the cell kernel
+    /// interpolates it.
+    #[inline]
+    pub(crate) fn plain_x(self, y: f64) -> f64 {
+        let (top, bottom) = if self.a.y < self.b.y {
+            (self.a, self.b)
+        } else {
+            (self.b, self.a)
+        };
+        if y <= top.y {
+            top.x
+        } else if y >= bottom.y {
+            bottom.x
+        } else if top.x == bottom.x {
+            top.x
+        } else {
+            clamp_between(
+                top.x + (y - top.y) * ((bottom.x - top.x) / (bottom.y - top.y)),
+                top.x,
+                bottom.x,
+            )
         }
     }
 
@@ -166,6 +226,105 @@ pub(crate) struct Polygon {
     pub(crate) points_cells: bool,
 }
 
+/// Outline polygons mapped to device space as a stroker makes them: the
+/// polygon [`Polygon::from_lines`] makes of the path they would form under
+/// `transform`, built without the path.
+pub(crate) struct Mapped {
+    polygon: Polygon,
+    transform: Transform,
+    /// The segments of that path.
+    segments: usize,
+}
+
+impl Mapped {
+    pub(crate) fn new(transform: Transform) -> Self {
+        Self {
+            polygon: Polygon::default(),
+            transform,
+            segments: 0,
+        }
+    }
+
+    pub(crate) fn finish(self) -> Polygon {
+        self.polygon
+    }
+}
+
+impl crate::stroke::Outline for Mapped {
+    fn len(&self) -> usize {
+        self.segments
+    }
+
+    fn heap_bytes(&self) -> usize {
+        self.polygon.heap_bytes()
+    }
+
+    /// One closed contour, as [`Polygon::from_lines`] takes it: points that
+    /// all coincide enclose their floor cell, other points map one by one.
+    fn add_polygon(
+        &mut self,
+        points: &[Point],
+        reversed: bool,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let Some(&first) = points.first() else {
+            return Ok(());
+        };
+        self.segments = self.segments.saturating_add(points.len() + 1);
+        if points.iter().all(|&p| p == first) {
+            let p = first * self.transform;
+            bounded(p)?;
+            return self.polygon.cell(p, limits, bytes);
+        }
+        self.polygon.begin(limits, points.len(), bytes)?;
+        let mut map = |point: Point| -> Result<()> {
+            let p = point * self.transform;
+            bounded(p)?;
+            self.polygon.points.push(p);
+            Ok(())
+        };
+        if reversed {
+            points.iter().rev().try_for_each(|&p| map(p))?;
+        } else {
+            points.iter().try_for_each(|&p| map(p))?;
+        }
+        self.polygon.end();
+        Ok(())
+    }
+}
+
+/// The points of a path of lines' longest contour, its points in all and its
+/// contours, as [`Polygon::from_lines`] collects them: a line after a close
+/// reopens a contour at the subpath start.
+fn contour_sizes(path: &Path) -> (usize, usize, usize) {
+    let (mut longest, mut points, mut contours) = (0, 0, 0);
+    let (mut run, mut closed) = (0_usize, false);
+    for segment in path.segments() {
+        match segment {
+            Segment::MoveTo(_) => {
+                longest = longest.max(run);
+                (run, closed) = (1, false);
+                contours += 1;
+                points += 1;
+            }
+            Segment::LineTo(_) => {
+                if closed {
+                    longest = longest.max(run);
+                    (run, closed) = (1, false);
+                    contours += 1;
+                    points += 1;
+                }
+                run += 1;
+                points += 1;
+            }
+            Segment::Close => closed = true,
+            Segment::CubicTo { .. } | Segment::QuadTo { .. } => {}
+        }
+    }
+    (longest.max(run), points, contours)
+}
+
 impl Polygon {
     pub(crate) fn contours(&self) -> impl Iterator<Item = &[Point]> {
         self.starts.iter().enumerate().map(|(i, &start)| {
@@ -176,7 +335,14 @@ impl Polygon {
 
     /// Every contour side in source order, including horizontal sides.
     pub(crate) fn sides(&self) -> impl Iterator<Item = Line> {
-        self.indexed_sides().map(|(_, line)| line)
+        self.contours().flat_map(|contour| {
+            let closing = contour.last().zip(contour.first());
+            contour
+                .windows(2)
+                .map(|side| (&side[0], &side[1]))
+                .chain(closing)
+                .map(|(&a, &b)| Line { a, b })
+        })
     }
 
     /// Source-ordered sides with keys that recover both endpoints in O(1).
@@ -262,16 +428,20 @@ impl Polygon {
         if path
             .segments()
             .iter()
-            .any(|s| matches!(s, Segment::CubicTo { .. }))
+            .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
         {
             return Ok(None);
         }
         crate::flatten::validate(path, transform, limits)?;
         let mut polygon = Self::default();
         let mut count = 0_usize;
-        // The current contour's user points start at `from` in `points`,
-        // untransformed until the contour ends.
+        // The current contour's user points, untransformed until the
+        // contour ends, room for the longest contour reserved at once.
         let mut user: Vec<Point> = Vec::new();
+        let (longest, points, contours) = contour_sizes(path);
+        bytes.reserve(&mut user, longest)?;
+        bytes.reserve(&mut polygon.points, points)?;
+        bytes.reserve(&mut polygon.starts, contours)?;
         let mut closed = false;
         let finish = |polygon: &mut Self,
                       user: &mut Vec<Point>,
@@ -336,7 +506,7 @@ impl Polygon {
                     append(&mut user, point, bytes)?;
                 }
                 Segment::Close => closed = true,
-                Segment::CubicTo { .. } => return Ok(None),
+                Segment::CubicTo { .. } | Segment::QuadTo { .. } => return Ok(None),
             }
         }
         finish(&mut polygon, &mut user, true, closed, bytes)?;
@@ -465,74 +635,83 @@ impl Polygon {
     }
 
     fn cancelled(&self, bytes: &mut Meter) -> Result<Option<Self>> {
-        // Points ordered by their coordinates' total order, as integers.
-        let key = |p: Point| (ordered(p.x), ordered(p.y));
-        let mut edges: Vec<Keyed> = Vec::new();
-        bytes.reserve(&mut edges, self.points.len())?;
-        for contour in self.contours() {
-            let n = contour.len();
-            edges.extend((0..n).map(|i| {
-                let (a, b) = (contour[i], contour[(i + 1) % n]);
-                let (ka, kb) = (key(a), key(b));
-                Keyed {
-                    lo: ka.min(kb),
-                    hi: ka.max(kb),
-                    forward: ka <= kb,
-                    from: ka,
-                    to: kb,
-                    a,
-                }
-            }));
+        let n = self.points.len();
+        // Points ordered by their coordinates' total order, as integers,
+        // and each side as its first point's index and the next one's.
+        let mut keys: Vec<(i64, i64)> = Vec::new();
+        bytes.reserve(&mut keys, n)?;
+        keys.extend(self.points.iter().map(|p| (ordered(p.x), ordered(p.y))));
+        let mut next: Vec<usize> = Vec::new();
+        bytes.reserve(&mut next, n)?;
+        for (contour, &start) in self.starts.iter().enumerate() {
+            let end = self.starts.get(contour + 1).copied().unwrap_or(n);
+            next.extend(start + 1..end);
+            next.push(start);
         }
-        // Each edge by its undirected key, the reversed ones first;
-        // opposite directions cancel.
-        edges.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
-        let mut kept: Vec<Keyed> = Vec::new();
-        bytes.reserve(&mut kept, edges.len())?;
-        let mut start = 0;
-        while let Some(first) = edges.get(start) {
-            let end = start
-                + edges[start..]
-                    .iter()
-                    .take_while(|e| e.lo == first.lo && e.hi == first.hi)
-                    .count();
-            let group = &edges[start..end];
-            let reversed = group.iter().filter(|e| !e.forward).count();
-            let cancelled = reversed.min(group.len() - reversed);
-            kept.extend_from_slice(&group[cancelled..reversed]);
-            kept.extend_from_slice(&group[reversed + cancelled..]);
-            start = end;
-        }
-        if kept.len() == edges.len() {
+        let mut kept = uncancelled(&keys, &next, bytes)?;
+        if kept.len() == n {
             return Ok(None);
         }
         // Relink by start point: any pairing at a shared vertex keeps the
-        // winding.
-        kept.sort_unstable_by_key(|e| e.from);
+        // winding, but which one is taken shapes the contours.
+        kept.sort_unstable();
+        let mut links: Vec<Keyed> = Vec::new();
+        bytes.reserve(&mut links, kept.len())?;
+        links.extend(kept.iter().map(|&(from, a)| {
+            let to = keys[next[a]];
+            Keyed {
+                lo: from.min(to),
+                hi: from.max(to),
+                forward: from <= to,
+                from,
+                to,
+                a: self.points[a],
+            }
+        }));
+        if links.windows(2).any(|w| w[0].from == w[1].from) {
+            // Sides that share a start keep the order they had from sorting
+            // these values by undirected key, then by start. Sides with
+            // equal undirected keys and directions are equal.
+            links.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+            links.sort_unstable_by_key(|e| e.from);
+        }
+        // Where each link's successors start: the links by end merged with
+        // the links by start.
+        let by_end = &mut kept;
+        by_end.clear();
+        by_end.extend(links.iter().enumerate().map(|(i, e)| (e.to, i)));
+        by_end.sort_unstable();
+        let mut successors: Vec<usize> = Vec::new();
+        bytes.reserve(&mut successors, links.len())?;
+        successors.resize(links.len(), 0);
+        let mut first = 0;
+        for &(to, i) in by_end.iter() {
+            first += links[first..].iter().take_while(|e| e.from < to).count();
+            successors[i] = first;
+        }
         let mut used: Vec<bool> = Vec::new();
-        bytes.reserve(&mut used, kept.len())?;
-        used.resize(kept.len(), false);
+        bytes.reserve(&mut used, links.len())?;
+        used.resize(links.len(), false);
         let mut points = Vec::new();
         let mut starts = Vec::new();
-        bytes.reserve(&mut points, kept.len())?;
-        for first in 0..kept.len() {
+        bytes.reserve(&mut points, links.len())?;
+        for first in 0..links.len() {
             if used[first] {
                 continue;
             }
             bytes.reserve_capacity(&mut starts, 1)?;
             starts.push(points.len());
-            let origin = kept[first].from;
+            let origin = links[first].from;
             let mut current = first;
             loop {
                 used[current] = true;
-                points.push(kept[current].a);
-                let next = kept[current].to;
+                points.push(links[current].a);
+                let next = links[current].to;
                 if next == origin {
                     break;
                 }
-                let from = kept.partition_point(|e| e.from < next);
-                let Some(found) = (from..kept.len())
-                    .take_while(|&i| kept[i].from == next)
+                let Some(found) = (successors[current]..links.len())
+                    .take_while(|&i| links[i].from == next)
                     .find(|&i| !used[i])
                 else {
                     return Ok(None);
@@ -560,17 +739,72 @@ impl Polygon {
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         for p in &self.points {
-            lo.x = lo.x.min(p.x);
-            lo.y = lo.y.min(p.y);
-            hi.x = hi.x.max(p.x);
-            hi.y = hi.y.max(p.y);
+            lo.x = lesser(lo.x, p.x);
+            lo.y = lesser(lo.y, p.y);
+            hi.x = greater(hi.x, p.x);
+            hi.y = greater(hi.y, p.y);
         }
         (lo.x <= hi.x && lo.y <= hi.y).then_some([lo, hi])
     }
 }
 
-/// An edge keyed for cancelling: its ends' integer keys, undirected and
-/// directed, and its first end.
+/// The sides, as their start keys and first points' indices, that no side of
+/// opposite direction cancels: of the sides with one undirected key, as many
+/// reversed as forward ones cancel in pairs.
+fn uncancelled(
+    keys: &[(i64, i64)],
+    next: &[usize],
+    bytes: &mut Meter,
+) -> Result<Vec<((i64, i64), usize)>> {
+    let undirected = |a: usize| {
+        let (from, to) = (keys[a], keys[next[a]]);
+        (from.min(to), from.max(to), from <= to)
+    };
+    // Sides with equal undirected keys have equal fingerprints, so ordering
+    // by fingerprint brings each key's sides together. The index takes as
+    // few low bits as the sides need.
+    let n = keys.len();
+    let low = n
+        .checked_next_power_of_two()
+        .and_then(|power| u64::try_from(power - 1).ok())
+        .unwrap_or(u64::MAX);
+    let index = |o: u64| usize::try_from(o & low).unwrap_or(usize::MAX);
+    let mut order: Vec<u64> = Vec::new();
+    bytes.reserve(&mut order, n)?;
+    for a in 0..n {
+        let (lo, hi, _) = undirected(a);
+        order.push(fingerprint(lo, hi) & !low | u64::try_from(a).unwrap_or(low));
+    }
+    order.sort_unstable();
+    let mut kept = Vec::new();
+    bytes.reserve(&mut kept, n)?;
+    let mut run: Vec<(Undirected, usize)> = Vec::new();
+    for same in order.chunk_by(|o, p| o & !low == p & !low) {
+        if let [o] = *same {
+            kept.push((keys[index(o)], index(o)));
+            continue;
+        }
+        // Within a fingerprint, each side by its undirected key, the
+        // reversed ones first.
+        run.clear();
+        bytes.reserve_capacity(&mut run, same.len())?;
+        run.extend(same.iter().map(|&o| (undirected(index(o)), index(o))));
+        run.sort_unstable();
+        for group in run.chunk_by(|(e, _), (g, _)| (e.0, e.1) == (g.0, g.1)) {
+            let reversed = group.iter().filter(|(e, _)| !e.2).count();
+            let cancelled = reversed.min(group.len() - reversed);
+            let rest = group[cancelled..reversed]
+                .iter()
+                .chain(&group[reversed + cancelled..]);
+            kept.extend(rest.map(|&(_, a)| (keys[a], a)));
+        }
+    }
+    Ok(kept)
+}
+
+/// A kept edge keyed for relinking: its ends' integer keys, undirected and
+/// directed, and its first end. Edges that share a start take the order an
+/// unstable sort of these values gives them, which depends on their size.
 #[derive(Debug, Clone, Copy)]
 struct Keyed {
     lo: (i64, i64),
@@ -580,6 +814,22 @@ struct Keyed {
     to: (i64, i64),
     a: Point,
 }
+
+/// A hash of an undirected edge key: equal keys have equal fingerprints.
+#[expect(
+    clippy::cast_sign_loss,
+    reason = "bit reinterpretation of the integer keys"
+)]
+fn fingerprint(lo: (i64, i64), hi: (i64, i64)) -> u64 {
+    [lo.0, lo.1, hi.0, hi.1].into_iter().fold(0, |hash, value| {
+        (hash ^ value as u64)
+            .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+            .rotate_left(29)
+    })
+}
+
+/// An edge's undirected key and whether it runs from its lower end.
+type Undirected = ((i64, i64), (i64, i64), bool);
 
 /// The total order of f64 as an integer: equal keys exactly for equal bits.
 #[expect(

@@ -13,6 +13,7 @@
 
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
+use crate::source::copy_values;
 use pagura_color::{ColorSpace, Converter};
 use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
@@ -372,7 +373,13 @@ impl Strategy {
             let entries = usize::try_from(samples).unwrap_or(usize::MAX);
             let opaque = colors.key.is_none() && colors.embedded.is_none();
             let held = if opaque { lanes - 2 } else { lanes };
-            return Ok(Self::Memo(MemoLayout::new(key, (held, opaque), entries)));
+            let replacing = colors.convert.arithmetic();
+            return Ok(Self::Memo(MemoLayout::new(
+                key,
+                (held, opaque),
+                entries,
+                replacing,
+            )));
         }
         Ok(Self::General)
     }
@@ -380,7 +387,7 @@ impl Strategy {
     /// Bytes the strategy's tables hold.
     pub(super) fn bytes(&self) -> usize {
         match self {
-            Self::Table(table, _) => size_of_val::<[f64]>(table),
+            Self::Table(table, _) => table.capacity() * size_of::<f64>(),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
             Self::Memo(_) | Self::General => 0,
         }
@@ -427,7 +434,9 @@ pub(super) struct TableTexels<'a, C> {
 impl<C: Codes> TableTexels<'_, C> {
     fn texel(&self, index: usize) -> &[f64] {
         let start = usize::from(self.codes.code(index)) * self.lanes;
-        self.table.get(start..start + self.lanes).unwrap_or(&[])
+        self.table
+            .get(start..start + self.lanes)
+            .unwrap_or(&[0.0; MAX_LANES])
     }
 }
 
@@ -441,9 +450,7 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
-        for (out, value) in out.iter_mut().zip(self.texel(index)) {
-            *out = *value;
-        }
+        copy_values(out, self.texel(index));
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
@@ -659,10 +666,9 @@ impl<T: Texels> Texels for Fused<'_, T> {
         let Some(stride) = out.len().checked_div(count).filter(|&n| n > 1) else {
             return;
         };
-        let mut values = self.values.borrow_mut();
-        values.clear();
-        values.resize(count * (stride - 1), 0.0);
-        self.texels.row(row, cells, &mut values);
+        let mut storage = self.values.borrow_mut();
+        let values = super::scratch::grown(&mut storage, count * (stride - 1));
+        self.texels.row(row, cells, values);
         let mut opacities = [0.0; 256];
         let mut start = 0;
         while start < count {
@@ -679,7 +685,7 @@ impl<T: Texels> Texels for Fused<'_, T> {
             {
                 if let Some((first, rest)) = pixel.split_first_mut() {
                     *first = opacity;
-                    copy_texel(rest, value);
+                    copy_values(rest, value);
                 }
             }
             start += take;
@@ -780,6 +786,9 @@ impl<'a> SampleKeys<'a> {
 
     /// Counts at most 2048 distinct keys. A photographic source ends the
     /// scan as soon as it exceeds that count and keeps its original bound.
+    /// Each sample costs one work unit and each probe one more; a sample
+    /// equal to the one before it is not probed, so a run of equal samples
+    /// is passed at once and charged with its first sample's probes.
     fn distinct(&self, work: &mut Meter, bytes: &mut Meter) -> Result<Option<usize>> {
         const COUNT: usize = 2048;
         const EMPTY: u64 = u64::MAX;
@@ -790,17 +799,13 @@ impl<'a> SampleKeys<'a> {
             work.charge(COUNT * 2)?;
             slots.resize(COUNT * 2, EMPTY);
             let mut distinct = 0;
-            let mut previous = None;
-            for index in 0..self.count {
-                work.charge(1)?;
+            let mut index = 0;
+            while index < self.count {
+                // The sample and its first probe, before inspecting either.
+                work.charge(2)?;
                 let key = self.get(index);
-                if previous == Some(key) {
-                    continue;
-                }
-                previous = Some(key);
                 let mut slot = hash_slot(key, slots.len() - 1);
                 loop {
-                    work.charge(1)?;
                     let held = slots[slot];
                     if held == key {
                         break;
@@ -814,7 +819,12 @@ impl<'a> SampleKeys<'a> {
                         break;
                     }
                     slot = (slot + 1) & (slots.len() - 1);
+                    work.charge(1)?;
                 }
+                // Never scan more samples than the remaining allowance.
+                let end = self.run_end(key, index + 1, work.remaining());
+                work.charge(end - index - 1)?;
+                index = end;
             }
             Ok(Some(distinct))
         })();
@@ -822,28 +832,89 @@ impl<'a> SampleKeys<'a> {
         bytes.refund(allocated);
         result
     }
+
+    /// The first sample from `from` on whose key is not `key`, the key of
+    /// every sample from the one before `from`; stops at `count` or after
+    /// `allowance` samples when no different key has been found.
+    /// Short runs end sample by sample; past those, blocks of samples whose
+    /// codes equal the ones before them in every plane are passed at once.
+    fn run_end(&self, key: u64, from: usize, allowance: usize) -> usize {
+        const BLOCK: usize = 16;
+        let c = self.components;
+        let limit = from.saturating_add(allowance).min(self.count);
+        let short = from.saturating_add(BLOCK / 2).min(limit);
+        let mut end = from;
+        while end < short && self.get(end) == key {
+            end += 1;
+        }
+        if end < short {
+            return end;
+        }
+        while limit - end >= BLOCK
+            && unchanged(self.colors, end * c, c, BLOCK * c)
+            && [self.matte, self.embedded]
+                .into_iter()
+                .flatten()
+                .all(|codes| unchanged(codes, end, 1, BLOCK))
+        {
+            end += BLOCK;
+        }
+        while end < limit && self.get(end) == key {
+            end += 1;
+        }
+        end
+    }
 }
 
-/// The memo's first probe, shared with capacity discovery.
+/// Whether the `len` codes from `start` on equal the ones `stride` before
+/// them, all of them present.
+fn unchanged(codes: &[u8], start: usize, stride: usize, len: usize) -> bool {
+    let earlier = start
+        .checked_sub(stride)
+        .and_then(|at| codes.get(at..at + len));
+    match (codes.get(start..start + len), earlier) {
+        (Some(a), Some(b)) => a.iter().zip(b).fold(0, |differ, (x, y)| differ | (x ^ y)) == 0,
+        _ => false,
+    }
+}
+
+/// The memo's first probe, shared with capacity discovery. The mask is
+/// applied before narrowing: on 32-bit targets the shifted hash can exceed
+/// `usize`, and every such key would otherwise probe from slot 0.
 #[inline]
 fn hash_slot(key: u64, mask: usize) -> usize {
     let hash = key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 29;
-    usize::try_from(hash).unwrap_or(0) & mask
+    let mask = u64::try_from(mask).unwrap_or(u64::MAX);
+    usize::try_from(hash & mask).unwrap_or(0)
 }
 
 /// Texels by sample key: open addressing into slots that hold a key and
 /// its `held` values together, so that a lookup reads one place. Keys have
-/// at most 48 bits, so each is held exactly as an f64. The memo holds at
-/// most one texel per 16 samples of its image (at least 4096, at most
-/// [`MemoLayout::CAP`]), so that what it reserves stays near the decoded samples'
-/// own size; a sample past them is converted without being kept. Every
-/// texel held is its key's, so what the memo holds never changes a value.
+/// at most 48 bits, so each is held exactly as an f64. The initial retention
+/// limit is one texel per 16 samples, clamped between 4096 and
+/// [`MemoLayout::CAP`] and tightened for small palettes. The retaining table
+/// reserves twice that limit, rounded up to a power of two.
+/// The first miss at the limit switches to direct lookup and
+/// replacement in each key's first slot. No later lookup probes the
+/// filling table, so misses terminate even when every slot is occupied.
+/// A palette that fits still keeps every key, including displaced keys.
+///
+/// An arithmetic conversion costs less than a lookup that misses the
+/// cache, as one into a large table of a photograph does. Its memo
+/// replaces instead: at most [`MemoLayout::REPLACING`] slots, each holding
+/// the texel of the last key that reached it, so the table stays in a
+/// core's cache and keeps the colours that repeat nearby. Every texel held
+/// is its key's, so what the memo holds never changes a value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct MemoLayout {
     key: Key,
     opaque: bool,
     held: usize,
+    /// Keys retained by probing before a miss switches to direct lookup.
     limit: usize,
+    /// Whether a key takes its first slot from the one held there, rather
+    /// than a free slot while fewer than `limit` are held.
+    replacing: bool,
 }
 
 /// Mutable memo values, allocated in the caller's render scratch.
@@ -851,7 +922,9 @@ pub(super) struct MemoLayout {
 pub(super) struct Memo {
     layout: MemoLayout,
     slots: Vec<f64>,
+    /// Initial probe-table entries; `limit + 1` marks direct lookup.
     len: usize,
+    /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
 }
 
@@ -859,16 +932,22 @@ pub(super) struct Memo {
 const FREE: f64 = -1.0;
 
 impl MemoLayout {
-    /// The most texels kept.
+    /// The largest initial retention limit.
     pub(super) const CAP: usize = 1 << 20;
 
-    /// The memo of an image of `samples` samples.
-    fn new(key: Key, (held, opaque): (usize, bool), samples: usize) -> Self {
+    /// The most slots of a replacing memo: about half a megabyte of RGB or
+    /// CMYK texels.
+    pub(super) const REPLACING: usize = 1 << 14;
+
+    /// The memo of an image of `samples` samples, replacing for an
+    /// arithmetic conversion.
+    fn new(key: Key, (held, opaque): (usize, bool), samples: usize, replacing: bool) -> Self {
         Self {
             key,
             opaque,
             held,
             limit: (samples / 16).clamp(4096, Self::CAP),
+            replacing,
         }
     }
 
@@ -878,15 +957,19 @@ impl MemoLayout {
         self.opaque
     }
 
-    /// Bytes of the fixed table, whose slots stay at most half full.
+    /// Bytes of the fixed table; probing ends while it is at most half full.
     pub(super) fn bytes(self) -> usize {
         size_of::<Memo>().saturating_add(self.values().saturating_mul(size_of::<f64>()))
     }
 
     fn values(self) -> usize {
-        (2 * self.limit)
-            .next_power_of_two()
-            .saturating_mul(1 + self.held)
+        let slots = (2 * self.limit).next_power_of_two();
+        let slots = if self.replacing {
+            slots.min(Self::REPLACING)
+        } else {
+            slots
+        };
+        slots.saturating_mul(1 + self.held)
     }
 
     /// Tightens only a source proven to have few distinct sample keys.
@@ -938,30 +1021,34 @@ impl Memo {
     /// a texel of every lane unless held.
     #[inline]
     fn get(&mut self, key: u64, convert: impl FnOnce(&mut [f64])) -> &[f64] {
-        let stride = 1 + self.layout.held;
+        let held = self.layout.held;
+        let stride = 1 + held;
         #[expect(
             clippy::cast_precision_loss,
             reason = "keys have at most 48 bits, which f64 holds exactly"
         )]
         let wanted = key as f64;
-        let slot = self.slot(key, wanted);
-        if self.slots.get(slot * stride).copied() != Some(wanted) {
-            let mut texel = [0.0; MAX_LANES];
-            let count = self.layout.held + usize::from(self.layout.opaque) * 2;
-            convert(&mut texel[..count]);
-            if self.len >= self.layout.limit {
-                self.spare[..self.layout.held].copy_from_slice(&texel[..self.layout.held]);
-                return &self.spare[..self.layout.held];
-            }
-            let at = slot * stride;
-            if let Some(entry) = self.slots.get_mut(at..at + stride) {
-                entry[0] = wanted;
-                entry[1..].copy_from_slice(&texel[..self.layout.held]);
+        let probing = !self.layout.replacing && self.len <= self.layout.limit;
+        let slot = if probing {
+            self.slot(key, wanted)
+        } else {
+            hash_slot(key, self.slots.len() / stride - 1)
+        };
+        let mut at = slot * stride;
+        if self.slots.get(at).copied() != Some(wanted) {
+            convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
+            if probing {
+                if self.len == self.layout.limit {
+                    at = hash_slot(key, self.slots.len() / stride - 1) * stride;
+                }
                 self.len += 1;
             }
+            if let Some(entry) = self.slots.get_mut(at..at + stride) {
+                entry[0] = wanted;
+                copy_values(&mut entry[1..], &self.spare[..held]);
+            }
         }
-        let at = slot * stride + 1;
-        self.slots.get(at..at + self.layout.held).unwrap_or(&[])
+        self.slots.get(at + 1..at + stride).unwrap_or(&[])
     }
 
     /// The slot of `key` (held as `wanted`), or the free slot it goes into.
@@ -1083,34 +1170,11 @@ impl Texels for MemoTexels<'_> {
             let key = self.samples.get(index);
             if previous != Some(key) {
                 let held = memo.get(key, |texel| self.convert(index, components, texel));
-                copy_texel(&mut last, held);
+                copy_values(&mut last, held);
                 previous = Some(key);
             }
-            copy_texel(values, &last);
+            copy_values(values, &last);
         }
-    }
-}
-
-/// Copies the first values of `from` into `to`, as many as both hold: a
-/// fixed-size move for the common counts, where a copy call per texel
-/// costs more than the copy.
-#[inline]
-pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
-    #[inline]
-    fn fixed<const N: usize>(to: &mut [f64], from: &[f64]) {
-        if let (Some(to), Some(from)) = (to.first_chunk_mut::<N>(), from.first_chunk::<N>()) {
-            *to = *from;
-        }
-    }
-    match to.len().min(from.len()) {
-        0 => {}
-        1 => fixed::<1>(to, from),
-        2 => fixed::<2>(to, from),
-        3 => fixed::<3>(to, from),
-        4 => fixed::<4>(to, from),
-        5 => fixed::<5>(to, from),
-        6 => fixed::<6>(to, from),
-        n => to[..n].copy_from_slice(&from[..n]),
     }
 }
 
@@ -1135,6 +1199,7 @@ mod tests {
             },
             (3, true),
             1,
+            false,
         );
         layout
             .fit(
@@ -1192,7 +1257,7 @@ mod tests {
             matte: false,
             embedded: false,
         };
-        let mut layout = MemoLayout::new(key, (3, true), 1_000_000);
+        let mut layout = MemoLayout::new(key, (3, true), 1_000_000, false);
         let before = layout;
         let mut work = Meter::new(100_000, "test");
         let mut bytes = Meter::new(32_768, "test");
@@ -1202,18 +1267,112 @@ mod tests {
         assert!(work.used() < 4096 + 3 * 3000);
     }
 
-    /// The memo reserves less than eight bytes a sample of its image, and
-    /// past its limit it converts every sample anew, alike.
     #[test]
-    fn the_memo_stays_near_its_samples_and_converts_past_its_limit() {
+    fn capacity_discovery_stops_a_run_at_its_work_allowance() {
+        // Missing plane samples have the zero key, including an arbitrarily
+        // long run. No unavailable work may be spent walking to its end.
+        let keys = SampleKeys {
+            components: 1,
+            count: usize::MAX,
+            colors: &[],
+            matte: None,
+            embedded: None,
+        };
+        let mut work = Meter::new(4099, "sample work");
+        let mut bytes = Meter::new(usize::MAX, "sample bytes");
+        bytes.charge(7).unwrap();
+        assert_eq!(
+            keys.distinct(&mut work, &mut bytes).unwrap_err().message,
+            "sample work"
+        );
+        assert_eq!(work.used(), 4099);
+        assert_eq!(bytes.used(), 7);
+    }
+
+    /// Skipping runs finds what probing sample by sample finds, for the
+    /// same work: runs that end in either plane or past a short plane, and
+    /// the photographic end of the scan.
+    #[test]
+    fn capacity_discovery_skips_runs_for_the_work_of_a_sample_scan() {
+        fn sampled(keys: &SampleKeys<'_>, work: &mut Meter) -> Option<usize> {
+            let mut slots = vec![u64::MAX; 4096];
+            work.charge(4096).unwrap();
+            let (mut distinct, mut previous) = (0, None);
+            for index in 0..keys.count {
+                work.charge(1).unwrap();
+                let key = keys.get(index);
+                if previous.replace(key) == Some(key) {
+                    continue;
+                }
+                let mut slot = super::hash_slot(key, 4095);
+                while work.charge(1).is_ok() && slots[slot] != key {
+                    if slots[slot] == u64::MAX {
+                        if distinct == 2048 {
+                            return None;
+                        }
+                        (slots[slot], distinct) = (key, distinct + 1);
+                        break;
+                    }
+                    slot = (slot + 1) & 4095;
+                }
+            }
+            Some(distinct)
+        }
+        let mut state = 7_u32;
+        let mut next = |n: u32| {
+            state = state.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+            u8::try_from((state >> 16) % n).unwrap()
+        };
+        for (count, components, colours, runs, short) in [
+            (9000, 3, 3, 40, 0),
+            (9000, 1, 2, 40, 40),
+            (9000, 4, 255, 2, 0),
+            (700, 2, 9, 40, 1),
+        ] {
+            let mut colors: Vec<u8> = Vec::new();
+            let mut matte = Vec::new();
+            while matte.len() < count {
+                let run = usize::from(next(runs)) + 1;
+                let code: Vec<_> = (0..components).map(|_| next(colours)).collect();
+                let opacity = next(2);
+                for _ in 0..run {
+                    colors.extend(&code);
+                    matte.push(if next(9) == 0 { 1 - opacity } else { opacity });
+                }
+            }
+            colors.truncate(count * components - short * components);
+            matte.truncate(count - short / 2);
+            let keys = SampleKeys {
+                components,
+                count,
+                colors: &colors,
+                matte: Some(&matte),
+                embedded: (components == 2).then_some(&matte[..count / 3]),
+            };
+            let (mut expected, mut skipped) = (Meter::new(1 << 30, "t"), Meter::new(1 << 30, "t"));
+            let found = keys.distinct(&mut skipped, &mut Meter::new(1 << 20, "t"));
+            assert_eq!(found.unwrap(), sampled(&keys, &mut expected));
+            assert_eq!(skipped.used(), expected.used());
+            let mut tight = Meter::new(expected.used() - 1, "t");
+            assert!(
+                keys.distinct(&mut tight, &mut Meter::new(1 << 20, "t"))
+                    .is_err()
+            );
+        }
+    }
+
+    /// The memo reserves less than eight bytes a sample of its image, and
+    /// past its limit a new key replaces its first slot.
+    #[test]
+    fn the_memo_stays_near_its_samples_and_replaces_past_its_limit() {
         let key = Key {
             components: 3,
             matte: false,
             embedded: false,
         };
-        assert!(MemoLayout::new(key, (3, true), 1_000_000).bytes() <= 8_000_000);
-        assert!(MemoLayout::new(key, (4, true), 64).bytes() <= (8 << 12) * 5 * 8);
-        let mut memo = MemoLayout::new(key, (3, true), 0).make().unwrap();
+        assert!(MemoLayout::new(key, (3, true), 1_000_000, false).bytes() <= 8_000_000);
+        assert!(MemoLayout::new(key, (4, true), 64, false).bytes() <= (8 << 12) * 5 * 8);
+        let mut memo = MemoLayout::new(key, (3, true), 0, false).make().unwrap();
         let texel = |key: u64| {
             #[expect(clippy::cast_precision_loss, reason = "small test keys")]
             let value = key as f64;
@@ -1225,6 +1384,124 @@ mod tests {
                 assert_eq!(held, texel(k), "key {k} round {round}");
             }
         }
-        assert_eq!(memo.len, memo.layout.limit);
+        assert_eq!(memo.len, memo.layout.limit + 1);
+        let stride = 1 + memo.layout.held;
+        let mask = memo.slots.len() / stride - 1;
+        let replacement = (20_000..30_000u64)
+            .find(|&key| memo.slots[super::hash_slot(key, mask) * stride] != super::FREE)
+            .unwrap();
+        let mut converted = 0;
+        for _ in 0..3 {
+            let held = memo.get(replacement, |out| {
+                converted += 1;
+                out[..3].copy_from_slice(&texel(replacement));
+            });
+            assert_eq!(held, texel(replacement));
+        }
+        assert_eq!((converted, memo.len), (1, memo.layout.limit + 1));
+    }
+
+    /// Filling every reserved slot must not turn a later miss into an
+    /// unbounded probe. Adjacent repeats still use the converted texel.
+    #[test]
+    fn a_full_retaining_memo_switches_to_direct_lookup() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let mut layout = MemoLayout::new(key, (3, true), 0, false);
+        layout.limit = 4;
+        let mut memo = layout.make().unwrap();
+        let mut converted = 0;
+        for key in 0..128u32 {
+            let expected = [f64::from(key); 3];
+            for _ in 0..2 {
+                let held = memo.get(u64::from(key), |out| {
+                    converted += 1;
+                    out[..3].copy_from_slice(&expected);
+                });
+                assert_eq!(held, expected);
+            }
+        }
+        assert_eq!(converted, 128);
+        assert_eq!(memo.len, layout.limit + 1);
+        assert!(
+            memo.slots
+                .chunks_exact(1 + layout.held)
+                .all(|slot| slot[0] != super::FREE)
+        );
+        memo.reset();
+        assert_eq!(memo.len, 0);
+        assert!(memo.slots.iter().all(|&value| value == super::FREE));
+    }
+
+    /// Reaching the limit does not discard displaced palette entries:
+    /// only a new key can switch the memo to direct lookup.
+    #[test]
+    fn a_fitting_palette_keeps_its_displaced_entries() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let mut layout = MemoLayout::new(key, (3, true), 0, false);
+        layout.limit = 4;
+        let mut memo = layout.make().unwrap();
+        let mask = memo.slots.len() / (1 + layout.held) - 1;
+        let keys: Vec<_> = (0..1024u32)
+            .filter(|&key| super::hash_slot(u64::from(key), mask) == 0)
+            .take(layout.limit)
+            .collect();
+        assert_eq!(keys.len(), layout.limit);
+        let mut converted = 0;
+        for _ in 0..3 {
+            for &key in &keys {
+                let expected = [f64::from(key); 3];
+                assert_eq!(
+                    memo.get(u64::from(key), |out| {
+                        converted += 1;
+                        out[..3].copy_from_slice(&expected);
+                    }),
+                    expected
+                );
+            }
+        }
+        assert_eq!((converted, memo.len), (layout.limit, layout.limit));
+    }
+
+    /// A replacing memo stays within its slots however large its image,
+    /// holds the texel of the last key in each slot, and converts a key
+    /// again once another has taken its slot.
+    #[test]
+    fn a_replacing_memo_stays_small_and_holds_the_last_key_of_each_slot() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let layout = MemoLayout::new(key, (3, true), 1 << 30, true);
+        assert_eq!(layout.values(), MemoLayout::REPLACING * 4);
+        let mut memo = layout.make().unwrap();
+        let texel = |key: u64| {
+            #[expect(clippy::cast_precision_loss, reason = "small test keys")]
+            let value = key as f64;
+            [value, value + 0.5, value * 2.0]
+        };
+        let keys = 0..3 * u64::try_from(MemoLayout::REPLACING).unwrap();
+        let mut converted = 0;
+        for round in 0..2 {
+            for k in keys.clone() {
+                for _ in 0..2 {
+                    let held = memo.get(k, |out| {
+                        converted += 1;
+                        out[..3].copy_from_slice(&texel(k));
+                    });
+                    assert_eq!(held, texel(k), "key {k} round {round}");
+                }
+            }
+        }
+        let count = usize::try_from(keys.end).unwrap();
+        assert!(converted > count && converted < 2 * count, "{converted}");
     }
 }

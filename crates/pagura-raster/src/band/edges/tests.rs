@@ -67,6 +67,31 @@ fn shared_edges_cancel_into_the_union_boundary() {
 }
 
 #[test]
+fn sides_sharing_a_start_relink_in_their_sorted_order() {
+    // Squares meeting at corners: after the shared sides cancel, two kept
+    // sides start at (2, 0) and two at (2, 1).
+    let mut polygon = Polygon::default();
+    for (x, y) in [(0.0, 0.0), (1.0, 0.0), (2.0, 1.0), (2.0, -1.0), (3.0, -1.0)] {
+        polygon.starts.push(polygon.points.len());
+        polygon.points.extend([
+            Point::new(x, y),
+            Point::new(x + 1.0, y),
+            Point::new(x + 1.0, y + 1.0),
+            Point::new(x, y + 1.0),
+        ]);
+    }
+    assert!(polygon.cancel_shared(&mut crate::testing::bytes()).unwrap());
+    assert_eq!(polygon.starts, [0, 12]);
+    let points: Vec<_> = polygon.points.iter().map(|p| (p.x, p.y)).collect();
+    #[rustfmt::skip]
+    assert_eq!(points, [
+        (0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (2.0, -1.0), (3.0, -1.0), (4.0, -1.0),
+        (4.0, 0.0), (3.0, 0.0), (2.0, 0.0), (2.0, 1.0), (1.0, 1.0), (0.0, 1.0),
+        (2.0, 1.0), (3.0, 1.0), (3.0, 2.0), (2.0, 2.0),
+    ]);
+}
+
+#[test]
 fn polygon_output_is_charged_beside_its_flattened_source() {
     let mut path = PathBuilder::new();
     path.polygon([
@@ -112,7 +137,7 @@ fn cancellation_refuses_before_copying_its_source_edges() {
     let source = polygon.heap_bytes();
     let before = (polygon.points.clone(), polygon.starts.clone());
     let mut bytes = Meter::new(
-        source + polygon.points.len() * size_of::<Keyed>() - 1,
+        source + polygon.points.len() * size_of::<(i64, i64)>() - 1,
         super::super::RENDER_BYTES,
     );
     bytes.charge(source).unwrap();
@@ -173,4 +198,50 @@ fn polygons_drop_repeats_and_keep_point_cells() {
     assert_eq!(contours[0][0], Point::new(1.0, 2.0));
     assert_eq!(contours[1].len(), 3);
     assert!(polygon.points_cells);
+}
+
+#[test]
+fn plain_interpolation_stays_within_the_interpolation_bound() {
+    let mut state = 0x2545_f491_4f6c_dd1d_u64;
+    let mut next = || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let unit = (state >> 11) as f64 / (1u64 << 53) as f64;
+        unit
+    };
+    for case in 0..20_000 {
+        // Ordinary coordinates, then ones beyond the plain range or too
+        // flat for it, which must take the exact form.
+        let scale = match case % 4 {
+            0 | 1 => 2000.0,
+            2 => 1e7,
+            _ => 1.0,
+        };
+        let a = Point::new(scale * (next() - 0.5), scale * (next() - 0.5));
+        let height = if case % 4 == 3 {
+            1e-10 * next()
+        } else {
+            scale * (next() - 0.5)
+        };
+        let b = Point::new(scale * (next() - 0.5), a.y + height);
+        let line = Line { a, b };
+        let (lo, hi) = (a.y.min(b.y), a.y.max(b.y));
+        let y = lo + (hi - lo) * next();
+        let plain = a.x.abs().max(b.x.abs()) <= PLAIN_LIMIT
+            && a.y.abs().max(b.y.abs()) <= PLAIN_LIMIT
+            && (hi - lo) >= PLAIN_HEIGHT;
+        assert_eq!(line.plain(), plain, "{case}: {line:?}");
+        if plain {
+            let (fast, exact) = (line.plain_x(y), line.x(y));
+            assert!(
+                (fast - exact).abs() <= line.interpolation_error().x,
+                "{case}: {fast} vs {exact} for {line:?} at {y}"
+            );
+        }
+    }
 }

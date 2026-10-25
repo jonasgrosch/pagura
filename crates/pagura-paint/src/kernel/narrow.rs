@@ -4,6 +4,8 @@
 //! once to the buffer's format; F32 mark stores evaluate `x += a·(t − x)`.
 //! Colours are premultiplied with the background embedded.
 
+use pagura_core::convert::{round_f32_u8, round_u8, round_u16};
+
 use super::Colors;
 
 /// `floor(x / 255)` for `x ≤ 255 · 65535 + 127` without a division:
@@ -38,17 +40,8 @@ pub(crate) fn n16_bytes(out: &mut [[u8; 4]], words: &[[u16; 4]]) {
 #[inline(never)]
 pub(crate) fn f32_bytes(out: &mut [[u8; 4]], levels: &[[f32; 4]]) {
     for (byte, &level) in out.as_flattened_mut().iter_mut().zip(levels.as_flattened()) {
-        *byte = level_byte(level);
+        *byte = round_f32_u8(level);
     }
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a level rounded and clamped to a byte"
-)]
-fn level_byte(level: f32) -> u8 {
-    level.round().clamp(0.0, 255.0) as u8
 }
 
 /// Stores an opaque colour, already encoded as N16 `words`, at `coverage`
@@ -81,6 +74,68 @@ pub(crate) fn store_n16(pixels: &mut [[u16; 4]], words: [u16; 4], coverage: Opti
     }
 }
 
+/// [`store_n16`] at `coverage`, eight pixels at a time: eight at zero stay
+/// as they are and eight at 255 take the words, so only mixed stretches
+/// evaluate stores. Returns the pixels from the first to past the last one
+/// with coverage, if any. `pixels` and `coverage` have equal lengths.
+#[inline]
+pub(crate) fn store_n16_runs(
+    pixels: &mut [[u16; 4]],
+    words: [u16; 4],
+    coverage: &[u8],
+) -> Option<(usize, usize)> {
+    let mut covered: Option<(usize, usize)> = None;
+    let mut cover = |lo: usize, hi: usize| {
+        covered = Some(covered.map_or((lo, hi), |(first, _)| (first, hi)));
+    };
+    let (blocks, pixel_tail) = pixels.as_chunks_mut::<8>();
+    let (bytes, byte_tail) = coverage.as_chunks::<8>();
+    for (k, (block, eight)) in blocks.iter_mut().zip(bytes).enumerate() {
+        let word = u64::from_le_bytes(*eight);
+        if word == 0 {
+            continue;
+        }
+        if word == u64::MAX {
+            *block = [words; 8];
+        } else {
+            store_n16(block, words, Some(eight));
+        }
+        // Little-endian: the first pixel is the lowest byte.
+        let at = k * 8;
+        let lo = at + (word.trailing_zeros() / 8) as usize;
+        let hi = at + 8 - (word.leading_zeros() / 8) as usize;
+        cover(lo, hi);
+    }
+    let at = blocks.len() * 8;
+    if let Some(first) = byte_tail.iter().position(|&c| c != 0) {
+        let last = byte_tail.iter().rposition(|&c| c != 0).unwrap_or(first);
+        if let (Some(pixels), Some(coverage)) = (
+            pixel_tail.get_mut(first..=last),
+            byte_tail.get(first..=last),
+        ) {
+            store_n16(pixels, words, Some(coverage));
+        }
+        cover(at + first, at + last + 1);
+    }
+    covered
+}
+
+/// [`store_n16`] with one coverage byte `c` for every pixel.
+pub(crate) fn store_n16_uniform(pixels: &mut [[u16; 4]], words: [u16; 4], c: u8) {
+    let s = words.map(u32::from);
+    let c = u32::from(c);
+    let r = 255_u32.wrapping_sub(c);
+    for pixel in pixels {
+        let b = pixel.map(u32::from);
+        *pixel = [
+            mix(s[0], b[0], (c, r)),
+            mix(s[1], b[1], (c, r)),
+            mix(s[2], b[2], (c, r)),
+            mix(s[3], b[3], (c, r)),
+        ];
+    }
+}
+
 /// One N16 store; the sum is at most 255 · 65535 + 127.
 #[inline]
 #[expect(
@@ -99,16 +154,11 @@ fn mix(source: u32, backdrop: u32, (c, rest): (u32, u32)) -> u16 {
 /// The N16 word of a unit value: `257 × L` for its level `L = 255·v`,
 /// rounded, moved to the adjacent word where needed so that the final
 /// nearest byte is `round(L)` (no double rounding at half levels).
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a clamped unit value scaled to 0..65535"
-)]
 pub(crate) fn word(value: f64) -> u16 {
     let level = value.clamp(0.0, 1.0) * 255.0;
-    let word = (level * 257.0).round() as u16;
+    let word = round_u16(level * 257.0);
     let byte = (u32::from(word) + 128) / 257;
-    let nearest = level.round() as u32;
+    let nearest = u32::from(round_u8(level));
     match byte.cmp(&nearest) {
         std::cmp::Ordering::Greater => word - 1,
         std::cmp::Ordering::Less => word + 1,
@@ -119,12 +169,6 @@ pub(crate) fn word(value: f64) -> u16 {
 /// A dynamic store into N16 words: `(1 − a)·x + a·t` for the target
 /// `t = 65535·c` evaluated in f64 and rounded once to the nearest word.
 pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a value clamped to the word range"
-    )]
-    let round = |value: f64| value.clamp(0.0, 65535.0).round() as u16;
     if let Colors::Strided { values, stride: 3 } = *colors
         && full(alpha)
     {
@@ -132,28 +176,21 @@ pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &
         overwrite_n16(pixels, values);
         return;
     }
-    dynamic(pixels, colors, alpha, 65535.0, round, f64::from);
+    dynamic(pixels, colors, alpha, 65535.0, round_u16, f64::from);
 }
 
 /// The word a store at full opacity writes for colour value `value`:
-/// `65535·value` clamped and rounded. `max` and `min` clamp as `clamp`
-/// does, with a NaN to zero, which is also its word.
+/// `65535·value` clamped and rounded. The rounding conversion saturates and
+/// takes a NaN to zero, which is also its word, so it is the clamp.
 #[inline]
-#[expect(
-    clippy::manual_clamp,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "unlike clamp, max and min vectorize, and NaN gives the same word"
-)]
 pub(crate) fn opaque_word(value: f64) -> u16 {
-    (value.max(0.0).min(1.0) * 65535.0).round() as u16
+    round_u16(value * 65535.0)
 }
 
 /// The words of opaque colours, three values a pixel, over `pixels`: a
-/// store at full opacity, the word of each target `65535·c`. `max` and
-/// `min` clamp as `clamp` does, with a NaN to zero, which is also its word;
-/// the target then needs no clamp to the word range. Eight pixels at a
-/// time, their 24 values convert as one run, which vectorizes.
+/// store at full opacity, the word of each target `65535·c`, clamped by
+/// [`opaque_word`]'s saturating conversion. Eight pixels at a time, their 24
+/// values convert as one run, which vectorizes.
 pub(crate) fn overwrite_n16(pixels: &mut [[u16; 4]], values: &[f64]) {
     let word = opaque_word;
     let (blocks, last) = pixels.as_chunks_mut::<8>();
@@ -195,23 +232,14 @@ fn dynamic<T: Copy>(
     round: impl Fn(f64) -> T,
     widen: impl Fn(T) -> f64,
 ) {
-    let store = |pixel: &mut [T; 4], color: &[f64], a: f64| {
-        if a == 0.0 {
-            return;
-        }
-        for (i, out) in pixel.iter_mut().enumerate() {
-            let target = if i == 3 {
-                scale
-            } else {
-                color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0) * scale
-            };
-            *out = round((1.0 - a) * widen(*out) + a * target);
-        }
+    let store = |pixel: &mut [T; 4], targets: [f64; 4], a: f64| {
+        mix_dynamic(pixel, targets, a, &round, &widen);
     };
     match *colors {
         Colors::Constant(color) => {
+            let targets = targets(color, scale);
             for (pixel, &a) in pixels.iter_mut().zip(alpha) {
-                store(pixel, color, a);
+                store(pixel, targets, a);
             }
         }
         Colors::Strided { values, stride } => {
@@ -220,10 +248,108 @@ fn dynamic<T: Copy>(
                 .zip(values.chunks(stride.max(1)))
                 .zip(alpha)
             {
-                store(pixel, color, a);
+                store(pixel, targets(color, scale), a);
             }
         }
     }
+}
+
+/// The targets of a dynamic store of `color`: its clamped values and full
+/// alpha on `0 .. scale`.
+pub(crate) fn targets(color: &[f64], scale: f64) -> [f64; 4] {
+    let at = |i: usize| color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0) * scale;
+    [at(0), at(1), at(2), scale]
+}
+
+/// One dynamic store, `(1 − a)·x + a·t` rounded once; none at `a = 0`.
+#[inline]
+fn mix_dynamic<T: Copy>(
+    pixel: &mut [T; 4],
+    targets: [f64; 4],
+    a: f64,
+    round: impl Fn(f64) -> T,
+    widen: impl Fn(T) -> f64,
+) {
+    if a == 0.0 {
+        return;
+    }
+    for (out, target) in pixel.iter_mut().zip(targets) {
+        *out = round((1.0 - a) * widen(*out) + a * target);
+    }
+}
+
+/// Dynamic N16 stores of a constant colour's `targets` at `coverage`, at
+/// the opacity `c / 255 · alpha` a span's coverage and constant alpha give
+/// it. Returns the pixels from the first to past the last one with
+/// coverage, if any. `pixels` and `coverage` have equal lengths.
+pub(crate) fn dynamic_n16_runs(
+    pixels: &mut [[u16; 4]],
+    (targets, alpha): ([f64; 4], f64),
+    coverage: &[u8],
+) -> Option<(usize, usize)> {
+    let first = coverage.iter().position(|&c| c != 0)?;
+    let last = coverage.iter().rposition(|&c| c != 0).unwrap_or(first);
+    let (pixels, coverage) = (pixels.get_mut(first..=last)?, coverage.get(first..=last)?);
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        mix_dynamic(
+            pixel,
+            targets,
+            UNIT[usize::from(c)] * alpha,
+            round_u16,
+            f64::from,
+        );
+    }
+    Some((first, last + 1))
+}
+
+/// [`dynamic_n16_runs`] with one coverage byte `c` for every pixel.
+pub(crate) fn dynamic_n16_uniform(
+    pixels: &mut [[u16; 4]],
+    (targets, alpha): ([f64; 4], f64),
+    c: u8,
+) {
+    let a = UNIT[usize::from(c)] * alpha;
+    for pixel in pixels {
+        mix_dynamic(pixel, targets, a, round_u16, f64::from);
+    }
+}
+
+/// `c / 255` for every coverage byte, as the division gives it.
+pub(crate) const UNIT: [f64; 256] = {
+    let mut unit = [0.0; 256];
+    let mut c = 0;
+    while c < 256 {
+        unit[c] = c as f64 / 255.0;
+        c += 1;
+    }
+    unit
+};
+
+/// [`store_f32`] of a constant colour's `target` levels at one coverage
+/// byte `c` for every pixel: the opacity `c / 255 · alpha` a span's
+/// coverage and constant alpha give it.
+pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], (target, alpha): ([f32; 4], f64), c: u8) {
+    let alpha = single(UNIT[usize::from(c)] * alpha);
+    for pixel in pixels {
+        lerp(pixel, target, alpha);
+    }
+}
+
+/// [`store_f32_uniform`] at `coverage`, which leaves pixels at zero as they
+/// are. Returns the pixels from the first to past the last one with
+/// coverage, if any. `pixels` and `coverage` have equal lengths.
+pub(crate) fn store_f32_runs(
+    pixels: &mut [[f32; 4]],
+    (target, alpha): ([f32; 4], f64),
+    coverage: &[u8],
+) -> Option<(usize, usize)> {
+    let first = coverage.iter().position(|&c| c != 0)?;
+    let last = coverage.iter().rposition(|&c| c != 0).unwrap_or(first);
+    let (pixels, coverage) = (pixels.get_mut(first..=last)?, coverage.get(first..=last)?);
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        lerp(pixel, target, single(UNIT[usize::from(c)] * alpha));
+    }
+    Some((first, last + 1))
 }
 
 /// Stores `colors` at `alpha` into F32 levels on 0..255: full opacity
@@ -248,7 +374,8 @@ pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f
     }
 }
 
-fn levels(color: &[f64]) -> [f32; 4] {
+/// The F32 levels of an opaque colour.
+pub(crate) fn levels(color: &[f64]) -> [f32; 4] {
     let at = |i: usize| level(color.get(i).copied().unwrap_or(0.0));
     [at(0), at(1), at(2), 255.0]
 }
@@ -283,6 +410,59 @@ pub(crate) fn level(value: f64) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stores_by_stretches_match_stores_by_pixel() {
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let words = [3, 30_000, 50_000, 65_535];
+        for case in 0..2_000 {
+            // Rows of zero, full and partial stretches of any length, so
+            // that blocks of eight and the tail both see every kind.
+            let len = usize::try_from(next() % 40).unwrap();
+            let mut coverage = Vec::with_capacity(len);
+            while coverage.len() < len {
+                let run = 1 + usize::try_from(next() % 12).unwrap();
+                let kind = next() % 3;
+                for _ in 0..run.min(len - coverage.len()) {
+                    coverage.push(match kind {
+                        0 => 0,
+                        1 => u8::MAX,
+                        _ => u8::try_from(next() % 256).unwrap(),
+                    });
+                }
+            }
+            let pixels: Vec<[u16; 4]> = (0..len)
+                .map(|_| [0; 4].map(|_: u16| u16::try_from(next() % 65_536).unwrap()))
+                .collect();
+            let (mut runs, mut each) = (pixels.clone(), pixels);
+            let covered = store_n16_runs(&mut runs, words, &coverage);
+            store_n16(&mut each, words, Some(&coverage));
+            assert_eq!(runs, each, "{case}");
+            let first = coverage.iter().position(|&c| c != 0);
+            let last = coverage.iter().rposition(|&c| c != 0);
+            assert_eq!(covered, first.zip(last).map(|(a, b)| (a, b + 1)), "{case}");
+        }
+    }
+
+    #[test]
+    fn uniform_coverage_stores_as_per_pixel_coverage() {
+        let pixels: Vec<[u16; 4]> = (0..64_u16)
+            .map(|i| [i.wrapping_mul(1021), i.wrapping_mul(4093), 65_535 - i, i])
+            .collect();
+        let words = [0, 1_234, 40_000, 65_535];
+        for c in 0..=u8::MAX {
+            let (mut uniform, mut each) = (pixels.clone(), pixels.clone());
+            store_n16_uniform(&mut uniform, words, c);
+            store_n16(&mut each, words, Some(&[c; 64]));
+            assert_eq!(uniform, each, "coverage {c}");
+        }
+    }
 
     #[test]
     fn words_round_to_their_nearest_byte_in_u16_lanes() {

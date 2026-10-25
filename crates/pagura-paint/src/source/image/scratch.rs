@@ -87,29 +87,38 @@ impl ImageSampler {
     pub(crate) fn scratch_layout(&self) -> Layout {
         let Some(prepared) = self.prepared.as_ref() else {
             return Layout {
-                plan: sampling::Layout::Points,
+                plan: sampling::Layout::Points(0),
                 mask: None,
                 memo: None,
                 summed: 0,
                 fused: 0,
             };
         };
+        let (sampling, paint) = match &prepared.plan {
+            Plan::Codes(codes) => {
+                return Layout {
+                    plan: sampling::Layout::Separable(codes.layout()),
+                    mask: None,
+                    memo: None,
+                    summed: 0,
+                    fused: 0,
+                };
+            }
+            Plan::Texels { sampling, paint } => (sampling, paint),
+        };
         let fused = prepared
             .mask
             .as_ref()
             .is_some_and(|mask| mask.independent.is_none());
         let lanes = self.channels + 2 + usize::from(fused);
-        let values = lanes - usize::from(prepared.opaque()) * 2;
-        let plan = match &prepared.plan {
-            Plan::Codes(plan) => sampling::Layout::Separable(plan.layout()),
-            Plan::Texels(plan) => plan.layout(values),
-        };
-        let memo = match &prepared.paint {
+        let values = lanes - usize::from(paint.opaque(&prepared.image.image)) * 2;
+        let plan = sampling.layout(values);
+        let memo = match paint {
             Paint::Colors(paint) => match paint.1 {
                 texels::Strategy::Memo(layout) => Some(layout),
                 _ => None,
             },
-            Paint::Stencil { .. } => None,
+            Paint::Stencil(_) => None,
         };
         Layout {
             plan,
@@ -119,11 +128,7 @@ impl ImageSampler {
                 .and_then(|mask| mask.independent.as_ref())
                 .map(|(_, plan)| plan.layout(1)),
             memo,
-            summed: if matches!(prepared.plan, Plan::Texels(_)) {
-                prepared.columns.saturating_mul(lanes)
-            } else {
-                0
-            },
+            summed: prepared.columns.saturating_mul(lanes),
             fused: if fused {
                 usize::try_from(prepared.image.image.width)
                     .unwrap_or(usize::MAX)
@@ -133,6 +138,17 @@ impl ImageSampler {
             },
         }
     }
+}
+
+/// The first `len` values of `values`, grown with defaults where it holds
+/// fewer. It never shrinks: a span's values are written before they are
+/// read, and a short span between long ones must not make the next long
+/// one fill its storage again.
+pub(super) fn grown<T: Copy + Default>(values: &mut Vec<T>, len: usize) -> &mut [T] {
+    if values.len() < len {
+        values.resize(len, T::default());
+    }
+    &mut values[..len]
 }
 
 /// Reserves an allocation after its layout has been charged.

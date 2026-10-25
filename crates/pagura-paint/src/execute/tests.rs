@@ -4,7 +4,7 @@
 //! transfer functions, black generation, and narrow stores of group
 //! results. Expected values are clause-11 formulas evaluated here.
 
-use super::{Rendering, Sizes, Tops, Workspace};
+use super::{Extents, Rendering, Sizes, StoreOut, Tops, Workspace, each_span};
 use crate::format::Format;
 use crate::plan::{
     Compositing, Conversion, Cover, Curve, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout,
@@ -179,12 +179,7 @@ fn gradient(channels: usize) -> Source {
 /// The colours and alpha `paint` gives pixel `(x, y)`.
 fn sample(paint: &Source, (x, y): (u32, u32)) -> (Vec<f64>, f64) {
     let mut out = SpanColors::default();
-    let pixels = Pixels {
-        x,
-        y,
-        len: 1,
-        boundary: None,
-    };
+    let pixels = Pixels::new(x, y, 1);
     paint.fill(
         pixels,
         &mut crate::source::PaintScratch::default(),
@@ -813,6 +808,258 @@ fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
                             "{format:?} {style:?} band height {band_height} knockout {knockout} alone {alone}"
                         );
                     }
+                }
+            }
+        }
+    }
+}
+
+/// Rows stored as the rasterizer emits them change the page as the same
+/// rows collected in a band coverage and stored span by span, and mark at
+/// least those spans' columns: N16 words, N16 dynamic stores and F32 levels
+/// at a constant alpha.
+#[test]
+fn emitted_rows_store_as_band_coverage_spans() {
+    use super::{Dynamic, Levels};
+    use crate::kernel::{self, Colors};
+    #[expect(clippy::cast_possible_truncation, reason = "random words")]
+    let word = |next: &mut dyn FnMut() -> u64| [0; 4].map(|_: u16| next() as u16);
+    let words = [1_000, 20_000, 40_000, 65_535];
+    emitted_rows_store_as((words, [0; 4]), word, |pixels, cover| {
+        kernel::store_n16(pixels, words, cover.coverage());
+    });
+    let color = [0.1, 0.6, 0.85];
+    for constant in [1.0, 0.6, 0.0] {
+        // The opacities a span's coverage and constant alpha give it.
+        let alpha = |cover: super::Cover<'_>| -> Vec<f64> {
+            let compositing = Compositing {
+                alpha: constant,
+                blend: BlendMode::Normal,
+                alpha_is_shape: false,
+                mask: None,
+                overprint: 0,
+            };
+            let (mut alpha, mut shape) = (vec![0.0; cover.len()], vec![0.0; cover.len()]);
+            super::opacity((None, None), cover.coverage(), &mut alpha, &mut shape);
+            super::apply(&compositing, None, &mut alpha, &mut shape);
+            alpha
+        };
+        let colors = Colors::Constant(&color);
+        let dynamic = Dynamic(kernel::targets(&color, 65_535.0), constant);
+        emitted_rows_store_as((dynamic, [0; 4]), word, |pixels, cover| {
+            kernel::dynamic_n16(pixels, &colors, &alpha(cover));
+        });
+        #[expect(clippy::cast_precision_loss, reason = "random levels")]
+        emitted_rows_store_as(
+            (Levels(kernel::levels(&color), constant), [0.0; 4]),
+            |next| [0.0; 4].map(|_: f32| (next() % 255_001) as f32 / 1_000.0),
+            |pixels, cover| kernel::store_f32(pixels, &colors, &alpha(cover)),
+        );
+    }
+}
+
+/// Stores of the background colour change nothing where no store reached
+/// a pixel, which holds the background already: only stored columns take
+/// them, and the rest stay unmarked for output to write as background.
+#[test]
+fn background_stores_reach_only_stored_columns() {
+    use pagura_raster::RowOut;
+    let rect = DeviceRect {
+        x0: 2,
+        y0: 0,
+        x1: 12,
+        y1: 2,
+    };
+    let white = [65_535; 4];
+    let mut page = vec![white; 20];
+    page[13] = [0, 0, 0, 65_535];
+    let mut meter = Meter::new(usize::MAX, "budget");
+    let mut extents = Extents::new(2, &mut meter).unwrap();
+    extents.mark(1, 3, 4);
+    let mut out = StoreOut::new(&mut page, &mut extents, rect, (white, white));
+    out.push_row(0);
+    out.put_run(0, 14, u8::MAX);
+    out.push_row(1);
+    out.put_row(4, &[128; 6]);
+    assert_eq!(out.stored, 1);
+    let mut expected = vec![white; 20];
+    // floor((65535·128 + 0·127 + 127) / 255)
+    expected[13] = [32_896, 32_896, 32_896, 65_535];
+    assert_eq!(page, expected);
+    assert_eq!((extents.take(0), extents.take(1)), (None, Some((3, 4))));
+}
+
+fn emitted_rows_store_as<S: super::Stores<Pixel: std::fmt::Debug>>(
+    (color, background): (S, S::Pixel),
+    mut pixel: impl FnMut(&mut dyn FnMut() -> u64) -> S::Pixel,
+    store: impl Fn(&mut [S::Pixel], super::Cover<'_>),
+) {
+    use pagura_raster::{BandCoverage, RowOut};
+    let rect = DeviceRect {
+        x0: 3,
+        y0: 10,
+        x1: 43,
+        y1: 16,
+    };
+    let (width, rows) = (40_usize, 6_usize);
+    let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+    let mut next = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        state
+    };
+    let mut meter = Meter::new(usize::MAX, "budget");
+    for case in 0..200 {
+        let initial: Vec<S::Pixel> = (0..width * rows).map(|_| pixel(&mut next)).collect();
+        let (mut direct, mut spans) = (initial.clone(), initial);
+        let mut emitted = Extents::new(rows, &mut meter).unwrap();
+        let mut collected = Extents::new(rows, &mut meter).unwrap();
+        let mut coverage = BandCoverage::default();
+        coverage.clear();
+        // Random pixels hold no background: every pixel takes its stores.
+        let mut out = StoreOut::new(&mut direct, &mut emitted, rect, (color, background));
+        // Rows from above the frame to below it, with gaps, full and
+        // partial runs and cells, some reaching past its sides.
+        for y in 8..18 {
+            out.push_row(y);
+            coverage.push_row(y);
+            let mut x = u32::try_from(next() % 6).unwrap();
+            while x < 50 {
+                let len = 1 + u32::try_from(next() % 8).unwrap();
+                #[expect(clippy::cast_possible_truncation, reason = "random bytes")]
+                match next() % 4 {
+                    0 => {}
+                    1 => {
+                        out.put_run(x, len, u8::MAX);
+                        coverage.put_run(x, len, u8::MAX);
+                    }
+                    2 => {
+                        let value = 1 + (next() % 254) as u8;
+                        out.put_run(x, len, value);
+                        coverage.put_run(x, len, value);
+                    }
+                    _ => {
+                        let values: Vec<u8> = (0..len)
+                            .map(|_| match next() % 4 {
+                                0 => 0,
+                                1 => u8::MAX,
+                                _ => next() as u8,
+                            })
+                            .collect();
+                        out.put_row(x, &values);
+                        coverage.put_row(x, &values);
+                    }
+                }
+                x += len;
+            }
+        }
+        coverage.finish();
+        each_span(&coverage, rect, |(x, y), cover| {
+            let row = (y - rect.y0) as usize;
+            let column = x - rect.x0;
+            let start = row * width + column as usize;
+            store(&mut spans[start..start + cover.len()], cover);
+            collected.mark(row, column, column + u32::try_from(cover.len()).unwrap());
+        });
+        assert_eq!(direct, spans, "{case}");
+        for row in 0..rows {
+            if let Some((lo, hi)) = collected.take(row) {
+                let (a, b) = emitted.take(row).unwrap();
+                assert!(a <= lo && hi <= b, "{case} row {row}");
+            }
+        }
+    }
+}
+
+/// A row of a frame backdrop holds, pixel by pixel, the colour and alpha
+/// [`Read::pixel`] gives inside the frame's rect and zeros elsewhere: every
+/// buffer format, layouts with fewer and more channels than the source, and
+/// rows that start left of, inside and right of the rect.
+#[test]
+fn backdrop_rows_read_as_their_pixels_do() {
+    use super::{Backdrop, Buffer, Frame, PageBuffer, Read};
+    let unit = |i: usize| f64::from(u32::try_from(i * 37 % 101).unwrap()) / 101.0;
+    let rect = DeviceRect {
+        x0: 3,
+        y0: 2,
+        x1: 9,
+        y1: 5,
+    };
+    let layout = |process, spots| Layout { process, spots };
+    let (gray, rgb, cmyk) = (
+        layout(Process::Gray, 0),
+        layout(Process::Rgb, 0),
+        layout(Process::Cmyk, 1),
+    );
+    let pixels = 18;
+    let wide: Vec<f64> = (0..pixels * cmyk.stride() + 7).map(unit).collect();
+    let levels: Vec<[f32; 4]> = (0..pixels + 3)
+        .map(|i| [0, 1, 2, 3].map(|c| f32::from(u16::try_from((i * 4 + c) * 29 % 256).unwrap())))
+        .collect();
+    let pages = [
+        (
+            PageBuffer::F64((0..pixels * rgb.stride()).map(unit).collect()),
+            rgb,
+        ),
+        (
+            PageBuffer::N16(
+                (0..pixels)
+                    .map(|i| {
+                        [0, 1, 2, 3].map(|c| u16::try_from((i * 4 + c) * 7919 % 65536).unwrap())
+                    })
+                    .collect(),
+            ),
+            rgb,
+        ),
+        (PageBuffer::F32(levels.clone()), rgb),
+    ];
+    for (page, page_layout) in &pages {
+        let read = Read {
+            page,
+            wide: &wide,
+            levels: &levels,
+        };
+        for (buffer, source) in [
+            (Buffer::Page, *page_layout),
+            (Buffer::Wide(5), cmyk),
+            (Buffer::Wide(0), gray),
+            (Buffer::Levels(2), rgb),
+        ] {
+            let backdrop = Backdrop::Frame {
+                buffer,
+                rect,
+                layout: source,
+            };
+            let frame = Frame {
+                group: 0,
+                buffer,
+                rect,
+                layout: source,
+                knockout: false,
+                initial: Backdrop::Transparent,
+            };
+            for target in [gray, rgb, cmyk] {
+                let (n, stride) = (target.channels(), target.stride());
+                for ((x, len), y) in [(0, 14), (5, 2), (8, 4), (10, 3)]
+                    .into_iter()
+                    .flat_map(|span| (1..6).map(move |y| (span, y)))
+                {
+                    let mut row = vec![f64::NAN; len * stride];
+                    backdrop.row(read, (x, y), target, &mut row);
+                    let mut expected = vec![0.0; len * stride];
+                    for (column, pixel) in (x..).zip(expected.chunks_exact_mut(stride)) {
+                        if let Some(index) = frame.index(column, y) {
+                            let colors = &mut pixel[..n.min(source.channels())];
+                            pixel[n] = read.pixel(buffer, index, source, colors);
+                        }
+                    }
+                    let bits = |v: &[f64]| v.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+                    assert_eq!(
+                        bits(&row),
+                        bits(&expected),
+                        "{buffer:?} {source:?} into {target:?} at ({x}, {y}) × {len}"
+                    );
                 }
             }
         }

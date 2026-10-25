@@ -68,7 +68,14 @@ in product code, no `#[allow]`) enforces part of it; review enforces the rest.
 - Hostile input never panics. Return `pagura_core::Result` with the most
   specific `ErrorKind`, a fixed message, and `Position`/object context via
   `Error::at` and `Error::in_object`. No unchecked indexing on input-derived
-  offsets and no unchecked arithmetic on input sizes.
+  offsets and no unchecked arithmetic on input sizes. Native release builds
+  of `pagura-raster` and `pagura-paint` have no implicit overflow checks
+  (the workspace release profile), so arithmetic there that can overflow
+  is `checked_`, `saturating_` or `wrapping_`; wasm32 builds keep the checks.
+  A custom `RUSTFLAGS` or `CARGO_ENCODED_RUSTFLAGS` replaces the target
+  flags in `.cargo/config.toml`, so wasm32 overrides must include
+  `-C overflow-checks=on`, including scalar builds such as
+  `RUSTFLAGS="-C target-feature=-simd128 -C overflow-checks=on"`.
 - Lossy casts need `#[expect(clippy::cast_…, reason = "…")]` on the smallest
   scope, stating why the value fits.
 - Every public item has a doc comment; fallible public functions have an
@@ -201,6 +208,11 @@ crate.
 15. **Benchmarks.** Profiling programs live in a crate's `examples/` (as
     `render_profile` does); timings they print are hypotheses until the
     performance policy in `docs/ARCHITECTURE.md` is met.
+16. **Build targets.** `.cargo/config.toml` builds x86_64 code for
+    `x86-64-v2` and wasm32 code with `simd128`; aarch64 keeps its target
+    default. A `RUSTFLAGS` environment variable replaces these flags, so it
+    repeats them. Crates built by dependents get the target baseline, where
+    the output is the same, only slower.
 
 ## Workflow
 

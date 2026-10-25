@@ -42,6 +42,11 @@ pub(crate) fn reference(outline: &Path, linear: Transform, limits: &Limits) -> R
                 current = d;
                 curved = true;
             }
+            // Exactly quadratic: no third difference.
+            Segment::QuadTo { end, .. } => {
+                current = end * linear;
+                curved = true;
+            }
             Segment::Close => current = start,
         }
     }

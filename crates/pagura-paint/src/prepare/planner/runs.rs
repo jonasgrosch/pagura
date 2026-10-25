@@ -369,6 +369,13 @@ mod tests {
         });
     }
 
+    /// The item and group-index capacity, and one order slot.
+    fn item_bytes(planner: &Planner<'_>) -> usize {
+        planner.parts.items.capacity() * size_of::<crate::plan::Item>()
+            + planner.parts.groups[0].items.capacity() * size_of::<u32>()
+            + size_of::<u32>()
+    }
+
     #[test]
     fn flushed_runs_keep_capacity_charged_and_singletons_return_it() {
         with_planner(1 << 20, |planner, budget| {
@@ -384,19 +391,13 @@ mod tests {
                 panic!("expected run")
             };
             assert_eq!(run.glyphs.capacity(), capacity);
-            assert_eq!(
-                budget.bytes.used(),
-                retained + size_of::<crate::plan::Item>() + 2 * size_of::<u32>()
-            );
+            assert_eq!(budget.bytes.used(), retained + item_bytes(planner));
         });
         with_planner(1 << 20, |planner, budget| {
             planner.gather(0, mark(), placed(), budget).unwrap();
             planner.flush(budget).unwrap();
             assert!(matches!(planner.parts.items[0].kind, ItemKind::Mark(_)));
-            assert_eq!(
-                budget.bytes.used(),
-                size_of::<crate::plan::Item>() + 2 * size_of::<u32>()
-            );
+            assert_eq!(budget.bytes.used(), item_bytes(planner));
         });
     }
 

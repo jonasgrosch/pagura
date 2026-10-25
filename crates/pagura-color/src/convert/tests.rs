@@ -407,6 +407,7 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
                 continue;
             }
         };
+        compare_lines(&converter, &pair.new, &mut rng, &context);
         for _ in 0..16 {
             let c = components(&mut rng, &pair.new);
             let state = State {
@@ -461,6 +462,64 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
     assert!(
         compared > 30_000 && rejected < 400 && selective > 1000 && zeroed > 300,
         "{compared} {rejected} {selective} {zeroed}"
+    );
+}
+
+/// A nondecreasing rounding, as F32 levels round a colour value.
+fn level(v: f64) -> u32 {
+    #[expect(clippy::cast_possible_truncation, reason = "the rounding under test")]
+    let level = (v.clamp(0.0, 1.0) * 255.0) as f32;
+    level.to_bits()
+}
+
+/// A line of colours converts as its colours do one by one, bit for bit,
+/// and a rounded line rounds as the exact colours do.
+fn compare_lines(converter: &Converter, space: &ColorSpace, rng: &mut Rng, context: &str) {
+    let count = space.components();
+    let channels = converter.target().channels();
+    let mut untouched = vec![9.0; channels];
+    converter.convert_line(&[0.5], usize::MAX, &mut untouched);
+    assert_eq!(
+        untouched,
+        vec![9.0; channels],
+        "{context}: incomplete input"
+    );
+    converter.convert_line_rounded(&[0.5], usize::MAX, &mut untouched, level);
+    assert_eq!(
+        untouched,
+        vec![9.0; channels],
+        "{context}: incomplete rounded input"
+    );
+    let colors = 1 + rng.below(70);
+    let line: Vec<f64> = (0..colors).flat_map(|_| components(rng, space)).collect();
+    let mut expected = vec![f64::NAN; colors * channels];
+    for (c, out) in line
+        .chunks_exact(count)
+        .zip(expected.chunks_exact_mut(channels))
+    {
+        converter.convert(c, out);
+    }
+    let mut output = vec![f64::NAN; colors * channels];
+    converter.convert_line(&line, count, &mut output);
+    assert_eq!(bits(&output), bits(&expected), "{context}: line {line:?}");
+    let mut rounded = vec![f64::NAN; colors * channels];
+    converter.convert_line_rounded(&line, count, &mut rounded, level);
+    let levels = |values: &[f64]| values.iter().map(|&v| level(v)).collect::<Vec<_>>();
+    assert_eq!(
+        levels(&rounded),
+        levels(&expected),
+        "{context}: rounded line {line:?}"
+    );
+    for (c, out) in line
+        .chunks_exact(count)
+        .zip(rounded.chunks_exact_mut(channels))
+    {
+        converter.convert_rounded(c, out, level);
+    }
+    assert_eq!(
+        levels(&rounded),
+        levels(&expected),
+        "{context}: rounded {line:?}"
     );
 }
 
@@ -555,4 +614,61 @@ fn painted_sets_name_their_channels() {
     assert_eq!(Painted::all(3), Painted(0b111));
     assert_eq!(Painted::all(64), Painted(u64::MAX));
     assert!(Painted(0b100).contains(2) && !Painted(0b100).contains(1) && !Painted(1).contains(64));
+}
+
+#[test]
+fn arithmetic_conversions_evaluate_no_function_or_transform() {
+    let mut rng = Rng::new(7);
+    let (tint, _) = tint_function(&mut rng, 1, 3);
+    let (black, _) = tint_function(&mut rng, 1, 1);
+    let (rgb, cmyk) = (Target::new(Process::Rgb), Target::new(Process::Cmyk));
+    let plain = Conversion::default();
+    let generated = Conversion {
+        black_generation: Some(black),
+        ..Conversion::default()
+    };
+    let arithmetic = |space: ColorSpace, target: &Target, conversion: &Conversion| {
+        Converter::new(&space, target, conversion)
+            .unwrap()
+            .arithmetic()
+    };
+    let icc = |profile| {
+        ColorSpace::Icc(Arc::new(IccSpace {
+            profile,
+            alternate: Arc::new(ColorSpace::DeviceRgb),
+            components: 3,
+            range: [[0.0, 1.0]; 4],
+            object: None,
+        }))
+    };
+    let indexed = ColorSpace::Indexed(Arc::new(Indexed {
+        base: Arc::new(ColorSpace::DeviceCmyk),
+        high: 1,
+        lookup: vec![0; 8].into(),
+    }));
+    for space in [
+        ColorSpace::DeviceGray,
+        ColorSpace::DeviceRgb,
+        indexed,
+        icc(None),
+    ] {
+        assert!(arithmetic(space.clone(), &rgb, &plain));
+        assert!(arithmetic(space, &cmyk, &plain));
+    }
+    assert!(arithmetic(ColorSpace::DeviceCmyk, &cmyk, &generated));
+    assert!(!arithmetic(ColorSpace::DeviceRgb, &cmyk, &generated));
+    assert!(!arithmetic(
+        icc(Some(profile("sampled-rgb", 3))),
+        &rgb,
+        &plain
+    ));
+    let lab = Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0, 100.0, -90.0, 90.0]);
+    let lab = ColorSpace::Calibrated(Arc::new(lab.unwrap()));
+    assert!(!arithmetic(lab, &rgb, &plain));
+    let spot = ColorSpace::Separation(Arc::new(Separation {
+        colorant: Colorant::Named(Name::new(b"SpotA")),
+        alternate: Arc::new(ColorSpace::DeviceRgb),
+        tint,
+    }));
+    assert!(!arithmetic(spot, &rgb, &plain));
 }

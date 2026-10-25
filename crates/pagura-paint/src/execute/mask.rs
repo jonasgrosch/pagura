@@ -91,9 +91,10 @@ fn values(
                 .get(offset + index * layout.stride() + n + 1)
                 .copied()
                 .unwrap_or(0.0),
-            (MaskKind::Alpha, _) => read.pixel(buffer, index, layout).1,
+            (MaskKind::Alpha, _) => read.pixel(buffer, index, layout, &mut []),
             (MaskKind::Luminosity, _) => {
-                let (colors, alpha) = read.pixel(buffer, index, layout);
+                let mut colors = [0.0; 4];
+                let alpha = read.pixel(buffer, index, layout, &mut colors);
                 let mut color = [0.0; 4];
                 for (i, c) in color.iter_mut().enumerate().take(n) {
                     *c = if mask.isolated {

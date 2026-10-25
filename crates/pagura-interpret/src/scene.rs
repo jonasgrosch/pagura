@@ -306,7 +306,10 @@ pub struct Scene {
     pub paints: Vec<Arc<Paint>>,
     /// Pens.
     pub pens: Vec<Arc<Pen>>,
-    /// Bytes the scene retains, for the `Store`.
+    /// Bytes the scene retains, for the `Store`: table capacities and owned
+    /// payload estimates, excluding recording indexes and scratch. Shared
+    /// payloads may be counted per retained owner; this is not allocator
+    /// telemetry and does not depend on Store or reference-count state.
     pub bytes: usize,
 }
 
