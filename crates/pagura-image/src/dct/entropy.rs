@@ -107,6 +107,16 @@ impl Huffman {
         Err(past.error("invalid JPEG Huffman code"))
     }
 
+    /// The code of `symbol` and its length, if the table has one.
+    pub(super) fn code_of(&self, symbol: u8) -> Option<(u64, u32)> {
+        let index = self.symbols.iter().position(|&s| s == symbol)?;
+        let (length, i) = (1..=LONGEST)
+            .zip(0..)
+            .find(|&(_, i)| index < self.offset[i] + usize::from(self.count[i]))?;
+        let code = u64::from(self.first[i]) + u64::try_from(index - self.offset[i]).ok()?;
+        Some((code, length))
+    }
+
     /// The symbol and length of the code longer than the lookup that starts
     /// the sixteen bits `window`, among codes of at most `loaded` bits.
     fn long(&self, window: usize, loaded: u32) -> Option<(u8, u32)> {
@@ -134,10 +144,12 @@ fn extend(raw: u32, size: u8) -> i32 {
     }
 }
 
+/// Parses Huffman table definitions. With `wide`, also builds native-plane
+/// lookups, whose AC entries join coefficient pairs with `pairs`.
 pub(super) fn tables(
     mut payload: &[u8],
     tables: &mut [Option<Huffman>; 8],
-    wide: bool,
+    (wide, pairs): (bool, bool),
 ) -> Result<()> {
     while let Some((&info, rest)) = payload.split_first() {
         if info >> 4 > 1 || info & 15 > 3 {
@@ -185,7 +197,7 @@ pub(super) fn tables(
             code *= 2;
         }
         let prefixes = if wide {
-            fused::wide_table(&first, &count_by_length, &offsets, symbols, ac).to_vec()
+            fused::wide_table(&first, &count_by_length, &offsets, symbols, (ac, pairs)).to_vec()
         } else {
             Vec::new()
         };
@@ -438,6 +450,11 @@ impl<'a> Bits<'a> {
         fused::native_zero(self, shortcut)
     }
 
+    /// Consumes the `length` bits `pattern`, if they come next.
+    pub(super) fn native_pattern(&mut self, (pattern, length): (u64, u32)) -> Result<bool> {
+        fused::native_pattern(self, pattern, length)
+    }
+
     /// Decodes one baseline block into dequantized natural-order
     /// coefficients; returns whether any AC is nonzero and the L1 norm.
     pub(super) fn native_coefficients(
@@ -531,7 +548,7 @@ mod tests {
             payload[usize::from(length)] = 1;
             payload.push(122);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books, false).unwrap();
+            tables(&payload, &mut books, (false, false)).unwrap();
             let book = books[0].as_ref().unwrap();
             for leading in 0..8usize {
                 let size = (leading + usize::from(length)).div_ceil(8);
@@ -639,7 +656,7 @@ mod tests {
             payload.extend_from_slice(&[1; 16]);
             payload.extend_from_slice(symbols);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books, false).unwrap();
+            tables(&payload, &mut books, (false, false)).unwrap();
             let book = books[usize::from(class >> 4) * 4].as_ref().unwrap();
             for window in 0..=u16::MAX {
                 let mut data = Vec::new();
