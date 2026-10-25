@@ -36,6 +36,19 @@ pub(crate) enum Deferred {
 /// zero with the following end of block.
 const SHORTCUT_BYTES: u64 = 4096 * 4;
 
+/// Data units from which a frame's native AC lookups join coefficient
+/// pairs; smaller frames do not repay building them.
+const PAIRED_BLOCKS: usize = 4096;
+
+/// Whether native AC lookups join coefficient pairs for `frame`, or for a
+/// frame not yet defined.
+pub(super) fn paired(frame: Option<&Frame>) -> bool {
+    frame.is_none_or(|frame| {
+        let blocks = frame.components.iter().map(|c| c.stride * c.rows);
+        blocks.sum::<usize>() >= PAIRED_BLOCKS
+    })
+}
+
 /// How a deferred decode ended.
 pub(super) enum Finished {
     Done(Deferred),
