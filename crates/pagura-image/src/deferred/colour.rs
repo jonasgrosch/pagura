@@ -145,29 +145,23 @@ fn convert<const REPEAT: usize, const L: usize, const RGB: usize>(
 }
 
 /// The integer nearest to `v`, |v| < 2²², or either neighbour of a half.
-/// Baseline x86-64 has no rounding instruction, so `round` is a library
-/// call there; adding and removing 2²³ rounds in the addition instead.
+/// WebAssembly and baseline x86-64 have no rounding instruction, so `round`
+/// is a library call there; adding and removing 2²³ rounds in the addition
+/// instead.
 #[inline]
 fn nearest_integer(v: f32) -> f32 {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_family = "wasm"))]
     {
         (v + 8_388_608.0) - 8_388_608.0
     }
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_family = "wasm")))]
     {
         v.round()
     }
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "rounded clamped byte"
-)]
 fn green(y: f64, cb: f64, cr: f64) -> u8 {
-    (y - cb * 0.344_136 - cr * 0.714_136)
-        .round()
-        .clamp(0.0, 255.0) as u8
+    pagura_core::convert::round_u8(y - cb * 0.344_136 - cr * 0.714_136)
 }
 #[cfg(test)]
 mod tests {
@@ -207,7 +201,7 @@ mod tests {
     #[test]
     #[expect(clippy::cast_precision_loss, reason = "small exact integers")]
     fn shifted_nearest_integers_mark_the_same_ambiguous_greens() {
-        // The x86 form of `nearest_integer`, checked on every target.
+        // The x86 and WebAssembly form of `nearest_integer`, checked on every target.
         let shifted = |v: f32| (v + 8_388_608.0) - 8_388_608.0;
         let mut values = Vec::new();
         for k in -2..=258 {
