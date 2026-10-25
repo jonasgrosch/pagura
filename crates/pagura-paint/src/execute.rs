@@ -205,12 +205,8 @@ impl<'a> Executor<'a> {
             y1: self.rows.end,
         };
         let ws = &mut *self.ws;
-        ws.page.reset(
-            &mut ws.extents,
-            (area(rect), u32_to_usize(rect.width())),
-            plan.output.background,
-            plan.output.layout,
-        );
+        ws.page
+            .reset(area(rect), plan.output.background, plan.output.layout);
         self.ws.selection.fill(0);
         let Some(page) = plan.groups.first() else {
             return;

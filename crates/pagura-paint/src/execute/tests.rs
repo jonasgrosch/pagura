@@ -918,8 +918,8 @@ fn emitted_rows_store_as<P: super::Narrow + PartialEq + std::fmt::Debug>(
         });
         assert_eq!(direct, spans, "{case}");
         for row in 0..rows {
-            if let Some((lo, hi)) = collected.get(row) {
-                let (a, b) = emitted.get(row).unwrap();
+            if let Some((lo, hi)) = collected.take(row) {
+                let (a, b) = emitted.take(row).unwrap();
                 assert!(a <= lo && hi <= b, "{case} row {row}");
             }
         }
