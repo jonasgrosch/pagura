@@ -51,6 +51,7 @@ impl Executor<'_> {
                 layout,
                 knockout: group.knockout,
                 initial,
+                started: None,
             };
             self.run(frame, above);
             let ws = &mut *self.ws;
@@ -82,37 +83,54 @@ fn values(
     count: usize,
     cache: &mut MaskCache,
 ) -> usize {
-    let n = layout.channels();
+    let (n, stride) = (layout.channels(), layout.stride());
     let (mut last, mut mapped, mut work) = (f64::NAN, 0.0, 0);
-    for (index, out) in cache.values.iter_mut().take(count).enumerate() {
+    let mut map = |value: f64| {
+        let value = value.clamp(0.0, 1.0);
+        if value.to_bits() != last.to_bits() {
+            mapped = transfer(mask, value);
+            work += mask.transfer.as_ref().map_or(0, Curve::cost);
+            last = value;
+        }
+        mapped
+    };
+    let luminosity = |colors: [f64; 4], alpha: f64| {
+        let mut color = [0.0; 4];
+        for (i, c) in color.iter_mut().enumerate().take(n) {
+            *c = if mask.isolated {
+                colors[i] + (1.0 - alpha) * mask.backdrop[i]
+            } else {
+                colors[i]
+            };
+        }
+        process::luminosity(layout.process, &color)
+    };
+    let values = cache.values.iter_mut().take(count);
+    // A wide buffer's colours are read as one run.
+    if let (MaskKind::Luminosity, Buffer::Wide(offset)) = (mask.kind, buffer)
+        && let Some(pixels) = read.wide.get(offset..offset + count * stride)
+    {
+        for (out, pixel) in values.zip(pixels.chunks_exact(stride)) {
+            let colors = std::array::from_fn(|i| if i < n { pixel[i] } else { 0.0 });
+            *out = map(luminosity(colors, pixel[n]));
+        }
+        return work;
+    }
+    for (index, out) in values.enumerate() {
         let value = match (mask.kind, buffer) {
             (MaskKind::Alpha, Buffer::Wide(offset)) => read
                 .wide
-                .get(offset + index * layout.stride() + n + 1)
+                .get(offset + index * stride + n + 1)
                 .copied()
                 .unwrap_or(0.0),
             (MaskKind::Alpha, _) => read.pixel(buffer, index, layout, &mut []),
             (MaskKind::Luminosity, _) => {
                 let mut colors = [0.0; 4];
                 let alpha = read.pixel(buffer, index, layout, &mut colors);
-                let mut color = [0.0; 4];
-                for (i, c) in color.iter_mut().enumerate().take(n) {
-                    *c = if mask.isolated {
-                        colors[i] + (1.0 - alpha) * mask.backdrop[i]
-                    } else {
-                        colors[i]
-                    };
-                }
-                process::luminosity(layout.process, &color)
+                luminosity(colors, alpha)
             }
-        }
-        .clamp(0.0, 1.0);
-        if value.to_bits() != last.to_bits() {
-            mapped = transfer(mask, value);
-            work += mask.transfer.as_ref().map_or(0, Curve::cost);
-            last = value;
-        }
-        *out = mapped;
+        };
+        *out = map(value);
     }
     work
 }

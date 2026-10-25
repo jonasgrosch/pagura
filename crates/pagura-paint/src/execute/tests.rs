@@ -1036,6 +1036,7 @@ fn backdrop_rows_read_as_their_pixels_do() {
                 layout: source,
                 knockout: false,
                 initial: Backdrop::Transparent,
+                started: None,
             };
             for target in [gray, rgb, cmyk] {
                 let (n, stride) = (target.channels(), target.stride());

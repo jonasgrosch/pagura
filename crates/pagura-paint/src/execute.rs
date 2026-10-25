@@ -23,7 +23,7 @@ pub(crate) use workspace::{
 };
 
 use crate::kernel::{self, Colors, Mode, Sources};
-use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
+use crate::plan::{Boundary, Compositing, Item, ItemKind, Layout, Mark, Plan, area};
 use crate::prepare::Completion;
 use crate::prepare::Shapes;
 use crate::source::{Pixels, Precision, Source, SpanColors};
@@ -43,14 +43,15 @@ enum DirectCoverage {
     Glyph(u32),
 }
 
-/// A constant colour as a narrow page stores it straight from coverage:
-/// opaque N16 words, or at a constant alpha N16 dynamic stores or F32
-/// levels.
+/// A constant colour as a page stores it straight from coverage: opaque
+/// N16 words, or at a constant alpha N16 dynamic stores or F32 levels; an
+/// f64 page composites the colour of an opaque paint, by its index.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Direct {
     N16([u16; 4]),
     Dynamic(Dynamic),
     F32(Levels),
+    F64(u32),
 }
 
 /// A prepared scene with scratch storage sized for it: what every band's
@@ -220,6 +221,7 @@ impl<'a> Executor<'a> {
             layout: page.layout,
             knockout: page.knockout,
             initial: Backdrop::Transparent,
+            started: None,
         };
         self.run(frame, Tops::default());
     }
@@ -328,6 +330,27 @@ impl<'a> Executor<'a> {
                 rasterize(&mut out);
                 out.stored
             }
+            (PageBuffer::F64(page), Direct::F64(paint)) => {
+                let Some((color, _)) = self
+                    .plan
+                    .paints
+                    .get(u32_to_usize(paint))
+                    .and_then(Source::constant)
+                else {
+                    return;
+                };
+                let mut out = WideOut {
+                    page,
+                    extents,
+                    rect: frame.rect,
+                    layout: frame.layout,
+                    color,
+                    row: None,
+                    stored: 0,
+                };
+                rasterize(&mut out);
+                out.stored
+            }
             _ => return,
         };
         ws.usage.work = ws.usage.work.saturating_add(stored);
@@ -341,9 +364,10 @@ impl<'a> Executor<'a> {
     }
 
     /// The colour `mark` stores straight from coverage into `frame`: a
-    /// constant colour into a narrow page that only coverage and constant
-    /// alpha reduce, whose stores of a span take nothing else into account.
-    /// N16 stores it as a span does: as words when opaque, else dynamically.
+    /// constant colour into a page that only coverage and constant alpha
+    /// reduce, whose stores of a span take nothing else into account. N16
+    /// stores it as a span does: as words when opaque, else dynamically; an
+    /// f64 page that composites without knockout takes opaque colours.
     pub(super) fn direct(&self, mark: &Mark, frame: Frame) -> Option<Direct> {
         let compositing = &mark.compositing;
         if mark.records
@@ -366,7 +390,9 @@ impl<'a> Executor<'a> {
                 alpha,
             ))),
             (PageBuffer::F32(_), _) => Some(Direct::F32(Levels(kernel::levels(color), alpha))),
-            (PageBuffer::F64(_), _) => None,
+            (PageBuffer::F64(_), _) => {
+                (alpha == 1.0 && !frame.knockout).then_some(Direct::F64(mark.paint))
+            }
         }
     }
 
@@ -464,6 +490,7 @@ impl<'a> Executor<'a> {
                 extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
+                starts: &mut ws.starts,
                 initial: &mut ws.initial,
             },
             frame,
@@ -787,6 +814,79 @@ impl<S: Stores> RowOut for StoreOut<'_, S> {
     }
 }
 
+/// Stores of an opaque constant colour into an f64 page row by row, as
+/// the rasterizer emits them: each covered pixel composites the colour at
+/// its coverage's opacity, as a span of the mark does.
+struct WideOut<'a> {
+    page: &'a mut [f64],
+    extents: &'a mut Extents,
+    rect: DeviceRect,
+    layout: Layout,
+    color: &'a [f64],
+    /// The current row within `rect`, if it lies there.
+    row: Option<usize>,
+    stored: usize,
+}
+
+impl WideOut<'_> {
+    /// Composites `coverage` at columns `x ..` of the current row, those
+    /// within `rect` and from the first to past the last covered one.
+    fn store(&mut self, x: u32, len: usize, coverage: kernel::Coverage<'_>) {
+        let Some(row) = self.row else {
+            return;
+        };
+        let end = x.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+        let (start, stop) = (x.max(self.rect.x0), end.min(self.rect.x1));
+        if start >= stop {
+            return;
+        }
+        let (mut column, mut count) = (start - self.rect.x0, u32_to_usize(stop - start));
+        let coverage = match coverage {
+            kernel::Coverage::Uniform(c) => kernel::Coverage::Uniform(c),
+            kernel::Coverage::Bytes(bytes) => {
+                // Zero coverage leaves a pixel as it is.
+                let skip = u32_to_usize(start - x);
+                let Some(bytes) = bytes.get(skip..skip + count) else {
+                    return;
+                };
+                let Some(lo) = bytes.iter().position(|&c| c != 0) else {
+                    return;
+                };
+                let hi = bytes.iter().rposition(|&c| c != 0).unwrap_or(lo) + 1;
+                column += u32::try_from(lo).unwrap_or(u32::MAX);
+                count = hi - lo;
+                kernel::Coverage::Bytes(&bytes[lo..hi])
+            }
+        };
+        let stride = self.layout.stride();
+        let pixel = row * u32_to_usize(self.rect.width()) + u32_to_usize(column);
+        if let Some(pixels) = self.page.get_mut(pixel * stride..(pixel + count) * stride) {
+            kernel::cover(pixels, self.color, self.layout, coverage);
+        }
+        let at = |k: usize| column + u32::try_from(k).unwrap_or(u32::MAX);
+        self.extents.mark(row, at(0), at(count));
+        self.stored += count;
+    }
+}
+
+impl RowOut for WideOut<'_> {
+    fn push_row(&mut self, y: u32) {
+        self.row = (self.rect.y0..self.rect.y1)
+            .contains(&y)
+            .then(|| u32_to_usize(y - self.rect.y0));
+    }
+
+    fn put_run(&mut self, x: u32, len: u32, value: u8) {
+        if value != 0 {
+            self.store(x, u32_to_usize(len), kernel::Coverage::Uniform(value));
+        }
+    }
+
+    fn put_row(&mut self, x: u32, values: &[u8]) {
+        self.store(x, values.len(), kernel::Coverage::Bytes(values));
+    }
+}
+
 /// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.
 fn densify(coverage: &BandCoverage, (x, y): (u32, u32), out: &mut [u8]) {
     out.fill(0);
@@ -986,6 +1086,7 @@ pub(crate) struct Target<'a> {
     pub(crate) extents: &'a mut Extents,
     pub(crate) wide: &'a mut [f64],
     pub(crate) levels: &'a mut [[f32; 4]],
+    pub(crate) starts: &'a mut [[u32; 2]],
     pub(crate) initial: &'a mut Vec<f64>,
 }
 
@@ -1012,27 +1113,41 @@ pub(crate) fn store(
         return;
     };
     let stride = frame.layout.stride();
-    if mode.knockout {
-        let Some(initial) = target.initial.get_mut(..len * stride) else {
-            return;
-        };
-        let read = Read {
-            page: &*target.page,
-            wide: &*target.wide,
-            levels: &*target.levels,
-        };
-        frame.initial.row(read, (x, y), frame.layout, initial);
-    }
-    let initial = if mode.knockout {
-        target.initial.get(..len * stride).unwrap_or_default()
-    } else {
-        &[]
-    };
     let colors = &sources.colors;
     match frame.buffer {
         Buffer::Wide(offset) => {
-            let begin = offset + start * stride;
-            if let Some(pixels) = target.wide.get_mut(begin..begin + len * stride) {
+            let (below, buffer) = target.wide.split_at_mut(offset);
+            let read = Read {
+                page: &*target.page,
+                wide: below,
+                levels: &*target.levels,
+            };
+            // Knockout members composite over the initial backdrop: the
+            // backdrop buffer's own pixels where they are f64 pixels of these
+            // channels, else read.
+            let shared = mode.knockout.then(|| {
+                let at = (x, y);
+                frame
+                    .initial
+                    .pixels(read.page, below, at, frame.layout, len)
+            });
+            let initial = match shared {
+                Some(Some(pixels)) => pixels,
+                Some(None) => {
+                    let Some(initial) = target.initial.get_mut(..len * stride) else {
+                        return;
+                    };
+                    frame.initial.row(read, (x, y), frame.layout, initial);
+                    &*initial
+                }
+                None => &[],
+            };
+            if let Some(offset) = frame.started {
+                let rows = (&mut *target.starts, offset);
+                start_columns((buffer, rows), read, frame, (x, y), len);
+            }
+            let begin = start * stride;
+            if let Some(pixels) = buffer.get_mut(begin..begin + len * stride) {
                 kernel::composite(pixels, sources, initial, mode);
             }
         }
@@ -1042,11 +1157,73 @@ pub(crate) fn store(
             }
         }
         Buffer::Page => {
+            let initial = if mode.knockout {
+                let Some(initial) = target.initial.get_mut(..len * stride) else {
+                    return;
+                };
+                let read = Read {
+                    page: &*target.page,
+                    wide: &*target.wide,
+                    levels: &*target.levels,
+                };
+                frame.initial.row(read, (x, y), frame.layout, initial);
+                &*initial
+            } else {
+                &[]
+            };
             let row = u32_to_usize(y - frame.rect.y0);
             let start_column = x - frame.rect.x0;
             let end_column = start_column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
             target.extents.mark(row, start_column, end_column);
             page(target.page, (start, stride), (sources, mode), initial, kind);
+        }
+    }
+}
+
+/// Starts the pixels `x .. x + len` of row `y` of the lazily started
+/// `frame` that have not started, from its initial backdrop, as starting
+/// the whole buffer would have: each row's started columns, in `rows` from
+/// `offset`, stay one interval. `buffer` is the wide stack from the frame's
+/// storage and `read` what lies below it.
+fn start_columns(
+    (buffer, (rows, offset)): (&mut [f64], (&mut [[u32; 2]], usize)),
+    read: Read<'_>,
+    frame: Frame,
+    (x, y): (u32, u32),
+    len: usize,
+) {
+    let row = u32_to_usize(y - frame.rect.y0);
+    let Some(slot) = rows.get_mut(offset + row) else {
+        return;
+    };
+    let begin = x - frame.rect.x0;
+    let end = begin.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+    let [lo, hi] = match *slot {
+        [lo, hi] if lo < hi => [lo, hi],
+        _ => [begin, begin],
+    };
+    *slot = [lo.min(begin), hi.max(end)];
+    let (n, stride) = (frame.layout.channels(), frame.layout.stride());
+    let first = row * u32_to_usize(frame.rect.width());
+    for (from, to) in [(begin, lo), (hi, end)] {
+        let pixels = (first + u32_to_usize(from)) * stride..(first + u32_to_usize(to)) * stride;
+        let Some(out) = buffer.get_mut(pixels).filter(|out| !out.is_empty()) else {
+            continue;
+        };
+        let at = (frame.rect.x0 + from, y);
+        let count = u32_to_usize(to - from);
+        match frame
+            .initial
+            .pixels(read.page, read.wide, at, frame.layout, count)
+        {
+            Some(backdrop) => {
+                out.copy_from_slice(backdrop);
+                for pixel in out.chunks_exact_mut(stride) {
+                    pixel[n + 1] = 0.0;
+                    pixel[n + 2] = 0.0;
+                }
+            }
+            None => frame.initial.row(read, at, frame.layout, out),
         }
     }
 }
