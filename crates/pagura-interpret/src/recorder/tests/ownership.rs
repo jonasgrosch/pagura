@@ -29,29 +29,29 @@ fn filled(
 fn node_growth_reserves_the_old_and_replacement_buffers_before_mutation() {
     let mut recorder = SceneRecorder::new(Limits::default());
     recorder.begin_page(&page()).unwrap();
-    filled(
-        &mut recorder,
-        &square(),
-        &paint(0.0),
-        &Arc::new(Composite::default()),
-    );
+    let (path, black, composite) = (square(), paint(0.0), Arc::new(Composite::default()));
+    // Fill the node buffer, so that the next push must grow it.
+    filled(&mut recorder, &path, &black, &composite);
+    while recorder.nodes.len() < recorder.nodes.capacity() {
+        filled(&mut recorder, &path, &black, &composite);
+    }
     let node = recorder.nodes[0].clone();
+    let full = recorder.nodes.len();
     let old = (
         recorder.nodes.capacity(),
         recorder.groups[0].children.capacity(),
     );
-    assert_eq!(old, (1, 1));
     // Isolate inline growth; the copied node's shared payload is charged first.
     if let Node::Fill(fill) = &node {
         recorder.charge_path(&fill.path).unwrap();
     }
-    allowance(&mut recorder, 2 * size_of::<Node>() - 1);
+    allowance(&mut recorder, (full + 1) * size_of::<Node>() - 1);
     let used = recorder.bytes.used();
     let error = recorder.push(node, 0).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
     assert_eq!(
         (recorder.nodes.len(), recorder.groups[0].children.len()),
-        (1, 1)
+        (full, full)
     );
     assert_eq!(
         (
@@ -104,19 +104,28 @@ fn glyph_positions_reserve_before_growth() {
     let (outline, font, pen) = (square(), font(), pen());
     let black = paint(0.0);
     let composite = Arc::new(Composite::default());
-    let first = [glyph(&outline, 0)];
-    recorder
-        .glyphs(&run(
-            &font,
-            &first,
-            TextRenderingMode::Fill,
-            &black,
-            &pen,
-            &composite,
-        ))
-        .unwrap();
-    allowance(&mut recorder, 2 * size_of::<(u32, Position)>() - 1);
-    let second = [glyph(&outline, 2)];
+    let positions = |recorder: &SceneRecorder| match &recorder.nodes[..] {
+        [Node::Glyphs(node)] => (node.positions.len(), node.positions.capacity()),
+        _ => (0, 1),
+    };
+    // Runs of one paint and state join a node until its positions are full.
+    let mut x = 0;
+    while positions(&recorder).0 < positions(&recorder).1 {
+        recorder
+            .glyphs(&run(
+                &font,
+                &[glyph(&outline, x)],
+                TextRenderingMode::Fill,
+                &black,
+                &pen,
+                &composite,
+            ))
+            .unwrap();
+        x += 2;
+    }
+    let (full, _) = positions(&recorder);
+    allowance(&mut recorder, (full + 1) * size_of::<(u32, Position)>() - 1);
+    let second = [glyph(&outline, x)];
     let error = recorder
         .glyphs(&run(
             &font,
@@ -137,7 +146,7 @@ fn glyph_positions_reserve_before_growth() {
             node.positions.capacity(),
             node.placements.len()
         ),
-        (1, 1, 1)
+        (full, full, full)
     );
 }
 
