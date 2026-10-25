@@ -556,3 +556,60 @@ fn painted_sets_name_their_channels() {
     assert_eq!(Painted::all(64), Painted(u64::MAX));
     assert!(Painted(0b100).contains(2) && !Painted(0b100).contains(1) && !Painted(1).contains(64));
 }
+
+#[test]
+fn arithmetic_conversions_evaluate_no_function_or_transform() {
+    let mut rng = Rng::new(7);
+    let (tint, _) = tint_function(&mut rng, 1, 3);
+    let (black, _) = tint_function(&mut rng, 1, 1);
+    let (rgb, cmyk) = (Target::new(Process::Rgb), Target::new(Process::Cmyk));
+    let plain = Conversion::default();
+    let generated = Conversion {
+        black_generation: Some(black),
+        ..Conversion::default()
+    };
+    let arithmetic = |space: ColorSpace, target: &Target, conversion: &Conversion| {
+        Converter::new(&space, target, conversion)
+            .unwrap()
+            .arithmetic()
+    };
+    let icc = |profile| {
+        ColorSpace::Icc(Arc::new(IccSpace {
+            profile,
+            alternate: Arc::new(ColorSpace::DeviceRgb),
+            components: 3,
+            range: [[0.0, 1.0]; 4],
+            object: None,
+        }))
+    };
+    let indexed = ColorSpace::Indexed(Arc::new(Indexed {
+        base: Arc::new(ColorSpace::DeviceCmyk),
+        high: 1,
+        lookup: vec![0; 8].into(),
+    }));
+    for space in [
+        ColorSpace::DeviceGray,
+        ColorSpace::DeviceRgb,
+        indexed,
+        icc(None),
+    ] {
+        assert!(arithmetic(space.clone(), &rgb, &plain));
+        assert!(arithmetic(space, &cmyk, &plain));
+    }
+    assert!(arithmetic(ColorSpace::DeviceCmyk, &cmyk, &generated));
+    assert!(!arithmetic(ColorSpace::DeviceRgb, &cmyk, &generated));
+    assert!(!arithmetic(
+        icc(Some(profile("sampled-rgb", 3))),
+        &rgb,
+        &plain
+    ));
+    let lab = Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0, 100.0, -90.0, 90.0]);
+    let lab = ColorSpace::Calibrated(Arc::new(lab.unwrap()));
+    assert!(!arithmetic(lab, &rgb, &plain));
+    let spot = ColorSpace::Separation(Arc::new(Separation {
+        colorant: Colorant::Named(Name::new(b"SpotA")),
+        alternate: Arc::new(ColorSpace::DeviceRgb),
+        tint,
+    }));
+    assert!(!arithmetic(spot, &rgb, &plain));
+}

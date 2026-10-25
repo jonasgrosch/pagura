@@ -372,7 +372,13 @@ impl Strategy {
             let entries = usize::try_from(samples).unwrap_or(usize::MAX);
             let opaque = colors.key.is_none() && colors.embedded.is_none();
             let held = if opaque { lanes - 2 } else { lanes };
-            return Ok(Self::Memo(MemoLayout::new(key, (held, opaque), entries)));
+            let replacing = colors.convert.arithmetic();
+            return Ok(Self::Memo(MemoLayout::new(
+                key,
+                (held, opaque),
+                entries,
+                replacing,
+            )));
         }
         Ok(Self::General)
     }
@@ -835,14 +841,23 @@ fn hash_slot(key: u64, mask: usize) -> usize {
 /// at most 48 bits, so each is held exactly as an f64. The memo holds at
 /// most one texel per 16 samples of its image (at least 4096, at most
 /// [`MemoLayout::CAP`]), so that what it reserves stays near the decoded samples'
-/// own size; a sample past them is converted without being kept. Every
-/// texel held is its key's, so what the memo holds never changes a value.
+/// own size; a sample past them is converted without being kept.
+///
+/// An arithmetic conversion costs less than a lookup that misses the
+/// cache, as one into a large table of a photograph does. Its memo
+/// replaces instead: at most [`MemoLayout::REPLACING`] slots, each holding
+/// the texel of the last key that reached it, so the table stays in a
+/// core's cache and keeps the colours that repeat nearby. Every texel held
+/// is its key's, so what the memo holds never changes a value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct MemoLayout {
     key: Key,
     opaque: bool,
     held: usize,
     limit: usize,
+    /// Whether a key takes its first slot from the one held there, rather
+    /// than a free slot while fewer than `limit` are held.
+    replacing: bool,
 }
 
 /// Mutable memo values, allocated in the caller's render scratch.
@@ -851,6 +866,7 @@ pub(super) struct Memo {
     layout: MemoLayout,
     slots: Vec<f64>,
     len: usize,
+    /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
 }
 
@@ -861,13 +877,19 @@ impl MemoLayout {
     /// The most texels kept.
     pub(super) const CAP: usize = 1 << 20;
 
-    /// The memo of an image of `samples` samples.
-    fn new(key: Key, (held, opaque): (usize, bool), samples: usize) -> Self {
+    /// The most slots of a replacing memo: about half a megabyte of RGB or
+    /// CMYK texels.
+    pub(super) const REPLACING: usize = 1 << 14;
+
+    /// The memo of an image of `samples` samples, replacing for an
+    /// arithmetic conversion.
+    fn new(key: Key, (held, opaque): (usize, bool), samples: usize, replacing: bool) -> Self {
         Self {
             key,
             opaque,
             held,
             limit: (samples / 16).clamp(4096, Self::CAP),
+            replacing,
         }
     }
 
@@ -883,9 +905,13 @@ impl MemoLayout {
     }
 
     fn values(self) -> usize {
-        (2 * self.limit)
-            .next_power_of_two()
-            .saturating_mul(1 + self.held)
+        let slots = (2 * self.limit).next_power_of_two();
+        let slots = if self.replacing {
+            slots.min(Self::REPLACING)
+        } else {
+            slots
+        };
+        slots.saturating_mul(1 + self.held)
     }
 
     /// Tightens only a source proven to have few distinct sample keys.
@@ -937,30 +963,33 @@ impl Memo {
     /// a texel of every lane unless held.
     #[inline]
     fn get(&mut self, key: u64, convert: impl FnOnce(&mut [f64])) -> &[f64] {
-        let stride = 1 + self.layout.held;
+        let held = self.layout.held;
+        let stride = 1 + held;
         #[expect(
             clippy::cast_precision_loss,
             reason = "keys have at most 48 bits, which f64 holds exactly"
         )]
         let wanted = key as f64;
-        let slot = self.slot(key, wanted);
-        if self.slots.get(slot * stride).copied() != Some(wanted) {
-            let mut texel = [0.0; MAX_LANES];
-            let count = self.layout.held + usize::from(self.layout.opaque) * 2;
-            convert(&mut texel[..count]);
-            if self.len >= self.layout.limit {
-                self.spare[..self.layout.held].copy_from_slice(&texel[..self.layout.held]);
-                return &self.spare[..self.layout.held];
-            }
-            let at = slot * stride;
-            if let Some(entry) = self.slots.get_mut(at..at + stride) {
-                entry[0] = wanted;
-                entry[1..].copy_from_slice(&texel[..self.layout.held]);
+        let slot = if self.layout.replacing {
+            hash_slot(key, self.slots.len() / stride - 1)
+        } else {
+            self.slot(key, wanted)
+        };
+        let at = slot * stride;
+        if self.slots.get(at).copied() != Some(wanted) {
+            convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
+            if !self.layout.replacing {
+                if self.len >= self.layout.limit {
+                    return &self.spare[..held];
+                }
                 self.len += 1;
             }
+            if let Some(entry) = self.slots.get_mut(at..at + stride) {
+                entry[0] = wanted;
+                copy_texel(&mut entry[1..], &self.spare[..held]);
+            }
         }
-        let at = slot * stride + 1;
-        self.slots.get(at..at + self.layout.held).unwrap_or(&[])
+        self.slots.get(at + 1..at + stride).unwrap_or(&[])
     }
 
     /// The slot of `key` (held as `wanted`), or the free slot it goes into.
@@ -1134,6 +1163,7 @@ mod tests {
             },
             (3, true),
             1,
+            false,
         );
         layout
             .fit(
@@ -1191,7 +1221,7 @@ mod tests {
             matte: false,
             embedded: false,
         };
-        let mut layout = MemoLayout::new(key, (3, true), 1_000_000);
+        let mut layout = MemoLayout::new(key, (3, true), 1_000_000, false);
         let before = layout;
         let mut work = Meter::new(100_000, "test");
         let mut bytes = Meter::new(32_768, "test");
@@ -1210,9 +1240,9 @@ mod tests {
             matte: false,
             embedded: false,
         };
-        assert!(MemoLayout::new(key, (3, true), 1_000_000).bytes() <= 8_000_000);
-        assert!(MemoLayout::new(key, (4, true), 64).bytes() <= (8 << 12) * 5 * 8);
-        let mut memo = MemoLayout::new(key, (3, true), 0).make().unwrap();
+        assert!(MemoLayout::new(key, (3, true), 1_000_000, false).bytes() <= 8_000_000);
+        assert!(MemoLayout::new(key, (4, true), 64, false).bytes() <= (8 << 12) * 5 * 8);
+        let mut memo = MemoLayout::new(key, (3, true), 0, false).make().unwrap();
         let texel = |key: u64| {
             #[expect(clippy::cast_precision_loss, reason = "small test keys")]
             let value = key as f64;
@@ -1225,5 +1255,40 @@ mod tests {
             }
         }
         assert_eq!(memo.len, memo.layout.limit);
+    }
+
+    /// A replacing memo stays within its slots however large its image,
+    /// holds the texel of the last key in each slot, and converts a key
+    /// again once another has taken its slot.
+    #[test]
+    fn a_replacing_memo_stays_small_and_holds_the_last_key_of_each_slot() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let layout = MemoLayout::new(key, (3, true), 1 << 30, true);
+        assert_eq!(layout.values(), MemoLayout::REPLACING * 4);
+        let mut memo = layout.make().unwrap();
+        let texel = |key: u64| {
+            #[expect(clippy::cast_precision_loss, reason = "small test keys")]
+            let value = key as f64;
+            [value, value + 0.5, value * 2.0]
+        };
+        let keys = 0..3 * u64::try_from(MemoLayout::REPLACING).unwrap();
+        let mut converted = 0;
+        for round in 0..2 {
+            for k in keys.clone() {
+                for _ in 0..2 {
+                    let held = memo.get(k, |out| {
+                        converted += 1;
+                        out[..3].copy_from_slice(&texel(k));
+                    });
+                    assert_eq!(held, texel(k), "key {k} round {round}");
+                }
+            }
+        }
+        let count = usize::try_from(keys.end).unwrap();
+        assert!(converted > count && converted < 2 * count, "{converted}");
     }
 }
