@@ -306,7 +306,13 @@ translation is included too. Only an allowance below 1/1024 of one coverage
 level skips inspection; larger or non-finite allowances use the measured
 certificate. The admission work is cached with the linear glyph map, so
 ordinary repeated placements perform only a constant-size check. Polygon
-placements and reduced cubics are always inspected. Ambiguous pixels are
+placements and reduced cubics are always inspected. A polygon pixel that the
+whole-outline allowance leaves ambiguous is checked again against the shares
+of only the curves whose boxes meet it: subdivision keeps a curve's controls
+within its control box, so the box's mapped corners, widened by the mapping
+and hull rounding of the deepest subdivision, contain every hull that spends
+its share. Outlines with cubics keep the whole allowance, since their reduced
+quadratics may leave their control boxes. Ambiguous pixels are
 resolved from the original stored curves in a pixel-local frame using the
 shared bounded subdivision and row-union arithmetic. Accepted control hulls
 bound the area uncertainty under the canonical clips. Integer localization
