@@ -43,8 +43,9 @@ sessions shared it at a one-minute load average of 7–15 (median 10), and
 runs held the bench lock.
 
 Medians ran in one process per job, with variants in rotating order over 9
-rounds. Ratios are geometric means over jobs. These are exploratory numbers
-on a shared machine, not a performance claim (ADR 0002).
+rounds. Ratios are geometric means over jobs. A second full run, at a median
+load of 8.4, agreed within 0.06 on every ratio below. These are exploratory
+numbers on a shared machine, not a performance claim (ADR 0002).
 
 - A cold render opens the document, records the page, prepares it and
   executes it in fresh storage.
