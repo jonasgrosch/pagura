@@ -786,6 +786,9 @@ impl<'a> SampleKeys<'a> {
 
     /// Counts at most 2048 distinct keys. A photographic source ends the
     /// scan as soon as it exceeds that count and keeps its original bound.
+    /// Each sample costs one work unit and each probe one more; a sample
+    /// equal to the one before it is not probed, so a run of equal samples
+    /// is passed at once and charged with its first sample's probes.
     fn distinct(&self, work: &mut Meter, bytes: &mut Meter) -> Result<Option<usize>> {
         const COUNT: usize = 2048;
         const EMPTY: u64 = u64::MAX;
@@ -796,23 +799,19 @@ impl<'a> SampleKeys<'a> {
             work.charge(COUNT * 2)?;
             slots.resize(COUNT * 2, EMPTY);
             let mut distinct = 0;
-            let mut previous = None;
-            for index in 0..self.count {
-                work.charge(1)?;
+            let mut index = 0;
+            while index < self.count {
                 let key = self.get(index);
-                if previous == Some(key) {
-                    continue;
-                }
-                previous = Some(key);
                 let mut slot = hash_slot(key, slots.len() - 1);
+                let mut probes = 1;
                 loop {
-                    work.charge(1)?;
                     let held = slots[slot];
                     if held == key {
                         break;
                     }
                     if held == EMPTY {
                         if distinct == COUNT {
+                            work.charge(1 + probes)?;
                             return Ok(None);
                         }
                         slots[slot] = key;
@@ -820,13 +819,59 @@ impl<'a> SampleKeys<'a> {
                         break;
                     }
                     slot = (slot + 1) & (slots.len() - 1);
+                    probes += 1;
                 }
+                let end = self.run_end(key, index + 1);
+                work.charge(end - index + probes)?;
+                index = end;
             }
             Ok(Some(distinct))
         })();
         drop(slots);
         bytes.refund(allocated);
         result
+    }
+
+    /// The first sample from `from` on whose key is not `key`, the key of
+    /// every sample from the one before `from`; `count` if there is none.
+    /// Short runs end sample by sample; past those, blocks of samples whose
+    /// codes equal the ones before them in every plane are passed at once.
+    fn run_end(&self, key: u64, from: usize) -> usize {
+        const BLOCK: usize = 16;
+        let c = self.components;
+        let short = from.saturating_add(BLOCK / 2).min(self.count);
+        let mut end = from;
+        while end < short && self.get(end) == key {
+            end += 1;
+        }
+        if end < short {
+            return end;
+        }
+        while end + BLOCK <= self.count
+            && unchanged(self.colors, end * c, c, BLOCK * c)
+            && [self.matte, self.embedded]
+                .into_iter()
+                .flatten()
+                .all(|codes| unchanged(codes, end, 1, BLOCK))
+        {
+            end += BLOCK;
+        }
+        while end < self.count && self.get(end) == key {
+            end += 1;
+        }
+        end
+    }
+}
+
+/// Whether the `len` codes from `start` on equal the ones `stride` before
+/// them, all of them present.
+fn unchanged(codes: &[u8], start: usize, stride: usize, len: usize) -> bool {
+    let earlier = start
+        .checked_sub(stride)
+        .and_then(|at| codes.get(at..at + len));
+    match (codes.get(start..start + len), earlier) {
+        (Some(a), Some(b)) => a.iter().zip(b).fold(0, |differ, (x, y)| differ | (x ^ y)) == 0,
+        _ => false,
     }
 }
 
@@ -1217,6 +1262,78 @@ mod tests {
         assert_eq!(layout, before);
         assert_eq!(bytes.used(), 0);
         assert!(work.used() < 4096 + 3 * 3000);
+    }
+
+    /// Skipping runs finds what probing sample by sample finds, for the
+    /// same work: runs that end in either plane or past a short plane, and
+    /// the photographic end of the scan.
+    #[test]
+    fn capacity_discovery_skips_runs_for_the_work_of_a_sample_scan() {
+        fn sampled(keys: &SampleKeys<'_>, work: &mut Meter) -> Option<usize> {
+            let mut slots = vec![u64::MAX; 4096];
+            work.charge(4096).unwrap();
+            let (mut distinct, mut previous) = (0, None);
+            for index in 0..keys.count {
+                work.charge(1).unwrap();
+                let key = keys.get(index);
+                if previous.replace(key) == Some(key) {
+                    continue;
+                }
+                let mut slot = super::hash_slot(key, 4095);
+                while work.charge(1).is_ok() && slots[slot] != key {
+                    if slots[slot] == u64::MAX {
+                        if distinct == 2048 {
+                            return None;
+                        }
+                        (slots[slot], distinct) = (key, distinct + 1);
+                        break;
+                    }
+                    slot = (slot + 1) & 4095;
+                }
+            }
+            Some(distinct)
+        }
+        let mut state = 7_u32;
+        let mut next = |n: u32| {
+            state = state.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+            u8::try_from((state >> 16) % n).unwrap()
+        };
+        for (count, components, colours, runs, short) in [
+            (9000, 3, 3, 40, 0),
+            (9000, 1, 2, 40, 40),
+            (9000, 4, 255, 2, 0),
+            (700, 2, 9, 40, 1),
+        ] {
+            let mut colors: Vec<u8> = Vec::new();
+            let mut matte = Vec::new();
+            while matte.len() < count {
+                let run = usize::from(next(runs)) + 1;
+                let code: Vec<_> = (0..components).map(|_| next(colours)).collect();
+                let opacity = next(2);
+                for _ in 0..run {
+                    colors.extend(&code);
+                    matte.push(if next(9) == 0 { 1 - opacity } else { opacity });
+                }
+            }
+            colors.truncate(count * components - short * components);
+            matte.truncate(count - short / 2);
+            let keys = SampleKeys {
+                components,
+                count,
+                colors: &colors,
+                matte: Some(&matte),
+                embedded: (components == 2).then_some(&matte[..count / 3]),
+            };
+            let (mut expected, mut skipped) = (Meter::new(1 << 30, "t"), Meter::new(1 << 30, "t"));
+            let found = keys.distinct(&mut skipped, &mut Meter::new(1 << 20, "t"));
+            assert_eq!(found.unwrap(), sampled(&keys, &mut expected));
+            assert_eq!(skipped.used(), expected.used());
+            let mut tight = Meter::new(expected.used() - 1, "t");
+            assert!(
+                keys.distinct(&mut tight, &mut Meter::new(1 << 20, "t"))
+                    .is_err()
+            );
+        }
     }
 
     /// The memo reserves less than eight bytes a sample of its image, and
