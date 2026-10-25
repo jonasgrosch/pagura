@@ -26,6 +26,7 @@
 
 use super::edges::Line;
 use crate::FillRule;
+use crate::geometry::{greater, lesser};
 use pagura_core::{Error, Meter, Result};
 
 /// One edge's part within the row being resolved.
@@ -50,8 +51,8 @@ impl Piece {
             return None;
         }
         let (upper, lower, direction) = if a.y < b.y { (a, b, 1) } else { (b, a, -1) };
-        let lo = upper.y.max(top);
-        let hi = lower.y.min(top + 1.0);
+        let lo = greater(upper.y, top);
+        let hi = lesser(lower.y, top + 1.0);
         (lo < hi).then_some(Self {
             line,
             lo,
@@ -64,7 +65,7 @@ impl Piece {
     /// The leftmost and rightmost x of the piece.
     fn columns(&self) -> (f64, f64) {
         let (a, b) = (self.line.x(self.lo), self.line.x(self.hi));
-        (a.min(b), a.max(b))
+        (lesser(a, b), greater(a, b))
     }
 }
 
@@ -405,8 +406,8 @@ impl Resolver {
                     break;
                 }
                 let q = pieces[j as usize];
-                let lo = p.lo.max(q.lo);
-                let hi = p.hi.min(q.hi);
+                let lo = greater(p.lo, q.lo);
+                let hi = lesser(p.hi, q.hi);
                 if lo >= hi {
                     continue;
                 }
@@ -621,8 +622,8 @@ fn push_side(
     } else {
         (line.b, line.a)
     };
-    let from = from.max(upper.y);
-    let to = to.min(lower.y);
+    let from = greater(from, upper.y);
+    let to = lesser(to, lower.y);
     if from >= to {
         return Ok(());
     }

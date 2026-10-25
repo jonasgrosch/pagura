@@ -1,5 +1,6 @@
 //! Bounded adaptive subdivision in device space.
 
+use crate::geometry::{greater, lesser};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -63,10 +64,10 @@ impl Hull {
         };
         Self {
             bounds: [
-                (a.x.min(b.x).min(c.x).min(d.x) - rounding).next_down(),
-                (a.y.min(b.y).min(c.y).min(d.y) - rounding).next_down(),
-                (a.x.max(b.x).max(c.x).max(d.x) + rounding).next_up(),
-                (a.y.max(b.y).max(c.y).max(d.y) + rounding).next_up(),
+                (lesser(lesser(a.x, b.x), lesser(c.x, d.x)) - rounding).next_down(),
+                (lesser(lesser(a.y, b.y), lesser(c.y, d.y)) - rounding).next_down(),
+                (greater(greater(a.x, b.x), greater(c.x, d.x)) + rounding).next_up(),
+                (greater(greater(a.y, b.y), greater(c.y, d.y)) + rounding).next_up(),
             ],
             area: (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 8.0 * f64::EPSILON),
         }
