@@ -115,30 +115,55 @@ fn colors<B: Blend, const KNOCKOUT: bool>(run: Run<'_, '_>) {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct Counts {
     process: usize,
     channels: usize,
     preserve: u64,
 }
 
+/// CMYK without spot channels or kept components, as print pages blend.
+const CMYK: Counts = Counts {
+    process: 4,
+    channels: 4,
+    preserve: 0,
+};
+
 fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
     run: Run<'_, '_>,
     colors: impl Iterator<Item = &'c [f64]>,
+) {
+    let layout = run.mode.layout;
+    let counts = Counts {
+        process: layout.process.components(),
+        channels: layout.channels(),
+        preserve: run.mode.preserve,
+    };
+    // Normal onto CMYK with constant counts: the compiler unrolls the
+    // channel loops, while the operations and their order stay `paint`'s.
+    if B::NORMAL && counts == CMYK {
+        each::<B, KNOCKOUT>(run, colors, (CMYK, CMYK.channels + 3));
+    } else {
+        each::<B, KNOCKOUT>(run, colors, (counts, layout.stride()));
+    }
+}
+
+#[expect(
+    clippy::inline_always,
+    reason = "each call site specializes the loop for its counts"
+)]
+#[inline(always)]
+fn each<'c, B: Blend, const KNOCKOUT: bool>(
+    run: Run<'_, '_>,
+    colors: impl Iterator<Item = &'c [f64]>,
+    (counts, stride): (Counts, usize),
 ) {
     let Run {
         pixels,
         sources,
         initial,
-        mode,
+        ..
     } = run;
-    let layout = mode.layout;
-    let stride = layout.stride();
-    let counts = Counts {
-        process: layout.process.components(),
-        channels: layout.channels(),
-        preserve: mode.preserve,
-    };
     let sources = sources.alpha.iter().zip(sources.shape).zip(colors);
     let targets = pixels.chunks_exact_mut(stride);
     if KNOCKOUT {
@@ -160,7 +185,11 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
 /// With opacity `q` (alpha, or alpha over shape for knockout), the colour is
 /// `(1 − q)·b + q·((1 − αb)·c + αb·B(b, c))` on premultiplied `b`
 /// (11.3.3); knockout then mixes it with the pixel by shape (11.4.6).
-#[inline]
+#[expect(
+    clippy::inline_always,
+    reason = "inlined into each loop, so that constant counts specialize it"
+)]
+#[inline(always)]
 fn paint<B: Blend, const KNOCKOUT: bool>(
     pixel: &mut [f64],
     color: &[f64],

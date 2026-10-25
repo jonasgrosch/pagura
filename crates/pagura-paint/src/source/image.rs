@@ -658,36 +658,60 @@ impl Straight<'_> {
         if let Some(shape) = shape.as_deref_mut() {
             shape.clear();
         }
+        let scales_shape = self.mask.is_some_and(|mask| mask.scales_shape);
         for (texel, alpha) in self.summed.chunks_exact(self.stride).zip(alpha) {
             let (factor, texel) = match self.mask {
                 Some(Weight { fused: true, .. }) => (Some(texel[0]), &texel[1..]),
                 Some(Weight { fused: false, .. }) => (Some(*alpha), texel),
                 None => (None, texel),
             };
-            let start = colors.len();
-            colors.extend_from_slice(&texel[..channels]);
-            let color = &mut colors[start..];
-            let (mut opacity, mut own) = (texel[channels], texel[channels + 1]);
-            if let Some(factor) = factor {
-                for value in color.iter_mut() {
-                    *value *= factor;
+            let held = (texel[channels], texel[channels + 1]);
+            // A fixed count keeps each pixel's colour in registers.
+            let (opacity, own) = match texel.first_chunk::<C>() {
+                Some(color) if C > 0 => {
+                    let mut color = *color;
+                    let held = straighten(&mut color, held, (factor, scales_shape));
+                    colors.extend_from_slice(&color);
+                    held
                 }
-                opacity *= factor;
-                if self.mask.is_some_and(|mask| mask.scales_shape) {
-                    own *= factor;
+                _ => {
+                    let start = colors.len();
+                    colors.extend_from_slice(&texel[..channels]);
+                    straighten(&mut colors[start..], held, (factor, scales_shape))
                 }
-            }
-            if opacity != 1.0 {
-                for value in color.iter_mut() {
-                    *value = if opacity > 0.0 { *value / opacity } else { 0.0 };
-                }
-            }
+            };
             *alpha = opacity;
             if let Some(shape) = shape.as_deref_mut() {
                 shape.push(own);
             }
         }
     }
+}
+
+/// Weights a texel's `color`, opacity and (when `scales_shape`) shape by
+/// a mask's `factor`, then divides the colour by the opacity: its straight
+/// colour, opacity and shape.
+#[inline]
+fn straighten(
+    color: &mut [f64],
+    (mut opacity, mut own): (f64, f64),
+    (factor, scales_shape): (Option<f64>, bool),
+) -> (f64, f64) {
+    if let Some(factor) = factor {
+        for value in color.iter_mut() {
+            *value *= factor;
+        }
+        opacity *= factor;
+        if scales_shape {
+            own *= factor;
+        }
+    }
+    if opacity != 1.0 {
+        for value in color.iter_mut() {
+            *value = if opacity > 0.0 { *value / opacity } else { 0.0 };
+        }
+    }
+    (opacity, own)
 }
 
 struct SamplingBuffers<'a> {

@@ -544,6 +544,9 @@ impl Separable {
                     2 => pick::<2, R::Value>(cells, gathered),
                     3 => pick::<3, R::Value>(cells, gathered),
                     4 => pick::<4, R::Value>(cells, gathered),
+                    // CMYK texels, with a fused mask opacity or alpha.
+                    5 => pick::<5, R::Value>(cells, gathered),
+                    6 => pick::<6, R::Value>(cells, gathered),
                     _ => {
                         let (values, cells, first) = cells;
                         for (out, &cell) in gathered.chunks_exact_mut(n.max(1)).zip(cells) {
