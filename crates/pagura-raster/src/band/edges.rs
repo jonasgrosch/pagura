@@ -655,63 +655,36 @@ impl Polygon {
         // Relink by start point: any pairing at a shared vertex keeps the
         // winding, but which one is taken shapes the contours.
         kept.sort_unstable();
-        let mut links: Vec<Keyed> = Vec::new();
-        bytes.reserve(&mut links, kept.len())?;
-        links.extend(kept.iter().map(|&(from, a)| {
-            let to = keys[next[a]];
-            Keyed {
-                lo: from.min(to),
-                hi: from.max(to),
-                forward: from <= to,
-                from,
-                to,
-                a: self.points[a],
-            }
-        }));
-        if links.windows(2).any(|w| w[0].from == w[1].from) {
-            // Sides that share a start keep the order they had from sorting
-            // these values by undirected key, then by start. Sides with
-            // equal undirected keys and directions are equal.
-            links.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
-            links.sort_unstable_by_key(|e| e.from);
+        if kept.windows(2).any(|w| w[0].0 == w[1].0) {
+            shared_order(&mut kept, (&keys, &next, &self.points), bytes)?;
         }
-        // Where each link's successors start: the links by end merged with
-        // the links by start.
-        let by_end = &mut kept;
-        by_end.clear();
-        by_end.extend(links.iter().enumerate().map(|(i, e)| (e.to, i)));
-        by_end.sort_unstable();
-        let mut successors: Vec<usize> = Vec::new();
-        bytes.reserve(&mut successors, links.len())?;
-        successors.resize(links.len(), 0);
-        let mut first = 0;
-        for &(to, i) in by_end.iter() {
-            first += links[first..].iter().take_while(|e| e.from < to).count();
-            successors[i] = first;
-        }
+        let firsts = Firsts::new(&kept, bytes)?;
         let mut used: Vec<bool> = Vec::new();
-        bytes.reserve(&mut used, links.len())?;
-        used.resize(links.len(), false);
+        bytes.reserve(&mut used, kept.len())?;
+        used.resize(kept.len(), false);
         let mut points = Vec::new();
         let mut starts = Vec::new();
-        bytes.reserve(&mut points, links.len())?;
-        for first in 0..links.len() {
+        bytes.reserve(&mut points, kept.len())?;
+        for first in 0..kept.len() {
             if used[first] {
                 continue;
             }
             bytes.reserve_capacity(&mut starts, 1)?;
             starts.push(points.len());
-            let origin = links[first].from;
+            let origin = kept[first].0;
             let mut current = first;
             loop {
                 used[current] = true;
-                points.push(links[current].a);
-                let next = links[current].to;
-                if next == origin {
+                let a = kept[current].1;
+                points.push(self.points[a]);
+                let end = keys[next[a]];
+                if end == origin {
                     break;
                 }
-                let Some(found) = (successors[current]..links.len())
-                    .take_while(|&i| links[i].from == next)
+                // The first unused side that starts at the end continues
+                // the contour.
+                let Some(found) = (firsts.get(&kept, end)..kept.len())
+                    .take_while(|&i| kept[i].0 == end)
                     .find(|&i| !used[i])
                 else {
                     return Ok(None);
@@ -802,6 +775,101 @@ fn uncancelled(
     Ok(kept)
 }
 
+/// The first place of each start key among sides ordered by start key, in
+/// an open-addressed table of places.
+struct Firsts {
+    places: Vec<usize>,
+    mask: usize,
+}
+
+impl Firsts {
+    fn new(sides: &[((i64, i64), usize)], bytes: &mut Meter) -> Result<Self> {
+        let size = sides
+            .len()
+            .saturating_mul(2)
+            .checked_next_power_of_two()
+            .ok_or(Error::limit("relink table size overflows"))?;
+        let mut places = Vec::new();
+        bytes.reserve(&mut places, size)?;
+        places.resize(size, usize::MAX);
+        let mask = size - 1;
+        for (place, side) in sides.iter().enumerate() {
+            if place > 0 && sides[place - 1].0 == side.0 {
+                continue;
+            }
+            let mut slot = slot(side.0) & mask;
+            while places[slot] != usize::MAX {
+                slot = (slot + 1) & mask;
+            }
+            places[slot] = place;
+        }
+        Ok(Self { places, mask })
+    }
+
+    /// The first place of the sides starting at `key`, or past them all.
+    fn get(&self, sides: &[((i64, i64), usize)], key: (i64, i64)) -> usize {
+        let mut slot = slot(key) & self.mask;
+        while let Some(&place) = self.places.get(slot).filter(|&&p| p != usize::MAX) {
+            if sides[place].0 == key {
+                return place;
+            }
+            slot = (slot + 1) & self.mask;
+        }
+        sides.len()
+    }
+}
+
+/// A table slot for a point key.
+#[expect(
+    clippy::cast_sign_loss,
+    reason = "bit reinterpretation of the integer key"
+)]
+fn slot(key: (i64, i64)) -> usize {
+    let hash = (key.0 as u64 ^ (key.1 as u64).rotate_left(32)).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    usize::try_from(hash >> 32).unwrap_or_default()
+}
+
+/// Orders the `kept` sides, by start key and index, that share a start as
+/// sorting their keyed values by undirected key and then by start leaves
+/// them; the sides elsewhere keep their places.
+fn shared_order(
+    kept: &mut [((i64, i64), usize)],
+    (keys, next, points): (&[(i64, i64)], &[usize], &[Point]),
+    bytes: &mut Meter,
+) -> Result<()> {
+    let mut links: Vec<Keyed> = Vec::new();
+    bytes.reserve(&mut links, kept.len())?;
+    links.extend(kept.iter().map(|&(from, a)| {
+        let to = keys[next[a]];
+        Keyed {
+            lo: from.min(to),
+            hi: from.max(to),
+            forward: from <= to,
+            from,
+            to,
+            a: points[a],
+        }
+    }));
+    // Sides with equal undirected keys and directions are equal.
+    links.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+    links.sort_unstable_by_key(|e| e.from);
+    let mut sides: Vec<usize> = Vec::new();
+    bytes.reserve(&mut sides, kept.len())?;
+    let mut first = 0;
+    for same in kept.chunk_by_mut(|p, q| p.0 == q.0) {
+        // The sorts moved sides only among those of one start.
+        sides.clear();
+        sides.extend(same.iter().map(|&(_, a)| a));
+        for (place, e) in same.iter_mut().zip(&links[first..]) {
+            if let Some(&a) = sides.iter().find(|&&a| keys[next[a]] == e.to) {
+                place.1 = a;
+            }
+        }
+        first += same.len();
+    }
+    Ok(())
+}
+
 /// A kept edge keyed for relinking: its ends' integer keys, undirected and
 /// directed, and its first end. Edges that share a start take the order an
 /// unstable sort of these values gives them, which depends on their size.
@@ -812,6 +880,7 @@ struct Keyed {
     forward: bool,
     from: (i64, i64),
     to: (i64, i64),
+    #[expect(dead_code, reason = "the sorts' tie order depends on the size")]
     a: Point,
 }
 
