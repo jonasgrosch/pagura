@@ -26,7 +26,7 @@ use crate::kernel::{self, Colors, Mode, Sources};
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Completion;
 use crate::prepare::Shapes;
-use crate::source::{Pixels, Source, SpanColors};
+use crate::source::{Pixels, Precision, Source, SpanColors};
 use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, RowOut, Span};
@@ -382,7 +382,7 @@ impl<'a> Executor<'a> {
         let constant = paint.constant();
         if constant.is_none()
             && (paint_words(ws, (mark, paint), frame, (x, y), cover)
-                || !fill_colors(ws, (mark, paint), (x, y), len))
+                || !fill_colors(ws, (mark, paint), frame, (x, y), len))
         {
             return;
         }
@@ -480,6 +480,7 @@ impl<'a> Executor<'a> {
 fn fill_colors(
     ws: &mut Workspace,
     (mark, paint): (&Mark, &Source),
+    frame: Frame,
     (x, y): (u32, u32),
     len: usize,
 ) -> bool {
@@ -494,11 +495,22 @@ fn fill_colors(
         }
         Boundary::Absent => None,
     };
+    // A mark stores into F32 levels through `kernel::level` alone.
+    let levels = match frame.buffer {
+        Buffer::Levels(_) => true,
+        Buffer::Page => matches!(ws.page, PageBuffer::F32(_)),
+        Buffer::Wide(_) => false,
+    };
     let pixels = Pixels {
         x,
         y,
         len,
         boundary: outline,
+        precision: if levels {
+            Precision::Level
+        } else {
+            Precision::Exact
+        },
     };
     let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
         return false;

@@ -147,25 +147,55 @@ impl Curve {
     /// The curve at `x`, clipped to `0..=1`. Undefined arithmetic (NaN or
     /// negative infinity) gives 0 and is recorded in `arithmetic`.
     pub(super) fn evaluate(&self, x: f64, arithmetic: &mut Arithmetic) -> f64 {
-        let value = match self {
-            Self::Identity => x,
-            Self::Gamma(g) => x.powf(*g),
-            Self::Samples(values) => {
-                let position = x * usize_f64(values.len() - 1);
-                let low = sample_index(position).min(values.len() - 1);
-                let high = (low + 1).min(values.len() - 1);
-                values[low] + (position - usize_f64(low)) * (values[high] - values[low])
-            }
-            Self::Parametric(curve) => curve.evaluate(x),
-        };
-        // Positive overflow has a defined clipped value (10.16). NaN and
-        // negative infinity indicate genuinely undefined arithmetic.
-        if value.is_nan() || value == f64::NEG_INFINITY {
-            arithmetic.undefined = true;
-            return 0.0;
+        match self {
+            Self::Identity => finish(x, arithmetic),
+            Self::Gamma(g) => finish(x.powf(*g), arithmetic),
+            Self::Samples(values) => Self::sampled(values, x, arithmetic),
+            Self::Parametric(curve) => finish(curve.evaluate(x), arithmetic),
         }
-        value.clamp(0.0, 1.0)
     }
+
+    /// [`Self::evaluate`] of every value in place, the curve's kind chosen
+    /// once.
+    pub(super) fn evaluate_line(&self, values: &mut [f64], arithmetic: &mut Arithmetic) {
+        match self {
+            Self::Samples(samples) => {
+                for value in values {
+                    *value = Self::sampled(samples, *value, arithmetic);
+                }
+            }
+            _ => {
+                for value in values {
+                    *value = self.evaluate(*value, arithmetic);
+                }
+            }
+        }
+    }
+
+    /// [`Self::evaluate`] of a sampled curve.
+    #[inline]
+    fn sampled(values: &[f64], x: f64, arithmetic: &mut Arithmetic) -> f64 {
+        let position = x * usize_f64(values.len() - 1);
+        let low = sample_index(position).min(values.len() - 1);
+        let high = (low + 1).min(values.len() - 1);
+        finish(
+            values[low] + (position - usize_f64(low)) * (values[high] - values[low]),
+            arithmetic,
+        )
+    }
+}
+
+/// A curve's value clipped to `0..=1`; NaN and negative infinity give 0 and
+/// are recorded in `arithmetic`.
+#[inline]
+fn finish(value: f64, arithmetic: &mut Arithmetic) -> f64 {
+    // Positive overflow has a defined clipped value (10.16). NaN and
+    // negative infinity indicate genuinely undefined arithmetic.
+    if value.is_nan() || value == f64::NEG_INFINITY {
+        arithmetic.undefined = true;
+        return 0.0;
+    }
+    value.clamp(0.0, 1.0)
 }
 
 impl Parametric {

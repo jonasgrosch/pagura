@@ -407,25 +407,13 @@ impl Function {
     pub fn evaluate(&self, input: &[f64], output: &mut [f64]) {
         let count = output.len().min(self.outputs);
         let (values, rest) = output.split_at_mut(count);
-        rest.fill(0.0);
+        zero(rest);
         match &self.kind {
             Kind::Exponential {
                 c0,
                 delta,
                 exponent,
-            } => {
-                let x = self.input(input, 0);
-                // `x¹` is `x` exactly, so the common linear interpolation
-                // (`N` 1) skips the `pow` call.
-                let x = if *exponent == 1.0 {
-                    x
-                } else {
-                    power(x, *exponent)
-                };
-                for ((out, &low), &delta) in values.iter_mut().zip(c0).zip(delta) {
-                    *out = low + x * delta;
-                }
-            }
+            } => exponential(self.input(input, 0), (c0, delta, *exponent), values),
             Kind::Stitching(stitching) => self.stitch(input, stitching, values),
             Kind::Sampled(sampled) => sampled.evaluate(|i| self.input(input, i), values),
             Kind::Calculator(program) => {
@@ -439,6 +427,93 @@ impl Function {
         self.clip(values);
     }
 
+    /// Evaluates a one-input function at each of `inputs` into `outputs`,
+    /// `stride` values a point, as [`Self::evaluate`] does point by point.
+    /// The evaluation is chosen once for all points, and a stitching
+    /// function passes each run of points in one subdomain to its
+    /// subfunction together.
+    pub fn evaluate_line(&self, inputs: &[f64], outputs: &mut [f64], stride: usize) {
+        if stride == 0 {
+            return;
+        }
+        let count = stride.min(self.outputs);
+        let points = outputs.chunks_exact_mut(stride).zip(inputs);
+        match &self.kind {
+            Kind::Exponential {
+                c0,
+                delta,
+                exponent,
+            } => {
+                for (output, &x) in points {
+                    let (values, rest) = output.split_at_mut(count);
+                    zero(rest);
+                    exponential(self.input(&[x], 0), (c0, delta, *exponent), values);
+                    self.clip(values);
+                }
+            }
+            Kind::Sampled(sampled) if self.inputs() == 1 => {
+                for (output, &x) in points {
+                    let (values, rest) = output.split_at_mut(count);
+                    zero(rest);
+                    let x = self.input(&[x], 0);
+                    sampled.evaluate(|_| x, values);
+                    self.clip(values);
+                }
+            }
+            Kind::Stitching(stitching) => self.stitch_line(stitching, inputs, outputs, stride),
+            Kind::Sampled(_) | Kind::Calculator(_) => {
+                for (output, x) in points {
+                    self.evaluate(std::slice::from_ref(x), output);
+                }
+            }
+        }
+    }
+
+    /// [`Self::evaluate_line`] of a stitching function: the points are
+    /// located and encoded a chunk at a time, and each run of points in one
+    /// subdomain is evaluated by its subfunction's line.
+    fn stitch_line(
+        &self,
+        stitching: &Stitching,
+        inputs: &[f64],
+        outputs: &mut [f64],
+        stride: usize,
+    ) {
+        const CHUNK: usize = 64;
+        let count = stride.min(self.outputs);
+        let points = inputs.len().min(outputs.len() / stride);
+        let inputs = &inputs[..points];
+        let outputs = &mut outputs[..points * stride];
+        let mut located = [(0_usize, 0.0); CHUNK];
+        let mut encoded = [0.0; CHUNK];
+        for (inputs, outputs) in inputs
+            .chunks(CHUNK)
+            .zip(outputs.chunks_mut(CHUNK.saturating_mul(stride)))
+        {
+            let located = &mut located[..inputs.len()];
+            for (slot, &x) in located.iter_mut().zip(inputs) {
+                *slot = self.locate(stitching, self.input(&[x], 0));
+            }
+            for (encoded, &(_, x)) in encoded.iter_mut().zip(&*located) {
+                *encoded = x;
+            }
+            let mut start = 0;
+            for run in located.chunk_by(|a, b| a.0 == b.0) {
+                let end = start + run.len();
+                if let (Some(function), Some(outputs)) = (
+                    stitching.functions.get(run[0].0),
+                    outputs.get_mut(start * stride..end * stride),
+                ) {
+                    function.evaluate_line(&encoded[start..end], outputs, stride);
+                }
+                start = end;
+            }
+            for output in outputs.chunks_exact_mut(stride) {
+                self.clip(&mut output[..count]);
+            }
+        }
+    }
+
     /// Input `i` made finite and clipped to its domain interval.
     fn input(&self, input: &[f64], i: usize) -> f64 {
         let [low, high] = self.domain.get(i).copied().unwrap_or([0.0; 2]);
@@ -449,22 +524,28 @@ impl Function {
 
     /// Makes outputs finite and clips them to the range.
     fn clip(&self, values: &mut [f64]) {
-        for (i, value) in values.iter_mut().enumerate() {
+        let range = self.range.as_deref().unwrap_or_default();
+        let (clipped, rest) = values.split_at_mut(range.len().min(values.len()));
+        for (value, &[low, high]) in clipped.iter_mut().zip(range) {
+            *value = make_finite(*value).clamp(low, high);
+        }
+        for value in rest {
             *value = make_finite(*value);
-            if let Some([low, high]) = self.range.as_ref().and_then(|r| r.get(i)) {
-                *value = value.clamp(*low, *high);
-            }
         }
     }
 
     /// Evaluates the subfunction whose subdomain holds the input (7.10.4).
     fn stitch(&self, input: &[f64], stitching: &Stitching, values: &mut [f64]) {
-        let Stitching {
-            functions,
-            bounds,
-            encode,
-        } = stitching;
-        let x = self.input(input, 0);
+        let (index, x) = self.locate(stitching, self.input(input, 0));
+        if let Some(function) = stitching.functions.get(index) {
+            function.evaluate(&[x], values);
+        }
+    }
+
+    /// The subfunction whose subdomain holds `x`, an input clipped to the
+    /// domain, and `x` encoded for it.
+    fn locate(&self, stitching: &Stitching, x: f64) -> (usize, f64) {
+        let Stitching { bounds, encode, .. } = stitching;
         let [min, max] = self.domain.first().copied().unwrap_or([0.0; 2]);
         // The first degenerate interval owns its endpoint (7.10.4).
         let index = if bounds.first() == Some(&x) && min == x {
@@ -479,9 +560,7 @@ impl Function {
             .unwrap_or(min);
         let high = bounds.get(index).copied().unwrap_or(max);
         let encode = encode.get(index).copied().unwrap_or([0.0; 2]);
-        if let Some(function) = functions.get(index) {
-            function.evaluate(&[interpolate(x, [low, high], encode)], values);
-        }
+        (index, interpolate(x, [low, high], encode))
     }
 }
 
@@ -511,6 +590,27 @@ impl Stitching {
             }
         }
         Ok(true)
+    }
+}
+
+/// Sets values beyond a function's outputs to 0; usually there are none.
+fn zero(rest: &mut [f64]) {
+    if !rest.is_empty() {
+        rest.fill(0.0);
+    }
+}
+
+/// Type 2 interpolation (7.10.3) at an input clipped to the domain.
+fn exponential(x: f64, (c0, delta, exponent): (&[f64], &[f64], f64), values: &mut [f64]) {
+    // `x¹` is `x` exactly, so the common linear interpolation (`N` 1) skips
+    // the `pow` call.
+    let x = if exponent == 1.0 {
+        x
+    } else {
+        power(x, exponent)
+    };
+    for ((out, &low), &delta) in values.iter_mut().zip(c0).zip(delta) {
+        *out = low + x * delta;
     }
 }
 
