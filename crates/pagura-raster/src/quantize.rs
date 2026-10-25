@@ -25,10 +25,11 @@ const TIE_GUARD: f64 = 1e-9;
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "a float-to-integer `as` truncates toward zero, saturates and maps NaN to 0"
+    reason = "a float-to-integer `as` truncates toward zero and maps NaN to 0; \
+              the clamped level is below 256, so the byte needs no saturation"
 )]
 pub fn quantize_unit(value: f64) -> u8 {
-    (value.clamp(0.0, 1.0) * 255.0 + 0.5 + TIE_GUARD) as u8
+    (value.clamp(0.0, 1.0) * 255.0 + 0.5 + TIE_GUARD) as u32 as u8
 }
 
 /// `round(a × b / 255)`: the product of two 8-bit unit values.
