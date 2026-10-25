@@ -819,10 +819,36 @@ fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
 
 /// Rows stored as the rasterizer emits them change the page as the same
 /// rows collected in a band coverage and stored span by span, and mark at
-/// least those spans' columns.
+/// least those spans' columns: N16 words and F32 levels.
 #[test]
 fn emitted_rows_store_as_band_coverage_spans() {
-    use crate::kernel;
+    use crate::kernel::{self, Colors};
+    #[expect(clippy::cast_possible_truncation, reason = "random words")]
+    emitted_rows_store_as(
+        [1_000, 20_000, 40_000, 65_535],
+        |next| [0; 4].map(|_: u16| next() as u16),
+        |pixels, words, cover| kernel::store_n16(pixels, words, cover.coverage()),
+    );
+    // The opacities a store from coverage gives: one at full coverage.
+    let alpha = |cover: super::Cover<'_>| -> Vec<f64> {
+        (0..cover.len())
+            .map(|i| kernel::UNIT[usize::from(cover.at(i))])
+            .collect()
+    };
+    let color = [0.1, 0.6, 0.85];
+    #[expect(clippy::cast_precision_loss, reason = "random levels")]
+    emitted_rows_store_as(
+        kernel::levels(&color),
+        |next| [0.0; 4].map(|_: f32| (next() % 255_001) as f32 / 1_000.0),
+        |pixels, _, cover| kernel::store_f32(pixels, &Colors::Constant(&color), &alpha(cover)),
+    );
+}
+
+fn emitted_rows_store_as<P: super::Narrow + PartialEq + std::fmt::Debug>(
+    color: P,
+    mut pixel: impl FnMut(&mut dyn FnMut() -> u64) -> P,
+    store: impl Fn(&mut [P], P, super::Cover<'_>),
+) {
     use pagura_raster::{BandCoverage, RowOut};
     let rect = DeviceRect {
         x0: 3,
@@ -831,7 +857,6 @@ fn emitted_rows_store_as_band_coverage_spans() {
         y1: 16,
     };
     let (width, rows) = (40_usize, 6_usize);
-    let words = [1_000, 20_000, 40_000, 65_535];
     let mut state = 0x9e37_79b9_7f4a_7c15_u64;
     let mut next = move || {
         state ^= state << 13;
@@ -841,24 +866,13 @@ fn emitted_rows_store_as_band_coverage_spans() {
     };
     let mut meter = Meter::new(usize::MAX, "budget");
     for case in 0..200 {
-        #[expect(clippy::cast_possible_truncation, reason = "random words")]
-        let initial: Vec<[u16; 4]> = (0..width * rows)
-            .map(|_| [0; 4].map(|_: u16| next() as u16))
-            .collect();
+        let initial: Vec<P> = (0..width * rows).map(|_| pixel(&mut next)).collect();
         let (mut direct, mut spans) = (initial.clone(), initial);
         let mut emitted = Extents::new(rows, &mut meter).unwrap();
         let mut collected = Extents::new(rows, &mut meter).unwrap();
         let mut coverage = BandCoverage::default();
         coverage.clear();
-        let mut out = StoreOut {
-            page: &mut direct,
-            extents: &mut emitted,
-            rect,
-            width,
-            words,
-            row: None,
-            stored: 0,
-        };
+        let mut out = StoreOut::new(&mut direct, &mut emitted, rect, color);
         // Rows from above the frame to below it, with gaps, full and
         // partial runs and cells, some reaching past its sides.
         for y in 8..18 {
@@ -899,11 +913,7 @@ fn emitted_rows_store_as_band_coverage_spans() {
             let row = (y - rect.y0) as usize;
             let column = x - rect.x0;
             let start = row * width + column as usize;
-            kernel::store_n16(
-                &mut spans[start..start + cover.len()],
-                words,
-                cover.coverage(),
-            );
+            store(&mut spans[start..start + cover.len()], color, cover);
             collected.mark(row, column, column + u32::try_from(cover.len()).unwrap());
         });
         assert_eq!(direct, spans, "{case}");
