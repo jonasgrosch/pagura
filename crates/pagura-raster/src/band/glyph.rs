@@ -32,6 +32,7 @@ mod tests;
 mod overlap;
 mod polygon;
 mod rounding;
+mod row;
 pub(super) use polygon::Summary;
 pub(crate) use polygon::{PolygonLines, point_sides};
 

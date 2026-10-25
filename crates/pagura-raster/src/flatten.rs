@@ -241,6 +241,44 @@ pub(crate) fn flatten_inspected(
     )
 }
 
+/// A curve segment starting at `start` as the flattener takes it: cubic
+/// controls and the rounding units a quadratic's elevation adds.
+pub(crate) fn controls(start: Point, segment: Segment) -> Option<([Point; 4], f64)> {
+    match segment {
+        Segment::CubicTo { c1, c2, end } => Some(([start, c1, c2, end], 0.0)),
+        Segment::QuadTo { control, end } => {
+            let [c1, c2] = Segment::elevated(start, control, end);
+            Some(([start, c1, c2, end], ELEVATION))
+        }
+        Segment::MoveTo(_) | Segment::LineTo(_) | Segment::Close => None,
+    }
+}
+
+/// One curve flattened as [`flatten_inspected`] flattens it within its path:
+/// the points after its start, in source space, appended to `out`. `count`
+/// carries the path's flattened points against the segment budget.
+pub(crate) fn curve_inspected(
+    piece: ([Point; 4], f64),
+    transform: Transform,
+    limits: &Limits,
+    (out, pending, count): (&mut Vec<Point>, &mut CurveStack, &mut usize),
+    (flatness, bytes, inspection): (Flatness, &mut Meter, Inspection<'_>),
+) -> Result<()> {
+    curve(
+        piece,
+        transform,
+        pending,
+        out,
+        count,
+        limits,
+        Subdivision {
+            flatness,
+            bytes,
+            inspection: Some(inspection),
+        },
+    )
+}
+
 fn flatten_using(
     path: &Path,
     transform: Transform,
