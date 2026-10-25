@@ -208,6 +208,11 @@ crate.
 15. **Benchmarks.** Profiling programs live in a crate's `examples/` (as
     `render_profile` does); timings they print are hypotheses until the
     performance policy in `docs/ARCHITECTURE.md` is met.
+16. **Build targets.** `.cargo/config.toml` builds x86_64 code for
+    `x86-64-v2` and wasm32 code with `simd128`; aarch64 keeps its target
+    default. A `RUSTFLAGS` environment variable replaces these flags, so it
+    repeats them. Crates built by dependents get the target baseline, where
+    the output is the same, only slower.
 
 ## Workflow
 
