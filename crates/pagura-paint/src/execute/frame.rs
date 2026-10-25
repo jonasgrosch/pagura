@@ -3,6 +3,7 @@
 use super::PageBuffer;
 use crate::format::Format;
 use crate::plan::{Layout, area};
+use crate::source::copy_values;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::DeviceRect;
 
@@ -191,16 +192,12 @@ impl Read<'_> {
         let n = layout.channels();
         let stride = layout.stride();
         let narrow = |values: [f64; 4], colors: &mut [f64]| {
-            for (color, &value) in colors.iter_mut().zip(&values[..3]) {
-                *color = value;
-            }
+            copy_values(colors, &values[..3]);
             values[3]
         };
         let wide = |values: &[f64], begin: usize, colors: &mut [f64]| {
             values.get(begin..begin + stride).map_or(0.0, |pixel| {
-                for (color, &value) in colors.iter_mut().zip(&pixel[..n]) {
-                    *color = value;
-                }
+                copy_values(colors, &pixel[..n]);
                 pixel[n]
             })
         };

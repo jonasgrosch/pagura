@@ -88,6 +88,75 @@ fn random_functions_match_the_previous_evaluation_bit_for_bit() {
     assert!(compared > 60_000, "{compared}");
 }
 
+/// [`Function::evaluate_line`] equals [`Function::evaluate`] point by
+/// point, bit for bit, with and without values beyond the outputs.
+fn compare_line(function: &Function, inputs: &[f64], context: &str) {
+    let n = function.outputs();
+    for stride in [n, n + 1] {
+        let mut expected = vec![f64::NAN; inputs.len() * stride];
+        for (x, out) in inputs.iter().zip(expected.chunks_exact_mut(stride)) {
+            function.evaluate(std::slice::from_ref(x), out);
+        }
+        let mut line = vec![f64::NAN; inputs.len() * stride];
+        function.evaluate_line(inputs, &mut line, stride);
+        assert_eq!(
+            line.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            "{context} at {inputs:?}"
+        );
+    }
+}
+
+#[test]
+fn lines_match_point_by_point_evaluation() {
+    let mut rng = Rng::new(0x11_4e5);
+    let mut compared = 0;
+    for case in 0..3000 {
+        let pair = random::function(&mut rng, 1);
+        let domain = pair.new.domain().to_vec();
+        // Runs of points in one subdomain, points that alternate between
+        // subdomains, and more points than one chunk of a stitching line.
+        let mut points: Vec<f64> = inputs(&mut rng, &domain, 150)
+            .into_iter()
+            .map(|input| input.first().copied().unwrap_or(0.0))
+            .collect();
+        points[..70].sort_by(f64::total_cmp);
+        compare_line(&pair.new, &points, &format!("case {case}"));
+        compared += points.len();
+    }
+    assert!(compared > 400_000, "{compared}");
+}
+
+#[test]
+fn stitching_lines_only_touch_complete_points_with_inputs() {
+    let leaf = Arc::new(
+        Function::exponential(ExponentialFunction {
+            domain: [0.0, 1.0],
+            range: None,
+            c0: vec![0.0],
+            c1: vec![1.0],
+            exponent: 1.0,
+        })
+        .unwrap(),
+    );
+    let function = Function::stitching(StitchingFunction {
+        domain: [0.0, 1.0],
+        range: Some(vec![[0.0, 1.0]]),
+        functions: vec![leaf],
+        bounds: vec![],
+        encode: vec![[0.0, 1.0]],
+    })
+    .unwrap();
+    let mut short = [9.0; 3];
+    function.evaluate_line(&[0.25, 0.5, 0.75], &mut short, 2);
+    assert_eq!(short, [0.25, 0.0, 9.0]);
+    let mut long = [9.0; 6];
+    function.evaluate_line(&[0.25], &mut long, 2);
+    assert_eq!(long, [0.25, 0.0, 9.0, 9.0, 9.0, 9.0]);
+    function.evaluate_line(&[0.25], &mut long, usize::MAX);
+    assert_eq!(long, [0.25, 0.0, 9.0, 9.0, 9.0, 9.0]);
+}
+
 #[test]
 fn sampled_grid_points_and_byte_paths_match() {
     let mut rng = Rng::new(7);

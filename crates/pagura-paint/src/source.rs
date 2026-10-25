@@ -110,18 +110,32 @@ pub(crate) struct Pixels<'a> {
     /// `Background` in ([`BBoxUse::Boundary`]): the outline's coverage of
     /// each pixel.
     pub(crate) boundary: Option<&'a [u8]>,
+    /// How precisely the span's colours are kept.
+    pub(crate) precision: Precision,
 }
 
 impl Pixels<'_> {
-    /// A span without a shading-pattern boundary.
+    /// A span without a shading-pattern boundary, kept exactly.
     pub(crate) fn new(x: u32, y: u32, len: usize) -> Self {
         Self {
             x,
             y,
             len,
             boundary: None,
+            precision: Precision::Exact,
         }
     }
+}
+
+/// How precisely a span's colour values are kept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Precision {
+    /// Every value as computed.
+    Exact,
+    /// Only each value's F32 level ([`crate::kernel::level`]), as a store
+    /// into F32 levels keeps it: a value may be any other with the same
+    /// level.
+    Level,
 }
 
 impl Source {
@@ -354,6 +368,7 @@ impl Source {
             y,
             len,
             boundary,
+            precision,
         } = pixels;
         match self {
             Self::Solid { color, painted } => {
@@ -366,8 +381,8 @@ impl Source {
                 out.painted = *painted;
             }
             Self::Shading(shading) => match boundary {
-                Some(boundary) => shading.span_with_boundary(x, y, boundary, out),
-                None => shading.span(x, y, len, out),
+                Some(boundary) => shading.span_with_boundary(x, y, boundary, precision, out),
+                None => shading.span(x, y, len, precision, out),
             },
             Self::Image(image) => {
                 let Some(scratch) = scratch.image.as_deref_mut() else {

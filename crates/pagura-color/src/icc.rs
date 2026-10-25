@@ -197,9 +197,58 @@ impl Profile {
     /// giving 0 instead of an error; black when the intent's transform is
     /// unsupported, which [`Self::check`] rules out.
     pub(crate) fn convert_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
+        self.linear_total(inputs, intent).map(cie::encode)
+    }
+
+    /// The gamut-clipped linear sRGB that [`Self::convert_total`] encodes.
+    pub(crate) fn linear_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
         self.forward(intent).map_or([0.0; 3], |transform| {
-            self.evaluate(transform, inputs, intent, &mut Arithmetic::default())
+            cie::linear_srgb(self.xyz(transform, inputs, intent, &mut Arithmetic::default()))
         })
+    }
+
+    /// [`Self::linear_total`] of several colours, `count` components each,
+    /// into `out`, three values each. A matrix/TRC model is applied a stage
+    /// at a time: each curve over every colour, then the matrices colour by
+    /// colour, with the same arithmetic as one colour at a time.
+    pub(crate) fn linear_line(
+        &self,
+        inputs: &[f64],
+        count: usize,
+        intent: Intent,
+        out: &mut [f64],
+    ) {
+        const CHUNK: usize = 32;
+        let count = count.max(1);
+        let out = out.as_chunks_mut::<3>().0;
+        let Ok(transform) = self.forward(intent) else {
+            out.fill([0.0; 3]);
+            return;
+        };
+        let arithmetic = &mut Arithmetic::default();
+        let staged = !self.lab_input && intent != Intent::Absolute;
+        let (Forward::Matrix { matrix, curves }, true) = (transform, staged) else {
+            for (inputs, out) in inputs.chunks_exact(count).zip(out) {
+                *out = cie::linear_srgb(self.xyz(transform, inputs, intent, arithmetic));
+            }
+            return;
+        };
+        let mut values = [[0.0; CHUNK]; 3];
+        for (inputs, out) in inputs.chunks(CHUNK * count).zip(out.chunks_mut(CHUNK)) {
+            let len = out.len().min(inputs.len() / count);
+            for (i, inputs) in inputs.chunks_exact(count).take(len).enumerate() {
+                for (channel, values) in values.iter_mut().enumerate() {
+                    values[i] = inputs.get(channel).map_or(0.0, |&v| v.clamp(0.0, 1.0));
+                }
+            }
+            for (curve, values) in curves.iter().zip(&mut values) {
+                curve.evaluate_line(&mut values[..len], arithmetic);
+            }
+            for (i, out) in out.iter_mut().take(len).enumerate() {
+                let xyz = cie::map(*matrix, [values[0][i], values[1][i], values[2][i]]);
+                *out = cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz));
+            }
+        }
     }
 
     /// The forward transform `intent` selects (ICC 8.10.2): the designated
@@ -227,6 +276,17 @@ impl Profile {
         intent: Intent,
         arithmetic: &mut Arithmetic,
     ) -> [f64; 3] {
+        cie::xyz_to_srgb(self.xyz(transform, inputs, intent, arithmetic))
+    }
+
+    /// The D65-relative XYZ of source components.
+    fn xyz(
+        &self,
+        transform: &Forward,
+        inputs: &[f64],
+        intent: Intent,
+        arithmetic: &mut Arithmetic,
+    ) -> [f64; 3] {
         let values = std::array::from_fn(|i| {
             inputs.get(i).map_or(0.0, |&input| {
                 if self.lab_input {
@@ -247,7 +307,7 @@ impl Profile {
                 *value *= self.white[i] / D50[i];
             }
         }
-        cie::xyz_to_srgb(cie::map(cie::D50_TO_D65, xyz))
+        cie::map(cie::D50_TO_D65, xyz)
     }
 }
 

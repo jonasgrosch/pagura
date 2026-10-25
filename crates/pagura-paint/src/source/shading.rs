@@ -23,7 +23,7 @@ mod mesh;
 #[cfg(test)]
 mod tests;
 
-use super::{PaintContext, SpanColors};
+use super::{PaintContext, Precision, SpanColors, copy_values};
 use colors::{Colors, Sample};
 use geometry::{Axial, FunctionDomain, Radial};
 use mesh::Mesh;
@@ -35,6 +35,9 @@ use pagura_raster::{Point, Transform};
 
 /// The function input of one sample: `t`, `(x, y)` or mesh values.
 type Input = [f64; MAX_COMPONENTS];
+
+/// Pixels whose colours [`ShadingSource::fill_batched`] converts together.
+const BATCH: usize = 32;
 
 /// Shading geometry: the function input at a point of shading space.
 trait Sampler {
@@ -292,19 +295,40 @@ impl ShadingSource {
     }
 
     /// Fills `out` with the colours of device pixels `x .. x + len` of row
-    /// `y`. `out.alpha` holds each pixel's covered fraction (its alpha and
-    /// shape), or is empty when every pixel is fully covered.
-    pub(crate) fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
-        self.fill(x, y, len, None, out);
+    /// `y`, kept to `precision`. `out.alpha` holds each pixel's covered
+    /// fraction (its alpha and shape), or is empty when every pixel is fully
+    /// covered.
+    pub(crate) fn span(
+        &self,
+        x: u32,
+        y: u32,
+        len: usize,
+        precision: Precision,
+        out: &mut SpanColors,
+    ) {
+        self.fill((x, y, len), None, precision, out);
     }
 
     /// As [`Self::span`], for [`BBoxUse::Boundary`]: `boundary` holds the
     /// coverage of the box outline at each pixel.
-    pub(crate) fn span_with_boundary(&self, x: u32, y: u32, boundary: &[u8], out: &mut SpanColors) {
-        self.fill(x, y, boundary.len(), Some(boundary), out);
+    pub(crate) fn span_with_boundary(
+        &self,
+        x: u32,
+        y: u32,
+        boundary: &[u8],
+        precision: Precision,
+        out: &mut SpanColors,
+    ) {
+        self.fill((x, y, boundary.len()), Some(boundary), precision, out);
     }
 
-    fn fill(&self, x: u32, y: u32, len: usize, boundary: Option<&[u8]>, out: &mut SpanColors) {
+    fn fill(
+        &self,
+        (x, y, len): (u32, u32, usize),
+        boundary: Option<&[u8]>,
+        precision: Precision,
+        out: &mut SpanColors,
+    ) {
         out.channels = self.channels;
         out.painted = self.painted;
         out.colors.clear();
@@ -315,6 +339,7 @@ impl ShadingSource {
             x,
             y,
             boundary: boundary.filter(|_| self.bbox_use == BBoxUse::Boundary),
+            precision,
         };
         let aligned = self.aligned.as_ref().filter(|_| span.boundary.is_none());
         match &*self.geometry {
@@ -333,8 +358,19 @@ impl ShadingSource {
 
     /// The general span loop, monomorphized per geometry.
     fn fill_with<S: Sampler>(&self, sampler: &S, span: Span<'_>, out: &mut SpanColors) {
+        if self.constant.is_none() && self.single_sample() && self.colors.batched() {
+            self.fill_batched(sampler, span, out);
+            return;
+        }
         let SpanColors { colors, alpha, .. } = out;
-        let mut sample = Sample::new();
+        // Averaged samples and a background mix need exact colours; a single
+        // sample's colour is the pixel's.
+        let precision = if self.single_sample() {
+            span.precision
+        } else {
+            Precision::Exact
+        };
+        let mut sample = Sample::new(precision);
         for (i, (color, alpha)) in colors
             .chunks_exact_mut(self.channels.max(1))
             .zip(alpha.iter_mut())
@@ -349,6 +385,74 @@ impl ShadingSource {
         }
     }
 
+    /// [`Self::fill_with`] for one sample a pixel and no background, a batch
+    /// of pixels at a time: the inputs of the samples that hit are gathered,
+    /// a run of inputs equal bit for bit keeps one (equal inputs convert to
+    /// equal colours), and the colours of the rest convert together, which
+    /// takes the per-sample overhead of the colour stage out of the pixel
+    /// loop.
+    fn fill_batched<S: Sampler>(&self, sampler: &S, span: Span<'_>, out: &mut SpanColors) {
+        const MISS: usize = usize::MAX;
+        let SpanColors { colors, alpha, .. } = out;
+        let channels = self.channels.max(1);
+        let inputs = self.colors.inputs();
+        let mut input: Input = [0.0; MAX_COMPONENTS];
+        let mut keys = [0.0_f64; BATCH * colors::BATCH_VALUES];
+        // Each pixel's distinct input, or `MISS`.
+        let mut slots = [0_usize; BATCH];
+        for (batch, (colors, alpha)) in colors
+            .chunks_mut(BATCH * channels)
+            .zip(alpha.chunks_mut(BATCH))
+            .enumerate()
+        {
+            let first = span
+                .x
+                .saturating_add(u32::try_from(batch * BATCH).unwrap_or(u32::MAX));
+            let mut distinct = 0;
+            for (i, slot) in slots.iter_mut().enumerate().take(alpha.len()) {
+                let x = first.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
+                let point = Point::new(f64::from(x) + 0.5, f64::from(span.y) + 0.5) * self.inverse;
+                let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
+                if !(inside && sampler.sample(point, &mut input)) {
+                    *slot = MISS;
+                    continue;
+                }
+                let key = &input[..inputs];
+                let repeat = distinct > 0
+                    && keys[(distinct - 1) * inputs..distinct * inputs]
+                        .iter()
+                        .zip(key)
+                        .all(|(a, b)| a.to_bits() == b.to_bits());
+                if !repeat {
+                    copy_values(&mut keys[distinct * inputs..(distinct + 1) * inputs], key);
+                    distinct += 1;
+                }
+                *slot = distinct - 1;
+            }
+            // The distinct colours go to the batch's first pixels; pixel `i`
+            // reads slot `slots[i] ≤ i`, so last to first reads each slot
+            // before it is written.
+            self.colors.convert_line(
+                &keys[..distinct * inputs],
+                &mut colors[..distinct * channels],
+                span.precision,
+            );
+            for (i, (&slot, alpha)) in slots.iter().zip(alpha.iter_mut()).enumerate().rev() {
+                let start = i * channels;
+                if slot == MISS {
+                    colors[start..start + channels].fill(0.0);
+                    *alpha = 0.0;
+                    continue;
+                }
+                // The sum of one sample is `0 + s` and its mean that over 1,
+                // as [`Self::single`] computes them.
+                for c in 0..channels {
+                    colors[start + c] = (0.0 + colors[slot * channels + c]) / 1.0;
+                }
+            }
+        }
+    }
+
     /// One pixel's colour into `color`, returning its covered fraction.
     fn pixel<S: Sampler>(
         &self,
@@ -360,10 +464,10 @@ impl ShadingSource {
         if let Some(constant) = &self.constant {
             return self.constant_pixel(sampler, (x, y), constant, (color, &mut sample.input));
         }
-        let background = self.pattern.as_ref().and_then(|p| p.background.as_deref());
-        if self.rate == 1 && background.is_none() {
+        if self.single_sample() {
             return self.single(sampler, (x, y), (color, sample));
         }
+        let background = self.pattern.as_ref().and_then(|p| p.background.as_deref());
         let divisor = f64::from(self.rate);
         let mut covered = 0_u32;
         let mixed = boundary.zip(background);
@@ -403,6 +507,12 @@ impl ShadingSource {
             *out /= count;
         }
         count / (divisor * divisor)
+    }
+
+    /// Whether a pixel's colour is the colour of its one sample: one sample
+    /// a pixel and no background.
+    fn single_sample(&self) -> bool {
+        self.rate == 1 && self.pattern.as_ref().is_none_or(|p| p.background.is_none())
     }
 
     /// [`Self::pixel`] with one sample and no background: the sum of one
@@ -543,6 +653,7 @@ struct Span<'a> {
     x: u32,
     y: u32,
     boundary: Option<&'a [u8]>,
+    precision: Precision,
 }
 
 impl Pattern {

@@ -13,6 +13,7 @@ use super::{
 use crate::kernel::{Colors, Mode, Sources, level};
 use crate::plan::{Conversion, GroupUse, Item, Layout, Start, area, intersect};
 use crate::process;
+use crate::source::copy_values;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::DeviceRect;
 
@@ -265,11 +266,7 @@ fn sources(
                 convert(c, (from, to), &straight, target);
                 work += c.encoder.cost();
             }
-            None => {
-                for (slot, &value) in target.iter_mut().zip(&straight[..from.channels()]) {
-                    *slot = value;
-                }
-            }
+            None => copy_values(target, &straight[..from.channels()]),
         }
         // A pattern's instances composite through the painted mark's
         // coverage: Source::new(colour, group × c, shape × c).

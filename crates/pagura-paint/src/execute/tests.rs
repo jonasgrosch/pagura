@@ -179,12 +179,7 @@ fn gradient(channels: usize) -> Source {
 /// The colours and alpha `paint` gives pixel `(x, y)`.
 fn sample(paint: &Source, (x, y): (u32, u32)) -> (Vec<f64>, f64) {
     let mut out = SpanColors::default();
-    let pixels = Pixels {
-        x,
-        y,
-        len: 1,
-        boundary: None,
-    };
+    let pixels = Pixels::new(x, y, 1);
     paint.fill(
         pixels,
         &mut crate::source::PaintScratch::default(),
