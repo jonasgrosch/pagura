@@ -90,13 +90,9 @@ pub(super) struct Reference {
     basis: [[f64; 8]; 8],
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "rounded samples are clamped to the byte domain"
-)]
+/// The byte of a reconstructed sample, rounded and clamped.
 fn sample(value: f64) -> u8 {
-    value.round().clamp(0.0, 255.0) as u8
+    pagura_core::convert::round_u8(value)
 }
 
 impl Reference {
