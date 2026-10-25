@@ -3,9 +3,36 @@
 //! the region.
 
 use crate::prepare::{bounds, index};
+use pagura_core::hash::FastMap;
 use pagura_core::{Error, Meter, Rect, Result};
-use pagura_interpret::{Node, Scene};
+use pagura_interpret::{GlyphSource, Node, OutlineKey, Scene};
 use pagura_raster::Transform;
+
+/// Glyph outline hulls by outline and device linear map, relative to the
+/// placement origin: text shows the same glyphs node after node.
+pub(super) type Outlines = FastMap<(OutlineKey, [u64; 4]), Option<bounds::Hull>>;
+
+/// The hull of `source`'s outline under its linear map and `device`.
+fn outline(
+    source: &GlyphSource,
+    device: Transform,
+    outlines: &mut Outlines,
+    bytes: &mut Meter,
+) -> Result<Option<bounds::Hull>> {
+    let l = source.linear;
+    let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
+    let key = (
+        source.key,
+        [linear.a, linear.b, linear.c, linear.d].map(f64::to_bits),
+    );
+    if let Some(&hull) = outlines.get(&key) {
+        return Ok(hull);
+    }
+    bytes.reserve_map_capacity(outlines, 1)?;
+    let hull = bounds::path(&source.outline, linear);
+    outlines.insert(key, hull);
+    Ok(hull)
+}
 
 /// A device rectangle that covers every pixel.
 const WHOLE: bounds::Hull = [f64::MIN, f64::MIN, f64::MAX, f64::MAX];
@@ -29,10 +56,10 @@ pub(super) fn extent(
     scene: &Scene,
     node: &Node,
     t: Transform,
-    bytes: &mut Meter,
+    (outlines, bytes): (&mut Outlines, &mut Meter),
 ) -> Result<Option<bounds::Hull>> {
     let Node::Glyphs(glyphs) = node else {
-        let hulls = hulls(scene, node, t, bytes)?;
+        let hulls = hulls(scene, node, t, (outlines, bytes))?;
         let extent = hulls.iter().fold(None, |extent, &hull| unite(extent, hull));
         let released = hulls.capacity() * size_of::<Option<bounds::Hull>>();
         drop(hulls);
@@ -56,9 +83,8 @@ pub(super) fn extent(
         let Some([ox0, oy0, ox1, oy1]) = origins else {
             continue;
         };
-        let l = source.linear;
-        let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-        let hull = bounds::path(&source.outline, linear)
+        // Survey failures refund every charge, so `?` leaves nothing held.
+        let hull = outline(source, device, outlines, bytes)?
             .map(|[x0, y0, x1, y1]| bounds::expand([x0 + ox0, y0 + oy0, x1 + ox1, y1 + oy1], 1.0));
         extent = unite(extent, hull);
     }
@@ -71,12 +97,12 @@ pub(super) fn hulls(
     scene: &Scene,
     node: &Node,
     t: Transform,
-    bytes: &mut Meter,
+    (outlines, bytes): (&mut Outlines, &mut Meter),
 ) -> Result<Vec<Option<bounds::Hull>>> {
     let hull = match node {
         Node::Fill(fill) => fill_hull(fill, t),
         Node::Stroke(stroke) => stroke_hull(scene, stroke, t)?,
-        Node::Glyphs(glyphs) => return glyph_hulls(glyphs, t, bytes),
+        Node::Glyphs(glyphs) => return glyph_hulls(glyphs, t, (outlines, bytes)),
         Node::Image(image) => bounds::rect(
             Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap_or_else(|| unreachable!()),
             image.transform.then(t),
@@ -116,19 +142,15 @@ fn stroke_hull(
 fn glyph_hulls(
     glyphs: &pagura_interpret::GlyphsNode,
     transform: Transform,
-    bytes: &mut Meter,
+    (outlines, bytes): (&mut Outlines, &mut Meter),
 ) -> Result<Vec<Option<bounds::Hull>>> {
     let t = transform;
     let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
     let mut relative = Vec::new();
     bytes.reserve_capacity(&mut relative, glyphs.sources.len())?;
-    relative.extend(glyphs.sources.iter().map(|source| {
-        let l = source.linear;
-        bounds::path(
-            &source.outline,
-            Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device),
-        )
-    }));
+    for source in &glyphs.sources {
+        relative.push(outline(source, device, outlines, bytes)?);
+    }
     let mut hulls = Vec::new();
     bytes.reserve_capacity(&mut hulls, glyphs.placements.len())?;
     hulls.extend(glyphs.placements.iter().map(|placement| {
