@@ -845,9 +845,10 @@ fn hash_slot(key: u64, mask: usize) -> usize {
 /// at most 48 bits, so each is held exactly as an f64. The memo holds at
 /// most one texel per 16 samples of its image (at least 4096, at most
 /// [`MemoLayout::CAP`]), so that what it reserves stays near the decoded samples'
-/// own size. Once it is full, a new key's texel replaces the one in the
-/// key's first slot, so a photograph with more colours than that keeps
-/// those that repeat nearby rather than converting each of them anew.
+/// own size. Once it reaches its limit, a new key's texel replaces the one
+/// in the key's first slot if occupied. Free slots stay free so that every
+/// unsuccessful probe terminates, and retained colours can still follow
+/// those that repeat nearby.
 ///
 /// An arithmetic conversion costs less than a lookup that misses the
 /// cache, as one into a large table of a photograph does. Its memo
@@ -987,6 +988,11 @@ impl Memo {
             if !self.layout.replacing {
                 if self.len >= self.layout.limit {
                     at = hash_slot(key, self.slots.len() / stride - 1) * stride;
+                    // Occupancy must stay bounded: a failed probe needs a
+                    // free slot, even after many distinct replacements.
+                    if self.slots.get(at).copied() == Some(FREE) {
+                        return &self.spare[..held];
+                    }
                 } else {
                     self.len += 1;
                 }
@@ -1216,7 +1222,7 @@ mod tests {
     }
 
     /// The memo reserves less than eight bytes a sample of its image, and
-    /// past its limit a new key replaces the texel in its first slot.
+    /// past its limit a new key replaces an occupied first slot.
     #[test]
     fn the_memo_stays_near_its_samples_and_replaces_past_its_limit() {
         let key = Key {
@@ -1239,15 +1245,45 @@ mod tests {
             }
         }
         assert_eq!(memo.len, memo.layout.limit);
+        let stride = 1 + memo.layout.held;
+        let mask = memo.slots.len() / stride - 1;
+        let replacement = (20_000..30_000u64)
+            .find(|&key| memo.slots[super::hash_slot(key, mask) * stride] != super::FREE)
+            .unwrap();
         let mut converted = 0;
         for _ in 0..3 {
-            let held = memo.get(20_000, |out| {
+            let held = memo.get(replacement, |out| {
                 converted += 1;
-                out[..3].copy_from_slice(&texel(20_000));
+                out[..3].copy_from_slice(&texel(replacement));
             });
-            assert_eq!(held, texel(20_000));
+            assert_eq!(held, texel(replacement));
         }
         assert_eq!((converted, memo.len), (1, memo.layout.limit));
+    }
+
+    /// A retaining memo must leave free slots for every later failed probe.
+    #[test]
+    fn replacing_after_the_limit_keeps_the_probe_table_half_empty() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let mut layout = MemoLayout::new(key, (3, true), 0, false);
+        layout.limit = 4;
+        let mut memo = layout.make().unwrap();
+        for key in 0..128u32 {
+            let expected = [f64::from(key); 3];
+            let held = memo.get(u64::from(key), |out| out[..3].copy_from_slice(&expected));
+            assert_eq!(held, expected);
+            let occupied = memo
+                .slots
+                .chunks_exact(1 + layout.held)
+                .filter(|slot| slot[0] != super::FREE)
+                .count();
+            assert_eq!(occupied, memo.len, "key {key}");
+            assert!(occupied <= layout.limit);
+        }
     }
 
     /// A replacing memo stays within its slots however large its image,
