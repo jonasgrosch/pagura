@@ -635,6 +635,101 @@ impl Polygon {
     }
 
     fn cancelled(&self, bytes: &mut Meter) -> Result<Option<Self>> {
+        match self.cancelled_by_hash(bytes)? {
+            Hashed::Decided(result) => Ok(result),
+            Hashed::Undecided => self.cancelled_by_sort(bytes),
+        }
+    }
+
+    /// [`Self::cancelled_by_sort`] by hashing, where no undirected side
+    /// occurs more than twice and the kept sides start at distinct points.
+    /// A pair of sides cancels exactly when the two run opposite ways, so
+    /// the kept sides are the same. Each kept side then continues at the one
+    /// kept side starting at its end, and relinking by start point makes
+    /// each cycle of that succession a contour, begun at its least start, in
+    /// the order of those starts. Each table lookup inspects a bounded
+    /// number of slots, and a crowded table also leaves the polygon to the
+    /// sorted path, so hashing costs linear time whatever the coordinates.
+    fn cancelled_by_hash(&self, bytes: &mut Meter) -> Result<Hashed> {
+        let n = self.points.len();
+        if u32::try_from(n).is_err() || n == Table::EMPTY as usize {
+            return Ok(Hashed::Undecided);
+        }
+        let mut links: Vec<Link> = Vec::new();
+        bytes.reserve(&mut links, n)?;
+        for (contour, &start) in self.starts.iter().enumerate() {
+            let end = self.starts.get(contour + 1).copied().unwrap_or(n);
+            links.extend((start + 1..end).chain([start]).map(Link::new));
+        }
+        let mut sides = Sides {
+            points: &self.points,
+            links: &mut links,
+        };
+        let mut table = Table::new(n, bytes)?;
+        if !sides.pair(&mut table) {
+            return Ok(Hashed::Undecided);
+        }
+        let kept = sides
+            .links
+            .iter()
+            .filter(|l| l.pairing != Pairing::Cancelled)
+            .count();
+        if kept == n {
+            return Ok(Hashed::Decided(None));
+        }
+        table.reset(kept, bytes)?;
+        match sides.follow(&mut table) {
+            Succession::Linked => {}
+            Succession::Unlinked => return Ok(Hashed::Decided(None)),
+            Succession::Undecided => return Ok(Hashed::Undecided),
+        }
+        let key = |a: u32| {
+            let p = self.points[a as usize];
+            (ordered(p.x), ordered(p.y))
+        };
+        let mut cycles: Vec<((i64, i64), u32)> = Vec::new();
+        for a in 0..index(n) {
+            if links[a as usize].pairing != Pairing::Followed {
+                continue;
+            }
+            let mut least = (key(a), a);
+            let mut current = a;
+            loop {
+                let link = &mut links[current as usize];
+                link.pairing = Pairing::Kept;
+                least = least.min((key(current), current));
+                current = link.after;
+                if current == a {
+                    break;
+                }
+            }
+            bytes.reserve_capacity(&mut cycles, 1)?;
+            cycles.push(least);
+        }
+        cycles.sort_unstable();
+        let mut points = Vec::new();
+        let mut starts = Vec::new();
+        bytes.reserve(&mut points, kept)?;
+        for &(_, first) in &cycles {
+            bytes.reserve_capacity(&mut starts, 1)?;
+            starts.push(points.len());
+            let mut current = first;
+            loop {
+                points.push(self.points[current as usize]);
+                current = links[current as usize].after;
+                if current == first {
+                    break;
+                }
+            }
+        }
+        Ok(Hashed::Decided(Some(Self {
+            points,
+            starts,
+            points_cells: self.points_cells,
+        })))
+    }
+
+    fn cancelled_by_sort(&self, bytes: &mut Meter) -> Result<Option<Self>> {
         let n = self.points.len();
         // Points ordered by their coordinates' total order, as integers,
         // and each side as its first point's index and the next one's.
@@ -798,6 +893,221 @@ fn uncancelled(
         }
     }
     Ok(kept)
+}
+
+/// What hashing decides about a cancellation: its result, or nothing where
+/// sides repeat or share a start.
+enum Hashed {
+    Decided(Option<Polygon>),
+    Undecided,
+}
+
+/// A side index as the hash tables keep it.
+fn index(a: usize) -> u32 {
+    u32::try_from(a).unwrap_or(Table::EMPTY)
+}
+
+/// A side's next point, the kept side that continues it, and how it pairs.
+#[derive(Debug, Clone, Copy)]
+struct Link {
+    next: u32,
+    after: u32,
+    pairing: Pairing,
+}
+
+impl Link {
+    fn new(next: usize) -> Self {
+        Self {
+            next: index(next),
+            after: Table::EMPTY,
+            pairing: Pairing::Single,
+        }
+    }
+}
+
+/// A polygon's sides: side `a` runs from `points[a]` to the point after it.
+struct Sides<'a> {
+    points: &'a [Point],
+    links: &'a mut [Link],
+}
+
+impl Sides<'_> {
+    fn point(&self, a: u32) -> (u64, u64) {
+        let p = self.points[a as usize];
+        (p.x.to_bits(), p.y.to_bits())
+    }
+
+    fn ends(&self, a: u32) -> ((u64, u64), (u64, u64)) {
+        (self.point(a), self.point(self.links[a as usize].next))
+    }
+
+    /// Pairs each side with the other side of its undirected key, if any;
+    /// whether no key has more than two sides and the table had room.
+    fn pair(&mut self, table: &mut Table) -> bool {
+        for a in 0..index(self.links.len()) {
+            let (p, q) = self.ends(a);
+            let hash = point_hash(p).wrapping_add(point_hash(q));
+            let b = match table.find(hash, a, |b| {
+                let ends = self.ends(b);
+                ends == (p, q) || ends == (q, p)
+            }) {
+                Probe::Found(b) => b,
+                Probe::Absent => continue,
+                Probe::Crowded => return false,
+            };
+            if self.links[b as usize].pairing != Pairing::Single {
+                return false;
+            }
+            let pairing = if self.ends(b) == (q, p) && p != q {
+                Pairing::Cancelled
+            } else {
+                Pairing::Kept
+            };
+            self.links[a as usize].pairing = pairing;
+            self.links[b as usize].pairing = pairing;
+        }
+        true
+    }
+
+    /// Links each kept side to its successor, marking the kept sides
+    /// `Followed`, with `table` empty and sized for the kept sides.
+    fn follow(&mut self, table: &mut Table) -> Succession {
+        let n = index(self.links.len());
+        for a in 0..n {
+            if self.links[a as usize].pairing != Pairing::Cancelled {
+                let p = self.point(a);
+                if table.find(point_hash(p), a, |b| self.point(b) == p) != Probe::Absent {
+                    return Succession::Undecided;
+                }
+            }
+        }
+        for a in 0..n {
+            if self.links[a as usize].pairing == Pairing::Cancelled {
+                continue;
+            }
+            let end = self.point(self.links[a as usize].next);
+            let b = match table.get(point_hash(end), |b| self.point(b) == end) {
+                Probe::Found(b) => b,
+                Probe::Absent => return Succession::Unlinked,
+                Probe::Crowded => return Succession::Undecided,
+            };
+            if self.links[b as usize].pairing == Pairing::Followed {
+                return Succession::Unlinked;
+            }
+            self.links[b as usize].pairing = Pairing::Followed;
+            self.links[a as usize].after = b;
+        }
+        Succession::Linked
+    }
+}
+
+/// Whether each kept side has its successor; or one is missing or shared,
+/// which leaves the polygon unchanged as an unused continuation does when
+/// sorted; or kept sides share a start or crowd the table, which hashing
+/// leaves undecided.
+enum Succession {
+    Linked,
+    Unlinked,
+    Undecided,
+}
+
+/// How a side pairs with the other side of its undirected key, if any;
+/// kept sides are marked once some kept side continues at them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Pairing {
+    Single,
+    Cancelled,
+    Kept,
+    Followed,
+}
+
+/// An open-addressed set of side indices, at most a quarter full. A lookup
+/// inspects at most [`Table::PROBES`] slots: where entries crowd one stretch
+/// of it, as coordinates chosen to collide could make them, the lookup gives
+/// up and the polygon takes the sorted path, so hashing costs at most that
+/// many comparisons per side whatever the input.
+struct Table {
+    slots: Vec<u32>,
+    mask: usize,
+}
+
+/// Where a lookup ended: at an entry `same` accepts, at an empty slot (after
+/// inserting the new entry there, when inserting), or after
+/// [`Table::PROBES`] slots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Probe {
+    Found(u32),
+    Absent,
+    Crowded,
+}
+
+impl Table {
+    const EMPTY: u32 = u32::MAX;
+
+    /// The most slots a lookup inspects.
+    const PROBES: usize = 32;
+
+    fn new(entries: usize, bytes: &mut Meter) -> Result<Self> {
+        let mut table = Self {
+            slots: Vec::new(),
+            mask: 0,
+        };
+        table.reset(entries, bytes)?;
+        Ok(table)
+    }
+
+    /// Empties the table and sizes it for `entries`.
+    fn reset(&mut self, entries: usize, bytes: &mut Meter) -> Result<()> {
+        let size = entries
+            .saturating_mul(4)
+            .checked_next_power_of_two()
+            .ok_or(Error::limit("relink table size overflows"))?;
+        self.slots.clear();
+        bytes.reserve_capacity(&mut self.slots, size)?;
+        self.slots.resize(size, Self::EMPTY);
+        self.mask = size - 1;
+        Ok(())
+    }
+
+    /// The entry with `hash` that `same` accepts, or else `Absent` after
+    /// inserting `entry`.
+    fn find(&mut self, hash: u64, entry: u32, same: impl Fn(u32) -> bool) -> Probe {
+        let mut slot = self.start(hash);
+        for _ in 0..Self::PROBES {
+            match self.slots[slot] {
+                Self::EMPTY => {
+                    self.slots[slot] = entry;
+                    return Probe::Absent;
+                }
+                b if same(b) => return Probe::Found(b),
+                _ => slot = (slot + 1) & self.mask,
+            }
+        }
+        Probe::Crowded
+    }
+
+    /// The entry with `hash` that `same` accepts.
+    fn get(&self, hash: u64, same: impl Fn(u32) -> bool) -> Probe {
+        let mut slot = self.start(hash);
+        for _ in 0..Self::PROBES {
+            match self.slots[slot] {
+                Self::EMPTY => return Probe::Absent,
+                b if same(b) => return Probe::Found(b),
+                _ => slot = (slot + 1) & self.mask,
+            }
+        }
+        Probe::Crowded
+    }
+
+    fn start(&self, hash: u64) -> usize {
+        usize::try_from(hash.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 32).unwrap_or_default()
+            & self.mask
+    }
+}
+
+/// A hash of a point's coordinate bits.
+fn point_hash((x, y): (u64, u64)) -> u64 {
+    (x ^ y.rotate_left(32)).wrapping_mul(0xff51_afd7_ed55_8ccd)
 }
 
 /// Orders the `kept` sides, by start key and index, that share a start as

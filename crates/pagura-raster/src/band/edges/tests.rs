@@ -213,6 +213,93 @@ fn sides_sharing_a_start_relink_in_their_sorted_order() {
 }
 
 #[test]
+fn hashed_cancellation_matches_the_sorted_one() {
+    // Unit squares and their triangles on a small grid, some reversed or
+    // repeated, so that sides cancel, stay, repeat and share starts.
+    let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+    let mut random = move |n: u64| {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed % n
+    };
+    let (mut hashed_cases, mut relinked) = (0, 0);
+    for _ in 0..10_000 {
+        let mut polygon = Polygon::default();
+        for _ in 0..=random(6) {
+            #[expect(clippy::cast_precision_loss, reason = "small grid indices")]
+            let (x, y) = (random(3) as f64, random(3) as f64);
+            let [a, b, c, d] = [(x, y), (x + 1.0, y), (x + 1.0, y + 1.0), (x, y + 1.0)]
+                .map(|(x, y)| Point::new(x, y));
+            let tile = match random(12) {
+                0 => vec![a, d, c, b],
+                1..=3 => vec![a, b, c],
+                4..=6 => vec![a, c, d],
+                7 => vec![a, b, d],
+                _ => vec![a, b, c, d],
+            };
+            polygon.starts.push(polygon.points.len());
+            polygon.points.extend(tile);
+        }
+        let sorted = polygon
+            .cancelled_by_sort(&mut crate::testing::bytes())
+            .unwrap();
+        if let Hashed::Decided(hashed) = polygon
+            .cancelled_by_hash(&mut crate::testing::bytes())
+            .unwrap()
+        {
+            hashed_cases += 1;
+            relinked += usize::from(hashed.is_some());
+            let parts = |p: Option<Polygon>| p.map(|p| (p.points, p.starts));
+            assert_eq!(parts(hashed), parts(sorted));
+        }
+    }
+    assert!(
+        hashed_cases > 5000,
+        "{hashed_cases} cases took the hashed path"
+    );
+    assert!(relinked > 500, "{relinked} hashed cases relinked");
+}
+
+#[test]
+fn colliding_hashes_take_the_sorted_path() {
+    // Points whose coordinate bits all hash alike: every side's undirected
+    // key lands in one stretch of the table, which the bounded lookups
+    // leave to the sorted path instead of probing it from end to end.
+    let (x, y) = (1000.5_f64.to_bits(), 700.25_f64.to_bits());
+    let point = |m: u64| Point::new(f64::from_bits(x ^ m.rotate_left(32)), f64::from_bits(y ^ m));
+    for squares in [1_u64, 4, 2_000] {
+        // Squares split into two triangles: the diagonals cancel.
+        let mut polygon = Polygon::default();
+        for k in 0..squares {
+            let [a, b, c, d] = [0, 1, 2, 3].map(|i| point(4 * k + i));
+            for tile in [[a, b, c], [a, c, d]] {
+                polygon.starts.push(polygon.points.len());
+                polygon.points.extend(tile);
+            }
+        }
+        let parts = |p: Option<Polygon>| p.map(|p| (p.points, p.starts));
+        let sorted = parts(
+            polygon
+                .cancelled_by_sort(&mut crate::testing::bytes())
+                .unwrap(),
+        );
+        match polygon
+            .cancelled_by_hash(&mut crate::testing::bytes())
+            .unwrap()
+        {
+            Hashed::Decided(result) => {
+                assert!(squares < 8, "{squares} colliding squares were hashed");
+                assert_eq!(parts(result), sorted);
+            }
+            Hashed::Undecided => assert!(squares >= 8, "{squares} squares"),
+        }
+        assert!(polygon.cancel_shared(&mut crate::testing::bytes()).unwrap());
+        assert_eq!(Some((polygon.points, polygon.starts)), sorted);
+    }
+}
+
+#[test]
 fn polygon_output_is_charged_beside_its_flattened_source() {
     let mut path = PathBuilder::new();
     path.polygon([
@@ -258,7 +345,7 @@ fn cancellation_refuses_before_copying_its_source_edges() {
     let source = polygon.heap_bytes();
     let before = (polygon.points.clone(), polygon.starts.clone());
     let mut bytes = Meter::new(
-        source + polygon.points.len() * size_of::<(i64, i64)>() - 1,
+        source + polygon.points.len() * size_of::<u32>() - 1,
         super::super::RENDER_BYTES,
     );
     bytes.charge(source).unwrap();
