@@ -218,6 +218,7 @@ mod tests {
             masks: FastMap::default(),
             cells: FastMap::default(),
             open: Vec::new(),
+            outlines: FastMap::default(),
             transfers: false,
         };
         let mut fixture = Meter::new(1 << 20, "proof fixture");
