@@ -23,6 +23,7 @@ MANIFEST = Path("benchmarks/probes/document-services.json")
 ADAPTER = Path("benchmarks/adapters/capability_python.py")
 SELECTED = ("pdfium", "mupdf")
 ADAPTER_FILES = [ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
+                 Path("benchmarks/adapters/capability_pdfjs_services.mjs"),
                  Path("benchmarks/adapters/capability_poppler.py"), Path("benchmarks/adapters/capability_quartz.swift"),
                  Path("benchmarks/adapters/hayro/src/bin/capabilities.rs")]
 # Explicit adapter coverage, not a claim of backend absence. These cells stay

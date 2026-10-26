@@ -5,6 +5,7 @@ on:
       - '.github/workflows/capabilities.yml'
       - 'tools/capabilit*.py'
       - 'tools/test_capabilit*.py'
+      - 'tools/capability_pdfjs_test.mjs'
       - 'tools/benchkit/engines.py'
       - 'tools/competitors.py'
       - 'benchmarks/capabilities.json'
@@ -45,6 +46,10 @@ jobs:
       - run: python tools/capabilities.py --check
       - run: python tools/capability_probes.py check
       - run: python -m unittest discover -s tools -p "test_capabilit*.py" -v
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.8.1
+      - run: node tools/capability_pdfjs_test.mjs
   document-services:
     # Hosted only (ADR 0031). Competitor packages never enter the checkout.
     strategy:

@@ -89,18 +89,19 @@ output, timeouts and missing executables. Report joining also rejects mixed
 revisions, fixtures, source hashes or workflow runs and incomplete/overlapping
 engine coverage. These controls use stubs, not competitor libraries.
 
-## Observed attachment difference
+## Attachment API controls
 
-The first expanded hosted run ([40251755232](https://github.com/jonasgrosch/pagura/actions/runs/40251755232))
-recorded `incorrect` for pdf.js 6.4.299 on `attachments.services`: it returned an
-empty list for a Filespec containing F/UF filenames with only an EF/F stream.
-PDFium 156.0.8076.0, MuPDF 1.28.5 and Poppler 24.02.0 returned the authored name and
-payload hash. ISO 32000-2 7.7.4 Table 32 and 7.11.3 Table 43 permit an EmbeddedFiles
-entry whose EF dictionary has F or UF; the expected embedded payload is retained.
-The companion `attachments.complete-ef` case supplies both EF keys for the same
-stream to isolate the API difference. Its results must be measured separately.
-No engine-specific result changes the expected attachment or turns a mismatch
-into a pass. Raw reports remain in CI artifacts, outside Git.
+The original and companion attachment cases exercise EF/F-only and EF/F+UF
+stream dictionaries with F/UF filenames (ISO 32000-2 7.7.4 Table 32 and 7.11.3
+Table 43). Both retain the same independently authored payload expectation.
+The pinned pdf.js 6.4 API returns a Map of descriptors and retrieves uncached
+bytes through `getAttachmentContent(id)`. The adapter checks those shapes;
+offline Node controls cover lazy bytes, already available bytes, empty Maps,
+null results and unexpected return types. Treating the Map as an object would
+incorrectly discard attachments; the controls prevent that adapter regression.
+The initial expanded reports predate this fix and do not establish a pdf.js
+defect. Only reports with the corrected adapter/source hashes are usable for
+this comparison. Raw reports remain in CI artifacts, outside Git.
 
 ## Next G01 increments
 
