@@ -10,6 +10,75 @@ fn parse(bytes: &[u8], end: InputEnd, recovery: Recovery) -> Result<WindowRead<V
 }
 
 #[test]
+fn callback_dependencies_are_distinct_from_current_window_and_terminal_errors() {
+    use pagura_core::syntax::ParseFault;
+
+    for end in [InputEnd::Complete, InputEnd::Extendable] {
+        let outcome = Parser::new(b"<< /A 1 /A 2 >>", Origin::Buffer, Limits::default())
+            .with_recovery(Recovery::Repair)
+            .read_window_with_control(end, |parser| {
+                parser.parse()?;
+                Err::<Value, _>(ParseFault::Deferred(91_u32))
+            })
+            .unwrap();
+        assert!(matches!(outcome, WindowRead::Deferred(91)));
+
+        // Observing a boundary cannot reclassify an unrelated semantic error.
+        let error = Parser::new(b"", Origin::Buffer, Limits::default())
+            .read_window_with_control::<(), u32>(end, |parser| {
+                assert!(parser.at_end());
+                Err(Error::syntax("callback invariant failed").into())
+            })
+            .unwrap_err();
+        assert_eq!(error, Error::syntax("callback invariant failed"));
+    }
+
+    for (bytes, end, incomplete) in [
+        (&b"tru"[..], InputEnd::Extendable, true),
+        (&b"tru"[..], InputEnd::Complete, false),
+        (&b"12x"[..], InputEnd::Extendable, false),
+        (&b"12x"[..], InputEnd::Complete, false),
+    ] {
+        let outcome = Parser::new(bytes, Origin::Buffer, Limits::default())
+            .read_window_with_control(end, |parser| {
+                parser.parse()?;
+                Err::<Value, _>(ParseFault::Deferred(91_u32))
+            });
+        if incomplete {
+            assert!(matches!(outcome.unwrap(), WindowRead::Incomplete { .. }));
+        } else {
+            assert_eq!(outcome.unwrap_err().kind, ErrorKind::Syntax);
+        }
+    }
+}
+
+#[test]
+fn a_direct_stream_callback_can_defer_without_publishing_its_repair() {
+    use pagura_core::syntax::ParseFault;
+
+    for end in [InputEnd::Complete, InputEnd::Extendable] {
+        let outcome = Parser::new(
+            b"<< /Data << /Length 7 0 R >> stream\n",
+            Origin::File,
+            Limits::default(),
+        )
+        .with_recovery(Recovery::Repair)
+        .read_window_with_control(end, |parser| {
+            parser.parse_with_streams(&mut |parser, dictionary| {
+                assert_eq!(
+                    dictionary.get(b"Length"),
+                    Some(&Value::Reference(ObjectId::new(7, 0)))
+                );
+                assert!(parser.keyword(b"stream"));
+                Err(ParseFault::Deferred(7_u32))
+            })
+        })
+        .unwrap();
+        assert!(matches!(outcome, WindowRead::Deferred(7)));
+    }
+}
+
+#[test]
 fn every_split_of_nested_object_waits_until_its_structure_completes() {
     let bytes = b"<< /A [true false null 17 0 R] /N /A#20B /S (x\\050y\\051) /H <4f0a> >>";
     for split in 0..bytes.len() {

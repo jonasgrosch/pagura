@@ -319,7 +319,13 @@ the same header/tail grammar, owned xref chain, object parser and interpreter.
 The syntax parser remains slice-based on its hot path. Introduce a file-window
 adapter carrying the absolute origin and whether the window's end is the true
 source boundary. It grows windows within a loading budget and uses the same
-parser as the complete-buffer path.
+parser as the complete-buffer path. A typed callback control carries an indirect
+semantic dependency (for example a stream Length object) separately from a
+short current window. Core parsing owns Incomplete and terminal Error; the
+document adapter owns the dependency frontier. A deferred callback publishes
+neither values nor provisional diagnostics, even at true EOF. Its source
+identity must match the active reader, and unchanged dependency waits perform
+no parsing. No sentinel syntax error or boundary-based error masking is used.
 
 Source and transport ranges use checked `u64`; source registration still checks
 that the declared file fits existing `Limits::file_bytes` and target `usize`.

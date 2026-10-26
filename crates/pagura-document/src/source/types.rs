@@ -172,6 +172,15 @@ impl From<Error> for ReadFault {
     }
 }
 
+impl From<ReadFault> for pagura_core::syntax::ParseFault<NeedData> {
+    fn from(fault: ReadFault) -> Self {
+        match fault {
+            ReadFault::Unavailable(missing) => Self::Deferred(missing),
+            ReadFault::Invalid(error) => Self::Invalid(error),
+        }
+    }
+}
+
 impl fmt::Display for ReadFault {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

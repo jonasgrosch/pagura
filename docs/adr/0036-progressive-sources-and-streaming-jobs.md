@@ -78,7 +78,11 @@ yield, ready, cancelled or terminal failure. Unavailability cannot become a
 repair, undefined-reference null, terminal cached failure or successful partial
 scene. Publish completed cache values and ordered diagnostics only; keep the
 Store generic over builder failures without making core depend on document
-loading.
+loading. Slice parsing also keeps typed callback dependencies distinct from
+incomplete syntax: a missing indirect stream Length can suspend a parse without
+converting an unrelated syntax error, advancing its cursor or publishing repair
+diagnostics. The document layer owns those source frontiers; core has no source
+or transport dependency.
 
 The two policies are `CompleteDocument` and `RequestedOperation`. Source identity
 and policy belong to a loading context; only finalized authoritative xref entries

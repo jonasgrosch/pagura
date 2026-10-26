@@ -2,7 +2,7 @@
 
 use super::Parser;
 use crate::{Diagnostic, Error, Result};
-use std::fmt;
+use std::{convert::Infallible, fmt, marker::PhantomData};
 
 mod sealed {
     pub trait Sealed {}
@@ -60,14 +60,15 @@ pub enum InputEnd {
 /// Window parser mode; constructed by [`Parser::read_window`].
 #[derive(Debug)]
 #[doc(hidden)]
-pub struct WindowInput {
+pub struct WindowInput<C = Infallible> {
     end: InputEnd,
     pending: bool,
+    callback: PhantomData<fn() -> C>,
 }
-impl sealed::Sealed for WindowInput {}
-impl ParseMode for WindowInput {
-    type Fault = ParseFault;
-    fn end(&self, error: Error) -> ParseFault {
+impl<C> sealed::Sealed for WindowInput<C> {}
+impl<C: fmt::Debug> ParseMode for WindowInput<C> {
+    type Fault = ParseFault<C>;
+    fn end(&self, error: Error) -> ParseFault<C> {
         if self.extendable() {
             ParseFault::Incomplete
         } else {
@@ -83,10 +84,11 @@ impl ParseMode for WindowInput {
     fn extendable(&self) -> bool {
         self.end == InputEnd::Extendable
     }
-    fn map_error(fault: ParseFault, map: impl FnOnce(Error) -> Error) -> ParseFault {
+    fn map_error(fault: ParseFault<C>, map: impl FnOnce(Error) -> Error) -> ParseFault<C> {
         match fault {
             ParseFault::Incomplete => ParseFault::Incomplete,
             ParseFault::Invalid(error) => ParseFault::Invalid(map(error)),
+            ParseFault::Deferred(control) => ParseFault::Deferred(control),
         }
     }
 }
@@ -94,29 +96,33 @@ impl ParseMode for WindowInput {
 /// A window callback must distinguish unavailable input from terminal failure.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub enum ParseFault {
+pub enum ParseFault<C = Infallible> {
     /// A structural read needs more bytes in this window.
     Incomplete,
     /// A terminal lexical, semantic, resource or callback error.
     Invalid(Error),
+    /// A callback cannot complete until its own typed dependency is satisfied.
+    /// This neither extends the current window nor publishes provisional data.
+    Deferred(C),
 }
-impl From<Error> for ParseFault {
+impl<C> From<Error> for ParseFault<C> {
     fn from(error: Error) -> Self {
         Self::Invalid(error)
     }
 }
-impl fmt::Display for ParseFault {
+impl<C> fmt::Display for ParseFault<C> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Incomplete => formatter.write_str("parser window is incomplete"),
             Self::Invalid(error) => fmt::Display::fmt(error, formatter),
+            Self::Deferred(_) => formatter.write_str("parser callback is deferred"),
         }
     }
 }
-impl std::error::Error for ParseFault {
+impl<C: fmt::Debug> std::error::Error for ParseFault<C> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Incomplete => None,
+            Self::Incomplete | Self::Deferred(_) => None,
             Self::Invalid(error) => Some(error),
         }
     }
@@ -134,10 +140,10 @@ pub struct ParsedWindow<T> {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// A completed operation or a structurally incomplete input window.
+/// A completed operation, incomplete input window or deferred callback.
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum WindowRead<T> {
+pub enum WindowRead<T, C = Infallible> {
     /// No token or structure remains dependent on extending the input.
     Complete(ParsedWindow<T>),
     /// The parser needs more bytes; no provisional diagnostics are published.
@@ -145,6 +151,9 @@ pub enum WindowRead<T> {
         /// Smallest longer slice that could make progress.
         minimum_length: usize,
     },
+    /// A callback dependency stopped this attempt; no value or diagnostics
+    /// are published. The caller owns its dependency policy and retry.
+    Deferred(C),
 }
 
 impl<'a> Parser<'a> {
@@ -164,6 +173,24 @@ impl<'a> Parser<'a> {
         end: InputEnd,
         read: impl FnOnce(&mut Parser<'a, WindowInput>) -> std::result::Result<T, ParseFault>,
     ) -> Result<WindowRead<T>> {
+        self.read_window_with_control(end, read)
+    }
+
+    /// Runs the same window parser with caller-owned dependency control.
+    ///
+    /// A callback may return [`ParseFault::Deferred`] when it must read another
+    /// semantic dependency. This is distinct from an incomplete current slice
+    /// and from terminal syntax, including at true EOF. Deferred attempts
+    /// discard their values and diagnostics without extending the window.
+    ///
+    /// # Errors
+    /// As [`Self::read_window`]. Only a typed deferred result can pause a
+    /// callback; terminal errors are never reclassified after a boundary read.
+    pub fn read_window_with_control<T, C: fmt::Debug>(
+        self,
+        end: InputEnd,
+        read: impl FnOnce(&mut Parser<'a, WindowInput<C>>) -> std::result::Result<T, ParseFault<C>>,
+    ) -> Result<WindowRead<T, C>> {
         let mut parser = Parser {
             data: self.data,
             position: self.position,
@@ -175,10 +202,12 @@ impl<'a> Parser<'a> {
             mode: WindowInput {
                 end,
                 pending: false,
+                callback: PhantomData,
             },
         };
         match read(&mut parser) {
             Err(ParseFault::Invalid(error)) => Err(error),
+            Err(ParseFault::Deferred(control)) => Ok(WindowRead::Deferred(control)),
             Ok(value) if !parser.mode.pending => Ok(WindowRead::Complete(ParsedWindow {
                 value,
                 offset: parser.offset(),

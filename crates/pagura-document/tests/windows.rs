@@ -3,8 +3,8 @@
 use pagura_core::syntax::{ParseFault, Parser, WindowInput};
 use pagura_core::{ErrorKind, Limits, Name, Position, Recovery, Result, Value};
 use pagura_document::source::{
-    ByteRange, ByteSource, CompleteBytes, LoadingLimits, ReadFault, SourceIdentity, SourceLimits,
-    SparseBytes, Window,
+    ByteRange, ByteSource, CompleteBytes, LoadingLimits, NeedData, ReadFault, SourceIdentity,
+    SourceLimits, SparseBytes, Window,
 };
 use std::cell::Cell;
 use std::sync::Arc;
@@ -26,12 +26,94 @@ fn reader(source: Arc<dyn ByteSource>, at: u64) -> Result<Window> {
 
 // Free functions quantify the lease lifetime; an inherent Parser method item
 // fixes its input lifetime before the source window invokes it.
-fn value(parser: &mut Parser<'_, WindowInput>) -> std::result::Result<Value, ParseFault> {
+fn value(
+    parser: &mut Parser<'_, WindowInput<NeedData>>,
+) -> std::result::Result<Value, ParseFault<NeedData>> {
     parser.parse()
 }
 
-fn unsigned(parser: &mut Parser<'_, WindowInput>) -> std::result::Result<u64, ParseFault> {
+fn unsigned(
+    parser: &mut Parser<'_, WindowInput<NeedData>>,
+) -> std::result::Result<u64, ParseFault<NeedData>> {
     parser.unsigned()
+}
+
+#[test]
+fn a_semantic_dependency_wait_keeps_its_frontier_and_publishes_one_completed_unit() {
+    let source = sparse(1024).unwrap();
+    let literal = b"<< /A 1 /A 2 >>";
+    source.supply(ID, 100, literal).unwrap();
+    let mut window = reader(source.clone(), 100)
+        .unwrap()
+        .with_recovery(Recovery::Repair);
+    let calls = Cell::new(0);
+    let parse = |parser: &mut Parser<'_, WindowInput<NeedData>>| {
+        calls.set(calls.get() + 1);
+        let value = parser.parse()?;
+        let dependency = source.read_exact(ByteRange::new(900, 904)?)?;
+        assert_eq!(dependency.bytes(), b"done");
+        Ok(value)
+    };
+    let Err(ReadFault::Unavailable(missing)) = window.read(parse) else {
+        panic!("separate object dependency must wait")
+    };
+    assert_eq!(missing.ranges(), &[ByteRange::new(900, 904).unwrap()]);
+    assert_eq!(window.offset(), 100);
+    assert_eq!(calls.get(), 1);
+    let work = window.work();
+    let Err(ReadFault::Unavailable(again)) = window.read(parse) else {
+        panic!("unchanged dependency wait")
+    };
+    assert!(std::ptr::eq(missing.ranges(), again.ranges()));
+    assert_eq!(window.work(), work);
+    assert_eq!(calls.get(), 1);
+    source.supply(ID, 900, b"done").unwrap();
+    let parsed = window.read(parse).unwrap();
+    assert_eq!(calls.get(), 2);
+    assert_eq!(
+        parsed.value.as_dictionary().unwrap().get(b"A"),
+        Some(&Value::Integer(2))
+    );
+    assert_eq!(parsed.diagnostics.len(), 1);
+    assert_eq!(parsed.diagnostics[0].position, Position::File(108));
+    assert_eq!(window.offset(), 100 + u64::try_from(literal.len()).unwrap());
+}
+
+#[test]
+fn dependency_waits_observe_closure_and_reject_another_source_identity() {
+    let source = sparse(1024).unwrap();
+    source.supply(ID, 100, b"(ready)").unwrap();
+    let mut window = reader(source.clone(), 100).unwrap();
+    let parse = |parser: &mut Parser<'_, WindowInput<NeedData>>| {
+        let value = parser.parse()?;
+        source.read_exact(ByteRange::new(900, 904)?)?;
+        Ok(value)
+    };
+    assert!(matches!(window.read(parse), Err(ReadFault::Unavailable(_))));
+    source.close();
+    assert!(
+        matches!(window.read(parse), Err(ReadFault::Invalid(error)) if error == source.check().unwrap_err())
+    );
+
+    let source = sparse(1024).unwrap();
+    source.supply(ID, 100, b"(ready)").unwrap();
+    let other = SparseBytes::new(
+        SourceIdentity::new(29, [7; 32]),
+        10,
+        &Limits::default(),
+        &SourceLimits::default(),
+    )
+    .unwrap();
+    let mut window = reader(source, 100).unwrap();
+    let outcome = window.read(|parser| {
+        let value = parser.parse()?;
+        other.read_exact(ByteRange::new(0, 1)?)?;
+        Ok(value)
+    });
+    assert!(
+        matches!(outcome, Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::InvalidArgument)
+    );
+    assert_eq!(window.offset(), 100);
 }
 
 #[test]

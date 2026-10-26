@@ -139,6 +139,9 @@ impl Window {
     /// `ParsedWindow::offset` is relative to this unit's starting slice;
     /// [`Self::offset`] then advances by that amount. Error/repair positions
     /// remain absolute file positions. Values cannot borrow a temporary lease.
+    /// A callback may propagate a dependency read from the same source through
+    /// `ParseFault::Deferred(NeedData)`; that frontier does not grow this slice
+    /// or advance the cursor. Another source identity is an argument error.
     ///
     /// # Errors
     /// Returns exact missing intervals separately from terminal parser, source
@@ -147,7 +150,9 @@ impl Window {
     /// and conflicting supply. Any terminal error permanently ends this reader.
     pub fn read<T>(
         &mut self,
-        mut parse: impl FnMut(&mut Parser<'_, WindowInput>) -> std::result::Result<T, ParseFault>,
+        mut parse: impl FnMut(
+            &mut Parser<'_, WindowInput<NeedData>>,
+        ) -> std::result::Result<T, ParseFault<NeedData>>,
     ) -> ReadResult<ParsedWindow<T>> {
         if let Some(error) = &self.terminal {
             return Err(error.clone().into());
@@ -166,7 +171,9 @@ impl Window {
 
     fn attempt<T>(
         &mut self,
-        parse: &mut impl FnMut(&mut Parser<'_, WindowInput>) -> std::result::Result<T, ParseFault>,
+        parse: &mut impl FnMut(
+            &mut Parser<'_, WindowInput<NeedData>>,
+        ) -> std::result::Result<T, ParseFault<NeedData>>,
     ) -> ReadResult<ParsedWindow<T>> {
         self.source.check()?;
         if let Some(missing) = &self.waiting
@@ -189,7 +196,7 @@ impl Window {
             let read = Parser::new(lease.bytes(), Origin::File, self.limits)
                 .with_origin_offset(self.at)?
                 .with_recovery(self.recovery)
-                .read_window(boundary, &mut *parse)?;
+                .read_window_with_control(boundary, &mut *parse)?;
             match read {
                 WindowRead::Complete(parsed) => {
                     self.at += parsed.offset;
@@ -209,6 +216,15 @@ impl Window {
                         .saturating_mul(2)
                         .max(minimum_length)
                         .min(available);
+                }
+                WindowRead::Deferred(missing) => {
+                    if missing.identity() != self.source.identity() {
+                        return Err(Error::invalid_argument(
+                            "window callback dependency belongs to another source",
+                        )
+                        .into());
+                    }
+                    return Err(ReadFault::Unavailable(missing));
                 }
                 _ => return Err(Error::invalid_argument("unknown parser window state").into()),
             }
