@@ -818,6 +818,16 @@ pub(crate) fn join_into(
     let n1 = a.perp() * side;
     let n2 = b.perp() * side;
     if stroke.join == LineJoin::Round {
+        // A turn within one subdivision step takes no point between the
+        // normals. Then cos turn = a·b exceeds cos step = 2c² - 1, with
+        // c = cos(step / 2) as below, by far more than the rounding of
+        // either side and of the angle the arc would compute.
+        let c = 1.0 - (tolerance / radius).min(1.0);
+        if a.dot(b) >= 2.0 * c * c - 1.0 + 1e-9 {
+            bytes.reserve_capacity(points, 2)?;
+            points.extend([point + n1, point + n2]);
+            return Ok(Some(cross <= 0.0));
+        }
         let start = n1.y.atan2(n1.x);
         let end = n2.y.atan2(n2.x);
         let angle = if cross > 0.0 {
