@@ -692,40 +692,42 @@
     {
       "id": "jpx/jpxb-layout-jpch",
       "kind": "vector",
-      "description": "A baseline brand and mask do not bypass first-image metadata semantics",
+      "description": "Independently encoded input pixels",
       "requirements": [
         "jpx-boxes"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/jpx/jpxb-layout-jpch.error",
-          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
-        },
         ".jpx": {
           "path": "corpus/generated/jpx/jpxb-layout-jpch.jpx",
           "sha256": "7c4f1416563f9ad3a89b372da523fbf7fd922a9e7558d7f4c3f2f186312ec471"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-layout-jpch.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
         }
       },
-      "error": "unsupported"
+      "color": "gray",
+      "alpha": null
     },
     {
       "id": "jpx/jpxb-layout-jplh",
       "kind": "vector",
-      "description": "A baseline brand and mask do not bypass first-image metadata semantics",
+      "description": "Independently encoded input pixels",
       "requirements": [
         "jpx-boxes"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/jpx/jpxb-layout-jplh.error",
-          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
-        },
         ".jpx": {
           "path": "corpus/generated/jpx/jpxb-layout-jplh.jpx",
           "sha256": "ae32606c3241c1a6b150235c10aee5f0c52a62ff3cbc2529c4c0310703613e6f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-layout-jplh.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
         }
       },
-      "error": "unsupported"
+      "color": "gray",
+      "alpha": null
     },
     {
       "id": "jpx/jpxb-layout-ftbl",

@@ -1271,7 +1271,12 @@ def marker_cases():
         ("jpxb-requirements-extra", baseline_container(raw, requirements=bytes([1, 0, 0, 0, 0, 0, 0, 0]))),
     ]:
         yield rejection(name, data, ("jpx-boxes",), "T.801 M.11.1 exact box position and field extent")
-    for kind in (b"jpch", b"jplh", b"ftbl", b"cref"):
+    # T.801 M.11.6/.7: empty first headers inherit the complete JP2 defaults.
+    # Keep the original input bytes and test their independently encoded samples.
+    for kind in (b"jpch", b"jplh"):
+        yield vector("jpxb-layout-" + kind.decode(), baseline_container(raw, extra=box(kind, b"")),
+                     [samples], 8, 8, ("jpx-boxes",), color="gray")
+    for kind in (b"ftbl", b"cref"):
         yield Vector("jpxb-layout-" + kind.decode(), {".jpx": baseline_container(raw, extra=box(kind, b"")),
                      ".error": b"unsupported\n"}, ("jpx-boxes",),
                      "A baseline brand and mask do not bypass first-image metadata semantics", extra={"error": "unsupported"})
