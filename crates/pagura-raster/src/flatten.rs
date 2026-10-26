@@ -107,7 +107,7 @@ pub(crate) struct Polyline {
     pub(crate) degenerate: bool,
     /// Forward source endpoint directions, also retained through degenerate segments.
     pub(crate) tangents: [Option<Point>; 2],
-    curves: [bool; 2],
+    pub(crate) curves: [bool; 2],
     /// Sparse source joins; subdivision points retain their chord directions.
     pub(crate) joins: Vec<Join>,
 }

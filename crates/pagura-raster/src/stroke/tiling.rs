@@ -81,7 +81,7 @@ pub(super) fn append(
     let before = bytes.used().saturating_sub(out.heap_bytes());
     let result = (|| {
         let Pen { radius, .. } = pen;
-        let points = centreline(run, bytes)?;
+        let points = &run.points;
         let [first, .., last] = points.as_slice() else {
             // A point's two caps; two round caps are the same circle.
             if let Some(&point) = points.first() {
@@ -102,7 +102,7 @@ pub(super) fn append(
                 points.len() - 1
             },
         };
-        let segments = segments(&points, joints, bytes)?;
+        let segments = segments(points, joints, bytes)?;
         let turns = turns(&segments, joints, radius, bytes)?;
         let tiles = !turns.iter().any(|j| matches!(j, Joint::Overlap))
             && advances(&segments, joints.closed);
@@ -216,22 +216,6 @@ pub(super) fn apart<'a>(
     })();
     bytes.refund(bytes.used().saturating_sub(before));
     result
-}
-
-/// The run's points without repeats, a closed run's closing point removed,
-/// as [`super::draw`] strokes them.
-pub(super) fn centreline(run: &Run, bytes: &mut Meter) -> Result<Vec<Point>> {
-    let mut points = Vec::new();
-    bytes.reserve(&mut points, run.points.len())?;
-    for &point in &run.points {
-        if points.last() != Some(&point) {
-            points.push(point);
-        }
-    }
-    if run.closed && points.len() > 1 && points.first() == points.last() {
-        points.pop();
-    }
-    Ok(points)
 }
 
 /// How a run's joints border its segments: segment `i` runs from point `i`

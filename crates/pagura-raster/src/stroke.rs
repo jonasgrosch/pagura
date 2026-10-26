@@ -644,6 +644,9 @@ pub(crate) fn dash_contour(
     )?;
     if !contour.closed {
         for (index, end) in ends.into_iter().enumerate() {
+            if !contour.curves[index] {
+                continue;
+            }
             let Some(tangent) = contour.tangents[index] else {
                 continue;
             };
@@ -903,7 +906,7 @@ pub(crate) fn draw(
     let result = (|| {
         let Pen { radius, .. } = pen;
         let closed = run.closed;
-        let points = tiling::centreline(run, bytes)?;
+        let points = &run.points;
         if points.len() < 2 {
             if let Some(&point) = points.first() {
                 cap(out, point, run.tangent, pen, stroke.cap, limits, bytes)?;
