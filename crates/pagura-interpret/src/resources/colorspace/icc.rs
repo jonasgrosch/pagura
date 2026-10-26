@@ -5,6 +5,7 @@ use super::super::numbers::entry;
 use pagura_color::Profile;
 use pagura_core::{Built, Dictionary, Error, ObjectId, Result, Store, StoreKey, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -49,7 +50,7 @@ impl<'a> Profiles<'a> {
     }
 
     /// The profile of stream `id` read for `components` components.
-    fn get(&mut self, id: ObjectId, components: usize) -> Result<Option<Arc<Profile>>> {
+    fn get(&mut self, id: ObjectId, components: usize) -> ReadResult<Option<Arc<Profile>>> {
         self.get_source(id, components, None)
     }
 
@@ -60,7 +61,7 @@ impl<'a> Profiles<'a> {
         id: ObjectId,
         components: usize,
         data: &[u8],
-    ) -> Result<Option<Arc<Profile>>> {
+    ) -> ReadResult<Option<Arc<Profile>>> {
         self.get_source(id, components, Some(data))
     }
 
@@ -69,7 +70,8 @@ impl<'a> Profiles<'a> {
         id: ObjectId,
         components: usize,
         embedded: Option<&[u8]>,
-    ) -> Result<Option<Arc<Profile>>> {
+    ) -> ReadResult<Option<Arc<Profile>>> {
+        self.document.check_source()?;
         let source = if embedded.is_some() {
             Source::Image(id)
         } else {
@@ -78,14 +80,16 @@ impl<'a> Profiles<'a> {
         if let Some((count, profile)) = self.entries.get(&source) {
             if *count != components {
                 return Err(
-                    Error::syntax("ICC component count differs from cached profile").in_object(id),
+                    Error::syntax("ICC component count differs from cached profile")
+                        .in_object(id)
+                        .into(),
                 );
             }
             return Ok(profile.clone());
         }
         let document = self.document;
         let limits = document.limits();
-        let parse = || -> Result<Built<StoredProfile>> {
+        let parse = || -> ReadResult<Built<StoredProfile>> {
             let parsed = match embedded {
                 Some(bytes) => Profile::parse(bytes, components, &limits),
                 None => Profile::parse(
@@ -119,7 +123,7 @@ impl<'a> Profiles<'a> {
             .filter(|&n| n <= limits.render_bytes)
             .ok_or(Error::limit("ICC cache byte budget exceeded"))?;
         if self.entries.len() >= limits.value_nodes {
-            return Err(Error::limit("ICC cache entry budget exceeded"));
+            return Err(Error::limit("ICC cache entry budget exceeded").into());
         }
         self.entries.insert(source, (components, profile.clone()));
         self.bytes = total;
@@ -141,13 +145,13 @@ pub(super) fn read<'a>(
     document: &'a Document,
     profiles: &mut Profiles<'_>,
     value: &Value,
-) -> Result<Read<'a>> {
+) -> ReadResult<Read<'a>> {
     let id = value
         .as_reference()
         .ok_or(Error::syntax("ICC profile must be a stream reference"))?;
     let object = document.object(id)?;
     if !object.is_stream() {
-        return Err(Error::syntax("ICC profile must be a stream"));
+        return Err(Error::syntax("ICC profile must be a stream").into());
     }
     let dictionary = object
         .dictionary()
@@ -159,7 +163,7 @@ pub(super) fn read<'a>(
         1 => 1,
         3 => 3,
         4 => 4,
-        _ => return Err(Error::syntax("invalid ICC component count")),
+        _ => return Err(Error::syntax("invalid ICC component count").into()),
     };
     let range = range(document, dictionary, usize::from(components))?;
     let profile = profiles.get(id, usize::from(components))?;
@@ -172,7 +176,7 @@ pub(super) fn read<'a>(
     })
 }
 
-fn range(document: &Document, dictionary: &Dictionary, count: usize) -> Result<[[f64; 2]; 4]> {
+fn range(document: &Document, dictionary: &Dictionary, count: usize) -> ReadResult<[[f64; 2]; 4]> {
     let mut ranges = [[0.0, 1.0]; 4];
     let Some(value) = dictionary.get(b"Range") else {
         return Ok(ranges);
@@ -182,10 +186,10 @@ fn range(document: &Document, dictionary: &Dictionary, count: usize) -> Result<[
         .as_array()
         .ok_or(Error::syntax("ICC Range must be an array"))?;
     if values.len() != count * 2 {
-        return Err(Error::syntax("wrong ICC Range length"));
+        return Err(Error::syntax("wrong ICC Range length").into());
     }
     for (out, pair) in ranges.iter_mut().zip(values.as_chunks::<2>().0) {
-        let bound = |value: &Value| -> Result<f64> {
+        let bound = |value: &Value| -> ReadResult<f64> {
             document
                 .resolve(value)?
                 .as_number()
@@ -193,7 +197,7 @@ fn range(document: &Document, dictionary: &Dictionary, count: usize) -> Result<[
         };
         let (low, high) = (bound(&pair[0])?, bound(&pair[1])?);
         if low > high {
-            return Err(Error::syntax("reversed ICC Range"));
+            return Err(Error::syntax("reversed ICC Range").into());
         }
         *out = [low, high];
     }
@@ -238,9 +242,9 @@ pub(super) fn alternate_components(
     resources: &Dictionary,
     value: &Value,
     depth: usize,
-) -> Result<usize> {
+) -> ReadResult<usize> {
     if depth > document.limits().depth {
-        return Err(Error::limit("ICC alternate depth exceeded"));
+        return Err(Error::limit("ICC alternate depth exceeded").into());
     }
     let value = document.resolve(value)?;
     let (family, args) = if let Some(name) = value.as_name() {
@@ -288,7 +292,7 @@ pub(super) fn alternate_components(
                 .ok_or(Error::syntax("invalid ICC alternate N"))?;
             usize::try_from(n).map_err(|_| Error::syntax("invalid ICC alternate N"))?
         }
-        b"Pattern" => return Err(Error::syntax("Pattern is not an ICC alternate")),
+        b"Pattern" => return Err(Error::syntax("Pattern is not an ICC alternate").into()),
         name if args.is_empty() => {
             let spaces = resources
                 .get(b"ColorSpace")
@@ -300,7 +304,7 @@ pub(super) fn alternate_components(
                 .ok_or(Error::syntax("undefined ICC alternate"))?;
             return alternate_components(document, resources, value, depth + 1);
         }
-        _ => return Err(Error::syntax("invalid ICC alternate family")),
+        _ => return Err(Error::syntax("invalid ICC alternate family").into()),
     })
 }
 

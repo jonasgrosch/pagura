@@ -1,7 +1,8 @@
 //! Fonts that generated variable text is laid out with (9.6, 9.7).
 
-use pagura_core::{Dictionary, Limits, ObjectId, Result};
+use pagura_core::{Dictionary, Limits, ObjectId};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_text::{PdfFont, Provider};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -24,7 +25,7 @@ pub trait FontSource {
         document: &Document,
         id: Option<ObjectId>,
         dictionary: &Dictionary,
-    ) -> Result<Arc<PdfFont>>;
+    ) -> ReadResult<Arc<PdfFont>>;
 
     /// The provider whose standard-font metrics give a font without a
     /// descriptor its ascent and descent, if any.
@@ -76,7 +77,8 @@ impl FontSource for ProviderFonts<'_> {
         document: &Document,
         id: Option<ObjectId>,
         dictionary: &Dictionary,
-    ) -> Result<Arc<PdfFont>> {
+    ) -> ReadResult<Arc<PdfFont>> {
+        document.check_source()?;
         if let Some(font) = id.and_then(|id| self.kept.borrow().fonts.get(&id).cloned()) {
             return Ok(font);
         }

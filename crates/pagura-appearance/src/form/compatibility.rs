@@ -8,6 +8,7 @@ use pagura_core::{
     syntax::{Origin, Parser},
 };
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The standard 14 font names (9.6.2.2).
 const STANDARD_FONTS: [&[u8]; 14] = [
@@ -34,7 +35,7 @@ pub(super) fn supply_font(
     document: &Document,
     resources: &mut Dictionary,
     name: &[u8],
-) -> Result<()> {
+) -> ReadResult<()> {
     let mut fonts = match resources.get(b"Font") {
         Some(value) => document.resolve_dictionary(value)?.clone(),
         None => Dictionary::new(),
@@ -43,9 +44,7 @@ pub(super) fn supply_font(
         return Ok(());
     }
     if !STANDARD_FONTS.contains(&name) {
-        return Err(Error::syntax(
-            "missing form font is not a named standard font",
-        ));
+        return Err(Error::syntax("missing form font is not a named standard font").into());
     }
     let mut font = Dictionary::new();
     font.insert(Name::new(b"Type"), Value::name(b"Font"));
@@ -57,7 +56,7 @@ pub(super) fn supply_font(
     fonts.insert(Name::new(name), Value::Dictionary(font));
     resources.insert(Name::new(b"Font"), Value::Dictionary(fonts));
     if resources.retained_bytes() > document.limits().document_bytes {
-        return Err(Error::limit("appearance font resource budget exceeded"));
+        return Err(Error::limit("appearance font resource budget exceeded").into());
     }
     Ok(())
 }

@@ -11,6 +11,7 @@ use pagura_core::{Error, Rect, Result};
 use pagura_document::forms::{
     ChoiceStyle, Field, FieldFlags, FieldKind, FieldValue, FilledField, FilledValue, FormFiller,
 };
+use pagura_document::source::ReadResult;
 
 /// Writes the variable text of field `index` in `area`.
 pub(super) fn write(
@@ -20,7 +21,7 @@ pub(super) fn write(
     area: Rect,
     font: &Font,
     da: &DefaultAppearance,
-) -> Result<()> {
+) -> ReadResult<()> {
     let field = filler
         .form()
         .fields
@@ -44,7 +45,8 @@ pub(super) fn write(
             return Err(Error::unsupported(
                 pagura_document::features::FIELD_TYPE,
                 "field has no variable text appearance",
-            ));
+            )
+            .into());
         }
     };
     out.text("BT\n")?;

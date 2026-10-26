@@ -1,7 +1,8 @@
 //! Bounded reads of dictionary entries and numbers.
 
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The resolved entry `key`; null values, including indirect null, are
 /// absent (7.3.9).
@@ -9,7 +10,7 @@ pub(crate) fn optional<'a>(
     document: &'a Document,
     dictionary: &'a Dictionary,
     key: &[u8],
-) -> Result<Option<&'a Value>> {
+) -> ReadResult<Option<&'a Value>> {
     dictionary
         .get(key)
         .map(|value| document.resolve(value))
@@ -22,7 +23,7 @@ pub(crate) fn optional_dictionary<'a>(
     document: &'a Document,
     dictionary: &'a Dictionary,
     key: &[u8],
-) -> Result<Option<&'a Dictionary>> {
+) -> ReadResult<Option<&'a Dictionary>> {
     optional(document, dictionary, key)?
         .map(|value| {
             value
@@ -33,20 +34,20 @@ pub(crate) fn optional_dictionary<'a>(
 }
 
 /// Resolves one finite number.
-pub(crate) fn number(document: &Document, value: &Value) -> Result<f64> {
+pub(crate) fn number(document: &Document, value: &Value) -> ReadResult<f64> {
     let number = document
         .resolve(value)?
         .as_number()
         .ok_or(Error::syntax("array entry must be a number"))?;
     if !number.is_finite() {
-        return Err(Error::limit("number exceeds numeric working range"));
+        return Err(Error::limit("number exceeds numeric working range").into());
     }
     Ok(number)
 }
 
 /// Resolves an array of finite numbers of any length. The array's length
 /// was bounded when the document parsed it.
-pub(crate) fn numbers(document: &Document, value: &Value) -> Result<Vec<f64>> {
+pub(crate) fn numbers(document: &Document, value: &Value) -> ReadResult<Vec<f64>> {
     let values = document
         .resolve(value)?
         .as_array()

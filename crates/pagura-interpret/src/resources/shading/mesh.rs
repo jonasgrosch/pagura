@@ -7,6 +7,7 @@ use crate::model::{MeshVertex, Patch, ShadingFunction, ShadingKind};
 use pagura_color::{Components, MAX_COMPONENTS};
 use pagura_core::{Dictionary, Error, Limits, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_raster::Point;
 
 /// Control points in stream order (8.7.4.5.8) to storage, where
@@ -21,7 +22,7 @@ pub(super) fn read(
     value: &Value,
     kind: i64,
     components: usize,
-) -> Result<(ShadingKind, Option<ShadingFunction>)> {
+) -> ReadResult<(ShadingKind, Option<ShadingFunction>)> {
     let id = value
         .as_reference()
         .ok_or(Error::syntax("mesh shading must be a stream"))?;
@@ -40,7 +41,7 @@ pub(super) fn read(
         _ => ShadingKind::Patches(patches(&mut decoder, &mut budget, kind == 6)?.into()),
     };
     if budget.count == 0 {
-        return Err(Error::syntax("mesh shading has no complete geometry"));
+        return Err(Error::syntax("mesh shading has no complete geometry").into());
     }
     let function = function
         .map(|function| {
@@ -264,7 +265,7 @@ impl<'a> Decoder<'a> {
         data: &'a [u8],
         kind: i64,
         inputs: usize,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         let coordinate = integer(document, d, b"BitsPerCoordinate")?;
         let component = integer(document, d, b"BitsPerComponent")?;
         let flag = if kind == 5 {
@@ -280,7 +281,7 @@ impl<'a> Decoder<'a> {
                 matches!(flag, 2 | 4 | 8)
             })
         {
-            return Err(Error::syntax("invalid mesh bit width"));
+            return Err(Error::syntax("invalid mesh bit width").into());
         }
         let decode = document
             .resolve(
@@ -300,7 +301,7 @@ impl<'a> Decoder<'a> {
                     number(document, high, GEOMETRY)?,
                 ])
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<ReadResult<Vec<_>>>()?;
         Ok(Self {
             data,
             bit: 0,
@@ -376,7 +377,7 @@ impl<'a> Decoder<'a> {
     }
 }
 
-fn integer(document: &Document, d: &Dictionary, key: &[u8]) -> Result<usize> {
+fn integer(document: &Document, d: &Dictionary, key: &[u8]) -> ReadResult<usize> {
     d.get(key)
         .map(|v| document.resolve(v))
         .transpose()?

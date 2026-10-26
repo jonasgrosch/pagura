@@ -4,8 +4,9 @@
 use super::numbers::{GEOMETRY, array, entry};
 use crate::features;
 use crate::model::{TilingColors, TilingSpacing};
-use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Rect, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_raster::Transform;
 
 /// A tiling pattern's parameters (Table 75).
@@ -47,7 +48,7 @@ pub(crate) fn read<'a>(
     resources: &'a Dictionary,
     name: &[u8],
     initial: Transform,
-) -> Result<Pattern<'a>> {
+) -> ReadResult<Pattern<'a>> {
     let value = resources
         .get(b"Pattern")
         .map(|v| document.resolve_dictionary(v))
@@ -59,7 +60,7 @@ pub(crate) fn read<'a>(
         .and_then(Value::as_integer)
         .ok_or(Error::syntax("pattern requires PatternType"))?;
     if !matches!(kind, 1 | 2) {
-        return Err(Error::syntax("invalid PatternType"));
+        return Err(Error::syntax("invalid PatternType").into());
     }
     if kind == 2
         && let Some(state) = d.get(b"ExtGState")
@@ -68,7 +69,8 @@ pub(crate) fn read<'a>(
         return Err(Error::unsupported(
             features::PATTERN_STATE,
             "pattern rendering parameters are not implemented",
-        ));
+        )
+        .into());
     }
     let matrix = d
         .get(b"Matrix")
@@ -80,7 +82,7 @@ pub(crate) fn read<'a>(
         .unwrap_or(Transform::IDENTITY)
         .then(initial);
     if !matrix.is_finite() {
-        return Err(Error::limit("pattern transform overflow"));
+        return Err(Error::limit("pattern transform overflow").into());
     }
     let kind = if kind == 1 {
         Kind::Tiling(tiling(document, value, d)?)
@@ -93,12 +95,12 @@ pub(crate) fn read<'a>(
     Ok(Pattern { kind, matrix })
 }
 
-fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> Result<Tiling<'a>> {
+fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> ReadResult<Tiling<'a>> {
     let id = value
         .as_reference()
         .ok_or(Error::syntax("tiling pattern must be a stream"))?;
     if !document.object(id)?.is_stream() {
-        return Err(Error::syntax("tiling pattern must be a stream"));
+        return Err(Error::syntax("tiling pattern must be a stream").into());
     }
     let integer = |key: &[u8]| {
         entry(document, d, key)?
@@ -108,13 +110,13 @@ fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> Resul
     let colors = match integer(b"PaintType")? {
         1 => TilingColors::Colored,
         2 => TilingColors::Uncolored,
-        _ => return Err(Error::syntax("invalid PaintType")),
+        _ => return Err(Error::syntax("invalid PaintType").into()),
     };
     let spacing = match integer(b"TilingType")? {
         1 => TilingSpacing::Constant,
         2 => TilingSpacing::NoDistortion,
         3 => TilingSpacing::Faster,
-        _ => return Err(Error::syntax("invalid TilingType")),
+        _ => return Err(Error::syntax("invalid TilingType").into()),
     };
     let b = array::<4>(
         document,

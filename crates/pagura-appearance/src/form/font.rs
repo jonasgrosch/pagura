@@ -5,6 +5,7 @@ use crate::fonts::FontSource;
 use crate::values::{optional, optional_dictionary};
 use pagura_core::{Dictionary, Error, Position, Result};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_text::{FontKind, FontUnicode, PdfFont, WritingMode};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -31,7 +32,7 @@ impl Font {
         resources: &Dictionary,
         name: &[u8],
         fonts: &dyn FontSource,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         let entries = resources
             .get(b"Font")
             .ok_or(Error::syntax("form resources have no Font dictionary"))?;
@@ -45,11 +46,12 @@ impl Font {
             return Err(Error::unsupported(
                 features::APPEARANCE_FONT_ENCODING,
                 "appearance generation requires a horizontal simple font",
-            ));
+            )
+            .into());
         }
         let limits = document.limits();
         if limits.operations < 256 || limits.document_bytes < 256 * 64 {
-            return Err(Error::limit("appearance font mapping budget exceeded"));
+            return Err(Error::limit("appearance font mapping budget exceeded").into());
         }
         let mut codes = BTreeMap::new();
         for code in 0..=u8::MAX {
@@ -90,21 +92,23 @@ fn load(
     id: Option<pagura_core::ObjectId>,
     dictionary: &Dictionary,
     fonts: &dyn FontSource,
-) -> Result<(Arc<PdfFont>, FontUnicode)> {
+) -> ReadResult<(Arc<PdfFont>, FontUnicode)> {
     let loaded = fonts.font(document, id, dictionary).and_then(|font| {
         let unicode = font.unicode(document, dictionary, fonts.provider())?;
         Ok((font, unicode))
     });
-    loaded.map_err(|mut error| {
-        if matches!(error.position, Position::Buffer(_)) {
-            error.position = Position::Unknown;
-        }
-        match id {
-            Some(id) if error.repair != Some(pagura_text::repairs::DESCRIPTOR_FLAGS) => {
-                error.in_object(id)
+    loaded.map_err(|fault| {
+        fault.map_error(|mut error| {
+            if matches!(error.position, Position::Buffer(_)) {
+                error.position = Position::Unknown;
             }
-            _ => error,
-        }
+            match id {
+                Some(id) if error.repair != Some(pagura_text::repairs::DESCRIPTOR_FLAGS) => {
+                    error.in_object(id)
+                }
+                _ => error,
+            }
+        })
     })
 }
 
@@ -114,7 +118,7 @@ fn extent(
     document: &Document,
     dictionary: &Dictionary,
     fonts: &dyn FontSource,
-) -> Result<(f64, f64)> {
+) -> ReadResult<(f64, f64)> {
     let (mut ascent, mut descent) = (0.8, -0.2);
     if let Some(base) = dictionary.get_name(b"BaseFont")
         && let Some(provider) = fonts.provider()
@@ -128,14 +132,12 @@ fn extent(
         descent = metric(document, descriptor, b"Descent")?.unwrap_or(descent * 1000.0) / 1000.0;
     }
     if !ascent.is_finite() || !descent.is_finite() || ascent <= descent {
-        return Err(Error::syntax(
-            "invalid variable text font ascent and descent",
-        ));
+        return Err(Error::syntax("invalid variable text font ascent and descent").into());
     }
     Ok((ascent, descent))
 }
 
-fn metric(document: &Document, dictionary: &Dictionary, key: &[u8]) -> Result<Option<f64>> {
+fn metric(document: &Document, dictionary: &Dictionary, key: &[u8]) -> ReadResult<Option<f64>> {
     optional(document, dictionary, key)?
         .map(|value| {
             document

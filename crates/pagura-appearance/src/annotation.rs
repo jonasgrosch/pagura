@@ -8,8 +8,9 @@ mod widget;
 
 use crate::features;
 use crate::stream::AppearanceStream;
-use pagura_core::{Dictionary, Error, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Rect, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// Generates the normal appearance of `annotation`, which has no `AP`, in
 /// its rectangle `rect` (the normalized `Rect` entry).
@@ -39,7 +40,7 @@ pub fn annotation_appearance(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
-) -> Result<Option<AppearanceStream>> {
+) -> ReadResult<Option<AppearanceStream>> {
     if rect.width() == 0.0 && rect.height() == 0.0 {
         return Ok(None);
     }
@@ -60,7 +61,8 @@ pub fn annotation_appearance(
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,
                 "annotation appearance generation is not implemented",
-            ));
+            )
+            .into());
         }
     };
     Ok(appearance.filter(|_| rect.width() > 0.0 && rect.height() > 0.0))
@@ -68,7 +70,7 @@ pub fn annotation_appearance(
 
 /// Whether a link draws no border: an empty colour `C`, or a zero width in
 /// BS, else in Border (Tables 166, 176).
-fn no_border(document: &Document, annotation: &Dictionary) -> Result<bool> {
+fn no_border(document: &Document, annotation: &Dictionary) -> ReadResult<bool> {
     if let Some(color) = annotation.get(b"C")
         && document
             .resolve(color)?

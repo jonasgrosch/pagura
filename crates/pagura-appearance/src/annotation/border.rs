@@ -4,8 +4,9 @@ use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
 use crate::features;
 use crate::stream::AppearanceStream;
 use crate::values::numbers;
-use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Rect, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The annotation whose border is drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,13 +24,14 @@ pub(super) fn generate(
     annotation: &Dictionary,
     rect: Rect,
     shape: Shape,
-) -> Result<Option<AppearanceStream>> {
+) -> ReadResult<Option<AppearanceStream>> {
     if shape == Shape::Square && (annotation.contains_key(b"BE") || annotation.contains_key(b"RD"))
     {
         return Err(Error::unsupported(
             features::ANNOTATION_APPEARANCE,
             "square border effects and rectangle differences are not implemented",
-        ));
+        )
+        .into());
     }
     let border = Border::read(document, annotation)?;
     let inset = (border.width * 0.5)
@@ -81,7 +83,7 @@ pub(super) struct Border {
 }
 
 impl Border {
-    pub(super) fn read(document: &Document, annotation: &Dictionary) -> Result<Self> {
+    pub(super) fn read(document: &Document, annotation: &Dictionary) -> ReadResult<Self> {
         let (mut width, mut dash, mut style) = (1.0, Vec::new(), b"S".as_slice());
         if let Some(bs) = annotation.get(b"BS") {
             let bs = document.resolve_dictionary(bs)?;
@@ -105,10 +107,10 @@ impl Border {
                 .as_array()
                 .ok_or(Error::syntax("invalid annotation Border"))?;
             let [horizontal, vertical, line, rest @ ..] = border else {
-                return Err(Error::syntax("invalid annotation Border"));
+                return Err(Error::syntax("invalid annotation Border").into());
             };
             if rest.len() > 1 {
-                return Err(Error::syntax("invalid annotation Border"));
+                return Err(Error::syntax("invalid annotation Border").into());
             }
             let radii = [
                 document.resolve(horizontal)?.as_number(),
@@ -118,7 +120,8 @@ impl Border {
                 return Err(Error::unsupported(
                     features::ANNOTATION_APPEARANCE,
                     "rounded annotation borders are not implemented",
-                ));
+                )
+                .into());
             }
             width = document
                 .resolve(line)?
@@ -129,13 +132,14 @@ impl Border {
             }
         }
         if width < 0.0 {
-            return Err(Error::syntax("negative annotation border width"));
+            return Err(Error::syntax("negative annotation border width").into());
         }
         if matches!(style, b"B" | b"I") {
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,
                 "relief annotation borders are not implemented",
-            ));
+            )
+            .into());
         }
         Ok(Self {
             width,

@@ -7,15 +7,16 @@ use super::border::Border;
 use super::marks::{Marks, Pen, Subpath, color};
 use crate::features;
 use crate::stream::AppearanceStream;
-use pagura_core::{Dictionary, Error, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Rect, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The MK background and border of an empty text or signature widget.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
-) -> Result<Option<AppearanceStream>> {
+) -> ReadResult<Option<AppearanceStream>> {
     let unsupported = || {
         Error::unsupported(
             features::ANNOTATION_APPEARANCE,
@@ -52,7 +53,7 @@ fn characteristics(
     annotation: &Dictionary,
     mk: &Dictionary,
     rect: Rect,
-) -> Result<()> {
+) -> ReadResult<()> {
     let rotation = mk
         .get(b"R")
         .map(|value| {
@@ -85,7 +86,8 @@ fn characteristics(
         return Err(Error::unsupported(
             features::ANNOTATION_APPEARANCE,
             "rotated widget borders require an explicit appearance",
-        ));
+        )
+        .into());
     }
     let inset = (border.width * 0.5)
         .min(rect.width() * 0.5)
@@ -117,7 +119,7 @@ fn inherited<'a>(
     document: &'a Document,
     mut dictionary: &'a Dictionary,
     key: &[u8],
-) -> Result<Option<&'a Value>> {
+) -> ReadResult<Option<&'a Value>> {
     let mut visited = Vec::new();
     for _ in 0..document.limits().depth {
         if let Some(value) = dictionary.get(key) {
@@ -136,11 +138,13 @@ fn inherited<'a>(
         }
         if let Some(id) = parent.as_reference() {
             if visited.contains(&id) {
-                return Err(Error::cycle("cyclic widget field ancestry").in_object(id));
+                return Err(Error::cycle("cyclic widget field ancestry")
+                    .in_object(id)
+                    .into());
             }
             visited.push(id);
         }
         dictionary = document.resolve_dictionary(parent)?;
     }
-    Err(Error::limit("widget field ancestry exceeded"))
+    Err(Error::limit("widget field ancestry exceeded").into())
 }

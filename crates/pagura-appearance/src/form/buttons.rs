@@ -3,7 +3,8 @@
 use super::{bounds, inset, style::Style};
 use crate::program::Program;
 use crate::stream::{Appearance, AppearanceStream, form_dictionary};
-use pagura_core::{Dictionary, Name, Result, Value};
+use pagura_core::{Dictionary, Name, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{
     Document,
     forms::{Field, FieldValue, Widget},
@@ -16,7 +17,7 @@ pub(super) fn check_mark(
     widget: &Widget<'_>,
     state: Option<&Name>,
     field: &Field<'_>,
-) -> Result<Appearance> {
+) -> ReadResult<Appearance> {
     let limits = document.limits();
     let bbox = bounds(widget)?;
     let style = Style::read(document, widget.dictionary)?;

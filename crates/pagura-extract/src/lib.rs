@@ -8,6 +8,7 @@
 //! exact ink outlines. Page layout is reader policy; logical structure is a
 //! separate assistive-technology view and never changes page search or selection.
 use pagura_core::{Error, Limits, Name, ObjectId, Result};
+use pagura_document::source::{ReadFault, ReadResult};
 use pagura_raster::Point;
 use pagura_text::{FontKind, GlyphText, WritingMode};
 use std::{ops::Range, sync::Arc};
@@ -408,25 +409,17 @@ impl TextPage {
         mut self,
         document: &pagura_document::Document,
         page: &pagura_document::Page,
-    ) -> Result<Self> {
-        let owned = document.page(page.index())?;
-        if owned.id() != page.id()
-            || !std::ptr::eq(owned.resources(), page.resources())
-            || owned != page
-        {
-            return Err(Error::invalid_argument(
-                "page does not belong to structure document",
-            ));
-        }
+    ) -> ReadResult<Self> {
+        document.check_page(page)?;
         self.logical = None;
         self.structure_fallback = None;
         match structure::apply(&self, document, page) {
             Ok(logical) => self.logical = logical.map(Arc::new),
             Err(failure) => {
-                let error = failure.error;
-                if !failure.recoverable {
-                    return Err(error);
-                }
+                let error = match failure.error {
+                    ReadFault::Invalid(error) if failure.recoverable => error,
+                    fault => return Err(fault),
+                };
                 repairs::report(
                     document,
                     pagura_core::Diagnostic::new(repairs::STRUCTURE_FALLBACK, error.message)
@@ -438,7 +431,7 @@ impl TextPage {
         }
         self.retained = memory::estimate(&self);
         if self.retained > self.limits.document_bytes {
-            return Err(Error::limit("logical text retained budget exceeded"));
+            return Err(Error::limit("logical text retained budget exceeded").into());
         }
         Ok(self)
     }

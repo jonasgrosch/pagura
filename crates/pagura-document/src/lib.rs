@@ -151,6 +151,16 @@ impl Document {
         self.bytes.materialize()
     }
 
+    /// Checks that the backing source remains open and consistent, without
+    /// requesting bytes. Cached readers call this before returning a result.
+    /// Already-issued immutable byte leases remain readable after closure.
+    ///
+    /// # Errors
+    /// Returns the source's terminal lifecycle or consistency error.
+    pub fn check_source(&self) -> Result<()> {
+        self.bytes.check()
+    }
+
     /// The resource budgets in effect.
     pub fn limits(&self) -> Limits {
         self.limits
@@ -479,8 +489,13 @@ impl Document {
         pages::contents::read(self, page)
     }
 
-    /// Fails with `InvalidArgument` unless `page` came from this document.
-    pub(crate) fn check_page(&self, page: &Page) -> Result<()> {
+    /// Checks the backing source and that `page` came from this document,
+    /// without traversing the page tree or requesting bytes.
+    ///
+    /// # Errors
+    /// Returns source lifecycle errors or `InvalidArgument` for another
+    /// document's page.
+    pub fn check_page(&self, page: &Page) -> Result<()> {
         self.bytes.check()?;
         if std::ptr::eq(page.document().as_ptr(), Arc::as_ptr(&self.token)) {
             Ok(())

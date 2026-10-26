@@ -9,8 +9,9 @@ use super::numbers::{GEOMETRY, array, entry};
 use crate::features;
 use crate::model::{Shading, ShadingFunction, ShadingKind};
 use pagura_color::{ColorSpace, Components, MAX_COMPONENTS};
-use pagura_core::{Dictionary, Error, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Rect, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_raster::{Point, Transform};
 use std::sync::Arc;
 
@@ -25,14 +26,14 @@ pub(crate) fn read(
     colors: &mut Colors<'_>,
     resources: &Dictionary,
     value: &Value,
-) -> Result<Shading> {
+) -> ReadResult<Shading> {
     let document = colors.document();
     let d = document.resolve_dictionary(value)?;
     let kind = entry(document, d, b"ShadingType")?
         .and_then(Value::as_integer)
         .ok_or(Error::syntax("shading requires ShadingType"))?;
     if !(1..=7).contains(&kind) {
-        return Err(Error::syntax("invalid ShadingType"));
+        return Err(Error::syntax("invalid ShadingType").into());
     }
     let space = colors.resolve(
         resources,
@@ -44,13 +45,13 @@ pub(crate) fn read(
         || (kind < 4 && indexed)
         || (indexed && d.contains_key(b"Function"))
     {
-        return Err(Error::syntax("analytic shading cannot use Indexed"));
+        return Err(Error::syntax("analytic shading cannot use Indexed").into());
     }
     let components = space.components();
     if components > MAX_COMPONENTS {
-        return Err(Error::limit(
-            "shading component count exceeds implementation limit (Annex C)",
-        ));
+        return Err(
+            Error::limit("shading component count exceeds implementation limit (Annex C)").into(),
+        );
     }
     let bbox = d
         .get(b"BBox")
@@ -97,7 +98,7 @@ pub(crate) fn read(
     })
 }
 
-fn background(document: &Document, value: &Value, components: usize) -> Result<Components> {
+fn background(document: &Document, value: &Value, components: usize) -> ReadResult<Components> {
     let values = document
         .resolve(value)?
         .as_array()
@@ -120,19 +121,18 @@ fn geometry(
     document: &Document,
     d: &Dictionary,
     kind: i64,
-) -> Result<(ShadingKind, Vec<[f64; 2]>)> {
+) -> ReadResult<(ShadingKind, Vec<[f64; 2]>)> {
     if kind == 1 {
         let domain = optional::<4>(document, d, b"Domain", [0.0, 1.0, 0.0, 1.0])?;
         if domain[0] >= domain[1] || domain[2] >= domain[3] {
-            return Err(Error::syntax("invalid shading Domain"));
+            return Err(Error::syntax("invalid shading Domain").into());
         }
         let m = optional::<6>(document, d, b"Matrix", [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])?;
         let matrix = Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]);
         if matrix.inverse().is_none() {
-            return Err(Error::unsupported(
-                features::SHADING_TRANSFORM,
-                "singular shading Matrix",
-            ));
+            return Err(
+                Error::unsupported(features::SHADING_TRANSFORM, "singular shading Matrix").into(),
+            );
         }
         return Ok((
             ShadingKind::Function { domain, matrix },
@@ -141,7 +141,7 @@ fn geometry(
     }
     let domain = optional::<2>(document, d, b"Domain", [0.0, 1.0])?;
     if domain[0] >= domain[1] {
-        return Err(Error::syntax("invalid shading Domain"));
+        return Err(Error::syntax("invalid shading Domain").into());
     }
     let extend = d
         .get(b"Extend")
@@ -176,7 +176,7 @@ fn geometry(
     } else {
         let c = array::<6>(document, coords, GEOMETRY)?;
         if c[2] < 0.0 || c[5] < 0.0 {
-            return Err(Error::syntax("negative shading radius"));
+            return Err(Error::syntax("negative shading radius").into());
         }
         ShadingKind::Radial {
             start: Point::new(c[0], c[1]),
@@ -197,22 +197,22 @@ fn functions(
     value: &Value,
     domain: &[[f64; 2]],
     outputs: usize,
-) -> Result<ShadingFunction> {
-    let read = |value: &Value, outputs: usize| -> Result<ReadFunction> {
+) -> ReadResult<ShadingFunction> {
+    let read = |value: &Value, outputs: usize| -> ReadResult<ReadFunction> {
         let function = function::read(document, value, domain.len(), outputs)?;
         if !function.covers(domain) {
-            return Err(Error::syntax("function domain does not cover shading"));
+            return Err(Error::syntax("function domain does not cover shading").into());
         }
         Ok(function)
     };
     if let Some(values) = document.resolve(value)?.as_array() {
         if values.len() != outputs {
-            return Err(Error::syntax("wrong shading Function array dimension"));
+            return Err(Error::syntax("wrong shading Function array dimension").into());
         }
         let functions = values
             .iter()
             .map(|v| read(v, 1).map(|f| f.function))
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<ReadResult<Vec<_>>>()?;
         Ok(ShadingFunction::PerComponent(Arc::from(functions)))
     } else {
         Ok(ShadingFunction::Single(read(value, outputs)?.function))
@@ -224,7 +224,7 @@ fn optional<const N: usize>(
     d: &Dictionary,
     key: &[u8],
     default: [f64; N],
-) -> Result<[f64; N]> {
+) -> ReadResult<[f64; N]> {
     d.get(key)
         .map(|v| array::<N>(document, v, GEOMETRY))
         .transpose()

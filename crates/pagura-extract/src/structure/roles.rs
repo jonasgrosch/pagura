@@ -2,6 +2,7 @@
 use super::Budget;
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::collections::BTreeSet;
 
 /// Standard structure namespace, distinct from the PDF file's version (14.8.6).
@@ -22,7 +23,7 @@ impl<'a> Types<'a> {
         doc: &'a Document,
         root: &'a Dictionary,
         budget: &mut Budget,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         let roles = super::entry(doc, root, b"RoleMap")?
             .map(|v| doc.resolve_dictionary(v))
             .transpose()?;
@@ -42,7 +43,7 @@ impl<'a> Types<'a> {
                 budget.work(1)?;
                 doc.resolve_dictionary(v)
             })
-            .collect::<Result<_>>()?;
+            .collect::<ReadResult<_>>()?;
         Ok(Self { roles, namespaces })
     }
     pub(super) fn resolve(
@@ -51,7 +52,7 @@ impl<'a> Types<'a> {
         element: &Dictionary,
         role: &Name,
         budget: &mut Budget,
-    ) -> Result<(StructureNamespace, Option<Name>)> {
+    ) -> ReadResult<(StructureNamespace, Option<Name>)> {
         let (namespace, roles) = if let Some(value) = super::entry(doc, element, b"NS")? {
             let ns = doc.resolve_dictionary(value)?;
             let ns_object = value.as_reference();
@@ -59,16 +60,17 @@ impl<'a> Types<'a> {
             if !self.namespaces.iter().any(|n| std::ptr::eq(*n, ns)) {
                 return Err(Error::syntax(
                     "structure namespace is absent from Namespaces (14.8.6.2)",
-                ));
+                )
+                .into());
             }
             if super::name(doc, ns, b"Type")?.is_some_and(|n| n.as_bytes() != b"Namespace") {
-                return Err(Error::syntax("invalid namespace Type (Table 356)"));
+                return Err(Error::syntax("invalid namespace Type (Table 356)").into());
             }
             if super::entry(doc, ns, b"RoleMapNS")?.is_some() {
                 return Err(Error::unsupported(
                     crate::features::STRUCTURE_NAMESPACE,
                     "text.structure-namespace: namespace-specific role maps are not implemented (14.8.6.2)",
-                ));
+                ).into());
             }
             let value = ns
                 .get(b"NS")
@@ -85,7 +87,7 @@ impl<'a> Types<'a> {
                     return Err(Error::unsupported(
                         crate::features::STRUCTURE_NAMESPACE,
                         "text.structure-namespace: nonstandard structure namespace is not implemented (14.7.4)",
-                    ));
+                    ).into());
                 }
             };
             (namespace, None)
@@ -101,7 +103,7 @@ fn role_type(
     roles: Option<&Dictionary>,
     namespace: StructureNamespace,
     budget: &mut Budget,
-) -> Result<Option<Name>> {
+) -> ReadResult<Option<Name>> {
     let mut current = role;
     let mut seen = BTreeSet::new();
     // Map even a standard initial name. Valid cycles stop when recognised or
@@ -127,7 +129,7 @@ fn role_type(
             return Ok(Some(current.clone()));
         }
         if seen.len() > budget.limits.depth {
-            return Err(Error::limit("structure role-map depth exceeded"));
+            return Err(Error::limit("structure role-map depth exceeded").into());
         }
     }
 }

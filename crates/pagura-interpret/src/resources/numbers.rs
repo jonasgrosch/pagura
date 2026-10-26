@@ -1,8 +1,9 @@
 //! Bounded reads of numeric PDF arrays, shared by colour spaces, shadings,
 //! patterns, functions and annotations.
 
-use pagura_core::{Error, Result, Value};
+use pagura_core::{Error, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The magnitude above which geometric parameters (shading coordinates,
 /// pattern matrices) leave the range where their arithmetic stays exact
@@ -19,7 +20,7 @@ pub(crate) fn array<const N: usize>(
     document: &Document,
     value: &Value,
     magnitude: f64,
-) -> Result<[f64; N]> {
+) -> ReadResult<[f64; N]> {
     let values = document
         .resolve(value)?
         .as_array()
@@ -38,7 +39,7 @@ pub(crate) fn array<const N: usize>(
 ///
 /// # Errors
 /// As [`array`], except for the length.
-pub(crate) fn list(document: &Document, value: &Value, magnitude: f64) -> Result<Vec<f64>> {
+pub(crate) fn list(document: &Document, value: &Value, magnitude: f64) -> ReadResult<Vec<f64>> {
     let values = document
         .resolve(value)?
         .as_array()
@@ -56,13 +57,13 @@ pub(crate) fn list(document: &Document, value: &Value, magnitude: f64) -> Result
 ///
 /// # Errors
 /// As [`array`].
-pub(crate) fn number(document: &Document, value: &Value, magnitude: f64) -> Result<f64> {
+pub(crate) fn number(document: &Document, value: &Value, magnitude: f64) -> ReadResult<f64> {
     let number = document
         .resolve(value)?
         .as_number()
         .ok_or(Error::syntax("array entry must be a number"))?;
     if !number.is_finite() || number.abs() > magnitude {
-        return Err(Error::limit("number exceeds numeric working range"));
+        return Err(Error::limit("number exceeds numeric working range").into());
     }
     Ok(number)
 }
@@ -75,7 +76,7 @@ pub(crate) fn entry<'a>(
     document: &'a Document,
     dictionary: &'a pagura_core::Dictionary,
     key: &[u8],
-) -> Result<Option<&'a Value>> {
+) -> ReadResult<Option<&'a Value>> {
     dictionary
         .get(key)
         .map(|value| document.resolve(value))

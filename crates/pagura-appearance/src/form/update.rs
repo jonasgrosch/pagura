@@ -9,6 +9,7 @@ use pagura_core::{
     syntax::{Origin, Parser},
 };
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::ops::Range;
 
 /// The existing appearance's resources with the form's default resources
@@ -17,13 +18,13 @@ pub(super) fn resources(
     document: &Document,
     existing: Option<&Dictionary>,
     defaults: Option<&Dictionary>,
-) -> Result<Dictionary> {
+) -> ReadResult<Dictionary> {
     let limits = document.limits();
     let bytes = existing
         .map_or(0, Dictionary::retained_bytes)
         .saturating_add(defaults.map_or(0, Dictionary::retained_bytes));
     if bytes > limits.document_bytes {
-        return Err(Error::limit("appearance resources storage budget exceeded"));
+        return Err(Error::limit("appearance resources storage budget exceeded").into());
     }
     let mut result = existing.cloned().unwrap_or_default();
     let Some(defaults) = defaults else {
@@ -47,9 +48,7 @@ pub(super) fn resources(
             continue;
         };
         if old.retained_bytes().saturating_add(new.retained_bytes()) > limits.document_bytes {
-            return Err(Error::limit(
-                "merged appearance resources storage budget exceeded",
-            ));
+            return Err(Error::limit("merged appearance resources storage budget exceeded").into());
         }
         let mut merged = old.clone();
         for (name, value) in new {

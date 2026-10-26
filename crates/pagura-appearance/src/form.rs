@@ -31,6 +31,7 @@ use crate::values::optional_dictionary;
 use da::DefaultAppearance;
 use font::Font;
 use pagura_core::{Error, Name, Rect, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{
     Document,
     forms::{Field, FieldKind, FormFiller, Widget, WidgetState},
@@ -91,7 +92,7 @@ impl WidgetAppearance {
 pub fn prepare(
     filler: &FormFiller<'_>,
     provider: Option<&dyn Provider>,
-) -> Result<Vec<WidgetAppearance>> {
+) -> ReadResult<Vec<WidgetAppearance>> {
     let limits = filler.document().limits();
     let fonts = ProviderFonts::new(provider, &limits);
     let count = filler.form().widgets.len();
@@ -108,9 +109,7 @@ pub fn prepare(
             bytes = bytes.saturating_add(stream.retained_bytes());
         }
         if bytes > limits.document_bytes {
-            return Err(Error::limit(
-                "prepared form appearance storage budget exceeded",
-            ));
+            return Err(Error::limit("prepared form appearance storage budget exceeded").into());
         }
         result.push(WidgetAppearance {
             widget: index,
@@ -128,7 +127,7 @@ pub fn prepare_widget(
     filler: &FormFiller<'_>,
     index: usize,
     provider: Option<&dyn Provider>,
-) -> Result<Appearance> {
+) -> ReadResult<Appearance> {
     prepare_widget_with_policy(filler, index, provider, UpdatePolicy::Specification)
 }
 
@@ -141,7 +140,7 @@ pub fn prepare_widget_with_policy(
     index: usize,
     provider: Option<&dyn Provider>,
     policy: UpdatePolicy,
-) -> Result<Appearance> {
+) -> ReadResult<Appearance> {
     let fonts = ProviderFonts::new(provider, &filler.document().limits());
     widget_appearance(filler, index, &fonts, policy)
 }
@@ -152,7 +151,7 @@ fn widget_appearance(
     index: usize,
     fonts: &dyn FontSource,
     policy: UpdatePolicy,
-) -> Result<Appearance> {
+) -> ReadResult<Appearance> {
     let widget = widget(filler, index)?;
     let field = field(filler, widget)?;
     let context = Context {
@@ -199,7 +198,7 @@ impl Context<'_, '_> {
         self.filler.document()
     }
 
-    fn appearance(&self) -> Result<Appearance> {
+    fn appearance(&self) -> ReadResult<Appearance> {
         let state = selected_state(self.filler, self.index, self.widget);
         let original = normal(self.document(), self.widget, state)?;
         let button = matches!(self.field.kind, FieldKind::Button { .. });
@@ -223,7 +222,8 @@ impl Context<'_, '_> {
             return Err(Error::unsupported(
                 pagura_document::features::XFA,
                 "XFA appearance generation is unavailable",
-            ));
+            )
+            .into());
         }
         if button {
             return buttons::check_mark(self.document(), self.widget, state, self.field);
@@ -233,7 +233,7 @@ impl Context<'_, '_> {
 
     /// Text and choice appearances: a new Tx section in a new or the
     /// original stream (12.7.4.3).
-    fn variable(&self, original: Option<&Appearance>) -> Result<Appearance> {
+    fn variable(&self, original: Option<&Appearance>) -> ReadResult<Appearance> {
         let document = self.document();
         let limits = document.limits();
         let original_id = match original {
@@ -300,9 +300,7 @@ impl Context<'_, '_> {
         let mut dictionary = match old {
             Some(old) if old.retained_bytes() <= limits.document_bytes => old.clone(),
             Some(_) => {
-                return Err(Error::limit(
-                    "appearance dictionary storage budget exceeded",
-                ));
+                return Err(Error::limit("appearance dictionary storage budget exceeded").into());
             }
             None => form_dictionary(bbox),
         };
@@ -318,7 +316,7 @@ impl Context<'_, '_> {
 /// before any generation, so that a reader can cull an invisible or empty
 /// stored appearance before variable-text layout, as ordinary annotation
 /// drawing does (12.5.5).
-fn original(filler: &FormFiller<'_>, index: usize) -> Result<Option<Appearance>> {
+fn original(filler: &FormFiller<'_>, index: usize) -> ReadResult<Option<Appearance>> {
     let widget = widget(filler, index)?;
     normal(
         filler.document(),
@@ -348,7 +346,7 @@ fn normal(
     document: &Document,
     widget: &Widget<'_>,
     state: Option<&Name>,
-) -> Result<Option<Appearance>> {
+) -> ReadResult<Option<Appearance>> {
     let Some(ap) = widget.dictionary.get(b"AP") else {
         return Ok(None);
     };
@@ -374,7 +372,7 @@ fn normal(
         .as_reference()
         .ok_or(Error::syntax("widget state appearance must be indirect"))?;
     if !document.object(id)?.is_stream() {
-        return Err(Error::syntax("widget state appearance must be a stream"));
+        return Err(Error::syntax("widget state appearance must be a stream").into());
     }
     Ok(Some(Appearance::Existing(id)))
 }

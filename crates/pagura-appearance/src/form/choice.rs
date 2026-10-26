@@ -7,7 +7,8 @@ use super::{
 };
 use crate::program::Program;
 use crate::values::optional;
-use pagura_core::{Error, Rect, Result};
+use pagura_core::{Error, Rect};
+use pagura_document::source::ReadResult;
 use pagura_document::{
     Document,
     forms::{ChoiceOption, Field, FieldKind, FieldValue, FilledField, FilledValue, FormFiller},
@@ -39,7 +40,7 @@ pub(super) fn list(
     font: &Font,
     da: &DefaultAppearance,
     values: &[&str],
-) -> Result<()> {
+) -> ReadResult<()> {
     let document = filler.document();
     let field = filler
         .form()
@@ -52,10 +53,10 @@ pub(super) fn list(
         ..
     } = &field.kind
     else {
-        return Err(Error::syntax("list requires choice options"));
+        return Err(Error::syntax("list requires choice options").into());
     };
     if !multi_select && values.len() > 1 {
-        return Err(Error::syntax("single-select choice has several values"));
+        return Err(Error::syntax("single-select choice has several values").into());
     }
     let size = if da.size == 0.0 { 12.0 } else { da.size };
     let height = if da.leading == 0.0 {
@@ -64,11 +65,11 @@ pub(super) fn list(
         da.leading
     } * da.matrix[3];
     if !height.is_finite() || height <= 0.0 {
-        return Err(Error::syntax("list row height must be positive"));
+        return Err(Error::syntax("list row height must be positive").into());
     }
     let top = top_index(document, field)?;
     if top > options.len() {
-        return Err(Error::syntax("choice TI is outside Opt"));
+        return Err(Error::syntax("choice TI is outside Opt").into());
     }
     let selected =
         if let Some(FilledValue::Choice(value)) = filler.get(index).map(FilledField::value) {
@@ -115,7 +116,7 @@ pub(super) fn list(
 }
 
 /// TI, the first visible option (Table 234).
-fn top_index(document: &Document, field: &Field<'_>) -> Result<usize> {
+fn top_index(document: &Document, field: &Field<'_>) -> ReadResult<usize> {
     Ok(optional(document, field.dictionary, b"TI")?
         .map(|value| {
             document
@@ -135,7 +136,7 @@ fn source_indices(
     field: &Field<'_>,
     options: &[ChoiceOption],
     values: &[&str],
-) -> Result<Vec<usize>> {
+) -> ReadResult<Vec<usize>> {
     if let Some(indices) = optional(document, field.dictionary, b"I")? {
         let indices = document
             .resolve(indices)?
@@ -150,7 +151,7 @@ fn source_indices(
                 .filter(|i| *i < options.len())
                 .ok_or(Error::syntax("choice I index is outside Opt"))?;
             if result.last().is_some_and(|previous| *previous >= i) {
-                return Err(Error::syntax("choice I must be sorted and distinct"));
+                return Err(Error::syntax("choice I must be sorted and distinct").into());
             }
             result.push(i);
         }
@@ -170,7 +171,7 @@ fn source_indices(
             .fold(0usize, |n, v| n.saturating_add(v.len().max(1))),
     ) > document.limits().operations
     {
-        return Err(Error::limit("choice appearance lookup budget exceeded"));
+        return Err(Error::limit("choice appearance lookup budget exceeded").into());
     }
     Ok(options
         .iter()

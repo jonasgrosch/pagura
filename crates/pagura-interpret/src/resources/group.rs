@@ -5,7 +5,8 @@ use super::colorspace::Colors;
 use crate::features;
 use crate::model::GroupAttributes;
 use pagura_color::{ColorSpace, IccSpace, Process};
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
+use pagura_document::source::ReadResult;
 
 /// The attributes of the `Group` entry of `dictionary`, if any.
 ///
@@ -18,23 +19,22 @@ pub(crate) fn attributes(
     colors: &mut Colors<'_>,
     dictionary: &Dictionary,
     resources: &Dictionary,
-) -> Result<Option<GroupAttributes>> {
+) -> ReadResult<Option<GroupAttributes>> {
     let document = colors.document();
     let Some(value) = dictionary.get(b"Group") else {
         return Ok(None);
     };
     let d = document.resolve_dictionary(value)?;
     if !d.is_name(b"S", b"Transparency") {
-        return Err(Error::unsupported(
-            features::TRANSPARENCY_GROUP,
-            "unknown group subtype",
-        ));
+        return Err(
+            Error::unsupported(features::TRANSPARENCY_GROUP, "unknown group subtype").into(),
+        );
     }
     let space = d
         .get(b"CS")
         .map(|v| blending_space(colors, resources, v))
         .transpose()?;
-    let boolean = |key: &[u8]| -> Result<bool> {
+    let boolean = |key: &[u8]| -> ReadResult<bool> {
         d.get(key)
             .map(|v| {
                 document
@@ -60,7 +60,7 @@ fn blending_space(
     colors: &mut Colors<'_>,
     resources: &Dictionary,
     value: &Value,
-) -> Result<Process> {
+) -> ReadResult<Process> {
     let space = colors.resolve(resources, value)?;
     let space = match space.as_ref() {
         ColorSpace::Icc(icc) if icc.profile.is_none() => icc.alternate.as_ref(),

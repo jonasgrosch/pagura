@@ -5,6 +5,7 @@ use crate::program::Program;
 use crate::values::{number, numbers, optional, optional_dictionary};
 use pagura_core::{Dictionary, Error, Name, Rect, Result};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// A widget's MK colours and border, and the text padding they imply.
 pub(super) struct Style {
@@ -24,7 +25,7 @@ struct Border {
 }
 
 impl Style {
-    pub(super) fn read(document: &Document, widget: &Dictionary) -> Result<Self> {
+    pub(super) fn read(document: &Document, widget: &Dictionary) -> ReadResult<Self> {
         let mk = optional_dictionary(document, widget, b"MK")?;
         if let Some(rotation) = mk
             .map(|mk| optional(document, mk, b"R"))
@@ -36,13 +37,14 @@ impl Style {
                 .as_integer()
                 .ok_or(Error::syntax("MK R must be an integer"))?;
             if rotation % 90 != 0 {
-                return Err(Error::syntax("MK R must be a multiple of 90"));
+                return Err(Error::syntax("MK R must be a multiple of 90").into());
             }
             if rotation.rem_euclid(360) != 0 {
                 return Err(Error::unsupported(
                     features::APPEARANCE_WIDGET_ROTATION,
                     "rotated widget appearance generation is unavailable",
-                ));
+                )
+                .into());
             }
         }
         let background = mk
@@ -59,7 +61,7 @@ impl Style {
             dash,
         } = border_style(document, widget)?;
         if width < 0.0 {
-            return Err(Error::syntax("negative widget border width"));
+            return Err(Error::syntax("negative widget border width").into());
         }
         Ok(Self {
             inset: if border.is_some() { width + 2.0 } else { 2.0 },
@@ -120,7 +122,7 @@ impl Style {
 }
 
 /// The border of BS, else of the Border array, else a solid 1-unit border.
-fn border_style(document: &Document, widget: &Dictionary) -> Result<Border> {
+fn border_style(document: &Document, widget: &Dictionary) -> ReadResult<Border> {
     let mut border = Border {
         width: 1.0,
         underline: false,
@@ -147,7 +149,8 @@ fn border_style(document: &Document, widget: &Dictionary) -> Result<Border> {
                 return Err(Error::unsupported(
                     features::APPEARANCE_BORDER_STYLE,
                     "widget border style is unavailable",
-                ));
+                )
+                .into());
             }
         }
     } else if let Some(value) = optional(document, widget, b"Border")? {
@@ -156,20 +159,17 @@ fn border_style(document: &Document, widget: &Dictionary) -> Result<Border> {
             .as_array()
             .ok_or(Error::syntax("widget Border must be an array"))?;
         let [horizontal, vertical, width, rest @ ..] = array else {
-            return Err(Error::syntax(
-                "widget Border requires three or four entries",
-            ));
+            return Err(Error::syntax("widget Border requires three or four entries").into());
         };
         if rest.len() > 1 {
-            return Err(Error::syntax(
-                "widget Border requires three or four entries",
-            ));
+            return Err(Error::syntax("widget Border requires three or four entries").into());
         }
         if number(document, horizontal)? != 0.0 || number(document, vertical)? != 0.0 {
             return Err(Error::unsupported(
                 features::APPEARANCE_BORDER_STYLE,
                 "rounded widget borders are unavailable",
-            ));
+            )
+            .into());
         }
         border.width = number(document, width)?;
         if let Some(value) = rest.first() {
@@ -187,7 +187,7 @@ fn validate_dash(dash: &[f64]) -> Result<()> {
     Ok(())
 }
 
-fn color(document: &Document, mk: &Dictionary, key: &[u8]) -> Result<Option<Vec<f64>>> {
+fn color(document: &Document, mk: &Dictionary, key: &[u8]) -> ReadResult<Option<Vec<f64>>> {
     let Some(value) = optional(document, mk, key)? else {
         return Ok(None);
     };
@@ -195,7 +195,7 @@ fn color(document: &Document, mk: &Dictionary, key: &[u8]) -> Result<Option<Vec<
     if !matches!(components.len(), 0 | 1 | 3 | 4)
         || components.iter().any(|v| !(0.0..=1.0).contains(v))
     {
-        return Err(Error::syntax("invalid widget appearance colour"));
+        return Err(Error::syntax("invalid widget appearance colour").into());
     }
     Ok((!components.is_empty()).then_some(components))
 }

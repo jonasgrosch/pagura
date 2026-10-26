@@ -3,6 +3,7 @@
 use crate::{features, repairs};
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Default)]
@@ -21,7 +22,7 @@ enum Configuration {
 }
 
 impl Visibility {
-    pub(crate) fn new(document: &Document) -> Result<Self> {
+    pub(crate) fn new(document: &Document) -> ReadResult<Self> {
         Self::read(document).map_err(|error| {
             document
                 .trailer()
@@ -30,7 +31,7 @@ impl Visibility {
                 .map_or(error.clone(), |id| error.in_object(id))
         })
     }
-    fn read(document: &Document) -> Result<Self> {
+    fn read(document: &Document) -> ReadResult<Self> {
         let Some(properties) = document.catalog()?.get(b"OCProperties") else {
             return Ok(Self::default());
         };
@@ -64,7 +65,7 @@ impl Visibility {
             .as_array()
             .ok_or(Error::syntax("OCProperties has no OCGs array"))?;
         if values.len() > document.limits().value_nodes {
-            return Err(Error::limit("optional group count budget exceeded"));
+            return Err(Error::limit("optional group count budget exceeded").into());
         }
         let mut groups = BTreeMap::new();
         let mut applicable = BTreeSet::new();
@@ -74,13 +75,13 @@ impl Visibility {
                 .ok_or(Error::syntax("OCG must be indirect"))?;
             let dictionary = document.resolve_dictionary(value)?;
             if !dictionary.is_name(b"Type", b"OCG") {
-                return Err(Error::syntax("invalid optional content group"));
+                return Err(Error::syntax("invalid optional content group").into());
             }
             if view_intent(document, dictionary)? {
                 applicable.insert(id);
             }
             if groups.insert(id, true).is_some() {
-                return Err(Error::syntax("duplicate optional content group"));
+                return Err(Error::syntax("duplicate optional content group").into());
             }
         }
         let on = list(document, configuration, b"ON")?;
@@ -94,7 +95,7 @@ impl Visibility {
                 .get_mut(&id)
                 .ok_or(Error::syntax("configuration references undefined group"))?;
             if state && off.contains(&id) {
-                return Err(Error::syntax("group occurs in ON and OFF"));
+                return Err(Error::syntax("group occurs in ON and OFF").into());
             }
             *group = state;
         }
@@ -110,7 +111,7 @@ impl Visibility {
     /// View is the engine's initial viewing event. Export/Print applications
     /// do not override it. Missing OCGs means no affected groups (Table 101).
     /// Recommendations are ANDed across all matching AS entries (8.11.4.4).
-    fn apply_usage(&mut self, document: &Document, configuration: &Dictionary) -> Result<()> {
+    fn apply_usage(&mut self, document: &Document, configuration: &Dictionary) -> ReadResult<()> {
         let Some(applications) = configuration.get(b"AS") else {
             return Ok(());
         };
@@ -131,7 +132,7 @@ impl Visibility {
                 .and_then(Value::as_array)
                 .ok_or(Error::syntax("usage application has no Category array"))?;
             if !matches!(event, b"View" | b"Print" | b"Export") {
-                return Err(Error::syntax("invalid usage application event"));
+                return Err(Error::syntax("invalid usage application event").into());
             }
             for value in categories {
                 document
@@ -144,7 +145,7 @@ impl Visibility {
             }
             for id in list(document, application, b"OCGs")? {
                 if !self.groups.contains_key(&id) {
-                    return Err(Error::syntax("usage application references unknown group"));
+                    return Err(Error::syntax("usage application references unknown group").into());
                 }
                 let reference = Value::Reference(id);
                 let dictionary = document.resolve_dictionary(&reference)?;
@@ -189,7 +190,7 @@ impl Visibility {
 
     /// Other applications may use the OC tag without optional-content meaning
     /// (8.11.3.2). XObject/annotation OC entries still use the strict entry point.
-    pub(crate) fn marked(&self, document: &Document, value: &Value) -> Result<bool> {
+    pub(crate) fn marked(&self, document: &Document, value: &Value) -> ReadResult<bool> {
         if self.configuration == Configuration::Ignored {
             return Ok(true);
         }
@@ -205,7 +206,7 @@ impl Visibility {
             Ok(true)
         }
     }
-    pub(crate) fn visible(&self, document: &Document, value: &Value) -> Result<bool> {
+    pub(crate) fn visible(&self, document: &Document, value: &Value) -> ReadResult<bool> {
         // 8.11.4.2 explicitly requires ignoring these structures when
         // OCProperties is absent, including negated membership expressions.
         if self.configuration == Configuration::Absent {
@@ -234,11 +235,11 @@ impl Visibility {
                 Ok(self.group(document, &Value::Reference(id))?.unwrap_or(true))
             }
             Some(b"OCMD") => self.membership(document, dictionary),
-            _ => Err(Error::syntax("optional content must be OCG or OCMD")),
+            _ => Err(Error::syntax("optional content must be OCG or OCMD").into()),
         }
     }
 
-    fn membership(&self, document: &Document, dictionary: &Dictionary) -> Result<bool> {
+    fn membership(&self, document: &Document, dictionary: &Dictionary) -> ReadResult<bool> {
         let mut work = 0;
         if let Some(expression) = dictionary.get(b"VE") {
             return Ok(self
@@ -274,7 +275,7 @@ impl Visibility {
             Some(b"AllOn") => Ok(all_on),
             Some(b"AnyOff") => Ok(!all_on),
             Some(b"AllOff") => Ok(!any_on),
-            _ => Err(Error::syntax("invalid optional content policy")),
+            _ => Err(Error::syntax("invalid optional content policy").into()),
         }
     }
 
@@ -284,9 +285,9 @@ impl Visibility {
         value: &Value,
         depth: usize,
         work: &mut usize,
-    ) -> Result<Option<bool>> {
+    ) -> ReadResult<Option<bool>> {
         if depth >= document.limits().depth || *work >= document.limits().value_nodes {
-            return Err(Error::limit("optional expression budget exceeded"));
+            return Err(Error::limit("optional expression budget exceeded").into());
         }
         *work += 1;
         let value_resolved = document.resolve(value)?;
@@ -301,7 +302,7 @@ impl Visibility {
             .get(1..)
             .ok_or(Error::syntax("invalid visibility expression"))?;
         if arguments.is_empty() || (operator == b"Not" && arguments.len() != 1) {
-            return Err(Error::syntax("wrong visibility expression arity"));
+            return Err(Error::syntax("wrong visibility expression arity").into());
         }
         let mut count = 0;
         let mut any = false;
@@ -317,7 +318,7 @@ impl Visibility {
             all &= state;
         }
         if !matches!(operator.as_bytes(), b"And" | b"Or" | b"Not") {
-            return Err(Error::syntax("unknown visibility expression operator"));
+            return Err(Error::syntax("unknown visibility expression operator").into());
         }
         if count == 0 {
             return Ok(None);
@@ -326,17 +327,17 @@ impl Visibility {
             b"And" => Ok(Some(all)),
             b"Or" => Ok(Some(any)),
             b"Not" => Ok(Some(!any)),
-            _ => Err(Error::syntax("unknown visibility expression operator")),
+            _ => Err(Error::syntax("unknown visibility expression operator").into()),
         }
     }
 
-    fn group(&self, document: &Document, value: &Value) -> Result<Option<bool>> {
+    fn group(&self, document: &Document, value: &Value) -> ReadResult<Option<bool>> {
         let id = value.as_reference().ok_or(Error::syntax(
             "visibility expression requires an OCG reference",
         ))?;
         let dictionary = document.resolve_dictionary(value)?;
         if !dictionary.is_name(b"Type", b"OCG") {
-            return Err(Error::syntax("visibility expression member is not OCG"));
+            return Err(Error::syntax("visibility expression member is not OCG").into());
         }
         if let Some(&state) = self.groups.get(&id) {
             return Ok(self.applicable.contains(&id).then_some(state));
@@ -368,7 +369,11 @@ fn configuration_repair(
     document.repair(diagnostic)
 }
 
-fn list(document: &Document, dictionary: &Dictionary, key: &[u8]) -> Result<BTreeSet<ObjectId>> {
+fn list(
+    document: &Document,
+    dictionary: &Dictionary,
+    key: &[u8],
+) -> ReadResult<BTreeSet<ObjectId>> {
     let Some(value) = dictionary.get(key) else {
         return Ok(BTreeSet::new());
     };
@@ -391,7 +396,7 @@ fn name<'a>(
     document: &'a Document,
     dictionary: &'a Dictionary,
     key: &[u8],
-) -> Result<Option<&'a [u8]>> {
+) -> ReadResult<Option<&'a [u8]>> {
     dictionary
         .get(key)
         .map(|v| {
@@ -408,7 +413,7 @@ fn usage_state(
     document: &Document,
     category: &[u8],
     dictionary: &Dictionary,
-) -> Result<Option<bool>> {
+) -> ReadResult<Option<bool>> {
     let key = match category {
         b"View" => b"ViewState".as_slice(),
         b"Print" => b"PrintState",
@@ -437,7 +442,7 @@ fn usage_state(
                 .transpose()?
                 .unwrap_or(f64::INFINITY);
             if minimum < 0.0 || minimum > maximum {
-                return Err(Error::syntax("invalid usage zoom range"));
+                return Err(Error::syntax("invalid usage zoom range").into());
             }
             return Ok(Some(minimum <= 1.0 && 1.0 < maximum));
         }
@@ -445,22 +450,23 @@ fn usage_state(
             return Err(Error::unsupported(
                 features::OPTIONALCONTENT_USAGE,
                 "usage category requires viewer context not provided by this API",
-            ));
+            )
+            .into());
         }
     };
     match name(document, dictionary, key)? {
         Some(b"ON") => Ok(Some(true)),
         Some(b"OFF") => Ok(Some(false)),
         None if category == b"Print" => Ok(None),
-        _ => Err(Error::syntax("missing or invalid usage state")),
+        _ => Err(Error::syntax("missing or invalid usage state").into()),
     }
 }
 
-fn validate_default(document: &Document, config: &Dictionary) -> Result<()> {
+fn validate_default(document: &Document, config: &Dictionary) -> ReadResult<()> {
     // Default configuration constraints are stricter than other configurations
     // (8.11.4.3, Table 99); OFF arrays still choose initially hidden groups.
     if name(document, config, b"BaseState")?.is_some_and(|v| v != b"ON") {
-        return Err(Error::syntax("default BaseState must be ON"));
+        return Err(Error::syntax("default BaseState must be ON").into());
     }
     if let Some(intent) = config.get(b"Intent")
         && document
@@ -468,11 +474,11 @@ fn validate_default(document: &Document, config: &Dictionary) -> Result<()> {
             .as_name()
             .is_none_or(|v| v != b"View")
     {
-        return Err(Error::syntax("default Intent must be View"));
+        return Err(Error::syntax("default Intent must be View").into());
     }
     Ok(())
 }
-fn view_intent(document: &Document, group: &Dictionary) -> Result<bool> {
+fn view_intent(document: &Document, group: &Dictionary) -> ReadResult<bool> {
     let Some(intent) = group.get(b"Intent") else {
         return Ok(true);
     };

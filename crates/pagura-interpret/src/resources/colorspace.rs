@@ -14,6 +14,7 @@ use pagura_color::{
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Result, Store, Value};
 use pagura_document::Document;
+use pagura_document::source::{ReadFault, ReadResult};
 use std::sync::Arc;
 
 pub(crate) use icc::Profiles;
@@ -84,7 +85,7 @@ impl<'a> Colors<'a> {
         id: ObjectId,
         data: &[u8],
         components: u8,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let alternate = match components {
             1 => self.device_gray(),
             3 => self.device_rgb(),
@@ -93,7 +94,8 @@ impl<'a> Colors<'a> {
                 return Err(Error::unsupported(
                     crate::features::XOBJECT_JPX_COLOR,
                     "embedded JPX ICC component count is not implemented",
-                ));
+                )
+                .into());
             }
         };
         let profile = self.profiles.embedded(id, usize::from(components), data)?;
@@ -101,7 +103,8 @@ impl<'a> Colors<'a> {
             return Err(Error::unsupported(
                 crate::features::XOBJECT_JPX_COLOR,
                 "embedded JPX Lab-input ICC range interpretation is not implemented",
-            ));
+            )
+            .into());
         }
         Ok(Arc::new(ColorSpace::Icc(Arc::new(
             pagura_color::IccSpace {
@@ -120,7 +123,11 @@ impl<'a> Colors<'a> {
     /// # Errors
     ///
     /// As [`Self::resolve`].
-    pub(crate) fn named(&mut self, resources: &Dictionary, name: &[u8]) -> Result<Arc<ColorSpace>> {
+    pub(crate) fn named(
+        &mut self,
+        resources: &Dictionary,
+        name: &[u8],
+    ) -> ReadResult<Arc<ColorSpace>> {
         self.resolve(resources, &Value::name(name))
     }
 
@@ -135,7 +142,7 @@ impl<'a> Colors<'a> {
         &mut self,
         resources: &Dictionary,
         value: &Value,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         self.space(resources, value, 0, Defaults::Apply)
     }
 
@@ -145,15 +152,15 @@ impl<'a> Colors<'a> {
         value: &Value,
         depth: usize,
         defaults: Defaults,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let document = self.document;
         if depth >= document.limits().depth {
-            return Err(Error::limit("colour space nesting exceeded"));
+            return Err(Error::limit("colour space nesting exceeded").into());
         }
         match document.resolve(value)? {
             Value::Name(name) => self.name(resources, name, depth, defaults),
             Value::Array(values) => self.array(resources, values, depth, defaults),
-            _ => Err(Error::syntax("invalid colour space")),
+            _ => Err(Error::syntax("invalid colour space").into()),
         }
     }
 
@@ -163,7 +170,7 @@ impl<'a> Colors<'a> {
         name: &Name,
         depth: usize,
         defaults: Defaults,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let document = self.document;
         if name == b"Pattern" {
             return Ok(Arc::new(ColorSpace::Pattern(None)));
@@ -191,21 +198,21 @@ impl<'a> Colors<'a> {
                         ColorSpace::Pattern(_) | ColorSpace::Indexed(_)
                     )
                 {
-                    return Err(Error::syntax("invalid default colour space family"));
+                    return Err(Error::syntax("invalid default colour space family").into());
                 }
                 if alternate.components() != device.components() {
-                    return Err(Error::syntax(
-                        "default colour space has wrong component count",
-                    ));
+                    return Err(
+                        Error::syntax("default colour space has wrong component count").into(),
+                    );
                 }
                 return Ok(alternate);
             }
             return Ok(device);
         }
         if depth != 0 {
-            return Err(Error::syntax(
-                "nested colour space requires an explicit definition",
-            ));
+            return Err(
+                Error::syntax("nested colour space requires an explicit definition").into(),
+            );
         }
         let value = spaces
             .and_then(|d| d.get(name.as_bytes()))
@@ -219,7 +226,7 @@ impl<'a> Colors<'a> {
         values: &[Value],
         depth: usize,
         defaults: Defaults,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let family = values
             .first()
             .and_then(Value::as_name)
@@ -232,7 +239,7 @@ impl<'a> Colors<'a> {
             (b"Pattern", [_, base]) => {
                 let base = self.space(resources, base, depth + 1, defaults)?;
                 if matches!(base.as_ref(), ColorSpace::Pattern(_)) {
-                    return Err(Error::syntax("nested Pattern colour space"));
+                    return Err(Error::syntax("nested Pattern colour space").into());
                 }
                 Ok(Arc::new(ColorSpace::Pattern(Some(base))))
             }
@@ -258,11 +265,12 @@ impl<'a> Colors<'a> {
                 b"Pattern" | b"ICCBased" | b"Indexed" | b"CalGray" | b"CalRGB" | b"Lab"
                 | b"Separation" | b"DeviceN",
                 _,
-            ) => Err(Error::syntax("wrong colour space array length")),
+            ) => Err(Error::syntax("wrong colour space array length").into()),
             _ => Err(Error::unsupported(
                 pagura_color::features::UNKNOWN_FAMILY,
                 "colour space family is not implemented",
-            )),
+            )
+            .into()),
         }
     }
 
@@ -272,7 +280,7 @@ impl<'a> Colors<'a> {
         [name, base, tint]: [&Value; 3],
         depth: usize,
         defaults: Defaults,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let name = self
             .document
             .resolve(name)?
@@ -306,7 +314,7 @@ impl<'a> Colors<'a> {
         values: &[Value],
         [names, base, tint]: [&Value; 3],
         (depth, defaults): (usize, Defaults),
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let document = self.document;
         let attributes = values
             .get(4)
@@ -319,7 +327,7 @@ impl<'a> Colors<'a> {
                 .is_some_and(|n| n == b"NChannel")
             && colorants.contains(&Colorant::None)
         {
-            return Err(Error::syntax("None is forbidden in NChannel"));
+            return Err(Error::syntax("None is forbidden in NChannel").into());
         }
         if colorants.iter().all(|c| *c == Colorant::None) {
             return Ok(Arc::new(ColorSpace::DeviceN(Arc::new(DeviceN {
@@ -339,7 +347,7 @@ impl<'a> Colors<'a> {
 
     /// DeviceN colorant names: at most 32, no `All`, no repeated name other
     /// than `None`.
-    fn colorants(&self, names: &Value) -> Result<Vec<Colorant>> {
+    fn colorants(&self, names: &Value) -> ReadResult<Vec<Colorant>> {
         let document = self.document;
         let names = document
             .resolve(names)?
@@ -349,7 +357,8 @@ impl<'a> Colors<'a> {
         if names.len() > MAX_COLORANTS {
             return Err(Error::limit(
                 "DeviceN component count exceeds implementation limit (Annex C)",
-            ));
+            )
+            .into());
         }
         let mut colorants = Vec::with_capacity(names.len());
         for name in names {
@@ -358,7 +367,7 @@ impl<'a> Colors<'a> {
                 .as_name()
                 .ok_or(Error::syntax("DeviceN colourant must be a name"))?;
             if name == b"All" {
-                return Err(Error::syntax("All is forbidden in DeviceN"));
+                return Err(Error::syntax("All is forbidden in DeviceN").into());
             }
             let colorant = if name == b"None" {
                 Colorant::None
@@ -366,7 +375,7 @@ impl<'a> Colors<'a> {
                 Colorant::Named(name.clone())
             };
             if colorant != Colorant::None && colorants.contains(&colorant) {
-                return Err(Error::syntax("duplicate DeviceN colourant"));
+                return Err(Error::syntax("duplicate DeviceN colourant").into());
             }
             colorants.push(colorant);
         }
@@ -382,7 +391,7 @@ impl<'a> Colors<'a> {
         tint: &Value,
         inputs: usize,
         (depth, defaults): (usize, Defaults),
-    ) -> Result<(Arc<ColorSpace>, Arc<Function>)> {
+    ) -> ReadResult<(Arc<ColorSpace>, Arc<Function>)> {
         let base = self.space(resources, base, depth + 1, defaults)?;
         if matches!(
             base.as_ref(),
@@ -391,7 +400,7 @@ impl<'a> Colors<'a> {
                 | ColorSpace::Indexed(_)
                 | ColorSpace::Pattern(_)
         ) {
-            return Err(Error::syntax("invalid tint alternate space"));
+            return Err(Error::syntax("invalid tint alternate space").into());
         }
         let function = function::read(self.document, tint, inputs, base.components())?;
         Ok((base, function.function))
@@ -420,14 +429,14 @@ impl<'a> Colors<'a> {
         [base, high, lookup]: [&Value; 3],
         depth: usize,
         defaults: Defaults,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let document = self.document;
         let base = self.space(resources, base, depth + 1, defaults)?;
         if matches!(
             base.as_ref(),
             ColorSpace::Indexed(_) | ColorSpace::Pattern(_)
         ) {
-            return Err(Error::syntax("Indexed base cannot be Indexed"));
+            return Err(Error::syntax("Indexed base cannot be Indexed").into());
         }
         let high = document
             .resolve(high)?
@@ -454,7 +463,7 @@ impl<'a> Colors<'a> {
         };
         let required = (usize::from(high) + 1) * base.components();
         if table.len() < required {
-            return Err(Error::syntax("Indexed lookup has wrong length"));
+            return Err(Error::syntax("Indexed lookup has wrong length").into());
         }
         if table.len() > required {
             document.repair(
@@ -475,7 +484,7 @@ impl<'a> Colors<'a> {
         resources: &Dictionary,
         profile: &Value,
         depth: usize,
-    ) -> Result<Arc<ColorSpace>> {
+    ) -> ReadResult<Arc<ColorSpace>> {
         let read = icc::read(self.document, &mut self.profiles, profile)?;
         let default = match read.components {
             1 => self.device_gray(),
@@ -490,14 +499,13 @@ impl<'a> Colors<'a> {
             if icc::alternate_components(self.document, resources, value, depth + 1)?
                 != usize::from(read.components)
             {
-                return Err(Error::syntax("ICC alternate has wrong component count"));
+                return Err(Error::syntax("ICC alternate has wrong component count").into());
             }
             match self.space(resources, value, depth + 1, Defaults::Ignore) {
                 Ok(space) => alternate = Some(space),
-                Err(error) if read.profile.is_none() || !error.is_unsupported() => {
-                    return Err(error);
-                }
-                Err(_) => {}
+                Err(ReadFault::Invalid(error))
+                    if read.profile.is_some() && error.is_unsupported() => {}
+                Err(fault) => return Err(fault),
             }
         }
         icc::check_range(read.profile.as_deref(), &read.range, read.components)?;
@@ -514,7 +522,7 @@ impl<'a> Colors<'a> {
 }
 
 /// Reads a `CalGray`, `CalRGB` or `Lab` parameter dictionary (8.6.5.2–8.6.5.4).
-fn calibrated(document: &Document, family: &[u8], d: &Dictionary) -> Result<Calibrated> {
+fn calibrated(document: &Document, family: &[u8], d: &Dictionary) -> ReadResult<Calibrated> {
     let white = parameter::<3>(document, d, b"WhitePoint", None)?;
     let black = parameter::<3>(document, d, b"BlackPoint", Some([0.0; 3]))?;
     match family {
@@ -556,7 +564,7 @@ fn parameter<const N: usize>(
     d: &Dictionary,
     key: &[u8],
     default: Option<[f64; N]>,
-) -> Result<[f64; N]> {
+) -> ReadResult<[f64; N]> {
     let Some(value) = d.get(key) else {
         return default.ok_or(Error::syntax("missing CIE parameter"));
     };

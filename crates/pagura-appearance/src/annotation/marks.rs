@@ -6,6 +6,7 @@ use crate::stream::{AppearanceStream, form_dictionary};
 use crate::values::numbers;
 use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// A DeviceGray, DeviceRGB or DeviceCMYK colour by component count.
 #[derive(Debug, Clone, PartialEq)]
@@ -42,7 +43,7 @@ pub(super) fn color(
     dictionary: &Dictionary,
     key: &[u8],
     default: Option<Color>,
-) -> Result<Option<Color>> {
+) -> ReadResult<Option<Color>> {
     let Some(value) = dictionary.get(key) else {
         return Ok(default);
     };
@@ -50,7 +51,7 @@ pub(super) fn color(
     match components.len() {
         0 => Ok(None),
         1 | 3 | 4 => Ok(Some(Color(components))),
-        _ => Err(Error::syntax("invalid annotation colour")),
+        _ => Err(Error::syntax("invalid annotation colour").into()),
     }
 }
 
@@ -267,7 +268,7 @@ pub(super) fn scalar(
     document: &Document,
     dictionary: &Dictionary,
     key: &[u8],
-) -> Result<Option<f64>> {
+) -> ReadResult<Option<f64>> {
     dictionary
         .get(key)
         .map(|value| {

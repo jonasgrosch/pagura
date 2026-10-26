@@ -1,6 +1,7 @@
 //! Forward /K references and reverse ParentTree entries must agree (14.7.5.4).
 use super::{Budget, Plan, Reference, TextPage};
 use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -14,7 +15,7 @@ pub(super) fn resolve(
     page: &Page,
     text: &TextPage,
     budget: &mut Budget,
-) -> Result<()> {
+) -> ReadResult<()> {
     let Occurrences {
         mut marked,
         visible,
@@ -29,9 +30,7 @@ pub(super) fn resolve(
             .saturating_mul(super::MAP_ENTRY_BYTES),
     )?;
     if parents.is_none() && (!plan.items.is_empty() || plan.nodes.iter().any(|n| n.other_page)) {
-        return Err(Error::syntax(
-            "structure content requires ParentTree (Table 354)",
-        ));
+        return Err(Error::syntax("structure content requires ParentTree (Table 354)").into());
     }
     let parents: BTreeMap<_, _> = parents.into_iter().flatten().collect();
     budget.store(text.glyphs().len())?;
@@ -40,9 +39,7 @@ pub(super) fn resolve(
     for item in &mut plan.items {
         budget.work(1)?;
         if !references.insert(item.reference) {
-            return Err(Error::syntax(
-                "repeated structure content reference (14.7.5)",
-            ));
+            return Err(Error::syntax("repeated structure content reference (14.7.5)").into());
         }
         check_parent(
             doc,
@@ -57,11 +54,10 @@ pub(super) fn resolve(
                 return Err(Error::unsupported(
                     crate::features::STRUCTURE_CONTENT,
                     "text.structure-content: structure references an uncaptured content stream",
-                ));
+                )
+                .into());
             }
-            return Err(Error::syntax(
-                "structure MCID has no marked-content occurrence",
-            ));
+            return Err(Error::syntax("structure MCID has no marked-content occurrence").into());
         }
         for range in &item.ranges {
             let glyphs = covered
@@ -69,9 +65,7 @@ pub(super) fn resolve(
                 .ok_or(Error::invalid_argument("invalid extraction object range"))?;
             budget.work(glyphs.len())?;
             if glyphs.iter().any(|used| *used) {
-                return Err(Error::syntax(
-                    "overlapping structure content items (14.7.5.1)",
-                ));
+                return Err(Error::syntax("overlapping structure content items (14.7.5.1)").into());
             }
             glyphs.fill(true);
         }
@@ -81,7 +75,8 @@ pub(super) fn resolve(
         if !covered && !glyph.hidden && !glyph.marked_content.iter().any(|m| m.is_artifact()) {
             return Err(Error::syntax(
                 "tagged page has text outside its logical structure (14.8.2.2)",
-            ));
+            )
+            .into());
         }
     }
     for index in (0..plan.nodes.len()).rev() {
@@ -102,9 +97,7 @@ pub(super) fn resolve(
             .iter()
             .any(|n| n.relevant && n.element.standard_type.is_none())
     {
-        return Err(Error::syntax(
-            "tagged structure role has no standard mapping (14.8.4)",
-        ));
+        return Err(Error::syntax("tagged structure role has no standard mapping (14.8.4)").into());
     }
     Ok(())
 }
@@ -157,7 +150,7 @@ fn check_parent(
     parents: &BTreeMap<i64, &Value>,
     reference: Reference,
     expected: &Dictionary,
-) -> Result<()> {
+) -> ReadResult<()> {
     let (object, key) = match reference {
         Reference::Marked(id, _) => (id, b"StructParents".as_slice()),
         Reference::Object(id) => (id, b"StructParent".as_slice()),
@@ -171,7 +164,8 @@ fn check_parent(
     {
         return Err(Error::syntax(
             "StructParent and StructParents are mutually exclusive (Table 359)",
-        ));
+        )
+        .into());
     }
     let key = dictionary
         .get(key)
@@ -194,9 +188,7 @@ fn check_parent(
         value
     };
     if value.as_reference().is_none() || !std::ptr::eq(doc.resolve_dictionary(value)?, expected) {
-        return Err(Error::syntax(
-            "ParentTree owner disagrees with structure K (14.7.5.4)",
-        ));
+        return Err(Error::syntax("ParentTree owner disagrees with structure K (14.7.5.4)").into());
     }
     Ok(())
 }

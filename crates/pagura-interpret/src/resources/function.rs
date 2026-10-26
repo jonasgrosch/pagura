@@ -8,8 +8,9 @@ use crate::model::Transfer;
 use pagura_color::{
     CalculatorFunction, ExponentialFunction, Function, SampledFunction, StitchingFunction,
 };
-use pagura_core::{Dictionary, Error, ObjectId, Position, Result, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Position, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::sync::Arc;
 
 /// A function and the domain it was read with, for coverage checks.
@@ -44,7 +45,7 @@ pub(crate) fn read(
     value: &Value,
     inputs: usize,
     outputs: usize,
-) -> Result<ReadFunction> {
+) -> ReadResult<ReadFunction> {
     Reader {
         document,
         ancestors: Vec::new(),
@@ -59,7 +60,7 @@ pub(crate) fn read(
 /// # Errors
 ///
 /// As [`read`].
-pub(crate) fn scalar(document: &Document, value: &Value) -> Result<Arc<Function>> {
+pub(crate) fn scalar(document: &Document, value: &Value) -> ReadResult<Arc<Function>> {
     read(document, value, 1, 1).map(|read| read.function)
 }
 
@@ -69,7 +70,7 @@ pub(crate) fn scalar(document: &Document, value: &Value) -> Result<Arc<Function>
 /// # Errors
 ///
 /// As [`read`], and `Syntax` for an array that does not hold four entries.
-pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Arc<Transfer>>> {
+pub(crate) fn transfer(document: &Document, value: &Value) -> ReadResult<Option<Arc<Transfer>>> {
     let resolved = document.resolve(value)?;
     if resolved
         .as_name()
@@ -81,7 +82,7 @@ pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Arc<
         return Ok(Some(Arc::new(Transfer::All(scalar(document, value)?))));
     };
     if array.len() != 4 {
-        return Err(Error::syntax("transfer array requires four functions"));
+        return Err(Error::syntax("transfer array requires four functions").into());
     }
     // 10.5: Identity on every component is the default transfer.
     let mut identity = true;
@@ -100,7 +101,7 @@ pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Arc<
     Ok(Some(Arc::new(Transfer::PerComponent(functions))))
 }
 
-fn is_identity(document: &Document, value: &Value) -> Result<bool> {
+fn is_identity(document: &Document, value: &Value) -> ReadResult<bool> {
     Ok(document
         .resolve(value)?
         .as_name()
@@ -114,19 +115,19 @@ struct Reader<'a> {
 }
 
 impl Reader<'_> {
-    fn read(&mut self, value: &Value, inputs: usize, outputs: usize) -> Result<ReadFunction> {
+    fn read(&mut self, value: &Value, inputs: usize, outputs: usize) -> ReadResult<ReadFunction> {
         let limits = self.document.limits();
         if self.work >= limits.value_nodes {
-            return Err(Error::limit("function graph budget exceeded"));
+            return Err(Error::limit("function graph budget exceeded").into());
         }
         self.work += 1;
         if self.ancestors.len() >= limits.depth {
-            return Err(Error::limit("function nesting exceeded"));
+            return Err(Error::limit("function nesting exceeded").into());
         }
         let object = value.as_reference();
         if let Some(id) = object {
             if self.ancestors.contains(&id) {
-                return Err(Error::cycle("recursive PDF function").in_object(id));
+                return Err(Error::cycle("recursive PDF function").in_object(id).into());
             }
             self.ancestors.push(id);
         }
@@ -137,12 +138,17 @@ impl Reader<'_> {
         result.map_err(|e| e.in_object_opt(object))
     }
 
-    fn dictionary(&mut self, value: &Value, inputs: usize, outputs: usize) -> Result<ReadFunction> {
+    fn dictionary(
+        &mut self,
+        value: &Value,
+        inputs: usize,
+        outputs: usize,
+    ) -> ReadResult<ReadFunction> {
         let document = self.document;
         let dictionary = document.resolve_dictionary(value)?;
         let domain = pairs(document, dictionary, b"Domain", None)?;
         if domain.len() != inputs || inputs == 0 || outputs == 0 {
-            return Err(Error::syntax("wrong function input dimension"));
+            return Err(Error::syntax("wrong function input dimension").into());
         }
         let range = if dictionary.contains_key(b"Range") {
             Some(pairs(document, dictionary, b"Range", None)?)
@@ -150,7 +156,7 @@ impl Reader<'_> {
             None
         };
         if range.as_ref().is_some_and(|v| v.len() != outputs) {
-            return Err(Error::syntax("wrong function output dimension"));
+            return Err(Error::syntax("wrong function output dimension").into());
         }
         let kind = entry(document, dictionary, b"FunctionType")?
             .and_then(Value::as_integer)
@@ -163,7 +169,7 @@ impl Reader<'_> {
             2 => exponential(document, dictionary, outputs, &domain, range)?,
             3 => self.stitching(dictionary, outputs, &domain, range)?,
             4 => calculator(document, value, domain.clone(), range)?,
-            _ => return Err(Error::syntax("invalid FunctionType")),
+            _ => return Err(Error::syntax("invalid FunctionType").into()),
         };
         Ok(ReadFunction {
             function: Arc::new(function),
@@ -177,30 +183,28 @@ impl Reader<'_> {
         outputs: usize,
         domain: &[[f64; 2]],
         range: Option<Vec<[f64; 2]>>,
-    ) -> Result<Function> {
+    ) -> ReadResult<Function> {
         let document = self.document;
         let &[[min, max]] = domain else {
-            return Err(Error::syntax("stitching function requires one input"));
+            return Err(Error::syntax("stitching function requires one input").into());
         };
         let values = entry(document, dictionary, b"Functions")?
             .and_then(Value::as_array)
             .filter(|v| !v.is_empty())
             .ok_or(Error::syntax("stitching function requires Functions"))?;
         if values.len() > document.limits().value_nodes {
-            return Err(Error::limit("stitching function count exceeded"));
+            return Err(Error::limit("stitching function count exceeded").into());
         }
         let bounds = numbers(document, dictionary, b"Bounds", None)?;
         let encode = pairs_unordered(document, dictionary, b"Encode", None)?;
         if bounds.len() + 1 != values.len() || encode.len() != values.len() {
-            return Err(Error::syntax("wrong stitching bounds or encode count"));
+            return Err(Error::syntax("wrong stitching bounds or encode count").into());
         }
         if (values.len() > 1 && min == max)
             || bounds.iter().any(|&v| v < min || v > max)
             || bounds.windows(2).any(|v| v[0] >= v[1])
         {
-            return Err(Error::syntax(
-                "stitching bounds outside domain or unordered",
-            ));
+            return Err(Error::syntax("stitching bounds outside domain or unordered").into());
         }
         let mut functions = Vec::new();
         functions
@@ -208,7 +212,7 @@ impl Reader<'_> {
             .map_err(|_| Error::limit("stitching function allocation failed"))?;
         for value in values {
             if self.ancestors.len() >= document.limits().depth {
-                return Err(Error::limit("function nesting exceeded"));
+                return Err(Error::limit("function nesting exceeded").into());
             }
             // Direct dictionaries need a depth entry too; object zero is
             // never a valid indirect identity and is not used for cycles.
@@ -233,19 +237,19 @@ fn sampled(
     d: &Dictionary,
     domain: Vec<[f64; 2]>,
     range: Vec<[f64; 2]>,
-) -> Result<Function> {
+) -> ReadResult<Function> {
     let id = value
         .as_reference()
         .ok_or(Error::syntax("sampled function must be a stream reference"))?;
     let object = document.object(id)?;
     if !object.is_stream() {
-        return Err(Error::syntax("sampled function must be a stream"));
+        return Err(Error::syntax("sampled function must be a stream").into());
     }
     let size = numbers(document, d, b"Size", None)?
         .into_iter()
         .map(|v| {
             if v < 1.0 || v.fract() != 0.0 || v > f64::from(u32::MAX) {
-                return Err(Error::syntax("invalid sampled function size"));
+                return Err(Error::syntax("invalid sampled function size").into());
             }
             #[expect(
                 clippy::cast_possible_truncation,
@@ -254,9 +258,9 @@ fn sampled(
             )]
             Ok(v as u32)
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<ReadResult<Vec<_>>>()?;
     if size.len() != domain.len() {
-        return Err(Error::syntax("wrong sampled function size dimension"));
+        return Err(Error::syntax("wrong sampled function size dimension").into());
     }
     let bits = entry(document, d, b"BitsPerSample")?
         .and_then(Value::as_integer)
@@ -266,7 +270,7 @@ fn sampled(
     let order = match entry(document, d, b"Order")?.map(Value::as_integer) {
         None | Some(Some(1)) => 1,
         Some(Some(3)) => 3,
-        _ => return Err(Error::syntax("invalid sampled interpolation order")),
+        _ => return Err(Error::syntax("invalid sampled interpolation order").into()),
     };
     let mut count = range.len();
     for &size in &size {
@@ -289,7 +293,7 @@ fn sampled(
     let encode = pairs_unordered(document, d, b"Encode", Some(&defaults))?;
     let decode = pairs_unordered(document, d, b"Decode", Some(&range))?;
     if encode.len() != domain.len() || decode.len() != range.len() {
-        return Err(Error::syntax("wrong sampled encode or decode dimension"));
+        return Err(Error::syntax("wrong sampled encode or decode dimension").into());
     }
     Function::sampled(
         SampledFunction {
@@ -312,9 +316,9 @@ fn exponential(
     outputs: usize,
     domain: &[[f64; 2]],
     range: Option<Vec<[f64; 2]>>,
-) -> Result<Function> {
+) -> ReadResult<Function> {
     let &[[min, max]] = domain else {
-        return Err(Error::syntax("exponential function requires one input"));
+        return Err(Error::syntax("exponential function requires one input").into());
     };
     let c0 = numbers(document, dictionary, b"C0", Some(&[0.0]))?;
     let c1 = numbers(document, dictionary, b"C1", Some(&[1.0]))?;
@@ -322,12 +326,10 @@ fn exponential(
         .and_then(Value::as_number)
         .ok_or(Error::syntax("exponential function has no N"))?;
     if (exponent.fract() != 0.0 && min < 0.0) || (exponent < 0.0 && min <= 0.0 && max >= 0.0) {
-        return Err(Error::syntax(
-            "exponential domain includes undefined inputs",
-        ));
+        return Err(Error::syntax("exponential domain includes undefined inputs").into());
     }
     if c0.len() != outputs || c1.len() != outputs {
-        return Err(Error::syntax("wrong exponential function output dimension"));
+        return Err(Error::syntax("wrong exponential function output dimension").into());
     }
     Function::exponential(ExponentialFunction {
         domain: [min, max],
@@ -343,14 +345,14 @@ fn calculator(
     value: &Value,
     domain: Vec<[f64; 2]>,
     range: Option<Vec<[f64; 2]>>,
-) -> Result<Function> {
+) -> ReadResult<Function> {
     let range = range.ok_or(Error::syntax("calculator function requires Range"))?;
     let id = value.as_reference().ok_or(Error::syntax(
         "calculator function must be a stream reference",
     ))?;
     let object = document.object(id)?;
     if !object.is_stream() {
-        return Err(Error::syntax("calculator function must be a stream"));
+        return Err(Error::syntax("calculator function must be a stream").into());
     }
     let program: Arc<[u8]> = document.stream_data(object)?.as_ref().into();
     Function::calculator(
@@ -375,7 +377,7 @@ fn numbers(
     dictionary: &Dictionary,
     key: &[u8],
     default: Option<&[f64]>,
-) -> Result<Vec<f64>> {
+) -> ReadResult<Vec<f64>> {
     let Some(value) = dictionary.get(key) else {
         return default
             .map(<[f64]>::to_vec)
@@ -390,7 +392,7 @@ fn pairs_unordered(
     dictionary: &Dictionary,
     key: &[u8],
     default: Option<&[[f64; 2]]>,
-) -> Result<Vec<[f64; 2]>> {
+) -> ReadResult<Vec<[f64; 2]>> {
     if !dictionary.contains_key(key) {
         return default
             .map(<[[f64; 2]]>::to_vec)
@@ -399,7 +401,7 @@ fn pairs_unordered(
     let values = numbers(document, dictionary, key, None)?;
     let (pairs, remainder) = values.as_chunks::<2>();
     if !remainder.is_empty() {
-        return Err(Error::syntax("function pairs require even length"));
+        return Err(Error::syntax("function pairs require even length").into());
     }
     Ok(pairs.to_vec())
 }
@@ -410,10 +412,10 @@ fn pairs(
     dictionary: &Dictionary,
     key: &[u8],
     default: Option<&[[f64; 2]]>,
-) -> Result<Vec<[f64; 2]>> {
+) -> ReadResult<Vec<[f64; 2]>> {
     let values = pairs_unordered(document, dictionary, key, default)?;
     if values.iter().any(|r| r[0] > r[1]) {
-        return Err(Error::syntax("reversed function range"));
+        return Err(Error::syntax("reversed function range").into());
     }
     Ok(values)
 }

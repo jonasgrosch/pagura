@@ -6,6 +6,7 @@ use crate::information;
 use crate::stream::Appearance;
 use pagura_core::{Diagnostic, Dictionary, Error, ErrorKind, Rect, Result};
 use pagura_document::forms::{FieldKind, FormFiller};
+use pagura_document::source::{ReadFault, ReadResult};
 use std::collections::BTreeMap;
 
 /// The widgets of a form session, found by the identity of their annotation
@@ -71,8 +72,8 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
         annotation: &Dictionary,
         rect: Rect,
         fonts: &dyn FontSource,
-        culled: impl FnOnce(&Dictionary) -> Result<bool>,
-    ) -> Result<Option<Appearance>> {
+        culled: impl FnOnce(&Dictionary) -> ReadResult<bool>,
+    ) -> ReadResult<Option<Appearance>> {
         let Some(&index) = self.widgets.get(&std::ptr::from_ref(annotation).addr()) else {
             return Ok(None);
         };
@@ -100,7 +101,7 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
             }
         }
         match widget_appearance(self.filler, index, fonts, UpdatePolicy::Specification) {
-            Err(error)
+            Err(ReadFault::Invalid(error))
                 if self.filler.get(widget.field).is_none()
                     && matches!(error.kind, ErrorKind::Unsupported(_))
                     && matches!(original, Some(Appearance::Existing(_))) =>

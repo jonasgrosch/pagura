@@ -2,6 +2,7 @@
 use super::{Budget, Node, Plan, Reference, StructureElement};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::collections::BTreeSet;
 
 /// Work of the iterative walk: a `/K` value to visit, or the end of an
@@ -19,7 +20,7 @@ pub(super) fn read<'a>(
     root: &'a Dictionary,
     page: ObjectId,
     budget: &mut Budget,
-) -> Result<Plan<'a>> {
+) -> ReadResult<Plan<'a>> {
     let types = super::roles::Types::new(doc, root, budget)?;
     let mut plan = Plan {
         tagged: tagged(doc)?,
@@ -71,9 +72,9 @@ pub(super) fn read<'a>(
                 }
                 Some(b"StructElem") | None => {
                     if !seen.insert(std::ptr::from_ref(dictionary).addr()) {
-                        return Err(Error::cycle(
-                            "repeated or cyclic structure element (14.7.2)",
-                        ));
+                        return Err(
+                            Error::cycle("repeated or cyclic structure element (14.7.2)").into(),
+                        );
                     }
                     let expected = parent.map_or(root, |i| plan.nodes[i].dictionary);
                     let actual = dictionary
@@ -85,7 +86,8 @@ pub(super) fn read<'a>(
                     if !std::ptr::eq(doc.resolve_dictionary(actual)?, expected) {
                         return Err(Error::syntax(
                             "structure element parent disagrees with K (14.7.2)",
-                        ));
+                        )
+                        .into());
                     }
                     let index = element(
                         &mut plan,
@@ -105,7 +107,7 @@ pub(super) fn read<'a>(
                         });
                     }
                 }
-                _ => return Err(Error::syntax("invalid structure child Type")),
+                _ => return Err(Error::syntax("invalid structure child Type").into()),
             }
         }
     }
@@ -119,7 +121,7 @@ fn element<'a>(
     parent: Option<usize>,
     types: &super::roles::Types<'_>,
     budget: &mut Budget,
-) -> Result<usize> {
+) -> ReadResult<usize> {
     let role = dictionary
         .get(b"S")
         .map(|v| doc.resolve(v))
@@ -146,7 +148,7 @@ fn element<'a>(
             + replacement.as_ref().map_or(0, |r| r.text.capacity()),
     )?;
     if plan.nodes.len() >= budget.limits.text_items {
-        return Err(Error::limit("structure element count exceeded"));
+        return Err(Error::limit("structure element count exceeded").into());
     }
     let artifact = standard_type
         .as_ref()
@@ -178,7 +180,7 @@ fn content(
     parent: Option<usize>,
     page: ObjectId,
     budget: &mut Budget,
-) -> Result<()> {
+) -> ReadResult<()> {
     let parent = parent.ok_or(Error::syntax("structure root child is not an element"))?;
     let pg = page_id(
         doc,
@@ -213,7 +215,11 @@ fn content(
         Ok(())
     }
 }
-fn page_id(doc: &Document, dictionary: &Dictionary, fallback: Option<&Value>) -> Result<ObjectId> {
+fn page_id(
+    doc: &Document,
+    dictionary: &Dictionary,
+    fallback: Option<&Value>,
+) -> ReadResult<ObjectId> {
     let id = super::entry(doc, dictionary, b"Pg")?
         .or(fallback)
         .and_then(Value::as_reference)
@@ -225,7 +231,7 @@ fn page_id(doc: &Document, dictionary: &Dictionary, fallback: Option<&Value>) ->
         .dictionary()
         .ok_or(Error::syntax("structure Pg is not a dictionary"))?;
     if super::name(doc, page, b"Type")?.map(Name::as_bytes) != Some(b"Page") {
-        return Err(Error::syntax("structure Pg does not identify a page"));
+        return Err(Error::syntax("structure Pg does not identify a page").into());
     }
     Ok(id)
 }
@@ -264,7 +270,7 @@ fn property(
     dictionary: &Dictionary,
     object: Option<ObjectId>,
     key: &[u8],
-) -> Result<Option<String>> {
+) -> ReadResult<Option<String>> {
     super::entry(doc, dictionary, key)?
         .map(|v| {
             let bytes = doc
@@ -276,7 +282,7 @@ fn property(
         .transpose()
 }
 
-pub(super) fn tagged(doc: &Document) -> Result<bool> {
+pub(super) fn tagged(doc: &Document) -> ReadResult<bool> {
     let Some(value) = super::entry(doc, doc.catalog()?, b"MarkInfo")? else {
         return Ok(false);
     };

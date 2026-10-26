@@ -2,6 +2,7 @@
 use crate::{LogicalText, TextPage};
 use pagura_core::{Diagnostics, Dictionary, Error, Meter, Position, Value};
 use pagura_core::{Name, ObjectId, Result};
+use pagura_document::source::{ReadFault, ReadResult};
 use pagura_document::{Document, Page};
 use std::ops::Range;
 mod content;
@@ -108,13 +109,18 @@ fn can_fallback(error: &Error) -> bool {
 }
 
 pub(super) struct Failure {
-    pub(super) error: Error,
+    pub(super) error: ReadFault,
     pub(super) recoverable: bool,
 }
 impl From<Error> for Failure {
     fn from(error: Error) -> Self {
+        Self::from(ReadFault::Invalid(error))
+    }
+}
+impl From<ReadFault> for Failure {
+    fn from(error: ReadFault) -> Self {
         Self {
-            recoverable: can_fallback(&error),
+            recoverable: error.as_error().is_some_and(can_fallback),
             error,
         }
     }
@@ -132,7 +138,7 @@ pub(super) fn apply(
             return Err(located(
                 document,
                 page.id(),
-                Error::syntax("tagged page has no structure tree root (14.7.2)"),
+                Error::syntax("tagged page has no structure tree root (14.7.2)").into(),
             )
             .into());
         }
@@ -145,12 +151,14 @@ pub(super) fn apply(
         failure
     })
 }
-fn located(document: &Document, fallback: ObjectId, error: Error) -> Error {
-    let object = error.object.unwrap_or(fallback);
-    let position = document
-        .object(object)
-        .map_or(Position::Unknown, |o| o.source().position());
-    error.in_object(object).at(position)
+fn located(document: &Document, fallback: ObjectId, fault: ReadFault) -> ReadFault {
+    fault.map_error(|error| {
+        let object = error.object.unwrap_or(fallback);
+        let position = document
+            .object(object)
+            .map_or(Position::Unknown, |o| o.source().position());
+        error.in_object(object).at(position)
+    })
 }
 
 fn apply_root(
@@ -178,7 +186,9 @@ fn apply_root(
         depth_exhausted: false,
     };
     logical_text(text, document, page, root, &mut budget).map_err(|error| Failure {
-        recoverable: budget.depth_exhausted || can_fallback(&error),
+        recoverable: error
+            .as_error()
+            .is_some_and(|error| budget.depth_exhausted || can_fallback(error)),
         error,
     })
 }
@@ -189,7 +199,7 @@ fn logical_text(
     page: &Page,
     root: &Dictionary,
     budget: &mut Budget,
-) -> Result<LogicalText> {
+) -> ReadResult<LogicalText> {
     let mut plan = tree::read(document, root, page.id(), budget)?;
     content::resolve(&mut plan, document, root, page, text, budget)?;
     copy::export(text, &plan, budget)
@@ -201,7 +211,7 @@ fn entry<'a>(
     doc: &'a Document,
     dictionary: &'a Dictionary,
     key: &[u8],
-) -> Result<Option<&'a Value>> {
+) -> ReadResult<Option<&'a Value>> {
     match dictionary.get(key) {
         Some(value) if !doc.resolve(value)?.is_null() => Ok(Some(value)),
         _ => Ok(None),
@@ -223,7 +233,11 @@ fn text_string(doc: &Document, bytes: &[u8], object: Option<ObjectId>) -> Result
     Ok(text)
 }
 
-fn name<'a>(doc: &'a Document, dictionary: &'a Dictionary, key: &[u8]) -> Result<Option<&'a Name>> {
+fn name<'a>(
+    doc: &'a Document,
+    dictionary: &'a Dictionary,
+    key: &[u8],
+) -> ReadResult<Option<&'a Name>> {
     entry(doc, dictionary, key)?
         .map(|v| {
             doc.resolve(v).and_then(|v| {

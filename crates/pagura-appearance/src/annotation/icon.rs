@@ -3,8 +3,9 @@
 
 use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::stream::AppearanceStream;
-use pagura_core::{Dictionary, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Name, Rect, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The icon's frame in its 16 × 16 design space.
 const FRAME: Subpath<'static> = Subpath::Rect {
@@ -20,7 +21,7 @@ pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
-) -> Result<Option<AppearanceStream>> {
+) -> ReadResult<Option<AppearanceStream>> {
     let name = annotation
         .get(b"Name")
         .map(|value| document.resolve(value))
