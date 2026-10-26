@@ -1,7 +1,7 @@
 //! The content of a generated annotation appearance: filled and stroked
 //! paths in device colours under the annotation's constant opacity.
 
-mod rounded;
+pub(super) mod rounded;
 
 use crate::program::Program;
 use crate::stream::{AppearanceStream, form_dictionary};
@@ -14,6 +14,17 @@ use pagura_document::Document;
 pub(super) struct Color(Vec<f64>);
 
 impl Color {
+    /// Already validated device components from the form-style reader.
+    pub(super) fn from_components(components: &[f64]) -> Self {
+        Self(components.to_vec())
+    }
+
+    pub(super) fn write(&self, out: &mut Program, paint: Paint) -> Result<()> {
+        write_numbers(out, &self.0)?;
+        out.text(self.operator(paint))?;
+        out.text("\n")
+    }
+
     /// Black, the default border and icon colour.
     pub(super) fn black() -> Self {
         Self(vec![0.0])
@@ -123,7 +134,7 @@ pub(super) struct Pen<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Paint {
+pub(super) enum Paint {
     Fill,
     Stroke,
 }
@@ -300,9 +311,7 @@ impl<'a> Marks<'a> {
     }
 
     fn color(&mut self, color: &Color, paint: Paint) -> Result<()> {
-        self.numbers(&color.0)?;
-        self.content.text(color.operator(paint))?;
-        self.content.text("\n")
+        color.write(&mut self.content, paint)
     }
 
     fn path(&mut self, path: &[Subpath<'_>]) -> Result<()> {
@@ -317,16 +326,16 @@ impl<'a> Marks<'a> {
                     self.numbers(&[x, y, width, height])?;
                     self.content.text("re\n")?;
                 }
-                Subpath::RoundedRect { bounds, radii } => self.rounded_rectangle(bounds, radii)?,
+                Subpath::RoundedRect { bounds, radii } => {
+                    rounded::write(&mut self.content, bounds, radii)?;
+                }
                 Subpath::Ellipse(bounds) => self.ellipse(bounds)?,
                 Subpath::Polyline(points) | Subpath::Polygon(points) => {
-                    for (i, &(x, y)) in points.iter().enumerate() {
-                        self.numbers(&[x, y])?;
-                        self.content.text(if i == 0 { "m\n" } else { "l\n" })?;
-                    }
-                    if matches!(subpath, Subpath::Polygon(_)) {
-                        self.content.text("h\n")?;
-                    }
+                    write_polyline(
+                        &mut self.content,
+                        points,
+                        matches!(subpath, Subpath::Polygon(_)),
+                    )?;
                 }
                 Subpath::Operators { commands, closed } => {
                     for command in commands {
@@ -387,12 +396,27 @@ impl<'a> Marks<'a> {
 
     /// Writes each value followed by a space.
     fn numbers(&mut self, values: &[f64]) -> Result<()> {
-        for value in values {
-            self.content.text(&real(*value)?)?;
-            self.content.text(" ")?;
-        }
-        Ok(())
+        write_numbers(&mut self.content, values)
     }
+}
+
+pub(super) fn write_numbers(out: &mut Program, values: &[f64]) -> Result<()> {
+    for value in values {
+        out.text(&real(*value)?)?;
+        out.text(" ")?;
+    }
+    Ok(())
+}
+
+pub(super) fn write_polyline(out: &mut Program, points: &[(f64, f64)], closed: bool) -> Result<()> {
+    for (index, &(x, y)) in points.iter().enumerate() {
+        write_numbers(out, &[x, y])?;
+        out.text(if index == 0 { "m\n" } else { "l\n" })?;
+    }
+    if closed {
+        out.text("h\n")?;
+    }
+    Ok(())
 }
 
 /// The shortest decimal that reads back as `value` (7.3.3). A whole number

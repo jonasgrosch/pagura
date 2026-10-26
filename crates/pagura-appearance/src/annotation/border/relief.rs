@@ -13,19 +13,25 @@ pub(super) enum Kind {
     Sunken,
 }
 
-pub(super) fn paint(
-    marks: &mut Marks<'_>,
-    bounds: Rect,
-    width: f64,
-    color: &Color,
-    kind: Kind,
-) -> Result<()> {
+pub(super) type Facet = [(f64, f64); 6];
+
+impl Kind {
+    pub(super) fn shades(self, color: &Color) -> [Color; 2] {
+        let [light, dark] = color.relief_colors();
+        match self {
+            Self::Raised => [light, dark],
+            Self::Sunken => [dark, light],
+        }
+    }
+}
+
+pub(super) fn facets(bounds: Rect, width: f64) -> Result<Option<[Facet; 2]>> {
     if !bounds.width().is_finite() || !bounds.height().is_finite() || !width.is_finite() {
         return Err(Error::limit("relief border extent exceeds numeric range"));
     }
     let width = width.min(bounds.width() / 2.0).min(bounds.height() / 2.0);
     if width == 0.0 {
-        return Ok(());
+        return Ok(None);
     }
     let (x0, y0, x1, y1) = (bounds.x0(), bounds.y0(), bounds.x1(), bounds.y1());
     let (left, bottom, right, top) = (x0 + width, y0 + width, x1 - width, y1 - width);
@@ -45,11 +51,20 @@ pub(super) fn paint(
         (right, bottom),
         (left, bottom),
     ];
-    let [light, dark] = color.relief_colors();
-    let (first, second) = match kind {
-        Kind::Raised => (&light, &dark),
-        Kind::Sunken => (&dark, &light),
-    };
-    marks.fill_border(&[Subpath::Polygon(&top_left)], first)?;
-    marks.fill_border(&[Subpath::Polygon(&bottom_right)], second)
+    Ok(Some([top_left, bottom_right]))
+}
+
+pub(super) fn paint(
+    marks: &mut Marks<'_>,
+    bounds: Rect,
+    width: f64,
+    color: &Color,
+    kind: Kind,
+) -> Result<()> {
+    if let Some(facets) = facets(bounds, width)? {
+        for (points, shade) in facets.iter().zip(kind.shades(color)) {
+            marks.fill_border(&[Subpath::Polygon(points)], &shade)?;
+        }
+    }
+    Ok(())
 }

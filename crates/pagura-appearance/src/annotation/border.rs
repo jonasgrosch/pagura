@@ -1,12 +1,13 @@
 //! Link, square and circle borders (12.5.4, 12.5.6.5, 12.5.6.8).
 
+mod form;
 mod relief;
 
-use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
+use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::features;
 use crate::stream::AppearanceStream;
 use crate::values::{number, numbers, optional, optional_dictionary};
-use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result};
 use pagura_document::Document;
 
 /// The annotation whose border is drawn.
@@ -148,8 +149,8 @@ pub(super) fn plain_effect(document: &Document, annotation: &Dictionary) -> Resu
 
 /// An annotation border: BS, else Border, else solid and 1 unit wide
 /// (Tables 166, 168).
-pub(super) struct Border {
-    pub(super) width: f64,
+pub(crate) struct Border {
+    pub(crate) width: f64,
     pub(super) dash: Vec<f64>,
     pub(super) underline: bool,
     radii: [f64; 2],
@@ -169,7 +170,7 @@ impl Border {
     }
 
     /// Styles for a rectangular border, including legacy Border corner radii.
-    pub(super) fn read_rectangular(document: &Document, annotation: &Dictionary) -> Result<Self> {
+    pub(crate) fn read_rectangular(document: &Document, annotation: &Dictionary) -> Result<Self> {
         Self::read_with_corners(document, annotation, Corners::Rounded)
     }
 
@@ -221,21 +222,21 @@ impl Border {
         let mut radii = [0.0; 2];
         let (mut width, mut dash, mut style) = (1.0, Vec::new(), b"S".as_slice());
         if let Some(bs) = optional_dictionary(document, annotation, b"BS")? {
-            width = scalar(document, bs, b"W")?.unwrap_or(1.0);
-            style = bs
-                .get(b"S")
-                .map(|value| document.resolve(value))
+            width = optional(document, bs, b"W")?
+                .map(|value| number(document, value))
                 .transpose()?
-                .and_then(Value::as_name)
+                .unwrap_or(1.0);
+            style = optional(document, bs, b"S")?
+                .map(|value| value.as_name().ok_or(Error::syntax("BS S must be a name")))
+                .transpose()?
                 .map_or(b"S", Name::as_bytes);
             if style == b"D" {
-                dash = bs
-                    .get(b"D")
+                dash = optional(document, bs, b"D")?
                     .map(|value| numbers(document, value))
                     .transpose()?
                     .unwrap_or_else(|| vec![3.0]);
             }
-        } else if let Some(border) = annotation.get(b"Border") {
+        } else if let Some(border) = optional(document, annotation, b"Border")? {
             let border = document
                 .resolve(border)?
                 .as_array()
@@ -263,6 +264,11 @@ impl Border {
         }
         if width < 0.0 {
             return Err(Error::syntax("negative annotation border width"));
+        }
+        if dash.iter().any(|value| *value < 0.0)
+            || !dash.is_empty() && dash.iter().all(|value| *value == 0.0)
+        {
+            return Err(Error::syntax("invalid annotation dash pattern"));
         }
         let relief = match style {
             b"B" => Some(relief::Kind::Raised),

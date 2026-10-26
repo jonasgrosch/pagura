@@ -1,7 +1,7 @@
 //! Appearances of annotations that have no appearance stream (12.5.5):
 //! borders, ink/polygon paths, note/file icons and empty widgets (12.5.6).
 
-mod border;
+pub(crate) mod border;
 mod caret;
 mod ending;
 mod free_text;

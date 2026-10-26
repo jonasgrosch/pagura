@@ -563,7 +563,10 @@ expectations with authored line breaks/sizes, AFM metrics and original quadratic
 glyph areas. Controls cover alignment at two resolutions, wrapping, explicit
 lines, clipping, auto sizing, colors/opacity, RD, rotation, indirection, DR selection,
 visibility, stored precedence and malformed input. Font, work, geometry, storage
-and output limits are also registered. Hosted validation is pending. Rich RC/DS,
+and output limits are also registered. Plain FreeText passes all twelve hosted
+checks at `3d4f8edc0` (functional run 40317937522, reopen run 40317937514,
+capability run 40317937526); the later callout increment needs separate validation.
+Rich RC/DS,
 the form layout's richer font/matrix boundaries remain open.
 
 **FreeText callouts implemented:** optional CL arrays with two or three points
@@ -591,8 +594,8 @@ pixel expectations from closed-form quarter-ellipse/rectangle areas and circular
 parallel-set strokes, with separately authored sixteen-arc stored artwork. They
 cover two resolutions, opacity, rotation, RD, clamped/zero radii, indirection,
 visibility, stored precedence and malformed values. Hosted validation is pending.
-Unequal-axis stroke/dash evidence, nonrectangular legacy radius handling and the
-separate filled-form border path remain open; cloudy borders are still a gap.
+Unequal-axis stroke/dash evidence and nonrectangular legacy radius handling
+remain open. Filled-form integration is tracked below; cloudy borders remain a gap.
 Stored sixteen-arc controls now use Decimal half-angle identities to avoid
 platform-libm serialization drift; pixel expectations and tolerances are unchanged.
 
@@ -608,8 +611,21 @@ source-over, with literal stored counterparts, two resolutions, RGB/Gray colours
 RD, rotation, fractional geometry, opacity, visibility, indirection and malformed
 values. Geometry/work/resource checks and native/WASI/client/viewer controls are
 registered; hosted validation is pending. CMYK conversion expectations,
-nonrectangular relief, nonempty/rotated widgets and the separate filled-form path
-remain open. These original dimensions/lighting choices are reader policy.
+nonrectangular relief and nonempty/rotated widgets remain open; filled-form
+integration is tracked below. These original dimensions/lighting choices are reader policy.
+
+**Filled-form border integration implemented:** text, choice and button
+appearance generation now shares the annotation Border reader and fixed
+rounded/relief geometry. Existing solid/dashed/underline programs are preserved;
+unknown named styles fall back to solid as Table 168 requires. Null entries are
+absent and malformed types/radii/dashes validate before invisible output.
+Existing AP artwork remains when a Tx section is updated. Thirty-five independent
+pixel controls use closed-form conic/trapezoid areas and literal Type 3 glyph
+rectangles, exercised through public filled rendering, tiles, save/reopen and the
+actual WASI editing client. Hosted structural checks reopen saved files with
+qpdf/Poppler. Runtime validation is pending. Widget rotation, no-area text-layout
+policy, unequal-axis rounded stroke/dash and CMYK relief evidence remain open.
+The retained appearance.border-style tag is dormant after both paths converge.
 
 Complete richer FreeText and other ledger subtype appearances;
 add border effects, remaining callout combinations and required font/layout support.
@@ -627,7 +643,7 @@ Owner: `pagura-document`, `pagura-appearance`, `pagura::editing`, `web`;
 depends on V01, R04 and E01 for repair/encrypted-save paths.
 
 Add rich-text/Unicode/CID appearance generation, oblique/reflected/rotated text,
-negative-size handling where valid, rounded/beveled/inset borders, complex Tx
+negative-size handling where valid, remaining rounded stroke/dash evidence, complex Tx
 updates, inline-image/XObject preservation, generated button states and nested
 direct field identities. Complete field types/flags and reset/import/export
 workflows identified by G00. Define password-field handling explicitly; the

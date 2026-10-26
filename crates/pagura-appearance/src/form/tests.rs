@@ -9,6 +9,64 @@ use pagura_testkit::{fixture, fixture_path};
 use std::collections::BTreeMap;
 
 #[test]
+fn shared_border_budgets_protect_filled_appearances() {
+    for (name, segments) in [("Tx-rounded-72.pdf", 23), ("Tx-B-72.pdf", 15)] {
+        let document = Document::open(
+            fixture("form_borders", name),
+            &OpenOptions {
+                limits: Limits {
+                    path_segments: segments,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let mut filler = document.form_filler().unwrap().unwrap();
+        filler.set(0, FillValue::Text("AB")).unwrap();
+        assert_eq!(
+            prepare(&filler, None).unwrap_err().kind,
+            ErrorKind::Limit,
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn shared_border_reader_rejects_malformed_styles_and_dashes() {
+    let document = document_for_style();
+    for source in [
+        b"<< /BS << /S 42 >> >>".as_slice(),
+        b"<< /BS << /S /D /D [-1 2] >> >>",
+        b"<< /BS << /S /D /D [0 0] >> >>",
+        b"<< /Border [-1 2 1] >>",
+    ] {
+        let parsed = pagura_core::syntax::Parser::new(
+            source,
+            pagura_core::syntax::Origin::Buffer,
+            Limits::default(),
+        )
+        .parse()
+        .unwrap();
+        assert!(matches!(
+            Style::read(&document, parsed.as_dictionary().unwrap()),
+            Err(Error {
+                kind: ErrorKind::Syntax,
+                ..
+            })
+        ));
+    }
+}
+
+fn document_for_style() -> Document {
+    Document::open(
+        fixture("forms", "text-quadding-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap()
+}
+
+#[test]
 fn independent_appearance_programs_and_existing_states() {
     let mut count = 0;
     for entry in std::fs::read_dir(fixture_path("forms", "")).unwrap() {

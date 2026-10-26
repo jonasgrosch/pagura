@@ -86,7 +86,7 @@ impl WidgetAppearance {
 /// Returns positioned syntax, font, limit and unsupported-capability errors.
 /// Horizontal simple fonts with reversible single-character Unicode mappings
 /// are supported. Oblique text matrices, rotated widgets, rich text, XFA,
-/// beveled/inset borders, negative font sizes and appearance updates crossing
+/// negative font sizes and appearance updates crossing
 /// text/graphics scopes or containing inline images remain explicit
 /// unsupported capabilities. DoNotScroll rejects text that will not visibly fit.
 pub fn prepare(
