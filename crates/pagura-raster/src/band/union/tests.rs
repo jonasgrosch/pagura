@@ -102,6 +102,51 @@ fn close_plain_places_charge_their_exact_run() {
     assert_eq!(resolver.order, [(0.25, 2), (0.5, 0), (0.5, 1)]);
 }
 
+#[test]
+fn integer_keys_sort_as_the_total_order() {
+    let specials = [
+        f64::NAN,
+        -f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        0.0,
+        -0.0,
+        f64::MIN_POSITIVE / 4.0,
+        -f64::MIN_POSITIVE,
+        1.0,
+        -1.0,
+        0.5,
+    ];
+    let mut rng = Lcg(97);
+    let (mut keys, mut span_keys, mut sorted) = (Vec::new(), Vec::new(), Vec::new());
+    for _ in 0..1_000 {
+        let len = rng.next() as usize % 40;
+        let mut values: Vec<f64> = (0..len)
+            .map(|_| match rng.next() % 3 {
+                0 => specials[rng.next() as usize % specials.len()],
+                _ => rng.grid(-2.0, 33, 8),
+            })
+            .collect();
+        let mut expected = values.clone();
+        expected.sort_unstable_by(f64::total_cmp);
+        sort_values(&mut values, &mut keys);
+        let bits = |v: &[f64]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        assert_eq!(bits(&values), bits(&expected));
+        let mut spans: Vec<Span> = (0..u32::try_from(len).unwrap())
+            .map(|i| (expected[(i as usize * 7) % len.max(1)], f64::from(i), i))
+            .collect();
+        let mut by_start = spans.clone();
+        by_start.sort_unstable_by(|a, b| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2)));
+        sort_spans(&mut spans, (&mut span_keys, &mut sorted));
+        let fields = |v: &[Span]| {
+            v.iter()
+                .map(|s| (s.0.to_bits(), s.1.to_bits(), s.2))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(fields(&spans), fields(&by_start));
+    }
+}
+
 fn line(x0: f64, y0: f64, x1: f64, y1: f64) -> Line {
     Line {
         a: Point::new(x0, y0),
