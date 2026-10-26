@@ -9,7 +9,7 @@
 mod formats;
 mod hulls;
 
-use formats::{F64_STORE, FOOTPRINTS, MARGIN, disjoint_footprints};
+use formats::{APART_COMPARISONS, F64_STORE, FOOTPRINTS, MARGIN, disjoint_footprints};
 use hulls::{Outlines, extent, glyph_footprints, hulls, unite};
 
 use crate::format::Format;
@@ -115,6 +115,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs, bytes: &mut Meter) -> Result
         open: Vec::new(),
         outlines: Outlines::default(),
         transfers: false,
+        comparisons: APART_COMPARISONS,
     };
     let result = survey.finish(bytes);
     let retained = match &result {
@@ -343,6 +344,8 @@ struct Survey<'s> {
     /// Glyph outline hulls computed so far.
     outlines: Outlines,
     transfers: bool,
+    /// Footprint comparisons the disjoint-member identity has left.
+    comparisons: usize,
 }
 
 /// The kind of paint a store takes.
@@ -472,7 +475,8 @@ impl Survey<'_> {
         // is (1 - α) b + α c: every store dynamic gives every member a
         // footprint.
         if target.knockout() && target.normal && target.stores == target.dynamic {
-            let apart = disjoint_footprints(target, |store| store.apart, bytes)?;
+            let comparisons = &mut self.comparisons;
+            let apart = disjoint_footprints(target, |store| store.apart, comparisons, bytes)?;
             self.buffers[buffer].apart_members = apart;
         }
         let pending = std::mem::take(&mut self.buffers[buffer].pending);

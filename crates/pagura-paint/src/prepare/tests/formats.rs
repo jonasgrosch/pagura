@@ -419,3 +419,65 @@ fn knockout_groups_of_disjoint_members_composite_as_source_over() {
     let (b, ..) = text((4.0, 4_097, 64), 1.0);
     assert_eq!(formats(&b), [Format::F64, Format::F64]);
 }
+
+#[test]
+fn the_disjoint_member_identity_spends_a_page_allowance() {
+    let knockout = GroupAttributes {
+        isolated: false,
+        knockout: true,
+        space: None,
+    };
+    // Glyphs stacked in a column share every column of pixels, so a sweep
+    // compares each with all above it: n (n - 1) / 2 comparisons.
+    let count = 2_100_u32;
+    let source = GlyphSource {
+        outline: rect_path([0.0, 0.0, 0.5, 0.5]),
+        key: OutlineKey {
+            font: pagura_interpret::FontKey(1),
+            glyph: 4,
+        },
+        linear: Transform::IDENTITY,
+    };
+    let page = |groups: u32| {
+        let mut b = Build::new(8.0, 3.0 * f64::from(count) + 2.0);
+        let red = b.rgb([0.9, 0.2, 0.1]);
+        let faint = b.state(|s| s.alpha = 0.4);
+        for g in 0..groups {
+            let text = b.transparency(PAGE, knockout, mark(StateId(0)));
+            let placements = (0..count)
+                .map(|i| Placement {
+                    source: 0,
+                    origin: Point::new(0.25 + 4.0 * f64::from(g), 0.25 + 3.0 * f64::from(i)),
+                })
+                .collect();
+            b.node(
+                text,
+                Node::Glyphs(GlyphsNode {
+                    sources: vec![source.clone()],
+                    placements,
+                    positions: Vec::new(),
+                    paint: red,
+                    mark: mark(faint),
+                }),
+            );
+        }
+        b
+    };
+    let groups = |b: &Build| {
+        b.prepare(&b.request(b.page(), 32), &Limits::default())
+            .unwrap_or_else(|e| panic!("{e}"))
+            .plan
+            .groups
+            .len()
+    };
+    // One column fits the page's comparisons: its group composites as its
+    // members.
+    let b = page(1);
+    assert_eq!(formats(&b), [Format::N16]);
+    assert_eq!(groups(&b), 1);
+    // A second column would exceed them: its group knocks out, and the
+    // page it reads stays F64 with it.
+    let b = page(2);
+    assert_eq!(formats(&b), [Format::F64, Format::F64]);
+    assert_eq!(groups(&b), 2);
+}
