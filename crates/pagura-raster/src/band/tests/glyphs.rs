@@ -312,8 +312,9 @@ fn quadratic_placements_meet_the_true_curve_with_many_pieces_and_overlaps() {
 #[test]
 fn kept_quadratics_round_correctly_without_inspection() {
     // A single arch and many pieces integrate their own quadratics; the
-    // overlapping copies take the inspected polygon. Every byte is the
-    // correctly rounded true area, as the elevated cubics' certified bytes.
+    // overlapping copies integrate their covered set's, inspected. Every
+    // byte is the correctly rounded true area, as the elevated cubics'
+    // certified bytes.
     let limits = Limits::default();
     let area = area(0, 0, 32, 24, 16);
     let mut rng = Lcg(321);
@@ -326,7 +327,7 @@ fn kept_quadratics_round_correctly_without_inspection() {
             [1.1, -0.3, 0.21, 0.8],
         ] {
             let kept = Arc::new(GlyphEdges::new(&quadratic, linear, &limits).unwrap());
-            assert_eq!(kept.curved(), copies == 1);
+            assert!(kept.curved());
             let reduced = Arc::new(GlyphEdges::new(&elevated, linear, &limits).unwrap());
             for _ in 0..4 {
                 let origin = Point::new(rng.grid(8.0, 10.0, 4096), rng.grid(10.0, 12.0, 4096));
@@ -467,8 +468,9 @@ fn fallback_half_levels_keep_their_bytes_at_translated_origins_and_band_grids() 
         .unwrap();
         path.close();
     }
+    // The two copies keep one covered set, whose bytes are certified.
     let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-    assert!(!edges.curved());
+    assert!(edges.curved());
     for offset in [0, 10_000] {
         let origin = Point::new(f64::from(offset), f64::from(offset));
         for height in [1, 3, 16, 256] {

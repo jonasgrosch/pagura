@@ -153,6 +153,7 @@ impl<'a> Source<'a> {
         };
         let points = match &edges.kind {
             Kind::Curve { point, .. } => point.as_slice(),
+            Kind::Union { .. } => &[],
             Kind::Polygon { points, .. } => points.as_slice(),
         };
         let (outline, linear) = (&proof.outline, proof.linear);
@@ -210,9 +211,9 @@ pub(super) fn certify(
             .and_then(|clip| clip.paths())
             .map_or(0.0, Paths::arithmetic_error);
         let bound = match &shares {
-            _ if analytic(&shape) => {
-                Bound::Whole(curve::reduction_area(outline, linear) + placement + clip)
-            }
+            _ if analytic(&shape) => Bound::Whole(
+                curve::reduction_area(outline, linear) + allowance(edges) + placement + clip,
+            ),
             Some(shares) => Bound::Shared {
                 shares,
                 origin,
@@ -327,9 +328,18 @@ fn analytic(shape: &Shape) -> bool {
     match &shape.body {
         Body::Glyph(body) => {
             body.geometry == GlyphGeometry::Relative
-                && matches!(body.edges.kind, Kind::Curve { .. })
+                && matches!(body.edges.kind, Kind::Curve { .. } | Kind::Union { .. })
         }
         Body::Edges(body) => !body.curves.is_empty(),
+    }
+}
+
+/// The area by which a covered set's parts can miss it; zero for a
+/// certified spline's pieces.
+fn allowance(edges: &GlyphEdges) -> f64 {
+    match edges.kind {
+        Kind::Union { allowance, .. } => allowance,
+        Kind::Curve { .. } | Kind::Polygon { .. } => 0.0,
     }
 }
 

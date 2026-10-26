@@ -454,8 +454,9 @@ fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
     let black = b.rgb([0.0, 0.0, 0.0]);
     let mut path = pagura_raster::PathBuilder::new();
     // Coincident contours have one arch's nonzero covered set, but cannot
-    // certify winding zero or one. Its true area h/3 is just above the
-    // first half-level, where an inscribed polygon can select byte zero.
+    // certify winding zero or one: the glyph keeps that set, whose bytes are
+    // certified. Its true area h/3 is just above the first half-level, where
+    // an inscribed polygon can select byte zero.
     let area = 0.500_001 / 255.0;
     let h = 3.0 * area;
     for _ in 0..32 {
@@ -471,7 +472,7 @@ fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
     let outline = Arc::new(path.finish());
     let limits = Limits::default();
     let geometry = pagura_raster::GlyphEdges::new(&outline, [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
-    assert!(!geometry.curved());
+    assert!(geometry.curved());
     b.node(
         GroupId(0),
         Node::Glyphs(GlyphsNode {
