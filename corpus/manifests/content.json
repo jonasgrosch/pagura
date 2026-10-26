@@ -2226,6 +2226,26 @@
       "height": 8
     },
     {
+      "id": "content/tiling-type-two-fractional",
+      "kind": "pdf",
+      "description": "8.7.3.1, Table 74: no distortion keeps a fractional lattice; exact rational pixel coverage",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-type-two-fractional.pdf",
+      "sha256": "cace3ba323655d7181fa61c674fd64714d07637d3e4d31d19de3047cd0c8d271",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-type-two-fractional.ppm",
+      "oracle_sha256": "ea6809caeea444ab705092461cd21b680ee360a62ebb12c4d81cefd8d777c1b3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
       "id": "content/tiling-zero-step",
       "kind": "pdf",
       "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",

@@ -935,6 +935,16 @@ def tiling_cases():
         ('tiling-underlying-reuse',{'paint':2,'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn 0 0 4 8 re f 0 0 1 /P scn 4 0 4 8 re f','cell':b'0 0 1 1 re f'},[((x,y,1,1),RED if x<4 else BLUE) for y in range(0,8,2) for x in range(0,8,2)]),
     ]:
         yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
+    # TilingType 2 keeps the exact lattice: 0.8-unit squares every 1.6
+    # units cover each pixel by the product of their exact overlaps.
+    def overlap(i):
+        return sum(max(F(0),min(F(i+1),F(8*k,5)+F(4,5))-max(F(i),F(8*k,5))) for k in range(6))
+    exact=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=overlap(x)*overlap(7-row)
+            exact.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-type-two-fractional',pdf(step=b'1.6 1.6',bbox=b'[0 0 1.6 1.6]',cell=b'1 0 0 rg 0 0 .8 .8 re f',kind=2),RENDER,('content-tiling',),'8.7.3.1, Table 74: no distortion keeps a fractional lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(exact),extra={'tolerance':1})
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
         if name == 'tiling-coloured-underlying':
             yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))
