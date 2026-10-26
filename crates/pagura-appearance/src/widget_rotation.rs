@@ -1,4 +1,4 @@
-//! Counterclockwise widget orientation from MK R (Table 192).
+//! Quarter-turn appearance frames and counterclockwise widget MK R (Table 192).
 
 use crate::stream::form_dictionary;
 use crate::values::optional;
@@ -32,7 +32,7 @@ pub(crate) fn read(document: &Document, mk: Option<&Dictionary>) -> Result<Rotat
 pub(crate) fn frame(rotation: Rotation, rect: Rect) -> Result<Frame> {
     let (width, height) = (rect.width(), rect.height());
     if !width.is_finite() || !height.is_finite() {
-        return Err(Error::limit("widget rotation exceeds numeric range"));
+        return Err(Error::limit("appearance rotation exceeds numeric range"));
     }
     let (width, height) = if matches!(rotation, Rotation::Clockwise90 | Rotation::Clockwise270) {
         (height, width)
@@ -43,7 +43,7 @@ pub(crate) fn frame(rotation: Rotation, rect: Rect) -> Result<Frame> {
         rect
     } else {
         Rect::from_corners(0.0, 0.0, width, height)
-            .ok_or(Error::limit("invalid rotated widget bounds"))?
+            .ok_or(Error::limit("invalid rotated appearance bounds"))?
     };
     let matrix = match rotation {
         Rotation::None => None,

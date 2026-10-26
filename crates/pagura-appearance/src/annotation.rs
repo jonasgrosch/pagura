@@ -37,13 +37,15 @@ use pagura_document::Document;
 /// captions and FreeText with an explicit font provider, standard rubber stamps,
 /// four text-markup styles, Redact region outlines, Caret symbols,
 /// seven Text icons, four FileAttachment icons, two static Sound icons,
-/// and the MK background and border of empty text and signature widgets.
+/// explicit Movie image posters, and the MK background and border of empty
+/// text and signature widgets.
 /// AcroForm Tx/Ch widgets share the form generator's effective field values,
 /// resources and layout, with a local BBox and optional MK rotation Matrix.
 /// Icon artwork never resolves file or sound payloads and cannot activate media.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
-/// point, for Popup and Projection annotations, for links without a border,
+/// point, for Popup, Projection and Screen annotations, for Movie annotations
+/// without a selected poster, for links without a border,
 /// for annotations whose entries select no mark, and for a rectangle
 /// without area; the last is decided after reading the annotation, so its
 /// errors do not depend on the rectangle's area.
@@ -92,7 +94,14 @@ pub fn annotation_appearance_with_fonts(
         .and_then(Value::as_name)
         .ok_or(Error::syntax("annotation has no Subtype"))?;
     let appearance = match subtype.as_bytes() {
-        b"Popup" | b"Projection" => return Ok(None),
+        b"Popup" | b"Projection" | b"Screen" => return Ok(None),
+        // These subtypes define their static artwork only through a required
+        // normal AP (13.6.2, 13.7.2, 14.11.3 and 14.11.6.2).
+        b"3D" | b"RichMedia" | b"PrinterMark" | b"TrapNet" => {
+            return Err(Error::syntax(
+                "annotation type requires a normal appearance",
+            ));
+        }
         b"Link" if no_border(document, annotation)? => return Ok(None),
         b"Link" => border::generate(document, annotation, rect, border::Shape::Link)?,
         b"Square" => border::generate(document, annotation, rect, border::Shape::Square)?,
@@ -114,6 +123,7 @@ pub fn annotation_appearance_with_fonts(
             icon::generate(document, annotation, rect, icon::Kind::FileAttachment)?
         }
         b"Sound" => icon::generate(document, annotation, rect, icon::Kind::Sound)?,
+        b"Movie" => icon::movie_poster(document, annotation, rect)?,
         b"Widget" => widget::generate(document, annotation, rect, fonts)?,
         _ => {
             return Err(Error::unsupported(

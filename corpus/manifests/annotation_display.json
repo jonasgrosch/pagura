@@ -7670,6 +7670,1278 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-screen-absent",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-absent.pdf",
+      "sha256": "a33a2152c72938bf03907ba3a1550d7df869f0c77fe8e79f2498486228fa7cd5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-screen-absent.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-screen-null",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-null.pdf",
+      "sha256": "449d60a15d23ccf41e70fdf28eea2dc512aa538abf13de09a5bffc8579e6a66c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-screen-null.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-screen-unused-artwork",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-unused-artwork.pdf",
+      "sha256": "38d96e5d9d90afa4939f43e0b06a292ebe7abd9bd7e7952c4c059e4aa43d5078",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-screen-unused-artwork.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-screen-ignored-payloads",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-ignored-payloads.pdf",
+      "sha256": "190d415931815ce0ece0938e25f96d6aabde5ea1a54859ca0fd9b407021ad9c8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-screen-ignored-payloads.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-screen-stored-72",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-stored-72.pdf",
+      "sha256": "3eccdbfb8e29ca58729e1a21f1e7ecaf0cb119d6dea44c4f942f70ccad6471b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-screen-stored-72.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-screen-stored-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-stored-144.pdf",
+      "sha256": "3eccdbfb8e29ca58729e1a21f1e7ecaf0cb119d6dea44c4f942f70ccad6471b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-screen-stored-144.ppm",
+      "oracle_sha256": "69a651478d79edb231604f0d99c85248ed6b5806e32a4b4ec61398ecfc0157a0",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/static-movie-false",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-false.pdf",
+      "sha256": "0346b4498e0c983196415511392ee2a0604b91844b00c97eb9d7411ffacc77a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-false.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-null",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-null.pdf",
+      "sha256": "6b4c117a53414b29771861529e36a9becca3414f58f23a0effd7e2f0b8d491ca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-null.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-absent-poster",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-absent-poster.pdf",
+      "sha256": "d10e7a805fd9d9f9c9f220b049a4095b2b60703d7611331b9ff8906f0688b3eb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-absent-poster.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-indirect-false",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-indirect-false.pdf",
+      "sha256": "a4b9c9d0c67e5b86797761b3ea20d17182b0f98001b9d3acd72b5721c0fb6be2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-indirect-false.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-0-72",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-0-72.pdf",
+      "sha256": "eaa044b36432b899e1708d80a69caf1cd71474f18539fddbfa77706ed4a91a6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-0-72.ppm",
+      "oracle_sha256": "e1050bbfec0fef44806d1f98652378e9c4ecd9519237b925fa91dbfc8b9b3df8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-0-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-0-144.pdf",
+      "sha256": "eaa044b36432b899e1708d80a69caf1cd71474f18539fddbfa77706ed4a91a6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-0-144.ppm",
+      "oracle_sha256": "806f55ac3ba7a472ec60a12d75d68fe25c08cf1a527136f1be7300ce2e20770b",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/static-movie-ordinary-0",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-ordinary-0.pdf",
+      "sha256": "f0e965f8eb0b22bea98ef705efb845de3ba9d87d82dd47be2fb7bcce82bdf242",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-ordinary-0.ppm",
+      "oracle_sha256": "e1050bbfec0fef44806d1f98652378e9c4ecd9519237b925fa91dbfc8b9b3df8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-stored-0",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-stored-0.pdf",
+      "sha256": "ff330f79c5d29be6c57026c7b354a1384409b7c69ed5a739065a5e546f1f44dd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-stored-0.ppm",
+      "oracle_sha256": "e1050bbfec0fef44806d1f98652378e9c4ecd9519237b925fa91dbfc8b9b3df8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-90-72",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-90-72.pdf",
+      "sha256": "37f3982b74a0c62fbe4d7fa9ac305d86958b33780d093a11d91a23a1dadeab5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-90-72.ppm",
+      "oracle_sha256": "98b58f5d2fd9fd555cdd9c5bb50cd4276b09c6991ae5eb6659e0e20aaaee2add",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-90-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-90-144.pdf",
+      "sha256": "37f3982b74a0c62fbe4d7fa9ac305d86958b33780d093a11d91a23a1dadeab5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-90-144.ppm",
+      "oracle_sha256": "81fc223114d4cd71ad83d16fad693261694269c7b353948126636ea404d956e4",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/static-movie-ordinary-90",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-ordinary-90.pdf",
+      "sha256": "9fc46f9fdaa84a9f87e370ba00f405c4edee90a41f9aa2ef6b95ece43423bbb0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-ordinary-90.ppm",
+      "oracle_sha256": "98b58f5d2fd9fd555cdd9c5bb50cd4276b09c6991ae5eb6659e0e20aaaee2add",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-stored-90",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-stored-90.pdf",
+      "sha256": "bb8d390c746fd447444fd8e25192a51e6dc5d0bb67f2d8883b56fe347a5a8553",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-stored-90.ppm",
+      "oracle_sha256": "98b58f5d2fd9fd555cdd9c5bb50cd4276b09c6991ae5eb6659e0e20aaaee2add",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-180-72",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-180-72.pdf",
+      "sha256": "f55eb495857a5add962e2add08cba58c3cd4d1ef87290476da85f491b7842fa2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-180-72.ppm",
+      "oracle_sha256": "db38fa854447a6637c2498d8515b86af6437146382006e2897dc1e031590523f",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-180-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-180-144.pdf",
+      "sha256": "f55eb495857a5add962e2add08cba58c3cd4d1ef87290476da85f491b7842fa2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-180-144.ppm",
+      "oracle_sha256": "4de53719af3ac71d15f9b8129760aa90cca2c3c47627d146b8a0eaea9534ec67",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/static-movie-ordinary-180",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-ordinary-180.pdf",
+      "sha256": "55a766177137ab755e310b73fd994c391d832343b1c51e333acff436c24a7daf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-ordinary-180.ppm",
+      "oracle_sha256": "db38fa854447a6637c2498d8515b86af6437146382006e2897dc1e031590523f",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-stored-180",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-stored-180.pdf",
+      "sha256": "9e69411730acb0d7565b80f541b2cc3e25f5a301537991dbe53ecc2908ca62e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-stored-180.ppm",
+      "oracle_sha256": "db38fa854447a6637c2498d8515b86af6437146382006e2897dc1e031590523f",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-270-72",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-270-72.pdf",
+      "sha256": "0695de84ffaa7441a2b70bf5f44647861db59966df7f4f250ff3e2aaa84b7d64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-270-72.ppm",
+      "oracle_sha256": "c1ff8697e1edc42a811590c140fb78a19c6c9cc638036a24ab645ce3b56da700",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-poster-270-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-270-144.pdf",
+      "sha256": "0695de84ffaa7441a2b70bf5f44647861db59966df7f4f250ff3e2aaa84b7d64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-poster-270-144.ppm",
+      "oracle_sha256": "6d60ed98ab324581ea362661d4249efa2fa123dcb1f77249cd09215c4a6b3fce",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/static-movie-ordinary-270",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-ordinary-270.pdf",
+      "sha256": "701f53cace5467b932b251641bc2f30596e5289f38965972ebcfd073666ee66a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-ordinary-270.ppm",
+      "oracle_sha256": "c1ff8697e1edc42a811590c140fb78a19c6c9cc638036a24ab645ce3b56da700",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-stored-270",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-stored-270.pdf",
+      "sha256": "048be2e224dfb6cabdcbdd89e43ef67ad6ba62e1f3cb7e3b62224e4e4e74543a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-stored-270.ppm",
+      "oracle_sha256": "c1ff8697e1edc42a811590c140fb78a19c6c9cc638036a24ab645ce3b56da700",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-negative-rotation",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-negative-rotation.pdf",
+      "sha256": "474dde548a69a53db49359aaabaa910601d52e985fedbcd8e96810f8753fc50e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-negative-rotation.ppm",
+      "oracle_sha256": "c1ff8697e1edc42a811590c140fb78a19c6c9cc638036a24ab645ce3b56da700",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-large-rotation",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-large-rotation.pdf",
+      "sha256": "dbf7c0d3f86132b44da04b2d78125a1ec53b7b86ce24f33e9e17dd6ba0707754",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-large-rotation.ppm",
+      "oracle_sha256": "98b58f5d2fd9fd555cdd9c5bb50cd4276b09c6991ae5eb6659e0e20aaaee2add",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-null-rotation",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-null-rotation.pdf",
+      "sha256": "0b5efdfb90ac496c04099cb6661fc8758bf26b22c7b5ed133cad71a089a9a3b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-null-rotation.ppm",
+      "oracle_sha256": "e1050bbfec0fef44806d1f98652378e9c4ecd9519237b925fa91dbfc8b9b3df8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-inert-entries",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-inert-entries.pdf",
+      "sha256": "16dbc1b79f90fa52b020eefc22eda6b4c2a3b408ac2eaa683be074569e9832df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-inert-entries.ppm",
+      "oracle_sha256": "e1050bbfec0fef44806d1f98652378e9c4ecd9519237b925fa91dbfc8b9b3df8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-page-rotation",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-page-rotation.pdf",
+      "sha256": "57450d10c5fd9c7475603be877c6355daa0d2fc7255c8c0f294694f36d8128c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-page-rotation.ppm",
+      "oracle_sha256": "890961a6f19b01171c991c0a50a0e4e366a19633f59dbba05734a07fc4bb2188",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/static-movie-crop",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-crop.pdf",
+      "sha256": "2c8f979a16eaf2ea7fdc068d8cadd14cfccf65329cd9283bd9260de85668f71d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-crop.ppm",
+      "oracle_sha256": "68861fb3cb88d4e33fad1efba0eef5d38a8ed152818aa1540dfc14dec434ef11",
+      "dpi": 72,
+      "width": 12,
+      "height": 10
+    },
+    {
+      "id": "annotation_display/static-movie-user-unit-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-user-unit-144.pdf",
+      "sha256": "48fd0b308367ebf554d000d729a1febebe48f91e58d375599064998c2b7d4fe1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-user-unit-144.ppm",
+      "oracle_sha256": "02cd1d3a252a4abb8e9450d0de19fabeb13d179419302aed530d33d86f68ed95",
+      "dpi": 144,
+      "width": 128,
+      "height": 96
+    },
+    {
+      "id": "annotation_display/static-movie-nozoom-144",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-nozoom-144.pdf",
+      "sha256": "661121ec8d406f0316a6352ef009bbd242733b52a608553c928a84495a6f19cf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-nozoom-144.ppm",
+      "oracle_sha256": "4f55b0f95a953678cd9729521a3d59fa391e4fcc36d90a5857fa36a78a766d50",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/static-movie-norotate",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-norotate.pdf",
+      "sha256": "bb841b5c866f168e5044e84feb90cd0abf3ef7974ec707328f68e8d514055be4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-norotate.ppm",
+      "oracle_sha256": "d9a58305bbdbce00aca945d16a18de837dbbdb4abfe0b892a9e110f4e3bf4e40",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/static-movie-page-resources-ignored",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-page-resources-ignored.pdf",
+      "sha256": "72c5a9ebacc30308ec858b57b70a81bf1f4140652c55ef9faac1656da55febd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-page-resources-ignored.ppm",
+      "oracle_sha256": "e1050bbfec0fef44806d1f98652378e9c4ecd9519237b925fa91dbfc8b9b3df8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-hidden",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-hidden.pdf",
+      "sha256": "28103dad9c1660aa828c16dc53e00688c3094232873ec6e5cfdaa18dc30c5391",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-hidden.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-movie-no-view",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-no-view.pdf",
+      "sha256": "9f0209de06f791a7f943af7d8c31fa083b25ba73b9d7e4062f1fab0ae4cf554b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-movie-no-view.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-3d-stored",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-3d-stored.pdf",
+      "sha256": "40d60daf7b09f364fbd42a7b21b52ec43188cec4090f888c1451458809cc5a86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-3d-stored.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-3d-absent",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-3d-absent.pdf",
+      "sha256": "d32c9b59eaeabc1d3a7f67c0d91e82413cb46b0118b54dd99ff9b9a8bb5f9679",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-3d-null",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-3d-null.pdf",
+      "sha256": "8c21a95a5e18df3175e980600a3745561185fd786e6becd559b8af4f2ed2843e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-3d-hidden",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-3d-hidden.pdf",
+      "sha256": "9a31907c1771d4824585c55ae3f25ae6d343b93dd2ff25f81011e9abf6b47571",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-3d-hidden.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-richmedia-stored",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-richmedia-stored.pdf",
+      "sha256": "d510967a9e54c05a36507ca40987bdd904804b515b6bd0fea33e23c324a04301",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-richmedia-stored.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-richmedia-absent",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-richmedia-absent.pdf",
+      "sha256": "e4f1cc02da5a96f0b73f2778d0135f2db9d03ef3789d3c8ae57588f9f1abdf69",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-richmedia-null",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-richmedia-null.pdf",
+      "sha256": "58b2c2f4c57d42ebfbd1738e56b537c6fb6c945e2c0e6282b566c8ee2bf90380",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-richmedia-hidden",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-richmedia-hidden.pdf",
+      "sha256": "6f9845ead7091b7ac35fbf574911f4e8fcc181347e687693b1fcce31185a3349",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-richmedia-hidden.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-printermark-stored",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-printermark-stored.pdf",
+      "sha256": "6bb1abc3f8ef5306a70479ab8f17ba982d3b67328e3e8ce75dc77db1a6503994",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-printermark-stored.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-printermark-absent",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-printermark-absent.pdf",
+      "sha256": "bd40dbd063877e1e0f9df8467875de0cf35547f5eac898f2ba64914dbbec94f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-printermark-null",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-printermark-null.pdf",
+      "sha256": "3a6d9a5cd16748e0401c67ecf7e35c1a54f9ac1b46259dd50ed7c0506e0751b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-printermark-hidden",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-printermark-hidden.pdf",
+      "sha256": "6d7c59ad6441de1c7f1ad751c8577ed889f2196d29f2e298abb28b55718eb0c1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-printermark-hidden.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-trapnet-stored",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-trapnet-stored.pdf",
+      "sha256": "f2ffd250f22b2fec687b9bce9cd9e485520a3aae6708e3f220fe95493b4b8d40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-trapnet-stored.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-trapnet-absent",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-trapnet-absent.pdf",
+      "sha256": "d002589a11e0d501f59710b97bfc5df2bdb03211e3b9365d482fa430c43d367e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-trapnet-null",
+      "kind": "pdf",
+      "description": "This subtype requires a normal AP; missing artwork is malformed, not a generator backlog",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-trapnet-null.pdf",
+      "sha256": "4df988dabb101191b343024f9a69798428adbc03040eec68b7031ad0512939e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-trapnet-hidden",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-trapnet-hidden.pdf",
+      "sha256": "d999c13cfa84238764617022c47273275ea5e62503d84335343d7da62325a678",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-trapnet-hidden.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-printermark-state",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-printermark-state.pdf",
+      "sha256": "f396a74f6b27a5c5c12fcea14f4303ef1bbb58fbfdb6c277c84feebe9674888c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-printermark-state.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-trapnet-state",
+      "kind": "pdf",
+      "description": "Independent static appearance pixels; media payloads/actions remain inert",
+      "expected": "render",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-trapnet-state.pdf",
+      "sha256": "cff851d7cbe86f93aaf879bf33058e09d9fdbe5cadd6e4ea8c12e53688472f83",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/static-trapnet-state.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/static-screen-ap-type",
+      "kind": "pdf",
+      "description": "Selected static-display entry has an explicit syntax boundary",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-ap-type.pdf",
+      "sha256": "8855bde7671f7d4b793a27a51652afbe7872391aae49bb756d29c2bae3eb5ef1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-screen-ap-no-normal",
+      "kind": "pdf",
+      "description": "Selected static-display entry has an explicit syntax boundary",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-ap-no-normal.pdf",
+      "sha256": "cbc4bb8a3f997f1d7b0935233e8271059ed38dffaa625fab36db816f23204886",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-screen-ap-null-normal",
+      "kind": "pdf",
+      "description": "Selected static-display entry has an explicit syntax boundary",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-screen-ap-null-normal.pdf",
+      "sha256": "8e77b579e1e96c3aba0b069ec19b385d326aa4c2ea1062d0c709b61720545747",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-missing-dictionary",
+      "kind": "pdf",
+      "description": "Selected static-display entry has an explicit syntax boundary",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-missing-dictionary.pdf",
+      "sha256": "e4fd330da7c824ec455dad3442921dd338d35bc1fe60e87df8028d948a772248",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-dictionary-type",
+      "kind": "pdf",
+      "description": "Selected static-display entry has an explicit syntax boundary",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-dictionary-type.pdf",
+      "sha256": "29c43d5b65e75626e5004152ab85f2ba416e1ab66b137974e364a5b47adfa344",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-null-dictionary",
+      "kind": "pdf",
+      "description": "Selected static-display entry has an explicit syntax boundary",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-null-dictionary.pdf",
+      "sha256": "7dbfbf8e8c8ed4aaabb8ec037d6b5a96de7fd39b76242ab07b3875b1d0f46e24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-poster-number",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-number.pdf",
+      "sha256": "d0dcaeec5425bb8e93c90d6da3482cfc266ea26ababfe7e5754b3c8935b8af0c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-poster-dictionary",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-dictionary.pdf",
+      "sha256": "40ff1df1875bd39a966599629fc7fdc390e4370fc58a660a11d1bfc80b1ba526",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-poster-form",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-form.pdf",
+      "sha256": "103cd4d2109befc959d9afac605cd8d88e8207fed7f231c749d3c103bb35325a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-poster-subtype",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-poster-subtype.pdf",
+      "sha256": "9f11f0e4821eca6ad95daa13b4260f90696d1c958632e98a0f14a0675e277ef2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-rotation-type",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-rotation-type.pdf",
+      "sha256": "de76370ebf60003f6c3cc521e27cb5c8870d02883d4859303f94208dc967a770",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-rotation-angle",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-rotation-angle.pdf",
+      "sha256": "dab90ca5f6ada33c76a0703b588d5307e921fcdc3d64f818915ddb9ad70dc739",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-image-width",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-image-width.pdf",
+      "sha256": "6ea4078b13195614324150dd24175327feb002cd12c13144871282068e63fc95",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-resource-color-name",
+      "kind": "pdf",
+      "description": "Poster selection validates the stream; ordinary image execution owns its descriptor errors",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-resource-color-name.pdf",
+      "sha256": "7e93e018bace0ac320416bdc596171dfef792c69566d51ac8ee68949167883a9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/static-movie-file-poster",
+      "kind": "pdf",
+      "description": "Poster=true requires movie-file retrieval; no media decoding or activation is attempted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-file-poster.pdf",
+      "sha256": "ca5681cfa4fa551197d26b6a39992b059c4bdb5a65ae0265c1e33f307c9893e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/static-movie-reference-limit",
+      "kind": "pdf",
+      "description": "The selected Poster uses the existing reference-depth budget",
+      "expected": "open",
+      "requirements": [
+        "content-static-subtype-display"
+      ],
+      "path": "corpus/generated/annotation_display/static-movie-reference-limit.pdf",
+      "sha256": "28ae159d66f748fdebe7f58b109f0bf42f78695b7f510e0c2e546035eb4107d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
     }
   ]
 }

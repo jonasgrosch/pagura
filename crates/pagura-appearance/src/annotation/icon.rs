@@ -1,9 +1,12 @@
-//! Note, file attachment and Sound icons (12.5.6.4, 12.5.6.15–16). Predefined icons
-//! use original geometric symbols by reader policy; no font is required.
+//! Note, file attachment and Sound icons, and static Movie posters
+//! (12.5.6.4, 12.5.6.15–17). Predefined icons use original geometric symbols by
+//! reader policy; posters retain source image references for the interpreter.
 
 use super::marks::{Color, Marks, Pen, Subpath, color};
+use crate::program::Program;
 use crate::stream::AppearanceStream;
-use pagura_core::{Dictionary, Error, Rect, Result, Value};
+use crate::values::{optional, optional_dictionary};
+use pagura_core::{Dictionary, Error, Name, Rect, Result, Rotation, Value};
 use pagura_document::Document;
 
 /// The icon's frame in its 16 × 16 design space.
@@ -54,6 +57,71 @@ pub(super) fn generate(
         Kind::Sound => sound_lines(name),
     };
     draw(document, annotation, rect, lines)
+}
+
+/// Table 306: only an explicit image stream is a self-contained poster.
+/// Reader policy fits its unit square to Rect, applying the movie's clockwise
+/// quarter-turn first. The ordinary image interpreter owns samples, masks and
+/// colour spaces; movie files, Aspect and activation data are never resolved.
+pub(super) fn movie_poster(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+) -> Result<Option<AppearanceStream>> {
+    let movie = optional_dictionary(document, annotation, b"Movie")?
+        .ok_or(Error::syntax("movie annotation requires Movie dictionary"))?;
+    match optional(document, movie, b"Poster")? {
+        None | Some(Value::Boolean(false)) => return Ok(None),
+        Some(Value::Boolean(true)) => {
+            return Err(Error::unsupported(
+                crate::features::ANNOTATION_APPEARANCE,
+                "movie-file poster retrieval is unavailable",
+            ));
+        }
+        Some(_) => {}
+    }
+    let id = movie
+        .get(b"Poster")
+        .and_then(Value::as_reference)
+        .ok_or(Error::syntax("Movie Poster must reference an image stream"))?;
+    let object = document.object(id)?;
+    let dictionary = object
+        .dictionary()
+        .filter(|_| object.is_stream())
+        .ok_or(Error::syntax("Movie Poster must be an image stream"))?;
+    if optional(document, dictionary, b"Subtype")?
+        .and_then(Value::as_name)
+        .map(Name::as_bytes)
+        != Some(b"Image")
+    {
+        return Err(Error::syntax("Movie Poster must have Image subtype").in_object(id));
+    }
+    let rotation = optional(document, movie, b"Rotate")?
+        .map(|value| {
+            value
+                .as_integer()
+                .ok_or(Error::syntax("Movie Rotate must be an integer"))
+                .and_then(Rotation::try_from)
+        })
+        .transpose()?
+        .unwrap_or_default();
+    let frame = crate::widget_rotation::frame(rotation, rect)?;
+    let bounds = frame.bounds;
+    let mut out = Program::new(&document.limits());
+    out.text(&format!(
+        "q\n{} 0 0 {} {} {} cm\n/Poster Do\nQ\n",
+        bounds.width(),
+        bounds.height(),
+        bounds.x0(),
+        bounds.y0()
+    ))?;
+    let mut objects = Dictionary::new();
+    objects.insert(Name::new(b"Poster"), Value::Reference(id));
+    let mut resources = Dictionary::new();
+    resources.insert(Name::new(b"XObject"), Value::Dictionary(objects));
+    let mut dictionary = frame.dictionary();
+    dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
+    AppearanceStream::new(document, dictionary, out.finish()).map(Some)
 }
 
 /// Original rectilinear Speaker/Mic symbols, unrelated to measured reader
