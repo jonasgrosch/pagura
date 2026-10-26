@@ -12,7 +12,7 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
+    "corpus/manifests/content.json": "e4d1691c56a0a34ef967f2e7d46fa42f70fb244198a50cf923c9273b838bf491",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",

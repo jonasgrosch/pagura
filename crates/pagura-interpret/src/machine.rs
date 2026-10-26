@@ -281,7 +281,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     ///
     /// Positioned errors of the operators, and `Syntax` for a sequence that
     /// ends with pending operands, an open section, path, clip or text
-    /// object; unmatched `q` is a reported repair.
+    /// object; open marked content and unmatched `q` are reported repairs.
     pub(crate) fn run(
         &mut self,
         content: &Content<'_>,
@@ -314,7 +314,6 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             result.map_err(|error| content.locate(error, offset))?;
         }
         if !reader.is_balanced()
-            || !scope.marked.is_empty()
             || !scope.path.is_empty()
             || scope.pending_clip.is_some()
             || scope.text.is_some()
@@ -324,25 +323,47 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 content.end(),
             ));
         }
+        if !scope.marked.is_empty() {
+            self.repair_at_end(
+                content,
+                Error::syntax("unclosed marked content"),
+                Diagnostic::new(
+                    repairs::MARKED_UNCLOSED,
+                    "open marked content closed at end of content sequence (14.6)",
+                ),
+            )?;
+            while !scope.marked.is_empty() {
+                self.end_marked(scope)?;
+            }
+        }
         if !scope.saved.is_empty() {
-            let located = content.locate(
+            self.repair_at_end(
+                content,
                 Error::syntax("unclosed saved graphics states"),
-                content.end(),
-            );
-            let Position::Stream { object, .. } = located.position else {
-                return Err(located);
-            };
-            self.document().repair(
                 Diagnostic::new(
                     repairs::GRAPHICS_UNCLOSED,
                     "unmatched q states discarded at end of content sequence (7.8.2, 8.4.2)",
-                )
-                .at(located.position)
-                .in_object(object),
+                ),
             )?;
             scope.saved.clear();
         }
         Ok(())
+    }
+
+    /// Reports `diagnostic` at the end of `content`; content outside a
+    /// stream cannot be repaired and fails with `error` there.
+    fn repair_at_end(
+        &self,
+        content: &Content<'_>,
+        error: Error,
+        diagnostic: Diagnostic,
+    ) -> Result<()> {
+        let located = content.locate(error, content.end());
+        let Position::Stream { object, .. } = located.position else {
+            return Err(located);
+        };
+        self.document()
+            .repair(diagnostic.at(located.position).in_object(object))
     }
 
     /// Executes one operation, applying the restrictions of Type 3 glyph

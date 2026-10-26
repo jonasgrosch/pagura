@@ -135,6 +135,10 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
 - `content.graphics-unclosed` (7.8.2, 8.4.2): unmatched saved graphics states
   are discarded at the end of an otherwise finished content sequence.
+- `content.marked-unclosed` (14.6): marked-content sequences left open at the
+  end of an otherwise finished content sequence are closed there, so optional
+  content stays hidden or visible until that end. Open sequences nest without
+  a depth limit; each costs one operator of the content.
 - `font.type3-width` (9.6.4, Table 111): `Widths` controls the advance when a
   CharProc's `d0`/`d1` width disagrees or declares a nonzero vertical advance;
   glyph geometry is retained.

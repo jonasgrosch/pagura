@@ -12,7 +12,9 @@ use pagura_core::{
 };
 
 impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
-    /// `BMC` and `BDC`.
+    /// `BMC` and `BDC`. Open sequences nest without a depth limit: each
+    /// holds one visibility flag and opens with an operator the content's
+    /// token budget charges, so the content's own length bounds them.
     pub(super) fn begin_marked(
         &mut self,
         op: Op<'_>,
@@ -20,9 +22,6 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         scope: &mut Scope,
     ) -> Result<()> {
         let document = self.document();
-        if scope.marked.len() >= self.session.limits.depth {
-            return Err(Error::limit("marked content nesting exceeded"));
-        }
         let (tag, properties) = match op {
             Op::BeginMarkedContent(tag) => (tag, None),
             Op::BeginMarkedContentProperties { tag, properties } => (tag, Some(properties)),
