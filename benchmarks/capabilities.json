@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "ccfee496c1016cdc32f8aa4b40e133fc3bc13756",
+  "audited_revision": "1cd9fb582ebf09bef5c567708da59ccf4c8bd506",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -17,6 +17,7 @@
     "corpus/manifests/circle_annotations.json": "6c04407d961b0b0574d2561b010c7f88debc8fe0d4d51223209e436f9ea9158c",
     "corpus/manifests/classic.json": "0929560398e6541b7e30966479633fae180eefe4eeea1453d4adbf5da57aaf20",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
+    "corpus/manifests/document_services.json": "154fe8ed21b8b4b87f6dc4e02cd3c4b2561cc925b465c2eaa5e0587ec65fa792",
     "corpus/manifests/ending_annotations.json": "ff8d2d2495e05a0ebe782b8f3292692bf939be30a8511364ec297815edc0ed9d",
     "corpus/manifests/file_annotations.json": "f3c88d0cdbf99a52e51bf6321e3aab73d428b7b8f278531f7bf89a94c247b448",
     "corpus/manifests/file_attachment_icons.json": "493b67db592c150500c7a86f773c30480f1d36b8c4540ffcf02a5a0a501e6f2d",
@@ -78,16 +79,19 @@
     "crates/pagura-appearance/src/form/variable.rs": "d5521769596edc804b4f261522c7bf897bf46a1aaa3a1b54b0719afd83820ff8",
     "crates/pagura-appearance/src/repairs.rs": "b58813353b716b891e434c38f7fd8df87288d7711065a137cfecfdb51543bc53",
     "crates/pagura-appearance/src/values.rs": "81a4c6cd359a805e408c594491f698f88b944c412a70b52d10cfec97a16d5d24",
-    "crates/pagura-cli/src/args.rs": "cbc4f984036b2b89bee4afe2026db49d1dcdb8199946673bcc3bd2f524ddad0e",
+    "crates/pagura-cli/src/args.rs": "435efae6de7852f3c21fcaa0855ea627264a47eb38e68dbb78abf38b0b91a141",
+    "crates/pagura-cli/src/args/services.rs": "d89b6206b6bcb14be77672edb4589c6ca0933223c08165b212f9424a41ad0674",
     "crates/pagura-cli/src/args/tests.rs": "6b4e0a28f3c6b4ac1ecc800fb81e895068660aeea32c4308130e25218e96c5dd",
-    "crates/pagura-cli/src/commands.rs": "a102647a956f32450483003a6946e73361c39264558dc53ac2ee578e1a2892e0",
-    "crates/pagura-cli/src/document_services.rs": "0b01b7494a49f39591f9dc0a0553b6ddb0d81d51b6d5fcba61473efc081aa7e5",
+    "crates/pagura-cli/src/commands.rs": "89d4b3c84dd325186b2b4e962082ae83ae401a3df79139976374c5abdf2c48e8",
+    "crates/pagura-cli/src/document_services.rs": "5040a20cf516a4f68479948f5fe664ca124d1c8fdc35d702cea41463a2d803a0",
     "crates/pagura-cli/src/document_services/annotations.rs": "5b94a90d4171b158109e8cb08f68ac13a857b5117cfdcf8af86a60d3eec22c91",
+    "crates/pagura-cli/src/document_services/extended.rs": "e031e5b9d0773deb494d688c48cec9797a2c75d28a9b5e7c158d915fdea05f99",
     "crates/pagura-cli/src/json.rs": "737c87970f69f2a8515b707758e3e88a4359d915c90da0d158b6e19fe00d0183",
     "crates/pagura-cli/src/main.rs": "03cebde00b13b62ed2199d776cc475e38da6d3d3d8d8732b549b57015de6398a",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
     "crates/pagura-cli/tests/attachment_checks.rs": "0720ab09a624b0d39f1759625ad9ace9093a3dcf5d889f98f1aad0501938c498",
     "crates/pagura-cli/tests/cli.rs": "6151628c346fbdc4ff918bdc3651edf126f19954c7de55728956691e279c3aa0",
+    "crates/pagura-cli/tests/document_services_extended.rs": "6d1aef588cef350ea2b3908d5890484dd7ddcafe1d52577d73eb5dd99a1788fa",
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
     "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
@@ -105,24 +109,27 @@
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
     "crates/pagura-document/src/features.rs": "ef3d5f167a74e2245076b32ecdda566c1c3e47c24fa082c17a0cd74a15026e29",
-    "crates/pagura-document/src/files.rs": "8056ab3e49e1f34bc8089a81eed0746dbb9a9039a95b63dd8d93fe89171074af",
+    "crates/pagura-document/src/files.rs": "cdefd673e40287740eb0c07c55afb26f44be36e85ce5c909605995ac138914e5",
     "crates/pagura-document/src/files/annotations.rs": "58a1296453ecf299e56e48703a994a45ed4519024a4f96656a7c1f747663376f",
     "crates/pagura-document/src/files/checks.rs": "355a7c8f2411d3478752c65b5aec46b87d2f02eff8f2dd47141a68c1fcf4e4ff",
-    "crates/pagura-document/src/files/model.rs": "9cebb7ac621121e923c2a001d76afaa30857cfbc58602b46508c1d4dcc48ef35",
-    "crates/pagura-document/src/files/read.rs": "e42a7aacae2192878e2fee5b3f3b5b9f6dd5e003dcb71beb7322e227b73d3085",
+    "crates/pagura-document/src/files/collection.rs": "70cdad5e63d7e48d87403029ba6819073ba124de6ed9d94141c3e772da7d5e78",
+    "crates/pagura-document/src/files/model.rs": "d3942e877ce00913e1e888ce98b8bd62c4e71ea248c91085a36ccb6b76118d55",
+    "crates/pagura-document/src/files/read.rs": "0e1afd2b6ecdd19d204a162b239ca67d1db9f38f97e72c88a674df7d6af59898",
+    "crates/pagura-document/src/files/selection.rs": "2496c77da565faaa7e6502835cc8bb2bc7e7cf7c6203891c3d0f257d478fac1b",
     "crates/pagura-document/src/files/stream.rs": "979288c17cd9a16d1f29ecd57dcfcef06e3e5069a46192f0d61f627b55570750",
     "crates/pagura-document/src/forms.rs": "e5e3e885ca53854bdeb9083c5fd96001ac8bb7337c8783fd974e0e4c62be8ed1",
     "crates/pagura-document/src/forms/fill.rs": "dc05f4089de3799237281ec6ee56fcbb04fbf80b2cb622311dcf06c41b92990f",
     "crates/pagura-document/src/forms/fill/text.rs": "b61117f6a332c9be9e1df70dc022e5cc6a4b5aac6e2744914e220be5015d6419",
     "crates/pagura-document/src/history.rs": "5e6d7191963736e1a0689f28f3a4d16d93f2f443b108f5d5df7e8ef02b07180a",
-    "crates/pagura-document/src/lib.rs": "6fdf63660c500ba84d3f6df4b0af4fbf9c7f38633e44f65a223f16e59f3fab4c",
+    "crates/pagura-document/src/images.rs": "04a4b230f24950b573cc4821a38ebfae665ab294825c177cd238bb73ff4d61fe",
+    "crates/pagura-document/src/lib.rs": "547271a8787856ec7ee432fdbdde5ef1bc6d75e312b1f11c6966d87b1ed857ea",
     "crates/pagura-document/src/load.rs": "c4d1639daf7f46742438c831b882d90d448ae2ef5332db53c9ea766b5ed97864",
-    "crates/pagura-document/src/metadata.rs": "cece56f521c44c2644aa31ebf35c07acad4f069d25e163606887918358f6419c",
+    "crates/pagura-document/src/metadata.rs": "51a36d7bd478ec6e290d8ac3c6ea1d70833822cbfea0ffddaa97797eabc3659e",
     "crates/pagura-document/src/navigation.rs": "59c80a08d75e85a04054acaacceeb44c775c90b73b58f1033d2ea7ff960dea14",
     "crates/pagura-document/src/navigation/actions.rs": "92f49843f5d88df1e1d7c75e7e1ba7bc4c03497d49ab7fdcc355c07881d18bcd",
     "crates/pagura-document/src/navigation/trees.rs": "effca359371eda78038fcfef7e7e743cbac3cd15fddf1eccad7bfe027e9a3663",
     "crates/pagura-document/src/pages.rs": "c7003a375c69bb0b9e797d333c4c5ca6e157b2dbe5bda2a4f97dff379617bd93",
-    "crates/pagura-document/src/security.rs": "63ee56ffee9e0f8936f0eebda44692419c60044e024a34cfa347a114884a363e",
+    "crates/pagura-document/src/security.rs": "fd3ae090e2ab687f366169c4cea9e7e7e37860aaf20ac6f9310faaa38eace637",
     "crates/pagura-document/src/signatures.rs": "ddd26dd2f51712107ddb1b1e5ebea18caf1c7b3707ab6d838b34278cc9a08c6e",
     "crates/pagura-document/src/signatures/change_tests.rs": "aa06cc1d51b037fce2b5f0f357bfa46f7e792b96f25a40cbd86c81a17aa2e809",
     "crates/pagura-document/src/signatures/model.rs": "3a63fbb6d9aa873fe0cc5ee90a14046f0bb5d7187955c754663c762d6b98813f",
@@ -146,17 +153,19 @@
     "crates/pagura-font/src/type1/tokens.rs": "be224d7bc43690b19690cc5a2d0e6187689517d923a5642c665e67d61cc2fccc",
     "crates/pagura-font/tests/vectors/static_fonts.rs": "fa510534b535daaf30a1253e84566fdaa5eabc3b3c1bd747d948bc898ff78040",
     "crates/pagura-host/src/control.rs": "1393e0b41fae2869d20f341bd69d4908c3af1fba0eb5b40eada3c215cb1643ea",
-    "crates/pagura-host/src/protocol.rs": "e874019d682e78cbbe8ad3294cbd01f0254196ee38414224feb1256d01c2a0c2",
-    "crates/pagura-host/src/protocol/codes.rs": "6d6247132730f044c505e2a4dd6dc73bc3af14fe46b4761b7569f1eb4faff999",
-    "crates/pagura-host/src/protocol/decode.rs": "0da8b811ec5f52e248b7d0b94a08ff29a5db5d4708976671663e1f5d1719b039",
+    "crates/pagura-host/src/protocol.rs": "7a2db4526bc768247231424a1c59733ea7e1377ce9bcf1b7b9686e01532e443a",
+    "crates/pagura-host/src/protocol/codes.rs": "e792f0eba46898c85d04f2106227a10f840bfaafc9e9ce3213150e6526d4c9db",
+    "crates/pagura-host/src/protocol/decode.rs": "6a51bc1a17b1ed3dbaa7769df12600f7f4fdfaf3d1e2bdcff2eb1f02b144f08f",
     "crates/pagura-host/src/protocol/encode.rs": "6e215d0832c123c1680b1a1d85f0d71819b19af544dce0bf050d8a7bde0b7ecc",
-    "crates/pagura-host/src/reading.rs": "a5c39ec17c47df60563a9fcc23916deb61875d27dbd27365b30f0026a7f99ca9",
+    "crates/pagura-host/src/reading.rs": "c20a4574dbd41cfb84b052b6f98095a9930a2c5bdf3d15d0a272a02cf99bfdf5",
     "crates/pagura-host/src/reading/annotations.rs": "e56c3adfa2ee4f807e8c4c607a5bd55cd66ba6befe355e753f5ccf50e8c88a46",
-    "crates/pagura-host/src/reading/services.rs": "50c5a84f63d3a704094938d1520d51c3995a3fa70f226aa731946f0fb7f100f3",
-    "crates/pagura-host/src/session.rs": "6ef5472ad1eff931ff3e837c66fe08bfaa678d528277f8add7fdfab9c37a69c3",
+    "crates/pagura-host/src/reading/extended.rs": "e3c2dec5885a8defdd855f0dee80d0897df9fafa46172f120169cb310c42d2dc",
+    "crates/pagura-host/src/reading/services.rs": "795f45caf73df85b6252c8072b6ef022fdc4dc6904633bc7c2737c8aa5069804",
+    "crates/pagura-host/src/session.rs": "16f567b6b31a6ec64ef606a2937556d58a6acd7056be964efa48469e90c8a34a",
     "crates/pagura-host/src/session/png.rs": "32a0c86bc17ce9821906caa3366e5b81acae03869de7dae87a61f10ca477f0b6",
     "crates/pagura-host/tests/attachment_checks.rs": "eb590197a5c7438263acbbd374b6627f5297a99fd7ebe23302337e95f2a5b884",
     "crates/pagura-host/tests/document_services.rs": "e32619b78089937f99316c5800eeb5379dc7b2abc58a6adf1107be2491d538f8",
+    "crates/pagura-host/tests/document_services_extended.rs": "c178cfcb7c85f7eaf77e797982138831a5581412077de695b0c8463d59fbdedb",
     "crates/pagura-host/tests/page_attachments.rs": "019e8379f8a3ffea7a33b849c15d86109cb30bac059b68b2882d477016b5040f",
     "crates/pagura-host/tests/png.rs": "98b64630de165d79abb54f5ddf20c95e3b3d9fbd6a8217f2d7adb136e7c338f8",
     "crates/pagura-image/src/ccitt/codes.rs": "f2f2e9f5bea60db015b39952099e3b8d4ce46fc7684d971868dab1552c006f0d",
@@ -234,7 +243,7 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "769ce294b4807bac6398f2f6b8c5b193efdc38dbf4c711defe217165ce78aeec",
+    "crates/pagura/src/lib.rs": "de7fc709a832bcfaf6602f58782f1c388a79cf1e0a6514b4f93351f49890405e",
     "crates/pagura/src/png.rs": "68a9faf63cc1bb48d720d690ac4e43541ec3a466cf3eb009659498a9ee087a2c",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
@@ -247,6 +256,7 @@
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
     "crates/pagura/tests/api/text.rs": "de81815b47c165743e9e225f1b4b52bd078fad0024b6ef9921e6db41c47eda59",
     "crates/pagura/tests/api/write.rs": "417bee3185cc44d223c3e64cc1986fe96f7f4792be93688dd5fb93ee1036fadc",
+    "crates/pagura/tests/document_services.rs": "238e8b85c46716c45aa1c718aa181da9c23baa4eb2d0289bfb85e63deb98993f",
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
@@ -255,6 +265,7 @@
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
+    "references/requirements/document_services.json": "f0c47b3bf5a8919d907b12c7bb76f08c752dd55c7d77f35e934c6097fc346617",
     "references/requirements/files.json": "2dd2c2162d9992ffa6516a4c603d7c798f74723171230edc95c974a736cd8d3f",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "7eb19990947206241a1045f66271af0229f61b34945a03b3546cf658dc6ac48a",
@@ -274,14 +285,17 @@
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
-    "tools/attachment_checks_test.mjs": "9fd80df647aa5384d649a3df9d1cf9f618e2de484e3081bd079b7014ed6afa48",
+    "tools/attachment_checks_test.mjs": "79314ceae8e16b918656f66ebbdda9bb06daedf7c2c0000bf875666faa23c16a",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
+    "tools/document_services_extended_test.mjs": "6a9078cb84c498edb776bc6f1434a703fad692a47c8c90078eb4d5024dfdd10a",
+    "tools/document_services_extended_view_test.mjs": "da10ffde2f8317eee8c19b15bc279eb264078665acbd6cf8c8bc022e06cf3499",
     "tools/document_services_test.mjs": "013ff3e4858049094cd069a44cee7e66b94cc4e455a8d8e637e41172d4b8abdb",
-    "tools/document_services_view_test.mjs": "2f4e78500305680b2d281d2af0707834bf8fee62176a978aa74b5e8a6271884e",
+    "tools/document_services_view_test.mjs": "70020004e5bf477280ed528c23f76a98ce02723770faeab0a2a6afacca4e7149",
     "tools/editing_host_test.mjs": "22571ef2e3c3c3209123c78c84dbacbb416dddba1edd9c8950ffb5630541a933",
     "tools/fixturegen/caption_annotations.py": "389f779ef6d0c7f630a37e4a6c883805895845caf08e9a67dfe587f642972cd0",
     "tools/fixturegen/caret_annotations.py": "1f09d1b11af910a1cf0a5ba21e25fad5eb153fd1b1a9f67608ade3ebdb542687",
     "tools/fixturegen/circle_annotations.py": "0df6ff5b1a44dde18154dde40cd7b58265b4856b24d1c9dacd863a56f0a7172e",
+    "tools/fixturegen/document_services.py": "981cdafc84ae7b3662489dc6303635824aec29a606a602403d54023e6e87c3f0",
     "tools/fixturegen/ending_annotations.py": "334b9437cb230f35498c7c2ff15e35fc275512b2db7ded12fa27c2a91f09f150",
     "tools/fixturegen/file_annotations.py": "a8acf4b00f0f73aea843c5b542fec7244631520c6988ca7f0489505034f91a87",
     "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
@@ -301,19 +315,21 @@
     "tools/fixturegen/rounded_annotations.py": "c878e9cfdcc91010d8bb3bd3de5829825dcce10d8992826eb434f99bafa05e43",
     "tools/fixturegen/stamp_annotations.py": "40b8faeca934da33da2eb5f0e6f16f92c043feb4ad9a3c6817a8e30b2b5251cf",
     "tools/form_border_test.mjs": "dddd9cc3e93a5712fbbb37b2a5871200d1a9edfdee43f9b188034be57e557a22",
-    "tools/host_test.mjs": "ad24ef4d4c81ddf5f38b211400c6a256ee827fe8ebcad928a32146459633dcb3",
+    "tools/host_test.mjs": "cf9f67e0514df1776adc0f7c47daa558dc83cad21127c89d872c7f08bd078b8f",
     "tools/page_attachments_test.mjs": "253795e1c4e96ba4c49ad44acc2217889dce1b8af5e09658ad06d36a55f61fcb",
-    "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
+    "tools/page_attachments_view_test.mjs": "5c21598e522aef6b017cddd554f15109c072bac727c06e531d38c1177bcd51df",
     "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
     "tools/test_font_pixels.py": "e113d871e3c2dd557079fafddeaf5770baf27e83d154f973071d2053ee258a3c",
     "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
     "tools/test_rounded_pixels.py": "c8f4a3f024eb2e195d29172965a7728b4899360a32e3d6223778227f8680cb85",
-    "web/client.mjs": "ea78b0bf556c12346a1b9769a078e7835d6915637c7a653967786c9b1e40f3f2",
-    "web/document_protocol.mjs": "d171564def850a9f43c23735282df6b9f869f7eb100df2adf6c16340d10f05b4",
-    "web/document_services.mjs": "f624d058056e05ba2409ca64f8916aa2d6c72fbe592762012ddce5a0f9b14df0",
-    "web/index.html": "5810c4b4fdd8aa5ce034a16c7d7c413bb0f5f41052f7114a5cf9c376e96b502a",
+    "web/client.mjs": "86bb22266de0b8093e2588251afa928a86d63a14d7a4275525c88597752e70da",
+    "web/document_extended.mjs": "6a51da4dc7dff2921ff3e63e7502c3b81a9951542d5fb85a3195df10ea9ccfcb",
+    "web/document_protocol.mjs": "28fad9728b183082490f632fc9a77e0b948df9330b43961945e6a0da3f159b36",
+    "web/document_services.mjs": "74089bb3a6ed072a4ca6ab2601cbb84f7207247b642996e75a86a6aa933a7648",
+    "web/document_services_extended.mjs": "2e267dad28043ffb893343d7a1c58d6975cee3fd9abe6b88eadd885e163ccfeb",
+    "web/index.html": "f2ed7c4f5d178c4987c20ca5f24f7b3c709f682de0e18c2b0507fb175520dd14",
     "web/png_export.mjs": "fc218557b970e5411237eff20996e25ceb9e712fee17e60a1ef7acb6d5c4d7db",
-    "web/protocol.mjs": "740643f5eb43a261368715cbf351fb5bd85110c469476ab8c32592686c0c71e1",
+    "web/protocol.mjs": "00a408b6f24ab735341454b81a80b108d24779bad21fd30de845a38c6de9d333",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/style.css": "04b434ccee5621fbbd8f194a869192a011440b2dd08cfd349e03d3dc1de28cf8",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
@@ -2075,26 +2091,42 @@
         "pagura"
       ],
       "surfaces": {
-        "library": "missing",
-        "cli": "missing",
-        "host": "missing",
-        "viewer": "missing"
+        "library": "partial",
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
       },
-      "implemented": "ImageSource describes encoded images and defers sample decoding for rendering.",
-      "remaining": "Asset/resource/occurrence inventory, exact-stream eligibility and normalized isolated-image export APIs.",
+      "implemented": "Source image objects, direct page image resource aliases and stored page/object thumbnails have bounded lazy views through facade/CLI/protocol 1.12/viewer. Transfers explicitly distinguish exact stored bytes from decrypted/general-filter-decoded encoded asset bytes; neither claims standalone appearance. Existing page PNG rendering remains separate.",
+      "remaining": "Nested resource and interpreted inline/form/pattern/annotation occurrence discovery, normalized isolated-image output with intrinsic masks/colour, independent image-format passthrough eligibility and async transfer remain P4\u2013P9 work.",
       "sources": [
         "crates/pagura-image/src/source.rs",
         "crates/pagura-interpret/src/machine/image/describe.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-cli/src/args/services.rs",
+        "crates/pagura-cli/src/document_services/extended.rs",
+        "crates/pagura-host/src/reading/extended.rs",
+        "web/document_extended.mjs",
+        "web/document_services_extended.mjs",
+        "crates/pagura-document/src/images.rs"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura/tests/document_services.rs",
+        "crates/pagura-cli/tests/document_services_extended.rs",
+        "crates/pagura-host/tests/document_services_extended.rs",
+        "tools/document_services_extended_test.mjs",
+        "tools/document_services_extended_view_test.mjs",
+        "tools/fixturegen/document_services.py"
+      ],
       "requirements": [
         "image-dictionaries",
-        "image-samples"
+        "image-samples",
+        "document-services-scoped-extraction"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "document_services/complete"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -2472,8 +2504,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Typed standard Info fields and trapping declaration, document language, and document/object metadata-stream handles are available through pagura-document and the facade. Text uses shared PDF string decoding with diagnostics; stream packets remain inert bytes with source identities and ordinary decode/security limits. The CLI reports Info/language/source identities as versioned JSON and extracts the catalog metadata packet to an explicit new output file. Protocol 1.8 exposes bounded Info/language/packet identities and separately requested inert packet bytes. The viewer displays declared properties and explicitly downloads the catalog packet without XML processing.",
-      "remaining": "XML/XMP parsing and schema validation, date/language semantics, Info/XMP reconciliation, metadata editing, conditional PieceInfo/ModDate validation, object-local CLI/host packet selection and streaming.",
+      "implemented": "Typed Info fields, trapping declarations and language coexist with lazy inert XMP packets. Catalog/page/object metadata owners reach library, CLI and protocol 1.12; viewer object selection explicitly downloads bytes without XML/entity processing. Text strings share PDF decoding and diagnostics.",
+      "remaining": "XML/XMP schema parsing, date/language semantics, Info/XMP reconciliation, conditional PieceInfo/ModDate validation, streaming and D02b metadata editing remain open.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
@@ -2490,7 +2522,12 @@
         "crates/pagura-host/src/reading/services.rs",
         "web/document_protocol.mjs",
         "web/document_services.mjs",
-        "web/index.html"
+        "web/index.html",
+        "crates/pagura-cli/src/args/services.rs",
+        "crates/pagura-cli/src/document_services/extended.rs",
+        "crates/pagura-host/src/reading/extended.rs",
+        "web/document_extended.mjs",
+        "web/document_services_extended.mjs"
       ],
       "tests": [
         "crates/pagura-document/tests/metadata.rs",
@@ -2499,11 +2536,18 @@
         "crates/pagura-cli/src/args/tests.rs",
         "crates/pagura-host/tests/document_services.rs",
         "tools/document_services_test.mjs",
-        "tools/document_services_view_test.mjs"
+        "tools/document_services_view_test.mjs",
+        "crates/pagura/tests/document_services.rs",
+        "crates/pagura-cli/tests/document_services_extended.rs",
+        "crates/pagura-host/tests/document_services_extended.rs",
+        "tools/document_services_extended_test.mjs",
+        "tools/document_services_extended_view_test.mjs",
+        "tools/fixturegen/document_services.py"
       ],
       "requirements": [
         "document-metadata-read",
-        "host-document-services"
+        "host-document-services",
+        "document-services-scoped-extraction"
       ],
       "fixtures": [
         "metadata/populated",
@@ -2526,7 +2570,8 @@
         "metadata/metadata-cycle",
         "metadata/metadata-missing-type",
         "metadata/metadata-wrong-subtype",
-        "metadata/metadata-inert-xml"
+        "metadata/metadata-inert-xml",
+        "document_services/complete"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2554,8 +2599,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. The CLI lists catalog EmbeddedFiles with separate Unicode/hexadecimal byte names and EF choices, and extracts an explicitly selected payload to a caller-chosen new path. Protocol 1.8 lists up to 1024 catalog attachments, preserves exact u64 size declarations, and requires an explicit index/EF key for bytes. The viewer displays inert names and uses fixed octet-stream download names; document changes or dialog closure cancel stale downloads. Library/facade check_parameters and CLI check-attachment compare decoded size and MD5 with declarations, distinguishing absent, matching and mismatching values; authorization and bounded complete decoding precede every result. Protocol 1.10 and viewer Check controls expose exact decoded size and independent size/checksum outcomes without downloading payloads. Checks are explicit, bounded and authorized; immutable dialog snapshots prevent stale callbacks and results. Page::attachment_annotations discovers FileAttachment annotations separately from catalog/AF views, preserving Annots indexes, annotation/FS identities, normalized rectangles, Contents text, declared/default icon names and lazy EF/RF handles. External files remain inert and malformed annotation views fail without partial results. CLI attachment commands accept explicit --page selection: annotation JSON retains original Annots indexes, geometry, Contents and icon/file records; extraction and checks use that exact slot and EF key without catalog fallback. Protocol 1.11/client APIs list one page's FileAttachment annotations and retrieve/check an exact original Annots slot and EF key. Records retain annotation identity, normalized rectangle, separate Contents/icon declarations and the existing nested file specification. Listing validates complete views before responding; retrieval and checks reuse authorized bounded decoding and exact declaration statuses. The viewer lists document and page attachments separately, starts on the current page and accepts explicit page selection. Downloads/checks preserve original Annots slots and exact EF keys; inert annotation notes, file descriptions and icon names stay separate. Page selection changes discard obsolete listings and decode results, with fixed generated download names and independent document controls after page-list errors.",
-      "remaining": "collection/encrypted-payload models, MIME/date/associated-file validation, streaming extraction, CLI/host AF/RF selection, writes and viewer attachment-only password reauthentication.",
+      "implemented": "Bounded file specifications and exact catalog/name-tree, catalog/page/object AF and page Annots discovery preserve source identity, EF keys and duplicate RF pairs. One public selection model serves facade, CLI and protocol 1.12 operations. EF/RF extraction and explicit size/MD5 checks are lazy, authorized and bounded. Complete declarations include identifiers, parameters, collection CI and encrypted-payload metadata. Viewer source selection uses inert text and fixed download names. Attachment-only password retries create a temporary authenticated snapshot, preserve original handle/form state and clear supplied password bytes; obsolete operations cannot download.",
+      "remaining": "MIME/date/associated-file profile validation, streaming extraction and D02b attachment writes remain open. Declaration checks are not safety/authenticity results.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/navigation.rs",
@@ -2584,7 +2629,14 @@
         "crates/pagura-crypto/src/hash/md5.rs",
         "crates/pagura-document/src/files/annotations.rs",
         "crates/pagura-cli/src/document_services/annotations.rs",
-        "crates/pagura-host/src/reading/annotations.rs"
+        "crates/pagura-host/src/reading/annotations.rs",
+        "crates/pagura-cli/src/args/services.rs",
+        "crates/pagura-cli/src/document_services/extended.rs",
+        "crates/pagura-host/src/reading/extended.rs",
+        "web/document_extended.mjs",
+        "web/document_services_extended.mjs",
+        "crates/pagura-document/src/files/selection.rs",
+        "crates/pagura-document/src/files/collection.rs"
       ],
       "tests": [
         "crates/pagura-document/tests/files.rs",
@@ -2602,7 +2654,13 @@
         "tools/fixturegen/file_annotations.py",
         "crates/pagura-host/tests/page_attachments.rs",
         "tools/page_attachments_test.mjs",
-        "tools/page_attachments_view_test.mjs"
+        "tools/page_attachments_view_test.mjs",
+        "crates/pagura/tests/document_services.rs",
+        "crates/pagura-cli/tests/document_services_extended.rs",
+        "crates/pagura-host/tests/document_services_extended.rs",
+        "tools/document_services_extended_test.mjs",
+        "tools/document_services_extended_view_test.mjs",
+        "tools/fixturegen/document_services.py"
       ],
       "requirements": [
         "document-file-views",
@@ -2613,7 +2671,8 @@
         "document-file-annotations",
         "cli-annotation-attachments",
         "host-page-attachments",
-        "viewer-page-attachments"
+        "viewer-page-attachments",
+        "document-services-scoped-extraction"
       ],
       "fixtures": [
         "files/populated",
@@ -2713,7 +2772,8 @@
         "file_annotations/late-failure",
         "file_annotations/encrypted-no-type",
         "file_annotations/encrypted-identity",
-        "file_annotations/listing-limit"
+        "file_annotations/listing-limit",
+        "document_services/complete"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2734,21 +2794,38 @@
       ],
       "surfaces": {
         "library": "partial",
-        "cli": "missing",
-        "host": "missing",
-        "viewer": "missing"
+        "cli": "partial",
+        "host": "partial",
+        "viewer": "partial"
       },
-      "implemented": "Collection dictionaries remain accessible through generic object APIs.",
-      "remaining": "Typed collection schema, file relationships, ordering, presentation and authoring.",
+      "implemented": "Typed collection initial-view/file declarations, schema fields, sort priority/directions, CI/subitem values and prefixes, and encrypted-payload filter/version declarations reach public library/CLI/host/viewer source services. Exact integers remain exact; names and navigators remain inert.",
+      "remaining": "Folder trees, collection layout/navigation execution, schema/date/profile validation and collection editing remain open; raw extension dictionaries are preserved.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-cli/src/args/services.rs",
+        "crates/pagura-cli/src/document_services/extended.rs",
+        "crates/pagura-host/src/reading/extended.rs",
+        "web/document_extended.mjs",
+        "web/document_services_extended.mjs",
+        "crates/pagura-document/src/files/collection.rs"
       ],
-      "tests": [],
-      "requirements": [],
-      "fixtures": [],
+      "tests": [
+        "crates/pagura/tests/document_services.rs",
+        "crates/pagura-cli/tests/document_services_extended.rs",
+        "crates/pagura-host/tests/document_services_extended.rs",
+        "tools/document_services_extended_test.mjs",
+        "tools/document_services_extended_view_test.mjs",
+        "tools/fixturegen/document_services.py"
+      ],
+      "requirements": [
+        "document-services-scoped-extraction"
+      ],
+      "fixtures": [
+        "document_services/complete"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -2772,19 +2849,36 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Page rendering supports caller-generated previews; the browser maintains rendered thumbnails.",
-      "remaining": "Typed embedded Thumb extraction and dedicated thumbnail export API; generated previews are not embedded asset extraction.",
+      "implemented": "Source image objects, direct page image resource aliases and stored page/object thumbnails have bounded lazy views through facade/CLI/protocol 1.12/viewer. Transfers explicitly distinguish exact stored bytes from decrypted/general-filter-decoded encoded asset bytes; neither claims standalone appearance. Existing page PNG rendering remains separate.",
+      "remaining": "Nested resource and interpreted inline/form/pattern/annotation occurrence discovery, normalized isolated-image output with intrinsic masks/colour, independent image-format passthrough eligibility and async transfer remain P4\u2013P9 work.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-render/src/context.rs",
         "web/thumbnails.mjs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-cli/src/args/services.rs",
+        "crates/pagura-cli/src/document_services/extended.rs",
+        "crates/pagura-host/src/reading/extended.rs",
+        "web/document_extended.mjs",
+        "web/document_services_extended.mjs",
+        "crates/pagura-document/src/images.rs"
       ],
-      "tests": [],
-      "requirements": [],
-      "fixtures": [],
+      "tests": [
+        "crates/pagura/tests/document_services.rs",
+        "crates/pagura-cli/tests/document_services_extended.rs",
+        "crates/pagura-host/tests/document_services_extended.rs",
+        "tools/document_services_extended_test.mjs",
+        "tools/document_services_extended_view_test.mjs",
+        "tools/fixturegen/document_services.py"
+      ],
+      "requirements": [
+        "document-services-scoped-extraction"
+      ],
+      "fixtures": [
+        "document_services/complete"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
