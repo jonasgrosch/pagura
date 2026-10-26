@@ -410,8 +410,10 @@ modification APIs follow E01/E02; E02 consumes D02a, so there is no dependency c
 trapping declarations, document language, and document/object metadata-stream
 handles through the library/facade. Independent fixtures cover Unicode,
 absence/null/empty distinctions, source identity, compressed packets, malformed
-types, cycles, reported text repair, limits and inert XML bytes. Hosted checks
-are pending. XMP/schema and date/language validation, reconciliation, writes and
+types, cycles, reported text repair, limits and inert XML bytes. The metadata
+head `6b4335d13` passed full hosted Linux/macOS/Windows checks in
+[run 40262084291](https://github.com/jonasgrosch/pagura/actions/runs/40262084291);
+verification after integration of one-pass `b6922d059` is pending. XMP/schema and date/language validation, reconciliation, writes and
 CLI/host/viewer integration remain open; this does not complete D02.
 
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
