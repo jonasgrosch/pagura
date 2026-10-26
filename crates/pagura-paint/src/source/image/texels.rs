@@ -839,6 +839,7 @@ impl<'a> SampleKeys<'a> {
         bytes.reserve(&mut slots, COUNT * 2)?;
         let allocated = slots.capacity() * size_of::<u64>();
         let result = (|| {
+            work.charge(COUNT * 2)?;
             slots.resize(COUNT * 2, EMPTY);
             let allowance = work.remaining();
             let index = indexed.as_deref_mut();
@@ -849,12 +850,20 @@ impl<'a> SampleKeys<'a> {
                 4 => self.plain_distinct::<4>(&mut slots, allowance, index),
                 _ => None,
             };
-            if let Some((distinct, spent)) = plain {
-                work.charge(spent)?;
-                return Ok(distinct);
+            match plain {
+                Some(Scan::Complete(distinct, spent)) => {
+                    work.charge(spent)?;
+                    return Ok(distinct);
+                }
+                Some(Scan::Exhausted) => {
+                    // Every remaining unit was spent. Do not restart the
+                    // same scan with an unchanged meter in the generic path.
+                    work.charge(allowance)?;
+                    work.charge(1)?;
+                    return Ok(None);
+                }
+                None => {}
             }
-            slots.fill(EMPTY);
-            work.charge(COUNT * 2)?;
             let mut distinct = 0;
             let mut index = 0;
             while index < self.count {
@@ -893,16 +902,17 @@ impl<'a> SampleKeys<'a> {
     /// What [`Self::distinct`] finds and the work its scan charges, for
     /// keys of `N` colour codes alone that every sample holds, without
     /// charging it: one key test a sample and the probes of each run's
-    /// first, as the scan visits them. `None` where the work would exceed
-    /// `allowance`, found before the scan does more than it pays for, or
-    /// where the samples are not all present. Pushes each sample's index onto `indexed`, when
+    /// first, as the scan visits them. The caller has paid for clearing
+    /// `slots`. `None` where this scan cannot handle the samples, before
+    /// visiting any; exhaustion is reported separately, with all of
+    /// `allowance` spent. Pushes each sample's index onto `indexed`, when
     /// given, and each new key in order.
     fn plain_distinct<const N: usize>(
         &self,
         slots: &mut [u64],
         allowance: usize,
         indexed: Option<&mut Indexed>,
-    ) -> Option<(Option<usize>, usize)> {
+    ) -> Option<Scan> {
         match indexed {
             Some(indexed) => self.plain_scan::<N, true>(slots, allowance, indexed),
             None => self.plain_scan::<N, false>(slots, allowance, &mut Indexed::default()),
@@ -917,7 +927,7 @@ impl<'a> SampleKeys<'a> {
         slots: &mut [u64],
         allowance: usize,
         indexed: &mut Indexed,
-    ) -> Option<(Option<usize>, usize)> {
+    ) -> Option<Scan> {
         const EMPTY: u64 = u64::MAX;
         if self.matte.is_some() || self.embedded.is_some() {
             return None;
@@ -926,36 +936,32 @@ impl<'a> SampleKeys<'a> {
         let mask = slots.len() - 1;
         // Each slot's key index, in order of first use.
         let mut ids = [0u16; 2 * DISTINCT];
-        // The table's clearing, then per run its first sample's two units
-        // and its other samples' one; every further probe one more.
-        let fixed = slots.len();
-        let spent = |index: usize, runs: usize, probes: usize| {
-            fixed
-                .saturating_add(index + 1 + runs)
-                .saturating_add(probes)
-        };
-        // Every sample costs a unit, so no more are visited than the
-        // allowance pays for; runs and probes are checked as they come.
-        let visits = allowance.saturating_sub(fixed).min(self.count);
-        let (mut distinct, mut runs, mut probes) = (0u16, 0usize, 0usize);
+        // Every sample costs one unit. Each probe reduces the number of
+        // samples the remaining allowance can pay for, including equal
+        // samples after a run's first probe.
+        let mut visits = allowance;
+        let mut distinct = 0u16;
         let (mut previous, mut id) = (EMPTY, 0);
-        for (index, codes) in codes.as_chunks::<N>().0.iter().take(visits).enumerate() {
+        for (index, codes) in codes.as_chunks::<N>().0.iter().enumerate() {
+            if index == visits {
+                return Some(Scan::Exhausted);
+            }
             let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
             if key != previous {
                 previous = key;
-                runs += 1;
-                if spent(index, runs, probes) > allowance {
-                    return None;
-                }
                 let mut slot = hash_slot(key, mask);
                 loop {
+                    if index + 1 == visits {
+                        return Some(Scan::Exhausted);
+                    }
+                    visits -= 1;
                     let held = slots[slot];
                     if held == key {
                         break;
                     }
                     if held == EMPTY {
                         if usize::from(distinct) == DISTINCT {
-                            return Some((None, spent(index, runs, probes)));
+                            return Some(Scan::Complete(None, index + 1 + (allowance - visits)));
                         }
                         slots[slot] = key;
                         ids[slot] = distinct;
@@ -966,10 +972,6 @@ impl<'a> SampleKeys<'a> {
                         break;
                     }
                     slot = (slot + 1) & mask;
-                    probes += 1;
-                    if spent(index, runs, probes) > allowance {
-                        return None;
-                    }
                 }
                 id = ids[slot];
             }
@@ -977,13 +979,10 @@ impl<'a> SampleKeys<'a> {
                 indexed.indexes.push(id);
             }
         }
-        if visits < self.count {
-            return None;
-        }
-        let spent = fixed
-            .saturating_add(self.count + runs)
-            .saturating_add(probes);
-        (spent <= allowance).then_some((Some(usize::from(distinct)), spent))
+        Some(Scan::Complete(
+            Some(usize::from(distinct)),
+            self.count + (allowance - visits),
+        ))
     }
 
     /// The first sample from `from` on whose key is not `key`, the key of
@@ -1033,6 +1032,13 @@ fn unchanged(codes: &[u8], start: usize, stride: usize, len: usize) -> bool {
 
 /// The most distinct keys capacity discovery counts.
 const DISTINCT: usize = 2048;
+
+/// A supported plain scan either finishes or spends its entire allowance.
+#[derive(Debug, PartialEq, Eq)]
+enum Scan {
+    Complete(Option<usize>, usize),
+    Exhausted,
+}
 
 /// A source's distinct keys of colour codes alone, in order of first use,
 /// and each sample's index among them: the source as an indexed image.
@@ -1767,11 +1773,19 @@ mod tests {
         };
         let mut indexed = Indexed::default();
         let mut slots = vec![u64::MAX; fixed];
-        assert!(
-            keys.plain_scan::<1, true>(&mut slots, 4099, &mut indexed)
-                .is_none()
+        assert_eq!(
+            keys.plain_scan::<1, true>(&mut slots, 3, &mut indexed),
+            Some(super::Scan::Exhausted)
         );
-        assert!(fixed + indexed.indexes.len() <= 4099);
+        assert_eq!(indexed.indexes.len(), 2);
+        let mut work = Meter::new(fixed + 3, "scan work");
+        let mut bytes = Meter::new(1 << 20, "scan bytes");
+        assert_eq!(
+            keys.distinct(&mut work, &mut bytes, None).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+        assert_eq!(work.used(), fixed + 3);
+        assert_eq!(bytes.used(), 0);
 
         // Keys of three codes that share a slot: inserting the `k`th one
         // probes `k - 1` slots.
@@ -1793,17 +1807,24 @@ mod tests {
         };
         // Each key costs its sample, its run and its probes: 63 keys fit,
         // the last one's chain does not.
-        let allowance = fixed + (0..63).map(|k| 2 + k).sum::<usize>() + 2 + 62;
+        let allowance = (0..63).map(|k| 2 + k).sum::<usize>() + 2 + 62;
         let mut indexed = Indexed::default();
         let mut slots = vec![u64::MAX; fixed];
-        assert!(
-            keys.plain_scan::<3, true>(&mut slots, allowance, &mut indexed)
-                .is_none()
+        assert_eq!(
+            keys.plain_scan::<3, true>(&mut slots, allowance, &mut indexed),
+            Some(super::Scan::Exhausted)
         );
         assert_eq!(indexed.keys.len(), 63);
+        let mut work = Meter::new(fixed + allowance, "scan work");
+        assert_eq!(
+            keys.distinct(&mut work, &mut bytes, None).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+        assert_eq!(work.used(), fixed + allowance);
+        assert_eq!(bytes.used(), 0);
         let mut slots = vec![u64::MAX; fixed];
         let found = keys.plain_scan::<3, false>(&mut slots, allowance + 1, &mut Indexed::default());
-        assert_eq!(found, Some((Some(64), allowance + 1)));
+        assert_eq!(found, Some(super::Scan::Complete(Some(64), allowance + 1)));
     }
 
     /// The memo reserves less than eight bytes a sample of its image, and

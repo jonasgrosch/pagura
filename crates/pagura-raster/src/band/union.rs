@@ -380,7 +380,7 @@ impl Resolver {
         self.heights.dedup();
         self.keep = swaps;
         if swaps {
-            self.prepare_swaps(count, bytes)?;
+            self.prepare_swaps(count, (work, bytes))?;
         }
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
@@ -730,9 +730,17 @@ impl Resolver {
     /// Orders the crossings found by height, makes room for the windings and
     /// places of `pieces` pieces, and finds for each doubtful pair the
     /// heights whose sub-slabs above or below reach into its heights: two
-    /// searches per pair, and their sort, which the sorts of the heights and
-    /// the pairs' tests are charged for.
-    fn prepare_swaps(&mut self, pieces: usize, bytes: &mut Meter) -> Result<()> {
+    /// searches per pair, and their sort, charged before they run.
+    fn prepare_swaps(
+        &mut self,
+        pieces: usize,
+        (work, bytes): (&mut Meter, &mut Meter),
+    ) -> Result<()> {
+        let depth = self.heights.len().max(1).ilog2() as usize + 1;
+        work.charge(
+            sort_work(self.doubtful.len())
+                .saturating_add(self.doubtful.len().saturating_mul(2 * depth)),
+        )?;
         self.crosses.sort_unstable();
         // Every entry is written before it is read, so earlier sweeps' stay.
         if self.lefts.len() < pieces {
@@ -815,6 +823,9 @@ impl Resolver {
             self.reaching.push((end, i, j));
             self.band += 1;
         }
+        // Overlapping doubtful pairs can greatly outnumber the active
+        // pieces. Their repeated scans are not covered by placing pieces.
+        work.charge(self.reaching.len())?;
         self.reaching.retain(|&(end, _, _)| end >= k);
         let mut doubtful = [(0, 0); 8];
         let Some(doubtful) = doubtful.get_mut(..self.reaching.len()) else {

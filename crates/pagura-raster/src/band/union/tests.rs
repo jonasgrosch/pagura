@@ -588,6 +588,29 @@ fn swept(pieces: &[Piece], rules: &[FillRule], full: bool) -> (Vec<Line>, usize,
     (out, work.used(), resolver.swapped)
 }
 
+#[test]
+fn doubtful_pair_scans_are_charged_when_swaps_decline() {
+    let mut resolver = Resolver {
+        heights: vec![0.0, 0.25, 1.0],
+        lowest: f64::INFINITY,
+        reaching: vec![(2, 0, 1); 1024],
+        ..Resolver::default()
+    };
+    let mut work = Meter::new(1024, "doubtful pairs");
+    assert_eq!(
+        resolver
+            .take_swaps(&[], FillRule::NonZero, 1, (0, 0, 0), &mut work)
+            .unwrap(),
+        None
+    );
+    assert_eq!(work.used(), 1024);
+    assert!(
+        resolver
+            .take_swaps(&[], FillRule::NonZero, 1, (0, 0, 0), &mut work)
+            .is_err()
+    );
+}
+
 /// Fans of quadrilaterals crossing many times over inside their union, alone,
 /// twice over, with collinear edges from one vertex, beside and over random
 /// polygons and across chunks, under either rule: the swaps leave every

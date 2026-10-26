@@ -383,13 +383,67 @@ fn function_work_is_reserved_per_sample() {
     };
     let mut bytes = Meter::new(limits.render_bytes, "test bytes");
     let mut meter = Meter::new(usize::MAX, "function work");
-    prepare().reserve((1000, context.region), (&mut bytes, &mut meter)).unwrap();
+    prepare()
+        .reserve((1000, context.region), (&mut bytes, &mut meter))
+        .unwrap();
     assert_eq!(meter.used(), 1000 * 4 * cost);
     let mut tight = Meter::new(1000 * 4 * cost - 1, "function work");
     let error = prepare()
         .reserve((1000, context.region), (&mut bytes, &mut tight))
         .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn refused_ramp_storage_keeps_attempted_function_work() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let function = Function::sampled(
+        SampledFunction {
+            domain: vec![[0.0, 1.0]],
+            range: vec![[0.0, 1.0]; 3],
+            size: vec![64],
+            bits_per_sample: 8,
+            order: 1,
+            encode: Some(vec![[63.0, 0.0]]),
+            decode: None,
+            samples: (0..192).map(|v| v as u8).collect::<Vec<_>>().into(),
+        },
+        &limits,
+    )
+    .unwrap();
+    let mut parsed = shading(&mut Rng(7));
+    parsed.space = Arc::new(ColorSpace::DeviceRgb);
+    parsed.function = Some(ShadingFunction::Single(Arc::new(function)));
+    let build = |max| {
+        let mut colors = Colors::new(
+            &parts(&parsed, false),
+            &context,
+            &mut Meter::new(usize::MAX, "color bytes"),
+        )
+        .unwrap();
+        let mut bytes = Meter::new(max, "ramp bytes");
+        let mut functions = Meter::new(usize::MAX, "ramp work");
+        colors.certify([0.0, 1.0], 64 * 32, (&mut bytes, &mut functions));
+        (colors.certified(), bytes.used(), functions.used())
+    };
+    let (mut low, mut high) = (0, 1 << 20);
+    assert!(build(high).0);
+    while low + 1 < high {
+        let mid = low + (high - low) / 2;
+        if build(mid).0 {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    let (certified, bytes, work) = build(low);
+    assert!(!certified && bytes == 0);
+    assert!(
+        work > 0,
+        "failed construction must still charge function work"
+    );
 }
 
 #[test]

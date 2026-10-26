@@ -37,7 +37,7 @@ fn prepared(
         (&mut bytes, &mut functions),
     )
     .unwrap()
-    .reserve(PIXELS, (&mut bytes, &mut functions))
+    .reserve((PIXELS, context.region), (&mut bytes, &mut functions))
     .unwrap()
 }
 

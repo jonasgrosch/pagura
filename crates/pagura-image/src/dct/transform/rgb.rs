@@ -66,6 +66,7 @@ impl Offsets {
         let count = width.div_ceil(repeat).min(blue.len()).min(red.len());
         let (blue, red) = (&blue[..count], &red[..count]);
         for channel in &mut self.chroma {
+            channel.reserve_exact(count.saturating_sub(channel.len()));
             channel.resize(count, 0);
         }
         let [r, g, b] = &mut self.chroma;
@@ -100,6 +101,7 @@ impl Offsets {
             }
         }
         for (channel, chroma) in self.channels.iter_mut().zip(&self.chroma) {
+            channel.reserve_exact(width.saturating_sub(channel.len()));
             channel.resize(width, 0);
             match repeat {
                 1 => replicate::<1>(chroma, channel),
@@ -196,7 +198,10 @@ mod tests {
     #[test]
     fn a_row_of_ties_stays_within_its_admitted_bytes() {
         // Cb 178 and Cr 78 are a green half tie: every pair of the row ties.
-        for (width, repeat) in [(1025_usize, 1), (1025, 2), (1027, 4), (17, 1)] {
+        for (width, repeat) in [1_usize, 2, 3, 4, 17, 1025, 1027]
+            .into_iter()
+            .flat_map(|width| (1..=4).map(move |repeat| (width, repeat)))
+        {
             let count = width.div_ceil(repeat);
             let mut offsets = Offsets::default();
             for _ in 0..3 {

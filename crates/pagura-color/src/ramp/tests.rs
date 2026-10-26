@@ -211,6 +211,11 @@ fn construction_charges_its_peak_storage() {
         "{} bytes kept",
         refused.1
     );
+    assert!(
+        refused.0.enclosures() > 0,
+        "attempted work must stay recorded"
+    );
+    assert_eq!(refused.0.bytes(), 0);
     // The pieces, terms and index alone, which is all an admission of the
     // kept bytes per piece covered, are not enough.
     let kept = 4096 * (size_of::<[f64; 2]>() + 3 * size_of::<Term>() + 4 * size_of::<u32>());

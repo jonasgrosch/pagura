@@ -132,10 +132,15 @@ impl Ramp {
         if ramp.cut(enclose, (inputs, limit), bytes).is_ok() {
             return ramp;
         }
+        let enclosures = ramp.enclosures;
         drop(ramp);
         // Everything charged since has been released.
         bytes.refund(bytes.used().saturating_sub(used));
-        Self::default()
+        // Released storage does not undo the work already spent cutting.
+        Self {
+            enclosures,
+            ..Self::default()
+        }
     }
 
     /// Cuts `inputs` into pieces by `enclose`, as [`Self::new`] does,
