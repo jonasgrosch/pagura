@@ -128,6 +128,40 @@ fn inline_images_are_framed_by_the_caller_and_end_with_ei() {
 }
 
 #[test]
+fn operation_ranges_preserve_unselected_source_bytes() {
+    let content = Content::from_bytes(
+        b" % lead\nBX /Ignored 17 Future EX\nq /Tx << /MCID 2 >> BDC\nBT /F1 10 Tf (old) Tj ET EMC Q\nBI /W 1 ID x EI Q".as_slice(),
+    );
+    let mut reader = Reader::new(&content, &Limits::default());
+    let mut tokens = meter();
+    let mut spans = Vec::new();
+    while let Some(operation) = reader.next(&mut tokens).unwrap() {
+        spans.push(&content.bytes()[operation.range.clone()]);
+        assert!(operation.range.contains(&operation.offset));
+        if matches!(operation.op, Op::InlineImage(_)) {
+            assert_eq!(reader.inline_image_data(|_| Ok(1)).unwrap(), b"x");
+        }
+    }
+    assert_eq!(
+        spans,
+        [
+            b"BX".as_slice(),
+            b"EX",
+            b"q",
+            b"/Tx << /MCID 2 >> BDC",
+            b"BT",
+            b"/F1 10 Tf",
+            b"(old) Tj",
+            b"ET",
+            b"EMC",
+            b"Q",
+            b"BI /W 1 ID ",
+            b"Q",
+        ]
+    );
+}
+
+#[test]
 fn errors_name_the_stream_holding_the_token() {
     let content = Content::from_streams(
         [

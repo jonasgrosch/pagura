@@ -303,7 +303,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         self.session.serial += 1;
         scope.initial = Some((Arc::new(scope.state.clone()), self.session.serial));
         let mut reader = Reader::new(content, &self.session.limits);
-        while let Some(Operation { op, offset }) = reader.next(&mut self.session.tokens)? {
+        while let Some(Operation { op, offset, .. }) = reader.next(&mut self.session.tokens)? {
             self.position = content.position(offset);
             let result = match op {
                 Op::InlineImage(dictionary) => {

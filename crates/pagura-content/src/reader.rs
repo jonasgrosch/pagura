@@ -30,6 +30,11 @@ pub struct Operation<'r> {
     pub op: Op<'r>,
     /// The offset of the operator (of `BI` for an inline image).
     pub offset: usize,
+    /// The operands and operator in the original bytes, excluding surrounding
+    /// white space/comments and ignored operators in compatibility sections.
+    /// For an inline image this ends after `ID` and its one white-space byte;
+    /// its data is still read with [`Reader::inline_image_data`].
+    pub range: std::ops::Range<usize>,
 }
 
 /// Reads the operations of a [`Content`] in order.
@@ -107,9 +112,13 @@ impl<'c> Reader<'c> {
             self.taken = false;
         }
         let content = self.content;
+        let mut start = self.position;
         let (operator, offset) = loop {
             self.position = skip(self.data, self.position);
             let offset = self.position;
+            if self.operands.is_empty() {
+                start = offset;
+            }
             let Some(&byte) = self.data.get(offset) else {
                 return Ok(None);
             };
@@ -127,6 +136,7 @@ impl<'c> Reader<'c> {
             return Ok(Some(Operation {
                 op: Op::InlineImage(Box::new(dictionary)),
                 offset,
+                range: start..self.position,
             }));
         }
         let op = Op::build(operator, &mut self.operands, &mut self.buffers)
@@ -135,7 +145,11 @@ impl<'c> Reader<'c> {
                 Ok(op)
             })
             .map_err(|error| content.locate(error, offset))?;
-        Ok(Some(Operation { op, offset }))
+        Ok(Some(Operation {
+            op,
+            offset,
+            range: start..self.position,
+        }))
     }
 
     /// Reads the token starting with `byte` at `offset`: an operand is kept,
