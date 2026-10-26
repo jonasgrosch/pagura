@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "d4c48b5a69a630452b95fd485ebf49b68bebb528",
+  "audited_revision": "a5149dd59de0d2b0cb3fc9894529ac7997571c1d",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -30,8 +30,8 @@
     "crates/pagura-appearance/src/form/style.rs": "20e35fa393dede64c02a299c88984a93d35de65292e1b75f3eb518d3ab333db1",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
-    "crates/pagura-cli/src/args.rs": "a3b99f4113502251bde2384bbc03d6851cc96c1899fc27ca10ad4f6ad74fa348",
-    "crates/pagura-cli/src/commands.rs": "f196523039edec564386798a8cbdc81095fbbdb16fdd0966195243bf361fe461",
+    "crates/pagura-cli/src/args.rs": "c93e60057612dab991f6527b1a9a5fc7199290b3cbe24002ecb52f78e897a307",
+    "crates/pagura-cli/src/commands.rs": "7e27b7a9a4cfddc675ae7715a46a6a7f43e41a1e9380cb4afd5ad43e99efc9b2",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
@@ -202,7 +202,12 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "crates/pagura-cli/src/document_services.rs": "b0a5155fd22cbe4a59fa831369ca4382b32c9115d9d79e757f004e4f33274901",
+    "crates/pagura-cli/src/json.rs": "ee27544fd1047dd6287e4cd61854695e36910f93b9e7af35506c531e1fb4e97b",
+    "crates/pagura-cli/src/main.rs": "03cebde00b13b62ed2199d776cc475e38da6d3d3d8d8732b549b57015de6398a",
+    "crates/pagura-cli/tests/cli.rs": "a0328bbc9598fb9c26199e7de876a2b319a5e03895580da008b5c0a49846fc95",
+    "crates/pagura-cli/src/args/tests.rs": "cc61ba1fa32135ada5f108006ee9a35a46f01a8f2796e55a718120e69936f6c4"
   },
   "capabilities": [
     {
@@ -1596,27 +1601,34 @@
       "operation": "read-write-metadata",
       "feature": "Info dictionary, XMP and document language",
       "owners": [
-        "pagura-document"
+        "pagura-document",
+        "pagura-cli"
       ],
       "surfaces": {
         "library": "partial",
-        "cli": "missing",
+        "cli": "partial",
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Typed standard Info fields and trapping declaration, document language, and document/object metadata-stream handles are available through pagura-document and the facade. Text uses shared PDF string decoding with diagnostics; stream packets remain inert bytes with source identities and ordinary decode/security limits.",
-      "remaining": "XML/XMP parsing and schema validation, date/language semantics, Info/XMP reconciliation, metadata editing, conditional PieceInfo/ModDate validation and CLI/host/viewer operations.",
+      "implemented": "Typed standard Info fields and trapping declaration, document language, and document/object metadata-stream handles are available through pagura-document and the facade. Text uses shared PDF string decoding with diagnostics; stream packets remain inert bytes with source identities and ordinary decode/security limits. The CLI reports Info/language/source identities as versioned JSON and extracts the catalog metadata packet to an explicit new output file.",
+      "remaining": "XML/XMP parsing and schema validation, date/language semantics, Info/XMP reconciliation, metadata editing, conditional PieceInfo/ModDate validation, object-local CLI packet selection and host/viewer operations.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-document/src/metadata.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "crates/pagura-cli/src/document_services.rs",
+        "crates/pagura-cli/src/commands.rs",
+        "crates/pagura-cli/src/json.rs",
+        "crates/pagura-cli/src/main.rs"
       ],
       "tests": [
         "crates/pagura-document/tests/metadata.rs",
-        "tools/fixturegen/metadata.py"
+        "tools/fixturegen/metadata.py",
+        "crates/pagura-cli/tests/cli.rs",
+        "crates/pagura-cli/src/args/tests.rs"
       ],
       "requirements": [
         "document-metadata-read"
@@ -1659,16 +1671,17 @@
       "operation": "list-extract-write-attachments",
       "feature": "Embedded files and associated files",
       "owners": [
-        "pagura-document"
+        "pagura-document",
+        "pagura-cli"
       ],
       "surfaces": {
         "library": "partial",
-        "cli": "missing",
+        "cli": "partial",
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent.",
-      "remaining": "Annotation attachment discovery, collection/encrypted-payload models, MIME/date/associated-file validation, checksum verification, streaming extraction, safe host extraction naming, writes and CLI/host/viewer integration.",
+      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. The CLI lists catalog EmbeddedFiles with separate Unicode/hexadecimal byte names and EF choices, and extracts an explicitly selected payload to a caller-chosen new path.",
+      "remaining": "Annotation attachment discovery, collection/encrypted-payload models, MIME/date/associated-file validation, checksum verification, streaming extraction, CLI AF/RF selection, safe host extraction naming, writes and host/viewer integration.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/navigation.rs",
@@ -1682,11 +1695,17 @@
         "crates/pagura-document/src/navigation/trees.rs",
         "crates/pagura-document/src/security.rs",
         "crates/pagura-document/src/stream.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "crates/pagura-cli/src/document_services.rs",
+        "crates/pagura-cli/src/commands.rs",
+        "crates/pagura-cli/src/json.rs",
+        "crates/pagura-cli/src/main.rs"
       ],
       "tests": [
         "crates/pagura-document/tests/files.rs",
-        "tools/fixturegen/files.py"
+        "tools/fixturegen/files.py",
+        "crates/pagura-cli/tests/cli.rs",
+        "crates/pagura-cli/src/args/tests.rs"
       ],
       "requirements": [
         "document-file-views",

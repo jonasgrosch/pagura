@@ -3,7 +3,7 @@
 Status: proposed implementation plan, reconciled against `render/one-pass` at
 `19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
 The documentation reconciliation and G00 source inventory are delivered: 90 tag
-candidates reviewed, 335 registered requirements assigned, and six baseline API
+candidates reviewed, all registered requirements assigned, and six baseline API
 catalogs reconciled across 43 capability families in the
 [checked capability inventory](CAPABILITIES.md). G01 runtime probes are in
 progress; later packages remain open. Component names identify ownership, not
@@ -426,15 +426,25 @@ attachment authorization. EF/RF context selects attachment crypt filters even
 when the stream omits its optional Type; an explicit Identity filter retains
 its meaning. Hosted product checks are pending. Annotation discovery,
 collection/encrypted-payload models, validation, streaming, writes and
-CLI/host/viewer integration remain open; this does not complete D02.
+host/viewer integration remain open; this does not complete D02.
 
 **Metadata implementation started:** `8b328025a502cd9b7a3c5c61f2bac94aea12f5a9` adds typed Info strings and
 trapping declarations, document language, and document/object metadata-stream
 handles through the library/facade. Independent fixtures cover Unicode,
 absence/null/empty distinctions, source identity, compressed packets, malformed
-types, cycles, reported text repair, limits and inert XML bytes. Hosted checks
-are pending. XMP/schema and date/language validation, reconciliation, writes and
-CLI/host/viewer integration remain open; this does not complete D02.
+types, cycles, reported text repair, limits and inert XML bytes. The library
+change passed hosted Linux/macOS/Windows checks in
+[run 40262084291](https://github.com/jonasgrosch/pagura/actions/runs/40262084291). XMP/schema and date/language validation, reconciliation, writes and
+host/viewer integration remain open; this does not complete D02.
+
+**CLI read/extract slice:** `a5149dd59de0d2b0cb3fc9894529ac7997571c1d` adds
+versioned metadata/catalog attachment JSON and explicit-file packet/payload
+extraction through the public facade. Unicode filenames and raw name/path bytes
+remain separate; no document filename becomes an output path. Decoding and
+authorization finish before creating a new destination; existing files are never
+overwritten. [CLI documentation](CLI.md) defines the schemas and selection rules.
+Independent command tests are authored; hosted verification is pending. Object-local
+metadata, AF/RF selection, streaming, writes and host/viewer workflows remain open.
 
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose

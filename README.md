@@ -43,6 +43,7 @@ engines, workloads, correctness evidence, and performance comparisons exist.
 Passing bootstrap tests does not mean PDF conformance or 20% superiority.
 
 - [Contributing](CONTRIBUTING.md)
+- [Document-service CLI commands](docs/CLI.md)
 - [Architecture and boundaries](docs/ARCHITECTURE.md)
 - [Roadmap and milestones](docs/ROADMAP.md)
 - [Competitive feature parity plan](docs/COMPETITIVE_PARITY.md)
