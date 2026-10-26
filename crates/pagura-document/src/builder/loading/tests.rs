@@ -10,6 +10,22 @@ use pagura_core::{Diagnostic, Limits, Name, ObjectId, Position, Result, Value};
 use std::sync::Arc;
 
 const ID: SourceIdentity = SourceIdentity::new(712, [23; 32]);
+const ENCRYPT: &[u8] = concat!(
+    "5 0 obj << /Filter /Standard /V 4 /R 4 /Length 128 /P 4294967292 ",
+    "/O <0000000000000000000000000000000000000000000000000000000000000000> ",
+    "/U <0000000000000000000000000000000000000000000000000000000000000000> ",
+    "/CF 6 0 R /StmF /Identity /StrF /Identity /EFF /StdCF >> endobj\n"
+)
+.as_bytes();
+
+fn source() -> Result<Arc<SparseBytes>> {
+    Ok(Arc::new(SparseBytes::new(
+        ID,
+        8192,
+        &Limits::default(),
+        &SourceLimits::default(),
+    )?))
+}
 
 fn build(source: Arc<SparseBytes>, table: XrefTable) -> Result<(Build, Arc<LoadingWork>)> {
     let loading = LoadingLimits::default();
@@ -38,8 +54,7 @@ fn table(entries: &[(u32, usize)]) -> XrefTable {
 
 #[test]
 fn catalog_waits_retain_completed_dependencies_and_publish_inference_once() {
-    let source =
-        Arc::new(SparseBytes::new(ID, 8192, &Limits::default(), &SourceLimits::default()).unwrap());
+    let source = source().unwrap();
     source
         .supply(ID, 100, b"1 0 obj << /Pages 2 0 R A 7 >> endobj\n")
         .unwrap();
@@ -58,7 +73,10 @@ fn catalog_waits_retain_completed_dependencies_and_publish_inference_once() {
     )
     .at(Position::File(123))
     .in_object(ObjectId::new(1, 0));
-    assert_eq!(active.document.diagnostics(), [diagnostic.clone()]);
+    assert_eq!(
+        active.document.diagnostics(),
+        std::slice::from_ref(&diagnostic)
+    );
     let admitted_work = work.used();
     let retained = active.document.retained.used();
     for _ in 0..3 {
@@ -70,7 +88,10 @@ fn catalog_waits_retain_completed_dependencies_and_publish_inference_once() {
             active.document.object(ObjectId::new(1, 0)).unwrap(),
             root
         ));
-        assert_eq!(active.document.diagnostics(), [diagnostic.clone()]);
+        assert_eq!(
+            active.document.diagnostics(),
+            std::slice::from_ref(&diagnostic)
+        );
         assert_eq!(active.document.retained.used(), retained);
         assert_eq!(work.used(), admitted_work);
     }
@@ -104,23 +125,10 @@ fn catalog_waits_retain_completed_dependencies_and_publish_inference_once() {
 
 #[test]
 fn security_waits_keep_scratch_then_clear_preauthentication_caches_once() {
-    let source =
-        Arc::new(SparseBytes::new(ID, 8192, &Limits::default(), &SourceLimits::default()).unwrap());
+    let source = source().unwrap();
     // Literal non-matching credentials select the existing EFOpen-only policy:
     // document opening succeeds without granting embedded-data authorization.
-    source
-        .supply(
-            ID,
-            1000,
-            concat!(
-                "5 0 obj << /Filter /Standard /V 4 /R 4 /Length 128 /P 4294967292 ",
-                "/O <0000000000000000000000000000000000000000000000000000000000000000> ",
-                "/U <0000000000000000000000000000000000000000000000000000000000000000> ",
-                "/CF 6 0 R /StmF /Identity /StrF /Identity /EFF /StdCF >> endobj\n"
-            )
-            .as_bytes(),
-        )
-        .unwrap();
+    source.supply(ID, 1000, ENCRYPT).unwrap();
     let mut index = table(&[(1, 100), (5, 1000), (6, 4000), (7, 6000)]);
     index
         .trailer
@@ -138,7 +146,7 @@ fn security_waits_keep_scratch_then_clear_preauthentication_caches_once() {
         panic!("security scratch")
     };
     let encryption = std::ptr::from_ref(active.document.object(ObjectId::new(5, 0)).unwrap());
-    assert!(active.document.diagnostics().is_empty());
+    assert_eq!(active.document.diagnostics(), []);
     let admitted_work = work.used();
     for _ in 0..3 {
         assert!(matches!(build.advance(&[]), Err(ReadFault::Unavailable(_))));
@@ -149,7 +157,7 @@ fn security_waits_keep_scratch_then_clear_preauthentication_caches_once() {
             active.document.object(ObjectId::new(5, 0)).unwrap(),
             encryption
         ));
-        assert!(active.document.diagnostics().is_empty());
+        assert_eq!(active.document.diagnostics(), []);
         assert_eq!(work.used(), admitted_work);
     }
     source
@@ -212,8 +220,7 @@ fn security_waits_keep_scratch_then_clear_preauthentication_caches_once() {
 
 #[test]
 fn source_failure_is_terminal_even_after_a_dependency_completed() {
-    let source =
-        Arc::new(SparseBytes::new(ID, 8192, &Limits::default(), &SourceLimits::default()).unwrap());
+    let source = source().unwrap();
     source
         .supply(ID, 100, b"1 0 obj << /Pages 2 0 R >> endobj\n")
         .unwrap();
