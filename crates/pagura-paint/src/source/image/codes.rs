@@ -576,17 +576,33 @@ impl Codes {
         let &[a, b, c] = self.lanes.component.as_slice() else {
             return false;
         };
-        let code = |sample: &[u8], k: usize| usize::from(sample.get(k).copied().unwrap_or(0));
-        self.separable.gather(&rows, pixels, scratch, |codes| {
-            for (pixel, sample) in out.iter_mut().zip(codes.chunks_exact(n)) {
-                *pixel = [
-                    words[0][code(sample, a)],
-                    words[1][code(sample, b)],
-                    words[2][code(sample, c)],
-                    u16::MAX,
-                ];
+        let lookup = |pixel: &mut [u16; 4], [x, y, z]: [u8; 3]| {
+            *pixel = [
+                words[0][usize::from(x)],
+                words[1][usize::from(y)],
+                words[2][usize::from(z)],
+                u16::MAX,
+            ];
+        };
+        // A gray sample is every lane's code, an RGB sample in order its
+        // lanes' codes: they go to their words as they are read.
+        let separable = &self.separable;
+        match (n, [a, b, c]) {
+            (1, _) => separable.gather_each(&rows, pixels, scratch, out, |p, &[g]: &[u8; 1]| {
+                lookup(p, [g, g, g]);
+            }),
+            (3, [0, 1, 2]) => {
+                separable.gather_each(&rows, pixels, scratch, out, |p, &s: &[u8; 3]| lookup(p, s));
             }
-        });
+            _ => {
+                let code = |sample: &[u8], k: usize| sample.get(k).copied().unwrap_or(0);
+                separable.gather(&rows, pixels, scratch, |codes| {
+                    for (pixel, sample) in out.iter_mut().zip(codes.chunks_exact(n)) {
+                        lookup(pixel, [code(sample, a), code(sample, b), code(sample, c)]);
+                    }
+                });
+            }
+        }
         true
     }
 
