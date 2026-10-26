@@ -1,6 +1,6 @@
 //! Source admission uses independently positioned PDF literals, not an engine writer.
 
-use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Value};
+use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Result, Value};
 use pagura_document::source::{
     ByteRange, ByteSource, LoadingLimits, ReadFault, SourceIdentity, SourceLimits, SparseBytes,
 };
@@ -26,11 +26,16 @@ fn literal() -> Vec<u8> {
     bytes
 }
 
-fn source() -> Arc<SparseBytes> {
-    Arc::new(SparseBytes::new(ID, 1024, &Limits::default(), &SourceLimits::default()).unwrap())
+fn source() -> Result<Arc<SparseBytes>> {
+    Ok(Arc::new(SparseBytes::new(
+        ID,
+        1024,
+        &Limits::default(),
+        &SourceLimits::default(),
+    )?))
 }
 
-fn job(source: Arc<SparseBytes>) -> OpenJob {
+fn job(source: Arc<SparseBytes>) -> Result<OpenJob> {
     OpenJob::new(
         source,
         &OpenOptions {
@@ -39,13 +44,12 @@ fn job(source: Arc<SparseBytes>) -> OpenJob {
         },
         LoadingLimits::default(),
     )
-    .unwrap()
 }
 
 #[test]
 fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_model() {
-    let source = source();
-    let mut job = job(source.clone());
+    let source = source().unwrap();
+    let mut job = job(source.clone()).unwrap();
     let Err(ReadFault::Unavailable(missing)) = job.advance() else {
         panic!("initial wait")
     };
@@ -82,10 +86,10 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
 #[test]
 fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthentication() {
     for conflict in [false, true] {
-        let source = source();
+        let source = source().unwrap();
         let bytes = literal();
         source.supply(ID, 0, &bytes).unwrap();
-        let Opening::Ready(document) = job(source.clone()).advance().unwrap() else {
+        let Opening::Ready(document) = job(source.clone()).unwrap().advance().unwrap() else {
             panic!("ready")
         };
         let root = document.object(ObjectId::new(1, 0)).unwrap();
@@ -134,8 +138,8 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
 
 #[test]
 fn cancellation_and_budget_failure_cannot_become_success_after_later_supply() {
-    let source = source();
-    let mut cancelled = job(source.clone());
+    let source = source().unwrap();
+    let mut cancelled = job(source.clone()).unwrap();
     assert!(matches!(
         cancelled.advance(),
         Err(ReadFault::Unavailable(_))
@@ -171,8 +175,8 @@ fn cancellation_and_budget_failure_cannot_become_success_after_later_supply() {
 
 #[test]
 fn closure_during_an_unchanged_wait_is_terminal() {
-    let source = source();
-    let mut job = job(source.clone());
+    let source = source().unwrap();
+    let mut job = job(source.clone()).unwrap();
     assert!(matches!(job.advance(), Err(ReadFault::Unavailable(_))));
     let work = job.work();
     source.close();
@@ -201,7 +205,7 @@ fn historical_cache_preserves_registered_source_lifecycle() {
         .unwrap(),
     );
     source.supply(ID, 0, &bytes).unwrap();
-    let Opening::Ready(document) = job(source.clone()).advance().unwrap() else {
+    let Opening::Ready(document) = job(source.clone()).unwrap().advance().unwrap() else {
         panic!("historical source")
     };
     let id = ObjectId::new(7, 0);
