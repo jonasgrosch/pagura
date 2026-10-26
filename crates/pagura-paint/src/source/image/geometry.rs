@@ -17,6 +17,11 @@ use pagura_raster::{Point, Transform};
 /// The most values one texel holds: colour channels, alpha and shape.
 pub(super) const MAX_LANES: usize = pagura_color::MAX_CHANNELS + 3;
 
+/// The most the cross terms of a near-upright placement may move a sample
+/// position, as a part of a sample and of a pixel's footprint, for it to be
+/// sampled upright ([`Geometry::near_upright`]).
+const NEAR_UPRIGHT: f64 = 1.0 / 4096.0;
+
 /// A source of texels, each `lanes` values that sum with weights: colour
 /// channels, alpha and shape.
 pub(super) trait Texels {
@@ -250,6 +255,67 @@ impl Geometry {
             mode: mode(inverse, self.interpolate),
             interpolate: self.interpolate,
         }
+    }
+
+    /// The same placement upright, when its cross terms are noise: each
+    /// dropped, with its contribution at the centre of the image's device
+    /// extent kept in the offsets. That moves no sample position a pixel of
+    /// the image reaches by more than [`NEAR_UPRIGHT`] of a sample, nor of
+    /// the pixel's footprint along that axis, so no area average or
+    /// bilinear value moves by more than that part of the full range: a
+    /// sixteenth of a level, within ADR 0004's one level of the exact
+    /// result. The upright placement samples through separable plans.
+    /// Nearest samples keep the exact placement, since a move of any size
+    /// can select another sample. `None` where the placement is upright
+    /// already or not near it.
+    pub(super) fn near_upright(&self) -> Option<Self> {
+        let t = self.inverse;
+        if t.b == 0.0 && t.c == 0.0 || self.mode == Mode::Nearest {
+            return None;
+        }
+        // The image's device extent, with a pixel around it for the
+        // footprints that reach into it.
+        let forward = t.inverse()?;
+        let (w, h) = (f64::from(self.width), f64::from(self.height));
+        let corners =
+            [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)].map(|(x, y)| Point::new(x, y) * forward);
+        let (low, high) = corners.iter().fold(
+            (
+                Point::new(f64::INFINITY, f64::INFINITY),
+                Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY),
+            ),
+            |(low, high), p| {
+                (
+                    Point::new(low.x.min(p.x), low.y.min(p.y)),
+                    Point::new(high.x.max(p.x), high.y.max(p.y)),
+                )
+            },
+        );
+        let centre = Point::new(f64::midpoint(low.x, high.x), f64::midpoint(low.y, high.y));
+        let reach = Point::new((high.x - low.x) / 2.0 + 1.0, (high.y - low.y) / 2.0 + 1.0);
+        // Sample columns move by `c` per device row and rows by `b` per
+        // device column.
+        let across = t.c.abs() * reach.y;
+        let down = t.b.abs() * reach.x;
+        let near = across <= NEAR_UPRIGHT * t.a.abs().min(1.0)
+            && down <= NEAR_UPRIGHT * t.d.abs().min(1.0);
+        if !near {
+            return None;
+        }
+        let inverse = Transform::new(
+            t.a,
+            0.0,
+            0.0,
+            t.d,
+            t.e + t.c * centre.y,
+            t.f + t.b * centre.x,
+        );
+        let mode = mode(inverse, self.interpolate);
+        (mode == self.mode).then(|| Self {
+            inverse,
+            mode,
+            ..self.clone()
+        })
     }
 
     /// How device pixels map to samples.

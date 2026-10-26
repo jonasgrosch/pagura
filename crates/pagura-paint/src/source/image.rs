@@ -1179,19 +1179,21 @@ fn validate(image: &DecodedImage) -> Result<()> {
 }
 
 /// The geometry of `image`, stored in `orientation`, under the
-/// device-to-unit-square `inverse`.
+/// device-to-unit-square `inverse`; upright where that is near it
+/// ([`Geometry::near_upright`]).
 fn placement(
     image: &DecodedImage,
     inverse: Transform,
     orientation: Orientation,
 ) -> Result<Geometry> {
     let (width, height) = (image.width, image.height);
-    match orientation {
-        Orientation::Rows => Geometry::new((width, height), image.interpolate, inverse),
+    let geometry = match orientation {
+        Orientation::Rows => Geometry::new((width, height), image.interpolate, inverse)?,
         Orientation::Transposed => {
-            Ok(Geometry::new((height, width), image.interpolate, inverse)?.transposed())
+            Geometry::new((height, width), image.interpolate, inverse)?.transposed()
         }
-    }
+    };
+    Ok(geometry.near_upright().unwrap_or(geometry))
 }
 
 /// Whether `base` converts into the target as the identity with clipping

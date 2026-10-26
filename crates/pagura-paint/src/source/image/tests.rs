@@ -1611,3 +1611,60 @@ fn rounded_texels_keep_the_levels_of_exact_texels() {
     }
     assert!(rounded > 20, "{rounded} rounded spans");
 }
+
+/// Placements whose cross terms are float noise sample through upright
+/// plans, every pixel within 2^-12 of its exact value (a sixteenth of a
+/// level): minified area averages and magnified bilinear ones, with skews
+/// of 2^-15 of the image as producers write them. Placements turned more
+/// than that, or sampled nearest, keep their exact plans.
+#[test]
+fn near_upright_placements_sample_within_a_sixteenth_of_a_level() {
+    let rgb = case(image((23, 17), 3, 8, bytes(23 * 17 * 3, 8, 71)));
+    let mut smooth = rgb.clone();
+    smooth.image.interpolate = true;
+    let (w, h) = (23.0, 17.0);
+    let skewed = |a: f64, d: f64, skew: f64| Transform::new(a, skew, skew * 0.5, d, 0.4, 0.3);
+    let mut checked = 0;
+    for (case, unit_to_device, upright) in [
+        (&rgb, skewed(w / 2.6, h / 3.1, 3.0e-5), true),
+        (&rgb, skewed(w / 1.7, -h / 2.2, -6.1e-5), true),
+        (&smooth, skewed(3.3 * w, 2.9 * h, 3.0e-5), true),
+        // Turned too far to be noise, or sampled nearest.
+        (&rgb, skewed(w / 2.6, h / 3.1, 0.05), false),
+        (&rgb, skewed(3.3 * w, 2.9 * h, 3.0e-5), false),
+    ] {
+        let sampler = sampler(case, unit_to_device, 3);
+        let prepared = sampler.prepared.as_deref().unwrap();
+        let t = prepared.geometry.inverse();
+        assert_eq!(t.b == 0.0 && t.c == 0.0, upright, "{unit_to_device:?}");
+        let mut storage = scratch(&sampler);
+        let mut oracle = oracle::Oracle::new(case, unit_to_device, 3);
+        let (x0, y0, x1, y1) = window(unit_to_device);
+        let len = usize::try_from(x1 - x0).unwrap();
+        let mut span = SpanColors::default();
+        for y in y0..y1 {
+            sampler.span(Pixels::new(x0, y, len), &mut storage, &mut span);
+            for (i, x) in (x0..x1).enumerate() {
+                let weight = coverage(unit_to_device, (x, y));
+                if weight * 255.0 < 0.5 {
+                    continue;
+                }
+                let expected = oracle.pixel(x, y);
+                let alpha = span.alpha.get(i).copied().unwrap_or(1.0);
+                for (c, &color) in span.colors[i * 3..i * 3 + 3]
+                    .iter()
+                    .zip(&expected.color[..3])
+                {
+                    let (actual, exact) = (c * alpha * weight, color * expected.alpha * weight);
+                    let bound = if upright { 1.0 / 4096.0 } else { 1e-13 };
+                    assert!(
+                        (actual - exact).abs() <= bound,
+                        "{unit_to_device:?} pixel ({x}, {y}): {actual} vs {exact}"
+                    );
+                }
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 0);
+}
