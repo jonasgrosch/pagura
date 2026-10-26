@@ -9,11 +9,12 @@
 
 use crate::view::{Context, Source};
 use crate::{Document, IndirectObject};
-use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
 use std::borrow::Cow;
 
 /// The Info dictionary's trapping declaration (14.3.3, Table 349).
 /// This records what the producer declared, not an inspection of page marks.
+/// The standard closes this set to these three names.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Trapped {
     /// Fully trapped, according to the producer.
@@ -29,6 +30,7 @@ pub enum Trapped {
 /// Fields other than dates are deprecated in PDF 2.0 in favour of XMP.
 /// Unknown keys remain accessible in [`Self::dictionary`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct DocumentInfo<'a> {
     /// Indirect Info dictionary identity, if it has one.
     pub object: Option<ObjectId>,
@@ -102,7 +104,7 @@ impl Document {
         context.allocate::<DocumentInfo<'_>>(1, source)?;
         let trapped = match context.entry(dictionary, b"Trapped", source)? {
             None => Trapped::Unknown,
-            Some(value) => match value.as_name().map(|name| name.as_bytes()) {
+            Some(value) => match value.as_name().map(Name::as_bytes) {
                 Some(b"True") => Trapped::True,
                 Some(b"False") => Trapped::False,
                 Some(b"Unknown") => Trapped::Unknown,
