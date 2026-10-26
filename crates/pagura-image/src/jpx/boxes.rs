@@ -192,7 +192,7 @@ impl<'a> Reference<'a> {
         let mut first = b.position;
         let mut end = 0;
         let mut total = 0_usize;
-        for (index, record) in records.chunks_exact(14).enumerate() {
+        for (index, record) in records.as_chunks::<14>().0.iter().enumerate() {
             let range = fragment(record, base + index * 14, file.len())?;
             if range.start < end {
                 return Err(unsupported(
@@ -234,7 +234,7 @@ impl<'a> Reference<'a> {
         let mut body = Vec::new();
         body.try_reserve_exact(total)
             .map_err(|_| Error::limit("JPX reference allocation failed"))?;
-        for (index, record) in records.chunks_exact(14).enumerate() {
+        for (index, record) in records.as_chunks::<14>().0.iter().enumerate() {
             let range = fragment(record, base + index * 14, file.len())?;
             spans.push(Span {
                 logical: body.len(),
@@ -504,7 +504,7 @@ fn misplaced_mapping(
             crate::tags::JPX_MAPPING_LOCATION,
             "top-level JP2 mapping used for its header palette (T.800 I.5.3.4–I.5.3.5)",
         )
-        .at(pagura_core::Position::Buffer(box_data.position)),
+        .at(Position::Buffer(box_data.position)),
     )?;
     let mut fields = Reader::new(box_data.body, box_data.position);
     header.mapping = Some(read_mapping(&mut fields, budget)?);
