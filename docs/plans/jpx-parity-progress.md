@@ -21,7 +21,9 @@ are unassociated before mapping those ranges; Indexed samples instead select
 preblended base colours before unassociation. Palette-backed explicit PDF Indexed
 images retain one source index and independently mapped direct/palette opacity,
 including nonzero reference origin and differing opacity precision. Ambiguous
-independent source indices fail explicitly.
+independent source indices fail explicitly. Ignored opacity and ordinary alpha
+share parsed channel definitions and the same bounded permutation; the duplicate
+PDF-side box walker has been removed.
 
 Inline framing and image decoding share resource resolution in `pagura-image`.
 The interpreter no longer substitutes an ICC device name merely to count bytes.

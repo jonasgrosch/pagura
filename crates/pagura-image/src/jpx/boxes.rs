@@ -4,8 +4,8 @@ use pagura_core::{Error, Result};
 
 use super::io::{Budget, Reader, area, syntax};
 use super::{
-    ColorSelection, ColorSpecification, Decoded, JpxColor, JpxComponent, JpxImage, Opacity,
-    OpacityKind, Options, unsupported,
+    ColorSelection, ColorSpecification, Decoded, JpxColor, JpxComponent, JpxImage, Options,
+    unsupported,
 };
 
 struct BoxData<'a> {
@@ -54,7 +54,15 @@ pub(super) struct Header {
     palette: Option<Palette>,
     mapping: Option<Vec<(u16, u8, u8)>>,
     channels: Option<Vec<(u16, u16, u16)>>,
-    ignore_opacity: bool,
+    channels_use: ChannelsUse,
+}
+
+#[derive(Default, PartialEq, Eq)]
+enum ChannelsUse {
+    #[default]
+    Apply,
+    Ignore,
+    DiscardOpacity,
 }
 
 struct Palette {
@@ -176,7 +184,11 @@ fn parse_header(
 ) -> Result<Header> {
     let mut reader = Reader::new(data, base);
     let mut header = Header {
-        ignore_opacity: options.ignore_opacity,
+        channels_use: match (options.ignore_opacity, selection) {
+            (false, _) => ChannelsUse::Apply,
+            (true, ColorSelection::First) => ChannelsUse::Ignore,
+            (true, ColorSelection::Pdf) => ChannelsUse::DiscardOpacity,
+        },
         ..Header::default()
     };
     let mut color_seen = false;
@@ -514,7 +526,7 @@ impl Header {
         }
         if self.palette.is_none() {
             // The raw index and opacity are already distinct channels.
-            // Keep cdef so apply_channels can validate and reorder them.
+            // Keep cdef so channel selection can validate and reorder them.
             return Ok(());
         }
         let mapping = self
@@ -548,7 +560,7 @@ impl Header {
             }
             match types[channel] {
                 Some((opacity_kind @ (1 | 2), association)) => {
-                    if !self.ignore_opacity
+                    if self.channels_use != ChannelsUse::DiscardOpacity
                         && (association != 0
                             || opacity.replace((mapping[channel], opacity_kind)).is_some())
                     {
@@ -668,14 +680,27 @@ impl Header {
             decoded.component_geometry = geometry;
             origins = mapped_origins;
         }
-        if let Some(channels) = self.channels.filter(|_| !self.ignore_opacity) {
-            decoded.opacity = apply_channels(
-                image,
-                &channels,
-                &origins,
-                &mut decoded.component_geometry,
-                budget,
-            )?;
+        if let Some(channels) = self.channels {
+            match self.channels_use {
+                ChannelsUse::Apply => {
+                    decoded.opacity = super::channels::apply(
+                        image,
+                        &channels,
+                        &origins,
+                        &mut decoded.component_geometry,
+                        budget,
+                    )?;
+                }
+                ChannelsUse::DiscardOpacity => {
+                    super::channels::discard_opacity(
+                        image,
+                        &channels,
+                        &mut decoded.component_geometry,
+                        budget,
+                    )?;
+                }
+                ChannelsUse::Ignore => {}
+            }
         }
         let mut colors = self.colors;
         image.color = match colors.len() {
@@ -703,108 +728,4 @@ fn check_depth(depth: u8, component: &JpxComponent) -> Result<()> {
         return Err(syntax("JP2 bit depth disagrees with codestream", 0));
     }
     Ok(())
-}
-
-fn apply_channels(
-    image: &mut JpxImage,
-    definitions: &[(u16, u16, u16)],
-    origins: &[(usize, Option<u8>)],
-    geometry: &mut [super::ComponentGeometry],
-    budget: &mut Budget<'_>,
-) -> Result<Option<Opacity>> {
-    let count = image.components.len();
-    let mut opacity = None;
-    let mut seen = budget.filled(count, false)?;
-    let mut order = budget.filled(count, None)?;
-    for &(channel, kind, association) in definitions {
-        let index = usize::from(channel);
-        let entry = seen
-            .get_mut(index)
-            .ok_or_else(|| syntax("JP2 channel index out of range", 0))?;
-        if *entry {
-            return Err(unsupported(
-                "multiple descriptions of one JP2 channel are not implemented",
-                0,
-            ));
-        }
-        *entry = true;
-        match kind {
-            0 if association != 0 && association != 65535 => {
-                let target = usize::from(association - 1);
-                let slot = order
-                    .get_mut(target)
-                    .ok_or_else(|| syntax("JP2 channel association out of range", 0))?;
-                if slot.replace(index).is_some() {
-                    return Err(syntax("repeated JP2 colour association", 0));
-                }
-            }
-            0 | 65535 => {
-                return Err(unsupported(
-                    "unassociated JP2 channels are not implemented",
-                    0,
-                ));
-            }
-            1 | 2 if association == 0 => {
-                if image.components[index].signed {
-                    return Err(syntax("signed JP2 opacity component", 0));
-                }
-                opacity = Some(Opacity {
-                    kind: if kind == 1 {
-                        OpacityKind::Straight
-                    } else {
-                        OpacityKind::Premultiplied
-                    },
-                    channel: index,
-                    source_channel: index,
-                    source_component: origins[index].0,
-                    palette_column: origins[index].1,
-                });
-                if image.alpha.replace(index).is_some() {
-                    return Err(unsupported(
-                        "multiple JP2 opacity channels are not implemented",
-                        0,
-                    ));
-                }
-            }
-            1 | 2 => return Err(unsupported("per-colour JP2 opacity is not implemented", 0)),
-            _ => return Err(syntax("invalid JP2 channel type", 0)),
-        }
-    }
-    // A complete definition is needed to reorder without guessing unspecified associations.
-    if seen.contains(&false) {
-        return Err(unsupported(
-            "partial JP2 channel definitions are not implemented",
-            0,
-        ));
-    }
-    let colors = count - usize::from(image.alpha.is_some());
-    if order[..colors].contains(&None) || order[colors..].iter().any(Option::is_some) {
-        return Err(syntax("incomplete JP2 colour associations", 0));
-    }
-    if let Some(alpha) = image.alpha {
-        order[colors] = Some(alpha);
-        image.alpha = Some(colors);
-    }
-    // Swaps preserve the sample allocations, even for large planes.
-    budget.work(count)?;
-    budget.charge::<usize>(
-        count
-            .checked_mul(2)
-            .ok_or_else(|| Error::limit("JP2 channel permutation overflow"))?,
-    )?;
-    let mut current: Vec<usize> = (0..count).collect();
-    let mut positions = current.clone();
-    for (target, source) in order.into_iter().enumerate() {
-        let source = source.ok_or_else(|| syntax("missing JP2 channel association", 0))?;
-        let position = positions[source];
-        image.components.swap(target, position);
-        geometry.swap(target, position);
-        current.swap(target, position);
-        positions[current[target]] = target;
-        positions[current[position]] = position;
-    }
-    if let Some(opacity) = &mut opacity {
-        opacity.channel = colors;
-    }
-    Ok(opacity)
 }

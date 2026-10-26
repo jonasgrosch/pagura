@@ -57,10 +57,7 @@ impl Jpx {
         limits: &Limits,
         diagnostics: &mut pagura_core::Diagnostics,
     ) -> Result<()> {
-        let mut decoded = jpx::decode_pdf(data, limits, &self.options, diagnostics, self.indexed)?;
-        if self.mode == 0 && !(self.indexed && decoded.image.components.len() == 1) {
-            super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
-        }
+        let decoded = jpx::decode_pdf(data, limits, &self.options, diagnostics, self.indexed)?;
         adapt(decoded, self.mode, image, limits)
     }
 
@@ -74,10 +71,7 @@ impl Jpx {
         limits: &Limits,
         mode: Recovery,
     ) -> Result<Description> {
-        let mut decoded = jpx::describe_pdf(data, limits, &self.options, mode, self.indexed)?;
-        if self.mode == 0 && !(self.indexed && decoded.image.components.len() == 1) {
-            super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
-        }
+        let decoded = jpx::describe_pdf(data, limits, &self.options, mode, self.indexed)?;
         let jpx::Decoded {
             image: decoded,
             reference_origin,

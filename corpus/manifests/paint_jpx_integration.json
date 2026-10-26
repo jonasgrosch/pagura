@@ -615,6 +615,21 @@
       "tolerance": 1
     },
     {
+      "id": "paint_jpx_integration/indexed-only-opacity",
+      "kind": "pdf",
+      "description": "Malformed or unavailable metadata remains explicit",
+      "expected": "open",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/indexed-only-opacity.pdf",
+      "sha256": "8a1e54fde8fc351800e9d50a16dcd9b5c456a7023212e51d9a8fd45aedc1d290",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
       "id": "paint_jpx_integration/indexed-ambiguous-index",
       "kind": "pdf",
       "description": "Malformed or unavailable metadata remains explicit",

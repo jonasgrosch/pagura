@@ -157,6 +157,8 @@ def indexed_palettes():
                                  colors=[(255, 0, 0)] * 3 if mode == 2 else colors,
                                  alpha=[F(a, maximum) for a in alphas] if mode else None,
                                  tolerance=1, requirement=PALETTE)
+    data = container([indices], [colr(1, struct.pack('>I', 17))], extra=definitions([(0, 1, 0)]))
+    yield bad_image('indexed-only-opacity', data, pdf_palette, requirement=PALETTE)
     # Mapping two colour channels from different indices cannot identify one
     # PDF Indexed sample and must not be guessed from the first component.
     extra = jpx.box(b'pclr', struct.pack('>HB', 1, 1) + b'\7\0')

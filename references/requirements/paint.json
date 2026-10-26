@@ -925,7 +925,8 @@
         "paint_jpx_integration/indexed-palette-1-1-2",
         "paint_jpx_integration/indexed-ambiguous-index",
         "paint_jpx_integration/indexed-channel-type-3",
-        "paint_jpx_integration/indexed-channel-type-65535"
+        "paint_jpx_integration/indexed-channel-type-65535",
+        "paint_jpx_integration/indexed-only-opacity"
       ],
       "review": [
         {

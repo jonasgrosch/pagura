@@ -59,7 +59,6 @@ mod dispatch;
 mod fax_image;
 mod filter_rules;
 mod inline;
-mod jpx_channels;
 mod jpx_image;
 mod mask;
 mod parameters;

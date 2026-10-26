@@ -20,6 +20,7 @@
 //! tag-tree and coefficient-pass work. All allocations are charged first.
 
 mod boxes;
+mod channels;
 mod codestream;
 mod coding;
 mod io;
