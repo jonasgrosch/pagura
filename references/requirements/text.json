@@ -411,6 +411,25 @@
         "locator": "Version 2.5; Header",
         "rule": "The 0x00025000 version stores one signed byte offset per glyph into standard Macintosh names. This is a deprecated, documented layout, not post 3.0 absence of names.",
         "scope": "Paired original post 2.5/2.0 programs share cmap, outlines and metrics; PDF 9.6.5.4 determines direct Unicode and glyph-name fallback. Head 6ac4b1d27 passed all 13 integrated Pagura render controls in hosted run40385518384 and full three-platform checks in run40385513689. This is scoped evidence, not font-family parity."
+      },
+      "legacy_post4_review": {
+        "sources": [
+          {
+            "url": "https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html",
+            "locators": [
+              "post Format 4",
+              "Dependencies"
+            ]
+          },
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/post",
+            "locators": [
+              "Header"
+            ]
+          }
+        ],
+        "rule": "The legacy Apple TrueType post4 header is followed directly by one uint16 code per maxp glyph; FFFF marks an unassigned code. Microsoft OpenType does not support this version. These FontFile2 probes exercise unchanged cmap selection, with no glyph-name spelling inferred.",
+        "scope": "Legacy TrueType direct-cmap admission. Hosted diagnostic40387744536 at791f19b6c shows MuPDF/PDF.js/Poppler passing the paired subjects and controls; Pagura previously refused the two post4 inputs. Name-probe40390798842 tests six candidate spellings: no measured Linux baseline accepts a post4 candidate while its literal post2 control passes. Derived printer names remain unimplemented and unclaimed. The existing post reader validates the maxp-sized code array and work budget without inventing names or another selection path; integrated runtime acceptance is pending."
       }
     },
     {

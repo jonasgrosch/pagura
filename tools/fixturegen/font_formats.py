@@ -13,19 +13,28 @@ AREA = 'font_formats'
 REQUIREMENT = 'text-truetype-selection'
 
 
-def post(version):
+def post(version, named=True):
     # GIDs 0..4 name .notdef, A, .null, B, space. Negative offsets are
     # exercised even when the displayed glyph's offset is positive.
     names = (0, 36, 1, 37, 3)
-    header = u32(version) + bytes(28) + u16(len(names))
+    header = u32(version) + bytes(28)
+    if version == 0x30000:
+        return header
+    if version == 0x40000:
+        # Apple post-4 has no count field; maxp determines its uint16 array.
+        # FFFF denotes no associated code. Unicode cmap selection is the
+        # subject here, not an inferred spelling of generated glyph names.
+        codes = (0xffff, 0x0041 if named else 0xffff, 0xffff, 0xffff, 0xffff)
+        return header + b''.join(u16(code) for code in codes)
+    header += u16(len(names))
     if version == 0x25000:
         return header + bytes((name-glyph) % 256 for glyph, name in enumerate(names))
     return header + b''.join(u16(name) for name in names)
 
 
 def font_objects(mode, version):
-    records = [(3, 1, {65: 1})] if mode == 'direct' else [(3, 1, {66: 2}), (1, 0, {65: 2})]
-    program = truetype(table_overrides={b'post': post(version), b'cmap': text_cmap_records(sorted(records))})
+    records = [(3, 1, {65: 1})] if mode.startswith('direct') else [(3, 1, {66: 2}), (1, 0, {65: 2})]
+    program = truetype(table_overrides={b'post': post(version, mode != 'direct-unnamed'), b'cmap': text_cmap_records(sorted(records))})
     encoding = b'/WinAnsiEncoding' if mode != 'differences' else b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /A] >>'
     font = (b'<< /Type /Font /Subtype /TrueType /BaseFont /LegacyName /FirstChar 65 /LastChar 65 '
             b'/Widths [600] /Encoding ' + encoding + b' /FontDescriptor 6 0 R >>')
@@ -44,3 +53,8 @@ def cases():
                        requirement=REQUIREMENT)
     yield case('ordinary-rectangle', b'0 g 4 4 10 20 re f',
                rectangles=[((4, 4, 10, 20), BLACK)], requirement=REQUIREMENT)
+    for mode in ('direct', 'direct-unnamed'):
+        for version, label in ((0x40000, 'post4'), (0x30000, 'post3-control')):
+            yield case(f'{label}-{mode}', b'BT /F 100 Tf 1 0 0 1 4 4 Tm (A) Tj ET',
+                       font_objects(mode, version), FONT, [((4, 4, 10, 20), BLACK)],
+                       requirement=REQUIREMENT)

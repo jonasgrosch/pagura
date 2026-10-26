@@ -1,4 +1,4 @@
-//! OpenType post glyph names. Standard names are defined by the post format.
+//! sfnt post glyph names and legacy composite-font code-array admission.
 use crate::budget::Work;
 use crate::read::{glyph_id, unsupported};
 use crate::{GlyphId, features};
@@ -13,6 +13,8 @@ const STANDARD_ORDER: u32 = 0x0001_0000;
 const NAME_INDEX: u32 = 0x0002_0000;
 const STANDARD_OFFSETS: u32 = 0x0002_5000;
 const NO_NAMES: u32 = 0x0003_0000;
+/// Apple TrueType composite-printer character codes, not OpenType name strings.
+const COMPOSITE_CODES: u32 = 0x0004_0000;
 
 /// The standard Macintosh glyph-name order (post versions 1, 2 and 2.5).
 const STANDARD: [&str; 258] = [
@@ -408,6 +410,16 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Res
             )?
         }
         NO_NAMES => Vec::new(),
+        COMPOSITE_CODES => {
+            if r.remaining() != count.saturating_mul(2) {
+                return Err(r.error("post composite-code count mismatch"));
+            }
+            work.work(count, r.position())?;
+            // Every uint16 code is representable; FFFF means unassigned.
+            // Keep cmap admission independent of printer-specific name spelling.
+            // No derived names are claimed or retained by this reader.
+            Vec::new()
+        }
         _ => {
             return Err(unsupported(
                 features::FORMAT,
@@ -487,6 +499,43 @@ mod tests {
             assert_eq!(error.kind, ErrorKind::Syntax);
             assert_eq!(error.message, "reserved post glyph-name index");
         }
+    }
+
+    #[test]
+    fn composite_code_arrays_admit_cmap_use_without_inventing_names() {
+        let mut table = super::COMPOSITE_CODES.to_be_bytes().to_vec();
+        table.extend([0; 28]);
+        for code in [u16::MAX, 0x0041, 0, 0xd800, 0xfffe] {
+            table.extend(code.to_be_bytes());
+        }
+        let limits = Limits {
+            font_work: 5,
+            font_entries: 0,
+            string_bytes: 0,
+            ..Limits::default()
+        };
+        let names = parse_table(&table, 5, &limits).unwrap();
+        assert_eq!(names.by_glyph.as_slice(), []);
+        assert_eq!(names.glyph(b"a0041"), None);
+        let tight = Limits {
+            font_work: 4,
+            ..limits
+        };
+        assert_eq!(
+            parse_table(&table, 5, &tight).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        for end in 0..table.len() {
+            assert_eq!(
+                parse_table(&table[..end], 5, &limits).unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+        }
+        table.extend(0x0042_u16.to_be_bytes());
+        assert_eq!(
+            parse_table(&table, 5, &limits).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
     }
 
     #[test]

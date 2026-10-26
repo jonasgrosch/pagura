@@ -170,6 +170,58 @@
         "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
         "tolerance": 0
       }
+    },
+    {
+      "id": "fonts.post4-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post3-control-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post3-control-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-direct-unnamed",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-direct-unnamed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post3-control-direct-unnamed",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post3-control-direct-unnamed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
     }
   ]
 }

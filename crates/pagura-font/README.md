@@ -58,8 +58,14 @@ and entry budgets. Signed index bounds and the declared glyph count are checked.
 Post 1 requires exactly 258 glyphs. Independent paired PDF controls preserve
 cmap-first selection and name fallback. All 13 integrated controls pass at
 `6ac4b1d27` in [hosted run 40385518384](https://github.com/jonasgrosch/pagura/actions/runs/40385518384).
-The later post 2 reserved-index correction has authored boundary tests and awaits
-hosted acceptance with the next font checkpoint.
+The post 2 reserved-index correction passes [all three hosted platforms](https://github.com/jonasgrosch/pagura/actions/runs/40388811513)
+at `2d92bdc21`, including the last permitted index and rejection before allocation.
+
+Legacy Apple TrueType post 4 code arrays are admitted after maxp-count and
+work-budget validation, so their existing cmap can select glyphs. This does not
+synthesize printer-specific names or assert OpenType conformance. Four unchanged
+direct-cmap subjects/controls join the integrated render manifest; hosted
+acceptance is pending. No new font selection path or allocation is introduced.
 
 Implemented formats:
 
@@ -120,7 +126,7 @@ Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
 Remaining coverage: nondefault variation instances, CFF2 Font DICT matrices,
-post formats other than 1/2/2.5/3, cmap format 8 and TrueType collections, and
+derived post 4 printer names and unknown post formats, cmap format 8 and TrueType collections, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
 CFF CharstringType 1, standalone TN 5014 CIDFont programs or nonhorizontal
 Type 1 sbw advances. Unrecognized OtherSubrs use chapter 8’s required

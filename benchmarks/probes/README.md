@@ -208,3 +208,25 @@ The preceding vertical-substitution checkpoint `a0533c2d6` passed
 That validates its native synthetic maps, PDF metrics/extraction and bundled
 collection controls at that revision; it does not establish competitor-family
 parity or validate the later base and post-name combination.
+
+## Legacy post 4 admission
+
+The integrated set now retains all 13 prior controls and adds four exact
+post 4/post 3 direct-cmap subjects/controls from diagnostic `791f19b6c`. The
+[Linux diagnostic](https://github.com/jonasgrosch/pagura/actions/runs/40387744536)
+shows MuPDF, PDF.js and Poppler passing both subjects and all controls; Pagura
+passes its five controls but refuses both subjects. PDFium misses the paired
+font controls; those cells are not format-specific evidence. Report SHA-256:
+`5ca216fa6965417fe0332667edcb9ada956e7a949a135be70fd17c204d02c8f7`.
+
+A [separate six-name probe](https://github.com/jonasgrosch/pagura/actions/runs/40390798842)
+at `dd0a67d3c` compares hexadecimal spellings with literal post 2 name controls.
+MuPDF, PDF.js, Poppler and hayro miss all six post 4 names while accepting every
+paired name control. The primary text does not fix case or padding; these are
+observations, not six normative obligations. Report SHA-256:
+`63825a1f18748072b40ba9a13f4778bdaeaec173f6de38aab23b01cd98c9a77d`.
+
+The existing post reader now admits the complete code array for cmap use, with
+no synthesized printer names, copied metadata or alternate selector. Exact
+count, truncation and work-budget controls are authored. Integrated hosted
+validation of the new 17-case manifest is pending; no family support is claimed.

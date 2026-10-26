@@ -383,8 +383,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected OpenType vert/vrt2 single substitutions and legacy post 2.5 standard-name offsets are implemented, with combined hosted acceptance pending.",
-      "remaining": "Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 single substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy Apple post4 code arrays are admitted for existing cmap use; this latest addition awaits hosted acceptance and does not synthesize printer names.",
+      "remaining": "Remaining formats, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
         "crates/pagura-font/src/lib.rs",
@@ -446,7 +446,11 @@
         "font_formats/post2-control-direct",
         "font_formats/post2-control-name-fallback",
         "font_formats/post2-control-differences",
-        "font_formats/ordinary-rectangle"
+        "font_formats/ordinary-rectangle",
+        "font_formats/post4-direct",
+        "font_formats/post3-control-direct",
+        "font_formats/post4-direct-unnamed",
+        "font_formats/post3-control-direct-unnamed"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2729,7 +2733,7 @@
       ],
       "review": "gap",
       "capability": "fonts.programs",
-      "rationale": "Synthetic CFF, CharstringType other than 2, CFF2 FontDICT matrices and additional post formats remain unsupported; ordinary TrueType/CFF/CFF2 support exists.",
+      "rationale": "Synthetic CFF, CharstringType other than 2, CFF2 FontDICT matrices and unknown post versions remain unsupported; ordinary TrueType/CFF/CFF2 support exists.",
       "evidence": [
         {
           "path": "crates/pagura-font/src/cff.rs",

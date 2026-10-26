@@ -2076,6 +2076,7 @@
               "post Format 1",
               "post Format 2",
               "post Format 2.5",
+              "post Format 4",
               "Dependencies"
             ]
           }
@@ -2083,7 +2084,7 @@
         "rule": "Post 1 implies exactly 258 glyphs. Post 2.5 uses tag 0x00025000, a count matching maxp, and one signed byte added to each glyph ID to index the standard-name set. Post 2 name indices 32768 through 65535 are reserved.",
         "implementation": "The existing names owner validates both index bounds and count equality, and sends borrowed standard names through its existing bounded index builder. No offset array, custom-name copy path or new parser is added.",
         "expectations": "Literal signed offsets cover .notdef, A, .null, B, space and the final standard name; all truncations, count mismatch, both index bounds, and exact work/entry boundaries are checked. The earlier five-glyph post-1 fixture was nonconforming; its named-glyph control now supplies 258 glyphs, with the undersized count retained as an explicit unit refusal. The final permitted custom index is accepted; reserved indices fail before custom-name allocation even under a zero-entry budget.",
-        "scope": "Post 2.5 is deprecated but remains a defined legacy input. Other font-format obligations stay open."
+        "scope": "Post 2.5 is deprecated but remains a defined legacy input. Other font-format obligations stay open. Legacy post4 composite-code arrays are admitted for unchanged cmap use after count/work validation; they do not supply name strings in this implementation. Printer-derived names remain unimplemented."
       }
     },
     {
