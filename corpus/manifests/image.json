@@ -5,6 +5,643 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "image/jpeg-dnl-vector-deferred",
+      "kind": "vector",
+      "description": "jpeg dnl vector deferred",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-deferred.in",
+          "sha256": "5745307b7dcfa14eb934bb02623c20d0ea4185a02e63e77f9d27fb71d994874f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-deferred.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-deferred.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-vector-same-height",
+      "kind": "vector",
+      "description": "jpeg dnl vector same height",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-same-height.in",
+          "sha256": "fc6223c6c4c04b0e9a27404ab3aa0011d2072f74a440024104631bf9fbd7c64b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-same-height.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-same-height.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-vector-redefined",
+      "kind": "vector",
+      "description": "jpeg dnl vector redefined",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-redefined.in",
+          "sha256": "fbade671661f3a7243a763099cfa9be27c1fb27dfcce20f1d496f5015aaf6209"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-redefined.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-redefined.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-vector-progressive",
+      "kind": "vector",
+      "description": "jpeg dnl vector progressive",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-progressive.in",
+          "sha256": "f41774af6391158651c06c8f04f8b17a12dbce9abf1cb0b36f382304aeaa1f53"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-progressive.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-progressive.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-deferred",
+      "kind": "pdf",
+      "description": "jpeg dnl deferred",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-deferred.pdf",
+      "sha256": "4b6d971ed8c7c88c58e74a0195fb68a06728ab2b91bd1cead27b53a424d6b358",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-deferred.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-same-height",
+      "kind": "pdf",
+      "description": "jpeg dnl same height",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-same-height.pdf",
+      "sha256": "e1fae0de0cf021ff25274b07ed8a7682884df4158006ebb3b120dba1e1d9ac5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-same-height.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-redefined",
+      "kind": "pdf",
+      "description": "jpeg dnl redefined",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-redefined.pdf",
+      "sha256": "c1376c313f146e159e82fedd8dc29f0d3e7223b2a624973465404d4610833f54",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-redefined.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-progressive",
+      "kind": "pdf",
+      "description": "jpeg dnl progressive",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-progressive.pdf",
+      "sha256": "0c9f707fbe6c878e5fdee1e577ba2b6bf6daf1f12d948fff22bc81d07cc0ad18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-progressive.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-baseline-control",
+      "kind": "pdf",
+      "description": "jpeg dnl baseline control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-baseline-control.pdf",
+      "sha256": "f7c8b746dd6d91e38910378221e28139550baa062a772e9483b5c4c071223a89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-baseline-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-progressive-control",
+      "kind": "pdf",
+      "description": "jpeg dnl progressive control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-progressive-control.pdf",
+      "sha256": "88f3d16ae8a0b3537a048411ceb2b204dcd3130d3829b8c3dbcf20c526899b93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-progressive-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg dnl rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-rgb-control.pdf",
+      "sha256": "189333d3e688c1b774a5e2f2739bf2803bf1779758451da80467ca77b0f0c32d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-rgb-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-extension",
+      "kind": "vector",
+      "description": "jpeg dnl extension",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-extension.in",
+          "sha256": "d0c0c81a1dbadf3640b9a5cff13c5b40d019ac33ae3196695f2f04741da0804c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-extension.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-extension.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-missing",
+      "kind": "vector",
+      "description": "jpeg dnl missing",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-missing.in",
+          "sha256": "3b4df6fd7cf99c126ba5b5b3c3c3ca6750203c5e843a920f2c7f3f583382e604"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-missing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-missing.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-zero",
+      "kind": "vector",
+      "description": "jpeg dnl zero",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-zero.in",
+          "sha256": "aa5bc21dfb1b2be2828296fa2af984db4de4856de08f4ada0218aa7f703f0b22"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-zero.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-zero.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-short",
+      "kind": "vector",
+      "description": "jpeg dnl short",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-short.in",
+          "sha256": "ef2f1b8dd2dc4db5a5bb1195214a324afa4b8f6e7ec93e50aef8f87ca67474b2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-short.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-short.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-excess-rows",
+      "kind": "vector",
+      "description": "jpeg dnl excess rows",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-excess-rows.in",
+          "sha256": "16ba1d528bb455ca00cc5656b69c16d76486832665b87b82f4b9ae956cf17b3c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-excess-rows.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-excess-rows.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-before-scan",
+      "kind": "vector",
+      "description": "jpeg dnl before scan",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-before-scan.in",
+          "sha256": "c202d8cbec1911b391d10214c10fe4347d2bdc268f9ac3e80c558cf12316ddc7"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-before-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-before-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-duplicate",
+      "kind": "vector",
+      "description": "jpeg dnl duplicate",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-duplicate.in",
+          "sha256": "7e1f5c7c9ed886e864ba3c21274b673fb4589d0c3329e290f7dbf3005752b2aa"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-duplicate.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-duplicate.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-after-second-scan",
+      "kind": "vector",
+      "description": "jpeg dnl after second scan",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-after-second-scan.in",
+          "sha256": "567b618159ecedc555234f579c60f6de3f4dc50080ae0d54ddbb2d0b3934c1bd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-after-second-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-after-second-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-comment",
+      "kind": "vector",
+      "description": "jpeg dnl comment",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-comment.in",
+          "sha256": "a1654d43b4d94988b7beeff35bdd3be873415479a2c085d5ef7b13629bcb0f42"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-comment.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-comment.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-restart",
+      "kind": "vector",
+      "description": "jpeg dnl restart",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-restart.in",
+          "sha256": "d0ec1df67d8ed28e6d6febe192a24d8a81daa817968f0bbd78a1abd0976d30fe"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-restart.out",
+          "sha256": "4e972baaee2ad54f78153134ef6484cd1a8e383d21582a21a481d4d214161916"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-restart.params",
+          "sha256": "977d259cfd4c593df63debb69f01c0d5cf0ba33993a667e8b394bf89216a3d10"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-lossless",
+      "kind": "vector",
+      "description": "jpeg dnl lossless",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-lossless.in",
+          "sha256": "e6c828050a60e3f616835ffbdf5e222e41bf496b421be20985b451dd02cc2c73"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-lossless.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-lossless.params",
+          "sha256": "e59406a249b9e462c0275679e49b3fbee6415f77e988f62dfdcb06bfc16ec56d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-jpeg-dnl",
+      "kind": "vector",
+      "description": "DNL marker frames an inline JPEG before its EOI",
+      "requirements": [
+        "image-inline",
+        "image-dct"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.dict",
+          "sha256": "b65c7b9be64e14cb3a50b8a5634587d946da09be45c504605edea4ef214adcfd"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.in",
+          "sha256": "5745307b7dcfa14eb934bb02623c20d0ea4185a02e63e77f9d27fb71d994874f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-plm",
+      "kind": "pdf",
+      "description": "jpx plm",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-plm.pdf",
+      "sha256": "b5c778beb9b7980e5c0e24157fbb7ca9cdb50bcb0dcfcd9202e848cb2518b025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-plm.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-crg-zero",
+      "kind": "pdf",
+      "description": "jpx crg zero",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-crg-zero.pdf",
+      "sha256": "6ee6c2fa8a40eeae0fa163b36d8f82ebcc0f46c2caf7939e2b92591e2e59feb1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-crg-zero.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-plm-crg-zero",
+      "kind": "pdf",
+      "description": "jpx plm crg zero",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-plm-crg-zero.pdf",
+      "sha256": "e470d6c712b4d16fc9a0e7f152549346959791c03ad71ccf9d10c6105f703553",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-plm-crg-zero.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-marker-codec-control",
+      "kind": "pdf",
+      "description": "jpx marker codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-marker-codec-control.pdf",
+      "sha256": "2d31463c880e828b9b345d72000a0b9904b18439cd5ab87829f08fcc9922b365",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-marker-codec-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpxb-only",
+      "kind": "pdf",
+      "description": "jpxb only",
+      "expected": "render",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "path": "corpus/generated/image/jpxb-only.pdf",
+      "sha256": "0976245b1fa1e852b643ed331cfb3c821d166788411bc0354d4f617222a9d79d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpxb-only.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpxb-jp2-control",
+      "kind": "pdf",
+      "description": "jpxb jp2 control",
+      "expected": "render",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "path": "corpus/generated/image/jpxb-jp2-control.pdf",
+      "sha256": "aa30f77de7c2ca532a55d596b7a7429e7331a7deead719bde9981c5ef5df8109",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpxb-jp2-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-marker-rgb-control",
+      "kind": "pdf",
+      "description": "jpx marker rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-marker-rgb-control.pdf",
+      "sha256": "5bce1255f932c2d23cb3aad20610d506c537c31802a4d6c5806ad8501680eb30",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-marker-rgb-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
       "id": "image/jpeg-arithmetic-sequential",
       "kind": "vector",
       "description": "jpeg arithmetic sequential",
@@ -1569,6 +2206,3708 @@
       "width": 24,
       "height": 16,
       "tolerance": 1
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-2",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 2",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-2.in",
+          "sha256": "0a54504c44f31b1af26e4f08f940490beb267faafe160d817566be45b9e244ba"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-2.out",
+          "sha256": "6197d5961742d8d7c7ec0dbc93358ce1efdc7b5b54a4691b374c103a3f775b67"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-2.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-3",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 3",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-3.in",
+          "sha256": "ba8e27c833d883b83c825fb7a33c2b31517c74101f1af324fe3b1bc659b10709"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-3.out",
+          "sha256": "84d268e1e545338840fafd2e3d7684786002d247746f99b1eba946a7ecf3ade1"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-3.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-4",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 4",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-4.in",
+          "sha256": "7fe96d110fa49bba193b13b8ef53f5cdd60df05c5313df4d9599278429375c9d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-4.out",
+          "sha256": "3457446fe1654a6b05d3c1cad84ff2041f9a9d288e3d65b36ddda041c8986936"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-4.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-5",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 5",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-5.in",
+          "sha256": "3ed559bda291c4a40adafa198bc60174d441eb104c8949a504d643b45ce4dad9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-5.out",
+          "sha256": "da65dd5cd57fb441c3c76d5a4494722b5232328db4e9ca566a186a233ae8587e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-5.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-6",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 6",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-6.in",
+          "sha256": "c713c303e8f6c98b166fb8c95ffc21499a12040cb50a6beba6495b8a95ce8a4d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-6.out",
+          "sha256": "68062515163f5916e834b453a768c0c471246b915b0d88b18d32bbed32c50015"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-6.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-7",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 7",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-7.in",
+          "sha256": "c623f972dc2e58e2e24ade491fe582678654c7799782b6b14b0fa6e5563a3117"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-7.out",
+          "sha256": "074c92b6e421ae3948d3321ef213cd1b0bdaf917c76bd9950dc4b7335f750d67"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-7.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-8.in",
+          "sha256": "50b9a078b7b95a7918ecc250dfe529f77c3818942d8b6af3ab1cd9969b422414"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-9",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 9",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-9.in",
+          "sha256": "0950436eb86a91ca4e5100244e367840ba069dc217f58d5d558bb11972eb9a0c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-9.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-9.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-10",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 10",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-10.in",
+          "sha256": "0278e2ca0526b3fa741e558fbdb36c797848a7ffd36b62418efabcb6f1a80439"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-10.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-10.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-11",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 11",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-11.in",
+          "sha256": "4b8da006689fcd54d1bca3e2d591be7687228bcc1d2952ad173093f2cf336921"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-11.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-11.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-12",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 12",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-12.in",
+          "sha256": "8d09a0c009e2b36d584d0218d38310e640d54e9d530b76b2c027edcc86fec968"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-12.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-12.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-13",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 13",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-13.in",
+          "sha256": "a4494f2c894e63889536f86e5deaeed66d34da9d200e0ba589612df922337b4b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-13.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-13.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-14",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 14",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-14.in",
+          "sha256": "97cc22f997e05d3f5b6f39e2302b3ba458e9f3ec053bd5e6d062281ac7f39534"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-14.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-14.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-15",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 15",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-15.in",
+          "sha256": "ae98ba7293c5373b695c5ca4da099fbc465fb407380284d17eb0c306a8157673"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-15.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-15.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-16.in",
+          "sha256": "c813f38affb54a2103b5702f58a8e1d1a058500d731c9200b7b613e0398ad495"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-1-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 1 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-8.in",
+          "sha256": "38c4d4321c3acc91ec0655e7d064659b41a7ba85bafab401e45ecc31b26ceabf"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-2-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 2 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-8.in",
+          "sha256": "50b9a078b7b95a7918ecc250dfe529f77c3818942d8b6af3ab1cd9969b422414"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-3-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 3 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-8.in",
+          "sha256": "103d1bcbd321c420185d93d8dd168dbb74b5093c0c78f2c9581eeebe23dbc65d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-4-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 4 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-8.in",
+          "sha256": "02ab940a4d48af7e9a37bcd722723375260d4b5b98c54775fa23f420319dfe63"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-5-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 5 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-8.in",
+          "sha256": "8498e127b7a27cae7787607a5a5037b7f40dd97c833d347596f1d25d5234fcac"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-6-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 6 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-8.in",
+          "sha256": "4c95c78b1ad0c763ee5fef99ad7db772c128e2dd8e04ccf437b82d4c228fa7f0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-7-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 7 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-8.in",
+          "sha256": "7e30faf9676a7efe1700393a8bed859410ffaf6afeef6a2fb98c88c013a8955c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-1-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 1 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-16.in",
+          "sha256": "18f57f9ee56e4bb8e8cf0a944e3bccb0c66b21707272b65e14a218b446169856"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-2-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 2 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-16.in",
+          "sha256": "f17071244c53beb50e44f4253eb439a4b8b84b3d025360bf901c9224209194f0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-3-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 3 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-16.in",
+          "sha256": "c813f38affb54a2103b5702f58a8e1d1a058500d731c9200b7b613e0398ad495"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-4-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 4 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-16.in",
+          "sha256": "d882f444530b5a77b0c7e1ec0454648044901556f7010574254ba2732792366b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-5-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 5 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-16.in",
+          "sha256": "b1d8beb82dec106306239f435bad3b3f00bb2ddd7570f01196997c90623457e0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-6-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 6 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-16.in",
+          "sha256": "d1d70b2cc58902188de662d6fc48f06e0f4e70febd666b57f4384c69546ac4d1"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-7-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 7 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-16.in",
+          "sha256": "31e09734195261a35547d4df26e25188ff28cff2ab0ebf21ffc0857c9061c377"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-point-2",
+      "kind": "vector",
+      "description": "jpeg lossless vector point 2",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-2.in",
+          "sha256": "86c745c5e0959c534d0e3a449274165a5a11e93393efb7329c753a6da054cf2d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-2.out",
+          "sha256": "85e6d7ee5c5fcc3aaf84054c4f749d3dbff3ae9f663e96def5073fc330c0e09f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-2.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-point-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector point 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-8.in",
+          "sha256": "d33fc7b05eefbea28a63e8aab0351bc5c4bee4b3461889d785e72f4064478891"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-8.out",
+          "sha256": "0ce8503e1e1f56236165bed574f1cae241fd4715b5bf95b68bb8e4e78257f500"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-point-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector point 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-16.in",
+          "sha256": "671cc284bd4ac3cf6d32a21722486a05b6231546a96ef20d47aaa1987b2c9484"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-16.out",
+          "sha256": "0ce8503e1e1f56236165bed574f1cae241fd4715b5bf95b68bb8e4e78257f500"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-restart",
+      "kind": "vector",
+      "description": "jpeg lossless vector restart",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-restart.in",
+          "sha256": "7115b21ecb7d2f4340ce73e664cc4f6adffc805b75596f0c34cfacf7f9377130"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-restart.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-restart.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-rgb-planar",
+      "kind": "vector",
+      "description": "jpeg lossless vector rgb planar",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-rgb-planar.in",
+          "sha256": "acb0d29a7041877f040d30be24b32456065ae8cbc8a40591838609bd08ee031d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-rgb-planar.out",
+          "sha256": "42d5a797892d81bde5789008de06e27d0d564aa6a4671fb98a5fca475c0596e4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-rgb-planar.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-cmyk-planar",
+      "kind": "vector",
+      "description": "jpeg lossless vector cmyk planar",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-cmyk-planar.in",
+          "sha256": "2f38004fa303fb3821d9f2d230defe91c7e7509b939b1cad217fdfef01a84def"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-cmyk-planar.out",
+          "sha256": "cd83c9765efb57bb137be1c7290c778e7d7a7de9bc2aa46d5bfc91da83281c4b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-cmyk-planar.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-subsampled",
+      "kind": "vector",
+      "description": "jpeg lossless vector subsampled",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled.in",
+          "sha256": "b91cdd4175bd31aff6a4961ff03867a62aa785c32699dc95818001b02f6296cb"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled.out",
+          "sha256": "3e705a05dd585b08f11da4e40c5151cbaf920095279709ec18442ded3101fe0c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-fractional",
+      "kind": "vector",
+      "description": "jpeg lossless vector fractional",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-fractional.in",
+          "sha256": "294a396c13464fa2047d668cde9499687a78d00a7c187cad6e4c1faaca95896d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-fractional.out",
+          "sha256": "c76886c3283f379ee9e1738ee1f5862671c88b1e8bda201338d385cf5d32a5f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-fractional.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-subsampled-planar",
+      "kind": "vector",
+      "description": "jpeg lossless vector subsampled planar",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled-planar.in",
+          "sha256": "6ffe7dcbc1dc38f6676671917d2744509167f95dfea5aa18ecd9897e4a6d29ef"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled-planar.out",
+          "sha256": "3e705a05dd585b08f11da4e40c5151cbaf920095279709ec18442ded3101fe0c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled-planar.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-ycbcr",
+      "kind": "vector",
+      "description": "jpeg lossless vector ycbcr",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycbcr.in",
+          "sha256": "d3a30f72eb86584658df0937c9a2d522276ab4514ea348d9e692b0bbae8ae1bf"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycbcr.out",
+          "sha256": "4306ad51bf234423675b96c6f9c381343d143f5e3dd5af0b1d64d94a2f61b303"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycbcr.params",
+          "sha256": "86d3eb4bc2e4667613d292a7365261908a1641dde656229184f6f35543d72037"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-ycck",
+      "kind": "vector",
+      "description": "jpeg lossless vector ycck",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycck.in",
+          "sha256": "93d5445ddc512b8baf849f02fcd8ce1eb4d5cb06ad1fcfe98f1c75f71ac33fe8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycck.out",
+          "sha256": "36fd54875821a022c835c989673877273148b14aabbd35959d68622b50cc0f3d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycck.params",
+          "sha256": "86d3eb4bc2e4667613d292a7365261908a1641dde656229184f6f35543d72037"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-adobe-rgb",
+      "kind": "vector",
+      "description": "jpeg lossless vector adobe rgb",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-rgb.in",
+          "sha256": "495eed8bb04d10c71a824ef8c53483f280063c77d72fb7187f062d8354508316"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-rgb.out",
+          "sha256": "42d5a797892d81bde5789008de06e27d0d564aa6a4671fb98a5fca475c0596e4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-rgb.params",
+          "sha256": "86d3eb4bc2e4667613d292a7365261908a1641dde656229184f6f35543d72037"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-adobe-ycbcr",
+      "kind": "vector",
+      "description": "jpeg lossless vector adobe ycbcr",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-ycbcr.in",
+          "sha256": "4e6bc97fa5ce646a7dfae99636e5284e589591f371efd009a452d2da58a25f16"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-ycbcr.out",
+          "sha256": "4306ad51bf234423675b96c6f9c381343d143f5e3dd5af0b1d64d94a2f61b303"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-ycbcr.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-16bit-ycck",
+      "kind": "vector",
+      "description": "jpeg lossless vector 16bit ycck",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-16bit-ycck.in",
+          "sha256": "066a4b5c261127d25e2fcdaa263afbf9c5615ee7cc306aee1a5f5ecc25fd298b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-16bit-ycck.out",
+          "sha256": "2f14e29556216c3a3aff1718f087ab2a63bacd344baf8001e7f064fc53da1232"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-16bit-ycck.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-known-category16",
+      "kind": "vector",
+      "description": "jpeg lossless known category16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-known-category16.in",
+          "sha256": "5d28c6a127aa31b19dbd587942299b94118a852f81819e92a286e00788fe9018"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-known-category16.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-known-category16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-known-negative-half",
+      "kind": "vector",
+      "description": "jpeg lossless known negative half",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-known-negative-half.in",
+          "sha256": "ffa12d4a6f1cf5ed9e3fcdbeb19a9909bbe5dad7bac5844d34095c62e77c6199"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-known-negative-half.out",
+          "sha256": "e49e1ca907ec63f6fa8b0c23c32c81dfde83a5eb8bfe88a2ae509d872c5dfe1c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-known-negative-half.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-known-overflow",
+      "kind": "vector",
+      "description": "jpeg lossless known overflow",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-known-overflow.in",
+          "sha256": "ae829d9063f294c620432b8672e49512b74bfcbfefed1b186a5f99ba66226a83"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-known-overflow.out",
+          "sha256": "34aaa746c25a0f105c4316bbb1f009aa359f49582656ee97d73c58132d563423"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-known-overflow.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-precision-low",
+      "kind": "vector",
+      "description": "jpeg lossless bad precision low",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-low.in",
+          "sha256": "ce6da27d4d62e880a520feb02780a79fbffd0bb7eec5a22a4636239007394b81"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-low.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-low.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-precision-high",
+      "kind": "vector",
+      "description": "jpeg lossless bad precision high",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-high.in",
+          "sha256": "63747a7db31e8be6cafa0d8e586cfa4dcb0d59a6286fd1cbb85f9fb7bcb1749a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-high.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-high.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-quantizer",
+      "kind": "vector",
+      "description": "jpeg lossless bad quantizer",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-quantizer.in",
+          "sha256": "e0862aa93b962630c042222d135ce42ae61c5efa346b486af1a5e8b8d6a90dfd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-quantizer.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-quantizer.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-predictor-zero",
+      "kind": "vector",
+      "description": "jpeg lossless bad predictor zero",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-zero.in",
+          "sha256": "a8166f8529d2ce93c5d4dbd9aa32917b383e693724b14eed4e98d56e5285bd2f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-zero.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-zero.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-predictor-eight",
+      "kind": "vector",
+      "description": "jpeg lossless bad predictor eight",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-eight.in",
+          "sha256": "7574095f42d3cef9238c475fb68c0bc59a2db7edea27facfedcf2902708eb6cc"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-eight.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-eight.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-spectral-end",
+      "kind": "vector",
+      "description": "jpeg lossless bad spectral end",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-spectral-end.in",
+          "sha256": "a64caf6dba0800abd3f0014a45334094df3bb03e2212f3e2ef1c0d973de0c559"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-spectral-end.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-spectral-end.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-approximation-high",
+      "kind": "vector",
+      "description": "jpeg lossless bad approximation high",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-approximation-high.in",
+          "sha256": "af951247ddeec47fb34becfdf31f3f604fecea1f15efd038e4f93686312a1e5b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-approximation-high.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-approximation-high.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-point-range",
+      "kind": "vector",
+      "description": "jpeg lossless bad point range",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-point-range.in",
+          "sha256": "817fc8e464f45715a259d7d2861240acd94da2286a22cca4cc10782cd302a5c8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-point-range.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-point-range.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-ac-selector",
+      "kind": "vector",
+      "description": "jpeg lossless bad ac selector",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-ac-selector.in",
+          "sha256": "ca89e6bab784d2e17d0751d34d20f2de8f005cd3776dbe0f595101329eb35f28"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-ac-selector.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-ac-selector.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-missing-table",
+      "kind": "vector",
+      "description": "jpeg lossless bad missing table",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-table.in",
+          "sha256": "ef8767561000c3fea9f64bd5564f2cf3d1f33536f11edad993783e2a01dca64b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-table.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-table.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-category",
+      "kind": "vector",
+      "description": "jpeg lossless bad category",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-category.in",
+          "sha256": "1691cec80dbe78554ebf49ba234eb4cc1ea29092890e2358e39523a7992c108d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-category.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-category.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-sample-range",
+      "kind": "vector",
+      "description": "jpeg lossless bad sample range",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-sample-range.in",
+          "sha256": "c629c20547a94159a2e448348102ab37d85a74566f61468707d23bf933e710e6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-sample-range.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-sample-range.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-missing-scan",
+      "kind": "vector",
+      "description": "jpeg lossless bad missing scan",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-scan.in",
+          "sha256": "92d34dec85cb8ce1920739f202a98f244b84f794d18bf28b64087b24eb6fe50a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-missing-huffman",
+      "kind": "vector",
+      "description": "jpeg lossless bad missing huffman",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-huffman.in",
+          "sha256": "8125c258feaae9b017e62c8d755ec536f2defdf1b2a1828141820a517e6b554a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-huffman.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-huffman.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-duplicate-scan",
+      "kind": "vector",
+      "description": "jpeg lossless bad duplicate scan",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-duplicate-scan.in",
+          "sha256": "23bd9ee48cc06f24e593a323443f2e52ff7a71907481859d841aea3b8c80a3a4"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-duplicate-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-duplicate-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-truncated-entropy",
+      "kind": "vector",
+      "description": "jpeg lossless bad truncated entropy",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-truncated-entropy.in",
+          "sha256": "2f85af68c806e003f0c3317105c56d9c950be4b43cb989fe02ab12a672714935"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-truncated-entropy.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-truncated-entropy.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-restart-row",
+      "kind": "vector",
+      "description": "jpeg lossless bad restart row",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-row.in",
+          "sha256": "9f4c0d20d976c0d393d96be2178c5336c48ec6e400ffa701ef7a3b5f8878899d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-row.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-row.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-restart-sequence",
+      "kind": "vector",
+      "description": "jpeg lossless bad restart sequence",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-sequence.in",
+          "sha256": "8f966406d5dbf4d7be215c343c475b4989dda98de10575f6c5322183e11dac74"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-sequence.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-sequence.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-boundary",
+      "kind": "vector",
+      "description": "jpeg lossless arithmetic boundary",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-arithmetic-boundary.in",
+          "sha256": "5bfc466a18d8d04b326f1f9230c637e82b02d9e394986028560ad22eacbc3ac5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-arithmetic-boundary.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-arithmetic-boundary.params",
+          "sha256": "e38d6053e062ad10ef612fdfc040fc59383600d61a64515fa04414d73b6465bb"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-hierarchical-boundary",
+      "kind": "vector",
+      "description": "jpeg lossless hierarchical boundary",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-hierarchical-boundary.in",
+          "sha256": "44d58752667da157168c2acddbc6b211edbfa4a0da9870060d237bcb7cd09d08"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-hierarchical-boundary.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-hierarchical-boundary.params",
+          "sha256": "f53eb3963bf42fcef665cbe06dc64445cc88ce9bcabb08ac7dfedaf363426fdc"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-gray",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman gray",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-gray.pdf",
+      "sha256": "faabcd4447320c83f5bd6009ac3d9269fd27e7b7853a087cf8c22cd4cb1c2226",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-gray.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-gray-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman gray rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-gray-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-gray-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-gray"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-restart",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman restart",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-restart.pdf",
+      "sha256": "3b7512115216961854933e9f1135ecb3ba0780ded2ed22fe165c04a306e28d32",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-restart.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-restart-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman restart rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-restart-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-restart-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-restart"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb.pdf",
+      "sha256": "f5172fbecda90fff08f28ea5142dee95925e6760194a28cef94245ea15f9c7a1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-rgb-control.pdf",
+      "sha256": "dd2e75a2b8abc079178a25362e74618af989a8d11155900d683ae567dc30758b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-rgb-control.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit.pdf",
+      "sha256": "cbc9cfa7ed915258626fc03d0ed43bb9f68a470b0daa491cf1e9c0be770ccfb2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-16bit"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit-point",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit point",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit-point.pdf",
+      "sha256": "ed8846870b630bd681198a342377c19bc382cc6430a46e35e332f08f0ec78f78",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit-point.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit-point-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit point rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit-point-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit-point-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-16bit-point"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-half-predictor",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman half predictor",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-half-predictor.pdf",
+      "sha256": "060e7acad3405333c7088a9154ae0924abb59dcd9e296654ed525bea531d9f42",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-half-predictor.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-half-predictor-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman half predictor rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-half-predictor-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-half-predictor-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-half-predictor"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-planar",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb planar",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar.pdf",
+      "sha256": "53ff8c533caf2d3b8ceae56f53d0cd0e92c665d0951a48a589983d74e0dfd750",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-planar-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb planar rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar-rgb-control.pdf",
+      "sha256": "dd2e75a2b8abc079178a25362e74618af989a8d11155900d683ae567dc30758b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar-rgb-control.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb-planar"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-subsampled",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb subsampled",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled.pdf",
+      "sha256": "6ed6618435e6b487531c3707e46051b3d3ee331d7679b11d9eaed1eb3a25f089",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled.ppm",
+      "oracle_sha256": "7b1528cc163a71cfc91949f32e1f45f14f91bcebf2ca29a7a7cffce6eb44a61c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-subsampled-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb subsampled rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled-rgb-control.pdf",
+      "sha256": "a5b180b783d14e9b29a0f65622a1897afdfefa2d36203cdd39f8e2a018e251a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled-rgb-control.ppm",
+      "oracle_sha256": "7b1528cc163a71cfc91949f32e1f45f14f91bcebf2ca29a7a7cffce6eb44a61c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb-subsampled"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-fractional",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb fractional",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional.pdf",
+      "sha256": "81cc8eb4c320211fe6a8b1d426a3d5b3dbd4f3fd08f85a29121397b0efed3225",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional.ppm",
+      "oracle_sha256": "9a1c1aedbebb80756b2d91837259db32ced217f93c5264a15e48e6b288124c9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-fractional-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb fractional rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional-rgb-control.pdf",
+      "sha256": "86b3d973ce30cd25dd88fbdfad8a3550858aaccc4562f7c707069be0cbd05cd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional-rgb-control.ppm",
+      "oracle_sha256": "9a1c1aedbebb80756b2d91837259db32ced217f93c5264a15e48e6b288124c9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb-fractional"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-2bit-point",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 2bit point",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-2bit-point.pdf",
+      "sha256": "0bf66f465eb66720514c3df4f6d5f7e1002facc409c075710927868d3b5ee6f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-2bit-point.ppm",
+      "oracle_sha256": "4370065ed58397761fefc482f6fddbdfe41457bafffa75c6976d4210faa622e2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-2bit-point-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 2bit point rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-2bit-point-rgb-control.pdf",
+      "sha256": "139f0d6ffb967d428a9ebeb2e4fb6fc00e3e788dd7a00e540e115dd709ab4ac8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-2bit-point-rgb-control.ppm",
+      "oracle_sha256": "4370065ed58397761fefc482f6fddbdfe41457bafffa75c6976d4210faa622e2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-2bit-point"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-12bit",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 12bit",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-12bit.pdf",
+      "sha256": "e1fe529958f2e5e89391ff77418696c89c1f98819b3dd0e5e9df02eabb60bcb0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-12bit.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-12bit-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 12bit rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-12bit-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-12bit-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-12bit"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-ycbcr",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman ycbcr",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-ycbcr.pdf",
+      "sha256": "bdbeb5208afb5e4a955f892282f3db717389470a6b3219cdd06782b316a7c3ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-ycbcr.ppm",
+      "oracle_sha256": "d4eb3e06e84519a913c719dba1cd1d4839cfccb4b84ab0bd11003feda7bacc5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-ycbcr-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman ycbcr rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-ycbcr-rgb-control.pdf",
+      "sha256": "7731f09152923773126bdfbea298eb9ad010bf26bc1f7d9b3a7b9df0bfe5ef68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-ycbcr-rgb-control.ppm",
+      "oracle_sha256": "d4eb3e06e84519a913c719dba1cd1d4839cfccb4b84ab0bd11003feda7bacc5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-ycbcr"
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-0.in",
+          "sha256": "52e45914b2539065118d99ffc2ca6200f4368dd5700dfcd3adcd75b6514cac90"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-0.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-0.params",
+          "sha256": "f4c36ec0372942e766249c98902f62bfa6075d8d55c4f30f051eac9b92b35faf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-1.in",
+          "sha256": "cd8c1b5c8882ed2e628d6c7cdbcab3e23a06dacac3c23222de10df0cbef821a2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-1.out",
+          "sha256": "76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-1.params",
+          "sha256": "b1bae865c1eb3b7f1213b9ed4abae1e27e83cb9fd72d524354e1a9a57dbff64a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-2",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-2.in",
+          "sha256": "cec8991dc1d0d559d40e16ebc1067c8439c63c9ff46a39e45f7f2c376de54363"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-2.out",
+          "sha256": "e4ff5e7d7a7f08e9800a3e25cb774533cb20040df30b6ba10f956f9acd0eb3f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-2.params",
+          "sha256": "24ad78ff927651dc255146d6c13c7de98244c52d2d659554d5636c9c6402d676"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-3",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-3.in",
+          "sha256": "55fd16614173d595f0d08d610cffb142d3dfa1e6e9efc3b7d66c11b62adf8c6a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-3.out",
+          "sha256": "7d8c5da7fd418379048e430b33dc8ffcda739e44326b8a5d647dc0ad81ed2157"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-3.params",
+          "sha256": "ba382a70a9fa64ea966e4bdf3a86721a8e605541d08d86d3fd6f63dbbf6eb2aa"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-4",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-4.in",
+          "sha256": "8090a2864098c77a3ca54210e01743b3ee19002f6d02470a5e3d4e5b6f8f73b6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-4.out",
+          "sha256": "fde502858306c235a3121e42326b53228b7ef4690eeed92a2b2eafe73c03a3ef"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-4.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-5",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-5.in",
+          "sha256": "dec5db504ce4013a4be3a4526fb73456d24b84d1172999b25d332cf710f93772"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-5.out",
+          "sha256": "e596a8e5c49dd20a79bd0c1a7dd190a674507d1129785746fcc1c5e64cd8416c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-5.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-0.in",
+          "sha256": "4f899c1eb108e7dacb4ff1d85c2ebff4d5e27b1e0cec6e45d97097ffc5cb73cb"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-0.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-0.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-1.in",
+          "sha256": "7ab32475707fea640a0767ec0938222afa843ab7856cbfc36e5f97ae6ec6f374"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-1.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-1.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-1-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-0.in",
+          "sha256": "543253d2f3f9e2f48e19b177348bc030f966548667e936158f294d2fd39a4fa6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-0.out",
+          "sha256": "cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-0.params",
+          "sha256": "a415ec44ee96597518076af2cd420a717cbd78a154efebfb1c101e8e1eb82635"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-1-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-1.in",
+          "sha256": "063a40935848af53e9ec9ea1753eec50e85e0f238b7cd4f02567fe20dd6f569c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-1.out",
+          "sha256": "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299ae"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-1.params",
+          "sha256": "a415ec44ee96597518076af2cd420a717cbd78a154efebfb1c101e8e1eb82635"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-2-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 2 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-0.in",
+          "sha256": "ebc6335296b717e80de3793d289bfde002fdcaa8be9d11ad4b0bd72342f31be9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-0.out",
+          "sha256": "7ace431cb61584cb9b8dc7ec08cf38ac0a2d649660be86d349fb43108b542fa4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-0.params",
+          "sha256": "653ccba3d1e5b458ffb3602ed253cb183dedb12c1bc9f81b0729d3b565e6ebab"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-2-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 2 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-1.in",
+          "sha256": "e8551200fdf92aa8e79cd82317dac80d003042c311afdf2a74370e5cc6b4817b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-1.out",
+          "sha256": "8d33f520a3c4cef80d2453aef81b612bfe1cb44c8b2025630ad38662763f13d3"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-1.params",
+          "sha256": "653ccba3d1e5b458ffb3602ed253cb183dedb12c1bc9f81b0729d3b565e6ebab"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-3-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 3 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-0.in",
+          "sha256": "e7d03001b7a10e03cd1d6bc63b3785e1dc728d5c8fef281c3dd960636d88d2d9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-0.out",
+          "sha256": "620bfdaa346b088fb49998d92f19a7eaf6bfc2fb0aee015753966da1028cb731"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-0.params",
+          "sha256": "d1e99463723606d7e1c6f02b9687082814da299649d584c620b33c5d8eb8c13c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-3-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 3 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-1.in",
+          "sha256": "5ae2168e05823f3dd15e20b9079f5420d68a0d631f65078fa8cde5bb2936ade8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-1.out",
+          "sha256": "148de9c5a7a44d19e56cd9ae1a554bf67847afb0c58f6e12fa29ac7ddfca9940"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-1.params",
+          "sha256": "d1e99463723606d7e1c6f02b9687082814da299649d584c620b33c5d8eb8c13c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-4-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 4 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-0.in",
+          "sha256": "5693a33d71f8653602e6adcc5d3a5e3ad958e679a6ef63ee748a4e22ee9b6f2b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-0.out",
+          "sha256": "517391d5972c2de2db58edb1b589927b0b9edf3379b6016905109f76d417be9d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-0.params",
+          "sha256": "97e4e2ff6733b4262cf6309b19634cef953e559e77c41052efd4a63390a94ecf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-4-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 4 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-1.in",
+          "sha256": "907a10310f683ba1de2bc8709cab50ba07deccbfd5a24f063dd5df7f17a0ff07"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-1.out",
+          "sha256": "14f825b2bbc32dd8d196367fa8776873069c12a8954d8da7513aa7704ddd09eb"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-1.params",
+          "sha256": "97e4e2ff6733b4262cf6309b19634cef953e559e77c41052efd4a63390a94ecf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-0",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-0.in",
+          "sha256": "bc859ecb9bcdc8d1ef9eb880cc35ecf79792a6a249c772a0e4e5c79b149977e1"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-0.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-0.params",
+          "sha256": "8bb56e97c69b92097f5658e0952757ac172c7b22c0a87834866be4d30ce8190e"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-1",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-1.in",
+          "sha256": "608c0782647b3ae9dc0caddf65814e01e6ce6a597e7141af53965e611503b1aa"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-1.out",
+          "sha256": "76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-1.params",
+          "sha256": "ea78f718501e9d9b8e623de8b246c4ea3f9fd9adc3cdca4cc494984b2903b902"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-2",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-2.in",
+          "sha256": "e0326b0015e53f2d54645a3917f646118b19d680f0d147b32e99f137bedae50d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-2.out",
+          "sha256": "e4ff5e7d7a7f08e9800a3e25cb774533cb20040df30b6ba10f956f9acd0eb3f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-2.params",
+          "sha256": "3afaef2601f793fe5f68e1f1fd8a722cf4cc8e80cc9713e7d96f27ecff8b9211"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-3",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-3.in",
+          "sha256": "6f9f8b40bfce172dd069073bfa5de9c1fe6c622c18230617e3fd6aa808fbd4f4"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-3.out",
+          "sha256": "7d8c5da7fd418379048e430b33dc8ffcda739e44326b8a5d647dc0ad81ed2157"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-3.params",
+          "sha256": "d61e4f3175036755539c340b617dcd012a66faa98d0dc40adfd28773d2c7005b"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-4",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-4.in",
+          "sha256": "bb7616a4f9896d34ee7d17ea023b1b4fd612cd07e202835cc83630b2b50ec730"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-4.out",
+          "sha256": "fde502858306c235a3121e42326b53228b7ef4690eeed92a2b2eafe73c03a3ef"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-4.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-5",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-5.in",
+          "sha256": "78dfe6870ec6b8f872be555f2d5bfd200e6fbca06190246d2226790e073c49ee"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-5.out",
+          "sha256": "e596a8e5c49dd20a79bd0c1a7dd190a674507d1129785746fcc1c5e64cd8416c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-5.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-0.in",
+          "sha256": "1eb5d1fb0940bd21c2b8eafe7233a829c09d66fe26c8a1576eeb9a6bb79f33cc"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-0.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-0.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-1.in",
+          "sha256": "40f79dff31bb8d01a1bda913a0d08f2925bc5dfbffceaef5a7602e9e396adff5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-1.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-1.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-1-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-0.in",
+          "sha256": "3325df89d16b230352548948cd5454d07fb1b7be798e672ee49778641f46bdc2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-0.out",
+          "sha256": "cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-0.params",
+          "sha256": "09d633ebb5c9f55a2990b4f7caac7cfc6e039bfcf34d5b1f22eeffa078b45d76"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-1-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-1.in",
+          "sha256": "2b5496f1b802bc480df02cd0c1abb036aafcd0a54d6f6f0b859c090d51bdc27e"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-1.out",
+          "sha256": "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299ae"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-1.params",
+          "sha256": "09d633ebb5c9f55a2990b4f7caac7cfc6e039bfcf34d5b1f22eeffa078b45d76"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-2-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 2 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-0.in",
+          "sha256": "6246249dd133316d4b12ce9aef9e554d042e2991d1b473785552ef6d1b57fc06"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-0.out",
+          "sha256": "7ace431cb61584cb9b8dc7ec08cf38ac0a2d649660be86d349fb43108b542fa4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-0.params",
+          "sha256": "f8a75b0dd13ed9eab4014261b42bc6578afafe2a05c2f53273001e7dd484305a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-2-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 2 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-1.in",
+          "sha256": "354694656f613dd2d7a266cd56eb4e98b1eeffad3779a97fb9e751189bcc42ec"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-1.out",
+          "sha256": "8d33f520a3c4cef80d2453aef81b612bfe1cb44c8b2025630ad38662763f13d3"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-1.params",
+          "sha256": "f8a75b0dd13ed9eab4014261b42bc6578afafe2a05c2f53273001e7dd484305a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-3-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 3 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-0.in",
+          "sha256": "55f22c5ec26714c2a63227d857ab0a25b8a777037f2ff9002f280c83d5804cbd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-0.out",
+          "sha256": "620bfdaa346b088fb49998d92f19a7eaf6bfc2fb0aee015753966da1028cb731"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-0.params",
+          "sha256": "34e0704c81eb22eeb05e175c7390dac921c41876997e6a85952eb0e1ecd6e64c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-3-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 3 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-1.in",
+          "sha256": "ea447009db129e098a61f82ceeb583ae87d8748197ff57729fcf25ab59abb049"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-1.out",
+          "sha256": "148de9c5a7a44d19e56cd9ae1a554bf67847afb0c58f6e12fa29ac7ddfca9940"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-1.params",
+          "sha256": "34e0704c81eb22eeb05e175c7390dac921c41876997e6a85952eb0e1ecd6e64c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-4-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 4 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-0.in",
+          "sha256": "5312f864164ef870289f5c2059d3630c2155fb5a8ca1e8693d3d05c51369f219"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-0.out",
+          "sha256": "517391d5972c2de2db58edb1b589927b0b9edf3379b6016905109f76d417be9d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-0.params",
+          "sha256": "7c5e29f4bd528eb5f15205b7d36bed684b5ebdf7424cfec527046f8ce06c8064"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-4-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 4 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-1.in",
+          "sha256": "db4354056426507c2ddf7411159f944b0b6ffe4cbb7bb339e4c38282eca0d738"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-1.out",
+          "sha256": "14f825b2bbc32dd8d196367fa8776873069c12a8954d8da7513aa7704ddd09eb"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-1.params",
+          "sha256": "7c5e29f4bd528eb5f15205b7d36bed684b5ebdf7424cfec527046f8ce06c8064"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-1",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-1.in",
+          "sha256": "c047169f1ca7536793997a17c16035c2eb847781ceb774fa6d2057ba41bff046"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-1.out",
+          "sha256": "e2039e7abc6ef6c14c83dab1727a13bea17f740580603a693b935f283a24ccf6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-1.params",
+          "sha256": "645e46864d5667600b001461d352e87466eb08408647eb26d05a5b60de808213"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-2",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-2.in",
+          "sha256": "5be9e868a54469c3bec1f80654f8268a1b1772399358e45b1ba5d46a2ead32c5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-2.out",
+          "sha256": "f2fad3aec356ecb31f4a1bd89d9a1558841a7b387239747b56812575752b880f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-2.params",
+          "sha256": "80eabc1b237aee8cb295c51a5eb8c46284528b68fae71d86de9de4d0419d5665"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-3",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-3.in",
+          "sha256": "e6f410c96b5a5865024d682ee835ee0eeb6545df2729f9a3efee8e1d12c12cd6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-3.out",
+          "sha256": "d2fa055b82a7cd11cee3fedd5b7fd872f3791e4c1ccce29987f9b60cfd46e128"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-3.params",
+          "sha256": "d959988500d7ab613c3cc0086d4d546e52d62950250f16058525a02e14159d8f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-5",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-5.in",
+          "sha256": "eb46117695f6a94ae5b4a52535491558a0ac37737a185c888cc397f1d41c3961"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-5.out",
+          "sha256": "93b45d2fa7c6d778b5868d55157651e3ef60d4fb87001c95f2c12b0f3b8c60ce"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-5.params",
+          "sha256": "3574e877fe64a5631819a3d1891aef1455095f283944d8d8b6933bcc3d43ac15"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-7",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 7",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-7.in",
+          "sha256": "74543c6a47c9ac6f470de9324f21950f567daf3b09a77e9087abea4e43e2ce8b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-7.out",
+          "sha256": "e50e4cf7ba9b11f7c0b5b13599e326b45267c42a5bd4778e8a09a53369814462"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-7.params",
+          "sha256": "55551632c0542ef690476a1663d2b44afd87b07f33e8d94a1cc895fa8a6c8535"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-black-is-one",
+      "kind": "vector",
+      "description": "fax uncompressed black is one",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-black-is-one.in",
+          "sha256": "e6f410c96b5a5865024d682ee835ee0eeb6545df2729f9a3efee8e1d12c12cd6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-black-is-one.out",
+          "sha256": "78992d26b6e09afef0a90614d6b60f828f9654ac69917aaf35e0c800fc3103df"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-black-is-one.params",
+          "sha256": "bf58843fc01a7685da72c833cf4ebad015e0d632db3f16ffd7ea2c667880fa55"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-no-eob-0",
+      "kind": "vector",
+      "description": "fax uncompressed no eob 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-0.in",
+          "sha256": "10bb154c52ff9460758cc519926dbef92721cc40c059b5e15650476c0e14772c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-0.out",
+          "sha256": "d2fa055b82a7cd11cee3fedd5b7fd872f3791e4c1ccce29987f9b60cfd46e128"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-0.params",
+          "sha256": "bd0ada1299795e9e7a0b45ae35fa4e0315047a98423eb6a5a0a34757b632ae86"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-no-eob-20",
+      "kind": "vector",
+      "description": "fax uncompressed no eob 20",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-20.in",
+          "sha256": "10bb154c52ff9460758cc519926dbef92721cc40c059b5e15650476c0e14772c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-20.out",
+          "sha256": "d2fa055b82a7cd11cee3fedd5b7fd872f3791e4c1ccce29987f9b60cfd46e128"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-20.params",
+          "sha256": "e4077a395ca4aade83cd51971f9acc3454b4f0200f96adae2baab7b2c7b32bb8"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-aligned-0",
+      "kind": "vector",
+      "description": "fax uncompressed aligned 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned-0.in",
+          "sha256": "ae4dfc8c88304eceed96affcfc0290565ab4a89f6729de5fd6448c19e6ae2331"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned-0.out",
+          "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned-0.params",
+          "sha256": "dff834636e3219cb749422b8f098241d4a08d706e815ff463fa2d46724a663d9"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-aligned--1",
+      "kind": "vector",
+      "description": "fax uncompressed aligned  1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned--1.in",
+          "sha256": "30fb80f23cd71840a9acb0c2a5c30a1f05a24d0689ce19d66b7cd755dc95722b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned--1.out",
+          "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned--1.params",
+          "sha256": "f7f9e9fe0cfab85376a76c4466f7ec5e6e860f989e9aa8b84bd476c717940c34"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-resume-vertical",
+      "kind": "vector",
+      "description": "fax uncompressed resume vertical",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-vertical.in",
+          "sha256": "8aca07ed57da12bd89c121cfdbd06c06a37f6a9833d50f543ece85d4905bd3ba"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-vertical.out",
+          "sha256": "6a4e7e677f3226cd30f8f46c7100694652c529fa4852bc30a26f926e733f643e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-vertical.params",
+          "sha256": "7054caff80469eb646d3a770195e107361f4535ebe983f50c152272a99fdef13"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-resume-pass",
+      "kind": "vector",
+      "description": "fax uncompressed resume pass",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-pass.in",
+          "sha256": "53e8c7e724c3ebff2486373fbbb7034469de360983086aa3942b06620624377f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-pass.out",
+          "sha256": "8c078ead4d347f351212357cbb455a94c66346d4d1658478135d37ae6789a336"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-pass.params",
+          "sha256": "7054caff80469eb646d3a770195e107361f4535ebe983f50c152272a99fdef13"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-mixed",
+      "kind": "vector",
+      "description": "fax uncompressed mixed",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-mixed.in",
+          "sha256": "6079ecda97d013755b0e95c210f133b9063fb652ff32dbff3f2e00dc262815c5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-mixed.out",
+          "sha256": "9d0e8aa2892a9f23fa7f89051a4ae0a05c2c4858c25a86c4e9ebf9060b9a63b2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-mixed.params",
+          "sha256": "2d38daece967099bd007d2849ab7a1704572f1f828a97b400a42e2435bc0910b"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-0.in",
+          "sha256": "085edad400785fca7e7e90b1fac4beb776fc2beee5aa24352d5f39b5d57efcad"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-0.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-0.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-1.in",
+          "sha256": "c723228fbe3cf04cdf49e61f3e13fc0c407d2e1ff23d6eaa1b4299e7cbb418a1"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-1.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-1.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-2",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-2.in",
+          "sha256": "eaf132c40462dd25ee5be6c7944953c92f544953f110bb3a6630b9cb34f13e17"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-2.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-2.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-3",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-3.in",
+          "sha256": "425b04f73bcc6bdb70e201dcfaa1c227e363e0a0dc83025a688baa9e90b91cf2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-3.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-4",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-4.in",
+          "sha256": "81c2a21c99c2e261ad6d91443ffb383b57c321d7e33f09cb64c8b946bb14939b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-4.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-4.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-5",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-5.in",
+          "sha256": "672da2c7dfdf211e2998280dba9596bf0ca5cd834654b81cf4b32a2d713dba39"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-5.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-5.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-6",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 6",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-6.in",
+          "sha256": "548431144999ce11132441250358e8e03153d5cd91cb82cc27a8dbdcf8e1e80d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-6.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-6.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-0",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-0.in",
+          "sha256": "99be5efb88ca2013bd8e4eb035fd42d5245468fe9afa70d8ba9c1c419a48c4e8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-0.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-0.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-1",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-1.in",
+          "sha256": "ba3c702b24e4ef16c111bf92823170f6e81fd37fbafaccbeef52192a1c094380"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-1.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-1.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-2",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-2.in",
+          "sha256": "61d7e4731e7a6546d92e99105ffce332c9ab905311cba8dbad8ac4f3bbc49447"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-2.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-2.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-3",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-3.in",
+          "sha256": "f5e0e61250dc5ca346e045ef9b8830ff510ceebd97829a9047efcaf584db9587"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-3.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-4",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-4.in",
+          "sha256": "9b4fb24edd6d1d8830e272398263cdbf026b97392cc35387b991dc0248a628f9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-4.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-4.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-5",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-5.in",
+          "sha256": "23cfea09624d0880dc8dc30bf5fda8cd9ff7bf4770a119425a6995e15563b865"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-5.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-5.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-6",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 6",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-6.in",
+          "sha256": "6191d6df2a4b8ad04a19ad70045422d4fb47b5bd189d2b63befde6043a9c9f11"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-6.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-6.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-invalid-word",
+      "kind": "vector",
+      "description": "fax uncompressed invalid word",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-invalid-word.in",
+          "sha256": "1ed7d6fa696d5898a20290a034b0078331b11adbfcd543979a14f381a9b6a3df"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-invalid-word.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-invalid-word.params",
+          "sha256": "14dfe5fb56df20d278285264b1217d0faca5e98b66c03ec8fdf9dd94048f34a6"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-missing-exit",
+      "kind": "vector",
+      "description": "fax uncompressed missing exit",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-missing-exit.in",
+          "sha256": "38c31e28eb55c15510811bb11bcb494ba239abdd838180213604b8b6d554e611"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-missing-exit.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-missing-exit.params",
+          "sha256": "3f00dae7bf3fdb31cd0f340dd54689ea3a31830ca1b72df7f3773b9c5b4c07b7"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-forbidden-1d-prefix",
+      "kind": "vector",
+      "description": "fax uncompressed forbidden 1d prefix",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-forbidden-1d-prefix.in",
+          "sha256": "30bc72f4eba7a4bae56edd14ee8bf73dd88face0737d99d8f01aada569aae817"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-forbidden-1d-prefix.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-forbidden-1d-prefix.params",
+          "sha256": "dbb65584d1d497057cd0eb1d603e19782250b11defab0179cbc3cee2fe004b32"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-crosses-framed-g3",
+      "kind": "vector",
+      "description": "fax uncompressed crosses framed g3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-g3.in",
+          "sha256": "dec5db504ce4013a4be3a4526fb73456d24b84d1172999b25d332cf710f93772"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-g3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-g3.params",
+          "sha256": "d30fdbd41703a671110909cd612bf664a97e00055f66a3ee718c8217ca891ed7"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-crosses-framed-aligned",
+      "kind": "vector",
+      "description": "fax uncompressed crosses framed aligned",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-aligned.in",
+          "sha256": "78dfe6870ec6b8f872be555f2d5bfd200e6fbca06190246d2226790e073c49ee"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-aligned.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-aligned.params",
+          "sha256": "c8f9a201a7beaac05fad499e88d57418cd2ce3552c239e496716520b0a149144"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-crosses-framed-eol",
+      "kind": "vector",
+      "description": "fax uncompressed crosses framed eol",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-eol.in",
+          "sha256": "0051ab0993c9da8620d0eb817156da457c6fb1b1d1cfb62de5b65d04b37b7334"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-eol.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-eol.params",
+          "sha256": "d3f75f7c54c4a0e5f120d29d9e6d9c7787847ca1013c9851e602f2985efbaaf9"
+        }
+      }
+    },
+    {
+      "id": "image/ccitt-uncompressed-exit-0-4-1",
+      "kind": "pdf",
+      "description": "ccitt uncompressed exit 0 4 1",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1.pdf",
+      "sha256": "b6aeea75ae33492fb441620def3abc12e0fd129ff10bdcb1c277125de3ec5aee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1.ppm",
+      "oracle_sha256": "e93c0611f99c2192a85fd09fb5b23983bfa97a75333d49c0b2b7766401c77a1b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-exit-0-4-1-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed exit 0 4 1 rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1-rgb-control.pdf",
+      "sha256": "a30a58bea177043db34d7dde1f1d4dd55557457a1f735ccd240aea5adf173f8f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1-rgb-control.ppm",
+      "oracle_sha256": "e93c0611f99c2192a85fd09fb5b23983bfa97a75333d49c0b2b7766401c77a1b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-exit-0-4-1"
+    },
+    {
+      "id": "image/ccitt-uncompressed-continuation-3",
+      "kind": "pdf",
+      "description": "ccitt uncompressed continuation 3",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-continuation-3.pdf",
+      "sha256": "2cc44a869d5d23eaf8a52d9bd94ae42e473824a9e380e44355361940ea2bd1a7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-continuation-3.ppm",
+      "oracle_sha256": "4a640352b262a2cc1519ee8b643014d11320ad8d48f558fd870975a0ca7f6372",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-continuation-3-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed continuation 3 rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-continuation-3-rgb-control.pdf",
+      "sha256": "445109a45fdafb1b9eae3d14fbd0b7e9e9c0567a6ec72b108f5e94adbe4684ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-continuation-3-rgb-control.ppm",
+      "oracle_sha256": "4a640352b262a2cc1519ee8b643014d11320ad8d48f558fd870975a0ca7f6372",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-continuation-3"
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-vertical",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume vertical",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-vertical.pdf",
+      "sha256": "f44b4c14d3eee2a5db80d6234e99029c316bbf9163914d387f1dfef54ee1d169",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-vertical.ppm",
+      "oracle_sha256": "45ccaf54918ae6c5aeab84b2789f0f30a1f0a0973a4173c337b13ab161677072",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-vertical-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume vertical rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-vertical-rgb-control.pdf",
+      "sha256": "a1f35e8b53f4d3a3c5615f0f4e9679ecd9b1fb71a17e683f0dd57aff8ac9097c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-vertical-rgb-control.ppm",
+      "oracle_sha256": "45ccaf54918ae6c5aeab84b2789f0f30a1f0a0973a4173c337b13ab161677072",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-resume-vertical"
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-pass",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume pass",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-pass.pdf",
+      "sha256": "7fe7ba373a7bb4c42f1e6e4fd5eacc06aa7d1faa6943e8d9f7a11148c49baed0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-pass.ppm",
+      "oracle_sha256": "3ba9c1eba9d5ddf2f699fa7eaecc314ce61783f2201b416035129fd038803a9d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-pass-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume pass rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-pass-rgb-control.pdf",
+      "sha256": "057103334f72d288f9743c6c24c005d585fddf3a22f2284b0c12dd03769ec46a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-pass-rgb-control.ppm",
+      "oracle_sha256": "3ba9c1eba9d5ddf2f699fa7eaecc314ce61783f2201b416035129fd038803a9d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-resume-pass"
+    },
+    {
+      "id": "image/ccitt-uncompressed-mixed",
+      "kind": "pdf",
+      "description": "ccitt uncompressed mixed",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-mixed.pdf",
+      "sha256": "160cb5f3594fd75d0c1e5a41a9121375ff67cde35e67c9088c28d9bb821de70f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-mixed.ppm",
+      "oracle_sha256": "069081955228c719980c22cd0228b0987d8667c7b141031dad624cb87501c733",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-mixed-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed mixed rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-mixed-rgb-control.pdf",
+      "sha256": "a1065141068001141dc58cf66dc3b71e89847fe097db77b49e512f61a6837e88",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-mixed-rgb-control.ppm",
+      "oracle_sha256": "069081955228c719980c22cd0228b0987d8667c7b141031dad624cb87501c733",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-mixed"
+    },
+    {
+      "id": "image/jbig2-extended-template-all-moved",
+      "kind": "pdf",
+      "description": "jbig2 extended template all moved",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-all-moved.pdf",
+      "sha256": "66b300ddea29eeef2b8d739787f4409a1ce7dafe94853f7498cdb1cdac14e22c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-all-moved.ppm",
+      "oracle_sha256": "e82ab37c7671fa19b12f9ab4aeecaa5a83055c8da7cbc7e77161ba4eb7aa1c48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jbig2-extended-template-all-moved-rgb-control",
+      "kind": "pdf",
+      "description": "jbig2 extended template all moved rgb control",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-all-moved-rgb-control.pdf",
+      "sha256": "db20f929ed50c735fe9261de049f59300baa0d9b260cea7d84ddc280d7dea011",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-all-moved-rgb-control.ppm",
+      "oracle_sha256": "e82ab37c7671fa19b12f9ab4aeecaa5a83055c8da7cbc7e77161ba4eb7aa1c48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jbig2-extended-template-all-moved"
+    },
+    {
+      "id": "image/jbig2-extended-template-typical",
+      "kind": "pdf",
+      "description": "jbig2 extended template typical",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-typical.pdf",
+      "sha256": "0f5f8cf1cd1364659290587ecb269b16ff5512ceb9fc98b764b3da4aba2d88d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-typical.ppm",
+      "oracle_sha256": "ba2357e722b9073a7dfb7d47cfa5407d91ca068a98fce436743995d99c5c6542",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jbig2-extended-template-typical-rgb-control",
+      "kind": "pdf",
+      "description": "jbig2 extended template typical rgb control",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-typical-rgb-control.pdf",
+      "sha256": "388cd1aeb424a0aeada2b7c62b2a23c7ca4f2ed9aacd704287167db6e7e4fe68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-typical-rgb-control.ppm",
+      "oracle_sha256": "ba2357e722b9073a7dfb7d47cfa5407d91ca068a98fce436743995d99c5c6542",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jbig2-extended-template-typical"
+    },
+    {
+      "id": "image/jbig2-extended-template-unknown-marker-in-header",
+      "kind": "pdf",
+      "description": "jbig2 extended template unknown marker in header",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header.pdf",
+      "sha256": "cb8e27ba6e1dbe4a64fe1d996192f415fcb3912b4c016cecaf9e84307891f7b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header.ppm",
+      "oracle_sha256": "5f4812f410a2f7973826ca32ef19fb26e875b59c3f2812b65e8428e3072aa330",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jbig2-extended-template-unknown-marker-in-header-rgb-control",
+      "kind": "pdf",
+      "description": "jbig2 extended template unknown marker in header rgb control",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header-rgb-control.pdf",
+      "sha256": "b55384a9b966c1e788637fa45f712fe50ba1266e56980e2d1d1f48c9531f7362",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header-rgb-control.ppm",
+      "oracle_sha256": "5f4812f410a2f7973826ca32ef19fb26e875b59c3f2812b65e8428e3072aa330",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jbig2-extended-template-unknown-marker-in-header"
     },
     {
       "id": "image/samples-1-1-raw",

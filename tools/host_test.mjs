@@ -167,6 +167,10 @@ async function main() {
     manifest.cases.push(...annotations.cases);
   }
   manifest.cases.push(...caretAnnotations.cases);
+  for (const area of ['paint_jpx', 'paint_jpx_native', 'paint_jpx_integration', 'jpx_lab_probe', 'jpx_layout_probe', 'image']) {
+    const images = JSON.parse(await readFile(join(root, `corpus/manifests/${area}.json`), 'utf8'));
+    manifest.cases.push(...images.cases);
+  }
   const scratch = await mkdtemp(join(tmpdir(), 'pagura-host-'));
   const files = [];
   const wasiRun = async (input, name) => {

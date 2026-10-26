@@ -2,10 +2,10 @@
 //! Annex D.3). Decoding returns packed black-is-one samples; the PDF image
 //! adapter is responsible for PDF sample polarity.
 //!
-//! Implements the bitonal coding procedures of T.88 (02/2000), including
+//! Implements the bitonal coding procedures of T.88, including
 //! arithmetic and Huffman symbols/text, generic/refinement regions, patterns,
-//! and halftones. Later extended adaptive templates and necessary extensions
-//! are explicitly unsupported. The public decoder consumes PDF page 1;
+//! and halftones, plus the twelve adaptive pixels of T.88 (08/2018).
+//! Unknown necessary extensions are explicitly unsupported. The decoder consumes PDF page 1;
 //! standalone file headers and EOP/EOF segments are forbidden by PDF 7.4.7.
 
 mod arithmetic;
@@ -64,7 +64,7 @@ pub mod tags {
     pub const PROFILE: Feature = Feature::new("jbig2.profile");
     /// Compatibility tag; reserved segment types are syntax errors.
     pub const SEGMENT_TYPE: Feature = Feature::new("jbig2.segment-type");
-    /// The extended adaptive template from the T.88 amendments.
+    /// Compatibility tag for the supported T.88:2018 extended adaptive template.
     pub const EXTENDED_TEMPLATE: Feature = Feature::new("jbig2.extended-template");
     /// Compatibility tag; T.88 clause 6.2.6 forbids T.6 extensions.
     pub const MMR_EXTENSION: Feature = Feature::new("jbig2.mmr-extension");

@@ -6,6 +6,74 @@ use super::{
 };
 use pagura_core::{Error, Limits, Result};
 
+/// Generic-region flags and their AT header extent (T.88:2018 7.4.6.2–3).
+#[derive(Clone, Copy)]
+pub(super) struct Flags(u8);
+
+impl Flags {
+    const MMR: u8 = 1;
+    const TEMPLATE: u8 = 6;
+    const PREDICTION: u8 = 8;
+    const EXTENDED: u8 = 16;
+    const RESERVED: u8 = 0xe0;
+
+    pub(super) fn parse(value: u8) -> Result<Self> {
+        let flags = Self(value);
+        if value & Self::RESERVED != 0 {
+            return Err(Error::syntax("reserved JBIG2 generic-region flags"));
+        }
+        // Table 2 leaves prediction/extended-template inputs unused in MMR;
+        // 7.4.6.2 separately requires its template field to be zero.
+        if flags.mmr() && flags.template() != 0 {
+            return Err(Error::syntax("arithmetic template in JBIG2 MMR region"));
+        }
+        Ok(flags)
+    }
+
+    pub(super) fn mmr(self) -> bool {
+        self.0 & Self::MMR != 0
+    }
+
+    fn template(self) -> u8 {
+        (self.0 & Self::TEMPLATE) >> 1
+    }
+
+    fn adaptive(self) -> Adaptive {
+        if self.template() == 0 && self.0 & Self::EXTENDED != 0 {
+            Adaptive::Extended
+        } else {
+            Adaptive::Standard
+        }
+    }
+
+    pub(super) fn adaptive_bytes(self) -> usize {
+        if self.mmr() {
+            0
+        } else {
+            self.adaptive().positions(self.template()).len() * 2
+        }
+    }
+}
+
+/// T.88:2018 Figure 3(b) changes twelve positions of template zero.
+#[derive(Clone, Copy)]
+pub(super) enum Adaptive {
+    Standard,
+    Extended,
+}
+
+impl Adaptive {
+    fn positions(self, template: u8) -> &'static [usize] {
+        match (template, self) {
+            (0, Self::Extended) => &[1, 13, 9, 14, 12, 5, 2, 3, 11, 4, 15, 10],
+            (0, Self::Standard) => &[4, 10, 11, 15],
+            (1, _) => &[3],
+            (2, _) => &[2],
+            _ => &[4],
+        }
+    }
+}
+
 // Context bits in increasing significance. Adaptive positions are inserted
 // into the holes specified by Figures 3–6, rather than sorted by coordinates.
 const TEMPLATE_0: [(i32, i32); 16] = [
@@ -114,14 +182,8 @@ pub(super) fn decode(
     limits: &Limits,
     unknown: bool,
 ) -> Result<Bitmap> {
-    let flags = reader.byte()?;
-    if flags & 0xe0 != 0 {
-        return Err(Error::syntax("reserved JBIG2 generic-region flags"));
-    }
-    if flags & 1 != 0 {
-        if flags & 0x1e != 0 {
-            return Err(Error::syntax("arithmetic flags in JBIG2 MMR region"));
-        }
+    let flags = Flags::parse(reader.byte()?)?;
+    if flags.mmr() {
         let position = reader.position();
         let base = match position {
             pagura_core::Position::Buffer(p) => p,
@@ -140,14 +202,7 @@ pub(super) fn decode(
                 .map_err(|error| error.at(position))
         };
     }
-    let template = (flags >> 1) & 3;
-    if flags & 0x10 != 0 {
-        return Err(Error::unsupported(
-            super::tags::EXTENDED_TEMPLATE,
-            "extended JBIG2 adaptive templates are not implemented",
-        ));
-    }
-    let positions = Template::read(reader, template)?;
+    let positions = Template::read(reader, flags.template(), flags.adaptive())?;
     let context_bytes = positions.context_bytes();
     let mut bitmap_limits = *limits;
     bitmap_limits.decoded_bytes = limits
@@ -164,7 +219,7 @@ pub(super) fn decode(
         width,
         height,
         &positions,
-        flags & 8 != 0,
+        flags.0 & Flags::PREDICTION != 0,
         &mut decoder,
         &mut contexts,
         &bitmap_limits,
@@ -178,7 +233,7 @@ pub(super) struct Template {
 }
 
 impl Template {
-    pub(super) fn read(reader: &mut Reader<'_>, template: u8) -> Result<Self> {
+    pub(super) fn read(reader: &mut Reader<'_>, template: u8, adaptive: Adaptive) -> Result<Self> {
         let source: &[(i32, i32)] = match template {
             0 => &TEMPLATE_0,
             1 => &TEMPLATE_1,
@@ -187,13 +242,9 @@ impl Template {
         };
         let mut positions = [(0, 0); 16];
         positions[..source.len()].copy_from_slice(source);
-        let adaptive: &[usize] = match template {
-            0 => &[4, 10, 11, 15],
-            1 => &[3],
-            2 => &[2],
-            _ => &[4],
-        };
-        for &index in adaptive {
+        // Figure 50 and the explicit byte 0..23 fields define twelve pairs;
+        // the conflicting "32-byte" sentence is recorded in the requirements.
+        for &index in adaptive.positions(template) {
             let x = reader.signed_byte()?;
             let y = reader.signed_byte()?;
             if y > 0 || (y == 0 && x >= 0) {
@@ -285,15 +336,15 @@ pub(super) fn decode_skipping(
     let windows = WINDOWS[usize::from(positions.kind & 3)];
     // Adaptive pixels away from their nominal places are read one by one,
     // in place of the window bit there.
-    let mut moved = [(0u32, 0i64, 0i64); 4];
+    let mut moved = [(0u32, (0i64, 0i64)); 16];
     let mut count = 0;
     let mut keep = u32::MAX;
     for ((bit, &at), &nominal) in (0u32..)
         .zip(&positions.positions[..positions.count])
         .zip(positions.nominal())
     {
-        if at != nominal && count < moved.len() {
-            moved[count] = (bit, i64::from(at.0), i64::from(at.1));
+        if at != nominal {
+            moved[count] = (bit, (i64::from(at.0), i64::from(at.1)));
             count += 1;
             keep &= !(1 << bit);
         }
@@ -338,7 +389,7 @@ pub(super) fn decode_skipping(
                     });
                 if !moved.is_empty() {
                     context &= keep;
-                    for &(bit, dx, dy) in moved {
+                    for &(bit, (dx, dy)) in moved {
                         let source: &[u8] = match usize::try_from(line + dy) {
                             Ok(source) if source == at => row,
                             Ok(source) => done.get(source * stride..).map_or(&[], |r| &r[..stride]),
@@ -442,7 +493,7 @@ mod tests {
             (state >> 16).to_le_bytes()[0]
         };
         for kind in 0..4u8 {
-            for moved in [None, Some(-5), Some(-1)] {
+            for moved in [None, Some(-5), Some(-1), Some(-7)] {
                 for prediction in [false, true] {
                     for (width, height) in [(37, 23), (8, 5), (130, 9)] {
                         let mut data: Vec<u8> = (0..600).map(|_| next().min(0xfe)).collect();
@@ -455,6 +506,16 @@ mod tests {
                         if moved == Some(-1) {
                             // Moved upwards too, beyond the windows.
                             template.positions[0] = (1, -3);
+                        }
+                        if moved == Some(-7) {
+                            // Exercise the complete bounded moved-pixel array,
+                            // independently of its window optimization.
+                            for (bit, position) in
+                                template.positions[..template.count].iter_mut().enumerate()
+                            {
+                                let bit = i32::try_from(bit).unwrap();
+                                *position = (-1 - bit % 4, -1 - bit / 4);
+                            }
                         }
                         let count = template.context_count();
                         let (mut a, mut b) = (

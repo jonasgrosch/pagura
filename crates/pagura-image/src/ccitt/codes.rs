@@ -259,6 +259,7 @@ pub(super) enum Mode {
     Pass,
     Horizontal,
     Vertical(i8),
+    Uncompressed,
 }
 /// The mode code a 7-bit prefix starts with, and its length (T.6 Table 1).
 /// Extension and invalid prefixes yield `None`.
@@ -310,15 +311,25 @@ pub(super) fn mode(bits: &mut Bits<'_>) -> Result<Mode> {
             (7, 2) => return Ok(Mode::Vertical(-3)),
             (7, 3) => return Ok(Mode::Vertical(3)),
             (7, 1) => {
-                return Err(Error::unsupported(
-                    crate::features::CCITT_EXTENSION,
-                    "CCITT extension mode is unsupported",
-                ));
+                extension(bits)?;
+                return Ok(Mode::Uncompressed);
             }
             _ => (),
         }
     }
     Err(bits.error("invalid CCITT two-dimensional mode"))
+}
+
+/// T.4 Table 4 / T.6 2.4.1.3 reserve every selector except 111.
+pub(super) fn extension(bits: &mut Bits<'_>) -> Result<()> {
+    let selector = (bits.bit()? << 2) | (bits.bit()? << 1) | bits.bit()?;
+    if selector != 7 {
+        return Err(Error::unsupported(
+            crate::features::CCITT_EXTENSION,
+            "undefined CCITT extension selector",
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

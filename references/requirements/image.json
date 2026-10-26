@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "image",
-  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions. Additional wrapper rules checked against the same local ISO text: 7.3.8.1 Table 5 and 8.9.7 Tables 91-92 permit an empty inline Filter array; 7.4.6 Table 11 fixes the encoded fax row width, and 8.9.5.1 Table 87 fixes the image sample grid. Mismatched fax widths use an explicit reported recovery rather than an ISO-defined correction.",
+  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116 remains pending; the JPX/paint registries record the subsequently reviewed baseline-container, colour-selection and ICC subsets and their remaining boundaries. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions. Additional wrapper rules checked against the same local ISO text: 7.3.8.1 Table 5 and 8.9.7 Tables 91-92 permit an empty inline Filter array; 7.4.6 Table 11 fixes the encoded fax row width, and 8.9.5.1 Table 87 fixes the image sample grid. Mismatched fax widths use an explicit reported recovery rather than an ISO-defined correction.",
   "requirements": [
     {
       "id": "image-samples",
@@ -192,9 +192,23 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura-image tests::independent_vectors"
+        "pagura-image tests::independent_vectors",
+        "image/jpeg-dnl-vector-deferred",
+        "image/jpeg-dnl-vector-same-height",
+        "image/jpeg-dnl-vector-redefined",
+        "image/jpeg-dnl-vector-progressive",
+        "image/jpeg-dnl-extension",
+        "image/jpeg-dnl-comment",
+        "image/jpeg-dnl-missing",
+        "image/jpeg-dnl-after-second-scan",
+        "image/jpeg-dnl-duplicate",
+        "image/inline-jpeg-dnl",
+        "pagura-image tests/jpeg_integration.rs::dnl_resolves_height_before_allocation_and_uses_exact_work_limits",
+        "pagura-image tests/jpeg_integration.rs::dnl_samples_reach_both_pdf_image_layouts",
+        "image/jpeg-dnl-restart",
+        "image/jpeg-dnl-lossless"
       ],
-      "gaps": "Lossless/hierarchical coding unsupported; nearest chroma expansion. Twelve-bit reduction is explicit reader policy; see image-jpeg-12bit.",
+      "gaps": "Arithmetic lossless/hierarchical coding unsupported; Huffman lossless is a separately reviewed compatibility extension (image-jpeg-lossless); nearest chroma expansion. Twelve-bit reduction is explicit reader policy; see image-jpeg-12bit.",
       "review": [
         {
           "locator": "7.4.8",
@@ -225,11 +239,17 @@
           "status": "pending primary-text review",
           "behaviour": "Exact APP14 marker rules and four-component JPEG conventions.",
           "evidence": "Synthetic independently written Python encoder and calculated pixels; no external differential run or externally sourced known-answer data in this change."
+        },
+        {
+          "standard": "ITU-T T.81 (1992) / ISO/IEC 10918-1",
+          "status": "DNL primary review; 20cf hosted acceptance passed; performance-base integration awaits fresh gates",
+          "behaviour": "B.2.5/Table B.10 and E.2.4 define/redefine Y at the end of the first scan, after complete MCU rows; DNL is required for SOF Y=0. B.1.1.4 permits marker-segment extension bytes.",
+          "evidence": "Four baseline/progressive subjects retain the exact 128-valued oracle and PDF bytes from diagnostic 9e97615f228fb3f5cb0ea76f14ddf20872659a51, run 40368464986. MuPDF passes all four and the unchanged JPEG/RGB pairs. Shared bounded entropy framing resolves height before allocation; malformed positions/counts and 81/80-operation and 64/63-pixel controls are independent of product output. Merging performance base 9f9801a754203009a314644ba22afbfdc4f3e58b retains sequential sample planes without coefficient overcharging: admission is 128 + 8*(6*sizeof(i16)+sizeof((usize,u8,u8))) bytes, 352 on a 64-bit host, with a one-short refusal. The DCT row allowance is conservative for grayscale; lossless scalar word output still needs exactly 100/99 bytes and 60/59 operations."
         }
       ],
       "choices": [
         "Nearest-neighbour chroma expansion and one-level IDCT oracle tolerance are implementation choices, not ISO-verified JPEG accuracy claims.",
-        "For twelve-bit JPEG, native samples are rounded and clamped before discarding the four low bits; the colour transform operates on byte samples. PDF BitsPerComponent remains 8."
+        "For twelve-bit JPEG, reconstruct and clamp native samples, apply colour conversion at native precision, then scale the full 0..4095 range once to bytes; PDF BitsPerComponent remains 8. See image-jpeg-12bit for this reader policy."
       ],
       "verdict": "ISO wrapper rules agree; T.81 padding/framing reviewed; other JPEG and Adobe-specific rules remain pending."
     },
@@ -245,7 +265,7 @@
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; XObject and inline decoding now forward these diagnostics through Document::report.",
+      "gaps": "Undefined extension selectors remain Unsupported. Defined uncompressed mode is integrated with the existing run/row owners; the new controls await hosted acceptance. Damaged-row recovery remains reported through the existing diagnostics path.",
       "review": [
         {
           "locator": "7.4.6",
@@ -284,12 +304,18 @@
           "status": "partial primary-text review",
           "behaviour": "T.6 2.4.1.1-2 reviewed for EOFB and pad placement. Group 4 mode tables and changing-element algorithms remain pending primary-text review.",
           "evidence": "Synthetic Python fax encoder with directly constructed bitmap expectations; no external differential run or externally sourced known-answer data in this change."
+        },
+        {
+          "standard": "ITU-T T.4 (07/2003)4.2.1.3.3/Table4 notes2-4/Table 5 and T.6 (11/1988)2.3.1/Table4/2.4.1.3",
+          "status": "reviewed for defined uncompressed mode",
+          "behaviour": "Literal words, exit colours, the 1-D entrance suffix restriction and T.6 continuation across row boundaries. Unknown extension selectors remain explicit.",
+          "evidence": "image-ccitt-uncompressed has literal bitstrings and independently stated pixels, including row framing, polarity and resource refusals."
         }
       ],
       "choices": [
         "Count the damaged-row tolerance across the image; keep the standalone decoder strict and expose substitutions only through decode_with_diagnostics."
       ],
-      "verdict": "ISO parameter and row substitution rules agree; EOFB padding reviewed against T.6; other fax algorithms remain pending."
+      "verdict": "PDF parameters and reported substitution remain in their existing owner; defined uncompressed mode now has primary-derived controls and pending hosted acceptance."
     },
     {
       "id": "image-limits",
@@ -362,7 +388,8 @@
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors",
-        "pagura-image pdf_tests::alpha_precision_premultiplication_and_live_storage_are_preserved"
+        "pagura-image pdf_tests::alpha_precision_premultiplication_and_live_storage_are_preserved",
+        "pagura-image tests/jpx_integration.rs::main_header_markers_and_jpxb_requirements_preserve_public_samples"
       ],
       "review": [
         {
@@ -399,9 +426,9 @@
         },
         {
           "locator": "7.4.9",
-          "rule": "Enumerated CMYK is supported, CIEJab is excluded, and unsupported embedded colour descriptions fall back by ordinary channel count.",
+          "rule": "Enumerated CMYK is supported and CIEJab is excluded. Without PDF ColorSpace, try ranked supported colour specifications before ordinary-channel unsigned device fallback; do not assign an undefined signed device fallback.",
           "verdict": "agree at metadata boundary",
-          "evidence": "jpx-container-colour-12/18/19 exercise CMYK, retained sYCC with device fallback and rejected CIEJab.",
+          "evidence": "jpx-container-colour-12/18/19 and paint_jpx_integration candidate/signed controls distinguish conversion support, malformed metadata and fallback exhaustion.",
           "implementation_agreement": "agree at metadata boundary",
           "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
         }
@@ -409,16 +436,16 @@
       "external_primary_text_review": [
         {
           "standard": "ISO/IEC 15444-1 / ISO/IEC 15444-2 / ICC specifications",
-          "status": "pending primary-text review",
-          "behaviour": "T.800 B.2, G.4 and I.5.3.6 reviewed at the PDF adapter boundary for placement/channel classification. Part 2 (T.801) colour ranking, ICC semantics and other coding algorithms remain pending in this registry; see the separate codec registry for its review.",
-          "evidence": "Integrated independently authored Python JPEG 2000 encoder, direct sample expectations and PDF wrappers; no external differential run in this change."
+          "status": "reviewed PDF colour/layout subset; broader Part 2 remains open",
+          "behaviour": "T.800 B.2, G.4, I.3.3 and I.5.3.3/I.5.3.6 cover placement, JP2 selection, signed restricted-TRC normalization and channel classification. T.801 M.11.7.2/Table M.23 covers ranked JPX colour candidates; the separate JPX/paint registries record the reviewed selection/ICC subset and remaining extensions.",
+          "evidence": "Independent JPX metadata/sample, colour-profile, palette/opacity, cache and native-size pixel controls; exact source/run/baseline evidence is retained in benchmarks/probes/README.md."
         }
       ],
-      "gaps": "JPX Part 2 colour ranking and fallback among multiple colour specifications need a decoder API exposing all candidates; current JP2 API returns only its authoritative first specification (T.800 I.3.3). Embedded ICC and sYCC interpretation is retained for painting; renderer support remains outside this crate. Precision above 16 bits remains unsupported.",
+      "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable. General signed Lab/LUT combinations remain outside the restricted-TRC clipping rule.",
       "choices": [
         "Preserve embedded colour profiles and non-device enumerated spaces for painting; mixed sample precision uses a zero common-precision sentinel with per-component accessors."
       ],
-      "verdict": "Dictionary colour overrides, JP2 enumerated/ICC metadata, ignored opacity, straight/premultiplied alpha and reference-grid placement exercised; JPX Part 2 ranking remains pending."
+      "verdict": "Dictionary colour overrides, ranked JPX candidates, supported-profile fallback, sYCC/ICC metadata, signed restricted-TRC biases, ignored opacity, straight/premultiplied alpha, Indexed/palette channels and reference-grid placement are covered by the shared decoder and independent PDF controls."
     },
     {
       "id": "image-length-repairs",
@@ -754,7 +781,7 @@
         "pagura-image dct::tests::arithmetic_and_twelve_bit_mutations_remain_bounded",
         "pagura-image dct::tests::arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget"
       ],
-      "gaps": "Lossless and hierarchical JPEG remain unsupported; T.83 compliance vectors are not included.",
+      "gaps": "Arithmetic lossless and hierarchical JPEG remain unsupported; non-hierarchical Huffman lossless is covered by image-jpeg-lossless. T.83 compliance vectors are not included.",
       "review": [
         {
           "locator": "T.81 B.2.4.3/Table B.6; T.81 D.1-D.3/Table D.3; T.81 F.1.4/F.2.4; T.81 G.1.3/G.2",
@@ -786,7 +813,7 @@
         "pagura-image dct::tests::twelve_bit_native_buffers_are_admitted_before_allocation",
         "pagura-image dct::transform::tests::eight_bit_colour_transform_keeps_byte_rounding"
       ],
-      "gaps": "Lossless and hierarchical JPEG remain unsupported; T.83 compliance vectors are not included.",
+      "gaps": "Arithmetic lossless and hierarchical JPEG remain unsupported; non-hierarchical Huffman lossless is covered by image-jpeg-lossless. T.83 compliance vectors are not included.",
       "review": [
         {
           "locator": "7.4.8; T.81 A.3.1-A.3.4; T.81 B.2.2/Table B.2; T.81 F.1.1.4/F.1.2.1; T.81 G.2",
@@ -806,6 +833,241 @@
         }
       ],
       "verdict": "Implemented at the JPEG and PDF image adapter boundary."
+    },
+    {
+      "id": "image-jpeg-lossless",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.8",
+        "T.81 B.2.2/Table B.2",
+        "T.81 B.2.3/Table B.3",
+        "T.81 H.1.1-H.1.2.3",
+        "T.81 H.2"
+      ],
+      "status": "Huffman non-hierarchical process implemented; hosted acceptance passed at c50727d340db1236c98eb769e002771d680e790a",
+      "tests": [
+        "image/jpeg-lossless-vector-precision-2",
+        "image/jpeg-lossless-vector-precision-3",
+        "image/jpeg-lossless-vector-precision-4",
+        "image/jpeg-lossless-vector-precision-5",
+        "image/jpeg-lossless-vector-precision-6",
+        "image/jpeg-lossless-vector-precision-7",
+        "image/jpeg-lossless-vector-precision-8",
+        "image/jpeg-lossless-vector-precision-9",
+        "image/jpeg-lossless-vector-precision-10",
+        "image/jpeg-lossless-vector-precision-11",
+        "image/jpeg-lossless-vector-precision-12",
+        "image/jpeg-lossless-vector-precision-13",
+        "image/jpeg-lossless-vector-precision-14",
+        "image/jpeg-lossless-vector-precision-15",
+        "image/jpeg-lossless-vector-precision-16",
+        "image/jpeg-lossless-vector-predictor-1-8",
+        "image/jpeg-lossless-vector-predictor-2-8",
+        "image/jpeg-lossless-vector-predictor-3-8",
+        "image/jpeg-lossless-vector-predictor-4-8",
+        "image/jpeg-lossless-vector-predictor-5-8",
+        "image/jpeg-lossless-vector-predictor-6-8",
+        "image/jpeg-lossless-vector-predictor-7-8",
+        "image/jpeg-lossless-vector-predictor-1-16",
+        "image/jpeg-lossless-vector-predictor-2-16",
+        "image/jpeg-lossless-vector-predictor-3-16",
+        "image/jpeg-lossless-vector-predictor-4-16",
+        "image/jpeg-lossless-vector-predictor-5-16",
+        "image/jpeg-lossless-vector-predictor-6-16",
+        "image/jpeg-lossless-vector-predictor-7-16",
+        "image/jpeg-lossless-vector-point-2",
+        "image/jpeg-lossless-vector-point-8",
+        "image/jpeg-lossless-vector-point-16",
+        "image/jpeg-lossless-vector-restart",
+        "image/jpeg-lossless-vector-rgb-planar",
+        "image/jpeg-lossless-vector-cmyk-planar",
+        "image/jpeg-lossless-vector-subsampled",
+        "image/jpeg-lossless-vector-fractional",
+        "image/jpeg-lossless-vector-subsampled-planar",
+        "image/jpeg-lossless-vector-ycbcr",
+        "image/jpeg-lossless-vector-ycck",
+        "image/jpeg-lossless-vector-adobe-rgb",
+        "image/jpeg-lossless-vector-adobe-ycbcr",
+        "image/jpeg-lossless-vector-16bit-ycck",
+        "image/jpeg-lossless-known-category16",
+        "image/jpeg-lossless-known-negative-half",
+        "image/jpeg-lossless-known-overflow",
+        "image/jpeg-lossless-bad-precision-low",
+        "image/jpeg-lossless-bad-precision-high",
+        "image/jpeg-lossless-bad-quantizer",
+        "image/jpeg-lossless-bad-predictor-zero",
+        "image/jpeg-lossless-bad-predictor-eight",
+        "image/jpeg-lossless-bad-spectral-end",
+        "image/jpeg-lossless-bad-approximation-high",
+        "image/jpeg-lossless-bad-point-range",
+        "image/jpeg-lossless-bad-ac-selector",
+        "image/jpeg-lossless-bad-missing-table",
+        "image/jpeg-lossless-bad-category",
+        "image/jpeg-lossless-bad-sample-range",
+        "image/jpeg-lossless-bad-missing-scan",
+        "image/jpeg-lossless-bad-missing-huffman",
+        "image/jpeg-lossless-bad-duplicate-scan",
+        "image/jpeg-lossless-bad-truncated-entropy",
+        "image/jpeg-lossless-bad-restart-row",
+        "image/jpeg-lossless-bad-restart-sequence",
+        "image/jpeg-lossless-arithmetic-boundary",
+        "image/jpeg-lossless-hierarchical-boundary",
+        "image/jpeg-lossless-huffman-gray",
+        "image/jpeg-lossless-huffman-gray-rgb-control",
+        "image/jpeg-lossless-huffman-restart",
+        "image/jpeg-lossless-huffman-restart-rgb-control",
+        "image/jpeg-lossless-huffman-rgb",
+        "image/jpeg-lossless-huffman-rgb-rgb-control",
+        "image/jpeg-lossless-huffman-16bit",
+        "image/jpeg-lossless-huffman-16bit-rgb-control",
+        "image/jpeg-lossless-huffman-16bit-point",
+        "image/jpeg-lossless-huffman-16bit-point-rgb-control",
+        "image/jpeg-lossless-huffman-half-predictor",
+        "image/jpeg-lossless-huffman-half-predictor-rgb-control",
+        "image/jpeg-lossless-huffman-rgb-planar",
+        "image/jpeg-lossless-huffman-rgb-planar-rgb-control",
+        "image/jpeg-lossless-huffman-rgb-subsampled",
+        "image/jpeg-lossless-huffman-rgb-subsampled-rgb-control",
+        "image/jpeg-lossless-huffman-rgb-fractional",
+        "image/jpeg-lossless-huffman-rgb-fractional-rgb-control",
+        "image/jpeg-lossless-huffman-2bit-point",
+        "image/jpeg-lossless-huffman-2bit-point-rgb-control",
+        "image/jpeg-lossless-huffman-12bit",
+        "image/jpeg-lossless-huffman-12bit-rgb-control",
+        "image/jpeg-lossless-huffman-ycbcr",
+        "image/jpeg-lossless-huffman-ycbcr-rgb-control"
+      ],
+      "gaps": "Arithmetic lossless and hierarchical processes remain explicit compatibility boundaries. Shared frame/scan handling implements DNL before allocation; 20cf hosted acceptance passed, while the performance-base integration awaits fresh gates. Lossless JPEG is a compatibility extension beyond PDF 7.4.8 required baseline/progressive byte processes. Pinned PDFium accepts the three diagnostic 8-bit Huffman controls; no tested baseline passes the two 16-bit or five arithmetic subjects. Poppler paired controls fail, so its subjects remain unadjudicated. See benchmarks/probes/README.md for exact diagnostic source/run/artifact identities.",
+      "review": [
+        {
+          "locator": "T.81 H.1.1, H.1.2/Table H.1-H.3 and H.2",
+          "rule": "Lossless coding predicts unsigned 2\u201316-bit samples without a level shift, encodes modulo-65536 differences, and restores a point transform. Scan/restart starts use the reduced-precision midpoint. Row starts and first rows select their boundary predictors; other positions use the declared predictor with full intermediate integer precision and arithmetic half-difference shifts. Huffman category16 has no appended magnitude bits; arithmetic contexts use differences above and left and reset at scan/restart boundaries.",
+          "verdict": "The existing frame/Huffman/scan/output owners now handle lossless Huffman precision 2 through 16, all predictors, point transforms, interleaved and separate scans, four table selectors and integer/fractional sampling. Independent original grids cover every precision and predictor; literal codewords separately pin category16 without appended bits, negative arithmetic half-shifts and overflowing predictions. Malformed process fields, missing/duplicate scans, invalid difference categories and out-of-range samples are Syntax; storage/work/pixel limits and every truncated prefix are bounded. Arithmetic lossless remains an explicit compatibility boundary."
+        },
+        {
+          "locator": "T.81 A.1.2-A.1.3, A.2.4, B.2.2/Table B.2, B.2.3/Table B.3, H.1.1",
+          "rule": "Lossless data units are individual samples. The component sampling ratios determine its sample grid; interleaved partial MCUs carry padding samples, which output crops. Tq and AC selector are zero, Ss selects predictor1-7, Se and Ah are zero, and Pt is smaller than sample precision. Restart intervals span whole MCU rows.",
+          "verdict": "Independent planar/interleaved, cropped 2x2 and fractional 3:2:1 layouts, restart and distinct-table controls exercise the same container/scan owners as DCT images."
+        }
+      ],
+      "choices": [
+        {
+          "choice": "Map the restored native unsigned sample range to bytes with one full-range rounding after any colour transform; retain the encoded sample grid as the independent oracle.",
+          "reason": "PDF 7.4.8 specifies byte components and baseline/progressive JPEG without prescribing lossless/high-precision adaptation. This is the same declared normalization policy as twelve-bit DCT, not a normative PDF requirement. Independent full-page controls and public ImageSource/native/WASI/browser paths must validate it."
+        }
+      ]
+    },
+    {
+      "id": "image-ccitt-uncompressed",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.6/Table11",
+        "T.4 (07/2003)4.2.1.3.3, Table4 notes2-4, Table 5",
+        "T.6 (11/1988)2.3.1/Table4,2.4.1.3"
+      ],
+      "status": "Implemented; full three-OS, native/WASI/browser and 260-control hosted acceptance passed at 6e87a6030ae206322aa813388b41e18363d5af81; exact reports are in benchmarks/probes/README.md.",
+      "tests": [
+        "pagura-image tests::independent_vectors",
+        "pagura-image bitonal_integration::bitonal_extensions_reach_the_pdf_image_api",
+        "pagura-image bitonal_integration::uncompressed_continuation_obeys_exact_work_and_live_storage_limits",
+        "tools/host_test.mjs"
+      ],
+      "vector_ids": [
+        "image/fax-uncompressed-word-0-0",
+        "image/fax-uncompressed-word-0-1",
+        "image/fax-uncompressed-word-0-2",
+        "image/fax-uncompressed-word-0-3",
+        "image/fax-uncompressed-word-0-4",
+        "image/fax-uncompressed-word-0-5",
+        "image/fax-uncompressed-exit-0-0-0",
+        "image/fax-uncompressed-exit-0-0-1",
+        "image/fax-uncompressed-exit-0-1-0",
+        "image/fax-uncompressed-exit-0-1-1",
+        "image/fax-uncompressed-exit-0-2-0",
+        "image/fax-uncompressed-exit-0-2-1",
+        "image/fax-uncompressed-exit-0-3-0",
+        "image/fax-uncompressed-exit-0-3-1",
+        "image/fax-uncompressed-exit-0-4-0",
+        "image/fax-uncompressed-exit-0-4-1",
+        "image/fax-uncompressed-word--1-0",
+        "image/fax-uncompressed-word--1-1",
+        "image/fax-uncompressed-word--1-2",
+        "image/fax-uncompressed-word--1-3",
+        "image/fax-uncompressed-word--1-4",
+        "image/fax-uncompressed-word--1-5",
+        "image/fax-uncompressed-exit--1-0-0",
+        "image/fax-uncompressed-exit--1-0-1",
+        "image/fax-uncompressed-exit--1-1-0",
+        "image/fax-uncompressed-exit--1-1-1",
+        "image/fax-uncompressed-exit--1-2-0",
+        "image/fax-uncompressed-exit--1-2-1",
+        "image/fax-uncompressed-exit--1-3-0",
+        "image/fax-uncompressed-exit--1-3-1",
+        "image/fax-uncompressed-exit--1-4-0",
+        "image/fax-uncompressed-exit--1-4-1",
+        "image/fax-uncompressed-continuation-1",
+        "image/fax-uncompressed-continuation-2",
+        "image/fax-uncompressed-continuation-3",
+        "image/fax-uncompressed-continuation-5",
+        "image/fax-uncompressed-continuation-7",
+        "image/fax-uncompressed-black-is-one",
+        "image/fax-uncompressed-no-eob-0",
+        "image/fax-uncompressed-no-eob-20",
+        "image/fax-uncompressed-aligned-0",
+        "image/fax-uncompressed-aligned--1",
+        "image/fax-uncompressed-resume-vertical",
+        "image/fax-uncompressed-resume-pass",
+        "image/fax-uncompressed-mixed",
+        "image/fax-uncompressed-undefined-0-0",
+        "image/fax-uncompressed-undefined-0-1",
+        "image/fax-uncompressed-undefined-0-2",
+        "image/fax-uncompressed-undefined-0-3",
+        "image/fax-uncompressed-undefined-0-4",
+        "image/fax-uncompressed-undefined-0-5",
+        "image/fax-uncompressed-undefined-0-6",
+        "image/fax-uncompressed-undefined--1-0",
+        "image/fax-uncompressed-undefined--1-1",
+        "image/fax-uncompressed-undefined--1-2",
+        "image/fax-uncompressed-undefined--1-3",
+        "image/fax-uncompressed-undefined--1-4",
+        "image/fax-uncompressed-undefined--1-5",
+        "image/fax-uncompressed-undefined--1-6",
+        "image/fax-uncompressed-invalid-word",
+        "image/fax-uncompressed-missing-exit",
+        "image/fax-uncompressed-forbidden-1d-prefix",
+        "image/fax-uncompressed-crosses-framed-g3",
+        "image/fax-uncompressed-crosses-framed-aligned",
+        "image/fax-uncompressed-crosses-framed-eol",
+        "image/ccitt-uncompressed-exit-0-4-1",
+        "image/ccitt-uncompressed-exit-0-4-1-rgb-control",
+        "image/ccitt-uncompressed-continuation-3",
+        "image/ccitt-uncompressed-continuation-3-rgb-control",
+        "image/ccitt-uncompressed-resume-vertical",
+        "image/ccitt-uncompressed-resume-vertical-rgb-control",
+        "image/ccitt-uncompressed-resume-pass",
+        "image/ccitt-uncompressed-resume-pass-rgb-control",
+        "image/ccitt-uncompressed-mixed",
+        "image/ccitt-uncompressed-mixed-rgb-control"
+      ],
+      "gaps": "Hosted acceptance of this extension batch is pending. Selectors 0..6 have no defined T.4/T.6 coding and remain Unsupported. This does not enable T.88-forbidden uncompressed coding in JBIG2 MMR.",
+      "review": [
+        {
+          "locator": "T.4 Table 5; T.6 Table4",
+          "rule": "Selector 111 enters raw coding. Literal words represent zero through four white pixels followed by black, or five white pixels. Exit words append zero through four white pixels and specify the following run colour.",
+          "verdict": "Literal codeword/pixel pairs exercise both entrances, every word and both exit colours. Resumed horizontal, vertical and pass coding uses the existing row transitions and reference line."
+        },
+        {
+          "locator": "T.6 2.3.1; ISO32000-2 Table11",
+          "rule": "An uncompressed pattern can span several unbroken T.6 rows. Output rows remain independently byte padded; row counts, EOFB, polarity and resource limits retain their PDF meaning. A literal cannot be interrupted by an encoded line marker or byte fill.",
+          "verdict": "Widths 1, 2, 3, 5 and 7 force within-word continuation; native pixel subjects and matched RGB controls cover rendering. Framed rows require the raw mode exit before their framing; malformed crossings are Syntax. No second sample plane is allocated."
+        },
+        {
+          "locator": "T.4 Table4 note4",
+          "rule": "The 1-D uncompressed entrance cannot immediately follow a codeword ending in 000.",
+          "verdict": "The parser rejects this EOL ambiguity; literal independent controls pin the refusal."
+        }
+      ],
+      "resource_contract": "The width-one twenty-row vector charges 45 bit/lookahead operations:10 entrance+21 literal-code bits+8 exit+6 initial optional-EOL lookahead. Live decoded storage is6*sizeof(usize)+21 bytes for the two transition lists, spare row and twenty output rows; the exact boundary succeeds and one-short work/storage/pixels/input bounds refuse. Expected pixels and bounds are not inferred from engine output."
     }
   ]
 }

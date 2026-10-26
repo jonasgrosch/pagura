@@ -246,7 +246,7 @@ def cases():
     yield from usage_cases()
 
 
-def cie_rgb(family, values, white=(.96422, 1, .82521), gamma: float = 1, ranges=(-100,100,-100,100), matrix=(1,0,0,0,1,0,0,0,1)):
+def cie_rgb(family, values, white=(.96422, 1, .82521), gamma: float = 1, ranges=(-100,100,-100,100), matrix=(1,0,0,0,1,0,0,0,1), lightness=(0,100)):
     """Independent XYZ -> Bradford-adapted sRGB oracle; inverse matrices are solved.
 
     sRGB primaries and D65 determine the XYZ matrix. Gaussian elimination derives
@@ -273,8 +273,8 @@ def cie_rgb(family, values, white=(.96422, 1, .82521), gamma: float = 1, ranges=
     elif family=='CalGray':
         xyz=[w*min(1,max(0,values[0]))**gamma for w in white]
     else:
-        lightness=min(100,max(0,values[0]));a=min(ranges[1],max(ranges[0],values[1]));b=min(ranges[3],max(ranges[2],values[2]))
-        m=(lightness+16)/116
+        level=min(lightness[1],max(lightness[0],values[0]));a=min(ranges[1],max(ranges[0],values[1]));b=min(ranges[3],max(ranges[2],values[2]))
+        m=(level+16)/116
         def f(t): return t**3 if t>=6/29 else 3*(6/29)**2*(t-4/29)
         xyz=[white[0]*f(m+a/500),f(m),white[2]*f(m-b/200)]
     bradford=[[.8951,.2664,-.1614],[-.7502,1.7135,.0367],[.0389,-.0685,1.0296]]

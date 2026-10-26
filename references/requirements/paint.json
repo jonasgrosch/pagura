@@ -225,12 +225,17 @@
         "paint/image-depth-8",
         "paint/image-depth-16"
       ],
-      "gaps": "Higher-precision sYCC, Lab-input embedded ICC and unsupported enumerated JPX colour descriptions remain explicit boundaries; see paint-jpx-icc and paint-jpx-sycc.",
+      "gaps": "JPX 1\u201316-bit sYCC, physical ICC Lab input and unsigned D50 enumerated CIELab use the existing sample/colour owners. Precision above 16 bits and unavailable colour definitions remain explicit boundaries; see paint-jpx-icc, paint-jpx-sycc and jpx-pdf-contract for their distinct encoding rules and pending acceptance.",
       "review": [
         {
           "locator": "8.9.3; 8.9.5.2; Table 88",
           "rule": "Unsigned sample endpoints map through Decode before colour conversion; Indexed defaults to the full integer sample range. Existing colour spaces perform component interpretation.",
           "verdict": "verified against local primary text; device policy identified explicitly"
+        },
+        {
+          "locator": "7.4.9; T.801 M.11.7.4.1/M-18; T.800 I.7.4/I-5",
+          "rule": "Enumerated CIELab maps each unsigned post-palette code through its declared physical interval. Undo sample premultiplication before the range mapping; the selected Lab model supplies the same ranges to image Decode. Ordinary PDF Lab still fixes L to 0\u2013100.",
+          "verdict": "source reviewed; low-precision, extended-lightness and alpha controls independently authored; hosted acceptance pending"
         }
       ]
     },
@@ -672,7 +677,7 @@
         "8.6.5.5",
         "11.6.5.2"
       ],
-      "status": "partial",
+      "status": "implemented; hosted verification pending",
       "tests": [
         "paint/image-jpx-icc-explicit",
         "paint_jpx/gray-linear",
@@ -684,16 +689,103 @@
         "paint_jpx/premultiplied-alpha",
         "paint_jpx/truncated-profile",
         "paint_jpx/profile-channel-mismatch",
-        "pagura-interpret resources::colorspace::tests::embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets"
+        "pagura-interpret resources::colorspace::tests::embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets",
+        "paint_jpx_native/gray-linear",
+        "paint_jpx_native/rgb-linear",
+        "paint_jpx_native/pdf-override",
+        "paint_jpx_native/ignores-pdf-decode-default",
+        "paint_jpx_native/future-profile-fallback",
+        "paint_jpx_native/straight-alpha",
+        "paint_jpx_native/premultiplied-alpha",
+        "paint_jpx_rgb/gray-linear",
+        "paint_jpx_rgb/rgb-linear",
+        "paint_jpx_rgb/pdf-override",
+        "paint_jpx_rgb/ignores-pdf-decode-default",
+        "paint_jpx_rgb/future-profile-fallback",
+        "paint_jpx_rgb/straight-alpha",
+        "paint_jpx_rgb/premultiplied-alpha",
+        "paint_jpx_rgb/gray-linear-native",
+        "paint_jpx_rgb/rgb-linear-native",
+        "paint_jpx_rgb/pdf-override-native",
+        "paint_jpx_rgb/ignores-pdf-decode-default-native",
+        "paint_jpx_rgb/future-profile-fallback-native",
+        "paint_jpx_rgb/straight-alpha-native",
+        "paint_jpx_rgb/premultiplied-alpha-native",
+        "paint_jpx_integration/precedence-signed",
+        "paint_jpx_integration/approximation-quality",
+        "paint_jpx_integration/future-then-supported",
+        "paint_jpx_integration/jp2-future-then-supported",
+        "paint_jpx_integration/vendor-then-supported",
+        "paint_jpx_integration/stable-equal-priority",
+        "paint_jpx_integration/all-profiles-unavailable",
+        "paint_jpx_integration/embedded-enumeration-ignores-default",
+        "paint_jpx_integration/selected-transform-relative",
+        "paint_jpx_integration/selected-transform-perceptual",
+        "paint_jpx_integration/inherited-intent-cache",
+        "paint_jpx_integration/malformed-selected-profile",
+        "paint_jpx_integration/invalid-jpx-approximation",
+        "paint_jpx_integration/explicit-overrides-all-candidates",
+        "paint_jpx_integration/lab-input-8",
+        "paint_jpx_integration/lab-input-16",
+        "paint_jpx_integration/lab-alpha-1",
+        "paint_jpx_integration/lab-alpha-2",
+        "paint_jpx_integration/premultiplied-inverted-decode",
+        "paint_jpx_integration/signed-icc-sample-boundary",
+        "paint_jpx_integration/signed-trc-gray-8",
+        "paint_jpx_integration/signed-trc-gray-8-unsigned-control",
+        "paint_jpx_integration/signed-trc-gray-8-rgb-control",
+        "paint_jpx_integration/signed-trc-rgb-8",
+        "paint_jpx_integration/signed-trc-rgb-8-unsigned-control",
+        "paint_jpx_integration/signed-trc-rgb-8-rgb-control",
+        "paint_jpx_integration/signed-trc-gray-16",
+        "paint_jpx_integration/signed-trc-gray-16-unsigned-control",
+        "paint_jpx_integration/signed-trc-gray-16-rgb-control",
+        "paint_jpx_integration/signed-trc-rgb-16",
+        "paint_jpx_integration/signed-trc-rgb-16-unsigned-control",
+        "paint_jpx_integration/signed-trc-rgb-16-rgb-control",
+        "paint_jpx_integration/signed-trc-mixed-alpha-0",
+        "paint_jpx_integration/signed-trc-mixed-alpha-1",
+        "paint_jpx_integration/signed-trc-mixed-alpha-2",
+        "paint_jpx_integration/signed-trc-candidate-fallback",
+        "paint_jpx_integration/signed-trc-no-device-fallback",
+        "paint_jpx_integration/any-icc-precedence-signed",
+        "paint_jpx_integration/any-icc-precedence-signed-codec-control",
+        "paint_jpx_integration/any-icc-precedence-signed-rgb-control",
+        "paint_jpx_integration/any-icc-approximation-quality",
+        "paint_jpx_integration/any-icc-approximation-quality-codec-control",
+        "paint_jpx_integration/any-icc-approximation-quality-rgb-control",
+        "paint_jpx_integration/any-icc-stable-equal-priority",
+        "paint_jpx_integration/any-icc-stable-equal-priority-codec-control",
+        "paint_jpx_integration/any-icc-stable-equal-priority-rgb-control"
       ],
       "review": [
         {
           "locator": "7.4.9; Table 87; T.800 I.5.3.3; ICC.1:2010 7.2\u20137.4 and 8.2",
           "rule": "Use the embedded profile when PDF ColorSpace is absent; ignore Decode in that case. Explicit PDF colour takes precedence. The existing ICC parser and forward converters handle profile syntax, budgets and colourimetry.",
           "verdict": "Primary clauses reviewed; independent linear-profile pixel oracles authored; hosted execution pending."
+        },
+        {
+          "locator": "ISO 32000-2 7.4.9; T.801 M.11.7.2 and Table M.23; ICC.1:2010 6.3.4 and 10.10",
+          "rule": "Preserve ranked colour choices; skip unsupported profiles and selected transforms, retain malformed/limit errors, and use ordinary-channel device fallback only after exhausting candidates. Decode Lab input across physical Lab ranges after undoing stored-sample premultiplication. Cache candidates separately and respect inherited/image rendering intent.",
+          "verdict": "Primary clauses reviewed; authored sample, pixel, cache and budget controls; runtime checks pending hosted CI."
+        },
+        {
+          "locator": "T.800 (06/2019) I.5.3.6, Table I.16, equation I-5; ISO 32000-2 EC3 Table 87 SMaskInData and 8.9.5.2; ICC.1:2010 6.3.4",
+          "rule": "Equation I-5 associates the stored sample, so recover the original sample before the Decode linear mapping or ICC Lab input range mapping. Explicit PDF Indexed first selects the preblended base colour. A zero-opacity sample contributes no colour.",
+          "verdict": "Independent order-sensitive controls retain their authored expectations: stored gray 64 with alpha 128 maps through Decode [1 0] to gray 1/2; stored Lab components 64 with alpha 128 map to L=50, a=-0.5, b=-0.5. Both product and independent reference must meet the fixed pixel oracle; changing both implementations cannot redefine it."
+        },
+        {
+          "locator": "T.800 (06/2019) I.5.3.3 and Table I.9; ICC.1:2010 input/display Gray and RGB matrix/TRC profile models",
+          "rule": "For the restricted XYZ matrix/TRC subset, map the original signed integer using the full component-precision denominator and clip negative inputs to the TRC input limit. Do not add an unsigned colour offset or normalize to the positive signed maximum.",
+          "verdict": "Independent native-size Gray/RGB controls at 8 and 16 bits have identical-profile unsigned JPX and plain RGB counterparts. Mixed signed/unsigned palette precision, SMaskInData 0/1/2, restricted-candidate fallback and refusal of undefined signed device fallback add integration controls. The original general-signed boundary fixture now uses a valid full Lab profile, keeping its Unsupported expectation; no valid restricted-TRC case is mislabeled as invalid."
+        },
+        {
+          "locator": "T.801 M.11.7.1/.2 and Cor4 M.11.1/Table M.14",
+          "rule": "Both a Colour Group box and the JP2 Header default group forbid repeated METH1 or repeated METH2, while permitting multiple METH3/METH4 records. Representations describe related/equivalent colours; distinct methods alone do not establish equivalence.",
+          "verdict": "Three original repeated-METH2 ranking files (precedence-signed, approximation-quality, stable-equal-priority) retain exact bytes/oracles as annotated malformed-input observations. New any-icc counterparts use two METH3 records plus one low-precedence METH2 exact fallback. MinV1 and rreq declare Part1 feature5 and Any ICC feature44 in FUAM; DCM requires only feature5 because the restricted fallback produces the same intended colour. Each has an identical-codestream ordinary JP2 control and an independent RGB control. The three valid groups add nine render cases; no reader-feature grant or product change is needed, and hosted acceptance is pending."
         }
       ],
-      "gaps": "Lab-input profiles, ranking multiple JPX colour specifications and fallback after an unsupported selected transform remain open. sYCC has separate requirements. Full interaction/platform and competitor gates remain G01/R02 work."
+      "gaps": "General signed Lab/LUT and nonrestricted ICC combinations remain outside the T.800 Table I.9 restricted XYZ Gray/RGB matrix/TRC clipping rule; they remain Unsupported unless a later restricted candidate applies. Permitted JPX baseline colour definitions and restricted codestream transforms remain R03; PDF excludes CIEJab19. Scoped baseline observations do not establish family parity."
     },
     {
       "id": "paint-jpx-sycc",
@@ -704,7 +796,7 @@
         "F.16",
         "F.17"
       ],
-      "status": "partial",
+      "status": "implemented for decoded unsigned precisions; hosted verification pending",
       "tests": [
         "paint_jpx/sycc-neutral",
         "paint_jpx/sycc-chroma",
@@ -715,16 +807,121 @@
         "paint_jpx/sycc-premultiplied-alpha",
         "paint_jpx/sycc-16bit-boundary",
         "pagura-color tests/sycc.rs eight_bit_sycc_preserves_neutrals_and_decodes_chroma",
-        "paint_jpx/sycc-signed-invalid"
+        "paint_jpx/sycc-signed-invalid",
+        "paint_jpx/sycc-precision-1",
+        "paint_jpx/sycc-precision-2",
+        "paint_jpx/sycc-precision-3",
+        "paint_jpx/sycc-precision-4",
+        "paint_jpx/sycc-precision-5",
+        "paint_jpx/sycc-precision-6",
+        "paint_jpx/sycc-precision-7",
+        "paint_jpx/sycc-precision-8",
+        "paint_jpx/sycc-precision-9",
+        "paint_jpx/sycc-precision-10",
+        "paint_jpx/sycc-precision-11",
+        "paint_jpx/sycc-precision-12",
+        "paint_jpx/sycc-precision-13",
+        "paint_jpx/sycc-precision-14",
+        "paint_jpx/sycc-precision-15",
+        "paint_jpx/sycc-precision-16",
+        "paint_jpx/sycc-mixed-alpha-0",
+        "paint_jpx/sycc-mixed-alpha-1",
+        "paint_jpx/sycc-mixed-alpha-2",
+        "paint_jpx_native/sycc-neutral",
+        "paint_jpx_native/sycc-chroma",
+        "paint_jpx_native/sycc-gamut",
+        "paint_jpx_native/sycc-pdf-override",
+        "paint_jpx_native/sycc-ignores-decode-default",
+        "paint_jpx_native/sycc-straight-alpha",
+        "paint_jpx_native/sycc-premultiplied-alpha",
+        "paint_jpx_native/sycc-precision-1",
+        "paint_jpx_native/sycc-precision-2",
+        "paint_jpx_native/sycc-precision-3",
+        "paint_jpx_native/sycc-precision-4",
+        "paint_jpx_native/sycc-precision-5",
+        "paint_jpx_native/sycc-precision-6",
+        "paint_jpx_native/sycc-precision-7",
+        "paint_jpx_native/sycc-precision-8",
+        "paint_jpx_native/sycc-precision-9",
+        "paint_jpx_native/sycc-precision-10",
+        "paint_jpx_native/sycc-precision-11",
+        "paint_jpx_native/sycc-precision-12",
+        "paint_jpx_native/sycc-precision-13",
+        "paint_jpx_native/sycc-precision-14",
+        "paint_jpx_native/sycc-precision-15",
+        "paint_jpx_native/sycc-precision-16",
+        "paint_jpx_native/sycc-16bit-boundary",
+        "paint_jpx_native/sycc-mixed-alpha-0",
+        "paint_jpx_native/sycc-mixed-alpha-1",
+        "paint_jpx_native/sycc-mixed-alpha-2",
+        "paint_jpx_rgb/sycc-neutral",
+        "paint_jpx_rgb/sycc-chroma",
+        "paint_jpx_rgb/sycc-gamut",
+        "paint_jpx_rgb/sycc-pdf-override",
+        "paint_jpx_rgb/sycc-ignores-decode-default",
+        "paint_jpx_rgb/sycc-straight-alpha",
+        "paint_jpx_rgb/sycc-premultiplied-alpha",
+        "paint_jpx_rgb/sycc-precision-1",
+        "paint_jpx_rgb/sycc-precision-2",
+        "paint_jpx_rgb/sycc-precision-3",
+        "paint_jpx_rgb/sycc-precision-4",
+        "paint_jpx_rgb/sycc-precision-5",
+        "paint_jpx_rgb/sycc-precision-6",
+        "paint_jpx_rgb/sycc-precision-7",
+        "paint_jpx_rgb/sycc-precision-8",
+        "paint_jpx_rgb/sycc-precision-9",
+        "paint_jpx_rgb/sycc-precision-10",
+        "paint_jpx_rgb/sycc-precision-11",
+        "paint_jpx_rgb/sycc-precision-12",
+        "paint_jpx_rgb/sycc-precision-13",
+        "paint_jpx_rgb/sycc-precision-14",
+        "paint_jpx_rgb/sycc-precision-15",
+        "paint_jpx_rgb/sycc-precision-16",
+        "paint_jpx_rgb/sycc-16bit-boundary",
+        "paint_jpx_rgb/sycc-mixed-alpha-0",
+        "paint_jpx_rgb/sycc-mixed-alpha-1",
+        "paint_jpx_rgb/sycc-mixed-alpha-2",
+        "paint_jpx_rgb/sycc-neutral-native",
+        "paint_jpx_rgb/sycc-chroma-native",
+        "paint_jpx_rgb/sycc-gamut-native",
+        "paint_jpx_rgb/sycc-pdf-override-native",
+        "paint_jpx_rgb/sycc-ignores-decode-default-native",
+        "paint_jpx_rgb/sycc-straight-alpha-native",
+        "paint_jpx_rgb/sycc-premultiplied-alpha-native",
+        "paint_jpx_rgb/sycc-precision-1-native",
+        "paint_jpx_rgb/sycc-precision-2-native",
+        "paint_jpx_rgb/sycc-precision-3-native",
+        "paint_jpx_rgb/sycc-precision-4-native",
+        "paint_jpx_rgb/sycc-precision-5-native",
+        "paint_jpx_rgb/sycc-precision-6-native",
+        "paint_jpx_rgb/sycc-precision-7-native",
+        "paint_jpx_rgb/sycc-precision-8-native",
+        "paint_jpx_rgb/sycc-precision-9-native",
+        "paint_jpx_rgb/sycc-precision-10-native",
+        "paint_jpx_rgb/sycc-precision-11-native",
+        "paint_jpx_rgb/sycc-precision-12-native",
+        "paint_jpx_rgb/sycc-precision-13-native",
+        "paint_jpx_rgb/sycc-precision-14-native",
+        "paint_jpx_rgb/sycc-precision-15-native",
+        "paint_jpx_rgb/sycc-precision-16-native",
+        "paint_jpx_rgb/sycc-16bit-boundary-native",
+        "paint_jpx_rgb/sycc-mixed-alpha-0-native",
+        "paint_jpx_rgb/sycc-mixed-alpha-1-native",
+        "paint_jpx_rgb/sycc-mixed-alpha-2-native"
       ],
       "review": [
         {
           "locator": "IEC 61966-2-1:1999/AMD1:2003 F.4, equations F.15-F.17; T.800 I.5.3.3; ISO 32000-2 7.4.9 / Table 87",
           "rule": "For eight-bit unsigned sYCC, centre chroma on code 128 and convert to encoded sRGB using the Annex F inverse matrix. Clip to the destination gamut. Explicit PDF colour takes precedence; otherwise ignore Decode and device default replacements. Unassociate embedded premultiplied channels before colour conversion.",
           "verdict": "Primary equations checked in the publisher preview; independent rational pixel oracles and known byte examples authored. Hosted execution pending."
+        },
+        {
+          "locator": "T.800 I.5.3.3 and Table I.10; IEC 61966-2-1 AMD1 F.15\u2013F.17",
+          "rule": "Map each unsigned channel to the specified 0..255 colour domain independently of its bit precision, then apply the IEC inverse matrix.",
+          "verdict": "Reuses the audited PR182 unsigned 1\u201316 and mixed-precision primary-formula controls."
         }
       ],
-      "gaps": "Other precisions and mixed-precision sYCC remain Unsupported(xobject.jpx-color). Broader masks, groups, interpolation, platform and competitor acceptance remain G01/R02 work."
+      "gaps": "Samples above sixteen bits require the R03 decoder representation work. Signed sYCC is prohibited by T.800 Table I.10; it remains an explicit syntax error."
     },
     {
       "id": "paint-jpx-indexed-alpha",
@@ -735,23 +932,112 @@
         "11.6.5.2",
         "Table 87"
       ],
-      "status": "partial",
+      "status": "implemented; hosted verification pending",
       "tests": [
         "paint_jpx/indexed-alpha-0-last",
         "paint_jpx/indexed-alpha-0-first",
         "paint_jpx/indexed-alpha-1-last",
         "paint_jpx/indexed-alpha-1-first",
         "paint_jpx/indexed-alpha-2-last",
-        "paint_jpx/indexed-alpha-2-first"
+        "paint_jpx/indexed-alpha-2-first",
+        "paint_jpx_native/indexed-alpha-0-last",
+        "paint_jpx_native/indexed-alpha-0-first",
+        "paint_jpx_native/indexed-alpha-1-last",
+        "paint_jpx_native/indexed-alpha-1-first",
+        "paint_jpx_native/indexed-alpha-2-last",
+        "paint_jpx_native/indexed-alpha-2-first",
+        "paint_jpx_rgb/indexed-alpha-0-last",
+        "paint_jpx_rgb/indexed-alpha-0-first",
+        "paint_jpx_rgb/indexed-alpha-1-last",
+        "paint_jpx_rgb/indexed-alpha-1-first",
+        "paint_jpx_rgb/indexed-alpha-2-last",
+        "paint_jpx_rgb/indexed-alpha-2-first",
+        "paint_jpx_rgb/indexed-alpha-0-last-native",
+        "paint_jpx_rgb/indexed-alpha-0-first-native",
+        "paint_jpx_rgb/indexed-alpha-1-last-native",
+        "paint_jpx_rgb/indexed-alpha-1-first-native",
+        "paint_jpx_rgb/indexed-alpha-2-last-native",
+        "paint_jpx_rgb/indexed-alpha-2-first-native",
+        "paint_jpx_integration/indexed-palette-0-0-0",
+        "paint_jpx_integration/indexed-palette-0-0-1",
+        "paint_jpx_integration/indexed-palette-0-0-2",
+        "paint_jpx_integration/indexed-palette-0-1-0",
+        "paint_jpx_integration/indexed-palette-0-1-1",
+        "paint_jpx_integration/indexed-palette-0-1-2",
+        "paint_jpx_integration/indexed-palette-1-0-0",
+        "paint_jpx_integration/indexed-palette-1-0-1",
+        "paint_jpx_integration/indexed-palette-1-0-2",
+        "paint_jpx_integration/indexed-palette-1-1-0",
+        "paint_jpx_integration/indexed-palette-1-1-1",
+        "paint_jpx_integration/indexed-palette-1-1-2",
+        "paint_jpx_integration/indexed-ambiguous-index",
+        "paint_jpx_integration/indexed-channel-type-3",
+        "paint_jpx_integration/indexed-channel-type-65535",
+        "paint_jpx_integration/indexed-only-opacity"
       ],
       "review": [
         {
           "locator": "ISO 32000-2 7.4.9, Table 87, 11.6.4.3; T.800 I.5.3.6",
           "rule": "For an explicit PDF Indexed colour space without a container palette, retain the raw index and separate opacity channels. Channel definitions determine their order. Apply the PDF lookup before unassociating premultiplied base colours; embedded opacity overrides Mask.",
           "verdict": "Primary clauses reviewed; independent alpha 0/partial/1 pixel oracles authored for first/last opacity channels and SMaskInData 0/1/2. Hosted execution pending."
+        },
+        {
+          "locator": "ISO 32000-2 7.4.9/Table 87; T.800 I.5.3.4\u2013I.5.3.6",
+          "rule": "When PDF Indexed replaces container colours, retain their single source index and independently map direct or palette-derived opacity. Preserve channel precision, ignore opacity only for mode zero, and retain original reference-grid origin.",
+          "verdict": "Independent first/last, direct/palette, 8/16-bit opacity and mode 0/1/2 sample and pixel fixtures authored."
         }
       ],
-      "gaps": "Combining an explicit PDF Indexed space with opacity defined after a JPX container palette still requires channel mapping and remains Unsupported(image.JPX-sample-layout). Broader interaction/platform and competitor evidence remains R02/G01 work."
+      "gaps": "Ambiguous palettes with multiple independent index sources remain explicit layout boundaries. PDF 7.4.9 prohibits used per-colour/multiple opacity and multilayer composition/animation; these do not create PDF parity obligations. Other permitted baseline layouts remain R03."
+    },
+    {
+      "id": "paint-jpx-interactions",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.9.5.3",
+        "11.6"
+      ],
+      "status": "implemented; hosted verification pending",
+      "tests": [
+        "paint_jpx_integration/icc-external-soft-mask",
+        "paint_jpx_integration/icc-alpha-group-0",
+        "paint_jpx_integration/icc-alpha-group-1",
+        "paint_jpx_integration/icc-alpha-interpolate-1",
+        "paint_jpx_integration/icc-alpha-interpolate-2",
+        "paint_jpx_integration/icc-raw-color-key"
+      ],
+      "review": [
+        {
+          "locator": "7.4.9; 8.9.5.3; 11.6",
+          "rule": "JPX source colour, raw colour-key masks, external soft masks, groups and associated interpolation compose through the common image path.",
+          "verdict": "Independent primary-formula and raw-byte controls authored; native/WASI/client/viewer checks included."
+        }
+      ],
+      "gaps": "Hosted execution pending; no competitor support or performance claim."
+    },
+    {
+      "id": "paint-inline-resources",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.7",
+        "8.6.3",
+        "8.6.5.5",
+        "8.6.6.5"
+      ],
+      "status": "implemented; hosted verification pending",
+      "tests": [
+        "paint_jpx_integration/inline-resource-0",
+        "paint_jpx_integration/inline-resource-1",
+        "paint_jpx_integration/inline-five-components"
+      ],
+      "review": [
+        {
+          "locator": "8.9.7; 8.6.3; 8.6.5.5; 8.6.6.5",
+          "rule": "Inline unfiltered rows use the resolved resource colour component count, including indirect ICC N and DeviceN name arrays, before reading EI. Encoded bytes that spell EI remain samples.",
+          "verdict": "Independent primary-formula and raw-byte controls authored; native/WASI/client/viewer checks included."
+        }
+      ],
+      "gaps": "Hosted execution pending; no competitor support or performance claim."
     }
   ]
 }

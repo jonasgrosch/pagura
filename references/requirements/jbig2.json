@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jbig2",
-  "scope": "Verified each listed requirement against the supplied ISO 32000-2:2020 sponsored EC3 7.4.7/Table 12 and the locally supplied ITU-T T.88 (02/2000) base text: segment grammar/types, generic/refinement, arithmetic coding/integers, symbols/text, retention, Huffman Tables B.1\u2013B.15 and user tables, patterns, halftones, gray planes, page flags/operators and stripes. MMR modes and run words were cross-checked against local T.6 (11/1988) and T.4 (07/2003). This is clause-level implementation review with generated and known-answer tests, not complete PDF or T.88 conformance certification. Later amendments and the 2018/2019 revisions were not reviewed; only their extended-template/colour behaviour remains pending primary-text review. Profile metadata is parsed but profile feature-set compliance is not separately validated. Two explicit compatibility cases are marked strict_valid=false: PDF-global retention across separate streams and standalone arithmetic text stopping at its declared instance count. Their acceptance is not evidence that those encodings conform to T.88. The unknown-length framing, all eight text layouts, stripe padding and profile metadata grammar were rechecked against base-text 7.2.7, 7.4.6.3\u20137.4.6.4, 6.4.5, 7.4.10 and 7.4.12. Annex F Tables F.1\u2013F.7 were read: their additional restrictions remain an implementation gap, not a pending primary-text review.",
+  "scope": "Verified each listed requirement against the supplied ISO 32000-2:2020 sponsored EC3 7.4.7/Table 12 and the locally supplied ITU-T T.88 (02/2000) base text: segment grammar/types, generic/refinement, arithmetic coding/integers, symbols/text, retention, Huffman Tables B.1\u2013B.15 and user tables, patterns, halftones, gray planes, page flags/operators and stripes. MMR modes and run words were cross-checked against local T.6 (11/1988) and T.4 (07/2003). This is clause-level implementation review with generated and known-answer tests, not complete PDF or T.88 conformance certification. The extended generic-template and header clauses were additionally reviewed against T.88 (08/2018), identical ISO/IEC 14492:2019, which PDF 7.4.7 references. Other revised clauses are not claimed reviewed. PDF excludes the colour extension. The contradictory AT field length is recorded in jbig2-extended-template. Profile metadata is parsed but profile feature-set compliance is not separately validated. Two explicit compatibility cases are marked strict_valid=false: PDF-global retention across separate streams and standalone arithmetic text stopping at its declared instance count. Their acceptance is not evidence that those encodings conform to T.88. The unknown-length framing, all eight text layouts, stripe padding and profile metadata grammar were rechecked against base-text 7.2.7, 7.4.6.3\u20137.4.6.4, 6.4.5, 7.4.10 and 7.4.12. Annex F Tables F.1\u2013F.7 were read: their additional restrictions remain an implementation gap, not a pending primary-text review.",
   "requirements": [
     {
       "id": "jbig2-embedded-segments",
@@ -120,8 +120,8 @@
         "T.88 (02/2000) Annex E"
       ],
       "status": "partial",
-      "description": "Arithmetic generic regions use causal adaptive templates 0\u20133, optional typical-row prediction, and explicit actual row counts for unknown-length segments.",
-      "gaps": "Extended adaptive templates from later amendments are unsupported and pending review of those amendments.",
+      "description": "Arithmetic generic regions use causal adaptive templates 0\u20133, optional typical-row prediction, and explicit actual row counts for unknown-length segments. T.88:2018 extended template 0 has twelve independently movable causal pixels.",
+      "gaps": "The twelve adaptive pixels are integrated and await hosted acceptance; the T.88:2018 field-length contradiction is recorded separately.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
@@ -131,7 +131,7 @@
         "rule": "Arithmetic generic regions use causal adaptive templates 0\u20133, optional typical-row prediction, and explicit actual row counts for unknown-length segments.",
         "implementation_agreement": "agrees within the stated scope",
         "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
-        "verdict": "verified against the listed base-text clauses; Extended adaptive templates from later amendments are unsupported and pending review of those amendments."
+        "verdict": "Base-text clauses remain reviewed; extended generic-region coding and header sizing now follow the separately documented T.88:2018 review."
       },
       "vector_ids": [
         "jbig2/arithmetic-t0-white",
@@ -618,24 +618,23 @@
         "ISO 32000-2:2020 7.4.7 colour restrictions"
       ],
       "status": "partial",
-      "description": "Reserved segment types, forbidden PDF structures and T.6 extensions are syntax errors; unknown necessary extensions and later extended templates return explicit unsupported tags.",
-      "gaps": "Necessary extension payloads and later extended adaptive templates are unsupported.",
+      "description": "Reserved segment types, forbidden PDF structures and T.6 extensions are syntax errors; unknown necessary extensions return explicit unsupported tags.",
+      "gaps": "Unknown necessary extension payloads remain unsupported.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
       "primary_text_review": {
-        "rule": "Reserved segment types, forbidden PDF structures and T.6 extensions are syntax errors; unknown necessary extensions and later extended templates return explicit unsupported tags.",
+        "rule": "Reserved segment types, forbidden PDF structures and T.6 extensions are syntax errors; unknown necessary extensions return explicit unsupported tags.",
         "implementation_agreement": "agrees within the stated scope",
         "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
-        "verdict": "verified against the listed base-text clauses; Necessary extension payloads and later extended adaptive templates are unsupported."
+        "verdict": "Reserved/forbidden structures retain their existing boundaries; the extended generic template is now implemented separately."
       },
       "vector_ids": [
         "jbig2/pdf-region-colour-extension-forbidden",
         "jbig2/reserved-generic-type-32",
         "jbig2/unsupported-extension",
-        "jbig2/unsupported-extended-template",
         "jbig2/unsupported-mmr-extension"
       ],
       "differential_evidence": {
@@ -2755,6 +2754,101 @@
         "result": "Each listed page renders successfully at 72 dpi. The full significant packed image samples compare byte-for-byte with PDFium 156.0.8076.0, without page resampling. Source files were read in place.",
         "scope": "These source pages exercise the observed modes; generated vectors cover the other layouts, exact framing and malformed inputs."
       }
+    },
+    {
+      "id": "jbig2-extended-template",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO32000-2:2020 EC3 7.4.7",
+        "T.88 (08/2018)6.2.2/Table 2,6.2.5.2-7,Figures3(b)/7/8,Table 5",
+        "T.88 (08/2018)7.2.7,7.4.6.2-4,Figures48/50"
+      ],
+      "status": "Implemented; full three-OS, native/WASI/browser and 260-control hosted acceptance passed at 6e87a6030ae206322aa813388b41e18363d5af81. The explicit 24-byte layout versus contradictory 32-byte sentence remains documented below.",
+      "description": "Extended generic template 0 moves twelve of the existing sixteen context positions. Context identity and typical prediction do not change when a pixel moves; out-of-bitmap pixels are zero.",
+      "gaps": "Hosted acceptance pending. T.88:2018 7.4.6.3 calls the field 32 bytes, but Figure 50 and the explicit byte 0..23 list define twelve signed X/Y pairs. The decoder follows that explicit 24-byte layout. It does not skip eight unspecified bytes or guess a second layout. The official ITU catalogue listed no later correction when reviewed; this is a documented resolution of contradictory primary text, not an unqualified conformance claim.",
+      "tests": [
+        "pagura-image jbig2::tests::independent_bitmaps_and_hostile_vectors",
+        "pagura-image jbig2::tests::unknown_length_allocates_actual_rows_and_keeps_following_segment",
+        "pagura-image jbig2::generic::tests::windowed_contexts_decode_as_per_pixel_contexts",
+        "pagura-image bitonal_integration::bitonal_extensions_reach_the_pdf_image_api",
+        "tools/host_test.mjs"
+      ],
+      "vector_ids": [
+        "jbig2/extended-template-nominal",
+        "jbig2/extended-template-all-moved",
+        "jbig2/extended-template-overlapping",
+        "jbig2/extended-template-coordinate-edges",
+        "jbig2/extended-template-moved-1",
+        "jbig2/extended-template-moved-2",
+        "jbig2/extended-template-moved-3",
+        "jbig2/extended-template-moved-4",
+        "jbig2/extended-template-moved-5",
+        "jbig2/extended-template-moved-6",
+        "jbig2/extended-template-moved-7",
+        "jbig2/extended-template-moved-8",
+        "jbig2/extended-template-moved-9",
+        "jbig2/extended-template-moved-10",
+        "jbig2/extended-template-moved-11",
+        "jbig2/extended-template-moved-12",
+        "jbig2/extended-template-typical",
+        "jbig2/extended-template-unknown-nominal",
+        "jbig2/extended-template-unknown-marker-in-header",
+        "jbig2/extended-flag-unused-t1",
+        "jbig2/extended-flag-unused-t2",
+        "jbig2/extended-flag-unused-t3",
+        "jbig2/extended-flag-unused-mmr",
+        "jbig2/extended-template-truncated-at-0",
+        "jbig2/extended-template-truncated-at-1",
+        "jbig2/extended-template-truncated-at-2",
+        "jbig2/extended-template-truncated-at-3",
+        "jbig2/extended-template-truncated-at-4",
+        "jbig2/extended-template-truncated-at-5",
+        "jbig2/extended-template-truncated-at-6",
+        "jbig2/extended-template-truncated-at-7",
+        "jbig2/extended-template-truncated-at-8",
+        "jbig2/extended-template-truncated-at-9",
+        "jbig2/extended-template-truncated-at-10",
+        "jbig2/extended-template-truncated-at-11",
+        "jbig2/extended-template-truncated-at-12",
+        "jbig2/extended-template-truncated-at-13",
+        "jbig2/extended-template-truncated-at-14",
+        "jbig2/extended-template-truncated-at-15",
+        "jbig2/extended-template-truncated-at-16",
+        "jbig2/extended-template-truncated-at-17",
+        "jbig2/extended-template-truncated-at-18",
+        "jbig2/extended-template-truncated-at-19",
+        "jbig2/extended-template-truncated-at-20",
+        "jbig2/extended-template-truncated-at-21",
+        "jbig2/extended-template-truncated-at-22",
+        "jbig2/extended-template-truncated-at-23",
+        "jbig2/extended-template-noncausal-1",
+        "jbig2/extended-template-noncausal-2",
+        "jbig2/extended-template-noncausal-3",
+        "jbig2/extended-template-noncausal-4",
+        "jbig2/extended-template-noncausal-5",
+        "jbig2/extended-template-noncausal-6",
+        "jbig2/extended-template-noncausal-7",
+        "jbig2/extended-template-noncausal-8",
+        "jbig2/extended-template-noncausal-9",
+        "jbig2/extended-template-noncausal-10",
+        "jbig2/extended-template-noncausal-11",
+        "jbig2/extended-template-noncausal-12",
+        "jbig2/extended-template-truncated-count-0",
+        "jbig2/extended-template-truncated-count-1",
+        "jbig2/extended-template-truncated-count-2",
+        "jbig2/extended-template-truncated-count-3",
+        "jbig2/extended-template-missing-marker",
+        "jbig2/extended-template-count-exceeds-height",
+        "jbig2/extended-template-mmr-template"
+      ],
+      "primary_text_review": {
+        "rule": "Twelve signed coordinate pairs select causal adaptive pixels. EXTTEMPLATE is used only for arithmetic template 0. It is unused for templates 1-3; TPGDON and EXTTEMPLATE are unused in MMR, whose GBTEMPLATE must nevertheless be zero. Bits 5-7 remain reserved. Unknown-length framing begins its marker search after the entire AT header and consumes the actual-row count.",
+        "implementation_agreement": "One flags/header owner supplies both decode and unknown-length framing. Existing arithmetic contexts, bitmap and windowed decoder are retained; no new decoder or heuristic field fallback.",
+        "generated_expectations_agreement": "Original geometric bitmaps precede arithmetic encoding. Controls move each AT separately, all twelve together, overlap and extreme causal coordinates, typical rows, every truncated AT length, each noncausal pair, and marker-looking late-header bytes followed by a segment.",
+        "verdict": "The explicit field list and figures support the implemented layout, subject to the recorded primary-text contradiction."
+      },
+      "documented_choice": "T.88:2018 7.4.6.3 calls the field 32 bytes, but Figure 50 and the explicit byte 0..23 list define twelve signed X/Y pairs. The decoder follows that explicit 24-byte layout. It does not skip eight unspecified bytes or guess a second layout. The official ITU catalogue listed no later correction when reviewed; this is a documented resolution of contradictory primary text, not an unqualified conformance claim.",
+      "resource_contract": "An unknown-length 5x3 extended region on a 5x5 page, followed by a 5x1 region, holds 5+3+65536*sizeof(Context) bytes and charges (25+15+5)*18 raster work units plus 3 segment operations. The encoded 0xFFFFFFFF height does not determine allocation. Existing template 2 bounds remain unchanged; each one-short limit is exercised."
     }
   ],
   "primary_sources": [
@@ -2793,6 +2887,21 @@
         "4.1.1",
         "Tables 2, 3a, 3b"
       ]
+    },
+    {
+      "title": "ITU-T T.88 (08/2018), identical ISO/IEC 14492:2019",
+      "url": "https://www.itu.int/rec/T-REC-T.88-201808-I/en",
+      "package_sha256": "e2a3c458c4d28d5a835c0815fd9b23e197dbc1b83fe81d8e8d8b2ac413d8f22f",
+      "pdf_sha256": "dff16153d2b959d78e0018bfc0a054bd4ba136b0a156021b03e4743bfa6af2d6",
+      "text_sha256": "cb127fff98c4f3c2db4b992f603e11e08451f625c26f80cf7f641e12f15f8a6c",
+      "locators": [
+        "6.2.2/Table 2 notes d/e",
+        "6.2.5.2-7",
+        "Figures3(b),7,8,48,50",
+        "Table 5",
+        "7.2.7",
+        "7.4.6.2-4"
+      ]
     }
   ],
   "documented_choices": [
@@ -2816,10 +2925,10 @@
   ],
   "external_dependencies": [
     {
-      "standard": "Later T.88 amendments; T.88 (2018) / ISO/IEC 14492:2019",
-      "review": "pending primary-text review",
-      "behavior": "Extended adaptive templates and later colour-extension encodings. PDF excludes colour; extended templates return jbig2.extended-template.",
-      "evidence": "No positive extended-template claim; only explicit unsupported/rejection vectors. The base coding procedures are reviewed separately against T.88 (02/2000)."
+      "standard": "T.88 (08/2018)/ISO14492:2019",
+      "review": "Extended generic-template clauses reviewed; other revised clauses outside this review",
+      "behavior": "Twelve adaptive pixels use the shared generic decoder. PDF excludes colour palette/type54/COLEXTFLAG.",
+      "evidence": "T.88:2018 7.4.6.3 calls the field 32 bytes, but Figure 50 and the explicit byte 0..23 list define twelve signed X/Y pairs. The decoder follows that explicit 24-byte layout. It does not skip eight unspecified bytes or guess a second layout. The official ITU catalogue listed no later correction when reviewed; this is a documented resolution of contradictory primary text, not an unqualified conformance claim."
     }
   ],
   "differential_summary": {
@@ -2967,7 +3076,7 @@
     "huffman_unit_tests": "One test per published table walks every row using independently stored published prefix words and numeric endpoints, including escape extremes and OOB."
   },
   "remaining": [
-    "Later amended extended templates and unknown necessary extensions are unsupported.",
+    "Unknown necessary extensions remain unsupported; the twelve-pixel generic template awaits current-head hosted acceptance.",
     "Profile feature-set conformance is not separately checked.",
     "The strict nonzero bitmap policy is recorded above.",
     "No performance claim or full corpus conformance claim is made.",
@@ -3652,8 +3761,8 @@
     }
   ],
   "vector_summary": {
-    "vectors": 528,
-    "positive_bitmaps": 400,
+    "vectors": 593,
+    "positive_bitmaps": 423,
     "explicit_compatibility_vectors": [
       "jbig2/pdf-globals-cross-stream-lifetime",
       "jbig2/arithmetic-text-terminal-count"

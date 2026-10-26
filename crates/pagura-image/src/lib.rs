@@ -59,7 +59,6 @@ mod dispatch;
 mod fax_image;
 mod filter_rules;
 mod inline;
-mod jpx_channels;
 mod jpx_image;
 mod mask;
 mod parameters;
@@ -87,6 +86,10 @@ pub enum ImageKind {
     EmbeddedColor {
         /// Colour description from the container.
         color: jpx::JpxColor,
+        /// Unsigned storage bias of each component, subtracted before sample
+        /// normalization. Empty when all components are unsigned. Signed JPX
+        /// samples retain their original precision and raw offset encoding.
+        sample_bias: Vec<u16>,
     },
     /// A 1-bit stencil mask painted with the current fill colour
     /// (`/ImageMask true`); `inverted` follows `/Decode [1 0]`.
@@ -206,11 +209,14 @@ pub struct DecodedImage {
 }
 
 impl DecodedImage {
-    /// Device fallback for an embedded colour description that the painter
-    /// cannot support (7.4.9). The original profile or enumerated space remains
-    /// available in [`ImageKind::EmbeddedColor`].
+    /// Device fallback for an unsigned embedded colour description that the
+    /// painter cannot support (7.4.9). Signed ICC and enumerated CIELab samples
+    /// require a defined colour interpretation. Original metadata remains in
+    /// [`ImageKind::EmbeddedColor`].
     pub fn embedded_color_fallback(&self) -> Option<Value> {
-        if !matches!(self.kind, ImageKind::EmbeddedColor { .. }) {
+        if !matches!(&self.kind, ImageKind::EmbeddedColor { color, sample_bias }
+            if sample_bias.is_empty() && !color.has_lab())
+        {
             return None;
         }
         match self.components {
@@ -244,6 +250,24 @@ impl DecodedImage {
 /// Returns a syntax error if the end cannot be determined.
 pub fn inline_data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
     inline::data_length(dictionary, content)
+        .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
+}
+
+/// Frames inline sample data using the page's colour-space resources
+/// (8.9.7). Unfiltered data is sized from dimensions, per-row padding and
+/// the resolved component count; embedded `EI` bytes are ordinary samples.
+/// This reads only colour metadata and never scans or decodes unfiltered data.
+///
+/// # Errors
+/// Returns the errors of [`inline_data_length`] and document resolution;
+/// undefined resources, invalid component counts and truncation are errors.
+pub fn inline_data_length_with_resources(
+    document: &pagura_document::Document,
+    resources: &Dictionary,
+    dictionary: &Dictionary,
+    content: &[u8],
+) -> Result<usize> {
+    inline::data_length_with_resources(document, resources, dictionary, content)
         .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
 }
 

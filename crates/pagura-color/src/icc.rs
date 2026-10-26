@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 /// A rendering intent (8.6.5.8, Table 69). The standard closes the set; an
 /// unknown name selects relative colorimetric.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Intent {
     /// Perceptual.
     Perceptual,
@@ -75,6 +75,7 @@ pub struct Profile {
     transforms: [Option<Arc<Forward>>; 3],
     model: Option<Forward>,
     lab_input: bool,
+    input_display: bool,
     white: [f64; 3],
 }
 #[derive(Debug, Clone)]
@@ -166,12 +167,23 @@ impl Profile {
             transforms,
             model,
             lab_input: profile.bytes(16, 4)? == b"Lab ",
+            input_display: matches!(profile.bytes(12, 4)?, b"scnr" | b"mntr"),
             white,
         }))
     }
     /// Whether the profile's data colour space is CIELAB.
     pub fn lab_input(&self) -> bool {
         self.lab_input
+    }
+    /// Whether the selected transform is a restricted XYZ Gray/TRC or
+    /// RGB matrix/TRC input/display model (T.800 I.5.3.3, Table I.9).
+    /// Its device inputs can be clipped to the TRC's `0..=1` range.
+    pub fn restricted_trc(&self, intent: Intent) -> bool {
+        self.input_display
+            && matches!(
+                self.forward(intent),
+                Ok(Forward::Gray { pcs: Pcs::Xyz, .. } | Forward::Matrix { .. })
+            )
     }
     /// Converts source components to encoded sRGB.
     ///
@@ -189,14 +201,18 @@ impl Profile {
     }
 
     /// Checks that `intent` selects a supported forward transform, so that
-    /// [`Self::convert_total`] converts as [`Self::convert`] does.
-    pub(crate) fn check(&self, intent: Intent) -> Result<()> {
+    /// conversion can be prepared without evaluating any samples.
+    ///
+    /// # Errors
+    /// Returns `Unsupported` for an unavailable selected transform and
+    /// `Syntax` when no forward transform applies.
+    pub fn check_forward(&self, intent: Intent) -> Result<()> {
         self.forward(intent).map(|_| ())
     }
 
     /// Converts as [`Self::convert`] does, with undefined curve arithmetic
     /// giving 0 instead of an error; black when the intent's transform is
-    /// unsupported, which [`Self::check`] rules out.
+    /// unsupported, which [`Self::check_forward`] rules out.
     pub(crate) fn convert_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
         self.linear_total(inputs, intent).map(cie::encode)
     }

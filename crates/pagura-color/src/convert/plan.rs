@@ -660,7 +660,7 @@ impl Chain {
                         continue;
                     };
                     profile
-                        .check(conversion.intent)
+                        .check_forward(conversion.intent)
                         .map_err(|error| error.in_object_opt(icc.object))?;
                     rgb(Source::Icc {
                         profile: Arc::clone(profile),
@@ -841,12 +841,13 @@ impl Lookup {
 fn decode_lookup(base: &ColorSpace, bytes: &[u8], out: &mut Vec<f64>) {
     let n = |i: usize| f64::from(bytes.get(i).copied().unwrap_or(0)) / 255.0;
     match base {
-        ColorSpace::Calibrated(space) => match (space.components(), space.lab_range()) {
-            (_, Some(r)) => out.extend([
-                100.0 * n(0),
-                r[0] + n(1) * (r[1] - r[0]),
-                r[2] + n(2) * (r[3] - r[2]),
-            ]),
+        ColorSpace::Calibrated(space) => match (space.components(), space.lab_ranges()) {
+            (_, Some(ranges)) => out.extend(
+                ranges
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &[low, high])| low + n(i) * (high - low)),
+            ),
             (1, None) => out.push(n(0)),
             _ => out.extend([n(0), n(1), n(2)]),
         },
@@ -900,8 +901,11 @@ impl Source {
             Self::Gray => [n(0); 3],
             Self::Rgb => [n(0), n(1), n(2)],
             Self::Sycc => {
-                // IEC 61966-2-1 Amendment 1, F.15/F.16: eight-bit sYCC
-                // code values -> encoded sRGB. Gamut clipping is the same
+                // T.800 I.5.3.3 / Table I.10 maps each unsigned channel to
+                // 0..255 before IEC Annex F.15/F.16. `n` is already divided
+                // by that channel's maximum code, even for mixed precision;
+                // the chroma offset therefore remains 128/255, not a
+                // precision-dependent half-code. Gamut clipping is the same
                 // output policy used by the other source colour models;
                 // rounding waits until the final renderer quantization.
                 let y = n(0);

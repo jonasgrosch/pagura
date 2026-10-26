@@ -1,6 +1,77 @@
 //! T.81 frame geometry and bounded coefficient or sample storage.
 use pagura_core::{Error, Limits, Result};
 
+/// T.81 Table B.1 frame processes supported by this decoder.
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub(super) enum Process {
+    Baseline = 0xc0,
+    Sequential = 0xc1,
+    Progressive = 0xc2,
+    Lossless = 0xc3,
+    ArithmeticSequential = 0xc9,
+    ArithmeticProgressive = 0xca,
+}
+
+impl TryFrom<u8> for Process {
+    type Error = Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        match value {
+            0xc0 => Ok(Self::Baseline),
+            0xc1 => Ok(Self::Sequential),
+            0xc2 => Ok(Self::Progressive),
+            0xc3 => Ok(Self::Lossless),
+            0xc9 => Ok(Self::ArithmeticSequential),
+            0xca => Ok(Self::ArithmeticProgressive),
+            _ => Err(Error::syntax("invalid JPEG frame process")),
+        }
+    }
+}
+
+impl Process {
+    pub(super) fn is_progressive(self) -> bool {
+        matches!(self, Self::Progressive | Self::ArithmeticProgressive)
+    }
+
+    pub(super) fn is_arithmetic(self) -> bool {
+        matches!(
+            self,
+            Self::ArithmeticSequential | Self::ArithmeticProgressive
+        )
+    }
+
+    pub(super) fn is_baseline(self) -> bool {
+        self == Self::Baseline
+    }
+
+    pub(super) fn is_lossless(self) -> bool {
+        self == Self::Lossless
+    }
+
+    /// Width and height of a data unit: one sample or one DCT block (A.1.3).
+    pub(super) fn unit(self) -> usize {
+        if self.is_lossless() { 1 } else { 8 }
+    }
+
+    fn validate_precision(self, precision: u8) -> Result<()> {
+        if self.is_lossless() && !(2..=16).contains(&precision) {
+            return Err(Error::syntax(
+                "lossless JPEG precision must be from two to sixteen bits",
+            ));
+        }
+        if !self.is_lossless()
+            && (!matches!(precision, 8 | 12) || (self.is_baseline() && precision != 8))
+        {
+            return Err(Error::unsupported(
+                crate::features::JPEG_PRECISION,
+                "JPEG process requires eight or twelve bit precision",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// A component's data units. A sequential scan completes each block before
 /// the next (T.81 F.2), so its samples are reconstructed at once; progressive
 /// scans refine coefficients until the frame ends (G.1.2).
@@ -25,11 +96,14 @@ impl Storage {
 }
 
 impl Storage {
-    fn new(blocks: usize, progressive: bool, twelve_bit: bool) -> Self {
-        match (progressive, twelve_bit) {
-            (true, _) => Self::Coefficients(vec![[0; 64]; blocks]),
-            (false, false) => Self::Bytes(vec![0; blocks * 64]),
-            (false, true) => Self::Words(vec![0; blocks * 64]),
+    fn new(units: usize, process: Process, precision: u8) -> Self {
+        if process.is_lossless() {
+            return Self::Words(vec![0; units]);
+        }
+        match (process.is_progressive(), precision > 8) {
+            (true, _) => Self::Coefficients(vec![[0; 64]; units]),
+            (false, false) => Self::Bytes(vec![0; units * 64]),
+            (false, true) => Self::Words(vec![0; units * 64]),
         }
     }
 }
@@ -53,43 +127,44 @@ pub(super) struct Frame {
     pub(super) max_v: usize,
     pub(super) mcu_cols: usize,
     pub(super) mcu_rows: usize,
-    pub(super) progressive: bool,
-    pub(super) baseline: bool,
-    pub(super) arithmetic: bool,
+    pub(super) process: Process,
     pub(super) precision: u8,
 }
 impl Frame {
     /// Parses a frame header and allocates its components' storage.
-    pub(super) fn parse(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
-        let mut frame = Self::header(data, process, limits)?;
+    pub(super) fn parse(
+        data: &[u8],
+        process: u8,
+        height: Option<u16>,
+        limits: &Limits,
+    ) -> Result<Self> {
+        let mut frame = Self::header(data, process, height, limits)?;
         for c in &mut frame.components {
-            c.storage = Storage::new(c.stride * c.rows, frame.progressive, frame.precision == 12);
+            c.storage = Storage::new(c.stride * c.rows, frame.process, frame.precision);
         }
         Ok(frame)
     }
 
     /// Parses a frame header; its components hold no storage yet.
-    pub(super) fn header(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
+    pub(super) fn header(
+        data: &[u8],
+        process: u8,
+        height: Option<u16>,
+        limits: &Limits,
+    ) -> Result<Self> {
+        let process = Process::try_from(process)?;
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
-        if !matches!(data[0], 8 | 12) || (process == 0xc0 && data[0] != 8) {
-            return Err(Error::unsupported(
-                crate::features::JPEG_PRECISION,
-                "JPEG process requires eight or twelve bit precision",
-            ));
-        }
-        let height = u32::from(u16::from_be_bytes([data[1], data[2]]));
+        process.validate_precision(data[0])?;
+        let height = u32::from(height.unwrap_or_else(|| u16::from_be_bytes([data[1], data[2]])));
         let width = u32::from(u16::from_be_bytes([data[3], data[4]]));
         let n = data[5];
         if width == 0 || n == 0 || data.len() != 6 + usize::from(n) * 3 {
             return Err(Error::syntax("invalid JPEG frame dimensions or components"));
         }
         if height == 0 {
-            return Err(Error::unsupported(
-                crate::features::JPEG_PROCESS,
-                "JPEG height deferred to DNL is unsupported",
-            ));
+            return Err(Error::syntax("zero JPEG height without first-scan DNL"));
         }
         if !matches!(n, 1 | 3 | 4) {
             return Err(Error::unsupported(
@@ -108,6 +183,7 @@ impl Frame {
             if !(1..=4).contains(&h)
                 || !(1..=4).contains(&v)
                 || table > 3
+                || (process.is_lossless() && table != 0)
                 || components.iter().any(|p| p.id == c[0])
             {
                 return Err(Error::syntax("invalid JPEG frame component"));
@@ -134,31 +210,31 @@ impl Frame {
             .map(|c| c.v)
             .max()
             .ok_or(Error::syntax("missing JPEG components"))?;
-        let mcu_cols = (width as usize).div_ceil(8 * max_h);
-        let mcu_rows = (height as usize).div_ceil(8 * max_v);
-        // Progressive coefficients (four bytes) coexist with the native
-        // planes reconstructed from them and with the expanded samples.
-        // Sequential frames reconstruct native samples into their planes
-        // during the scans, so only planes and expanded samples coexist. For
-        // P=12 planes and samples are words, and the samples coexist with
-        // the final byte buffer as well. Colour conversion adds its rows
-        // (`ROW_BYTES` per pixel of width).
-        let progressive = matches!(process, 0xc2 | 0xca);
-        let twelve_bit = data[0] == 12;
-        let plane_bytes = u64::from(twelve_bit) + 1;
-        let per_sample = if progressive {
+        let unit = process.unit();
+        let mcu_cols = (width as usize).div_ceil(unit * max_h);
+        let mcu_rows = (height as usize).div_ceil(unit * max_v);
+        // Progressive coefficients coexist with native planes and expanded
+        // samples; sequential/lossless scans write the native planes directly.
+        // Word samples also coexist with the final byte output. DCT frames
+        // retain the conversion-row allowance; lossless output uses scalar
+        // word conversion and never allocates those rows.
+        let words = data[0] > 8 || process.is_lossless();
+        let plane_bytes = u64::from(words) + 1;
+        let per_sample = if process.is_progressive() {
             4 + plane_bytes
         } else {
             plane_bytes
         };
         let mut memory =
-            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 }
-                + u64::from(width) * super::transform::ROW_BYTES as u64;
+            u64::from(width) * u64::from(height) * u64::from(n) * if words { 3 } else { 1 };
+        if !process.is_lossless() {
+            memory += u64::from(width) * super::transform::ROW_BYTES as u64;
+        }
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;
             memory = memory
-                .checked_add((c.stride * c.rows) as u64 * 64 * per_sample)
+                .checked_add(c.stride as u64 * c.rows as u64 * (unit * unit) as u64 * per_sample)
                 .ok_or(Error::limit("JPEG allocation overflow"))?;
         }
         if memory > limits.decoded_bytes as u64 {
@@ -172,10 +248,8 @@ impl Frame {
             max_v,
             mcu_cols,
             mcu_rows,
-            progressive,
-            arithmetic: matches!(process, 0xc9 | 0xca),
+            process,
             precision: data[0],
-            baseline: process == 0xc0,
         })
     }
 }

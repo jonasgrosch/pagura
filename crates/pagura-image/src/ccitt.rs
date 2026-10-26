@@ -195,6 +195,169 @@ impl Bits<'_> {
             }
         }
     }
+
+    fn previous_three_zero(&self) -> bool {
+        self.at.checked_sub(3).is_some_and(|start| {
+            (start..self.at).all(|at| self.data[at / 8] & (128 >> (at % 8)) == 0)
+        })
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Color {
+    White,
+    Black,
+}
+
+impl Color {
+    fn opposite(self) -> Self {
+        match self {
+            Self::White => Self::Black,
+            Self::Black => Self::White,
+        }
+    }
+}
+
+struct Row<'a> {
+    at: usize,
+    color: Color,
+    changes: &'a mut Vec<usize>,
+}
+
+impl Row<'_> {
+    fn color(&mut self, color: Color) {
+        if self.color != color {
+            // Zero-output exits can change colour repeatedly at one point.
+            // A pair of coincident transitions cancels without growing storage.
+            if self.changes.last() == Some(&self.at) {
+                self.changes.pop();
+            } else {
+                self.changes.push(self.at);
+            }
+            self.color = color;
+        }
+    }
+
+    fn span(&mut self, color: Color, length: usize) {
+        if length != 0 {
+            self.color(color);
+            self.at += length;
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Tail {
+    Black,
+    Continue,
+    Exit(Color),
+}
+
+/// One T.4 Table 5 / T.6 Table 4 word, possibly spanning several T.6 rows.
+/// Pending pixels need no additional sample buffer.
+enum Uncompressed {
+    Basic,
+    Code,
+    Literal { white: u8, tail: Tail },
+    Exit(Color),
+}
+
+impl Uncompressed {
+    fn active(&self) -> bool {
+        matches!(self, Self::Code | Self::Literal { .. })
+    }
+
+    fn exit(&mut self) -> Option<Color> {
+        if let Self::Exit(color) = *self {
+            *self = Self::Basic;
+            Some(color)
+        } else {
+            None
+        }
+    }
+
+    fn code(&mut self, bits: &mut Bits<'_>) -> Result<()> {
+        let mut zeros = 0;
+        while bits.bit()? == 0 {
+            zeros += 1;
+            if zeros > 10 {
+                return Err(bits.error("invalid CCITT uncompressed word"));
+            }
+        }
+        let (white, tail) = match zeros {
+            0..=4 => (zeros, Tail::Black),
+            5 => (5, Tail::Continue),
+            _ => (
+                zeros - 6,
+                Tail::Exit(if bits.bit()? == 0 {
+                    Color::White
+                } else {
+                    Color::Black
+                }),
+            ),
+        };
+        *self = Self::Literal { white, tail };
+        Ok(())
+    }
+
+    fn fill(&mut self, bits: &mut Bits<'_>, row: &mut Row<'_>, width: usize) -> Result<()> {
+        if matches!(self, Self::Code) {
+            self.code(bits)?;
+        }
+        if let Self::Literal { white, tail } = self {
+            let count = usize::from(*white).min(width - row.at);
+            row.span(Color::White, count);
+            *white -= u8::try_from(count).map_err(|_| bits.error("invalid CCITT literal count"))?;
+            if *white == 0 {
+                match *tail {
+                    Tail::Black if row.at < width => {
+                        row.span(Color::Black, 1);
+                        *self = Self::Code;
+                    }
+                    Tail::Continue => *self = Self::Code,
+                    Tail::Exit(color) => *self = Self::Exit(color),
+                    Tail::Black => (),
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Recognizes a zero-pixel exit at the preceding row's end. A literal
+    /// belongs to the next row; in T.6 even one word may cross its boundary.
+    fn boundary(&mut self, bits: &mut Bits<'_>) -> Result<Option<Color>> {
+        if matches!(self, Self::Code) {
+            self.code(bits)?;
+        }
+        if let Self::Literal {
+            white: 0,
+            tail: Tail::Exit(color),
+        } = *self
+        {
+            *self = Self::Exit(color);
+        }
+        Ok(self.exit())
+    }
+
+    fn finish_line(&mut self, bits: &mut Bits<'_>, params: &CcittParams) -> Result<()> {
+        if params.k >= 0 || params.encoded_byte_align || params.end_of_line {
+            self.boundary(bits)?;
+            if self.active() {
+                return Err(bits.error("CCITT uncompressed word crosses framed row"));
+            }
+        }
+        Ok(())
+    }
+}
+
+enum Dimension {
+    One,
+    Two,
+}
+
+struct Line {
+    dimension: Dimension,
+    initial: Color,
 }
 
 /// Stable repair tags for fax data (ADR 0003).
@@ -270,31 +433,14 @@ fn decode_inner(
         (Vec::with_capacity(width + 2), Vec::with_capacity(width + 2));
     let mut rows = 0usize;
     let (mut damaged, mut previous_damaged) = (0u32, false);
+    let mut raw = Uncompressed::Basic;
     loop {
         if !params.end_of_block && params.rows.is_some_and(|n| rows >= n as usize) {
             break;
         }
-        if params.encoded_byte_align {
-            bits.align()?;
-        }
-        if block_end(&mut bits, params.k)
-            || (params.k < 0 && padded_block_end(&mut bits, diagnostics)?)
-        {
+        let Some(line) = line_start(&mut bits, params, &mut raw, rows, diagnostics)? else {
             break;
-        }
-        if bits.exhausted() {
-            if params.end_of_block {
-                return Err(bits.error("missing CCITT end of block"));
-            }
-            break;
-        }
-        if bits.has_eol()? || params.end_of_line || params.k > 0 {
-            bits.eol()?;
-        }
-        let one_d = params.k == 0 || (params.k > 0 && bits.bit()? != 0);
-        if rows == 0 && params.k > 0 && !one_d {
-            return Err(bits.error("first mixed CCITT row must be one-dimensional"));
-        }
+        };
         let next_rows = rows
             .checked_add(1)
             .filter(|&v| v <= limits.pixels / width)
@@ -306,11 +452,17 @@ fn decode_inner(
             .ok_or(Error::limit("CCITT output budget exceeded"))?;
         changes.clear();
         let row_start = bits.at;
-        let row_result = if one_d {
-            row_1d(&mut bits, width, &mut changes)
-        } else {
-            row_2d(&mut bits, width, &reference, &mut changes)
+        let mut row = Row {
+            at: 0,
+            color: Color::White,
+            changes: &mut changes,
         };
+        row.color(line.initial);
+        let row_result = match line.dimension {
+            Dimension::One => row_1d(&mut bits, width, &mut row, &mut raw),
+            Dimension::Two => row_2d(&mut bits, width, &reference, &mut row, &mut raw),
+        }
+        .and_then(|()| raw.finish_line(&mut bits, params));
         let row_damaged = if let Err(error) = row_result {
             if error.kind != ErrorKind::Syntax
                 || params.k < 0
@@ -319,6 +471,7 @@ fn decode_inner(
             {
                 return Err(error);
             }
+            raw = Uncompressed::Basic;
             bits.at = row_start;
             resynchronize(&mut bits)?;
             diagnostics.repair(
@@ -346,6 +499,50 @@ fn decode_inner(
         previous_damaged = row_damaged;
     }
     Ok(output)
+}
+
+fn line_start(
+    bits: &mut Bits<'_>,
+    params: &CcittParams,
+    raw: &mut Uncompressed,
+    rows: usize,
+    diagnostics: &mut Diagnostics,
+) -> Result<Option<Line>> {
+    let initial = raw.boundary(bits)?.unwrap_or(Color::White);
+    if raw.active() {
+        return Ok(Some(Line {
+            dimension: Dimension::Two,
+            initial,
+        }));
+    }
+    if params.encoded_byte_align {
+        bits.align()?;
+    }
+    if block_end(bits, params.k) || (params.k < 0 && padded_block_end(bits, diagnostics)?) {
+        return Ok(None);
+    }
+    if bits.exhausted() {
+        return if params.end_of_block {
+            Err(bits.error("missing CCITT end of block"))
+        } else {
+            Ok(None)
+        };
+    }
+    if bits.has_eol()? || params.end_of_line || params.k > 0 {
+        bits.eol()?;
+    }
+    let one_d = params.k == 0 || (params.k > 0 && bits.bit()? != 0);
+    if rows == 0 && params.k > 0 && !one_d {
+        return Err(bits.error("first mixed CCITT row must be one-dimensional"));
+    }
+    Ok(Some(Line {
+        dimension: if one_d {
+            Dimension::One
+        } else {
+            Dimension::Two
+        },
+        initial,
+    }))
 }
 
 fn workspace(width: usize, stride: usize, limits: &Limits) -> Result<usize> {
@@ -431,14 +628,37 @@ fn padded_block_end(bits: &mut Bits<'_>, diagnostics: &mut Diagnostics) -> Resul
     Ok(true)
 }
 
-fn row_1d(bits: &mut Bits<'_>, width: usize, changes: &mut Vec<usize>) -> Result<()> {
-    let (mut at, mut black) = (0, false);
-    while at < width {
-        let run = bits.run(black, width - at)?;
-        at += run;
-        changes.push(at);
-        black = !black;
-        if changes.len() > width + 1 {
+fn row_1d(
+    bits: &mut Bits<'_>,
+    width: usize,
+    row: &mut Row<'_>,
+    raw: &mut Uncompressed,
+) -> Result<()> {
+    while row.at < width {
+        if let Some(color) = raw.exit() {
+            row.color(color);
+        }
+        if raw.active() {
+            raw.fill(bits, row, width)?;
+            continue;
+        }
+        if bits.peek(9) == Some(1) {
+            // T.4 Table 4 note 4: this would imitate an EOL after 000.
+            if row.at != 0 && bits.previous_three_zero() {
+                return Err(bits.error("CCITT uncompressed entrance after forbidden suffix"));
+            }
+            for _ in 0..9 {
+                bits.bit()?;
+            }
+            codes::extension(bits)?;
+            *raw = Uncompressed::Code;
+            continue;
+        }
+        let run = bits.run(row.color == Color::Black, width - row.at)?;
+        row.at += run;
+        row.changes.push(row.at);
+        row.color = row.color.opposite();
+        if row.changes.len() > width + 1 {
             return Err(bits.error("too many CCITT zero-length runs"));
         }
     }
@@ -449,16 +669,26 @@ fn row_2d(
     bits: &mut Bits<'_>,
     width: usize,
     reference: &[usize],
-    changes: &mut Vec<usize>,
+    row: &mut Row<'_>,
+    raw: &mut Uncompressed,
 ) -> Result<()> {
-    let (mut at, mut black, mut cursor, mut first) = (0, false, 0, true);
-    while at < width {
+    let (mut cursor, mut first) = (0, row.color == Color::White);
+    while row.at < width {
+        if let Some(color) = raw.exit() {
+            row.color(color);
+            first &= row.at == 0 && color == Color::White;
+        }
+        if raw.active() {
+            raw.fill(bits, row, width)?;
+            first &= row.at == 0;
+            continue;
+        }
         while cursor < reference.len()
-            && (reference[cursor] < at || (!first && reference[cursor] == at))
+            && (reference[cursor] < row.at || (!first && reference[cursor] == row.at))
         {
             cursor += 1;
         }
-        let index = if cursor % 2 == usize::from(black) {
+        let index = if cursor % 2 == usize::from(row.color == Color::Black) {
             cursor
         } else {
             cursor + 1
@@ -467,34 +697,38 @@ fn row_2d(
         let b2 = reference.get(index + 1).copied().unwrap_or(width);
         let mode = codes::mode(bits)?;
         match mode {
+            codes::Mode::Uncompressed => {
+                *raw = Uncompressed::Code;
+                continue;
+            }
             codes::Mode::Pass => {
-                if b2 <= at {
+                if b2 <= row.at {
                     return Err(bits.error("nonadvancing CCITT pass"));
                 }
-                at = b2;
+                row.at = b2;
             }
             codes::Mode::Horizontal => {
-                let middle = at + bits.run(black, width - at)?;
-                let end = middle + bits.run(!black, width - middle)?;
-                if end <= at {
+                let middle = row.at + bits.run(row.color == Color::Black, width - row.at)?;
+                let end = middle + bits.run(row.color == Color::White, width - middle)?;
+                if end <= row.at {
                     return Err(bits.error("nonadvancing CCITT horizontal mode"));
                 }
-                changes.push(middle);
-                changes.push(end);
-                at = end;
+                row.changes.push(middle);
+                row.changes.push(end);
+                row.at = end;
             }
             codes::Mode::Vertical(delta) => {
                 let end = b1
                     .checked_add_signed(isize::from(delta))
-                    .filter(|&end| end >= at && end <= width)
+                    .filter(|&end| end >= row.at && end <= width)
                     .ok_or(bits.error("CCITT vertical changing element outside row"))?;
-                changes.push(end);
-                at = end;
-                black = !black;
+                row.changes.push(end);
+                row.at = end;
+                row.color = row.color.opposite();
             }
         }
         first = false;
-        if changes.len() > width + 1 {
+        if row.changes.len() > width + 1 {
             return Err(bits.error("too many CCITT changing elements"));
         }
     }

@@ -5,6 +5,769 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "jpx/jpx-plm",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpx-plm.jpx",
+          "sha256": "f7ed6559c391959288f6718f8f61ec205f3812bc6f41075438f85db513725e32"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpx-plm.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpx-crg-zero",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpx-crg-zero.jpx",
+          "sha256": "2945f82217b89cffd6241fa617d0187f3c2c906c8a3a2a84af34c9f992f5be00"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpx-crg-zero.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpx-plm-crg-zero",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpx-plm-crg-zero.jpx",
+          "sha256": "4336deed7fd67ba200ae75a42578305842bd398c60ee40ca39a917f1a06e006d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpx-plm-crg-zero.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpx-marker-codec-control",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpx-marker-codec-control.jpx",
+          "sha256": "a3b95fa20b26ea90bf0ce5756e1908e616a569b8552ca82407bb8e6f8e9f4cf5"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpx-marker-codec-control.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-only",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-only.jpx",
+          "sha256": "53ad2286555ed56d85e92d2a018f6c6e93d7015108c0d765d46ec416980f3764"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-only.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-jp2-control",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-jp2-control.jpx",
+          "sha256": "80e347e2bb71f9709ffbd362c7abfc79e56bff8dd7288a400cf64a82cf2cfd47"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-jp2-control.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/plm-continuation",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-continuation.jpx",
+          "sha256": "9e8efc3feff850ce0ab282ae9ad2b8694a2c1d209413c3146fc9952bb52471bb"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/plm-continuation.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/plm-physical-order",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-physical-order.jpx",
+          "sha256": "6f5c353a7727fa0ce2904e1d89bd9a5bfdfcb8a257bdaacb28b14c24b7bb3864"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/plm-physical-order.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/plm-duplicate-index",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/plm-duplicate-index.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-duplicate-index.jpx",
+          "sha256": "1aba525ad92c42982231a53332c39526c4ad02a21bdf680db90e807716f3f023"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/plm-incomplete-list",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/plm-incomplete-list.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-incomplete-list.jpx",
+          "sha256": "32adb73697a1309abce581f273851ce9684a6ab40b0d2d910730c2a706ccb058"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/plm-truncated-length",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/plm-truncated-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-truncated-length.jpx",
+          "sha256": "6866fd3bdb0ddf08eb0337bdbdbd0a3e54666208594fe862c51f135c74e4420d"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/plm-split-length",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/plm-split-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-split-length.jpx",
+          "sha256": "ab4dc1ee11dbc3207a58b7ac9076f047abe649beebd9f30e1a96e0c4cf58d67c"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/plm-overflow-length",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/plm-overflow-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-overflow-length.jpx",
+          "sha256": "e63a8216a48d950715746f10d3c41481631aadd5af2062b3beffde21c0e72e20"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/plm-empty",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/plm-empty.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/plm-empty.jpx",
+          "sha256": "a3a841c332571ccda60b82a9a064a585e92a76b7c1c79a0363cb7806ccb66cb2"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/crg-short",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/crg-short.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/crg-short.jpx",
+          "sha256": "73044dbc87499c5583bc0e20bb7e8e87afdc7af040a3b873136a88f1fd296f36"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/crg-extra",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/crg-extra.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/crg-extra.jpx",
+          "sha256": "22c0ce8072b0ab8ec967c24d4dafb44d0a2d2ca64cfb3fca49e60f8a1eb24698"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/crg-duplicate",
+      "kind": "vector",
+      "description": "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/crg-duplicate.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/crg-duplicate.jpx",
+          "sha256": "b915acf8b8b190be034a9a46d4583bef8bd3c6385af03d8e0a0783a55c0ee206"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/main-marker-in-tile-87",
+      "kind": "vector",
+      "description": "PLM and CRG belong only to the main header",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/main-marker-in-tile-87.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/main-marker-in-tile-87.jpx",
+          "sha256": "8aa6d4d91a3def9142c96b34f355d41f756b87910672204a8cfc840b140584bf"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/main-marker-in-tile-99",
+      "kind": "vector",
+      "description": "PLM and CRG belong only to the main header",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/main-marker-in-tile-99.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/main-marker-in-tile-99.jpx",
+          "sha256": "e53452a8935ec91368edada7a00c00666335bb15efe3d18f7632d1b6efa776fc"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/crg-nonzero",
+      "kind": "vector",
+      "description": "T.800 A.9.1 nonzero rendering registration remains explicit",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/crg-nonzero.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/crg-nonzero.jpx",
+          "sha256": "02a881f6225ab1697db574968901ec801170ee2cd02ca385c46775333102628a"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/jpxb-alternative-feature",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-alternative-feature.jpx",
+          "sha256": "39a5a7df252d9d615adedcf3aff81b056b0b89edf1c59dac6c636420539e9845"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-alternative-feature.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-nondisplay-feature",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-nondisplay-feature.jpx",
+          "sha256": "e0061215f506f378d7e0f2ceede78c5770fd16dcb9cdea88113371a8bd810bc0"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-nondisplay-feature.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-mask-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-mask-2.jpx",
+          "sha256": "93e3b17272b07ba8585dbafe653ac337f3d4cabf9cce285f3329dea8d1787831"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-mask-2.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-mask-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-mask-4.jpx",
+          "sha256": "63e3840f71cac87369add6b418c04ea1f3f90b877e97ce0b0be57b811139e535"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-mask-4.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-mask-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-mask-8.jpx",
+          "sha256": "2bf30d8ef4903e9a68e80c01bb919d703247712b3156d1c3dc3281a6f3fd7200"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-mask-8.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-legacy-jp2-unknown",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-legacy-jp2-unknown.jpx",
+          "sha256": "6f9dcb91d300c51a984805fd336d6944c7a31983c33a5fb9696249a4dd012a0a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-legacy-jp2-unknown.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-required-unknown",
+      "kind": "vector",
+      "description": "Required display expressions cannot be granted by unknown/deprecated features",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-required-unknown.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-required-unknown.jpx",
+          "sha256": "938788aa414a982ca2aacfee4e0e410718ade56a90eeb35d13d92631e75eb589"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/jpxb-required-conjunction",
+      "kind": "vector",
+      "description": "Required display expressions cannot be granted by unknown/deprecated features",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-required-conjunction.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-required-conjunction.jpx",
+          "sha256": "79de90e999b1315142fdd57274e720a0ce374d155b39f171f34a8be374c73e16"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/jpxb-required-vendor",
+      "kind": "vector",
+      "description": "Required display expressions cannot be granted by unknown/deprecated features",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-required-vendor.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-required-vendor.jpx",
+          "sha256": "9d2a5b86796e60e31cf9128d9a30fc30018329346095234d0597098107edd2bd"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/jpxb-deprecated-no-grant",
+      "kind": "vector",
+      "description": "Required display expressions cannot be granted by unknown/deprecated features",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-deprecated-no-grant.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-deprecated-no-grant.jpx",
+          "sha256": "8a54b50ece0dd50ccf91ad8ae69da11c11585733e0cfd13e57c075f5a6661cb8"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/jpxb-requirements-missing",
+      "kind": "vector",
+      "description": "T.801 M.11.1 exact box position and field extent",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-requirements-missing.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-requirements-missing.jpx",
+          "sha256": "584a0df78e17b7a7d55ce19babf8e2259ac755941f1c73917f649e86f817065c"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/jpxb-requirements-duplicate",
+      "kind": "vector",
+      "description": "T.801 M.11.1 exact box position and field extent",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-requirements-duplicate.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-requirements-duplicate.jpx",
+          "sha256": "52bae24e2d38b0d404b29d18e5032052eeec1380061d6142f947e17d89f25ee0"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/jpxb-requirements-short",
+      "kind": "vector",
+      "description": "T.801 M.11.1 exact box position and field extent",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-requirements-short.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-requirements-short.jpx",
+          "sha256": "adc633d196801e3121e147f1fd1a7e3ed08655b0be0b235e131c4fbd97014315"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/jpxb-requirements-mask-length",
+      "kind": "vector",
+      "description": "T.801 M.11.1 exact box position and field extent",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-requirements-mask-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-requirements-mask-length.jpx",
+          "sha256": "cb313dbe18507745afdf323b671b3052b84b9f7f0208f815d4bbdc24c86c0a6b"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/jpxb-requirements-extra",
+      "kind": "vector",
+      "description": "T.801 M.11.1 exact box position and field extent",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-requirements-extra.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-requirements-extra.jpx",
+          "sha256": "2e76640beee90471a01899cd21001ddebc392f91a509746a8b45c524e932658b"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/jpxb-layout-jpch",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-layout-jpch.jpx",
+          "sha256": "7c4f1416563f9ad3a89b372da523fbf7fd922a9e7558d7f4c3f2f186312ec471"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-layout-jpch.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "gray",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-layout-jplh",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-layout-jplh.jpx",
+          "sha256": "ae32606c3241c1a6b150235c10aee5f0c52a62ff3cbc2529c4c0310703613e6f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/jpxb-layout-jplh.samples",
+          "sha256": "cb257c0515fc5fa82ba491423bfabe196d950965096aa8a5e91d94d0a05e6ebc"
+        }
+      },
+      "color": "gray",
+      "alpha": null
+    },
+    {
+      "id": "jpx/jpxb-layout-ftbl",
+      "kind": "vector",
+      "description": "A baseline brand and mask do not bypass first-image metadata semantics",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-layout-ftbl.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-layout-ftbl.jpx",
+          "sha256": "316f8ec248183617437c65ad2ab367eaa2bee8dca5e89aeb35d6b424214e835d"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/jpxb-layout-cref",
+      "kind": "vector",
+      "description": "A baseline brand and mask do not bypass first-image metadata semantics",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/jpxb-layout-cref.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/jpxb-layout-cref.jpx",
+          "sha256": "d23e6129ebf1d6b2501d1f6dd81adf33fe5608e4d069f889aec767aba3a251b8"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
       "id": "jpx/gray",
       "kind": "vector",
       "description": "Independently encoded input pixels",

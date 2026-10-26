@@ -37,6 +37,32 @@ fn eight_bit_sycc_preserves_neutrals_and_decodes_chroma() {
     }
 }
 
+#[test]
+fn jp2_channel_precision_maps_to_the_same_colour_value_domain() {
+    let converter = Converter::new(
+        &ColorSpace::Sycc,
+        &Target::new(Process::Rgb),
+        &Conversion::default(),
+    )
+    .unwrap();
+    // T.800 I.5.3.3 / Table I.10 followed by IEC F.15/F.16. A sixteen-bit
+    // half-code is slightly below neutral chroma after the prescribed
+    // mapping to 0..255; 32896/65535 is exactly 128/255 instead.
+    for (input, expected) in [
+        ([32768.0 / 65535.0; 3], [127, 128, 127]),
+        (
+            [32768.0 / 65535.0, 32896.0 / 65535.0, 32896.0 / 65535.0],
+            [128, 128, 128],
+        ),
+        ([0.0, 1.0 / 7.0, 127.0 / 1023.0], [0, 100, 0]),
+        ([1.0, 4.0 / 7.0, 513.0 / 1023.0], [255, 249, 255]),
+    ] {
+        let mut output = [0.0; 3];
+        converter.convert(&input, &mut output);
+        assert_eq!(output.map(byte), expected);
+    }
+}
+
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
