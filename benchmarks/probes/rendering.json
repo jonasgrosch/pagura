@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Private post 2.5 diagnostic: three subjects, identical-outline post 2.0 controls, ordinary rectangle and blank. Hosted public APIs at 72 DPI. No performance, family or release claim; unsupported subject results remain failures.",
+  "scope": "Private post 2.5 diagnostic: three subjects, identical-outline post 2.0 controls, ordinary glyph-shaped rectangle plus unchanged blank/rectangle controls. Hosted public APIs at 72 DPI. No performance, family or release claim; unsupported subject results remain failures.",
   "cases": [
     {
       "id": "control.blank",
@@ -12,6 +12,19 @@
         "width": 64,
         "height": 64,
         "rgb_sha256": "2a32d9a94209e87b46358ff2151efee07dea13d3171a3dfb4331dede6e060479",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "control.rectangle",
+      "capability": "render.graphics",
+      "operation": "render",
+      "fixture": "classic/rectangle",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "9c1f47734a0f9c886b3819056c69774b65fb5d61fbb43ca5f849add25dd4f35c",
         "tolerance": 0
       }
     },

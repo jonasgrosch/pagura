@@ -53,7 +53,7 @@
         "text-truetype-selection"
       ],
       "path": "corpus/generated/font_formats/post25-name-fallback.pdf",
-      "sha256": "063615481c57ccfb3998c88337e288ddb6ec930fc0cdd3b4f78cc548ae3564f4",
+      "sha256": "e29add17fb4afa27000d6fa4da0f19b96f075bd42d62e82eac76c5dcc9077f20",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -73,7 +73,7 @@
         "text-truetype-selection"
       ],
       "path": "corpus/generated/font_formats/post2-control-name-fallback.pdf",
-      "sha256": "b1b6f715f002a1c33b8624262fc042b9ab8b2f76f3b5dcca62dfe722051bc700",
+      "sha256": "aa1af9f480165f34b4627cb7ac1adce091eb6b03b326f2843adea2bbe7322932",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -93,7 +93,7 @@
         "text-truetype-selection"
       ],
       "path": "corpus/generated/font_formats/post25-differences.pdf",
-      "sha256": "ed72c9db021b4a6faa15bda85190923b149d4e84be6b9e4c4d9214d563560e04",
+      "sha256": "39e982834c798744d932a09ce057c95d9982a72402607d63d72f5ec1e8e4c59b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -113,7 +113,7 @@
         "text-truetype-selection"
       ],
       "path": "corpus/generated/font_formats/post2-control-differences.pdf",
-      "sha256": "b47ebf6213c1a4890f5e17bd8d4c590dd63d14b6b7cfd20da7f84e9e11348b14",
+      "sha256": "ab56abfbb811110e4218dbb003eec876569e8c0615056f0cfd945752782d1bce",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

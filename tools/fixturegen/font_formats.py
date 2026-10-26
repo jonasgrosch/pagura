@@ -25,7 +25,7 @@ def post(version):
 
 def font_objects(mode, version):
     records = [(3, 1, {65: 1})] if mode == 'direct' else [(3, 1, {66: 2}), (1, 0, {65: 2})]
-    program = truetype(table_overrides={b'post': post(version), b'cmap': text_cmap_records(records)})
+    program = truetype(table_overrides={b'post': post(version), b'cmap': text_cmap_records(sorted(records))})
     encoding = b'/WinAnsiEncoding' if mode != 'differences' else b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /A] >>'
     font = (b'<< /Type /Font /Subtype /TrueType /BaseFont /LegacyName /FirstChar 65 /LastChar 65 '
             b'/Widths [600] /Encoding ' + encoding + b' /FontDescriptor 6 0 R >>')

@@ -177,7 +177,8 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
 `font_formats` pairs original post 2.5 programs with post 2.0 programs that have
 identical glyph names, outlines, metrics and cmap tables. It covers direct cmap
 selection and PDF glyph-name fallback, plus ordinary rectangle and blank
-controls. All eight cases have literal rectangle expectations at zero tolerance.
+controls. All nine cases have literal rectangle expectations at zero tolerance.
+The existing blank/rectangle controls are retained unchanged.
 The historical version value and signed offsets follow Microsoft's primary
 [post specification](https://learn.microsoft.com/en-us/typography/opentype/spec/post).
 
