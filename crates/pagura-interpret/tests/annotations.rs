@@ -2,11 +2,11 @@
 //! Static annotation placement uses the ordinary form interpreter, skips
 //! irrelevant objects and retains existing reference and scene budgets.
 
-use pagura_core::{ErrorKind, Limits, Recovery, Store};
+use pagura_core::{ErrorKind, Limits, Recovery, Result, Store};
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{Interpreter, SceneRecorder};
 
-fn open(name: &str, limits: Limits) -> Document {
+fn open(name: &str, limits: Limits) -> Result<Document> {
     Document::open(
         pagura_testkit::fixture("annotation_display", &format!("{name}.pdf")),
         &OpenOptions {
@@ -15,14 +15,13 @@ fn open(name: &str, limits: Limits) -> Document {
             ..OpenOptions::default()
         },
     )
-    .unwrap()
 }
 
 #[test]
 fn absent_and_null_fixed_print_keep_ordinary_appearance_placement() {
     let mut expected = None;
     for name in ["watermark-ordinary-72", "fixed-null", "fixed-indirect-null"] {
-        let document = open(name, Limits::default());
+        let document = open(name, Limits::default()).unwrap();
         let scene = Interpreter::new(&document)
             .scene(document.page(0).unwrap())
             .unwrap();
@@ -38,7 +37,7 @@ fn absent_and_null_fixed_print_keep_ordinary_appearance_placement() {
 
 #[test]
 fn media_placement_keeps_one_existing_fixed_view_and_a_plain_form() {
-    let document = open("fixed-origin-rotate-90-72", Limits::default());
+    let document = open("fixed-origin-rotate-90-72", Limits::default()).unwrap();
     let scene = Interpreter::new(&document)
         .scene(document.page(0).unwrap())
         .unwrap();
@@ -60,14 +59,14 @@ fn static_paint_does_not_follow_ignored_keys_or_sound_payloads() {
         "sound-ignored-fixed-print",
         "sound-inert-payload",
     ] {
-        let document = open(name, Limits::default());
+        let document = open(name, Limits::default()).unwrap();
         let scene = Interpreter::new(&document)
             .scene(document.page(0).unwrap())
             .unwrap();
         assert_eq!(scene.marks(), 2, "{name}");
         assert_eq!(document.diagnostics(), [], "{name}");
     }
-    let document = open("fixed-hidden-malformed", Limits::default());
+    let document = open("fixed-hidden-malformed", Limits::default()).unwrap();
     assert_eq!(
         Interpreter::new(&document)
             .scene(document.page(0).unwrap())
@@ -88,7 +87,7 @@ fn malformed_placement_is_read_only_when_a_device_needs_appearances() {
         "fixed-horizontal-type",
         "fixed-vertical-type",
     ] {
-        let document = open(name, Limits::default());
+        let document = open(name, Limits::default()).unwrap();
         let page = document.page(0).unwrap();
         let interpreter = Interpreter::new(&document);
         assert!(interpreter.text(page).unwrap().glyphs.is_empty(), "{name}");
@@ -106,7 +105,8 @@ fn fixed_print_uses_existing_reference_and_scene_budgets() {
             depth: 8,
             ..Limits::default()
         },
-    );
+    )
+    .unwrap();
     let page = document.page(0).unwrap();
     let interpreter = Interpreter::new(&document);
     assert!(interpreter.text(page).unwrap().glyphs.is_empty());
@@ -114,7 +114,7 @@ fn fixed_print_uses_existing_reference_and_scene_budgets() {
     assert_eq!(error.kind, ErrorKind::Limit);
     assert_eq!(error.message, "reference chain too long");
 
-    let document = open("fixed-user-unit-144", Limits::default());
+    let document = open("fixed-user-unit-144", Limits::default()).unwrap();
     let page = document.page(0).unwrap();
     let record = |store: &Store, bytes| {
         let mut recorder = SceneRecorder::new(Limits {
