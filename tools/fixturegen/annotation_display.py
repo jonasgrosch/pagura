@@ -31,14 +31,18 @@ https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_pixmap
 """
 from functools import lru_cache
 
+from .document import Builder, navigation_value
+from .document_forms import name as pdf_name, ref
 from .file_attachment_icons import FRAME, pixels as icon_pixels
+from .forms import base as form_base
 from .markup_annotations import oracle as markup_pixels
-from .model import Case, OPEN, RENDER
+from .model import Case, OPEN, RENDER, UNSUPPORTED
 from .pdf import document, opaque_rectangles, stream
 
 AREA = 'annotation_display'
 REQUIREMENT = 'content-static-annotation-placement'
 REDACT_REQUIREMENT = 'content-redact-preview'
+WIDGET_REQUIREMENT = 'content-source-widget-display'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
 # Original rectangular ink regions in a 32-unit grid. These are the geometric
 # union of one-unit orthogonal strokes with miter corners and butt endpoints,
@@ -411,3 +415,59 @@ def cases():
         yield Case('redact-limit-'+label,source(subtype=b'Redact',stored=False,entries=entry,objects=objects),
                    OPEN,(REDACT_REQUIREMENT,),'Existing reference and finite-geometry limits bound preview data',
                    extra={'render_error':'limit'})
+
+    yield from widget_observation_cases()
+
+
+def widget_observation_cases():
+    """Source values, not edits: an original Type3 font isolates font availability."""
+    artwork=b'0 g 4 4 8 10 re f 1 0 0 rg 16 4 8 10 re f'
+    def pdf(variant, stored=False):
+        kind='Ch' if variant.startswith(('combo','list')) else 'Tx'
+        flags=1<<17 if variant.startswith('combo') else 0
+        objects=form_base(kind,flags,need=variant=='text-need')
+        objects[3]['MediaBox']=[0,0,64,48]
+        objects[11]|={'Rect':[8,8,56,40],'V':'AB','F':4}
+        if variant in ('text-inherited','text-null-inheritance'):
+            objects[10]['Fields']=[ref(12)]
+            objects[12]={'T':'parent','Kids':[ref(11)],'FT':pdf_name('Tx'),'V':'AB',
+                         'Ff':0,'DA':b'/F1 10 Tf 0 g','Q':2}
+            objects[11]['Parent']=ref(12)
+            for key in ('FT','Ff','V','DA','Q'):
+                objects[11].pop(key,None)
+                if variant=='text-null-inheritance':objects[11][key]=None
+        if variant=='text-multiline':objects[11]|={'Ff':1<<12,'V':'AB\nCD'}
+        if variant=='text-comb':objects[11]|={'Ff':1<<24,'MaxLen':4,'Q':1}
+        if variant=='text-widget-rotation':objects[11]['MK']={'R':90}
+        if kind=='Ch':
+            objects[11]|={'Opt':[['export-a','AA'],['export-b','BB'],['export-c','CC']], 'V':'BB'}
+        if variant=='combo-editable':objects[11]|={'Ff':(1<<17)|(1<<18),'V':'CUSTOM'}
+        if variant=='list-multi':objects[11]|={'Ff':1<<21,'V':['AA','CC'],'I':[0,2]}
+        if variant=='list-top':objects[11]|={'TI':1,'V':'CC'}
+        objects[80]=stream(artwork,b'/Type /XObject /Subtype /Form /BBox [0 0 48 32] /Resources << >>')
+        if stored:objects[11]['AP']={'N':ref(80)}
+        if variant=='ordinary-content':
+            objects[3].pop('Annots')
+            objects[3]['Contents']=ref(50)
+            objects[50]=stream(b'q 1 0 0 1 8 8 cm '+artwork+b' Q')
+            objects[1].pop('AcroForm')
+        builder=Builder()
+        for number,body in sorted(objects.items()):
+            builder.obj(number,body if isinstance(body,bytes) else navigation_value(body))
+        return builder.classic()[0]
+    def pixels(dpi):
+        scale=dpi//72
+        return opaque_rectangles(64*scale,48*scale,
+            [((12*scale,12*scale,8*scale,10*scale),(0,0,0)),
+             ((24*scale,12*scale,8*scale,10*scale),(255,0,0))])
+    yield Case('widget-observe-ordinary-content',pdf('ordinary-content'),RENDER,(WIDGET_REQUIREMENT,),
+               'Literal black/red rectangles provide an ordinary-content control for the matched stored AP',oracle=pixels(72))
+    for variant in ('text','text-need','text-inherited','text-null-inheritance','text-multiline','text-comb',
+                    'text-widget-rotation','combo','combo-editable','list','list-multi','list-top'):
+        for dpi in ((72,144) if variant=='text' else (72,)):
+            for stored in (False,True):
+                yield Case(f'widget-observe-{variant}-{dpi}-'+('stored' if stored else 'missing'),pdf(variant,stored),
+                           RENDER if stored else UNSUPPORTED,(WIDGET_REQUIREMENT,),
+                           'Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values',
+                           oracle=pixels(dpi) if stored else None, dpi=dpi,
+                           feature=None if stored else 'annotation.appearance',extra={'dpi':dpi})

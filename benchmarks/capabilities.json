@@ -990,7 +990,7 @@
         "viewer": "partial"
       },
       "implemented": "Stored normal appearances and state dictionaries; generated Text/FileAttachment/Sound icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment or sound payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions. Forms and annotations share stored normal/rollover/down selection as data; host/viewer rendering still selects normal appearance. Watermark FixedPrint screen placement reuses shared MediaBox page geometry and the existing NoRotate view; authored controls cover all quarter turns, nonzero origins, asymmetric crop, UserUnit, DPI, NoZoom and AP matrices/groups. Hidden/text-only requests skip placement data; stored Sound AP never reads its sound payload. The retained 352-control hosted run covers these screen-placement pixels. MuPDF/Poppler raw Sound observations preceded the original Speaker/Mic geometry; ordinary Sound scale/rotation and explicit view flags use the existing view contract. The retained 386-control hosted run passes its 34 independent Sound pixel controls, with native/WASI/client/save-reopen checks. Redact preview uses one-unit red QuadPoints/Rect outlines through shared markup validation and Marks generation, preserving underlying page content and extraction. Matched baseline observations preceded the policy; 30 new independent geometry controls and malformed/default/ignored-entry/budget checks await hosted runtime validation. Full V01 remains partial.",
-      "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, unvalidated character/paragraph measurements and interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; broader unequal-ellipse/concave/curved cloud and diagonal/overlapping callout accuracy; other subtype synthesis and custom artwork variants; applied redaction and post-application replacement/removal stay group 16; nonrectangular relief/radii and elliptical dashed-border evidence; nonempty widgets and interaction-selected AP/R/AP/D states. FixedPrint physical print media/scaling, tiling and n-up remain V05 contract/probe gaps. Full V01 acceptance remains open.",
+      "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, unvalidated character/paragraph measurements and interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; broader unequal-ellipse/concave/curved cloud and diagonal/overlapping callout accuracy; other subtype synthesis and custom artwork variants; applied redaction and post-application replacement/removal stay group 16; nonrectangular relief/radii and elliptical dashed-border evidence; nonempty widgets and interaction-selected AP/R/AP/D states. FixedPrint physical print media/scaling, tiling and n-up remain V05 contract/probe gaps. Full V01 acceptance remains open. A 28-case raw widget diagnostic isolates missing/stored Tx/Ch AP, effective inheritance, NeedAppearances and choice source values; observations and product integration are pending.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
@@ -1094,7 +1094,8 @@
         "content-cloudy-borders",
         "content-rich-annotation-text",
         "content-static-annotation-placement",
-        "content-redact-preview"
+        "content-redact-preview",
+        "content-source-widget-display"
       ],
       "fixtures": [
         "file_attachment_icons/null-annots",
@@ -1995,7 +1996,34 @@
         "annotation_display/redact-invalid-concave",
         "annotation_display/redact-invalid-alpha",
         "annotation_display/redact-limit-reference",
-        "annotation_display/redact-limit-numeric"
+        "annotation_display/redact-limit-numeric",
+        "annotation_display/widget-observe-ordinary-content",
+        "annotation_display/widget-observe-text-72-missing",
+        "annotation_display/widget-observe-text-72-stored",
+        "annotation_display/widget-observe-text-144-missing",
+        "annotation_display/widget-observe-text-144-stored",
+        "annotation_display/widget-observe-text-need-72-missing",
+        "annotation_display/widget-observe-text-need-72-stored",
+        "annotation_display/widget-observe-text-inherited-72-missing",
+        "annotation_display/widget-observe-text-inherited-72-stored",
+        "annotation_display/widget-observe-text-null-inheritance-72-missing",
+        "annotation_display/widget-observe-text-null-inheritance-72-stored",
+        "annotation_display/widget-observe-text-multiline-72-missing",
+        "annotation_display/widget-observe-text-multiline-72-stored",
+        "annotation_display/widget-observe-text-comb-72-missing",
+        "annotation_display/widget-observe-text-comb-72-stored",
+        "annotation_display/widget-observe-text-widget-rotation-72-missing",
+        "annotation_display/widget-observe-text-widget-rotation-72-stored",
+        "annotation_display/widget-observe-combo-72-missing",
+        "annotation_display/widget-observe-combo-72-stored",
+        "annotation_display/widget-observe-combo-editable-72-missing",
+        "annotation_display/widget-observe-combo-editable-72-stored",
+        "annotation_display/widget-observe-list-72-missing",
+        "annotation_display/widget-observe-list-72-stored",
+        "annotation_display/widget-observe-list-multi-72-missing",
+        "annotation_display/widget-observe-list-multi-72-stored",
+        "annotation_display/widget-observe-list-top-72-missing",
+        "annotation_display/widget-observe-list-top-72-stored"
       ],
       "comparisons": {
         "pdfium": "unprobed",

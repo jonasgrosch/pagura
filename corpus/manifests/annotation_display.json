@@ -3191,6 +3191,480 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/widget-observe-ordinary-content",
+      "kind": "pdf",
+      "description": "Literal black/red rectangles provide an ordinary-content control for the matched stored AP",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-ordinary-content.pdf",
+      "sha256": "01978ef8e6fb5a7fd33dbffc3af2e5ff79bb59d364a9d251e865b6bb5d47bbff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-ordinary-content.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-72-missing.pdf",
+      "sha256": "2a5cdc2f7a103c5eba32eccc55e61d5abf769ceaf6678c6050c7bc2017aedfb6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-72-stored.pdf",
+      "sha256": "d522cb87cac6f35258e337a1b7956eee6e1fcd0e94ffd1b2e3393a1fa8e729e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-144-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-144-missing.pdf",
+      "sha256": "2a5cdc2f7a103c5eba32eccc55e61d5abf769ceaf6678c6050c7bc2017aedfb6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/widget-observe-text-144-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-144-stored.pdf",
+      "sha256": "d522cb87cac6f35258e337a1b7956eee6e1fcd0e94ffd1b2e3393a1fa8e729e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-144-stored.ppm",
+      "oracle_sha256": "b23635a9e2b26887039ad50f722b510e0d8420b7b7b3e9ae0cdc24de020cd846",
+      "dpi": 144,
+      "width": 128,
+      "height": 96
+    },
+    {
+      "id": "annotation_display/widget-observe-text-need-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-need-72-missing.pdf",
+      "sha256": "53c7f72f7dfbd6aa7a0f3b50d8bd67bf5375e89cb966eecd34c010fef80fc5ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-need-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-need-72-stored.pdf",
+      "sha256": "7a6325f6c32a24cbf41592564ad50527b87e499d6a94f5bf13a71c5292e4a45b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-need-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-inherited-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-inherited-72-missing.pdf",
+      "sha256": "bdb15fbdb642e3f55b9f55e046ad095f71ba98a4e09767f1603c9a810829ac0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-inherited-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-inherited-72-stored.pdf",
+      "sha256": "4b07d4740ec3ccf7651b94f7047105a04bcaa39526aebc715e11582099e1a5bc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-inherited-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-null-inheritance-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-null-inheritance-72-missing.pdf",
+      "sha256": "e69c50c7dca33630f5aa9d8223fe0f3f7edf80426782c9f4b5711b73849de415",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-null-inheritance-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-null-inheritance-72-stored.pdf",
+      "sha256": "ae8039c1da1fcf98cd04a8a5ee747bc321c7c63f8ea69d970477b1630eb9baaf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-null-inheritance-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-multiline-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-multiline-72-missing.pdf",
+      "sha256": "fbc2bd9a724aa8207afcec7a9747d4a7294ce34a0652ac7fefe5568fea13c59c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-multiline-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-multiline-72-stored.pdf",
+      "sha256": "c9b4fc4a27e46747f15ee982801c9271c184decc5018df65ac7c8f34915ae9bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-multiline-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-comb-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-comb-72-missing.pdf",
+      "sha256": "6379c444b9acd51cfc4a75ea306571e0c11f66696541f7ef4998627100791f3a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-comb-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-comb-72-stored.pdf",
+      "sha256": "3aee8b75baead383d50162bbd410dfe04de9150b02038786d5afa720e3bf01da",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-comb-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-text-widget-rotation-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-widget-rotation-72-missing.pdf",
+      "sha256": "772a47db32874560e33aa8d21a56b47f4702c55638e196d3109da0eec4256dec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-text-widget-rotation-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-text-widget-rotation-72-stored.pdf",
+      "sha256": "936a37bcf47f72e8fc0af1eed6160f3421393785099a4a996bbbe3220a3ea969",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-text-widget-rotation-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-combo-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-combo-72-missing.pdf",
+      "sha256": "a9c02c055adcc08b3e73a50cf01ce3e90f4680dc423ef3f9ad691f64edcfc916",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-combo-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-combo-72-stored.pdf",
+      "sha256": "2e8d152894cbd41bb2001813e0f8d31ca2023ae6ed7724f3165e8c3496a647c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-combo-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-combo-editable-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-combo-editable-72-missing.pdf",
+      "sha256": "aa6be27e905441451f43153415d70578bac3df2d92d7489804cee22d19f4fdc2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-combo-editable-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-combo-editable-72-stored.pdf",
+      "sha256": "76a9aa81719ed50183e438939d2e7d2bf8c682615bae8679dcdc14975b99a6d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-combo-editable-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-list-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-list-72-missing.pdf",
+      "sha256": "e89610001a47bcde0a2386e0f5c078549299ae412371690b403a97dfa8f2f513",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-list-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-list-72-stored.pdf",
+      "sha256": "43205cb5e3dd0f28df868617695213ebc1bbfaacdc6012638b9b8841cbf248a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-list-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-list-multi-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-list-multi-72-missing.pdf",
+      "sha256": "8957a419126f946df4ebdab9c49bc5dfe051e1372325f0b3f76e7bc9212ef677",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-list-multi-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-list-multi-72-stored.pdf",
+      "sha256": "6e881953dcd763d0fbc800128add7d2fe14f27b0ca4a0cb30b2eafa932b0afd7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-list-multi-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/widget-observe-list-top-72-missing",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-list-top-72-missing.pdf",
+      "sha256": "f880cf7a5e0cb48457f083592f0de27863b2b917ca8c2bceb43d0aeabb36841f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/widget-observe-list-top-72-stored",
+      "kind": "pdf",
+      "description": "Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_display/widget-observe-list-top-72-stored.pdf",
+      "sha256": "8f921481f6f95d1c723538c53d7cd28f7df203c7a34db164b54aaf13c72c10b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/widget-observe-list-top-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
     }
   ]
 }

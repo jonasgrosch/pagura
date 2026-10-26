@@ -187,7 +187,7 @@ class RenderProbeTests(unittest.TestCase):
                         self.assertNotIn('observed', result)
 
     def test_redact_observations_keep_preview_separate_from_application(self):
-        data = render.redact_observations(self.manifest)
+        data = render.paired_observations(self.manifest, 'redact')
         rows = render.fixtures(data, observations=True)
         self.assertEqual(len(rows), 18)
         for variant in ('rect', 'quads', 'border-color', 'interior', 'quad-interior',
@@ -198,7 +198,7 @@ class RenderProbeTests(unittest.TestCase):
                 self.assertNotIn('oracle', rows[key])
         self.assertIn('annotations.display.redact-observe-ordinary-content', rows)
         with self.assertRaisesRegex(ValueError, 'paired'):
-            render.redact_observations({'cases': []})
+            render.paired_observations({'cases': []}, 'redact')
         original = render.read_json
         def missing_pair(path):
             data = original(path)
@@ -206,7 +206,28 @@ class RenderProbeTests(unittest.TestCase):
                              if row['id'] != 'annotation_display/redact-observe-repeat-stored']
             return data
         with patch.object(render, 'read_json', side_effect=missing_pair), self.assertRaisesRegex(ValueError, 'paired'):
-            render.redact_observations(self.manifest)
+            render.paired_observations(self.manifest, 'redact')
+        with self.assertRaises(ValueError):
+            render.validate_manifest(data, self.inventory)
+
+    def test_source_widget_observations_keep_values_and_authored_controls_distinct(self):
+        data = render.paired_observations(self.manifest, 'widgets')
+        rows = render.fixtures(data, observations=True)
+        self.assertEqual(len(rows), 28)
+        self.assertEqual(rows['annotations.display.widget-observe-text-144-missing']['dpi'], 144)
+        self.assertIn('annotations.display.widget-observe-ordinary-content', rows)
+        for case in data['cases']:
+            if case['id'] == 'control.blank':continue
+            self.assertIsNone(case['expected'])
+            self.assertIsNone(case['oracle'])
+        original = render.read_json
+        def missing_pair(path):
+            data = original(path)
+            data['cases'] = [row for row in data['cases']
+                             if row['id'] != 'annotation_display/widget-observe-combo-72-stored']
+            return data
+        with patch.object(render, 'read_json', side_effect=missing_pair), self.assertRaisesRegex(ValueError, 'paired'):
+            render.paired_observations(self.manifest, 'widgets')
         with self.assertRaises(ValueError):
             render.validate_manifest(data, self.inventory)
 

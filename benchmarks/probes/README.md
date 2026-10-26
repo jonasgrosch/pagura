@@ -442,3 +442,34 @@ orientation arithmetic. Existing shared limits also bound Rect fallback and
 explicit quads, including repeated scene recording under a tight byte budget.
 The resulting G01 set has 416 oracles. This Redact increment awaits hosted
 runtime validation; it does not implement applied redaction or promote V01.
+
+
+## Source widget display diagnostic
+
+The `widgets` annotation observation set adds 13 missing/stored Tx/Ch pairs,
+plus blank and literal ordinary-content controls. The PDF 1.7 inputs retain
+source values unchanged: ordinary and inherited/null field attributes,
+NeedAppearances, multiline/comb text, MK rotation, combo/editable/list choices,
+multiselection and TI, with the ordinary text pair at 72/144 DPI. An original
+embedded Type3 font separates layout from host font availability. Option pairs
+use distinct export and display strings; source V uses display strings as
+required by ISO 32000-2 Table 234. Stored artwork consists of literal black/red
+rectangles, with independently calculated pixel controls, so regeneration is
+distinguishable from stored-AP precedence.
+
+The primary review covers null-as-absence (7.3.9), field inheritance
+(12.7.4.1/Table 226), AcroForm DA/DR and NeedAppearances (12.7.3/Table 224),
+variable text (12.7.4.3/Table 228), widget-local MK (Table 189), text fields
+(Tables 231–232) and choices (Tables 233–234). Missing AP and the explicit
+NeedAppearances regeneration request are separate subjects. Ordinary stored
+AP precedence, source display, untouched filler preview and save/reopen will
+be validated together through the existing form generator. Rich/CID layout,
+push-button artwork, actions and physical printing remain separate boundaries.
+
+Dispatch `capabilities.yml` with `annotation_observations=widgets` on the
+reviewed private branch, or select `observe --annotation-set widgets` in the
+existing harness. This diagnostic uses the recorded display adapters and
+retains images as hosted artifacts. It records raw output/refusals/errors,
+never an oracle verdict, pixel pass total or full-viewer capability. Hosted
+observations and product integration are pending. The 416 existing G01 pixel
+cases and all previous annotation inputs/oracles are unchanged.

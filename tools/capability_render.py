@@ -75,26 +75,35 @@ def sound_observations(data):
                      'canvas-only configurations do not establish full-viewer support. No playback is requested.'}
 
 
-def redact_observations(data):
-    """Non-destructive previews, with replacement-phase entries kept distinct."""
+def paired_observations(data, family):
+    """Matched missing/stored annotation inputs, separate from oracle verdicts."""
+    prefix, label, scope = {
+        'redact': ('redact', 'Redact',
+                   'Raw non-destructive Redact preview observations: matched missing/stored AP, Rect/QuadPoints, '
+                   'border/interior colour, overlay text/repetition and replacement RO, with ordinary content and blank controls. '
+                   'No redaction is applied, no content is removed and no replacement-phase capability is asserted. '
+                   'Reader preview policy has no universal pixel oracle; no pass/fail or family promotion.'),
+        'widgets': ('widget', 'Widget',
+                    'Raw source Tx/Ch widget display with matched missing/stored AP and ordinary/blank controls. '
+                    'Covers inherited/null values and DA, NeedAppearances, multiline/comb, choice names versus export values, '
+                    'list selection/top index, widget rotation and 72/144 DPI. Original embedded Type3 glyphs isolate '
+                    'font availability; values are never edited. Raw output is not an oracle verdict or full-viewer claim.'),
+    }[family]
+    prefix = 'annotation_display/' + prefix + '-observe-'
     cases = [case for case in data['cases'] if case['id'] == 'control.blank']
     rows = [row for row in read_json(ROOT / 'corpus/manifests/annotation_display.json')['cases']
-            if row['id'].startswith('annotation_display/redact-observe-')]
+            if row['id'].startswith(prefix)]
     identities = {row['id'] for row in rows}
-    require(len(cases) == 1 and 'annotation_display/redact-observe-ordinary-content' in identities,
-            'missing paired Redact drawing controls')
+    require(len(cases) == 1 and prefix + 'ordinary-content' in identities,
+            'missing paired ' + label + ' drawing controls')
     require(any(name.endswith('-missing') for name in identities)
             and all(name.removesuffix('-missing') + '-stored' in identities
                     for name in identities if name.endswith('-missing')),
-            'missing paired Redact stored appearance')
+            'missing paired ' + label + ' stored appearance')
     cases += [{'id': 'annotations.display.' + row['id'].split('/', 1)[1],
                'capability': 'annotations.appearances', 'operation': 'render',
                'fixture': row['id'], 'oracle': None, 'expected': None} for row in rows]
-    return {'schema': 1, 'cases': cases,
-            'scope': 'Raw non-destructive Redact preview observations: matched missing/stored AP, Rect/QuadPoints, '
-                     'border/interior colour, overlay text/repetition and replacement RO, with ordinary content and blank controls. '
-                     'No redaction is applied, no content is removed and no replacement-phase capability is asserted. '
-                     'Reader preview policy has no universal pixel oracle; no pass/fail or family promotion.'}
+    return {'schema': 1, 'cases': cases, 'scope': scope}
 
 
 def fixtures(data, *, observations=False):
@@ -325,7 +334,7 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--engines', default='pdfium,mupdf,pdfjs,poppler,hayro,pagura')
     parser.add_argument('--images', type=Path, help='retain synthetic actual/oracle PPMs outside Git for adjudication')
-    parser.add_argument('--annotation-set', choices=['sound', 'redact'], default='sound',
+    parser.add_argument('--annotation-set', choices=['sound', 'redact', 'widgets'], default='sound',
                         help='raw annotation observation set; Sound remains the observe default')
     args = parser.parse_args()
     data, inventory = read_json(ROOT / MANIFEST), render_inventory(read_json(ROOT / LEDGER))
@@ -338,7 +347,7 @@ def main():
         require(not args.reports, 'run does not accept report inputs')
         observations = args.command == 'observe'
         if observations:
-            data = sound_observations(data) if args.annotation_set == 'sound' else redact_observations(data)
+            data = sound_observations(data) if args.annotation_set == 'sound' else paired_observations(data, args.annotation_set)
         if not run(data, inventory, args.output, tuple(args.engines.split(',')), args.images, observations=observations):
             parser.exit(1, 'Render observations incomplete or an oracle failed; inspect the saved outcomes.\n')
         if observations:

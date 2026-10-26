@@ -2012,6 +2012,52 @@
         "pagura-appearance annotation::tests::markup::redact_closes_every_quad_before_painting_one_translucent_stroke"
       ],
       "gaps": "The exact outline artwork is reader policy, not a universal pixel requirement. Raw missing/stored baseline observations remain separate from independent oracle verdicts; canvas-only and CoreGraphics adapter omissions do not establish full-viewer behavior. The new 30 pixel controls await hosted runtime validation. Applying redactions, destroying all identified content and drawing post-application RO/interior/overlay replacements remain group 16. Static preview does not promote V01 or claim sanitizing removal."
+    },
+    {
+      "id": "content-source-widget-display",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "12.5.5",
+        "12.5.6.19 Table 189",
+        "12.7.3 Table 224",
+        "12.7.4.1 Table 226",
+        "12.7.4.3 Table 228",
+        "12.7.5.3 Tables 231–232",
+        "12.7.5.4 Tables 233–234"
+      ],
+      "status": "Primary inheritance and source-value semantics reviewed; matched missing/stored diagnostic inputs authored, awaiting hosted observations",
+      "rule": "Variable-text widgets use effective field attributes: FT, Ff, V, DA, Q and MaxLen inherit through the field hierarchy, with null dictionary entries treated as absent. AcroForm supplies default DA and font resources through DR; MK is widget-local. Choice V identifies displayed Opt names, including the second string of an export/display pair, and list I/TI select and expose options under Table 234. NeedAppearances is a separate regeneration request, defaulting false; the diagnostic separates it from missing-AP fallback and supplies visibly distinct stored AP artwork. PDF 1.7 inputs retain source values unchanged and compare missing/stored Tx/Ch appearances with literal ordinary-content and blank controls. Embedded original Type3 glyphs isolate layout from font availability. Raw adapter observations are separate from pixel-oracle verdicts.",
+      "tests": [
+        "annotation_display/widget-observe-ordinary-content",
+        "annotation_display/widget-observe-text-72-missing",
+        "annotation_display/widget-observe-text-72-stored",
+        "annotation_display/widget-observe-text-144-missing",
+        "annotation_display/widget-observe-text-144-stored",
+        "annotation_display/widget-observe-text-need-72-missing",
+        "annotation_display/widget-observe-text-need-72-stored",
+        "annotation_display/widget-observe-text-inherited-72-missing",
+        "annotation_display/widget-observe-text-inherited-72-stored",
+        "annotation_display/widget-observe-text-null-inheritance-72-missing",
+        "annotation_display/widget-observe-text-null-inheritance-72-stored",
+        "annotation_display/widget-observe-text-multiline-72-missing",
+        "annotation_display/widget-observe-text-multiline-72-stored",
+        "annotation_display/widget-observe-text-comb-72-missing",
+        "annotation_display/widget-observe-text-comb-72-stored",
+        "annotation_display/widget-observe-text-widget-rotation-72-missing",
+        "annotation_display/widget-observe-text-widget-rotation-72-stored",
+        "annotation_display/widget-observe-combo-72-missing",
+        "annotation_display/widget-observe-combo-72-stored",
+        "annotation_display/widget-observe-combo-editable-72-missing",
+        "annotation_display/widget-observe-combo-editable-72-stored",
+        "annotation_display/widget-observe-list-72-missing",
+        "annotation_display/widget-observe-list-72-stored",
+        "annotation_display/widget-observe-list-multi-72-missing",
+        "annotation_display/widget-observe-list-multi-72-stored",
+        "annotation_display/widget-observe-list-top-72-missing",
+        "annotation_display/widget-observe-list-top-72-stored"
+      ],
+      "gaps": "Nonempty source Tx/Ch widgets without AP remain unsupported in ordinary page display pending shared form-generator integration. Untouched filler preview and saved/reopened behavior need the same independent controls. Rich/CID/complex-script layout, push-button artwork, actions and physical printing remain separate boundaries. Raw canvas output cannot establish full-viewer behavior or promote V01/V02."
     }
   ]
 }
