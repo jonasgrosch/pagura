@@ -95,7 +95,20 @@ impl Jpx {
         if self.mode != 0 && decoded.alpha.is_none() {
             return Err(Error::syntax("SMaskInData requires an opacity channel"));
         }
-        if storage_bytes(&decoded, component_geometry.capacity(), 0, 8, 0)? > limits.decoded_bytes {
+        let bias_values = if components == 0 {
+            sample_bias_len(&decoded)
+        } else {
+            0
+        };
+        if storage_bytes(
+            &decoded,
+            component_geometry.capacity(),
+            0,
+            8,
+            0,
+            bias_values,
+        )? > limits.decoded_bytes
+        {
             return Err(Error::limit("JPX component adapter budget exceeded"));
         }
         let colours: Vec<_> = decoded
@@ -169,7 +182,20 @@ pub(crate) fn adapt(
     if mode != 0 && decoded.alpha.is_none() {
         return Err(Error::syntax("SMaskInData requires an opacity channel"));
     }
-    if storage_bytes(&decoded, component_geometry.capacity(), 0, 8, 0)? > limits.decoded_bytes {
+    let bias_values = if matches!(image.kind, ImageKind::Color { color_space: None }) {
+        sample_bias_len(&decoded)
+    } else {
+        0
+    };
+    if storage_bytes(
+        &decoded,
+        component_geometry.capacity(),
+        0,
+        8,
+        0,
+        bias_values,
+    )? > limits.decoded_bytes
+    {
         return Err(Error::limit("JPX component adapter budget exceeded"));
     }
     let mut components = Vec::with_capacity(decoded.components.len());
@@ -203,6 +229,7 @@ pub(crate) fn adapt(
         values,
         precision,
         mode,
+        bias_values,
     )?;
     if storage > limits.decoded_bytes {
         return Err(Error::limit("JPX adapter sample budget exceeded"));
@@ -301,12 +328,26 @@ fn validate_placement(
     Ok(())
 }
 
+fn sample_bias_len(decoded: &jpx::JpxImage) -> usize {
+    if decoded
+        .components
+        .iter()
+        .enumerate()
+        .any(|(index, component)| Some(index) != decoded.alpha && component.signed)
+    {
+        decoded.components.len() - usize::from(decoded.alpha.is_some())
+    } else {
+        0
+    }
+}
+
 fn storage_bytes(
     decoded: &jpx::JpxImage,
     geometry_capacity: usize,
     values: usize,
     bits: u8,
     mode: i64,
+    bias_values: usize,
 ) -> Result<usize> {
     let add = |a: usize, b: usize| a.checked_add(b).ok_or(Error::limit("JPX storage overflow"));
     let mut bytes = 0usize;
@@ -337,6 +378,12 @@ fn storage_bytes(
         )?;
     }
     bytes = add(bytes, decoded.color.retained_bytes())?;
+    bytes = add(
+        bytes,
+        bias_values
+            .checked_mul(size_of::<u16>())
+            .ok_or(Error::limit("JPX sample bias storage overflow"))?,
+    )?;
     // Ignoring opacity drops its samples, but truncating the component lists
     // retains their backing allocations. Charge their capacities until drop.
     let component_bytes = decoded
@@ -350,7 +397,7 @@ fn storage_bytes(
     let reference_bytes = decoded
         .components
         .len()
-        .checked_mul(2 * size_of::<&jpx::JpxComponent>() + 1 + size_of::<u16>())
+        .checked_mul(2 * size_of::<&jpx::JpxComponent>() + 1)
         .ok_or(Error::limit("JPX component storage overflow"))?;
     add(
         add(add(bytes, component_bytes)?, geometry_bytes)?,
