@@ -481,7 +481,7 @@
         "viewer": "partial"
       },
       "implemented": "JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1.",
-      "remaining": "Inventory valid residual JPEG, CCITT, JBIG2 and JPX variants rather than interpreting generic filter tags as total absence.",
+      "remaining": "Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures.",
       "sources": [
         "crates/pagura-image/src/features.rs",
         "crates/pagura-image/src/jbig2/mod.rs",
@@ -747,7 +747,7 @@
         "viewer": "partial"
       },
       "implemented": "One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns.",
-      "remaining": "Valid singular-transform/pattern refusals and independent accuracy evidence for difficult geometry.",
+      "remaining": "Singular-transform/pattern compatibility cases and independent accuracy evidence for difficult geometry.",
       "sources": [
         "crates/pagura-interpret/src/resources/pattern.rs",
         "crates/pagura-paint/src/prepare/planner/patterns.rs",
@@ -3221,7 +3221,7 @@
       ],
       "review": "gap",
       "capability": "viewer.layers-printing",
-      "rationale": "Usage categories needing unavailable viewer context refuse; ordinary View/Print/Export selection exists.",
+      "rationale": "The engine applies the initial View event. It validates Print/Export applications but does not select those events; categories requiring unavailable viewer context refuse. Event selection and richer context remain V05 work.",
       "evidence": [
         {
           "path": "crates/pagura-interpret/src/resources/optional.rs",

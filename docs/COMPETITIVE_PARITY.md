@@ -124,29 +124,29 @@ Owner: `references/requirements`, `docs`, `benchmarks`; depends on no new produc
   policy/unknown-input boundaries, actual refusals and untagged service APIs.
   Later discoveries reopen G00. G01 results stay scoped to the executed fixture,
   operation, configuration and engine identity rather than promoting a family.
-- Extend the ledger and checked human-readable view. Each completed row
-  records ID, operation, feature/subvariant, source locator, current Pagura layer,
-  missing integration, work package, competitor build/API, fixtures, oracle,
-  result, source/binary/corpus hashes and last validation command.
-- Inspect reachable unsupported call sites, requirement gaps, public APIs,
-  renderer options and viewer flows. Do not count dormant tags, malformed-input
-  guards or generic image-filter dispatch tags as missing capabilities.
-- Reconcile stale broad registry entries, including document security/forms,
-  CFF/TrueType, text substitution, CMS modification analysis and host passwords,
-  against their later specific entries and code. Preserve normative audit history;
-  do not turn source inspection into a claimed primary-standard verification.
-- Inventory functionality without an unsupported tag: attachments, associated
-  files, portfolios, metadata/XMP, thumbnails, image extraction, print settings,
-  annotation editing, form import/export, accessibility, signing and exports;
-  probe optional OCR/table extraction exposed by baseline PDF APIs as well.
-- Probe multimedia/3D, PDF/E/PDF/VT, optional extension security handlers and
-  other advertised special formats against the actual six baseline APIs. Add
-  supported capabilities to a package; unsupported-by-all needs recorded evidence.
+- The ledger records IDs, operations, source locators, layer states, remaining
+  integration, packages, requirement/fixture references and the full baseline
+  denominator. G01 owns executable oracles, build/configuration identities,
+  per-fixture results and run provenance; their absence never becomes N/A.
+- Call-site review followed aliases, helper functions and dispatch branches.
+  Dormant tags, malformed-input/policy boundaries and generic image-filter
+  dispatch are retained with dispositions rather than counted as missing features.
+- Current scope descriptions reconcile security/forms, font substitution, CMS
+  modification analysis, host passwords, navigation and interpreter ownership.
+  Normative review records remain historical; pending primary-standard review is
+  still pending in the owning registry.
+- Untagged rows cover attachments/associated files, portfolios, metadata/XMP,
+  thumbnails, image extraction, print settings, annotation/page editing, form
+  data exchange, accessibility, OCR/tables, signing and vector exports.
+- Multimedia/3D, PDF/E/PDF/VT and extension security handlers have explicit rows
+  and packages. Their actual baseline configurations and applicability are G01
+  probes, including any API/build distinction found during execution.
 
-Acceptance: every live capability refusal and every discovered competitor PDF
-operation has a disposition and package; zero unassigned or silently excluded
-rows. This establishes the exhaustive denominator that the initial source audit
-cannot establish alone. A later discovery reopens the ledger and relevant gate.
+Acceptance met for the reviewed source revision: every discovered refusal/tag,
+registered requirement and discovered baseline API family has a disposition and
+owner; no baseline column is silently excluded. This is a versioned source
+inventory, not proof that every PDF subvariant or competitor configuration has
+been exercised. Later discoveries reopen the inventory and relevant package.
 
 ## G01 — Build the feature comparison harness
 
