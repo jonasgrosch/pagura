@@ -1334,6 +1334,19 @@ impl Memo {
     /// callers that know it as a constant.
     #[inline]
     fn get(&mut self, key: u64, held: usize, convert: impl FnOnce(&mut [f64])) -> &[f64] {
+        let root = hash_slot(key, self.slots.len() / (1 + held) - 1);
+        self.get_from(key, held, root, convert)
+    }
+
+    /// [`Self::get`] for a key whose first slot is `root`.
+    #[inline]
+    fn get_from(
+        &mut self,
+        key: u64,
+        held: usize,
+        root: usize,
+        convert: impl FnOnce(&mut [f64]),
+    ) -> &[f64] {
         debug_assert_eq!(held, self.layout.held);
         let stride = 1 + held;
         #[expect(
@@ -1343,15 +1356,15 @@ impl Memo {
         let wanted = key as f64;
         let probing = matches!(self.state, MemoState::Probing(_));
         let slot = if probing {
-            self.slot(key, wanted)
+            self.slot(root, wanted)
         } else {
-            hash_slot(key, self.slots.len() / stride - 1)
+            root
         };
         let mut at = slot * stride;
         if self.slots.get(at).copied() != Some(wanted) {
             convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
             if probing && self.state.miss() {
-                at = hash_slot(key, self.slots.len() / stride - 1) * stride;
+                at = root * stride;
             }
             if let Some(entry) = self.slots.get_mut(at..at + stride) {
                 entry[0] = wanted;
@@ -1361,12 +1374,32 @@ impl Memo {
         self.slots.get(at + 1..at + stride).unwrap_or(&[])
     }
 
-    /// The slot of `key` (held as `wanted`), or the free slot it goes into.
+    /// The `H` held values of `key` where its first slot, in a table whose
+    /// slot mask is `mask`, holds it: the lookup [`Self::get`] makes first,
+    /// which in either mode finds the key there and changes no state.
+    /// Otherwise that first slot, for [`Self::get_from`].
     #[inline]
-    fn slot(&self, key: u64, wanted: f64) -> usize {
+    fn first<const H: usize>(&self, key: u64, mask: usize) -> Result<[f64; H], usize> {
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "keys have at most 48 bits, which f64 holds exactly"
+        )]
+        let wanted = key as f64;
+        let root = hash_slot(key, mask);
+        let at = root * (1 + H);
+        match self.slots.get(at..at + 1 + H) {
+            Some(slot) if slot[0] == wanted => slot[1..].first_chunk::<H>().copied().ok_or(root),
+            _ => Err(root),
+        }
+    }
+
+    /// The slot of the key held as `wanted`, probing from its first slot
+    /// `root`, or the free slot it goes into.
+    #[inline]
+    fn slot(&self, root: usize, wanted: f64) -> usize {
         let stride = 1 + self.layout.held;
         let mask = self.slots.len() / stride - 1;
-        let mut slot = hash_slot(key, mask);
+        let mut slot = root;
         while self
             .slots
             .get(slot * stride)
@@ -1434,8 +1467,10 @@ impl<'a> MemoTexels<'a> {
 
     /// [`Texels::row`] from sample `start` on into `out`, `H` held values a
     /// texel, for keys of `N` colour codes alone: one lookup per run of
-    /// equal keys, with fixed-size keys and copies. False, with nothing
-    /// written, where the samples are not all present.
+    /// equal keys, with fixed-size keys and copies. A key its first slot
+    /// holds is read there, with the table's mask found once for the row;
+    /// every other lookup goes through [`Memo::get_from`]. False, with
+    /// nothing written, where the samples are not all present.
     #[inline]
     fn plain_row<const N: usize, const H: usize>(
         &self,
@@ -1455,18 +1490,35 @@ impl<'a> MemoTexels<'a> {
         // No key is all ones: keys have at most 48 bits.
         let mut previous = u64::MAX;
         let mut last = [0.0; H];
+        // The table keeps its size during a row.
+        let mask = memo.slots.len() / (1 + H) - 1;
         for ((index, codes), texel) in (start..).zip(codes.as_chunks::<N>().0).zip(texels) {
             let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
             if key != previous {
                 previous = key;
-                let held = memo.get(key, H, |texel| self.convert(index, N, texel));
-                if let Some(held) = held.first_chunk::<H>() {
-                    last = *held;
-                }
+                last = match memo.first::<H>(key, mask) {
+                    Ok(held) => held,
+                    Err(root) => self.lookup::<N, H>(memo, (key, root), index),
+                };
             }
             *texel = last;
         }
         true
+    }
+
+    /// The `H` held values of `key`, whose first slot is `root`, through
+    /// [`Memo::get_from`], for keys of `N` colour codes alone that
+    /// [`Memo::first`] does not answer. Out of line, so that the row loop
+    /// keeps its state in registers.
+    #[inline(never)]
+    fn lookup<const N: usize, const H: usize>(
+        &self,
+        memo: &mut Memo,
+        (key, root): (u64, usize),
+        index: usize,
+    ) -> [f64; H] {
+        let held = memo.get_from(key, H, root, |texel| self.convert(index, N, texel));
+        held.first_chunk::<H>().copied().unwrap_or([0.0; H])
     }
 
     /// Converts sample `index` into a texel of every lane.
@@ -1563,6 +1615,91 @@ impl Texels for MemoTexels<'_> {
 mod tests {
     use super::{Indexed, Key, MemoLayout, SampleKeys};
     use pagura_core::Meter;
+
+    /// Rows of plain keys read their samples' texels bit for bit as one
+    /// lookup a sample does: with runs and recurring colours, in
+    /// a retaining memo, one that switches to direct lookup within a row,
+    /// and a replacing one, over whole rows and spans that start and end
+    /// within them.
+    #[test]
+    fn plain_rows_read_the_texels_of_their_samples() {
+        use super::{Colors, MemoTexels, Texels};
+        use pagura_color::{Conversion, Converter, Process, Target};
+        let (width, height) = (61u32, 7u32);
+        let mut state = 9u32;
+        let mut next = |n: u32| {
+            state = state.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+            u8::try_from((state >> 16) % n).unwrap()
+        };
+        let count = usize::try_from(width * height).unwrap();
+        let mut codes = Vec::new();
+        // Mostly a few recurring colours, which first slots hold when they
+        // come back, and some of many.
+        let palette: Vec<[u8; 3]> = (0..8)
+            .map(|_| [next(256), next(3) * 100, next(256)])
+            .collect();
+        while codes.len() < count * 3 {
+            let colour = if next(4) == 0 {
+                [next(256), next(3) * 100, next(256)]
+            } else {
+                palette[usize::from(next(8))]
+            };
+            for _ in 0..=next(4) {
+                codes.extend(colour);
+            }
+        }
+        codes.truncate(count * 3);
+        let image = crate::source::image::tests::image(
+            (width, height),
+            3,
+            8,
+            pagura_image::Samples::Bytes(codes),
+        );
+        let lab = pagura_color::cie::Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0; 4]);
+        let space = pagura_color::ColorSpace::Calibrated(std::sync::Arc::new(lab.unwrap()));
+        let target = Target::new(Process::Rgb);
+        let colors = Colors {
+            decode: vec![[0.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]],
+            maxima: vec![255.0; 3],
+            lookup: None,
+            key: None,
+            embedded: None,
+            matte: None,
+            alpha_is_shape: true,
+            convert: Converter::new(&space, &target, &Conversion::default()).unwrap(),
+        };
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        for (limit, replacing) in [(count, false), (40, false), (count, true)] {
+            let mut layout = MemoLayout::new(key, (3, true), count, replacing);
+            layout.limit = limit;
+            let (mut a, mut b) = (layout.make().unwrap(), layout.make().unwrap());
+            let rows = MemoTexels::new(&image, &colors, None, &mut a).unwrap();
+            let samples = MemoTexels::new(&image, &colors, None, &mut b).unwrap();
+            for row in 0..height {
+                for (first, end) in [(0, width), (3, width - 2), (width - 5, width)] {
+                    let len = usize::try_from(end - first).unwrap();
+                    let mut read = vec![0.0; len * 3];
+                    rows.row((row, width), (first, end), &mut read);
+                    let mut expected = vec![0.0; len * 3];
+                    let start = usize::try_from(row * width + first).unwrap();
+                    for (index, texel) in (start..).zip(expected.as_chunks_mut::<3>().0) {
+                        samples.get(index, texel);
+                    }
+                    let bits =
+                        |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+                    assert_eq!(
+                        bits(&read),
+                        bits(&expected),
+                        "limit {limit}, replacing {replacing}, row {row}, {first}..{end}"
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn small_sources_need_no_capacity_discovery_allocation() {
