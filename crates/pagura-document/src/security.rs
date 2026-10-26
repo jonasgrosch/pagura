@@ -634,7 +634,7 @@ impl Document {
             recovery: self.recovery,
             password: password.to_vec(),
         };
-        let authenticated = crate::builder::open(self.bytes.clone(), &options)?;
+        let authenticated = crate::opening::open(self.bytes.clone(), &options, self.validation)?;
         if authenticated
             .security
             .as_ref()

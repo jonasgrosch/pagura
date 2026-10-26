@@ -5,6 +5,10 @@ starts from `fc09a6b202b53e4faba6d43e96bd20e30623c65d`, including synchronous
 document services and complete PNG export; implementation and validation remain
 required before the group is complete.
 
+This is the accepted replacement for the progressive-source proposal originally
+numbered ADR 0035. The unrelated band-helper draft retains that number, as
+documented in section 9; it does not define a second loading contract.
+
 This decision extends the ownership and scheduling boundaries of ADR 0034 while
 preserving its interpreter, preparation and exact execution contracts.
 The [architecture and implementation plan](../plans/async-pdf-loading-and-image-streaming.md)
@@ -130,8 +134,13 @@ resources. Global reconstruction explicitly requests complete input.
 Preserve complete-document validation as a mode. Requested-operation mode
 validates the authoritative index and every consumed dependency while allowing
 unrelated object-header checks to remain deferred. Readiness reports the scope;
-full/sparse equivalence is tested within one policy. A valid rendered page does
-not certify all objects in the file.
+full/sparse equivalence is tested within one policy. `OpenJob::new` requires an
+explicit `Validation`; the immutable `Document::validation` result travels with
+readiness and reauthentication retains it. `Document::open` always selects
+`CompleteDocument` and drives the same Active/Build states. There is no retained
+eager xref traversal. The bounded linearization probe uses source windows;
+global reconstruction is a one-time complete-materialization stage. A valid
+rendered page does not certify all objects in the file.
 
 ### 4. Separate extraction meanings
 

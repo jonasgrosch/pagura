@@ -26,7 +26,13 @@ fn structure_charges_belong_to_no_object() {
     };
     let bytes: Arc<[u8]> = Arc::from(b"%PDF-1.7\n".as_slice());
     let bytes = crate::source::View::local(bytes, &options.limits).unwrap();
-    let Err(error) = DocumentBuilder::new(bytes, &options, table, Vec::new()) else {
+    let Err(error) = DocumentBuilder::new(
+        bytes,
+        &options,
+        table,
+        Vec::new(),
+        crate::Validation::RequestedOperation,
+    ) else {
         panic!("the trailer does not fit beside one slot");
     };
     assert_eq!(error.kind, ErrorKind::Limit);
@@ -73,9 +79,15 @@ fn sparse_objects_wait_for_length_and_tail_without_reading_payload_or_publishing
     }
     // This test isolates the post-index object owner. The table is literal;
     // the ordinary OpenJob supplies this same owner after authoritative xref.
-    let document = DocumentBuilder::new(bytes, &OpenOptions::default(), table, Vec::new())
-        .unwrap()
-        .freeze();
+    let document = DocumentBuilder::new(
+        bytes,
+        &OpenOptions::default(),
+        table,
+        Vec::new(),
+        crate::Validation::RequestedOperation,
+    )
+    .unwrap()
+    .freeze();
     let Err(ReadFault::Unavailable(missing)) = document.object(STREAM) else {
         panic!("indirect Length wait");
     };

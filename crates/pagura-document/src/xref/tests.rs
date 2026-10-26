@@ -1,13 +1,26 @@
 //! Hand-authored section grammar and field values, independent of a PDF writer.
 
-use super::{Location, RevisionKind, Section, XrefEntry, parse_section, section};
+use super::{Location, RevisionKind, Section, XrefEntry, parse_section};
 use crate::repairs;
 use crate::source::{
     LoadingLimits, ReadFault, ReadResult, SourceIdentity, SourceLimits, SparseBytes, Window,
 };
-use pagura_core::syntax::ParsedWindow;
-use pagura_core::{Diagnostic, Diagnostics, ErrorKind, Limits, ObjectId, Position, Recovery};
+use pagura_core::syntax::{Origin, ParsedWindow, Parser};
+use pagura_core::{
+    Diagnostic, Diagnostics, ErrorKind, Limits, ObjectId, Position, Recovery, Result,
+};
 use std::sync::Arc;
+
+fn section(
+    bytes: &[u8],
+    offset: usize,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Section> {
+    let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits)?
+        .with_recovery(diagnostics.mode());
+    parse_section(&mut parser, bytes.len(), limits, diagnostics)
+}
 
 const ID: SourceIdentity = SourceIdentity::new(23, [72; 32]);
 const START: usize = 512;

@@ -25,6 +25,7 @@ fn checked_signature_ranges_outlive_source_close_and_document() {
             ..OpenOptions::default()
         },
         LoadingLimits::default(),
+        pagura_document::Validation::CompleteDocument,
     )
     .unwrap();
     let mut ready = None;

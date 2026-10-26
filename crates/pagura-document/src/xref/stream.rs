@@ -2,7 +2,7 @@
 
 use super::{Location, RevisionKind, Section, XrefEntry, integer_offset};
 use pagura_codec::{Filter, FilterChain};
-use pagura_core::syntax::{Origin, ParseMode, Parser};
+use pagura_core::syntax::{ParseMode, Parser};
 use pagura_core::{Diagnostics, Dictionary, Error, Limits, ObjectId, Result, Value};
 use std::collections::BTreeMap;
 
@@ -10,17 +10,6 @@ use std::collections::BTreeMap;
 const FREE: u64 = 0;
 const IN_USE: u64 = 1;
 const COMPRESSED: u64 = 2;
-
-pub(crate) fn read(
-    bytes: &[u8],
-    offset: usize,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<Section> {
-    let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits)?
-        .with_recovery(diagnostics.mode());
-    parse(&mut parser, bytes.len(), limits, diagnostics)
-}
 
 pub(super) fn parse<M: ParseMode>(
     parser: &mut Parser<'_, M>,

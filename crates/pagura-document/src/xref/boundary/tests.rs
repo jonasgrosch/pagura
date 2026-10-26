@@ -1,12 +1,12 @@
 //! Frozen header/tail literals; no writer or opened document supplies expectations.
 
-use super::{find_startxref, header, parse_header, startxref};
+use super::{TAIL_WINDOW, parse_header, startxref};
 use crate::repairs;
 use crate::source::{
     ByteSource, LoadingLimits, ReadFault, SourceIdentity, SourceLimits, SparseBytes, Window,
 };
 use pagura_core::syntax::{InputEnd, Origin, Parser, WindowRead};
-use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
+use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery, Result};
 use std::sync::Arc;
 
 #[test]
@@ -194,4 +194,22 @@ fn final_tail_uses_the_last_marker_and_absolute_file_positions() {
             }
         }
     }
+}
+
+/// Finds the `%PDF-` header and returns its offset (7.5.2).
+fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
+    parse_header(
+        &mut Parser::new(bytes, Origin::File, Limits::default()),
+        diagnostics,
+    )
+}
+
+/// Finds the offset given after the last `startxref` (clause 7.5.5).
+fn find_startxref(
+    bytes: &[u8],
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Option<usize>> {
+    let window = bytes.len().saturating_sub(TAIL_WINDOW);
+    startxref(&bytes[window..], window, bytes.len(), limits, diagnostics)
 }

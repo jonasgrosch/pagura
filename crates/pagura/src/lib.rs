@@ -109,7 +109,7 @@ pub mod signatures;
 pub use pagura_appearance as form_appearance;
 pub use pagura_document::{
     DiagnosticBatch, Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenJob,
-    OpenOptions, Opening, Page, Rotation, StreamData,
+    OpenOptions, Opening, Page, Rotation, StreamData, Validation,
 };
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{

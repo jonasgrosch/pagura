@@ -3,13 +3,13 @@
 mod boundary;
 mod chain;
 mod loading;
-pub(crate) use boundary::header;
 pub(crate) use loading::{Loader, Primary};
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 
-use crate::repairs;
-use pagura_core::syntax::{Origin, ParseMode, Parser, is_whitespace};
+use crate::source::{ReadFault, ReadResult, View};
+use crate::{Validation, repairs};
+use pagura_core::syntax::{ParseMode, Parser, is_whitespace};
 use pagura_core::{Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result};
 use std::collections::BTreeMap;
 
@@ -141,77 +141,39 @@ pub(crate) fn entry_budget(limits: &Limits) -> usize {
         .min(limits.document_bytes / crate::memory::slot_bytes())
 }
 
-/// Reads trailers and newest-wins cross-reference data, following
-/// `startxref` and `Prev` from a header at `header` (7.5.5, 7.5.6).
-pub(crate) fn read(
-    bytes: &[u8],
-    header: usize,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<XrefTable> {
-    let start = boundary::find_startxref(bytes, limits, diagnostics)?.ok_or(
-        Error::syntax("missing startxref near the end of the file").at(Position::File(bytes.len())),
-    )?;
-    // Leading junk can either be included in the recorded offsets or have
-    // been prepended afterwards. Never shift a usable physical offset.
-    let shifted = header != 0
-        && !is_section(bytes, start, limits)
-        && start
-            .checked_add(header)
-            .is_some_and(|at| is_section(bytes, at, limits));
-    let shift = if shifted { header } else { 0 };
-    let offset = start
-        .checked_add(shift)
-        .ok_or(Error::syntax("xref offset overflow"))?;
-    let mut chain = chain::Chain::new(offset, shift, limits)?;
-    while let Some(request) = chain.request() {
-        let limits = Limits {
-            objects: request.objects,
-            ..*limits
-        };
-        let section = match request.kind {
-            chain::Kind::Section => section(bytes, request.offset, &limits, diagnostics),
-            chain::Kind::Stream => stream::read(bytes, request.offset, &limits, diagnostics),
-        }?;
-        chain.accept(section)?;
-    }
-    finish(bytes, header, limits, chain.into_table())
-}
-
-/// Complete-document validation of an already authoritative primary index.
-/// The source job reaches this boundary only after explicit materialization.
+/// Finalizes an authoritative index under the declared opening policy.
+/// Complete scope has already admitted all bytes; requested scope leaves
+/// unrelated indexed identities to the ordinary object loader.
 pub(crate) fn finish(
-    bytes: &[u8],
+    bytes: &View,
     header: usize,
     limits: &Limits,
-    mut table: XrefTable,
-) -> Result<XrefTable> {
-    join_linearized_base(bytes, header, limits, &mut table)?;
-    validate_identities(bytes, &table, limits)?;
-    Ok(table)
+    validation: Validation,
+    table: &mut XrefTable,
+) -> ReadResult<()> {
+    join_linearized_base(bytes, header, table)?;
+    if validation == Validation::CompleteDocument {
+        let lease = bytes.materialize()?;
+        validate_identities(lease.bytes(), table, limits)?;
+    }
+    Ok(())
 }
 
 // F.3.4 and F.3.11: the first-page and main sections describe one base,
 // linked by a forward Prev. Only the main section ends that source revision.
-fn join_linearized_base(
-    bytes: &[u8],
-    header: usize,
-    limits: &Limits,
-    table: &mut XrefTable,
-) -> Result<()> {
+fn join_linearized_base(bytes: &View, header: usize, table: &mut XrefTable) -> ReadResult<()> {
     let count = table.revisions.len();
     if count < 2 || table.revisions[count - 2].offset >= table.revisions[count - 1].offset {
         return Ok(());
     }
-    // A fixed-size probe cannot scan arbitrary document bodies.
-    let probe = bytes
-        .get(header..bytes.len().min(header.saturating_add(LINEARIZATION_PROBE)))
-        .unwrap_or_default();
-    let mut parser = Parser::new(probe, Origin::File, *limits);
-    let linearized: Result<bool> = (|| {
+    // Keep the existing bounded probe. Its prefix extent is known even when
+    // the source is sparse; unknown suffix bytes cannot become implicit EOF.
+    let end = bytes.len().min(header.saturating_add(LINEARIZATION_PROBE));
+    let mut window = bytes.prefix(end)?.window(header)?;
+    let linearized = window.read(|parser| {
         parser.unsigned()?;
         parser.unsigned()?;
-        if !parser.keyword(b"obj") {
+        if !parser.keyword_with_boundary(b"obj")? {
             return Ok(false);
         }
         Ok(parser
@@ -220,11 +182,15 @@ fn join_linearized_base(
             .and_then(|d| d.get(b"Linearized"))
             .and_then(pagura_core::Value::as_number)
             .is_some_and(|n| n > 0.0))
-    })();
+    });
     match linearized {
-        Ok(true) => {}
-        Err(error) if error.kind == ErrorKind::Limit => return Err(error),
-        _ => return Ok(()),
+        Ok(parsed) if parsed.value => {}
+        Ok(_)
+        | Err(ReadFault::Invalid(Error {
+            kind: ErrorKind::Syntax,
+            ..
+        })) => return Ok(()),
+        Err(error) => return Err(error),
     }
     if let Some(main) = table.revisions.pop()
         && let Some(first_page) = table.revisions.last_mut()
@@ -334,17 +300,6 @@ pub(crate) struct Section {
     pub(crate) end: usize,
 }
 
-fn section(
-    bytes: &[u8],
-    offset: usize,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<Section> {
-    let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits)?
-        .with_recovery(diagnostics.mode());
-    parse_section(&mut parser, bytes.len(), limits, diagnostics)
-}
-
 /// Shared section grammar. Source extents are checked against the declared
 /// file length, never against the size of a temporary parser window. `end`
 /// remains relative to this parser's input, as `Parser::offset` is.
@@ -372,13 +327,6 @@ fn parse_section<M: ParseMode>(
         kind: RevisionKind::Table,
         end: parser.offset(),
     })
-}
-
-fn is_section(bytes: &[u8], offset: usize, limits: &Limits) -> bool {
-    let Ok(mut parser) = Parser::with_offset(bytes, offset, Origin::File, *limits) else {
-        return false;
-    };
-    section_header(&mut parser).unwrap_or(false)
 }
 
 /// The same bounded-window probe retains undecided tokens as incomplete.

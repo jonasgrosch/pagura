@@ -22,6 +22,37 @@ pub(crate) fn document(name: &str, recovery: Recovery, limits: Limits) -> Docume
     open("document", name, recovery, limits)
 }
 
+fn primary(
+    bytes: &[u8],
+    limits: &Limits,
+    recovery: Recovery,
+) -> crate::source::ReadResult<crate::xref::Primary> {
+    use crate::source::{LoadingLimits, LoadingWork, ReadFault, View};
+    use std::sync::Arc;
+    let source = Arc::new(View::local(Arc::from(bytes), limits)?);
+    let loading = LoadingLimits::default();
+    let mut loader = crate::xref::Loader::new(
+        source,
+        *limits,
+        loading,
+        recovery,
+        Arc::new(LoadingWork::new(loading.work)),
+    )?;
+    loop {
+        match loader.advance() {
+            Ok(()) => {
+                if let Some(primary) = loader.take_completed() {
+                    return Ok(primary);
+                }
+            }
+            Err(ReadFault::Invalid(error)) => {
+                return loader.take_failure(error.clone()).ok_or(error.into());
+            }
+            Err(fault) => return Err(fault),
+        }
+    }
+}
+
 mod structure_tests {
     use crate::{Document, Location, ObjectSource, OpenOptions, RevisionKind};
     use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Value};
@@ -436,14 +467,9 @@ mod reconstruction {
             let bytes = fixture("document", &format!("{name}.pdf"));
             let limits = pagura_core::Limits::default();
             let mut diagnostics = Diagnostics::new(Recovery::Repair);
-            let header = crate::xref::header(&bytes, &mut diagnostics).unwrap();
-            let primary = crate::xref::read(
-                &bytes,
-                header,
-                &limits,
-                &mut Diagnostics::new(Recovery::Repair),
-            )
-            .unwrap_err();
+            let primary = crate::tests::primary(&bytes, &limits, Recovery::Repair).unwrap();
+            diagnostics.absorb(primary.header_diagnostics).unwrap();
+            let primary = primary.index.unwrap_err();
             assert!(crate::xref::structural(&primary), "{name}");
             let table =
                 crate::xref::rebuild::read(&bytes, &limits, &mut diagnostics, primary.position)
@@ -497,11 +523,12 @@ mod reconstruction {
             .unwrap();
         let mut bytes = original;
         bytes.splice(marker..marker, b"/Filter /JPXDecode ".iter().copied());
-        let mut diagnostics = Diagnostics::new(Recovery::Repair);
-        let error = crate::xref::read(&bytes, 0, &pagura_core::Limits::default(), &mut diagnostics)
-            .unwrap_err();
+        let primary =
+            crate::tests::primary(&bytes, &pagura_core::Limits::default(), Recovery::Repair)
+                .unwrap();
+        let error = primary.index.unwrap_err();
         assert!(error.is_unsupported());
-        assert!(diagnostics.is_empty());
+        assert_eq!(primary.header_diagnostics, []);
         // Opening in repair mode keeps the decoder error instead of rebuilding.
         let error = Document::open(bytes, &OpenOptions::default()).unwrap_err();
         assert!(error.is_unsupported());

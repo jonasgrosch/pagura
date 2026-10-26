@@ -78,6 +78,14 @@ impl View {
         Ok(view)
     }
 
+    pub(crate) fn loading(&self) -> LoadingLimits {
+        self.backing.loading
+    }
+
+    pub(crate) fn work(&self) -> Arc<LoadingWork> {
+        Arc::clone(&self.backing.work)
+    }
+
     pub(crate) const fn len(&self) -> usize {
         self.end
     }

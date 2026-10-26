@@ -28,3 +28,18 @@ impl fmt::Debug for OpenOptions {
             .finish()
     }
 }
+
+/// Validation performed before an opened document becomes ready.
+///
+/// Both policies validate the authoritative cross-reference chain, security
+/// and catalog. Neither policy certifies the bodies of all unused objects.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Validation {
+    /// Admits complete bytes and preserves global indexed-object identity checks.
+    #[default]
+    CompleteDocument,
+    /// Validates consumed dependencies and defers unrelated object headers.
+    /// A later missing range remains a source wait, never an absent object.
+    RequestedOperation,
+}

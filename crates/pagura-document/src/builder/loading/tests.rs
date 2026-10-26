@@ -31,7 +31,13 @@ fn build(source: Arc<SparseBytes>, table: XrefTable) -> Result<(Build, Arc<Loadi
     let loading = LoadingLimits::default();
     let work = Arc::new(LoadingWork::new(loading.work));
     let view = View::registered(source, Limits::default(), loading, Arc::clone(&work))?;
-    let builder = DocumentBuilder::new(view, &OpenOptions::default(), table, Vec::new())?;
+    let builder = DocumentBuilder::new(
+        view,
+        &OpenOptions::default(),
+        table,
+        Vec::new(),
+        crate::Validation::RequestedOperation,
+    )?;
     Ok((Build::new(builder), work))
 }
 

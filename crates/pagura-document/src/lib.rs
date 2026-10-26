@@ -38,7 +38,7 @@ mod xref;
 pub use diagnostics::DiagnosticBatch;
 pub use object::{IndirectObject, ObjectSource};
 pub use opening::{OpenJob, Opening};
-pub use options::OpenOptions;
+pub use options::{OpenOptions, Validation};
 pub use pages::Page;
 pub use pagura_codec::{ImageCodec, Prefix};
 pub use pagura_core::Rotation;
@@ -62,6 +62,7 @@ pub struct Document {
     bytes: source::View,
     limits: Limits,
     recovery: Recovery,
+    validation: Validation,
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
     revisions: Vec<Revision>,
@@ -130,13 +131,22 @@ impl Document {
         }
         // This entry point admits complete local bytes before the common read
         // path. It cannot turn an unavailable source into a PDF syntax error.
-        match builder::open(source::View::local(bytes, &options.limits)?, options) {
+        match opening::open(
+            source::View::local(bytes, &options.limits)?,
+            options,
+            Validation::CompleteDocument,
+        ) {
             Ok(document) => Ok(document),
             Err(ReadFault::Invalid(error)) => Err(error),
             Err(ReadFault::Unavailable(_)) => Err(Error::invalid_argument(
                 "complete input is required by Document::open",
             )),
         }
+    }
+
+    /// The validation policy used when this document became ready.
+    pub const fn validation(&self) -> Validation {
+        self.validation
     }
 
     /// The immutable source prefix length, without reading source bytes.

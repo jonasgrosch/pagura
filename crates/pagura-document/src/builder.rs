@@ -10,73 +10,19 @@
 mod loading;
 pub(crate) use loading::Build;
 
-use crate::source::{ReadFault, ReadResult};
-use crate::xref::rebuild::{self, StreamSlots};
-use crate::xref::{self, XrefOrigin, XrefTable};
+use crate::source::ReadResult;
+use crate::xref::rebuild::StreamSlots;
+use crate::xref::{XrefOrigin, XrefTable};
 use crate::{
-    Document, Location, OpenOptions, Revision, Slot, diagnostics, history, memory, object,
-    security, source,
+    Document, Location, OpenOptions, Revision, Slot, Validation, diagnostics, history, memory,
+    object, security, source,
 };
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, INDEX_ENTRY_OVERHEAD, Limits, Name, ObjectId, Recovery,
-    Result, Value,
+    Diagnostic, Dictionary, INDEX_ENTRY_OVERHEAD, Limits, Name, ObjectId, Recovery, Result, Value,
 };
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
-
-/// Opens `bytes`: from the primary cross-reference data, then, in repair
-/// mode after a structural failure of that data or of the document built
-/// from it, once from reconstructed data (ADR 0003).
-pub(crate) fn open(bytes: source::View, options: &OpenOptions) -> ReadResult<Document> {
-    bytes.check()?;
-    let mut diagnostics = Diagnostics::new(options.recovery);
-    let lease = bytes.materialize()?;
-    let header = xref::header(lease.bytes(), &mut diagnostics)?;
-    let mut attempt = Diagnostics::new(options.recovery);
-    let primary = xref::read(lease.bytes(), header, &options.limits, &mut attempt)
-        .map(|table| (table, attempt.take()));
-    from_primary(bytes, options, diagnostics, primary)
-}
-
-/// Builds from the completed primary index, or performs the same one-time
-/// complete-input reconstruction after a structural primary/build failure.
-/// Header diagnostics survive that fallback; provisional primary repairs do not.
-pub(crate) fn from_primary(
-    bytes: source::View,
-    options: &OpenOptions,
-    mut diagnostics: Diagnostics,
-    primary: Result<(XrefTable, Vec<Diagnostic>)>,
-) -> ReadResult<Document> {
-    bytes.check()?;
-    let primary = primary
-        .map_err(ReadFault::from)
-        .and_then(|(table, attempt)| {
-            let reported = diagnostics
-                .as_slice()
-                .iter()
-                .cloned()
-                .chain(attempt)
-                .collect();
-            DocumentBuilder::new(bytes.clone(), options, table, reported)?.build(&options.password)
-        });
-    match primary {
-        Err(ReadFault::Invalid(error))
-            if options.recovery == Recovery::Repair && xref::structural(&error) =>
-        {
-            let lease = bytes.materialize()?;
-            let table = rebuild::read(
-                lease.bytes(),
-                &options.limits,
-                &mut diagnostics,
-                error.position,
-            )?;
-            DocumentBuilder::new(bytes, options, table, diagnostics.take())?
-                .build(&options.password)
-        }
-        result => result,
-    }
-}
 
 /// A document under construction: its object table, trailer and security
 /// handler, with no cached object.
@@ -84,6 +30,7 @@ pub(crate) struct DocumentBuilder {
     bytes: source::View,
     limits: Limits,
     recovery: Recovery,
+    validation: Validation,
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
     revisions: Vec<Revision>,
@@ -95,17 +42,19 @@ pub(crate) struct DocumentBuilder {
 }
 
 impl DocumentBuilder {
-    fn new(
+    pub(crate) fn new(
         bytes: source::View,
         options: &OpenOptions,
         table: XrefTable,
         reported: Vec<Diagnostic>,
+        validation: Validation,
     ) -> Result<Self> {
         let retained = Arc::new(memory::Budget::new(options.limits.document_bytes));
         Self::assemble(
             bytes,
             options.limits,
             options.recovery,
+            validation,
             table,
             reported,
             retained,
@@ -124,6 +73,7 @@ impl DocumentBuilder {
             bytes,
             source.limits,
             Recovery::Strict,
+            source.validation,
             table,
             Vec::new(),
             retained,
@@ -135,6 +85,7 @@ impl DocumentBuilder {
         bytes: source::View,
         limits: Limits,
         recovery: Recovery,
+        validation: Validation,
         table: XrefTable,
         reported: Vec<Diagnostic>,
         retained: Arc<memory::Budget>,
@@ -173,6 +124,7 @@ impl DocumentBuilder {
             bytes,
             limits,
             recovery,
+            validation,
             trailer: table.trailer,
             slots,
             revisions: table.revisions,
@@ -200,6 +152,7 @@ impl DocumentBuilder {
             bytes: self.bytes,
             limits: self.limits,
             recovery: self.recovery,
+            validation: self.validation,
             trailer: self.trailer,
             slots: self.slots,
             revisions: self.revisions,

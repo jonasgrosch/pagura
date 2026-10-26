@@ -9,7 +9,9 @@ services and complete PNG implementation directly on `render/one-pass` at
 image/thumbnail source extraction already exist. Section 2 credits these paths;
 the packages below extend their shared implementations.
 [ADR 0036](../adr/0036-progressive-sources-and-streaming-jobs.md) records the
-accepted source, validation, ownership and extraction contracts.
+accepted source, validation, ownership and extraction contracts. It supersedes
+the progressive-source proposal formerly numbered ADR 0035; the independent
+band-helper draft retains that number and is assessed in ADR 0036 section 9.
 
 This is the detailed design for **D01 and D02a's image/output slice** in the
 [competitive parity plan](../COMPETITIVE_PARITY.md), not a parallel backlog.
@@ -427,8 +429,9 @@ ready. Requested-page loading therefore needs an explicit validation policy:
 | `RequestedOperation` | Authoritative index/security plus identity and structure validation of every dependency the requested page or asset consumes |
 
 This is a deliberate difference in validation scope, not an assertion that the
-two open operations discover unrelated corruption at the same time. Include
-the scope in readiness metadata. A page can be exact and valid while an unused
+two open operations discover unrelated corruption at the same time. The explicit `Validation` argument to `OpenJob::new` selects scope, and
+`Document::validation()` reports it after readiness. Reauthentication preserves
+that scope. Complete buffers drive the same owned opener with complete scope. A page can be exact and valid while an unused
 object elsewhere is corrupt. `validate_all()` completes global validation.
 
 Parity tests compare full and sparse sources under the same scope. Separately

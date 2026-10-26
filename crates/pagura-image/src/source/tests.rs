@@ -116,6 +116,7 @@ fn an_image_keeps_its_source_lease_without_copying_after_provider_close() {
         source.clone(),
         &OpenOptions::default(),
         LoadingLimits::default(),
+        pagura_document::Validation::CompleteDocument,
     )
     .unwrap();
     let document = loop {

@@ -44,6 +44,7 @@ fn job(source: Arc<SparseBytes>) -> Result<OpenJob> {
             ..OpenOptions::default()
         },
         LoadingLimits::default(),
+        pagura_document::Validation::CompleteDocument,
     )
 }
 
@@ -102,6 +103,8 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
         assert!(matches!(job.advance().unwrap(), Opening::Yielded));
         assert_eq!(job.work(), expected_work);
     }
+    assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+    assert_eq!(job.work(), 3336);
     let Opening::Ready(document) = job.advance().unwrap() else {
         panic!("admitted document")
     };
@@ -243,6 +246,7 @@ fn cancellation_and_budget_failure_cannot_become_success_after_later_supply() {
             work: LENGTH,
             ..LoadingLimits::default()
         },
+        pagura_document::Validation::CompleteDocument,
     )
     .unwrap();
     let Err(ReadFault::Invalid(error)) = ready(&mut bounded) else {
@@ -365,6 +369,8 @@ fn bootstrap_retains_completed_header_tail_and_index_before_complete_admission()
             )
             .unwrap();
     }
+    assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+    assert_eq!(job.work(), work + 1 + 4096);
     let Opening::Ready(document) = job.advance().unwrap() else {
         panic!("retained index completes without replaying bootstrap")
     };
@@ -407,8 +413,15 @@ fn complete_and_windowed_opening_preserve_frozen_repair_and_revision_controls() 
                 .unwrap(),
             );
             source.supply(ID, 0, &bytes).unwrap();
-            let ranged =
-                ready(&mut OpenJob::new(source, &options, LoadingLimits::default()).unwrap());
+            let ranged = ready(
+                &mut OpenJob::new(
+                    source,
+                    &options,
+                    LoadingLimits::default(),
+                    pagura_document::Validation::CompleteDocument,
+                )
+                .unwrap(),
+            );
             match (complete, ranged) {
                 (Ok(complete), Ok(ranged)) => {
                     assert_eq!(

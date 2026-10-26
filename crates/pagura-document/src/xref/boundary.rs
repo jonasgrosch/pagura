@@ -11,14 +11,6 @@ const HEADER_LENGTH: usize = 8;
 /// `startxref` must lie within the last 1024 bytes (7.5.5).
 pub(super) const TAIL_WINDOW: usize = 1024;
 
-/// Finds the `%PDF-` header and returns its offset (7.5.2).
-pub(crate) fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
-    parse_header(
-        &mut Parser::new(bytes, Origin::File, Limits::default()),
-        diagnostics,
-    )
-}
-
 /// Header grammar over a window starting at absolute file offset zero.
 /// A repair is provisional until the whole header line has completed.
 pub(super) fn parse_header<M: ParseMode>(
@@ -81,16 +73,6 @@ pub(super) fn parse_header<M: ParseMode>(
         parser.seek(line + end + 1)?;
     }
     Ok(offset)
-}
-
-/// Finds the offset given after the last `startxref` (clause 7.5.5).
-pub(super) fn find_startxref(
-    bytes: &[u8],
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<Option<usize>> {
-    let window = bytes.len().saturating_sub(TAIL_WINDOW);
-    startxref(&bytes[window..], window, bytes.len(), limits, diagnostics)
 }
 
 /// The complete final tail, with absolute positions and declared file length.
