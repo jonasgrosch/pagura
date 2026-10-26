@@ -56,7 +56,9 @@ the extraction command. Each record contains:
 | `description`, `file_system_hex` | Decoded description and original file-system name bytes. |
 | `relationship`, `relationship_hex` | AFRelationship name as UTF-8 when representable and as original bytes; absent relationships default to `Unspecified`. |
 | `volatile` | File-specification volatility declaration. |
-| `payloads` | EF entries, each with `key`, `object`, `media_type_hex` and `declared_size`. |
+| `payloads` | EF entries with `key`, `object`, `media_type_hex`, `declared_size` and complete `parameters` (size, dates and checksum bytes). |
+| `identifiers_hex`, `related` | Original/current identifier pair and RF records with exact per-key pair indexes, path bytes, stream identity and parameters. |
+| `collection_item`, `encrypted_payload` | Inert CI values/prefixes and EP filter/version declarations. |
 
 All `_hex` strings use two lowercase hexadecimal digits per byte. They preserve
 non-UTF-8 bytes; decoded Unicode strings are ordinary JSON strings. Tree keys,
@@ -181,7 +183,9 @@ Attachment commands also accept `--associated`, `--object NUMBER:GENERATION`, an
 page AF with `--page`; `--object` chooses that object's AF array. Without
 `--associated`, `--page` retains its original Annots-slot semantics. Related pair
 indexes start at zero within the exact EF key and distinguish duplicate names.
-Scoped listings use schema 2 and expose RF and collection/encrypted-payload data.
+Scoped listings use schema 2; catalog/page schema 1 also exposes additive RF and
+collection/encrypted-payload declarations through the same serializer. All reports
+retain repair and information tags.
 No source filename is used as a path. `metadata` and `extract-metadata` accept
 `--page` or `--object` for their packet owner; document Info remains separate.
 

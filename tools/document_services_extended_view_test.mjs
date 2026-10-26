@@ -1,7 +1,7 @@
 /** Explicit AF/RF source UI and attachment-only password retry/cleanup controls. */
 import assert from 'node:assert/strict';
 import { DocumentServices } from '../web/document_services.mjs';
-import { FileScopeCode } from '../web/protocol_constants.mjs';
+import { FileScopeCode, ImageTransferCode, MetadataOwnerCode } from '../web/protocol_constants.mjs';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function dom() {
@@ -52,5 +52,51 @@ export async function testExtendedServicesView() {
   assert.deepEqual(calls.at(-1), ['files', 1, { kind: FileScopeCode.ObjectAssociated, object: { number: 10, generation: 2 } }]);
   view.extended.object.value = '10:-1'; const before = calls.length; await view.extended.show(); assert.equal(calls.length, before); assert.match(view.extended.output.children[0].textContent, /number:generation/);
   view.reset();
+  await sourcePanels();
   console.log('Extended service UI: exact AF/RF selection, inert text, password retry, temporary-handle cleanup and stale-operation refusal passed.');
+}
+
+
+async function sourcePanels() {
+  const document = dom(), calls = [], downloads = [];
+  const image = { object: { number: 9, generation: 2 }, width: 2, height: 1, thumbnail: false };
+  const thumbnail = { object: { number: 12, generation: 0 }, width: 1, height: 1, thumbnail: true };
+  const client = {
+    metadata: async () => ({ info: null, language: null, metadataObject: null }), attachments: async () => [], pageAttachments: async () => [],
+    metadataFor: async (...args) => { calls.push(['metadata', ...args]); return { number: 8, generation: 0 }; },
+    metadataBytesFor: async (...args) => { calls.push(['packet', ...args]); return Uint8Array.of(60, 0, 62); },
+    collection: async () => ({ view: 'Hidden', initialFile: new TextEncoder().encode('../inert'),
+      fields: [{ name: '<script>label</script>', kind: 'Text', visible: true }], sort: [{ key: new TextEncoder().encode('label'), ascending: false }] }),
+    images: async (...args) => { calls.push(['images', ...args]); return [image]; },
+    thumbnail: async (...args) => { calls.push(['thumbnail', ...args]); return thumbnail; },
+    imageBytes: async (...args) => { calls.push(['imageBytes', ...args]); return { bytes: Uint8Array.of(args[2], args[3] ? 1 : 0) }; },
+  };
+  const state = { client, handle: 7, epoch: 2, count: 2, page: 1 };
+  const view = new DocumentServices({ state: () => state, document, download: (bytes, name) => downloads.push({ bytes, name }), cancel: () => {} });
+  await view.show();
+  view.extended.choice.value = 'page-metadata'; await view.extended.show();
+  assert.deepEqual(calls.at(-1), ['metadata', 7, { kind: MetadataOwnerCode.Page, page: 1 }]);
+  control(view, 'Download source metadata packet').fire('click'); await tick();
+  assert.deepEqual(downloads.at(-1), { bytes: Uint8Array.of(60, 0, 62), name: 'page-2-metadata.xmp' });
+  view.extended.choice.value = 'collection'; await view.extended.show();
+  assert.ok(all(view.extended.output).some(node => node.textContent.includes('<script>label</script>')));
+  assert.ok(all(view.extended.output).some(node => node.textContent.includes('descending')));
+  view.extended.choice.value = 'images'; await view.extended.show();
+  assert.deepEqual(calls.slice(-2), [
+    ['images', 7, { kind: MetadataOwnerCode.Page, page: 1 }],
+    ['thumbnail', 7, { kind: MetadataOwnerCode.Page, page: 1 }],
+  ]);
+  const sections = view.extended.output.children.filter(node => node.tagName === 'SECTION');
+  assert.equal(sections.length, 2);
+  const click = async (section, label) => { all(section).find(node => node.tagName === 'BUTTON' && node.textContent === label).fire('click'); await tick(); };
+  await click(sections[0], 'Download stored stream');
+  assert.deepEqual(calls.at(-1), ['imageBytes', 7, image.object, ImageTransferCode.Stored, false]);
+  await click(sections[1], 'Download encoded asset');
+  assert.deepEqual(calls.at(-1), ['imageBytes', 7, { page: 1 }, ImageTransferCode.Encoded, true]);
+  assert.equal(downloads.at(-1).name, 'image-12-0-encoded.bin');
+  view.extended.choice.value = 'thumbnail-object'; view.extended.object.value = '10:0'; await view.extended.show();
+  assert.deepEqual(calls.at(-1), ['thumbnail', 7, { kind: MetadataOwnerCode.Object, object: { number: 10, generation: 0 } }]);
+  control(view, 'Download encoded asset').fire('click'); await tick();
+  assert.deepEqual(calls.at(-1), ['imageBytes', 7, { number: 10, generation: 0 }, ImageTransferCode.Encoded, true]);
+  view.reset();
 }

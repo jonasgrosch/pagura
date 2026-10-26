@@ -39,7 +39,7 @@ pub(crate) fn one_pass_context(document: Document) -> RenderContext {
 pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure> {
     match command {
         Command::Service { source, request } => {
-            document_services::extended::run(source, request, out)?
+            document_services::extended::run(source, request, out)?;
         }
         Command::Help => writeln!(out, "{USAGE}\n\n{HELP}")?,
         Command::Version => writeln!(out, "pagura {} (safe Rust)", env!("CARGO_PKG_VERSION"))?,
