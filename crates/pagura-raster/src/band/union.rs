@@ -166,9 +166,12 @@ pub(crate) struct Resolver {
     keep: bool,
     /// The heights where pairs may cross further than [`SURE`] from a
     /// crossing found, or that a pair found not to cross may cross near an
-    /// end, and per height how many of them reach its sub-slab.
-    doubtful: Vec<(f64, f64)>,
-    fragile: Vec<i32>,
+    /// end, with the pair; the heights whose sub-slabs each reaches, by the
+    /// first; those reaching the heights swapped at, and the next to reach.
+    doubtful: Vec<(f64, f64, u32, u32)>,
+    bands: Vec<(usize, usize, u32, u32)>,
+    reaching: Vec<(usize, u32, u32)>,
+    band: usize,
     /// Turns the swaps off, for comparison with the full sweep, and counts
     /// the sub-slabs they took.
     #[cfg(test)]
@@ -542,7 +545,7 @@ impl Resolver {
                     && let Some(heights) = doubtful((p.line, q.line), (lo, hi), (d0, d1), error)
                 {
                     room(&mut self.doubtful, 1, bytes)?;
-                    self.doubtful.push(heights);
+                    self.doubtful.push((heights.0, heights.1, i, j));
                 }
                 if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
                     let y = lo + (hi - lo) * (d0 / (d0 - d1));
@@ -725,10 +728,10 @@ impl Resolver {
     }
 
     /// Orders the crossings found by height, makes room for the windings and
-    /// places of `pieces` pieces, and counts per height the doubtful heights
-    /// that reach between the middles of the sub-slabs on either side of it.
-    /// A pass over the heights and two searches per doubtful pair, which the
-    /// sorts of the heights and the pairs' tests are charged for.
+    /// places of `pieces` pieces, and finds for each doubtful pair the
+    /// heights whose sub-slabs above or below reach into its heights: two
+    /// searches per pair, and their sort, which the sorts of the heights and
+    /// the pairs' tests are charged for.
     fn prepare_swaps(&mut self, pieces: usize, bytes: &mut Meter) -> Result<()> {
         self.crosses.sort_unstable();
         // Every entry is written before it is read, so earlier sweeps' stay.
@@ -740,15 +743,13 @@ impl Resolver {
         }
         self.lowest = f64::NEG_INFINITY;
         let count = self.heights.len();
-        self.fragile.clear();
-        if self.doubtful.is_empty() {
-            return Ok(());
-        }
-        room(&mut self.fragile, count + 1, bytes)?;
-        self.fragile.resize(count + 1, 0);
+        self.bands.clear();
+        self.reaching.clear();
+        self.band = 0;
+        room(&mut self.bands, self.doubtful.len(), bytes)?;
         let heights = &self.heights;
         let middle = |t: usize| heights[t - 1].midpoint(heights[t]);
-        for &(lo, hi) in &self.doubtful {
+        for &(lo, hi, i, j) in &self.doubtful {
             // The heights whose sub-slabs above and below reach into `lo..hi`.
             let above = heights.partition_point(|&h| h <= lo);
             let first = match above {
@@ -762,15 +763,10 @@ impl Resolver {
                 n if n < count && middle(n) < hi => n,
                 n => n - 1,
             };
-            self.fragile[first] += 1;
-            self.fragile[last + 1] -= 1;
+            self.bands.push((first, last, i, j));
         }
-        let mut reaching = 0;
-        for f in &mut self.fragile {
-            reaching += *f;
-            *f = reaching;
-        }
-        Ok(())
+        self.bands.sort_unstable_by_key(|band| band.0);
+        room(&mut self.reaching, self.bands.len(), bytes)
     }
 
     /// Takes the sub-slabs from `heights[k]` on, through the heights closer
@@ -801,20 +797,31 @@ impl Resolver {
         {
             last += 1;
         }
-        // Nothing ends, starts or comes in from the left there, and no
-        // doubtful crossing may fall between the middles around them.
+        // Nothing ends, starts or comes in from the left there.
         let (below, Some(&after)) = (self.heights[last], self.heights.get(last + 1)) else {
             return Ok(None);
         };
         if self.lowest <= below
             || self.rows.get(joined).is_some_and(|&(lo, _, _)| lo <= below)
             || self.carry.get(segment + 1).is_some_and(|&y| y <= below)
-            || self
-                .fragile
-                .get(k..=last)
-                .is_some_and(|reaching| reaching.iter().any(|&f| f != 0))
         {
             return Ok(None);
+        }
+        // The doubtful pairs that may change places between the middles
+        // around them: they are taken as crossing.
+        while let Some(&(first, end, i, j)) = self.bands.get(self.band)
+            && first <= last
+        {
+            self.reaching.push((end, i, j));
+            self.band += 1;
+        }
+        self.reaching.retain(|&(end, _, _)| end >= k);
+        let mut doubtful = [(0, 0); 8];
+        let Some(doubtful) = doubtful.get_mut(..self.reaching.len()) else {
+            return Ok(None);
+        };
+        for (pair, &(_, i, j)) in doubtful.iter_mut().zip(&self.reaching) {
+            *pair = (i, j);
         }
         let until = u128::from(total_key(below.to_bits()));
         let taken = self.crosses[cross..]
@@ -824,7 +831,7 @@ impl Resolver {
         let mid = below.midpoint(after);
         if taken == 0
             || self
-                .swap_inside(pieces, cross..cross + taken, mid)
+                .swap_inside(pieces, (cross..cross + taken, doubtful), mid)
                 .is_none()
         {
             return Ok(None);
@@ -862,7 +869,7 @@ impl Resolver {
     fn swap_inside(
         &mut self,
         pieces: &[Piece],
-        crossings: std::ops::Range<usize>,
+        (crossings, doubtful): (std::ops::Range<usize>, &[(u32, u32)]),
         mid: f64,
     ) -> Option<()> {
         let direction = |i: u32| {
@@ -873,11 +880,13 @@ impl Resolver {
                 0
             }
         };
-        // Where the order holds a crossing's piece.
-        let place = |pair: u128, shift: u32| {
-            let i = usize::try_from((pair >> shift) & u128::from(u32::MAX)).ok()?;
+        // Where the order holds a piece, and a crossing's.
+        let place_of = |i: usize| {
             let n = *self.at.get(i)?;
             (self.order.get(n)?.1 as usize == i).then_some(n)
+        };
+        let place = |pair: u128, shift: u32| {
+            place_of(usize::try_from((pair >> shift) & u128::from(u32::MAX)).ok()?)
         };
         // Inside the covered set whatever the order of pieces from `n` on
         // with these directions.
@@ -886,7 +895,8 @@ impl Resolver {
             w + down > 0 || w + up < 0
         };
         // One crossing, as most are: the two neighbours swap.
-        if let [pair] = self.crosses[crossings.clone()] {
+        if let ([pair], []) = (&self.crosses[crossings.clone()], doubtful) {
+            let pair = *pair;
             let (p, q) = (place(pair, 32)?, place(pair, 0)?);
             let n = p.min(q);
             let (l, r) = (
@@ -903,16 +913,30 @@ impl Resolver {
             self.lefts[n + 1] = self.lefts[n] + r;
             return Some(());
         }
-        // The places of the pieces crossing there.
+        // The places of the pieces crossing there, and of the neighbours
+        // that may change places there.
         let mut places = [0_usize; 16];
         let mut held = 0;
+        let mut hold = |n: usize| {
+            if !places[..held].contains(&n) {
+                *places.get_mut(held)? = n;
+                held += 1;
+            }
+            Some(())
+        };
         for &pair in &self.crosses[crossings] {
-            for shift in [32, 0] {
-                let n = place(pair, shift)?;
-                if !places[..held].contains(&n) {
-                    *places.get_mut(held)? = n;
-                    held += 1;
+            hold(place(pair, 32)?)?;
+            hold(place(pair, 0)?)?;
+        }
+        let mut doubted = false;
+        for &(i, j) in doubtful {
+            if let (Some(p), Some(q)) = (place_of(i as usize), place_of(j as usize)) {
+                if p.abs_diff(q) != 1 {
+                    return None;
                 }
+                hold(p)?;
+                hold(q)?;
+                doubted = true;
             }
         }
         let places = &mut places[..held];
@@ -943,8 +967,9 @@ impl Resolver {
         for run in runs() {
             let w = self.lefts[run.start];
             let entries = &mut self.order[run.clone()];
-            // Two pieces that cross swap; more take their exact places.
-            if let [one, other] = entries {
+            // Two pieces that cross swap; more, and those that may change
+            // places, take their exact places.
+            if let ([one, other], false) = (&mut *entries, doubted) {
                 std::mem::swap(one, other);
             } else {
                 for entry in entries.iter_mut() {
