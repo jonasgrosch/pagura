@@ -188,7 +188,7 @@ fn terminal_unsigned_and_numeric_tokens_do_not_wait_for_unrelated_bytes() {
     .unwrap() else {
         panic!("real suffix completes a valid number")
     };
-    assert_eq!(value.value, Value::Real(9223372036854775808.0));
+    assert_eq!(value.value, Value::Real(9_223_372_036_854_775_808.0));
 }
 
 #[test]
