@@ -193,7 +193,7 @@ fn range(document: &Document, dictionary: &Dictionary, count: usize) -> ReadResu
             document
                 .resolve(value)?
                 .as_number()
-                .ok_or(Error::syntax("invalid ICC Range bound"))
+                .ok_or_else(|| Error::syntax("invalid ICC Range bound").into())
         };
         let (low, high) = (bound(&pair[0])?, bound(&pair[1])?);
         if low > high {

@@ -65,11 +65,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let d = document.resolve_dictionary(value)?;
         let flags = d
             .get(b"F")
-            .map(|v| {
+            .map(|v| -> ReadResult<_> {
                 document
                     .resolve(v)?
                     .as_integer()
-                    .ok_or(Error::syntax("annotation F must be integer"))
+                    .ok_or_else(|| Error::syntax("annotation F must be integer").into())
             })
             .transpose()?
             .unwrap_or(0);
@@ -78,12 +78,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         }
         // Hidden and NoView (Table 167).
         if flags & (2 | 32) != 0 {
-            return self.occurrence(value, true);
+            return Ok(self.occurrence(value, true)?);
         }
         if let Some(oc) = d.get(b"OC")
             && !self.session.visibility.visible(document, oc)?
         {
-            return self.occurrence(value, true);
+            return Ok(self.occurrence(value, true)?);
         }
         let subtype = d
             .get(b"Subtype")
@@ -93,7 +93,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .ok_or(Error::syntax("annotation has no Subtype"))?;
         // Invisible: unknown subtypes are not shown.
         if flags & 1 != 0 && !standard_type(subtype.as_bytes()) {
-            return self.occurrence(value, true);
+            return Ok(self.occurrence(value, true)?);
         }
         self.occurrence(value, false)?;
         if !draws(self.needs()) {
@@ -215,7 +215,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             &scope,
         )?;
         draw(self)?;
-        self.device.end_group()
+        Ok(self.device.end_group()?)
     }
 
     /// Draws an appearance stream fitted into `rect` (12.5.5), starting from
@@ -238,14 +238,14 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 object,
                 offset: 0,
             });
-            return document.repair(
+            return Ok(document.repair(
                 Diagnostic::new(
                     repairs::APPEARANCE_EMPTY,
                     "zero-sized appearance or annotation rectangle; appearance skipped",
                 )
                 .in_object_opt(body.id())
                 .at(position),
-            );
+            )?);
         };
         let mut state = Graphics::default();
         state.set_ctm(placement);
@@ -337,7 +337,7 @@ fn normal_appearance(
     normal
         .as_reference()
         .map(Some)
-        .ok_or(Error::syntax("appearance must be a stream reference"))
+        .ok_or_else(|| Error::syntax("appearance must be a stream reference").into())
 }
 
 /// A rectangle entry.
@@ -347,7 +347,7 @@ fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> ReadResult<Rect
         .transpose()?
         .and_then(Value::as_array)
         .and_then(Rect::from_array)
-        .ok_or(Error::syntax("invalid annotation or appearance rectangle"))
+        .ok_or_else(|| Error::syntax("invalid annotation or appearance rectangle").into())
 }
 
 /// The transform that fits the upright envelope of the transformed `BBox`

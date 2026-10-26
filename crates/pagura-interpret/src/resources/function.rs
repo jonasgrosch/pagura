@@ -221,13 +221,13 @@ impl Reader<'_> {
             self.ancestors.pop();
             functions.push(function?.function);
         }
-        Function::stitching(StitchingFunction {
+        Ok(Function::stitching(StitchingFunction {
             domain: [min, max],
             range,
             functions,
             bounds,
             encode,
-        })
+        })?)
     }
 }
 
@@ -295,7 +295,7 @@ fn sampled(
     if encode.len() != domain.len() || decode.len() != range.len() {
         return Err(Error::syntax("wrong sampled encode or decode dimension").into());
     }
-    Function::sampled(
+    Ok(Function::sampled(
         SampledFunction {
             domain,
             range,
@@ -307,7 +307,7 @@ fn sampled(
             samples,
         },
         &document.limits(),
-    )
+    )?)
 }
 
 fn exponential(
@@ -331,13 +331,13 @@ fn exponential(
     if c0.len() != outputs || c1.len() != outputs {
         return Err(Error::syntax("wrong exponential function output dimension").into());
     }
-    Function::exponential(ExponentialFunction {
+    Ok(Function::exponential(ExponentialFunction {
         domain: [min, max],
         range,
         c0,
         c1,
         exponent,
-    })
+    })?)
 }
 
 fn calculator(
@@ -355,7 +355,7 @@ fn calculator(
         return Err(Error::syntax("calculator function must be a stream").into());
     }
     let program: Arc<[u8]> = document.stream_data(object)?.as_ref().into();
-    Function::calculator(
+    Ok(Function::calculator(
         CalculatorFunction {
             domain,
             range,
@@ -368,7 +368,7 @@ fn calculator(
             object: id,
             offset: 0,
         })
-    })
+    })?)
 }
 
 /// A list of numbers, or `default` when the key is absent.
@@ -381,7 +381,7 @@ fn numbers(
     let Some(value) = dictionary.get(key) else {
         return default
             .map(<[f64]>::to_vec)
-            .ok_or(Error::syntax("missing function parameter"));
+            .ok_or_else(|| Error::syntax("missing function parameter").into());
     };
     list(document, value, f64::MAX)
 }
@@ -396,7 +396,7 @@ fn pairs_unordered(
     if !dictionary.contains_key(key) {
         return default
             .map(<[[f64; 2]]>::to_vec)
-            .ok_or(Error::syntax("missing function parameter"));
+            .ok_or_else(|| Error::syntax("missing function parameter").into());
     }
     let values = numbers(document, dictionary, key, None)?;
     let (pairs, remainder) = values.as_chunks::<2>();

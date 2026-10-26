@@ -55,18 +55,19 @@ pub(crate) fn read(
     }
     let bbox = d
         .get(b"BBox")
-        .map(|v| {
+        .map(|v| -> ReadResult<_> {
             let n = array::<4>(document, v, GEOMETRY)?;
-            Rect::from_corners(n[0], n[1], n[2], n[3]).ok_or(Error::syntax("invalid shading BBox"))
+            Rect::from_corners(n[0], n[1], n[2], n[3])
+                .ok_or_else(|| Error::syntax("invalid shading BBox").into())
         })
         .transpose()?;
     let antialias = d
         .get(b"AntiAlias")
-        .map(|v| {
+        .map(|v| -> ReadResult<_> {
             document
                 .resolve(v)?
                 .as_bool()
-                .ok_or(Error::syntax("shading AntiAlias must be boolean"))
+                .ok_or_else(|| Error::syntax("shading AntiAlias must be boolean").into())
         })
         .transpose()?
         .unwrap_or(false);
@@ -145,7 +146,7 @@ fn geometry(
     }
     let extend = d
         .get(b"Extend")
-        .map(|v| {
+        .map(|v| -> ReadResult<_> {
             let values = document
                 .resolve(v)?
                 .as_array()

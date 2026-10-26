@@ -27,7 +27,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return Ok(());
         };
         let composite = self.fill_state(scope);
-        self.device.shading(&ShadingMark {
+        Ok(self.device.shading(&ShadingMark {
             shading: &shading,
             transform: scope.state.ctm,
             state: MarkState {
@@ -36,7 +36,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 position: self.position,
                 hidden: emission.hidden(),
             },
-        })
+        })?)
     }
 
     /// Reads a shading whose colour space names refer to `resources`.

@@ -74,7 +74,7 @@ pub(crate) fn read<'a>(
     }
     let matrix = d
         .get(b"Matrix")
-        .map(|v| {
+        .map(|v| -> ReadResult<_> {
             let m = array::<6>(document, v, GEOMETRY)?;
             Ok(Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]))
         })
@@ -102,10 +102,10 @@ fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> ReadR
     if !document.object(id)?.is_stream() {
         return Err(Error::syntax("tiling pattern must be a stream").into());
     }
-    let integer = |key: &[u8]| {
+    let integer = |key: &[u8]| -> ReadResult<i64> {
         entry(document, d, key)?
             .and_then(Value::as_integer)
-            .ok_or(Error::syntax("missing pattern type parameter"))
+            .ok_or_else(|| Error::syntax("missing pattern type parameter").into())
     };
     let colors = match integer(b"PaintType")? {
         1 => TilingColors::Colored,

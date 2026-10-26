@@ -266,14 +266,14 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             rotation: page.rotation(),
             user_unit: page.user_unit(),
             group,
-            print_intent: crate::resources::print_intent(document, page),
+            print_intent: crate::resources::print_intent(document, page)?,
         })?;
         let mut scope = Scope::new(state, Text::Page);
         // Annotations that report at the page's last operator keep its
         // position, so the page's sequence does not restore it.
         self.sequence(&content, page.resources(), &mut scope)?;
         self.annotations(page)?;
-        self.device.end_page()
+        Ok(self.device.end_page()?)
     }
 
     /// Interprets one content sequence in `scope` (7.8.2).

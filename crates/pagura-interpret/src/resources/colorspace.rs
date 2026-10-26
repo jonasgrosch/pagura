@@ -529,15 +529,15 @@ fn calibrated(document: &Document, family: &[u8], d: &Dictionary) -> ReadResult<
         b"CalGray" => {
             let gamma = d
                 .get(b"Gamma")
-                .map(|v| {
+                .map(|v| -> ReadResult<_> {
                     document
                         .resolve(v)?
                         .as_number()
-                        .ok_or(Error::syntax("CalGray Gamma must be numeric"))
+                        .ok_or_else(|| Error::syntax("CalGray Gamma must be numeric").into())
                 })
                 .transpose()?
                 .unwrap_or(1.0);
-            Calibrated::gray(white, black, gamma)
+            Ok(Calibrated::gray(white, black, gamma)?)
         }
         b"CalRGB" => {
             let gamma = parameter::<3>(document, d, b"Gamma", Some([1.0; 3]))?;
@@ -549,12 +549,12 @@ fn calibrated(document: &Document, family: &[u8], d: &Dictionary) -> ReadResult<
                 Some([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]),
             )?;
             let matrix = [[m[0], m[3], m[6]], [m[1], m[4], m[7]], [m[2], m[5], m[8]]];
-            Calibrated::rgb(white, black, gamma, matrix)
+            Ok(Calibrated::rgb(white, black, gamma, matrix)?)
         }
         _ => {
             let range =
                 parameter::<4>(document, d, b"Range", Some([-100.0, 100.0, -100.0, 100.0]))?;
-            Calibrated::lab(white, black, range)
+            Ok(Calibrated::lab(white, black, range)?)
         }
     }
 }
@@ -566,7 +566,7 @@ fn parameter<const N: usize>(
     default: Option<[f64; N]>,
 ) -> ReadResult<[f64; N]> {
     let Some(value) = d.get(key) else {
-        return default.ok_or(Error::syntax("missing CIE parameter"));
+        return default.ok_or_else(|| Error::syntax("missing CIE parameter").into());
     };
     array(document, value, CIE_RANGE)
 }

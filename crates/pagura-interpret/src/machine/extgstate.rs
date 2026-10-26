@@ -144,7 +144,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     b"FL" => Op::Flatness(number()?),
                     _ => return parameter(document, key, value, scope),
                 };
-                return params::apply(&op, &mut scope.state);
+                return Ok(params::apply(&op, &mut scope.state)?);
             }
         }
         scope.state.composite_changed();
@@ -282,10 +282,8 @@ fn blend_mode(document: &Document, value: &Value) -> ReadResult<BlendMode> {
     let name = value
         .as_name()
         .ok_or(Error::syntax("blend mode must be a name or array"))?;
-    named_blend(name.as_bytes()).ok_or(Error::unsupported(
-        features::TRANSPARENCY_BM,
-        "unknown blend mode",
-    ))
+    named_blend(name.as_bytes())
+        .ok_or_else(|| Error::unsupported(features::TRANSPARENCY_BM, "unknown blend mode").into())
 }
 
 fn named_blend(name: &[u8]) -> Option<BlendMode> {

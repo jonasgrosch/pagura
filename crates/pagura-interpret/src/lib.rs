@@ -164,7 +164,7 @@ impl<'a> Interpreter<'a> {
     pub fn scene(&self, page: &Page) -> ReadResult<Scene> {
         let mut recorder = SceneRecorder::new(self.document.limits());
         self.run(page, &mut recorder)?;
-        recorder.finish()
+        Ok(recorder.finish()?)
     }
 
     /// Collects the positioned text of `page`: glyphs in content order with
@@ -181,7 +181,7 @@ impl<'a> Interpreter<'a> {
     pub fn text(&self, page: &Page) -> ReadResult<pagura_extract::PositionedText> {
         let mut device = TextDevice::new(self.document.limits());
         self.run(page, &mut device)?;
-        device.finish()
+        Ok(device.finish()?)
     }
 
     /// The positioned text of one stored annotation appearance `appearance`
@@ -203,6 +203,6 @@ impl<'a> Interpreter<'a> {
         let inputs = self.inputs(None);
         let mut machine = Machine::new(&inputs, &mut device)?;
         machine.appearance_text(appearance, rect, page.resources())?;
-        device.finish()
+        Ok(device.finish()?)
     }
 }

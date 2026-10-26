@@ -81,7 +81,7 @@ pub(crate) fn resource<'a>(
         .map(|v| document.resolve_dictionary(v))
         .transpose()?
         .and_then(|d| d.get(name))
-        .ok_or(Error::syntax("undefined content resource"))
+        .ok_or_else(|| Error::syntax("undefined content resource").into())
 }
 
 /// A form's `BBox` and `Matrix` (Table 93).
@@ -102,7 +102,7 @@ pub(crate) fn geometry(
         .ok_or(Error::syntax("form has invalid BBox"))?;
     let matrix = dictionary
         .get(b"Matrix")
-        .map(|v| {
+        .map(|v| -> ReadResult<_> {
             let values = document
                 .resolve(v)?
                 .as_array()

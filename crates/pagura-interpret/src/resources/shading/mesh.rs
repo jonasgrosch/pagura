@@ -383,5 +383,5 @@ fn integer(document: &Document, d: &Dictionary, key: &[u8]) -> ReadResult<usize>
         .transpose()?
         .and_then(Value::as_integer)
         .and_then(|n| usize::try_from(n).ok())
-        .ok_or(Error::syntax("mesh integer parameter missing or invalid"))
+        .ok_or_else(|| Error::syntax("mesh integer parameter missing or invalid").into())
 }

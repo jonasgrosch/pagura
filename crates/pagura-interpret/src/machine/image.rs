@@ -179,7 +179,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         )
         .map_err(|error| error.at(Position::Buffer(0)))?;
         let image = self.describe(source, resources, &mut Vec::new())?;
-        self.image_mark(&image, scope)
+        Ok(self.image_mark(&image, scope)?)
     }
 }
 

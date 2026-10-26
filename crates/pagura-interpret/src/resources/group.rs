@@ -36,11 +36,11 @@ pub(crate) fn attributes(
         .transpose()?;
     let boolean = |key: &[u8]| -> ReadResult<bool> {
         d.get(key)
-            .map(|v| {
+            .map(|v| -> ReadResult<_> {
                 document
                     .resolve(v)?
                     .as_bool()
-                    .ok_or(Error::syntax("group flag must be boolean"))
+                    .ok_or_else(|| Error::syntax("group flag must be boolean").into())
             })
             .transpose()
             .map(|v| v.unwrap_or(false))
@@ -72,10 +72,13 @@ fn blending_space(
         }
         space => device(space),
     }
-    .ok_or(Error::unsupported(
-        features::TRANSPARENCY_GROUP_COLORSPACE,
-        "group blending space requires an unsupported colour transform",
-    ))
+    .ok_or_else(|| {
+        Error::unsupported(
+            features::TRANSPARENCY_GROUP_COLORSPACE,
+            "group blending space requires an unsupported colour transform",
+        )
+        .into()
+    })
 }
 
 fn device(space: &ColorSpace) -> Option<Process> {

@@ -166,7 +166,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         )?;
         let content = self.stream_content(object)?;
         let outer = self.begin_definition();
-        let result = (|| {
+        let result = (|| -> ReadResult<()> {
             self.device.begin_tiling(&TilingInfo {
                 id,
                 bbox: tiling.bbox,
@@ -177,7 +177,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 object: Some(tiling.id),
             })?;
             self.run(&content, tiling.resources, &mut cell)?;
-            self.device.end_tiling()
+            Ok(self.device.end_tiling()?)
         })();
         self.end_definition(outer);
         result

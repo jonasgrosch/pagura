@@ -96,7 +96,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             let placed = self.glyph(font, glyph, &run, resources, scope)?;
             strings.placed.push(placed);
         }
-        self.emit_run(font, strings, text, scope)
+        Ok(self.emit_run(font, strings, text, scope)?)
     }
 
     /// Places one glyph: its outline or procedure for paint, its part of

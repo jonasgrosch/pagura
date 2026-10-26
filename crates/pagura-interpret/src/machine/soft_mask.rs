@@ -67,7 +67,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             HiddenForm::Skip,
         )?
         else {
-            return Err(not_group());
+            return Err(not_group().into());
         };
         let attributes =
             group::attributes(&mut self.session.colors, form.dictionary, form.resources)?
@@ -108,7 +108,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let mut child = form.scope;
         child.state.start_group();
         let outer = self.begin_definition();
-        let result = (|| {
+        let result = (|| -> ReadResult<()> {
             self.device.begin_soft_mask(&SoftMaskInfo {
                 id: mask,
                 kind,
@@ -119,7 +119,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 position: self.position,
             })?;
             self.run(&form.content, form.resources, &mut child)?;
-            self.device.end_soft_mask()
+            Ok(self.device.end_soft_mask()?)
         })();
         self.end_definition(outer);
         result.map(|()| mask)

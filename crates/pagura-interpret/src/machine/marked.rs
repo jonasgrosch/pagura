@@ -59,12 +59,12 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         } else {
             None
         };
-        self.device.marked(&Marked::Begin {
+        Ok(self.device.marked(&Marked::Begin {
             tag: &tag,
             properties: dictionary,
             hidden: !scope.visible,
             text: text.as_ref(),
-        })
+        })?)
     }
 
     /// `EMC`.

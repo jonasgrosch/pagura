@@ -385,9 +385,9 @@ fn list(
         ))?
         .iter()
         .map(|value| {
-            value.as_reference().ok_or(Error::syntax(
-                "optional configuration must reference groups",
-            ))
+            value
+                .as_reference()
+                .ok_or_else(|| Error::syntax("optional configuration must reference groups").into())
         })
         .collect()
 }
@@ -399,12 +399,12 @@ fn name<'a>(
 ) -> ReadResult<Option<&'a [u8]>> {
     dictionary
         .get(key)
-        .map(|v| {
+        .map(|v| -> ReadResult<_> {
             document
                 .resolve(v)?
                 .as_name()
                 .map(pagura_core::Name::as_bytes)
-                .ok_or(Error::syntax("optional content entry must be a name"))
+                .ok_or_else(|| Error::syntax("optional content entry must be a name").into())
         })
         .transpose()
 }
@@ -423,21 +423,21 @@ fn usage_state(
             // sampling density, not interactive viewer magnification.
             let minimum = dictionary
                 .get(b"min")
-                .map(|v| {
+                .map(|v| -> ReadResult<_> {
                     document
                         .resolve(v)?
                         .as_number()
-                        .ok_or(Error::syntax("invalid usage zoom minimum"))
+                        .ok_or_else(|| Error::syntax("invalid usage zoom minimum").into())
                 })
                 .transpose()?
                 .unwrap_or(0.0);
             let maximum = dictionary
                 .get(b"max")
-                .map(|v| {
+                .map(|v| -> ReadResult<_> {
                     document
                         .resolve(v)?
                         .as_number()
-                        .ok_or(Error::syntax("invalid usage zoom maximum"))
+                        .ok_or_else(|| Error::syntax("invalid usage zoom maximum").into())
                 })
                 .transpose()?
                 .unwrap_or(f64::INFINITY);
