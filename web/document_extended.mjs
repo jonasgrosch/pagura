@@ -9,6 +9,13 @@ function list(r, minimum, read) {
   if (count > MAX_ATTACHMENTS || count > Math.floor((r.bytes.length - r.offset) / minimum)) throw new Error('Invalid extended-service count');
   return Array.from({ length: count }, read);
 }
+function signedInteger(r) {
+  const text = r.text();
+  if (text.length > 20 || !/^-?\d+$/.test(text)) throw new Error('Invalid collection integer');
+  const value = BigInt(text);
+  if (value < -(1n << 63n) || value >= (1n << 63n)) throw new Error('Collection integer outside i64 range');
+  return value;
+}
 function image(r) {
   const value = { object: r.object(), width: r.u32(), height: r.u32(), thumbnail: flag(r) };
   if (!value.width || !value.height) throw new Error('Invalid source image dimensions'); return value;
@@ -23,7 +30,7 @@ function fileDetails(r, file) {
   if (payloads.length !== file.payloads.length) throw new Error('Mismatched file parameter count');
   file.payloads.forEach((payload, index) => { payload.parameters = payloads[index]; });
   const indexes = new Map();
-  file.related = list(r, 19, () => {
+  file.related = list(r, 17, () => {
     const keyBytes = blob(r), name = blob(r), key = names[new TextDecoder('ascii', { fatal: true }).decode(keyBytes)];
     if (key === undefined) throw new Error('Invalid related-file key');
     const index = indexes.get(key) ?? 0; indexes.set(key, index + 1);
@@ -33,7 +40,7 @@ function fileDetails(r, file) {
     const key = blob(r), prefix = optional(r, () => r.text()), type = r.text(); let value;
     if (type === 'absent') value = null;
     else if (type === 'text') value = r.text();
-    else if (type === 'integer') { const text = r.text(); if (!/^-?\d+$/.test(text)) throw new Error('Invalid collection integer'); value = BigInt(text); }
+    else if (type === 'integer') value = signedInteger(r);
     else if (type === 'real') { value = r.f64(); if (!Number.isFinite(value)) throw new Error('Invalid collection real'); }
     else throw new Error('Unknown collection value type');
     return { key, prefix, type, value };
@@ -60,7 +67,11 @@ export function decodeExtended(kind, r, specification) {
   if (kind === ResponseKind.Collection) return optional(r, () => {
     const object = optional(r, () => r.object()), initialFile = optional(r, () => blob(r)), view = r.text();
     if (!['Details', 'Tiles', 'Hidden', 'Navigator'].includes(view)) throw new Error('Invalid collection view');
-    const fields = list(r, 19, () => ({ key: blob(r), name: r.text(), kind: r.text(), order: optional(r, () => BigInt(r.text())), visible: flag(r), editable: flag(r) }));
+    const fields = list(r, 19, () => {
+      const key = blob(r), name = r.text(), kind = r.text();
+      if (!['Text', 'Date', 'Number', 'FileName', 'Description', 'ModificationDate', 'CreationDate', 'Size', 'CompressedSize'].includes(kind)) throw new Error('Invalid collection field kind');
+      return { key, name, kind, order: optional(r, () => signedInteger(r)), visible: flag(r), editable: flag(r) };
+    });
     const sort = list(r, 5, () => ({ key: blob(r), ascending: flag(r) }));
     return { object, initialFile, view, fields, sort };
   });

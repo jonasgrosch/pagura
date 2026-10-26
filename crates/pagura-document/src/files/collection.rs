@@ -141,6 +141,7 @@ impl Document {
         let Some(value) = context.present(catalog, b"Collection", source)? else {
             return Ok(None);
         };
+        let indirect = value.as_reference().is_some();
         let (dictionary, source) = context.dictionary(value, source)?;
         context.type_name(dictionary, b"Collection", source)?;
         let view = match read::name(&mut context, dictionary, b"View", source)?.map(Name::as_bytes)
@@ -162,7 +163,7 @@ impl Document {
         let fields = schema(&mut context, dictionary, source)?;
         let sort = sort(&mut context, dictionary, source)?;
         Ok(Some(Collection {
-            object: source.object,
+            object: source.object.filter(|_| indirect),
             dictionary,
             initial_file,
             view,

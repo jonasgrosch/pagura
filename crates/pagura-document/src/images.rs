@@ -110,9 +110,13 @@ impl Document {
         let Some(value) = context.present(dictionary, b"Thumb", source)? else {
             return Ok(None);
         };
-        let id = value
-            .as_reference()
-            .ok_or_else(|| source.error(Error::syntax("Thumb must reference a stream")))?;
+        if value.as_reference().is_none() {
+            return Err(source.error(Error::syntax("Thumb must reference a stream")));
+        }
+        let (_, location) = context.resolve(value, source)?;
+        let id = location
+            .object
+            .ok_or_else(|| location.error(Error::syntax("Thumb must reference a stream")))?;
         asset(&mut context, id, AssetKind::Thumbnail).map(Some)
     }
 
@@ -142,9 +146,12 @@ impl Document {
                 .and_then(Value::as_name)
                 .is_some_and(|name| name == b"Image")
             {
-                let id = value.as_reference().ok_or_else(|| {
-                    location.error(Error::syntax("image XObject must be indirect"))
-                })?;
+                let id = location
+                    .object
+                    .filter(|_| value.as_reference().is_some())
+                    .ok_or_else(|| {
+                        location.error(Error::syntax("image XObject must be indirect"))
+                    })?;
                 images.push(ImageResource {
                     name,
                     asset: asset(&mut context, id, AssetKind::Image)?,
@@ -180,9 +187,9 @@ fn asset<'a>(context: &mut Context<'a>, id: ObjectId, kind: AssetKind) -> Result
         .ok_or_else(|| source.error(Error::syntax("image asset must be a stream")))?;
     let subtype = context.entry(dictionary, b"Subtype", source)?;
     if (kind == AssetKind::Image || subtype.is_some())
-        && !subtype
+        && subtype
             .and_then(Value::as_name)
-            .is_some_and(|name| name == b"Image")
+            .is_none_or(|name| name != b"Image")
     {
         return Err(source.error(Error::syntax("image asset Subtype must be Image")));
     }

@@ -19,6 +19,34 @@
       "repairs": []
     },
     {
+      "id": "document_services/direct-collection",
+      "kind": "pdf",
+      "description": "direct collection",
+      "expected": "open",
+      "requirements": [
+        "document-services-scoped-extraction"
+      ],
+      "path": "corpus/generated/document_services/direct-collection.pdf",
+      "sha256": "eac760ec60ca594d1c5a50520cd64c10d639715779b0598d5163efa3387afe57",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "document_services/chained-assets",
+      "kind": "pdf",
+      "description": "chained assets",
+      "expected": "open",
+      "requirements": [
+        "document-services-scoped-extraction"
+      ],
+      "path": "corpus/generated/document_services/chained-assets.pdf",
+      "sha256": "d258c81bed5ca8fb7d8beeea07b6e95d9717d56c101786b7e8620acb28227245",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
       "id": "document_services/empty-collection",
       "kind": "pdf",
       "description": "empty collection",

@@ -367,7 +367,7 @@ fn overprint_selects_the_preview_of_every_rendering_command() {
 }
 
 #[test]
-fn attachment_page_selection_is_explicit_and_scoped_to_attachment_commands() {
+fn attachment_page_selection_is_explicit_and_scoped_to_source_commands() {
     assert_eq!(
         run(&["attachments", "--page", "2", "a.pdf"]),
         Ok(Command::Attachments {
@@ -418,15 +418,7 @@ fn attachment_page_selection_is_explicit_and_scoped_to_attachment_commands() {
         run(&["attachments", "--page", "-1", "a.pdf"]),
         Err("--page must be a non-negative integer, not -1".into())
     );
-    for command in [
-        "metadata",
-        "extract-metadata",
-        "inspect",
-        "render",
-        "text",
-        "scan",
-        "find",
-    ] {
+    for command in ["inspect", "render", "text", "scan", "find"] {
         let mut args = vec![command, "--page", "0", "a.pdf"];
         if command == "find" {
             args.push("query");

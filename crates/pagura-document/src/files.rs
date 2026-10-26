@@ -5,8 +5,9 @@
 //! lazy and applies the document's filters, crypt filters and budgets. Declared
 //! sizes, dates and checksums are preserved. Explicit [`EmbeddedFile::check_parameters`]
 //! compares Size and CheckSum with decoded bytes; dates remain unvalidated.
-//! Collection schemas, encrypted-payload semantics and MIME/date validation are
-//! outside these views; their source entries remain available to callers.
+//! Collection schemas, item values and encrypted-payload declarations are inert
+//! typed views. Executable navigators and MIME/date/profile validation remain outside
+//! these views; their source entries remain available to callers.
 
 mod annotations;
 mod checks;

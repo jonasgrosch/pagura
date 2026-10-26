@@ -16,7 +16,7 @@ PIXELS = bytes([255, 0, 0, 0, 255, 0])
 PACKET = b'<x:xmpmeta xmlns:x="adobe:ns:meta/">object packet</x:xmpmeta>'
 
 
-def source(*, collection=None, spec=None, image=None, thumb=None, page_extra=b'', owner=None):
+def source(*, collection=None, spec=None, image=None, thumb=None, page_extra=b'', owner=None, direct_collection=False, chained_assets=False):
     if collection is None:
         collection = (b'<< /Type /Collection /View /H /D (primary) /Schema << /Type /CollectionSchema '
                       b'/label << /Subtype /S /N (Label) /O 1 /E true >> '
@@ -36,22 +36,24 @@ def source(*, collection=None, spec=None, image=None, thumb=None, page_extra=b''
         thumb = stream(b'\x7f', b'/Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 /SMask /IgnoredThumbnailEntry')
     params = b'/Params << /Size %d /CheckSum <%s> >>' % (len(PAYLOAD), hashlib.md5(PAYLOAD).hexdigest().encode())
     return document([
-        b'<< /Type /Catalog /Pages 2 0 R /AF [5 0 R] /Names << /EmbeddedFiles << /Names [(primary) 5 0 R] >> >> /Collection 14 0 R /Metadata 15 0 R >>',
+        b'<< /Type /Catalog /Pages 2 0 R /AF [5 0 R] /Names << /EmbeddedFiles << /Names [(primary) 5 0 R] >> >> /Collection ' + (collection if direct_collection else b'14 0 R') + b' /Metadata 15 0 R >>',
         b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] /Contents 4 0 R /AF [5 0 R 5 0 R] /Metadata 8 0 R /Thumb 12 0 R /Resources << /XObject << /Image 9 0 R /Alias 9 0 R /UnusedForm 11 0 R >> >> ' + page_extra + b' >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] /Contents 4 0 R /AF [5 0 R 5 0 R] /Metadata 8 0 R /Thumb ' + (b'16 0 R' if chained_assets else b'12 0 R') + b' /Resources << /XObject << /Image ' + (b'17 0 R' if chained_assets else b'9 0 R') + b' /Alias 9 0 R /UnusedForm 11 0 R >> >> ' + page_extra + b' >>',
         stream(b''), spec, stream(zlib.compress(PAYLOAD), b'/Filter /FlateDecode ' + params),
         stream(RELATED[0]), stream(PACKET, b'/Type /Metadata /Subtype /XML'), image,
         owner if owner is not None else b'<< /AF [5 0 R] /Metadata 8 0 R /Thumb 12 0 R >>',
         stream(b'', b'/Type /XObject /Subtype /Form /BBox [0 0 1 1]'), thumb,
         stream(zlib.compress(RELATED[1]), b'/Filter /FlateDecode'), collection,
         stream(b'<catalog/>', b'/Type /Metadata /Subtype /XML'),
-    ])
+    ] + ([b'12 0 R', b'9 0 R'] if chained_assets else []))
 
 
 def cases():
     def case(name, **kwargs):
         return Case(name, source(**kwargs), OPEN, (REQUIREMENT,), name.replace('-', ' '))
     yield case('complete')
+    yield case('direct-collection', direct_collection=True)
+    yield case('chained-assets', chained_assets=True)
     yield case('empty-collection', collection=b'<< >>')
     yield case('null-collection', collection=b'null')
     yield case('nonstring-initial', collection=b'<< /D 12 >>')

@@ -102,6 +102,14 @@ fn collection_schema_sort_values_and_encryption_declarations_remain_inert() {
     let document = open("complete");
     let collection = document.collection().unwrap().unwrap();
     assert_eq!(collection.object, Some(id(14)));
+    assert_eq!(
+        open("direct-collection")
+            .collection()
+            .unwrap()
+            .unwrap()
+            .object,
+        None
+    );
     assert_eq!(collection.view, CollectionView::Hidden);
     assert_eq!(collection.initial_file, Some(b"primary".as_slice()));
     assert_eq!(collection.fields.len(), 4);
@@ -202,6 +210,15 @@ fn metadata_and_source_images_do_not_conflate_source_and_rendered_appearance() {
             .unwrap()
             .as_ref(),
         b"<catalog/>"
+    );
+    let chained = open("chained-assets");
+    assert_eq!(chained.thumbnail(id(3)).unwrap().unwrap().object(), id(12));
+    assert!(
+        chained
+            .page_image_resources(0)
+            .unwrap()
+            .iter()
+            .all(|image| image.asset.object() == id(9))
     );
     let images = document.page_image_resources(0).unwrap();
     assert_eq!(images.len(), 2);
