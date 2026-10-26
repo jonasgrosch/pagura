@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "7017dc6bb94a44a900915a8a041823b7ea5f5f02",
+  "audited_revision": "80c5b39b46a8ee5963dc3964ac79a09b944de353",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -205,7 +205,7 @@
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
-    "references/requirements/host.json": "92243e81f3fac889f6499a7b68d2ad1e53283d1c65b40b27e3ca7cd6f104f765",
+    "references/requirements/host.json": "b6eaa38534d398c187fe32f6ef3622254655536432b2a6ebb0dd9fe79bef20e0",
     "references/requirements/image.json": "3410e86abc83f72875194f80fe95c16e5719b091698d440adbfbd7d65133032a",
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
@@ -233,16 +233,17 @@
     "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
     "web/client.mjs": "ea78b0bf556c12346a1b9769a078e7835d6915637c7a653967786c9b1e40f3f2",
     "web/document_protocol.mjs": "d171564def850a9f43c23735282df6b9f869f7eb100df2adf6c16340d10f05b4",
-    "web/document_services.mjs": "f63cb28107d777ca85d152f1869b66a7d782279fd2b89c81af421a05fa82bf2d",
-    "web/index.html": "a3f001e7e383e0cb949422072bfef1a88d9196e72b17fe3b68e7c125d714ec54",
+    "web/document_services.mjs": "f624d058056e05ba2409ca64f8916aa2d6c72fbe592762012ddce5a0f9b14df0",
+    "web/index.html": "5810c4b4fdd8aa5ce034a16c7d7c413bb0f5f41052f7114a5cf9c376e96b502a",
     "web/png_export.mjs": "fc218557b970e5411237eff20996e25ceb9e712fee17e60a1ef7acb6d5c4d7db",
     "web/protocol.mjs": "740643f5eb43a261368715cbf351fb5bd85110c469476ab8c32592686c0c71e1",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
-    "web/style.css": "36703c3f236ab8a06a1985d643be8b56cf9f166b6d87142851a47b3e82425989",
+    "web/style.css": "04b434ccee5621fbbd8f194a869192a011440b2dd08cfd349e03d3dc1de28cf8",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
-    "web/viewer.mjs": "a1133d105bfc279535e3778f29b53af68c6a2036d212cb38cd1b0801720ba050",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/viewer.mjs": "cd03035fae86aaea06a7090288a557045dc3c16f4f1554d666186afc5c8effda",
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21"
   },
   "capabilities": [
     {
@@ -1769,8 +1770,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. The CLI lists catalog EmbeddedFiles with separate Unicode/hexadecimal byte names and EF choices, and extracts an explicitly selected payload to a caller-chosen new path. Protocol 1.8 lists up to 1024 catalog attachments, preserves exact u64 size declarations, and requires an explicit index/EF key for bytes. The viewer displays inert names and uses fixed octet-stream download names; document changes or dialog closure cancel stale downloads. Library/facade check_parameters and CLI check-attachment compare decoded size and MD5 with declarations, distinguishing absent, matching and mismatching values; authorization and bounded complete decoding precede every result. Protocol 1.10 and viewer Check controls expose exact decoded size and independent size/checksum outcomes without downloading payloads. Checks are explicit, bounded and authorized; immutable dialog snapshots prevent stale callbacks and results. Page::attachment_annotations discovers FileAttachment annotations separately from catalog/AF views, preserving Annots indexes, annotation/FS identities, normalized rectangles, Contents text, declared/default icon names and lazy EF/RF handles. External files remain inert and malformed annotation views fail without partial results. CLI attachment commands accept explicit --page selection: annotation JSON retains original Annots indexes, geometry, Contents and icon/file records; extraction and checks use that exact slot and EF key without catalog fallback. Protocol 1.11/client APIs list one page's FileAttachment annotations and retrieve/check an exact original Annots slot and EF key. Records retain annotation identity, normalized rectangle, separate Contents/icon declarations and the existing nested file specification. Listing validates complete views before responding; retrieval and checks reuse authorized bounded decoding and exact declaration statuses.",
-      "remaining": "collection/encrypted-payload models, MIME/date/associated-file validation, streaming extraction, viewer annotation selection and CLI/host AF/RF selection, writes and viewer attachment-only password reauthentication.",
+      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. The CLI lists catalog EmbeddedFiles with separate Unicode/hexadecimal byte names and EF choices, and extracts an explicitly selected payload to a caller-chosen new path. Protocol 1.8 lists up to 1024 catalog attachments, preserves exact u64 size declarations, and requires an explicit index/EF key for bytes. The viewer displays inert names and uses fixed octet-stream download names; document changes or dialog closure cancel stale downloads. Library/facade check_parameters and CLI check-attachment compare decoded size and MD5 with declarations, distinguishing absent, matching and mismatching values; authorization and bounded complete decoding precede every result. Protocol 1.10 and viewer Check controls expose exact decoded size and independent size/checksum outcomes without downloading payloads. Checks are explicit, bounded and authorized; immutable dialog snapshots prevent stale callbacks and results. Page::attachment_annotations discovers FileAttachment annotations separately from catalog/AF views, preserving Annots indexes, annotation/FS identities, normalized rectangles, Contents text, declared/default icon names and lazy EF/RF handles. External files remain inert and malformed annotation views fail without partial results. CLI attachment commands accept explicit --page selection: annotation JSON retains original Annots indexes, geometry, Contents and icon/file records; extraction and checks use that exact slot and EF key without catalog fallback. Protocol 1.11/client APIs list one page's FileAttachment annotations and retrieve/check an exact original Annots slot and EF key. Records retain annotation identity, normalized rectangle, separate Contents/icon declarations and the existing nested file specification. Listing validates complete views before responding; retrieval and checks reuse authorized bounded decoding and exact declaration statuses. The viewer lists document and page attachments separately, starts on the current page and accepts explicit page selection. Downloads/checks preserve original Annots slots and exact EF keys; inert annotation notes, file descriptions and icon names stay separate. Page selection changes discard obsolete listings and decode results, with fixed generated download names and independent document controls after page-list errors.",
+      "remaining": "collection/encrypted-payload models, MIME/date/associated-file validation, streaming extraction, CLI/host AF/RF selection, writes and viewer attachment-only password reauthentication.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/navigation.rs",
@@ -1816,7 +1817,8 @@
         "crates/pagura-document/tests/file_annotations.rs",
         "tools/fixturegen/file_annotations.py",
         "crates/pagura-host/tests/page_attachments.rs",
-        "tools/page_attachments_test.mjs"
+        "tools/page_attachments_test.mjs",
+        "tools/page_attachments_view_test.mjs"
       ],
       "requirements": [
         "document-file-views",
@@ -1826,7 +1828,8 @@
         "host-attachment-checks",
         "document-file-annotations",
         "cli-annotation-attachments",
-        "host-page-attachments"
+        "host-page-attachments",
+        "viewer-page-attachments"
       ],
       "fixtures": [
         "files/populated",

@@ -409,18 +409,35 @@ than repeatedly reloading. Pages is static hosting, not a document backend.
 
 ## Properties and attachments
 
-Open **More → Properties and attachments** to inspect declared Info fields and
-document language, or list the catalog attachments. Protocol 1.8 reads these
-without decoding metadata/attachment payloads. Download buttons request exact
-bytes separately; no XML, URLs or embedded content execute. Where a specification
-has several EF payloads, each button selects its displayed filename key explicitly.
-Downloads use `metadata.xmp` or `attachment-N-KEY.bin` and an octet-stream MIME type.
-Closing the dialog, opening a new PDF or restarting the host cancels stale results.
+Open **More → Properties and attachments** to inspect declared Info fields,
+document language and document attachments. Page attachments appear separately;
+the initial selection follows the current page. Enter a page number and choose
+**Show page attachments** to inspect another page. Annotation notes, icon names
+and file descriptions stay distinct. All source labels remain inert text.
 
-The listing cap is 1024 attachments, and each response is at most 32 MiB. Decoding
-is separately bounded by document stream limits; this is complete-buffer output,
-not streaming. AF/RF and annotation discovery, attachment-only password prompts,
-metadata validation and editing remain open. Dates and sizes are declarations,
-not normalized timestamps or verified lengths. Host/native/WASI and viewer tests
-are in `tools/document_services_test.mjs`, `tools/document_services_view_test.mjs`
-and `crates/pagura-host/tests/document_services.rs`; initial hosted checks are pending.
+Listings never decode payloads. Explicit Download buttons select one exact EF
+payload. Downloads use `metadata.xmp`, `attachment-N-KEY.bin` or
+`page-P-attachment-N-KEY.bin` and an octet-stream MIME type. No XML, URLs or
+embedded content execute, and source filenames cannot choose output paths.
+**Check size and checksum** decodes the selected payload and compares its size
+and PDF CheckSum with their declarations. Missing, matching and mismatching
+values remain separate; this does not establish file safety or authenticity.
+Sizes retain exact integer precision. Dates remain unvalidated declarations.
+
+Changing the selected page, closing the dialog, opening another PDF or restarting
+the host discards obsolete results and downloads. A page-listing failure preserves
+available properties and document attachments. Decode operations are serialized
+within the current selection. The host listing cap is 1024 attachments, and each
+response is at most 32 MiB. Document stream limits bound complete-buffer decoding;
+a browser resource-limit failure ends the session and requires host recovery.
+
+Protocol 1.8 provides properties/catalog reads, 1.10 adds parameter checks and
+1.11 adds page annotation selection. Host/native/WASI and viewer tests live in
+`tools/document_services_test.mjs`, `tools/document_services_view_test.mjs`,
+`tools/attachment_checks_test.mjs`, `tools/page_attachments_test.mjs`,
+`tools/page_attachments_view_test.mjs` and the corresponding `pagura-host/tests`
+files. Catalog properties/check workflows have passing hosted evidence recorded
+in [the plan](../docs/COMPETITIVE_PARITY.md); the new page viewer controls await
+hosted execution and real-browser interaction validation. AF/RF selection,
+attachment-only password prompts, icon appearance/activation, streaming,
+metadata validation and editing remain open.

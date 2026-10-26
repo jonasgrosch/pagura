@@ -162,18 +162,16 @@ six baselines across hosted Ubuntu and macOS; hayro catalog/page attachment and 
 and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
 operation/configuration matrix remains open. `f948c64f289f2ec80112f92b0f06f7c88b0f882b`
 adds Pagura through the public metadata/attachment/text CLI and additive inspect
-geometry, preserving all six baseline columns. Current-head hosted observations
-are pending; every Pagura cell must meet its independent expectation. These
+geometry, preserving all six baseline columns. Every Pagura cell must meet its independent expectation in hosted execution. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
 The annotation increment adds first-page FileAttachment byte/name probes,
 separate from catalog attachments, with mixed slots, duplicate occurrences,
 shared/page-only specifications and second-page scope controls.
-[Run 40276014297](https://github.com/jonasgrosch/pagura/actions/runs/40276014297)
-measured merge revision `29236241a454a6749340638a14095a363128ccad`: all eighteen
+[Run 40277284285](https://github.com/jonasgrosch/pagura/actions/runs/40277284285)
+measured merge revision `f383d2b061035c7a1542b2d58b805f1b27e66b98`: all eighteen
 Pagura, PDFium, MuPDF, pdf.js and Poppler cases pass. CoreGraphics passes sixteen
 covered operations; hayro passes five. Fifteen explicit adapter gaps remain
-(thirteen hayro attachment/text cells and two CoreGraphics text cells). These
-observations precede the later annotation-render fixes and need a current-head rerun.
+(thirteen hayro attachment/text cells and two CoreGraphics text cells). The run includes the annotation-render fixes; later source changes still need their own validation.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
 The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
@@ -505,12 +503,22 @@ source checks pass, while hosted runtime checks are pending. CLI attachment
 commands now accept `--page PAGE` with distinct annotation JSON and exact original
 Annots index/EF selection for extraction and checks. Tests cover selection without
 catalog fallback, caller-chosen new files, password failures and no partial JSON.
-These CLI checks await hosted validation. Protocol 1.11 and client APIs now
+These CLI checks pass on hosted Linux/macOS/Windows at `dc88606fb` in
+[run 40277261503](https://github.com/jonasgrosch/pagura/actions/runs/40277261503).
+Protocol 1.11 and client APIs now
 list page attachments and retrieve/check an exact Annots slot and EF key, using
 the shared file record and decode/check helpers. Tests cover version gates,
 original slots, independent count/response/decode limits, authentication and
-native/WASI/client equivalence; hosted validation is pending. Viewer selection,
-icon appearance/activation and AF/RF selection remain separate work.
+native/WASI/client equivalence. The host/browser suite passes at `e28dc0798` in
+[run 40278830687](https://github.com/jonasgrosch/pagura/actions/runs/40278830687);
+the broader functional matrix is pending. The viewer now lists page attachments
+separately, starts on the current page and offers explicit page selection,
+downloads and parameter checks. Original slots/EF keys and fixed download names
+are preserved. Annotation Contents and file descriptions remain separate inert
+labels. Page changes invalidate old lists and decode callbacks; page-listing
+errors preserve independent document controls. New UI race/selection checks
+await hosted execution and real-browser validation. Icon appearance/activation,
+AF/RF selection and attachment-only password reauthentication remain open.
 
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
 existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are

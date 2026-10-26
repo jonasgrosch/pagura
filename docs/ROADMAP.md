@@ -62,6 +62,11 @@ integration. Milestone numbers are outcomes, not completion claims.
   accessibility (V04), layers/printing (V05) and PDF integration of existing PKI
   path/CRL validation (S01). XFA/scripts and signature creation need explicit
   scope ADRs (V03/S02); an intentional exclusion remains a competitive difference.
+- **Document services (D02):** typed metadata, catalog and page attachment
+  discovery, exact payload extraction and declared size/checksum checks now reach
+  the CLI, host and viewer. New page viewer controls await hosted/real-browser
+  validation. AF/RF selection, attachment-only password reauthentication, richer
+  validation, streaming and writes remain separate gaps.
 - **M1:** files whose catalog opens but whose page tree fails, and the
   remaining open failures in other projects' bug-reproduction suites.
 - **Robustness:** a short, routine coverage-guided fuzz run with every finding
