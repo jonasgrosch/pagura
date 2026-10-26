@@ -38,30 +38,61 @@ use super::shape::{Body, Frame, Resolved, Shape};
 use super::{Adjustment, Prep, ShapeOptions};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Point, Segment, Stroke, Transform, quantize_unit};
-use pagura_core::hash::{FastMap, FastSet};
 use pagura_core::{Meter, Result};
 
 /// The boundaries strokes prepared so far, by their shape up to
 /// translation, for the rest of one preparation.
+///
+/// Every byte it keeps, and every byte it works with while it lives, is
+/// charged to its own budget before it is allocated: an eighth of the
+/// render's, so that it never decides whether another shape fits. A stroke
+/// the budget cannot admit is prepared as usual.
 #[derive(Debug, Default)]
 pub struct StrokeTemplates {
-    templates: FastMap<u64, Vec<Entry>>,
-    /// The bytes the templates keep, against their own budget.
-    retained: Option<Meter>,
-    /// The keys seen once, by hash: a template is kept from a stroke's
-    /// second placement on, when it is likely to repeat again.
-    seen: FastSet<u64>,
+    meter: Option<Meter>,
+    table: Table,
+    entries: Vec<Entry>,
 }
 
-/// A repeated stroke's key and its template, if its second placement
-/// needed the row resolver: else its own preparation costs about what
-/// certifying a reuse would.
+/// What strokes of one key hash have left: a template is kept from a
+/// stroke's second placement on, when it is likely to repeat again, and
+/// only where that placement needed the row resolver: else its own
+/// preparation costs about what certifying a reuse would.
+#[derive(Debug, Clone, Copy, Default)]
+enum Slot {
+    #[default]
+    Empty,
+    /// A first placement.
+    Seen(u64),
+    /// A second placement that left no template.
+    Barren(u64),
+    /// The template of `entries[index]`.
+    Kept(u64, u32),
+}
+
+impl Slot {
+    fn hash(self) -> Option<u64> {
+        match self {
+            Self::Empty => None,
+            Self::Seen(hash) | Self::Barren(hash) | Self::Kept(hash, _) => Some(hash),
+        }
+    }
+}
+
+/// Key hashes, open-addressed and at most half full.
+#[derive(Debug, Default)]
+struct Table {
+    slots: Vec<Slot>,
+    filled: usize,
+}
+
+/// A repeated stroke's key and template.
 #[derive(Debug)]
 struct Entry {
     /// The path relative to its first point, the stroke's parameters and
     /// the pen's and device map's linear parts, as bits.
     key: Box<[u64]>,
-    template: Option<Template>,
+    template: Template,
 }
 
 /// One stroke's first placement, relative to its first piece point.
@@ -130,48 +161,144 @@ impl Shape {
             return Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
         }
         let key = key(path, stroke, (pen, transform));
-        let hash = hash(&key);
-        let entry = templates
-            .templates
-            .get_mut(&hash)
-            .and_then(|list| list.iter_mut().find(|e| *e.key == *key));
-        // Only a shape its clip leaves untouched keeps its own geometry.
-        if let Some(entry) = entry {
-            if let Some(template) = &mut entry.template
-                && unclipped(&polygon, &prep)
-            {
-                // A reuse that fails, even on a budget, leaves the meter as
-                // it found it for the placement's own preparation.
-                let before = bytes.used();
-                if let Ok(Some(shape)) = reuse(template, &polygon, &prep, &mut bytes) {
-                    return Ok(Some(shape));
-                }
-                bytes.refund(bytes.used().saturating_sub(before));
-            }
-            return Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
-        }
-        if templates.seen.insert(hash) || !unclipped(&polygon, &prep) {
-            return Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
-        }
-        let origin = polygon.points[0];
-        let starts = polygon.starts.clone().into_boxed_slice();
-        let pieces: Box<[Point]> = polygon.points.iter().map(|&p| p - origin).collect();
-        let shape = Self::stroke_finish(polygon, tiling, &prep, &mut bytes)?;
-        let template = shape
-            .as_ref()
-            .filter(|shape| !shape.resolved.is_empty())
-            .and_then(|shape| Template::new(Pieces { starts, pieces }, origin, shape));
-        let entry = Entry { key, template };
-        let retained = templates.retained.get_or_insert_with(|| {
+        let hash = hash(key.clone());
+        let StrokeTemplates {
+            meter,
+            table,
+            entries,
+        } = templates;
+        let meter = meter.get_or_insert_with(|| {
             Meter::new(
                 options.limits.render_bytes / 8,
                 "stroke template budget exceeded",
             )
         });
-        if retained.charge(entry.heap_bytes()).is_ok() {
-            templates.templates.entry(hash).or_default().push(entry);
+        // Only a shape its clip leaves untouched keeps its own geometry.
+        match table.find(hash).map(|i| (i, table.slots[i])) {
+            Some((_, Slot::Kept(_, index))) => {
+                let entry = &mut entries[index as usize];
+                if entry.key.iter().copied().eq(key) && unclipped(&polygon, &prep) {
+                    // A reuse that fails, even on a budget, leaves the
+                    // meters as it found them.
+                    let before = bytes.used();
+                    if let Ok(Some(shape)) =
+                        reuse(&mut entry.template, &polygon, &prep, &mut bytes, meter)
+                    {
+                        return Ok(Some(shape));
+                    }
+                    bytes.refund(bytes.used().saturating_sub(before));
+                }
+                Self::stroke_finish(polygon, tiling, &prep, &mut bytes)
+            }
+            Some((i, Slot::Seen(_))) if unclipped(&polygon, &prep) => {
+                let origin = polygon.points[0];
+                let copies = polygon.starts.len() * size_of::<usize>()
+                    + polygon.points.len() * size_of::<Point>();
+                let admitted = meter.charge(copies).is_ok();
+                let pieces = admitted.then(|| Pieces {
+                    starts: polygon.starts.as_slice().into(),
+                    pieces: polygon.points.iter().map(|&p| p - origin).collect(),
+                });
+                let shape = Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
+                let template = match (&shape, pieces) {
+                    (Ok(Some(shape)), Some(pieces)) if !shape.resolved.is_empty() => {
+                        Template::new(pieces, origin, shape, meter)
+                    }
+                    _ => None,
+                };
+                if admitted && template.is_none() {
+                    meter.refund(copies);
+                }
+                let kept = template.and_then(|t| keep(entries, key, t, meter));
+                table.slots[i] = match kept {
+                    Some(index) => Slot::Kept(hash, index),
+                    None => Slot::Barren(hash),
+                };
+                shape
+            }
+            Some((_, Slot::Empty)) | None => {
+                // A table the budget cannot grow records no more strokes.
+                let _ = table.insert(hash, meter);
+                Self::stroke_finish(polygon, tiling, &prep, &mut bytes)
+            }
+            Some((_, Slot::Seen(_) | Slot::Barren(_))) => {
+                Self::stroke_finish(polygon, tiling, &prep, &mut bytes)
+            }
         }
-        Ok(shape)
+    }
+}
+
+/// Keeps `template` with stroke `key` in `entries`, its index there; `None`,
+/// with the template's bytes returned to `meter`, where the budget cannot
+/// admit the key and entry.
+fn keep(
+    entries: &mut Vec<Entry>,
+    key: impl Iterator<Item = u64> + Clone,
+    template: Template,
+    meter: &mut Meter,
+) -> Option<u32> {
+    let index = u32::try_from(entries.len()).ok();
+    let words = key.clone().count();
+    let mut stored = Vec::new();
+    let admitted = index.is_some()
+        && meter.reserve_capacity(entries, 1).is_ok()
+        && meter.reserve(&mut stored, words).is_ok();
+    if !admitted {
+        meter.refund(template.heap_bytes());
+        return None;
+    }
+    stored.extend(key);
+    entries.push(Entry {
+        key: stored.into_boxed_slice(),
+        template,
+    });
+    index
+}
+
+impl Table {
+    /// The slot holding `hash`, else the empty one it would take; `None`
+    /// before the first slot is made.
+    fn find(&self, hash: u64) -> Option<usize> {
+        let mask = self.slots.len().checked_sub(1)?;
+        #[expect(clippy::cast_possible_truncation, reason = "the low bits of a hash")]
+        let mut i = hash as usize & mask;
+        // At most half full, so an empty slot ends every search.
+        loop {
+            match self.slots[i].hash() {
+                Some(h) if h != hash => i = (i + 1) & mask,
+                _ => return Some(i),
+            }
+        }
+    }
+
+    /// Records a first placement of `hash`, which the table does not hold
+    /// yet, doubling the slots first where they would be more than half
+    /// full.
+    fn insert(&mut self, hash: u64, meter: &mut Meter) -> Result<()> {
+        if (self.filled + 1) * 2 > self.slots.len() {
+            self.grow(meter)?;
+        }
+        let i = self.find(hash).unwrap_or_default();
+        self.slots[i] = Slot::Seen(hash);
+        self.filled += 1;
+        Ok(())
+    }
+
+    /// Doubles the slots, with the old and new ones charged while both live.
+    fn grow(&mut self, meter: &mut Meter) -> Result<()> {
+        let len = (self.slots.len() * 2).max(16);
+        let mut slots = Vec::new();
+        meter.reserve(&mut slots, len)?;
+        slots.resize(len, Slot::Empty);
+        let old = std::mem::replace(&mut self.slots, slots);
+        for &slot in &old {
+            if let Some(hash) = slot.hash() {
+                let i = self.find(hash).unwrap_or_default();
+                self.slots[i] = slot;
+            }
+        }
+        meter.refund(old.len() * size_of::<Slot>());
+        Ok(())
     }
 }
 
@@ -190,12 +317,14 @@ fn unclipped(polygon: &Polygon, prep: &Prep<'_>) -> bool {
 }
 
 /// The translated boundary of `template` as this placement's shape, where
-/// every coverage byte it gives is certified; `None` where one is not.
+/// every coverage byte it gives is certified; `None` where one is not. The
+/// shape's bytes go on `bytes`, and the template's first extent on `meter`.
 fn reuse(
     template: &mut Template,
     polygon: &Polygon,
     prep: &Prep<'_>,
     bytes: &mut Meter,
+    meter: &mut Meter,
 ) -> Result<Option<Shape>> {
     if polygon.starts != *template.starts || polygon.points.len() != template.pieces.len() {
         return Ok(None);
@@ -212,8 +341,12 @@ fn reuse(
     // of the coordinates.
     let displaced = displaced + 8.0 * f64::EPSILON * magnitude;
     let extent = *template.extent.get_or_insert_with(|| {
-        let sides = sides(&template.starts, &template.pieces);
-        extent(&sides, &template.boundary)
+        extent(
+            &template.starts,
+            &template.pieces,
+            &template.boundary,
+            meter,
+        )
     });
     let bound = bound(
         extent,
@@ -295,27 +428,31 @@ fn certified(shape: &Shape, bound: f64, bytes: &mut Meter) -> Result<bool> {
 
 impl Template {
     /// The template of a placement with pieces `pieces` relative to
-    /// `origin` and shape `shape`; `None` for pieces without area.
-    fn new(pieces: Pieces, origin: Point, shape: &Shape) -> Option<Self> {
+    /// `origin` and shape `shape`, its boundary charged to `meter`; `None`
+    /// for pieces without area or a boundary the budget cannot admit.
+    fn new(pieces: Pieces, origin: Point, shape: &Shape, meter: &mut Meter) -> Option<Self> {
         let Pieces { starts, pieces } = pieces;
-        let sides = sides(&starts, &pieces);
         // The pieces share one orientation. Twice the area left of their
         // downward sides is negative where crossing a downward side from
         // the left enters winding +1, the resolver's sides' sense.
-        let swept: f64 = sides
-            .iter()
+        let swept: f64 = sides(&starts, &pieces)
             .map(|l| (l.a.x + l.b.x) * (l.b.y - l.a.y))
             .sum();
         if swept == 0.0 || !swept.is_finite() {
             return None;
         }
-        let boundary: Box<[Line]> = boundary(shape, swept > 0.0)
-            .into_iter()
-            .map(|l| Line {
+        let reversed = swept > 0.0;
+        let mut count = 0;
+        boundary(shape, reversed, |_| count += 1);
+        let mut lines = Vec::new();
+        meter.reserve(&mut lines, count).ok()?;
+        boundary(shape, reversed, |l| {
+            lines.push(Line {
                 a: l.a - origin,
                 b: l.b - origin,
-            })
-            .collect();
+            });
+        });
+        let boundary = lines.into_boxed_slice();
         let magnitude = pieces
             .iter()
             .chain(boundary.iter().flat_map(|l| [&l.a, &l.b]))
@@ -330,19 +467,11 @@ impl Template {
         })
     }
 
+    /// The bytes it keeps beyond its own entry.
     fn heap_bytes(&self) -> usize {
         self.starts.len() * size_of::<usize>()
             + self.pieces.len() * size_of::<Point>()
             + self.boundary.len() * size_of::<Line>()
-            + size_of::<Self>()
-    }
-}
-
-impl Entry {
-    fn heap_bytes(&self) -> usize {
-        self.key.len() * size_of::<u64>()
-            + self.template.as_ref().map_or(0, Template::heap_bytes)
-            + size_of::<Self>()
     }
 }
 
@@ -377,18 +506,17 @@ fn bound(extent: Extent, (displaced, magnitude): (f64, f64), width: f64) -> f64 
     (2.0 * resolved + cells + moved + translated) * (1.0 + 16.0 * eps)
 }
 
-/// The lines of `shape` that bound its covered set once, each in the
+/// Emits the lines of `shape` that bound its covered set once, each in the
 /// resolver's sense: its lines outside resolved rows, cut where those rows
 /// begin and end and reversed where `reversed`, and the sides of the
 /// resolved rows.
-fn boundary(shape: &Shape, reversed: bool) -> Vec<Line> {
+fn boundary(shape: &Shape, reversed: bool, mut emit: impl FnMut(Line)) {
     let Body::Edges(body) = &shape.body else {
-        return Vec::new();
+        return;
     };
-    let resolved: Vec<u32> = shape.resolved.rows().collect();
-    let is_resolved =
-        |row: i64| u32::try_from(row).is_ok_and(|r| resolved.binary_search(&r).is_ok());
-    let mut out = Vec::new();
+    let is_resolved = |row: i64| {
+        u32::try_from(row).is_ok_and(|r| r < u32::MAX && shape.resolved.mask(&(r..r + 1)) != 0)
+    };
     for &line in &body.lines {
         if line.is_horizontal() {
             continue;
@@ -404,7 +532,7 @@ fn boundary(shape: &Shape, reversed: bool) -> Vec<Line> {
                 } else {
                     Line { a: b, b: a }
                 };
-                out.push(if reversed {
+                emit(if reversed {
                     Line {
                         a: part.b,
                         b: part.a,
@@ -433,55 +561,64 @@ fn boundary(shape: &Shape, reversed: bool) -> Vec<Line> {
             part(start as f64, last as f64);
         }
     }
-    out.extend_from_slice(shape.resolved.sides());
-    out
+    shape.resolved.sides().iter().copied().for_each(emit);
 }
 
 /// The sides of the contours `starts` of `points`.
-fn sides(starts: &[usize], points: &[Point]) -> Vec<Line> {
-    let mut out = Vec::with_capacity(points.len());
-    for (contour, &start) in starts.iter().enumerate() {
-        let end = starts.get(contour + 1).copied().unwrap_or(points.len());
-        let ring = &points[start..end];
-        out.extend(
+fn sides<'a>(starts: &'a [usize], points: &'a [Point]) -> impl Iterator<Item = Line> + Clone + 'a {
+    starts
+        .iter()
+        .enumerate()
+        .flat_map(move |(contour, &start)| {
+            let end = starts.get(contour + 1).copied().unwrap_or(points.len());
+            let ring = &points[start..end];
             ring.iter()
                 .zip(ring.iter().skip(1).chain(ring.first()))
-                .map(|(&a, &b)| Line { a, b }),
-        );
-    }
-    out
+                .map(|(&a, &b)| Line { a, b })
+        })
 }
 
 /// How far a placement's sides may stand from the template's: far more
 /// than any displacement that certifies.
 const MARGIN: f64 = 1e-6;
 
-/// The extent of `sides` and `boundary` lines within one pixel, wherever
-/// it lies. A unit square lies within the two-by-two block of grid squares
-/// from the one holding its corner, so each line counts at every grid
-/// square whose block its box, grown by the margin, meets, with its length
-/// and height up to what the block can hold.
-fn extent(sides: &[Line], boundary: &[Line]) -> Extent {
-    let Some(grid) = Grid::of(sides.iter().chain(boundary).copied(), sides.len()) else {
-        return Extent {
-            sides: f64::INFINITY,
-            length: f64::INFINITY,
-            height: f64::INFINITY,
-            boundary: f64::INFINITY,
-            events: f64::INFINITY,
-        };
+/// The extent of the sides of contours `starts` of `pieces` and of
+/// `boundary` lines within one pixel, wherever it lies; unbounded where
+/// `meter` cannot admit the grid it works on. A unit square lies within the
+/// two-by-two block of grid squares from the one holding its corner, so
+/// each line counts at every grid square whose block its box, grown by the
+/// margin, meets, with its length and height up to what the block can hold.
+fn extent(starts: &[usize], pieces: &[Point], boundary: &[Line], meter: &mut Meter) -> Extent {
+    let unbounded = Extent {
+        sides: f64::INFINITY,
+        length: f64::INFINITY,
+        height: f64::INFINITY,
+        boundary: f64::INFINITY,
+        events: f64::INFINITY,
     };
+    let each_side = || sides(starts, pieces);
+    let Some(grid) = Grid::of(each_side().chain(boundary.iter().copied()), pieces.len()) else {
+        return unbounded;
+    };
+    // The counts live beside one other sum at a time, and beside the row
+    // steps of `heights`.
+    let scratch = (2 * grid.len() + grid.height + 1) * size_of::<f64>();
+    if meter.charge(scratch).is_err() {
+        return unbounded;
+    }
     let block = 2.0 * grid.cell;
     let length = |l: Line| (l.b - l.a).length().min(std::f64::consts::SQRT_2 * block);
-    let most = |sums: &[f64]| sums.iter().copied().fold(0.0, f64::max);
-    let counts = grid.sums(sides, |_| 1.0);
-    Extent {
-        sides: most(&counts),
-        length: most(&grid.sums(sides, length)),
-        height: most(&grid.sums(sides, |l| (l.b.y - l.a.y).abs().min(block))),
-        boundary: most(&grid.sums(boundary, length)),
-        events: heights(sides, &grid, &counts),
-    }
+    let most = |sums: Vec<f64>| sums.into_iter().fold(0.0, f64::max);
+    let counts = grid.sums(each_side(), |_| 1.0);
+    let extent = Extent {
+        sides: counts.iter().copied().fold(0.0, f64::max),
+        length: most(grid.sums(each_side(), length)),
+        height: most(grid.sums(each_side(), |l| (l.b.y - l.a.y).abs().min(block))),
+        boundary: most(grid.sums(boundary.iter().copied(), length)),
+        events: heights(each_side(), &grid, &counts),
+    };
+    meter.refund(scratch);
+    extent
 }
 
 /// The most heights a row sweep can stop at, wherever the shape is
@@ -489,10 +626,10 @@ fn extent(sides: &[Line], boundary: &[Line]) -> Extent {
 /// side crosses (a chunk holds at least 64 pieces), and a crossing per pair
 /// of sides whose columns overlap. Two such sides meet a common grid square
 /// of the row's band, so its squares' `counts` bound the pairs.
-fn heights(sides: &[Line], grid: &Grid, counts: &[f64]) -> f64 {
+fn heights(sides: impl Iterator<Item = Line>, grid: &Grid, counts: &[f64]) -> f64 {
     let stride = grid.width + 1;
     let mut rows = vec![0_i64; grid.height + 1];
-    for &line in sides {
+    for line in sides {
         let (_, (y0, y1)) = grid.blocks(line);
         rows[y0] += 1;
         rows[y1 + 1] -= 1;
@@ -572,10 +709,10 @@ impl Grid {
     /// grown by the margin, meets its two-by-two block; rows of
     /// `width + 1`. Counts and positive weights: the running sums lose at
     /// most rounding against their exact values, which the slack covers.
-    fn sums(&self, lines: &[Line], weight: impl Fn(Line) -> f64) -> Vec<f64> {
+    fn sums(&self, lines: impl Iterator<Item = Line>, weight: impl Fn(Line) -> f64) -> Vec<f64> {
         let stride = self.width + 1;
-        let mut sums = vec![0.0_f64; stride * (self.height + 1)];
-        for &line in lines {
+        let mut sums = vec![0.0_f64; self.len()];
+        for line in lines {
             let w = weight(line);
             let ((x0, x1), (y0, y1)) = self.blocks(line);
             sums[y0 * stride + x0] += w;
@@ -597,6 +734,12 @@ impl Grid {
             *sum *= 1.0 + 1e-9;
         }
         sums
+    }
+
+    /// The number of sums over the grid: one more column and row than it
+    /// has squares.
+    fn len(&self) -> usize {
+        (self.width + 1) * (self.height + 1)
     }
 
     /// The grid squares, inclusive, whose two-by-two block `line`'s box,
@@ -634,65 +777,65 @@ impl Grid {
     }
 }
 
-/// The repeat key of a stroke: its path relative to its first point, its
-/// parameters and the linear parts of its pen and device map, as bits.
-fn key(path: &Path, stroke: &Stroke, (pen, transform): (Transform, Transform)) -> Box<[u64]> {
-    let mut key = Vec::with_capacity(path.segments().len() * 7 + 16);
-    let mut origin = None;
-    let mut push = |p: Point, key: &mut Vec<u64>| {
-        let o = *origin.get_or_insert(p);
-        key.extend([(p.x - o.x).to_bits(), (p.y - o.y).to_bits()]);
-    };
-    for segment in path.segments() {
-        match *segment {
-            Segment::MoveTo(p) => {
-                key.push(0);
-                push(p, &mut key);
-            }
-            Segment::LineTo(p) => {
-                key.push(1);
-                push(p, &mut key);
-            }
-            Segment::QuadTo { control, end } => {
-                key.push(2);
-                push(control, &mut key);
-                push(end, &mut key);
-            }
-            Segment::CubicTo { c1, c2, end } => {
-                key.push(3);
-                push(c1, &mut key);
-                push(c2, &mut key);
-                push(end, &mut key);
-            }
-            Segment::Close => key.push(4),
+/// The repeat key of a stroke, word by word: its path relative to its first
+/// point, its parameters and the linear parts of its pen and device map, as
+/// bits.
+fn key<'a>(
+    path: &'a Path,
+    stroke: &'a Stroke,
+    (pen, transform): (Transform, Transform),
+) -> impl Iterator<Item = u64> + Clone + 'a {
+    let origin = path
+        .segments()
+        .iter()
+        .find_map(|segment| match *segment {
+            Segment::MoveTo(p) | Segment::LineTo(p) => Some(p),
+            Segment::QuadTo { control, .. } => Some(control),
+            Segment::CubicTo { c1, .. } => Some(c1),
+            Segment::Close => None,
+        })
+        .unwrap_or_default();
+    let relative = move |p: Point| [(p.x - origin.x).to_bits(), (p.y - origin.y).to_bits()];
+    let segments = path.segments().iter().flat_map(move |segment| {
+        let (tag, points, count) = match *segment {
+            Segment::MoveTo(p) => (0, [p; 3], 1),
+            Segment::LineTo(p) => (1, [p; 3], 1),
+            Segment::QuadTo { control, end } => (2, [control, end, end], 2),
+            Segment::CubicTo { c1, c2, end } => (3, [c1, c2, end], 3),
+            Segment::Close => (4, [Point::default(); 3], 0),
+        };
+        let mut words = [tag; 7];
+        for (i, &p) in points[..count].iter().enumerate() {
+            words[1 + 2 * i..3 + 2 * i].copy_from_slice(&relative(p));
         }
-    }
-    key.extend([
-        stroke.width.to_bits(),
-        stroke.cap as u64,
-        stroke.join as u64,
-        stroke.miter_limit.to_bits(),
-        stroke.dash_phase.to_bits(),
-    ]);
-    key.extend(stroke.dash_array.iter().map(|d| d.to_bits()));
-    key.extend(
-        [
-            pen.a,
-            pen.b,
-            pen.c,
-            pen.d,
-            transform.a,
-            transform.b,
-            transform.c,
-            transform.d,
-        ]
-        .map(f64::to_bits),
-    );
-    key.into_boxed_slice()
+        words.into_iter().take(1 + 2 * count)
+    });
+    segments
+        .chain([
+            stroke.width.to_bits(),
+            stroke.cap as u64,
+            stroke.join as u64,
+            stroke.miter_limit.to_bits(),
+            stroke.dash_phase.to_bits(),
+        ])
+        .chain(stroke.dash_array.iter().map(|d| d.to_bits()))
+        .chain(
+            [
+                pen.a,
+                pen.b,
+                pen.c,
+                pen.d,
+                transform.a,
+                transform.b,
+                transform.c,
+                transform.d,
+            ]
+            .map(f64::to_bits),
+        )
 }
 
-fn hash(key: &[u64]) -> u64 {
-    key.iter().fold(0, |hash, &value| {
+fn hash(key: impl Iterator<Item = u64>) -> u64 {
+    key.fold(0, |hash, value| {
         (hash ^ value)
             .wrapping_mul(0x9e37_79b9_7f4a_7c15)
             .rotate_left(29)

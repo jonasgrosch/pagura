@@ -104,11 +104,6 @@ impl Resolved {
         self.lines.len()
     }
 
-    /// The resolved rows, in order.
-    pub(crate) fn rows(&self) -> impl Iterator<Item = u32> + '_ {
-        self.rows.iter().map(|&(row, _)| row)
-    }
-
     /// The sides of every resolved row.
     pub(crate) fn sides(&self) -> &[Line] {
         &self.lines

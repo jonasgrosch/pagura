@@ -105,7 +105,7 @@ fn repeated_strokes_give_the_bytes_of_their_own_preparation() {
     // The first two placements prepare their own shapes; the rest reuse.
     assert!(reused >= 4, "{reused} placements reused");
     assert!(
-        templates.retained.as_ref().is_some_and(|m| m.used() > 0),
+        templates.meter.as_ref().is_some_and(|m| m.used() > 0),
         "templates are charged"
     );
 }
@@ -158,4 +158,91 @@ fn exact_half_coverage_is_never_certified() {
         reused += usize::from(hit);
     }
     assert!(reused >= 2, "{reused} placements reused");
+}
+
+/// The bytes the cache keeps: its slots, its entries and what they hold.
+fn kept_bytes(templates: &StrokeTemplates) -> usize {
+    templates.table.slots.capacity() * size_of::<Slot>()
+        + templates.entries.capacity() * size_of::<Entry>()
+        + templates
+            .entries
+            .iter()
+            .map(|e| e.key.len() * size_of::<u64>() + e.template.heap_bytes())
+            .sum::<usize>()
+}
+
+#[test]
+fn a_saturated_cache_admits_nothing_it_cannot_charge() {
+    // An eighth of this budget cannot hold the slots of 300 strokes: the
+    // table grows by doubling, with its old and new slots charged at once.
+    let limits = Limits {
+        render_bytes: 128 << 10,
+        ..Limits::default()
+    };
+    let options = options(&limits);
+    let path = curl();
+    let stroke = |n: u32| Stroke {
+        width: 2.0 + f64::from(n) / 1024.0,
+        join: LineJoin::Round,
+        cap: LineCap::Round,
+        ..Stroke::default()
+    };
+    let mut templates = StrokeTemplates::default();
+    let check = |templates: &StrokeTemplates| {
+        let meter = templates.meter.as_ref().expect("the cache has a meter");
+        assert!(meter.used() <= meter.max());
+        assert_eq!(
+            meter.used(),
+            kept_bytes(templates),
+            "every kept byte is charged, nothing else"
+        );
+    };
+    // While the budget is free, a small outline keeps a template.
+    let (notch, thin) = (
+        notch(),
+        Stroke {
+            width: 1.0,
+            join: LineJoin::Miter,
+            cap: LineCap::Butt,
+            ..Stroke::default()
+        },
+    );
+    for origin in [(40.371, 4.713), (12.613, 33.137)] {
+        let (repeated, own, _) = place((&notch, &thin), origin, &options, &mut templates);
+        assert_eq!(repeated, own, "notch at {origin:?}");
+        check(&templates);
+    }
+    assert_eq!(templates.entries.len(), 1, "the notch keeps a template");
+    // Many strokes seen once fill the table to what the budget admits.
+    for n in 0..300 {
+        let (repeated, own, _) = place((&path, &stroke(n)), (3.25, 4.5), &options, &mut templates);
+        assert_eq!(repeated, own, "stroke {n}");
+        check(&templates);
+    }
+    assert!(
+        templates.table.filled < 300,
+        "{} strokes recorded",
+        templates.table.filled
+    );
+    // Past saturation, strokes seen before, strokes never recorded and the
+    // kept template all give their own bytes.
+    for n in (0..8).chain(290..300) {
+        for origin in [(22.25, 4.5), (5.125, 27.0), (37.3, 21.7)] {
+            let (repeated, own, _) = place((&path, &stroke(n)), origin, &options, &mut templates);
+            assert_eq!(repeated, own, "stroke {n} at {origin:?}");
+            check(&templates);
+        }
+    }
+    let (repeated, own, _) = place((&notch, &thin), (45.151, 30.357), &options, &mut templates);
+    assert_eq!(repeated, own, "notch after saturation");
+    check(&templates);
+    // Seen again, the first strokes found no room for their templates.
+    assert!(
+        templates
+            .table
+            .slots
+            .iter()
+            .any(|s| matches!(s, Slot::Barren(_))),
+        "a template was refused"
+    );
 }
