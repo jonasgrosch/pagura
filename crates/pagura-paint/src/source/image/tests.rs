@@ -557,6 +557,38 @@ fn packed_one_bit_samples_sample_as_their_bytes() {
     agree(&case_packed, 3);
 }
 
+/// Rows of a packed one-bit mask read, bit for bit, the opacities of its
+/// samples: spans from inside a byte, at both edges, past the last row and
+/// past the row's end.
+#[test]
+fn packed_mask_rows_read_the_opacity_of_their_samples() {
+    let (width, height) = (13_usize, 6_usize);
+    let stride = width.div_ceil(8);
+    let mut rows = vec![0u8; stride * height];
+    for (i, code) in codes(width * height, 1, 23).into_iter().enumerate() {
+        let (y, x) = (i / width, i % width);
+        rows[y * stride + x / 8] |= u8::try_from(code).unwrap() << (7 - x % 8);
+    }
+    let packed = pagura_image::deferred::Packed::from_rows(width, height, rows).unwrap();
+    let mask = image((13, 6), 1, 1, Samples::Packed(packed));
+    for decode in [[0.0, 1.0], [1.0, 0.0]] {
+        let opacity = Opacity::new(&mask, decode, &mut meter()).unwrap();
+        let texels = OpacityTexels {
+            mask: &mask,
+            opacity: &opacity,
+        };
+        for (row, first, end) in [(0, 0, 13), (2, 3, 11), (5, 7, 13), (6, 0, 13), (1, 9, 15)] {
+            let mut values = vec![0.0; usize::try_from(end - first).unwrap()];
+            texels.row((row, 13), (first, end), &mut values);
+            for (value, x) in values.iter().zip(first..end) {
+                let index = usize::try_from(row * 13 + x).unwrap();
+                let expected = opacity.at(&mask, index);
+                assert_eq!(value.to_bits(), expected.to_bits(), "row {row}, sample {x}");
+            }
+        }
+    }
+}
+
 #[test]
 fn rgb_images_through_channel_tables_and_samples() {
     for bits in [8, 16] {

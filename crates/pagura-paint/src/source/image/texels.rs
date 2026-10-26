@@ -648,6 +648,21 @@ impl Texels for OpacityTexels<'_> {
                     *out = table.get(usize::from(code)).copied().unwrap_or(0.0);
                 }
             }
+            // A packed row read once, rather than each sample's row found by
+            // dividing its index: the same codes, where the span is inside
+            // the row (a row past the image reads code 0, as each sample does).
+            (Samples::Packed(packed), Some(table))
+                if out.len() == stop.saturating_sub(start)
+                    && end <= width
+                    && packed.width() == sample_index(u64::from(width)) =>
+            {
+                let bits = packed.row(sample_index(u64::from(row))).unwrap_or(&[]);
+                for (out, x) in out.iter_mut().zip(first..end) {
+                    let x = sample_index(u64::from(x));
+                    let code = bits.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1);
+                    *out = table.get(usize::from(code)).copied().unwrap_or(0.0);
+                }
+            }
             _ => sample_row(self, (row, width), (first, end), out),
         }
     }
