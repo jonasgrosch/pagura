@@ -28,6 +28,7 @@ struct Glyph {
     x: f64,
     y: f64,
     drawn: bool,
+    row_start: bool,
 }
 
 struct Font {
@@ -121,6 +122,7 @@ pub(super) fn prepare(
             x: 0.0,
             y: 0.0,
             drawn: false,
+            row_start: false,
         });
     }
     storage.charge(appearance.state.len())?;
@@ -184,10 +186,11 @@ impl Layout {
                         Justification::Center => (available - measured) / 2.0,
                         Justification::Right => available - measured,
                     };
-                for glyph in &mut self.glyphs[start..stop] {
+                for (index, glyph) in self.glyphs[start..stop].iter_mut().enumerate() {
                     glyph.x = x;
                     glyph.y = -baseline;
                     glyph.drawn = true;
+                    glyph.row_start = index == 0;
                     x += glyph.advance;
                 }
                 self.width = self.width.max(left + measured + style.margin[1]);
@@ -254,11 +257,10 @@ impl Layout {
                     row += 1;
                     continue;
                 }
-                let y = self.glyphs[row].y;
                 let mut end = row + 1;
                 while end < paragraph.characters.end {
                     work.charge(1)?;
-                    if self.glyphs[end].drawn && self.glyphs[end].y != y {
+                    if self.glyphs[end].row_start {
                         break;
                     }
                     end += 1;

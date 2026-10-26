@@ -1704,6 +1704,7 @@
         "rich_annotations/caption",
         "rich_annotations/caption-color",
         "rich_annotations/caption-trailing-break",
+        "rich_annotations/caption-overlapping-lines",
         "rich_annotations/opacity",
         "rich_annotations/rotation",
         "rich_annotations/text-stream",

@@ -89,6 +89,7 @@ def cases():
     yield rendered('caption',b'<p style="font:10pt F1">AB</p>',shape='Line',regions=[((54,17,59,24),BLACK),((60,17,65,24),BLACK)])
     yield rendered('caption-color',b'<p style="font:10pt F1;color:#0000ff">AB</p>',shape='Line',ds=42,regions=[((54,17,59,24),BLUE),((60,17,65,24),BLUE)])
     yield rendered('caption-trailing-break',b'<p style="font:10pt F1">AB<br/></p>',shape='Line',regions=[((54,23,59,30),BLACK),((60,23,65,30),BLACK)])
+    yield rendered('caption-overlapping-lines',b'<p style="font:10pt F1;line-height:0pt">AB<br/><span style="color:#0000ff">C</span></p>',shape='Line',regions=[((54,17,59,24),BLACK),((60,17,65,24),BLACK),((57,17,62,24),BLUE)])
     yield rendered('opacity',alpha=.25)
     yield rendered('rotation',rotate=90,dpi=144)
     yield rendered('text-stream',streamed=True)

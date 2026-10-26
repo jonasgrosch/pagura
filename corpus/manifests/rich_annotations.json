@@ -585,6 +585,26 @@
       "tolerance": 1
     },
     {
+      "id": "rich_annotations/caption-overlapping-lines",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/caption-overlapping-lines.pdf",
+      "sha256": "dcbba3e43839cc1c048846604452661e5c4aca5192ea60d8e61741ac22467895",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/caption-overlapping-lines.ppm",
+      "oracle_sha256": "f47f047e11dedf6e87b222b346846c93a3b305ead1cbf77da7406c52af5ff2fd",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
       "id": "rich_annotations/opacity",
       "kind": "pdf",
       "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
