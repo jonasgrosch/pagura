@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "1cd9fb582ebf09bef5c567708da59ccf4c8bd506",
+  "audited_revision": "d1847ef8dfc4a18b53b35d0fc2f90fbef1064a52",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -17,7 +17,7 @@
     "corpus/manifests/circle_annotations.json": "6c04407d961b0b0574d2561b010c7f88debc8fe0d4d51223209e436f9ea9158c",
     "corpus/manifests/classic.json": "0929560398e6541b7e30966479633fae180eefe4eeea1453d4adbf5da57aaf20",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
-    "corpus/manifests/document_services.json": "154fe8ed21b8b4b87f6dc4e02cd3c4b2561cc925b465c2eaa5e0587ec65fa792",
+    "corpus/manifests/document_services.json": "6c1501aec1000886e8f23051deac3dfcdbaa9efd526b7fff98d73f2898feed3d",
     "corpus/manifests/ending_annotations.json": "ff8d2d2495e05a0ebe782b8f3292692bf939be30a8511364ec297815edc0ed9d",
     "corpus/manifests/file_annotations.json": "f3c88d0cdbf99a52e51bf6321e3aab73d428b7b8f278531f7bf89a94c247b448",
     "corpus/manifests/file_attachment_icons.json": "493b67db592c150500c7a86f773c30480f1d36b8c4540ffcf02a5a0a501e6f2d",
@@ -81,7 +81,7 @@
     "crates/pagura-appearance/src/values.rs": "81a4c6cd359a805e408c594491f698f88b944c412a70b52d10cfec97a16d5d24",
     "crates/pagura-cli/src/args.rs": "435efae6de7852f3c21fcaa0855ea627264a47eb38e68dbb78abf38b0b91a141",
     "crates/pagura-cli/src/args/services.rs": "d89b6206b6bcb14be77672edb4589c6ca0933223c08165b212f9424a41ad0674",
-    "crates/pagura-cli/src/args/tests.rs": "6b4e0a28f3c6b4ac1ecc800fb81e895068660aeea32c4308130e25218e96c5dd",
+    "crates/pagura-cli/src/args/tests.rs": "1fbb5b6139facf23e916b1403cfed3da11fd8d59d1ab80c759b5600f5338e343",
     "crates/pagura-cli/src/commands.rs": "89d4b3c84dd325186b2b4e962082ae83ae401a3df79139976374c5abdf2c48e8",
     "crates/pagura-cli/src/document_services.rs": "5040a20cf516a4f68479948f5fe664ca124d1c8fdc35d702cea41463a2d803a0",
     "crates/pagura-cli/src/document_services/annotations.rs": "5b94a90d4171b158109e8cb08f68ac13a857b5117cfdcf8af86a60d3eec22c91",
@@ -109,10 +109,10 @@
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
     "crates/pagura-document/src/features.rs": "ef3d5f167a74e2245076b32ecdda566c1c3e47c24fa082c17a0cd74a15026e29",
-    "crates/pagura-document/src/files.rs": "cdefd673e40287740eb0c07c55afb26f44be36e85ce5c909605995ac138914e5",
+    "crates/pagura-document/src/files.rs": "386623a0a93b18096abbbde61e58cf26dd0570883e9cd6bf82243fd3be880339",
     "crates/pagura-document/src/files/annotations.rs": "58a1296453ecf299e56e48703a994a45ed4519024a4f96656a7c1f747663376f",
     "crates/pagura-document/src/files/checks.rs": "355a7c8f2411d3478752c65b5aec46b87d2f02eff8f2dd47141a68c1fcf4e4ff",
-    "crates/pagura-document/src/files/collection.rs": "70cdad5e63d7e48d87403029ba6819073ba124de6ed9d94141c3e772da7d5e78",
+    "crates/pagura-document/src/files/collection.rs": "b8d9f12b71e2635c6a50b2d780efcdcad6710dcee91fcab60c0634248c10a5d6",
     "crates/pagura-document/src/files/model.rs": "d3942e877ce00913e1e888ce98b8bd62c4e71ea248c91085a36ccb6b76118d55",
     "crates/pagura-document/src/files/read.rs": "0e1afd2b6ecdd19d204a162b239ca67d1db9f38f97e72c88a674df7d6af59898",
     "crates/pagura-document/src/files/selection.rs": "2496c77da565faaa7e6502835cc8bb2bc7e7cf7c6203891c3d0f257d478fac1b",
@@ -121,7 +121,7 @@
     "crates/pagura-document/src/forms/fill.rs": "dc05f4089de3799237281ec6ee56fcbb04fbf80b2cb622311dcf06c41b92990f",
     "crates/pagura-document/src/forms/fill/text.rs": "b61117f6a332c9be9e1df70dc022e5cc6a4b5aac6e2744914e220be5015d6419",
     "crates/pagura-document/src/history.rs": "5e6d7191963736e1a0689f28f3a4d16d93f2f443b108f5d5df7e8ef02b07180a",
-    "crates/pagura-document/src/images.rs": "04a4b230f24950b573cc4821a38ebfae665ab294825c177cd238bb73ff4d61fe",
+    "crates/pagura-document/src/images.rs": "10dabd11e4dc006d181fcb8b04a46edc706f741f485c7f122a028bcdec8fe247",
     "crates/pagura-document/src/lib.rs": "547271a8787856ec7ee432fdbdde5ef1bc6d75e312b1f11c6966d87b1ed857ea",
     "crates/pagura-document/src/load.rs": "c4d1639daf7f46742438c831b882d90d448ae2ef5332db53c9ea766b5ed97864",
     "crates/pagura-document/src/metadata.rs": "51a36d7bd478ec6e290d8ac3c6ea1d70833822cbfea0ffddaa97797eabc3659e",
@@ -256,7 +256,7 @@
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
     "crates/pagura/tests/api/text.rs": "de81815b47c165743e9e225f1b4b52bd078fad0024b6ef9921e6db41c47eda59",
     "crates/pagura/tests/api/write.rs": "417bee3185cc44d223c3e64cc1986fe96f7f4792be93688dd5fb93ee1036fadc",
-    "crates/pagura/tests/document_services.rs": "238e8b85c46716c45aa1c718aa181da9c23baa4eb2d0289bfb85e63deb98993f",
+    "crates/pagura/tests/document_services.rs": "80183c9ca9979d8f04f9c1d6b0c093a335b43c4826022e76bb40b46e128cd2cd",
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
@@ -295,7 +295,7 @@
     "tools/fixturegen/caption_annotations.py": "389f779ef6d0c7f630a37e4a6c883805895845caf08e9a67dfe587f642972cd0",
     "tools/fixturegen/caret_annotations.py": "1f09d1b11af910a1cf0a5ba21e25fad5eb153fd1b1a9f67608ade3ebdb542687",
     "tools/fixturegen/circle_annotations.py": "0df6ff5b1a44dde18154dde40cd7b58265b4856b24d1c9dacd863a56f0a7172e",
-    "tools/fixturegen/document_services.py": "981cdafc84ae7b3662489dc6303635824aec29a606a602403d54023e6e87c3f0",
+    "tools/fixturegen/document_services.py": "0f3b243a3ef8a6de5dbab8d8911c3b5f114245134d68dfafe03e8f521289da91",
     "tools/fixturegen/ending_annotations.py": "334b9437cb230f35498c7c2ff15e35fc275512b2db7ded12fa27c2a91f09f150",
     "tools/fixturegen/file_annotations.py": "a8acf4b00f0f73aea843c5b542fec7244631520c6988ca7f0489505034f91a87",
     "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
@@ -323,7 +323,7 @@
     "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
     "tools/test_rounded_pixels.py": "c8f4a3f024eb2e195d29172965a7728b4899360a32e3d6223778227f8680cb85",
     "web/client.mjs": "86bb22266de0b8093e2588251afa928a86d63a14d7a4275525c88597752e70da",
-    "web/document_extended.mjs": "6a51da4dc7dff2921ff3e63e7502c3b81a9951542d5fb85a3195df10ea9ccfcb",
+    "web/document_extended.mjs": "df69eac41e9e57dd840b4c1347bddb60d1cf10817f3468925259c60955c714d3",
     "web/document_protocol.mjs": "28fad9728b183082490f632fc9a77e0b948df9330b43961945e6a0da3f159b36",
     "web/document_services.mjs": "74089bb3a6ed072a4ca6ab2601cbb84f7207247b642996e75a86a6aa933a7648",
     "web/document_services_extended.mjs": "2e267dad28043ffb893343d7a1c58d6975cee3fd9abe6b88eadd885e163ccfeb",
@@ -2109,6 +2109,7 @@
         "crates/pagura-host/src/reading/extended.rs",
         "web/document_extended.mjs",
         "web/document_services_extended.mjs",
+        "crates/pagura-document/src/images.rs",
         "crates/pagura-document/src/images.rs"
       ],
       "tests": [
@@ -2636,6 +2637,8 @@
         "web/document_extended.mjs",
         "web/document_services_extended.mjs",
         "crates/pagura-document/src/files/selection.rs",
+        "crates/pagura-document/src/files/collection.rs",
+        "crates/pagura-document/src/files/selection.rs",
         "crates/pagura-document/src/files/collection.rs"
       ],
       "tests": [
@@ -2810,6 +2813,7 @@
         "crates/pagura-host/src/reading/extended.rs",
         "web/document_extended.mjs",
         "web/document_services_extended.mjs",
+        "crates/pagura-document/src/files/collection.rs",
         "crates/pagura-document/src/files/collection.rs"
       ],
       "tests": [
@@ -2863,6 +2867,7 @@
         "crates/pagura-host/src/reading/extended.rs",
         "web/document_extended.mjs",
         "web/document_services_extended.mjs",
+        "crates/pagura-document/src/images.rs",
         "crates/pagura-document/src/images.rs"
       ],
       "tests": [
