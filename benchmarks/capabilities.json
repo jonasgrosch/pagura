@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "fb9510d6918c09ad57dcbc86852ca62d21586218",
+  "audited_revision": "2d223cf6e5a91e4337fc54d613372970639124ab",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -59,6 +59,9 @@
     "crates/pagura-color/tests/sycc.rs": "ebd03c04b7b8a9c4cab1e452ff07e6771fefa4fd3cec4c0edfea5702a97df2b2",
     "crates/pagura-core/src/error.rs": "c43b6a9db6cc264930a0fc4639d602fcc5ab39415965b948df2dff5f3b58fe9a",
     "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",
+    "crates/pagura-core/src/syntax.rs": "f2786bab1d5a9f818ee2ce345be25180c1b0b82782605e0f0c3e7f50343d8bc2",
+    "crates/pagura-core/src/syntax/window.rs": "440797da3116ea58926422144cbe0d05a27198695766bb076af63d00e398799c",
+    "crates/pagura-core/tests/windows.rs": "640e893c87e614a31ad40ad11858782c912cb933841f0766d62a07b1f54f6331",
     "crates/pagura-crypto/src/hash/md5.rs": "b73634cbd9549de7c1893096b2fe61bb2e1fd4b238cab05a2509008925a64af0",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
@@ -351,8 +354,8 @@
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Complete-buffer document opening, lazy object caches and immutable source bytes remain available. Separate bounded complete/sparse byte sources expose immutable identity, exact missing ranges, atomic overlap validation, generation-based progress and allocation-accounted leases through the facade. Source storage is not yet connected to document parsing.",
-      "remaining": "Parser window and availability propagation, retry-safe cache publication, scoped/linearized opening, lazy page access, owned jobs, protocol v2, browser/native range drivers and bounded worker scheduling remain group 11 work under accepted ADR 0035. Hosted validation of the new storage contracts is pending.",
+      "implemented": "Complete-buffer document opening, lazy object caches and immutable source bytes remain available. Separate bounded complete/sparse byte sources expose immutable identity, exact missing ranges, atomic overlap validation, generation-based progress and allocation-accounted leases through the facade. Source storage is not yet connected to document parsing. The shared slice parser distinguishes structurally incomplete windows from true EOF while retaining complete-input behavior and provisional diagnostics.",
+      "remaining": "Document window integration and availability propagation, retry-safe cache publication, scoped/linearized opening, lazy page access, owned jobs, protocol v2, browser/native range drivers and bounded worker scheduling remain group 11 work under accepted ADR 0035. Hosted validation of the new storage contracts is pending.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/load.rs",
@@ -364,12 +367,15 @@
         "crates/pagura-document/src/source/memory.rs",
         "crates/pagura-document/src/source/sparse.rs",
         "crates/pagura-document/src/source/types.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "crates/pagura-core/src/syntax.rs",
+        "crates/pagura-core/src/syntax/window.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
         "crates/pagura-document/tests/sources.rs",
-        "crates/pagura/tests/api/source.rs"
+        "crates/pagura/tests/api/source.rs",
+        "crates/pagura-core/tests/windows.rs"
       ],
       "requirements": [
         "document-loading-bounds",
