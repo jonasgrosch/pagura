@@ -586,6 +586,45 @@
         "rgb_sha256": "c7534027e209a7736ef9b6e477c7988e43c1232f7edb056433b2ee69d53ad2fd",
         "tolerance": 1
       }
+    },
+    {
+      "id": "annotations.ink.pdf2-circle-72-1.0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ink_annotations/pdf2-circle-72-1.0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "50d8b81f6aafa1683c9e1c05150b5710ec411622f11ad9bdf5722ded5192d2ba",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ink.pdf2-circle-144-1.0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ink_annotations/pdf2-circle-144-1.0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c92ba634b402e6d25b80f792e09618791c5bf2f1be92dcc741c24e4c3f98285f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ink.pdf2-circle-72-0.5",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ink_annotations/pdf2-circle-72-0.5",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "3fd8ede2db9959a6eb7586a6bdc3acb2a2e3db346fb66143d52abb4b601f540c",
+        "tolerance": 1
+      }
     }
   ]
 }

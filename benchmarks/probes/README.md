@@ -5,9 +5,9 @@ catalog and first-page annotation attachment bytes, and text** using independent
 controls and a non-PDF rejection control. Pagura joins all six baseline columns,
 yielding 147 document-service cells. Its observations use the public CLI only.
 G01 remains open: these twenty-one cases do not establish family or product parity.
-The companion [render manifest](rendering.json) contains 45 independent pixel
-oracles: the original six graphics/JPX controls and 39 annotation controls. Its
-315 cells use the public Pagura CLI and all six existing public render adapters.
+The companion [render manifest](rendering.json) contains 48 independent pixel
+oracles: the original six graphics/JPX controls and 42 annotation controls. Its
+336 cells use the public Pagura CLI and all six existing public render adapters.
 Fixtures select 72 or 144 dpi explicitly; dimensions, pixel hashes and tolerances
 remain tied to their authored manifests. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
@@ -90,7 +90,7 @@ an asserted lock pin. Workspace/cache paths become placeholders. Native
 diagnostics retain byte counts and hashes rather than raw logs.
 
 `capability-rendering-<os>` and `capability-rendering` retain the pixel observations
-separately. Joining requires all six baselines plus Pagura across all 315 cells. The CLI version and
+separately. Joining requires all six baselines plus Pagura across all 336 current cells. The CLI version and
 actual Pagura binary hash are recorded; the hosted workflow builds default
 features from its checkout using the pinned toolchain. Outside that workflow,
 a pre-existing binary has no asserted source revision. The exact PDF/oracle bytes and normalized RGB identities are hashed.
@@ -315,6 +315,13 @@ an API-layer boundary, especially for web annotations or CoreGraphics. Such
 observations require adjudication before any feature verdict. A blank result,
 nonzero exit or pixel mismatch is never silently converted into an unsupported
 feature or a passing comparison. Pagura must meet every independent oracle.
+
+Three further PDF 2.0 Ink Path controls add non-linear circular strokes at
+72/144 dpi and partial opacity, bringing the current manifest to 48 cases and
+336 cells. Their exact disk-area expectations exposed a 144-dpi subject stroke
+disagreement in hosted validation; it is under investigation. These new cases
+retain actual/oracle images through the same report pipeline. The historical
+315-cell result above does not cover this increment.
 
 ## Next G01 increments
 

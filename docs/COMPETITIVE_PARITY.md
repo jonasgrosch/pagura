@@ -362,7 +362,10 @@ Path allocation. A present Path supplies the geometry and null falls back to
 InkList. The expanded 49 controls contain 33 independent pixel expectations,
 including non-linear circular strokes checked against exact disk areas, straight
 cubics, mixed operators, indirection, precedence and malformed required entries.
-This Path increment awaits hosted validation.
+Hosted native/WASI validation found a 144-dpi curved-stroke oracle disagreement.
+Three new G01 Ink Path controls extend the current render manifest to 48 cases
+and 336 cells, retaining actual/oracle pixels for investigation. Existing oracle
+bytes and tolerances are unchanged; this Path increment is not yet validated.
 
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path

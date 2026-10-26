@@ -58,11 +58,12 @@ function ppmPixels(bytes, width, height) {
   return bytes.subarray(header.length);
 }
 // `tolerance` is the manifest's per-channel allowance (0 for exact oracles).
-function checkPixels(tile, rgb, tolerance = 0) {
+function checkPixels(tile, rgb, tolerance = 0, label = '') {
   assert.equal(tile.rgba.length, rgb.length / 3 * 4);
   for (let pixel = 0; pixel < rgb.length / 3; pixel++) {
     for (let channel = 0; channel < 3; channel++) {
-      if (Math.abs(tile.rgba[pixel * 4 + channel] - rgb[pixel * 3 + channel]) > tolerance) assert.fail(`Oracle mismatch at pixel ${pixel}, channel ${channel}`);
+      const actual = tile.rgba[pixel * 4 + channel], expected = rgb[pixel * 3 + channel];
+      if (Math.abs(actual - expected) > tolerance) assert.fail(`${label}: Oracle mismatch at pixel ${pixel}, channel ${channel}: ${actual} != ${expected} (tolerance ${tolerance})`);
     }
     assert.equal(tile.rgba[pixel * 4 + 3], 255);
   }
@@ -207,7 +208,7 @@ async function main() {
       assert.deepEqual(frames.map((frame) => frame.kind), [129, 130, 131, 132, 133, 134]);
       assert.deepEqual(frames.map((frame) => frame.id), [1, 2, 3, 4, 5, 6]);
       const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
-      checkPixels(frames[3].value, rgb, entry.tolerance ?? 0);
+      checkPixels(frames[3].value, rgb, entry.tolerance ?? 0, entry.id);
       const opened = await client.open(pdf);
       const info = await client.pageInfo(opened.document, 0);
       assert.equal(info.width * scale, entry.width); assert.equal(info.height * scale, entry.height);
