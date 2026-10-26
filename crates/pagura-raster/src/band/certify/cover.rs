@@ -85,10 +85,12 @@ struct Strand {
     range: [f64; 2],
 }
 
-/// A run kept over heights `lo..hi`, running downward or upward.
+/// A run kept over heights `lo..hi`, from its piece `piece` containing
+/// `lo`, running downward or upward.
 #[derive(Debug, Clone, Copy)]
 struct Kept {
     run: usize,
+    piece: usize,
     lo: f64,
     hi: f64,
     down: bool,
@@ -168,9 +170,15 @@ fn sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<C
     let Chains {
         mut kept,
         allowance,
+        mut work,
         ..
     } = chains;
-    emit(&mut kept, (&downs, &runs, curves), allowance, bytes).map(Some)
+    emit(
+        &mut kept,
+        (&downs, &runs, curves),
+        (allowance, &mut work),
+        bytes,
+    )
 }
 
 impl Chains<'_> {
@@ -399,6 +407,7 @@ impl Chains<'_> {
         bytes.reserve_capacity(&mut self.kept, 1)?;
         self.kept.push(Kept {
             run: s.run,
+            piece: s.piece,
             lo,
             hi,
             down: left,
@@ -408,13 +417,15 @@ impl Chains<'_> {
 }
 
 /// The pieces of the kept runs, each kept height range merged with the next
-/// one of its run where they meet in the same direction.
+/// one of its run where they meet in the same direction; `None` past the
+/// work bound. Each range visits only the pieces from the one containing
+/// its top to the one containing its bottom.
 fn emit(
     kept: &mut [Kept],
     (downs, runs, curves): (&[Down], &[Run], &[Mono]),
-    mut allowance: f64,
+    (mut allowance, work): (f64, &mut Work),
     bytes: &mut Meter,
-) -> Result<Covered> {
+) -> Result<Option<Covered>> {
     kept.sort_unstable_by(|a, b| a.run.cmp(&b.run).then(a.lo.total_cmp(&b.lo)));
     let mut merged: Vec<Kept> = Vec::new();
     bytes.reserve(&mut merged, kept.len())?;
@@ -429,8 +440,13 @@ fn emit(
     let mut lines = Vec::new();
     let mut monos = Vec::new();
     for k in &merged {
-        let run = &runs[k.run];
-        for piece in &downs[run.start..run.end] {
+        let pieces = downs[k.piece..runs[k.run].end]
+            .iter()
+            .take_while(|piece| piece.a.y < k.hi);
+        for piece in pieces {
+            if work.add(1).is_none() {
+                return Ok(None);
+            }
             let (top, bottom) = (piece.a.y.max(k.lo), piece.b.y.min(k.hi));
             if top >= bottom {
                 continue;
@@ -465,11 +481,11 @@ fn emit(
             });
         }
     }
-    Ok(Covered {
+    Ok(Some(Covered {
         lines,
         curves: monos,
         allowance,
-    })
+    }))
 }
 
 fn outward(value: f64) -> f64 {

@@ -276,6 +276,43 @@ fn coincident_sides_are_kept_or_dropped_together() {
     }
 }
 
+/// A tall shape whose right side is `bumps` small curves, crossed by as
+/// many overlapping bars: the side is kept between the bars only.
+fn interrupted(bumps: usize) -> Path {
+    let mut path = PathBuilder::new();
+    let height = 2.0 * bumps as f64;
+    path.move_to(Point::new(0.0, 0.0));
+    path.line_to(Point::new(10.0, 0.0)).unwrap();
+    for i in 0..bumps {
+        let y = 2.0 * i as f64;
+        path.quad_to(Point::new(10.5, y + 1.0), Point::new(10.0, y + 2.0))
+            .unwrap();
+    }
+    path.line_to(Point::new(0.0, height)).unwrap();
+    path.close();
+    for i in 0..bumps {
+        let y = 2.0 * i as f64;
+        path.move_to(Point::new(8.0, y + 0.75));
+        path.line_to(Point::new(12.0, y + 0.75)).unwrap();
+        path.line_to(Point::new(12.0, y + 1.25)).unwrap();
+        path.line_to(Point::new(8.0, y + 1.25)).unwrap();
+        path.close();
+    }
+    path.finish()
+}
+
+#[test]
+fn a_side_kept_in_many_parts_is_emitted_within_the_work_bound() {
+    // The curved side is kept in 1,025 parts. Scanning its 2,048 pieces
+    // for each part would take about 2.1 million steps, past the work
+    // bound of about 0.4 million, and keep the polygon; visiting only each
+    // part's own pieces takes about 9,000 with the sweep.
+    let limits = Limits::default();
+    let edges = GlyphEdges::new(&interrupted(1024), [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
+    assert!(matches!(edges.kind, Kind::Union { .. }));
+    assert!(edges.curved());
+}
+
 #[test]
 fn chains_that_never_part_keep_the_polygon() {
     // Two contours abut along one curve, which the second one draws in two
