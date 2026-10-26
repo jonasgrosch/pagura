@@ -417,6 +417,14 @@ its meaning. Hosted product checks are pending. Annotation discovery,
 collection/encrypted-payload models, validation, streaming, writes and
 CLI/host/viewer integration remain open; this does not complete D02.
 
+**Metadata implementation started:** `8b328025a502cd9b7a3c5c61f2bac94aea12f5a9` adds typed Info strings and
+trapping declarations, document language, and document/object metadata-stream
+handles through the library/facade. Independent fixtures cover Unicode,
+absence/null/empty distinctions, source identity, compressed packets, malformed
+types, cycles, reported text repair, limits and inert XML bytes. Hosted checks
+are pending. XMP/schema and date/language validation, reconciliation, writes and
+CLI/host/viewer integration remain open; this does not complete D02.
+
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose
 lossless original-image extraction where valid and decoded-image export otherwise,

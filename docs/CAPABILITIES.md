@@ -49,7 +49,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `signatures.creation` / S02 | PDF signature creation | missing / missing / missing / missing | Verification-only primitives and original-byte-preserving incremental infrastructure. | ADR for host signing provider, reservations, CMS/CAdES creation, timestamps and independent validation. |
 | `profiles.validation` / C01 | PDF version/profile conformance | missing / missing / missing / missing | Version headers and PDF/X print-intent declarations are recognized; this is not profile validation. | Explicit PDF/A, PDF/UA, PDF/X and baseline-supported extension validators and conforming creation gates. |
 | `document.navigation` / D02 | Destinations, links, outlines, labels and inert actions | implemented / missing / partial / partial | Typed trees, destinations, outlines, links and labels; host reading requests and browser navigation. | CLI export, navigation mutation and additional host-approved action types. |
-| `document.metadata` / D02 | Info dictionary, XMP and document language | partial / missing / missing / missing | Low-level trailer/catalog/object/stream access can reach metadata. | Typed metadata/XMP retrieval, validation, editing and facade/CLI/host/viewer integration. |
+| `document.metadata` / D02 | Info dictionary, XMP and document language | partial / missing / missing / missing | Typed standard Info fields and trapping declaration, document language, and document/object metadata-stream handles are available through pagura-document and the facade. Text uses shared PDF string decoding with diagnostics; stream packets remain inert bytes with source identities and ordinary decode/security limits. | XML/XMP parsing and schema validation, date/language semantics, Info/XMP reconciliation, metadata editing, conditional PieceInfo/ModDate validation and CLI/host/viewer operations. |
 | `document.attachments` / D02 | Embedded files and associated files | partial / missing / missing / missing | Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. | Annotation attachment discovery, collection/encrypted-payload models, MIME/date/associated-file validation, checksum verification, streaming extraction, safe host extraction naming, writes and CLI/host/viewer integration. |
 | `document.portfolios` / D02 | Collections and portfolios | partial / missing / missing / missing | Collection dictionaries remain accessible through generic object APIs. | Typed collection schema, file relationships, ordering, presentation and authoring. |
 | `document.thumbnails` / D02 | Embedded and rendered thumbnails | partial / partial / partial / partial | Page rendering supports caller-generated previews; the browser maintains rendered thumbnails. | Typed embedded Thumb extraction and dedicated thumbnail export API; generated previews are not embedded asset extraction. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 336 registered requirement IDs map to capability rows in the ledger.
+All 337 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery

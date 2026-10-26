@@ -19,6 +19,7 @@ pub mod forms;
 mod history;
 mod load;
 mod memory;
+pub mod metadata;
 pub mod navigation;
 mod object;
 mod options;
