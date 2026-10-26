@@ -882,12 +882,13 @@
         "12.5.5",
         "12.5.6.13 Table 185"
       ],
-      "rule": "InkList paths contain coordinate pairs in default user space. Reader policy joins samples with straight segments, butt caps and miter joins in one stroke, applying C, CA and BS width/dash. All paths validate before painting or returning an empty mark; indirect paths/coordinates resolve. Aggregate segment and temporary-storage bounds charge repeated indirect paths, and generated content has independent byte limits. Stored appearances retain precedence and the annotation rectangle clips the generated appearance.",
-      "status": "InkList generation implemented; native/WASI/client/partial-tile/viewer accuracy checks passed at 28e4f3fe5",
+      "rule": "InkList paths contain coordinate pairs in default user space. Reader policy joins samples with straight segments, butt caps and miter joins in one stroke, applying C, CA and BS width/dash. All paths validate before painting or returning an empty mark; indirect paths/coordinates resolve. Aggregate segment and temporary-storage bounds charge repeated indirect paths, and generated content has independent byte limits. Stored appearances retain precedence and the annotation rectangle clips the generated appearance. A present PDF 2.0 Path supplies moveto/lineto/cubic geometry after the still-required InkList validates. Copied legacy samples are released before allocating path operators; null Path uses InkList. Both representations retain their own bounded geometry validation.",
+      "status": "InkList generation passed native/WASI/client/partial-tile/viewer checks at 28e4f3fe5; PDF 2.0 Path implementation awaits hosted validation",
       "tests": [
         "pagura-appearance annotation::tests::ink_paths_resolve_indirect_arrays_and_coordinates",
         "pagura-appearance annotation::tests::ink_validates_geometry_even_when_color_or_width_suppresses_marks",
         "pagura-appearance annotation::tests::ink_generation_bounds_aggregate_segments_storage_and_output",
+        "pagura-appearance annotation::tests::ink_path_preserves_required_inklist_validation_and_uses_explicit_geometry",
         "ink_annotations/line-72",
         "ink_annotations/line-stored-72",
         "ink_annotations/line-144",
@@ -921,9 +922,24 @@
         "ink_annotations/odd-path",
         "ink_annotations/coordinate-type",
         "ink_annotations/pdf2-path",
-        "ink_annotations/stored-ignores-geometry"
+        "ink_annotations/stored-ignores-geometry",
+        "ink_annotations/pdf2-precedence",
+        "ink_annotations/pdf2-cubic-line",
+        "ink_annotations/pdf2-mixed",
+        "ink_annotations/pdf2-indirect",
+        "ink_annotations/pdf2-circle-72-1.0",
+        "ink_annotations/pdf2-circle-144-1.0",
+        "ink_annotations/pdf2-circle-72-0.5",
+        "ink_annotations/pdf2-type",
+        "ink_annotations/pdf2-empty",
+        "ink_annotations/pdf2-first-curve",
+        "ink_annotations/pdf2-operands",
+        "ink_annotations/pdf2-number",
+        "ink_annotations/pdf2-inklist-missing",
+        "ink_annotations/pdf2-inklist-null",
+        "ink_annotations/pdf2-inklist-invalid"
       ],
-      "gaps": "PDF 2.0 Path generation, richer border styles, handwriting recognition and popup interaction remain separate. Independent pixel expectations use literal stroke regions, exact region unions and convex clipping; stored controls fill the regions instead of emitting the generator stroke path."
+      "gaps": "Richer border styles, handwriting recognition and popup interaction remain separate. Independent pixel expectations use literal stroke regions, exact region unions and convex clipping; stored controls fill the regions instead of emitting the generator stroke path. Non-linear Path controls use exact concentric disk coverage independently of the authored cubic program."
     },
     {
       "id": "content-polygon-appearances",
@@ -935,7 +951,7 @@
         "12.5.6.9 Table 181"
       ],
       "rule": "Polygon closes its geometry and fills IC with the nonzero rule; PolyLine leaves endpoints open and IC applies only to line endings. Vertices are finite coordinate pairs in default user space. A present Path overrides Vertices and begins with one moveto pair, followed by lineto pairs or six cubic operands. Arrays and coordinates resolve indirectly. BS width/dash, C, CA and independent ca apply under the original annotation rectangle. Null/plain polygon border effects and absent/null/None polyline endings are supported. Temporary storage, segment counts and emitted content are bounded before painting.",
-      "status": "Polygon/PolyLine vertices and PDF 2.0 path appearance generation implemented; hosted accuracy validation pending",
+      "status": "Polygon/PolyLine vertices and PDF 2.0 path generation passed native/WASI/client/partial-tile/viewer accuracy checks at 0e2c68e0e",
       "tests": [
         "pagura-appearance annotation::tests::polygon_paths_override_vertices_and_resolve_indirect_operands",
         "pagura-appearance annotation::tests::polygon_geometry_is_bounded_before_empty_mark_selection",
@@ -985,7 +1001,7 @@
         "polygon_annotations/cloudy",
         "polygon_annotations/arrow"
       ],
-      "gaps": "Cloudy/relief/rounded borders and non-None polyline endings remain explicit. Ink PDF 2.0 Path remains separate. Independent expectations use convex clipping, literal stroke-region unions and closed-form quadratic integrals; no product or competitor path evaluator generates expected pixels."
+      "gaps": "Cloudy/relief/rounded borders and non-None polyline endings remain explicit. Independent expectations use convex clipping, literal stroke-region unions and closed-form quadratic integrals; no product or competitor path evaluator generates expected pixels."
     }
   ]
 }

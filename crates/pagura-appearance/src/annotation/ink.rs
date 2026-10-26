@@ -1,45 +1,64 @@
-//! InkList paths (12.5.6.13, Table 185). Reader policy joins samples with
-//! straight segments, butt caps and miter joins, in one stroke operation.
+//! InkList and PDF 2.0 Path (12.5.6.13, Table 185). Reader policy joins
+//! InkList samples with straight segments, butt caps and miter joins.
 
 use super::border::Border;
-use super::marks::{Color, Marks, Pen, Subpath, color};
-use crate::features;
+use super::marks::{Color, Marks, PathOperator, Pen, Subpath, color};
+use super::path;
 use crate::stream::AppearanceStream;
 use crate::values::{number, optional};
 use pagura_core::{Dictionary, Error, Rect, Result};
 use pagura_document::Document;
+
+enum Geometry {
+    Samples(Vec<Vec<(f64, f64)>>),
+    Operators(Vec<PathOperator>),
+}
 
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
 ) -> Result<Option<AppearanceStream>> {
-    if optional(document, annotation, b"Path")?.is_some() {
-        return Err(Error::unsupported(
-            features::ANNOTATION_APPEARANCE,
-            "PDF 2.0 annotation Path generation is not implemented",
-        ));
-    }
+    // InkList remains required in Table 185. Validate it even when the
+    // optional Path supplies the geometry, but release its copied samples
+    // before allocating the path operators.
     let paths = paths(document, annotation)?;
+    let geometry = if let Some(value) = optional(document, annotation, b"Path")? {
+        drop(paths);
+        Geometry::Operators(path::operators(document, value)?)
+    } else {
+        Geometry::Samples(paths)
+    };
     let border = Border::read(document, annotation)?;
     let color = color(document, annotation, b"C", Some(Color::black()))?;
     let mut marks = Marks::new(document, annotation);
     if border.width != 0.0
         && let Some(color) = color
     {
-        let mut strokes = Vec::new();
-        strokes
-            .try_reserve_exact(paths.len())
-            .map_err(|_| Error::limit("ink path allocation failed"))?;
-        strokes.extend(paths.iter().map(|path| Subpath::Polyline(path)));
-        marks.stroke(
-            &strokes,
-            &color,
-            Pen {
-                width: border.width,
-                dash: &border.dash,
-            },
-        )?;
+        let pen = Pen {
+            width: border.width,
+            dash: &border.dash,
+        };
+        match &geometry {
+            Geometry::Samples(paths) => {
+                let mut strokes = Vec::new();
+                strokes
+                    .try_reserve_exact(paths.len())
+                    .map_err(|_| Error::limit("ink path allocation failed"))?;
+                strokes.extend(paths.iter().map(|path| Subpath::Polyline(path)));
+                marks.stroke(&strokes, &color, pen)?;
+            }
+            Geometry::Operators(commands) => {
+                marks.stroke(
+                    &[Subpath::Operators {
+                        commands,
+                        closed: false,
+                    }],
+                    &color,
+                    pen,
+                )?;
+            }
+        }
     }
     marks.finish(rect)
 }

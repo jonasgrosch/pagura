@@ -562,3 +562,46 @@ fn polygon_geometry_is_bounded_before_empty_mark_selection() {
         }
     }
 }
+
+#[test]
+fn ink_path_preserves_required_inklist_validation_and_uses_explicit_geometry() {
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    let expected = generate(b"<< /Subtype /Ink /InkList [[4 8 28 8]] >>", area).unwrap();
+    assert_eq!(
+        generate(
+            b"<< /Subtype /Ink /InkList [[16 4 16 28]] /Path [[4 8] [28 8]] >>",
+            area,
+        )
+        .unwrap(),
+        expected
+    );
+    for inklist in ["", "/InkList null", "/InkList 42", "/InkList [[0 /Bad]]"] {
+        assert_eq!(
+            generate(
+                format!("<< /Subtype /Ink {inklist} /Path [[4 8] [28 8]] >>").as_bytes(),
+                area,
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Syntax
+        );
+    }
+    let document = Document::open(
+        fixture("ink_annotations", "pdf2-indirect.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        annotation_appearance(
+            &document,
+            &dictionary(b"<< /Subtype /Ink /InkList [[0 0]] /Path 6 0 R >>"),
+            area,
+        )
+        .unwrap(),
+        generate(
+            b"<< /Subtype /Ink /InkList [[0 0]] /Path [[4 8] [12 8 20 8 28 8]] >>",
+            area
+        )
+        .unwrap()
+    );
+}

@@ -1,4 +1,4 @@
-//! Bounded Polygon/PolyLine geometry (12.5.6.9, Table 181).
+//! Bounded Polygon/PolyLine geometry and annotation Path (Tables 181/185).
 
 use super::marks::{PathOperator, Subpath};
 use crate::values::{number, optional};
@@ -41,7 +41,8 @@ pub(super) fn read(document: &Document, annotation: &Dictionary) -> Result<Geome
     Ok(Geometry::Vertices(points))
 }
 
-fn operators(document: &Document, value: &Value) -> Result<Vec<PathOperator>> {
+/// A resolved PDF 2.0 Path array: one moveto, then lines or cubics.
+pub(super) fn operators(document: &Document, value: &Value) -> Result<Vec<PathOperator>> {
     let arrays = value
         .as_array()
         .filter(|values| !values.is_empty())

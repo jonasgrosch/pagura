@@ -350,13 +350,19 @@ Unequal-axis stroke/dash expectations and richer borders remain open.
 BS width/dash, C and CA under the original annotation clip. Reader policy uses
 butt caps, miter joins and one stroke operation for all disjoint paths. Repeated
 indirect paths count toward aggregate segment/storage bounds; generated content
-has its own byte cap. Thirty-four controls include 25 independent pixel oracles
+has its own byte cap. The initial 34 controls include 25 independent pixel oracles
 for corners, crossing paths, dashes, diagonals, two resolutions, rotation, opacity,
 clipping and stored/generated appearances. Geometry validates even with zero
 width or an empty color. Native/WASI/client, partial-tile and viewer checks are
 registered and pass at `28e4f3fe5` in
 [run 40287592540](https://github.com/jonasgrosch/pagura/actions/runs/40287592540).
-Ink PDF 2.0 Path generation remains explicit.
+The PDF 2.0 Ink Path increment reuses the bounded operator reader. InkList
+remains required and validates first; its copied samples are released before
+Path allocation. A present Path supplies the geometry and null falls back to
+InkList. The expanded 49 controls contain 33 independent pixel expectations,
+including non-linear circular strokes checked against exact disk areas, straight
+cubics, mixed operators, indirection, precedence and malformed required entries.
+This Path increment awaits hosted validation.
 
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path
@@ -366,8 +372,9 @@ border effects and absent/null/None polyline endings work. Forty-five controls
 include 27 independent pixel oracles from convex clipping, literal stroke regions
 and an exact quadratic integral, covering curved fills, straight cubic strokes,
 closed/open geometry, winding, two resolutions, rotation, opacity, indirection
-and malformed data. Host/viewer checks are registered; hosted execution is pending.
-Cloudy borders, non-None endings and Ink Path remain explicit gaps.
+and malformed data. Native/WASI/client, partial-tile and viewer checks pass at
+`0e2c68e0e` in [run 40289812941](https://github.com/jonasgrosch/pagura/actions/runs/40289812941).
+Cloudy borders and non-None endings remain explicit gaps.
 
 Complete missing normal appearances for FreeText, text markup, Line,
 Stamp, Caret and other ledger subtypes;

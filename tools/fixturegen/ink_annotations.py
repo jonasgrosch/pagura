@@ -6,7 +6,8 @@ oracle. Stored appearances fill those regions rather than stroking InkList.
 """
 import math
 
-from .model import Case, OPEN, RENDER, UNSUPPORTED
+from .circle_annotations import oracle as circle_oracle
+from .model import Case, OPEN, RENDER
 from .pdf import document, stream
 
 AREA = 'ink_annotations'
@@ -89,6 +90,19 @@ def appearance(regions):
     return b'0 g ' + b' '.join(f'{a} {b} {c-a} {d-b} re'.encode() for a, b, c, d in regions) + b' f'
 
 
+def circle_path():
+    """Separately authored tangent cubics; expected coverage is an exact disk."""
+    commands = [b'[27 16]']
+    for index in range(8):
+        a, b = index * math.pi / 4, (index + 1) * math.pi / 4
+        k = 4 / 3 * math.tan((b - a) / 4)
+        xy = (16 + 11 * (math.cos(a) - k * math.sin(a)), 16 + 11 * (math.sin(a) + k * math.cos(a)),
+              16 + 11 * (math.cos(b) + k * math.sin(b)), 16 + 11 * (math.sin(b) - k * math.cos(b)),
+              16 + 11 * math.cos(b), 16 + 11 * math.sin(b))
+        commands.append(b'[' + ' '.join(format(v, '.15g') for v in xy).encode() + b']')
+    return b'[' + b' '.join(commands) + b']'
+
+
 def cases():
     def rendered(name, ink=b'[[4 8 28 8]]', *, regions=HORIZONTAL, polygon=(), dpi=72, rotate=0, color=(0., 0., 0.),
                  alpha=1., rect=(0, 0, 32, 32), **options):
@@ -119,6 +133,21 @@ def cases():
                       ('coordinate-type', b'[[4 /Bad 20 8]]')]:
         yield Case(name, source(ink), OPEN, (REQUIREMENT,),
                    'Ink geometry requires nonempty arrays of finite coordinate pairs', extra={'render_error': 'syntax'})
-    yield Case('pdf2-path', source(extra=b' /Path [[4 8] [28 8]]'), UNSUPPORTED, (REQUIREMENT,),
-               'PDF 2.0 Path appearance generation remains explicit', feature='annotation.appearance')
+    yield rendered('pdf2-path', extra=b' /Path [[4 8] [28 8]]')
     yield rendered('stored-ignores-geometry', b'42', stored=appearance(HORIZONTAL))
+    yield rendered('pdf2-precedence', b'[[16 4 16 28]]', extra=b' /Path [[4 8] [28 8]]')
+    yield rendered('pdf2-cubic-line', extra=b' /Path [[4 8] [12 8 20 8 28 8]]')
+    yield rendered('pdf2-mixed', extra=b' /Path [[4 8] [12 8] [16 8 24 8 28 8]]')
+    yield rendered('pdf2-indirect', extra=b' /Path 6 0 R',
+                   objects=(b'[7 0 R 8 0 R]', b'[4 8]', b'[12 8 20 8 9 0 R 8]', b'28'))
+    for dpi, alpha in ((72, 1.), (144, 1.), (72, .5)):
+        yield Case(f'pdf2-circle-{dpi}-{alpha}', source(alpha=alpha, extra=b' /Path ' + circle_path()), RENDER,
+                   (REQUIREMENT,), 'Exact concentric disk areas independently check non-linear PDF 2.0 Ink path strokes',
+                   dpi=dpi, oracle=circle_oracle(width=2., dpi=dpi, stroke_alpha=alpha), extra={'tolerance': 1})
+    for name, path in [('type', b'42'), ('empty', b'[]'), ('first-curve', b'[[4 8 12 8 28 8]]'),
+                       ('operands', b'[[4 8] [12 8 20 8]]'), ('number', b'[[4 /Bad]]')]:
+        yield Case('pdf2-' + name, source(width=0, extra=b' /Path ' + path), OPEN, (REQUIREMENT,),
+                   'Path validates before zero-width suppression', extra={'render_error': 'syntax'})
+    for name, ink in [('missing', None), ('null', b'null'), ('invalid', b'42')]:
+        yield Case('pdf2-inklist-' + name, source(ink, extra=b' /Path [[4 8] [28 8]]'), OPEN, (REQUIREMENT,),
+                   'InkList remains required and validates even with a usable optional Path', extra={'render_error': 'syntax'})
