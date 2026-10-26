@@ -194,8 +194,10 @@ Owner: `pagura-image`, `pagura-color`, `pagura-interpret`, `pagura-paint`; depen
 `b410d2bcafac55cbe9dbf337dbdbc88144e59ac4` connects embedded ICC profiles to the existing
 forward transforms and bounded profile cache. Independent Gray/RGB, alpha,
 PDF override and malformed-profile fixtures accompany cache/budget controls;
-hosted validation is pending. sYCC, Lab-input profiles, multiple-profile ranking
-and fallback after an unsupported selected transform remain open. This slice
+hosted validation is pending. `0a9f9cb0109d5059350367247212795844a04f7f` adds
+eight-bit unsigned sYCC with IEC Annex F rational pixel oracles, explicit PDF
+overrides and alpha fixtures. Other/mixed sYCC precisions, Lab-input profiles,
+multiple-profile ranking and fallback after an unsupported selected transform remain open. This slice
 does not complete R02 or its platform/interaction acceptance gate.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;

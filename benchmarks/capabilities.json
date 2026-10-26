@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "b410d2bcafac55cbe9dbf337dbdbc88144e59ac4",
+  "audited_revision": "0a9f9cb0109d5059350367247212795844a04f7f",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -15,7 +15,7 @@
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
-    "corpus/manifests/paint_jpx.json": "0e02564f96b0bcaa61831f87e83eccdb88d8274155c39daeb4a7fac4c43d13d7",
+    "corpus/manifests/paint_jpx.json": "27e1f741c269b5c31b834e7369344454ea4544b0a3b66d55b930d440b4987b59",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
     "crates/pagura-appearance/src/annotation/border.rs": "4423feb6d972c20fccde3e8ad80ecc7a02540c94db1e2fa268601b29627e96e8",
     "crates/pagura-appearance/src/annotation/tests.rs": "9535a7eca8ad1a1ee5e315e2e7fe6e3a23e4add357db7588a373c10c61d83d0c",
@@ -35,9 +35,13 @@
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
     "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
     "crates/pagura-color/src/cie.rs": "deb733e6356ec3820d84d6035d1255daa51a9c5ee2f458ee31f803227fc73e27",
+    "crates/pagura-color/src/convert/plan.rs": "578155ab12784d5cd17f02bc7704d6309b0c5d9e2d6e73b83238010a9dea75ca",
     "crates/pagura-color/src/features.rs": "d41d21ac1bb7622de6e5fb3a6955d06bfd31ab84af27ac891efc0ac04adb6bd3",
     "crates/pagura-color/src/function/calculator/check.rs": "42eca4b64aa07d0f6a5fec0177bde1890195e7d67625366b5326603198dd493d",
     "crates/pagura-color/src/icc.rs": "01336ed9d679196a914867c014a0d1d4a7f0664a735b006e438d6b9e492a91a7",
+    "crates/pagura-color/src/space.rs": "f2701dff5339c5aa6ff3a05eecae4dfe2e33f8949c5684858664d95348747019",
+    "crates/pagura-color/src/space/retained.rs": "51148ba1ef7ae3f229a1615bb1382d2b1dab8202862a9ceddf3490ff8790f309",
+    "crates/pagura-color/tests/sycc.rs": "825f1a53259a74b71549bfa43a21f50c753b1f7cd34a616623e7404aac9510a7",
     "crates/pagura-core/src/error.rs": "c43b6a9db6cc264930a0fc4639d602fcc5ab39415965b948df2dff5f3b58fe9a",
     "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
@@ -101,7 +105,7 @@
     "crates/pagura-interpret/src/machine/annotations.rs": "258a4b488ab721b2fac962ebd4b7160b927e9a76e7ab0f0ae38f717a158ffade",
     "crates/pagura-interpret/src/machine/extgstate.rs": "b434259c3831d7dab8da80f28507519f1042c501bded4353d96823361b31527f",
     "crates/pagura-interpret/src/machine/form.rs": "c7339375a5c88f8be5fd0f5c20be8fc31eff38d033efd1772bac70940c8fce83",
-    "crates/pagura-interpret/src/machine/image/describe.rs": "18db02c210ee85c79fedb7b9918742b425b4fd7005109d00304f9a7afa0990d3",
+    "crates/pagura-interpret/src/machine/image/describe.rs": "37a614ca83376150926a58dc22c64ad9436e06d1732872e173a1f78166ef35e0",
     "crates/pagura-interpret/src/resources/colorspace.rs": "32856c8bdaa1eb7946140c258ff40ce6229b27172b83f54fca14ef6c4c25d696",
     "crates/pagura-interpret/src/resources/colorspace/icc.rs": "d4ba9361153a5bce6540fd29a9911170b60e60f3c40d7ffc5861c69c11a6d865",
     "crates/pagura-interpret/src/resources/colorspace/tests.rs": "aae316a2aedda94b23aff410d46959c7889f8cf6b5ee7eac6714d123ff8d51b4",
@@ -167,7 +171,7 @@
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
-    "references/requirements/paint.json": "02b49e91535b7d883e574686a260eff477ec3b31c9e8a3b3701a026e80d9c425",
+    "references/requirements/paint.json": "7fb1ae665e860136bd47f46f4ae1c42ec4f20a9946a064252a3d591a33526e47",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
@@ -177,7 +181,7 @@
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "1f8aa18a440def1d51df6be938c4241ae5d9214bb2bf4620f134beb29258118a",
-    "tools/fixturegen/paint_jpx.py": "dbbe91af4ae1c08458f94a39a243c38225b6ed0d8980902eb2804fbbba882328",
+    "tools/fixturegen/paint_jpx.py": "254a0d4a93bcfd174fb415b57ac252a1f4a7760a67c5cb1328fcb98397a2b9d8",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
@@ -640,8 +644,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping; embedded ICC forward profiles use the bounded profile cache and existing colour transforms (Gray/RGB pixel fixtures).",
-      "remaining": "sYCC, Lab-input profiles, multiple-colour precedence and unsupported selected-transform fallback; remaining channel/layout and interaction coverage.",
+      "implemented": "Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping; embedded ICC forward profiles use the bounded cache and existing transforms (Gray/RGB pixel fixtures); eight-bit unsigned sYCC converts through the IEC Annex F matrix with explicit PDF override and alpha fixtures.",
+      "remaining": "Other/mixed sYCC precisions, Lab-input profiles, multiple-colour precedence and unsupported selected-transform fallback; remaining channel/layout and interaction coverage.",
       "sources": [
         "crates/pagura-image/src/jpx_image.rs",
         "crates/pagura-interpret/src/machine/image/describe.rs",
@@ -649,16 +653,21 @@
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-interpret/src/resources/colorspace.rs",
-        "crates/pagura-interpret/src/resources/colorspace/icc.rs"
+        "crates/pagura-interpret/src/resources/colorspace/icc.rs",
+        "crates/pagura-color/src/space.rs",
+        "crates/pagura-color/src/space/retained.rs",
+        "crates/pagura-color/src/convert/plan.rs"
       ],
       "tests": [
         "crates/pagura-interpret/src/resources/colorspace/tests.rs",
-        "tools/fixturegen/paint_jpx.py"
+        "tools/fixturegen/paint_jpx.py",
+        "crates/pagura-color/tests/sycc.rs"
       ],
       "requirements": [
         "jpx-pdf-contract",
         "paint-image-decode",
-        "paint-jpx-icc"
+        "paint-jpx-icc",
+        "paint-jpx-sycc"
       ],
       "fixtures": [
         "paint/image-jpx-icc-explicit",
@@ -671,7 +680,15 @@
         "paint_jpx/straight-alpha",
         "paint_jpx/premultiplied-alpha",
         "paint_jpx/truncated-profile",
-        "paint_jpx/profile-channel-mismatch"
+        "paint_jpx/profile-channel-mismatch",
+        "paint_jpx/sycc-neutral",
+        "paint_jpx/sycc-chroma",
+        "paint_jpx/sycc-gamut",
+        "paint_jpx/sycc-pdf-override",
+        "paint_jpx/sycc-ignores-decode-default",
+        "paint_jpx/sycc-straight-alpha",
+        "paint_jpx/sycc-premultiplied-alpha",
+        "paint_jpx/sycc-16bit-boundary"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -3588,7 +3605,7 @@
       ],
       "review": "gap",
       "capability": "images.jpx-colour",
-      "rationale": "Embedded ICC forward profiles are integrated. sYCC, Lab-input ICC and unsupported component counts remain explicit rendering gaps; device-family mappings already exist.",
+      "rationale": "Embedded ICC forward profiles and eight-bit unsigned sYCC are integrated. Other/mixed sYCC precisions, Lab-input ICC and unsupported component counts remain explicit rendering gaps; device-family mappings already exist.",
       "evidence": [
         {
           "path": "crates/pagura-interpret/src/machine/image/describe.rs",
