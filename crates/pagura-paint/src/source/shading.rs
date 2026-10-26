@@ -286,9 +286,10 @@ impl ShadingSource {
 
     /// Geometry work units filling the pixels of `region` costs at most,
     /// which preparation reserves as render work: for each sample, the mesh
-    /// primitives its cell lists (one unit per triangle, at most `MAX_WORK`
-    /// per patch), at the sample's point as execution places it; zero for
-    /// analytic shadings. Counting stops once it passes `limit`.
+    /// primitives its cell lists (one unit each, and for patches the
+    /// `SAMPLE_WORK` subdivision boxes they share), at the sample's point as
+    /// execution places it; zero for analytic shadings. Counting stops once
+    /// it passes `limit`.
     pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
         let Geometry::Mesh(mesh) = &*self.geometry else {
             return 0;

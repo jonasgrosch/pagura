@@ -124,18 +124,16 @@ impl Mesh {
     }
 
     /// The most geometry work units a sample at `point` costs: one per
-    /// primitive its cell lists, times the most a primitive's test costs,
-    /// and one for an empty cell.
+    /// primitive its cell lists, the subdivision boxes its patches may
+    /// visit together, and one for an empty cell.
     pub(super) fn work_at(&self, point: Point) -> usize {
-        let per_primitive = match self.kind {
-            Kind::Triangles => 1,
-            Kind::Patches => patch::MAX_WORK,
-        };
-        self.grid
-            .cell(point)
-            .len()
-            .saturating_mul(per_primitive)
-            .max(1)
+        let tested = self.grid.cell(point).len();
+        match self.kind {
+            Kind::Triangles => tested,
+            Kind::Patches if tested > 0 => tested.saturating_add(patch::SAMPLE_WORK),
+            Kind::Patches => 0,
+        }
+        .max(1)
     }
 
     /// Bytes the prepared mesh holds.
@@ -148,6 +146,7 @@ impl Mesh {
 
 impl Sampler for Mesh {
     fn sample(&self, point: Point, input: &mut Input) -> bool {
+        let mut work = 0;
         for &index in self.grid.cell(point) {
             let index = index as usize;
             let hit = match self.kind {
@@ -158,7 +157,7 @@ impl Sampler for Mesh {
                 Kind::Patches => self
                     .patches
                     .get(index)
-                    .is_some_and(|p| p.sample(point, self.values, input)),
+                    .is_some_and(|p| p.sample(point, self.values, input, &mut work)),
             };
             if hit {
                 return true;
@@ -403,6 +402,47 @@ mod tests {
         );
         let total: usize = points.iter().map(|&p| mesh.work_at(p)).sum();
         assert!(4 * total < points.len() * mesh.grid.occupancy, "{total}");
+    }
+
+    /// A thin arc of a patch around the origin: a point near the origin lies
+    /// within its bounds but off its surface, so every sample there searches.
+    fn arc() -> Patch {
+        Patch {
+            points: std::array::from_fn(|k| {
+                let (i, j) = (k / 4, k % 4);
+                let angle = std::f64::consts::FRAC_PI_2 * f64::from(u8::try_from(j).unwrap()) / 3.0;
+                let radius = 8.0 + f64::from(u8::try_from(i).unwrap()) / 3.0;
+                Point::new(radius * angle.cos(), radius * angle.sin())
+            }),
+            colors: std::array::from_fn(|_| Components::from_slice(&[0.5])),
+        }
+    }
+
+    #[test]
+    fn a_sample_shares_its_search_boxes_among_its_patches() {
+        let point = Point::new(1.0, 1.0);
+        let mut input = Input::default();
+        let mut one = 0;
+        let alone = Mesh::patches(&[arc()], 1, &mut Meter::new(1 << 20, "mesh test")).unwrap();
+        assert!(!alone.patches[0].sample(point, 1, &mut input, &mut one));
+        assert!(one > 0);
+        // Enough of them that their searches together pass the cap.
+        let count = patch::SAMPLE_WORK / one + 2;
+        let mut bytes = Meter::new(1 << 24, "mesh test");
+        let mesh = Mesh::patches(&vec![arc(); count], 1, &mut bytes).unwrap();
+        let tested = mesh.grid.cell(point);
+        assert_eq!(tested.len(), count);
+        let mut work = 0;
+        for &index in tested {
+            let patch = &mesh.patches[index as usize];
+            assert!(!patch.sample(point, 1, &mut input, &mut work));
+            assert!(work <= patch::SAMPLE_WORK);
+        }
+        assert!(count * one > patch::SAMPLE_WORK);
+        assert_eq!(work, patch::SAMPLE_WORK);
+        assert!(!mesh.sample(point, &mut input));
+        // The reservation covers a unit per patch tested and the shared boxes.
+        assert_eq!(mesh.work_at(point), count + patch::SAMPLE_WORK);
     }
 
     #[test]

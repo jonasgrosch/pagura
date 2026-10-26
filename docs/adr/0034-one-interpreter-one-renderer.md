@@ -172,7 +172,12 @@ creates a new PPM only at its first completed band, after engine preflight;
 unsupported content creates no file and existing files are never overwritten.
 Type 4 calculator programs are validated statically (stack effect and operand
 types per branch); a program that cannot be validated fails in preparation and
-arithmetic faults get defined results. Budgets are per render, so a whole page
+arithmetic faults get defined results. A mesh shading's patch inversion is
+bounded: one patch's subdivision search visits at most 4,096 boxes, and the
+patches a sample's grid cell lists at most 6,144 together, past which a search
+keeps the best root found so far and one started after them finds none.
+Preparation reserves, per sample, one unit of render work per primitive its
+cell lists and, for patches, those 6,144 boxes. Budgets are per render, so a whole page
 can reach a limit that its tiles do not.
 
 ### 8. The Store

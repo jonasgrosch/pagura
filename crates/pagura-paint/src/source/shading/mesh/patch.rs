@@ -8,17 +8,23 @@
 //!
 //! Subdivision stops at parameter boxes narrower than 2⁻²⁴, whose roots are
 //! indistinguishable at component precision: a box whose root Newton's method
-//! cannot resolve there yields its centre. A sample visits at most
-//! [`MAX_WORK`] boxes; past that, it keeps the best root found so far. Both
-//! are defined results where evaluation used to fail.
+//! cannot resolve there yields its centre. A search visits at most
+//! [`MAX_WORK`] boxes, and the searches of one sample at most
+//! [`SAMPLE_WORK`] together; past either, a search keeps the best root found
+//! so far, and one started after the sample's boxes are spent finds none.
+//! Both are defined results where evaluation used to fail.
 
 use super::super::Input;
 use super::Bounds;
 use pagura_core::{Meter, Result};
 use pagura_raster::Point;
 
-/// The most subdivision boxes one sample of one patch visits.
+/// The most subdivision boxes one patch's search visits.
 pub(super) const MAX_WORK: usize = 4096;
+
+/// The most subdivision boxes one sample visits over all the patches it
+/// tests: room for one search to its ceiling after others have missed.
+pub(super) const SAMPLE_WORK: usize = MAX_WORK + MAX_WORK / 2;
 
 #[derive(Debug, Clone)]
 pub(super) struct Patch {
@@ -35,7 +41,9 @@ pub(super) struct Patch {
 struct Search {
     point: Point,
     best: Option<(f64, f64)>,
+    /// The boxes visited, and the most it may visit.
     work: usize,
+    cap: usize,
 }
 
 impl Patch {
@@ -73,7 +81,17 @@ impl Patch {
 
     /// Bilinear interpolation of the corner values at the parameters of
     /// `p`, if the patch covers it.
-    pub(super) fn sample(&self, p: Point, values: usize, out: &mut Input) -> bool {
+    /// Whether the patch covers `p`, with its colour at `p` in `out`. A
+    /// subdivision search adds the boxes it visits to `work`, the sample's
+    /// boxes so far, and stops at [`MAX_WORK`] of its own or when the
+    /// sample's reach [`SAMPLE_WORK`].
+    pub(super) fn sample(
+        &self,
+        p: Point,
+        values: usize,
+        out: &mut Input,
+        work: &mut usize,
+    ) -> bool {
         if !self.bounds.contains(p) {
             return false;
         }
@@ -87,8 +105,10 @@ impl Patch {
                 point: p,
                 best: None,
                 work: 0,
+                cap: MAX_WORK.min(SAMPLE_WORK.saturating_sub(*work)),
             };
             search.run(self.points, [0.0, 0.0, 1.0, 1.0], 0);
+            *work += search.work;
             best = search.best;
         }
         let Some((u, v)) = best else {
@@ -107,7 +127,7 @@ impl Patch {
 
 impl Search {
     fn run(&mut self, points: [Point; 16], r: [f64; 4], depth: usize) {
-        if self.work >= MAX_WORK {
+        if self.work >= self.cap {
             return;
         }
         self.work += 1;
