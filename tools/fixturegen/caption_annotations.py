@@ -92,6 +92,8 @@ def cases():
     yield rendered('utf16',contents=b'<FEFF0049>')
     yield rendered('utf8',contents=b'<EFBBBF49>')
     yield rendered('crlf',contents=b'(I\r\nI)',rows=(('I',14.332,20.134),('I',14.332,5.734)))
+    yield rendered('leading-empty-line',contents=b'(\nI)',rows=(('I',14.332,5.734),))
+    yield rendered('trailing-empty-line',contents=b'(I\n)',rows=(('I',14.332,20.134),))
     yield rendered('empty',contents=b'()',rows=(),regions=FULL)
     for name,extra in [('position-type',b'/CP 42'),('offset-type',b'/CO 42'),('offset-count',b'/CO [0]'),
                        ('offset-number',b'/CO [0 /Bad]')]:

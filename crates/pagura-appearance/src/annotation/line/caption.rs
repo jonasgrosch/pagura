@@ -1,4 +1,4 @@
-//! Plain Line captions, Table 178 and Figures 81–82 (12.5.6.7).
+//! Plain and rich Line captions, Table 178 and Figures 81–82 (12.5.6.7).
 //!
 //! Reader policy uses 12-point Helvetica, 1.2-em leading and two units of
 //! clearance. Lines follow L's direction. Inline text interrupts the body

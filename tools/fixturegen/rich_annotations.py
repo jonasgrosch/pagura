@@ -70,6 +70,9 @@ def cases():
     yield rendered('mixed-size',b'<body><p>A<span style="font-size:20pt">B</span></p></body>',regions=[((6,42,11,49),BLACK),((12,42,22,56),BLACK)])
     yield rendered('line-break',b'<body><p>A<br/>B</p></body>',regions=[ordinary[0],((6,38,11,45),BLACK)])
     yield rendered('paragraphs',b'<body><p>A</p><p>B</p></body>',regions=[ordinary[0],((6,38,11,45),BLACK)])
+    yield rendered('empty-paragraph',b'<body><p>A</p><p/><p>B</p></body>',regions=[ordinary[0],((6,26,11,33),BLACK)])
+    yield rendered('leading-break',b'<body><p><br/>A</p></body>',regions=[((6,38,11,45),BLACK)])
+    yield rendered('paragraph-spacing',b'<body><p style="margin-bottom:4pt">A</p><p>B</p></body>',regions=[ordinary[0],((6,34,11,41),BLACK)])
     yield rendered('center',b'<body><p style="text-align:center">AB</p></body>',regions=[((58,50,63,57),BLACK),((64,50,69,57),BLACK)])
     yield rendered('right',b'<body><p style="text-align:right">AB</p></body>',regions=[((110,50,115,57),BLACK),((116,50,121,57),BLACK)])
     yield rendered('margins',b'<body><p style="margin:2pt 3pt 4pt 5pt">AB</p></body>',regions=[((11,48,16,55),BLACK),((17,48,22,55),BLACK)])
@@ -78,6 +81,14 @@ def cases():
     yield rendered('entities',b'<body><p>A&#32;B</p></body>',regions=[ordinary[0],((18,50,23,57),BLACK)])
     yield rendered('whitespace',b'<body>\n<p>  A\n\t B  </p>\n</body>',regions=[ordinary[0],((18,50,23,57),BLACK)])
     yield rendered('scaled',b'<body><p style="xfa-font-horizontal-scale:150%;xfa-font-vertical-scale:50%">AB</p></body>',regions=[((6,54,13.5,57.5),BLACK),((15,54,22.5,57.5),BLACK)])
+    yield rendered('raised',b'<body><p>A<span style="vertical-align:3pt">B</span></p></body>',regions=[((6,47,11,54),BLACK),((12,50,17,57),BLACK)])
+    yield rendered('underline',b'<body><p style="text-decoration:underline">AB</p></body>',regions=ordinary+[((6,49,18,49.5),BLACK)])
+    yield rendered('default-scale',extra={'DA':b'/F1 10 Tf 150 Tz'},regions=[((6,50,13.5,57),BLACK),((15,50,22.5,57),BLACK)])
+    yield rendered('default-matrix',extra={'DA':b'/F1 10 Tf 1.5 0 0 .5 0 0 Tm'},regions=[((6,54,13.5,57.5),BLACK),((15,54,22.5,57.5),BLACK)])
+    yield rendered('default-word-spacing',b'<body><p>A B</p></body>',extra={'DA':b'/F1 10 Tf 2 Tw'},regions=[ordinary[0],((20,50,25,57),BLACK)])
+    yield rendered('caption',b'<p style="font:10pt F1">AB</p>',shape='Line',regions=[((54,17,59,24),BLACK),((60,17,65,24),BLACK)])
+    yield rendered('caption-color',b'<p style="font:10pt F1;color:#0000ff">AB</p>',shape='Line',ds=42,regions=[((54,17,59,24),BLUE),((60,17,65,24),BLUE)])
+    yield rendered('caption-trailing-break',b'<p style="font:10pt F1">AB<br/></p>',shape='Line',regions=[((54,23,59,30),BLACK),((60,23,65,30),BLACK)])
     yield rendered('opacity',alpha=.25)
     yield rendered('rotation',rotate=90,dpi=144)
     yield rendered('text-stream',streamed=True)
@@ -95,3 +106,5 @@ def cases():
     for label,xml in [('external-entity',b'<!DOCTYPE p><p>AB</p>'),('embedded-object',b'<p><span xfa:embed="other"/></p>'),
                        ('rtl',b'<p dir="rtl">AB</p>'),('unsupported-layout',b'<p style="tab-stops:20pt">AB</p>')]:
         yield Case(label,source(xml),UNSUPPORTED,(REQUIREMENT,),'Unsupported semantics are never silently omitted',feature='annotation.appearance')
+    yield Case('automatic-size',source(extra={'DA':b'/F1 0 Tf'}),UNSUPPORTED,(REQUIREMENT,),
+               'Unimplemented rich automatic sizing fails explicitly rather than selecting an arbitrary size',feature='annotation.appearance')

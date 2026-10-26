@@ -4,12 +4,36 @@ mod encoding;
 
 pub(crate) use encoding::Encoding;
 
-use pagura_core::{Dictionary, Limits, ObjectId, Result};
+use crate::values::optional_dictionary;
+use pagura_core::{Dictionary, Limits, Meter, Name, ObjectId, Result, Value};
 use pagura_document::Document;
 use pagura_text::{PdfFont, Provider};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+
+/// Copies one annotation font from AcroForm DR, or supplies its exact
+/// standard-font dictionary for the caller's explicit font provider.
+pub(crate) fn annotation_resources(
+    document: &Document,
+    name: &[u8],
+    storage: &mut Meter,
+) -> Result<Dictionary> {
+    let mut resources = Dictionary::new();
+    if let Some(form) = optional_dictionary(document, document.catalog()?, b"AcroForm")?
+        && let Some(defaults) = optional_dictionary(document, form, b"DR")?
+        && let Some(fonts) = optional_dictionary(document, defaults, b"Font")?
+        && let Some(font) = fonts.get(name)
+    {
+        storage.charge(font.retained_bytes())?;
+        let mut selected = Dictionary::new();
+        selected.insert(Name::new(name), font.clone());
+        resources.insert(Name::new(b"Font"), Value::Dictionary(selected));
+    }
+    crate::form::supply_font(document, &mut resources, name)?;
+    storage.charge(resources.retained_bytes())?;
+    Ok(resources)
+}
 
 /// Loads the fonts that generated variable text is laid out with.
 ///

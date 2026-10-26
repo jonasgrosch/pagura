@@ -488,6 +488,52 @@
       "tolerance": 1
     },
     {
+      "id": "caption_annotations/leading-empty-line",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/leading-empty-line.pdf",
+      "sha256": "d43c196c5d7e8db0db3e326ae518472f939a67684f72cac68ad16e365d27734b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/leading-empty-line.ppm",
+      "oracle_sha256": "ede1e83a9113005bbcdd6e4910a9fc824df8db0d3e18636cde8dfe7a78ad4113",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/trailing-empty-line",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/trailing-empty-line.pdf",
+      "sha256": "6953cf74e667e0f57dc0314b17f105b1936a786fcefe367dfa1d38ab324e85b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/trailing-empty-line.ppm",
+      "oracle_sha256": "f858448b164cda14ee4e1219e23e11e7a07935a94de47a6eb0456471af6a19bc",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
       "id": "caption_annotations/empty",
       "kind": "pdf",
       "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",

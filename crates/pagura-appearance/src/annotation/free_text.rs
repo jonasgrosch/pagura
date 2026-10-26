@@ -1,4 +1,4 @@
-//! Plain FreeText (12.5.6.6, Table 177) through the shared variable-text layout.
+//! FreeText (12.5.6.6, Table 177) through shared plain and rich text layout.
 //!
 //! Reader policy uses C as the optional background, a black border, two units
 //! of interior padding, whitespace wrapping and the form auto-size/leading
@@ -10,13 +10,13 @@ mod callout;
 use super::border::{Border, inset_bounds};
 use super::cloud;
 use super::marks::{Color, Marks, Pen, Subpath, color};
-use crate::fonts::{Encoding, FontSource};
-use crate::form::{da::DefaultAppearance, layout, layout::TextLayout, supply_font};
+use crate::fonts::{Encoding, FontSource, annotation_resources};
+use crate::form::{da::DefaultAppearance, layout, layout::TextLayout};
 use crate::program::Program;
 use crate::rich;
 use crate::stream::AppearanceStream;
-use crate::values::{optional, optional_dictionary};
-use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result, Value};
+use crate::values::optional;
+use pagura_core::{Dictionary, Error, Meter, Rect, Result, Value};
 use pagura_document::{Document, forms::Justification};
 
 pub(super) fn generate(
@@ -117,7 +117,7 @@ fn paint_text(
             // The fixed reverse map and the shared layout's worst-case vectors.
             storage.charge(256 * 64)?;
             storage.charge_product(text.len().saturating_add(1), 128)?;
-            let resources = resources(document, da.font.as_bytes(), &mut storage)?;
+            let resources = annotation_resources(document, da.font.as_bytes(), &mut storage)?;
             let font = Encoding::load(document, &resources, da.font.as_bytes(), fonts)?;
             let text = TextLayout {
                 text: &text,
@@ -146,23 +146,6 @@ fn paint_text(
         marks.text(&out.finish(), entries, &Color::black())?;
     }
     Ok(())
-}
-
-fn resources(document: &Document, name: &[u8], storage: &mut Meter) -> Result<Dictionary> {
-    let mut resources = Dictionary::new();
-    if let Some(form) = optional_dictionary(document, document.catalog()?, b"AcroForm")?
-        && let Some(defaults) = optional_dictionary(document, form, b"DR")?
-        && let Some(fonts) = optional_dictionary(document, defaults, b"Font")?
-        && let Some(font) = fonts.get(name)
-    {
-        storage.charge(font.retained_bytes())?;
-        let mut selected = Dictionary::new();
-        selected.insert(Name::new(name), font.clone());
-        resources.insert(Name::new(b"Font"), Value::Dictionary(selected));
-    }
-    supply_font(document, &mut resources, name)?;
-    storage.charge(resources.retained_bytes())?;
-    Ok(resources)
 }
 
 fn quadding(document: &Document, annotation: &Dictionary) -> Result<Justification> {

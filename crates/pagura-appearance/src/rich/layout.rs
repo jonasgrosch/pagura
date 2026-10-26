@@ -2,10 +2,9 @@
 
 use super::style::Style;
 use super::xml::Text;
-use crate::fonts::{Encoding, FontSource};
-use crate::form::{da::DefaultAppearance, supply_font};
+use crate::fonts::{Encoding, FontSource, annotation_resources};
+use crate::form::da::DefaultAppearance;
 use crate::program::Program;
-use crate::values::optional_dictionary;
 use pagura_core::{Dictionary, Error, Limits, Meter, Name, Result, Value};
 use pagura_document::{Document, forms::Justification};
 
@@ -69,14 +68,17 @@ pub(super) fn prepare(
         } else {
             font_storage.charge(256 * 64)?;
             work.charge(256)?;
-            let (entry, resources) =
-                font_resources(document, family.as_bytes(), &mut font_storage)?;
+            let resources = annotation_resources(document, family.as_bytes(), &mut font_storage)?;
+            let entry = resources
+                .get(b"Font")
+                .and_then(Value::as_dictionary)
+                .and_then(|fonts| fonts.get(family.as_bytes()))
+                .ok_or(Error::syntax("missing rich text font"))?;
             font_storage.charge(entry.retained_bytes())?;
-            font_storage.charge(resources.retained_bytes())?;
             let encoding = Encoding::load(document, &resources, family.as_bytes(), source)?;
             let index = fonts.len();
             font_storage.reserve_capacity(&mut fonts, 1)?;
-            entries.insert(Name::new(format!("Rich{index}").as_bytes()), entry);
+            entries.insert(Name::new(format!("Rich{index}").as_bytes()), entry.clone());
             fonts.push(Font {
                 family: Name::new(family.as_bytes()),
                 encoding,
@@ -143,6 +145,7 @@ impl Layout {
             top += style.margin[0];
             let (mut start, end) = (paragraph.characters.start, paragraph.characters.end);
             let mut first = true;
+            let mut bottom = top;
             while start < end {
                 let left = style.margin[3] + if first { style.indent } else { 0.0 };
                 let available = width - left - style.margin[1];
@@ -167,21 +170,8 @@ impl Layout {
                     measured = next;
                     stop += 1;
                 }
-                let row = self
-                    .glyphs
-                    .get(start..stop)
-                    .ok_or(Error::syntax("invalid rich text row"))?;
-                let ascent = row.iter().map(|glyph| glyph.ascent).fold(0.0, f64::max);
-                let descent = row.iter().map(|glyph| glyph.descent).fold(0.0, f64::min);
-                let leading = row
-                    .iter()
-                    .map(|glyph| {
-                        let style = &self.text.styles[glyph.style];
-                        style
-                            .leading
-                            .unwrap_or(style.size * 1.2 * style.scale[1] * self.matrix[3])
-                    })
-                    .fold(style.leading.unwrap_or(style.size * 1.2), f64::max);
+                let (ascent, descent, leading) =
+                    self.row_metrics(start, stop.max(start + 1), style);
                 let baseline = top + ascent;
                 let available = if available.is_finite() {
                     available
@@ -201,7 +191,8 @@ impl Layout {
                     x += glyph.advance;
                 }
                 self.width = self.width.max(left + measured + style.margin[1]);
-                self.height = self.height.max(baseline - descent);
+                bottom = baseline - descent;
+                self.height = self.height.max(bottom);
                 top += leading;
                 start = stop;
                 if start < end && self.text.characters[start].value == '\n' {
@@ -216,11 +207,14 @@ impl Layout {
             }
             if first {
                 top += style.leading.unwrap_or(style.size * 1.2);
+                bottom = top;
+            } else if self.text.characters[end - 1].value == '\n' {
+                let (ascent, descent, leading) = self.row_metrics(end - 1, end, style);
+                bottom = top + ascent - descent;
+                top += leading;
             }
             top += style.margin[2];
-            self.height = self
-                .height
-                .max(top - style.leading.unwrap_or(style.size * 1.2) + style.margin[2]);
+            self.height = self.height.max(bottom + style.margin[2]);
         }
         if !self.width.is_finite() || !self.height.is_finite() || !top.is_finite() {
             return Err(Error::limit("rich text layout exceeds numeric range"));
@@ -229,6 +223,25 @@ impl Layout {
             self.align_unbounded(work)?;
         }
         Ok(())
+    }
+
+    fn row_metrics(&self, start: usize, end: usize, paragraph: &Style) -> (f64, f64, f64) {
+        let mut result = (
+            0.0_f64,
+            0.0_f64,
+            paragraph.leading.unwrap_or(paragraph.size * 1.2),
+        );
+        for glyph in &self.glyphs[start..end] {
+            let style = &self.text.styles[glyph.style];
+            result.0 = result.0.max(glyph.ascent);
+            result.1 = result.1.min(glyph.descent);
+            result.2 = result.2.max(
+                style
+                    .leading
+                    .unwrap_or(style.size * 1.2 * style.scale[1] * self.matrix[3]),
+            );
+        }
+        result
     }
 
     fn align_unbounded(&mut self, work: &mut Meter) -> Result<()> {
@@ -325,32 +338,6 @@ impl Layout {
         }
         Ok(())
     }
-}
-
-fn font_resources(
-    document: &Document,
-    name: &[u8],
-    storage: &mut Meter,
-) -> Result<(Value, Dictionary)> {
-    let mut resources = Dictionary::new();
-    if let Some(form) = optional_dictionary(document, document.catalog()?, b"AcroForm")?
-        && let Some(defaults) = optional_dictionary(document, form, b"DR")?
-        && let Some(fonts) = optional_dictionary(document, defaults, b"Font")?
-        && let Some(font) = fonts.get(name)
-    {
-        storage.charge_product(font.retained_bytes(), 2)?;
-        let mut entries = Dictionary::new();
-        entries.insert(Name::new(name), font.clone());
-        resources.insert(Name::new(b"Font"), Value::Dictionary(entries));
-    }
-    supply_font(document, &mut resources, name)?;
-    let entry = resources
-        .get(b"Font")
-        .and_then(Value::as_dictionary)
-        .and_then(|fonts| fonts.get(name))
-        .ok_or(Error::syntax("missing rich text font"))?
-        .clone();
-    Ok((entry, resources))
 }
 
 fn font_name(style: &Style) -> Result<String> {

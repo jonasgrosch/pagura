@@ -137,3 +137,41 @@ fn rich_annotations_use_private_resources_and_ignore_unused_contents() {
         b"Helvetica-Bold"
     );
 }
+
+#[test]
+fn shared_caption_layout_preserves_empty_lines_and_ignores_unrelated_ds() {
+    let document = Document::open(
+        fixture("forms", "text-quadding-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let annotation = Parser::new(
+        b"<< /Subtype /Line /DS 42 >>",
+        Origin::Buffer,
+        Limits::default(),
+    )
+    .parse()
+    .unwrap();
+    let appearance = DefaultAppearance::parse(b"/F1 10 Tf", &document.limits()).unwrap();
+    let fonts = ProviderFonts::new(None, &document.limits());
+    // The project-owned font has literal .8/- .2 em metrics and .6 em advances.
+    for (text, width, height) in [
+        ("A", 6.0, 10.0),
+        ("A\n", 6.0, 22.0),
+        ("\nA", 6.0, 22.0),
+        ("\r\nA\r\n", 6.0, 34.0),
+        ("\n", 0.0, 22.0),
+    ] {
+        let layout = prepare(
+            &document,
+            annotation.as_dictionary().unwrap(),
+            text,
+            &appearance,
+            Justification::Center,
+            f64::INFINITY,
+            &fonts,
+        )
+        .unwrap();
+        assert_eq!((layout.width, layout.height), (width, height), "{text:?}");
+    }
+}

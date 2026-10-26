@@ -57,16 +57,12 @@ impl Effect {
         bounds: Rect,
         width: f64,
     ) -> Result<Outline> {
-        self.polygon(
-            document,
-            &[
-                (bounds.x0(), bounds.y0()),
-                (bounds.x1(), bounds.y0()),
-                (bounds.x1(), bounds.y1()),
-                (bounds.x0(), bounds.y1()),
-            ],
-            width,
-        )
+        Builder::new(document, self.diameter(width)?)?.polygon(&[
+            (bounds.x0(), bounds.y0()),
+            (bounds.x1(), bounds.y0()),
+            (bounds.x1(), bounds.y1()),
+            (bounds.x0(), bounds.y1()),
+        ])
     }
 
     pub(super) fn ellipse(&self, document: &Document, bounds: Rect, width: f64) -> Result<Outline> {
@@ -105,28 +101,25 @@ impl Effect {
         geometry: &Geometry,
         width: f64,
     ) -> Result<Outline> {
+        let mut builder = Builder::new(document, self.diameter(width)?)?;
         match geometry {
-            Geometry::Vertices(points) => self.polygon(document, points, width),
+            Geometry::Vertices(points) => builder.polygon(points),
             Geometry::Operators(commands) => {
                 // Path supersedes Vertices, including curves. Sampling the source
                 // curve is a border-effect design choice, never a renderer path.
                 let mut points = Vec::new();
-                let limits = document.limits();
-                let mut storage =
-                    Meter::new(limits.document_bytes, "cloud source storage exceeded");
-                let mut work = Meter::new(limits.operations, "cloud source work exceeded");
                 let mut current = (0.0, 0.0);
                 for command in commands {
-                    work.charge(1)?;
+                    builder.work.charge(1)?;
                     match *command {
                         PathOperator::Move([x, y]) | PathOperator::Line([x, y]) => {
-                            storage.reserve_capacity(&mut points, 1)?;
+                            builder.storage.reserve_capacity(&mut points, 1)?;
                             current = (x, y);
                             points.push(current);
                         }
                         PathOperator::Cubic([x1, y1, x2, y2, x3, y3]) => {
-                            work.charge(8)?;
-                            storage.reserve_capacity(&mut points, 8)?;
+                            builder.work.charge(8)?;
+                            builder.storage.reserve_capacity(&mut points, 8)?;
                             for index in 1..=8 {
                                 let t = f64::from(index) / 8.0;
                                 let u = 1.0 - t;
@@ -145,34 +138,9 @@ impl Effect {
                         }
                     }
                 }
-                self.polygon(document, &points, width)
+                builder.polygon(&points)
             }
         }
-    }
-
-    fn polygon(&self, document: &Document, points: &[Point], width: f64) -> Result<Outline> {
-        let mut builder = Builder::new(document, self.diameter(width)?)?;
-        let Some(&origin) = points.first() else {
-            return Ok(builder.finish());
-        };
-        let mut area = 0.0;
-        let mut last = origin;
-        for &point in points.iter().skip(1) {
-            builder.work.charge(1)?;
-            area += (last.0 - origin.0) * (point.1 - origin.1)
-                - (last.1 - origin.1) * (point.0 - origin.0);
-            last = point;
-        }
-        if !area.is_finite() {
-            return Err(Error::limit("cloud orientation exceeds numeric range"));
-        }
-        let winding = if area < 0.0 { -1.0 } else { 1.0 };
-        last = origin;
-        for &point in points.iter().skip(1).chain(std::iter::once(&origin)) {
-            builder.edge(last, point, winding)?;
-            last = point;
-        }
-        Ok(builder.finish())
     }
 
     fn diameter(&self, width: f64) -> Result<f64> {
@@ -259,6 +227,30 @@ impl Builder {
             self.commands.push(PathOperator::Cubic(operands));
         }
         Ok(())
+    }
+
+    fn polygon(mut self, points: &[Point]) -> Result<Outline> {
+        let Some(&origin) = points.first() else {
+            return Ok(self.finish());
+        };
+        let mut area = 0.0;
+        let mut last = origin;
+        for &point in points.iter().skip(1) {
+            self.work.charge(1)?;
+            area += (last.0 - origin.0) * (point.1 - origin.1)
+                - (last.1 - origin.1) * (point.0 - origin.0);
+            last = point;
+        }
+        if !area.is_finite() {
+            return Err(Error::limit("cloud orientation exceeds numeric range"));
+        }
+        let winding = if area < 0.0 { -1.0 } else { 1.0 };
+        last = origin;
+        for &point in points.iter().skip(1).chain(std::iter::once(&origin)) {
+            self.edge(last, point, winding)?;
+            last = point;
+        }
+        Ok(self.finish())
     }
 
     fn finish(self) -> Outline {

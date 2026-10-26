@@ -10,7 +10,7 @@ use crate::features;
 use crate::fonts::FontSource;
 use crate::form::da::DefaultAppearance;
 use crate::values::optional;
-use pagura_core::{Diagnostics, Dictionary, Error, Limits, Meter, Result, text_string};
+use pagura_core::{Diagnostics, Dictionary, Error, Limits, Meter, Result, Value, text_string};
 use pagura_document::{Document, forms::Justification};
 use style::Style;
 
@@ -27,7 +27,14 @@ pub(crate) fn prepare(
     fonts: &dyn FontSource,
 ) -> Result<Layout> {
     let rc = optional(document, annotation, b"RC")?;
-    let ds = optional(document, annotation, b"DS")?;
+    let ds = if optional(document, annotation, b"Subtype")?
+        .and_then(Value::as_name)
+        .is_some_and(|name| name.as_bytes() == b"FreeText")
+    {
+        optional(document, annotation, b"DS")?
+    } else {
+        None
+    };
     let limits = document.limits();
     // Source, parsed styles, encoded layout and font/resource state coexist.
     // Each phase gets one quarter of the caller's storage allowance.
