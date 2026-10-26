@@ -137,6 +137,15 @@ impl<'a> Marks<'a> {
         self.content.text("cm\n")
     }
 
+    /// Highlights multiply the existing page colour instead of hiding text.
+    pub(super) fn multiply(&mut self) -> Result<()> {
+        let mut state = Dictionary::new();
+        state.insert(Name::new(b"BM"), Value::name(b"Multiply"));
+        self.states
+            .insert(Name::new(b"HighlightBlend"), Value::Dictionary(state));
+        self.content.text("/HighlightBlend gs\n")
+    }
+
     /// Fills `path` with the nonzero winding rule.
     pub(super) fn fill(&mut self, path: &[Subpath<'_>], color: &Color) -> Result<()> {
         self.opacity(Paint::Fill)?;

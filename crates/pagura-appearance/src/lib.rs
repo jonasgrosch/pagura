@@ -25,6 +25,7 @@ mod fonts;
 mod form;
 pub mod information;
 mod program;
+pub mod repairs;
 mod stream;
 mod values;
 

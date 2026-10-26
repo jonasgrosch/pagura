@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Tag discipline (CONTRIBUTING 3): every tag of this crate is unique, well
 //! formed and in its `appearance.`, `annotation.` or `form.` area.
-use pagura_appearance::{features, information};
+use pagura_appearance::{features, information, repairs};
 
 #[test]
 fn tags_are_unique_and_in_the_appearance_areas() {
@@ -9,6 +9,7 @@ fn tags_are_unique_and_in_the_appearance_areas() {
         .iter()
         .map(|tag| tag.as_str())
         .chain(information::ALL.iter().copied())
+        .chain(repairs::ALL.iter().map(|tag| tag.as_str()))
         .collect();
     for (index, tag) in tags.iter().enumerate() {
         let item = ["appearance.", "annotation.", "form."]

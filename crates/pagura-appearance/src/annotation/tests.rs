@@ -1,3 +1,5 @@
+mod markup;
+
 use super::*;
 use pagura_core::{ErrorKind, Limits, syntax::Origin, syntax::Parser};
 use pagura_document::OpenOptions;

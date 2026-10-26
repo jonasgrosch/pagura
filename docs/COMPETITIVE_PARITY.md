@@ -190,13 +190,19 @@ and 194 pixel disagreements, with Pagura passing all 45 controls. Retained image
 show artwork, border/inset, overlap-opacity and edge-coverage differences; these
 are observations for adjudication, not competitor defect or family-parity claims.
 
-The next annotation probe increment expands the shared manifest to 90 oracles
+The annotation probe increment expands the shared manifest to 90 oracles
 and 630 engine/case cells. Forty-two new observations cover Polygon/Path geometry,
 straight Line controls, every non-None ending for Line and PolyLine, signed leaders
 and plain captions. Caption comparisons retain the pinned AFM/Arimo identities
 for Pagura and each other reader's default font/artwork policy. Existing oracle
-bytes and tolerances are unchanged. Hosted execution is pending; font/layout and
-API-layer differences require adjudication before capability conclusions.
+bytes and tolerances are unchanged.
+[Run 40303222645](https://github.com/jonasgrosch/pagura/actions/runs/40303222645),
+measured merge revision `a89009ce9dcc1e18f499860dc76f9743875e38eb`, records
+183 passes and 447 pixel disagreements, with all 90 Pagura controls passing.
+The combined report artifact is `12641214395`, SHA-256
+`922ed9d218fb7a9e3b45e4c2f00daf61f7b33360d4f2cc3f62aaf95d0ffea9d2`.
+Font/layout and API-layer differences still require adjudication before capability
+conclusions. These source-revision measurements do not validate later changes.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
@@ -381,14 +387,18 @@ that reach an original endpoint; native/WASI/client, partial-tile and viewer che
 [run 40293996890](https://github.com/jonasgrosch/pagura/actions/runs/40293996890).
 The 48-case G01 report passes all Pagura controls at that revision; the four
 144-dpi seam pixels are now within one level of the independent oracle.
-Additional ignored-legacy controls await their own hosted validation.
+The ignored-legacy controls and all platform suites pass at `c84952094`;
+[run 40298054028](https://github.com/jonasgrosch/pagura/actions/runs/40298054028)
+records the native/WASI/client and viewer validation.
 
 **Straight Line appearances implemented:** required finite L coordinates resolve
 indirectly and validate before empty output. C, CA and BS width/dash use the
 existing bounded mark builder and annotation clip; absent/null/None endings and
 zero/null leaders are accepted. The initial 41 controls include 22 independent
 pixel expectations for two resolutions, dashes, diagonals, rotation, clipping,
-opacity, indirection and stored appearance precedence. Hosted validation is pending.
+opacity, indirection and stored appearance precedence. All 12 hosted checks pass
+at `0e8cf8e05`, including native/WASI/client and viewer pixels in
+[run 40298058062](https://github.com/jonasgrosch/pagura/actions/runs/40298058062).
 The increments below add standard endings and leaders; plain captions are
 implemented below. The existing corpus now contains 27 independent pixel expectations.
 
@@ -401,7 +411,9 @@ and bounded content handle zero-width/transparent cases without allocating path
 collections. Fifty-one controls contain 47 independent pixel expectations from
 analytic offset polygons and exact disk areas at two resolutions; they cover both
 subtypes, mixed styles, direction, rotation, clipping, opacity, indirection and
-straight-cubic Path endpoints. Hosted validation is pending. The existing Line
+straight-cubic Path endpoints. All 12 hosted checks pass at `6517b1a57`,
+including native/WASI/client and viewer pixels in
+[run 40298015653](https://github.com/jonasgrosch/pagura/actions/runs/40298015653). The existing Line
 arrow and zero-width PolyLine arrow controls now render without PDF byte changes.
 
 **Line leaders implemented:** signed LL, nonnegative LLO and LLE translate the
@@ -413,7 +425,10 @@ leaders share one stroke, opacity and dash pattern. Twenty-seven controls contai
 21 literal rectangle-union pixel expectations, covering both signs, vertical and
 reversed direction, rotation, clipping, coincident endpoints, dashes, opacity,
 indirection and ending integration. Numeric overflow and content-budget controls
-are also registered. Hosted validation is pending; diagonal interactions still need further evidence. The three former leader refusals now
+are also registered. Hosted native/WASI/client and viewer checks pass at
+`e746f5e55` in [run 40302043210](https://github.com/jonasgrosch/pagura/actions/runs/40302043210);
+the remaining platform suites are running. Diagonal interactions still need
+further evidence. The three former leader refusals now
 render with unchanged PDF bytes.
 
 **Plain Line captions implemented:** Cap/Contents, Inline/Top positioning and CO
@@ -445,11 +460,27 @@ and malformed data. Native/WASI/client, partial-tile and viewer checks pass at
 `0e2c68e0e` in [run 40289812941](https://github.com/jonasgrosch/pagura/actions/runs/40289812941).
 Two further controls check ignored malformed and cyclic Vertices under the
 current Table 181 errata, bringing the corpus to 47 controls / 30 pixel oracles with the ending increment;
-their hosted validation is pending. Standard endings are now implemented above;
+their hosted native/WASI/client and viewer checks pass at `6517b1a57`.
+Standard endings are now implemented above;
 cloudy borders remain an explicit gap.
 
-Complete missing normal appearances for FreeText, text markup, Line,
-Stamp, Caret and other ledger subtypes;
+**Text markup implemented:** Highlight, Underline, StrikeOut and Squiggly use
+finite counterclockwise QuadPoints with indirect arrays/numbers and the first
+edge as the text direction. Reader artwork policy fills Highlight with Multiply,
+uses a bottom 1/12-height underline, a centred 1/12-height strikeout and a
+1/24-height zigzag ribbon. Quads share a single nonzero fill, preserving union
+opacity; C and ca (else CA) apply under the original annotation clip. Geometry,
+work, temporary storage and output are bounded before empty-color suppression.
+The common alternate TL/TR/BL/BR order uses the explicit `annotation.quad-order`
+repair; Strict rendering refuses it. Stored appearances retain precedence.
+Forty-one controls include 33 independent pixel expectations from literal polygons,
+rational winding/clip integration and blend equations. They cover two resolutions,
+vertical/skewed geometry, rotation, overlap, disjoint quads, opacity, underlying
+black/cyan page content, indirection, stored precedence and malformed values.
+Strict/repair and numeric/resource bounds are also registered. Hosted validation
+and competitor probes for this new subset are pending.
+
+Complete missing normal appearances for FreeText, Stamp, Caret and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.

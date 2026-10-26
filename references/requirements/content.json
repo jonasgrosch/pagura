@@ -1244,6 +1244,63 @@
         "caption_annotations/unmapped"
       ],
       "gaps": "Rich text, complex-script/bidi shaping, broader font selection and characters outside the reversible WinAnsi map remain explicit gaps. Exact pixel controls independently read AFM advances and straight contours from the pinned Arimo substitute; they establish the documented reader policy, not identical competitor artwork."
+    },
+    {
+      "id": "content-text-markup",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.10 Table 182",
+        "11.3.5"
+      ],
+      "rule": "Generate Highlight, Underline, StrikeOut and Squiggly from finite, convex counterclockwise QuadPoints, resolving indirect arrays and numbers. The first edge defines the text direction. Reader artwork policy fills Highlight quads with Multiply, uses a bottom 1/12-height underline, a centred 1/12-height strikeout and a 1/24-height zigzag ribbon with alternating peaks 1/12 apart and horizontal steps at most height/6. All quads share one nonzero fill, so their overlap does not reapply opacity. C and ca (else CA) style the generated marks under the original annotation BBox. Absent C defaults to yellow for Highlight and black for the other subtypes. Geometry, work, temporary storage and content remain bounded before empty-color suppression. Stored appearances retain precedence. Top-left/top-right/bottom-left/bottom-right QuadPoints are reordered only under reported annotation.quad-order recovery; Strict rendering refuses that repair.",
+      "status": "implemented with 41 authored controls and 33 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::markup::alternate_markup_quad_order_is_reported_and_strict_mode_refuses_it",
+        "pagura-appearance annotation::tests::markup::markup_geometry_validates_numeric_range_before_empty_color",
+        "pagura-appearance annotation::tests::markup::markup_bounds_quads_wave_segments_storage_and_output",
+        "markup_annotations/highlight-72",
+        "markup_annotations/highlight-144",
+        "markup_annotations/highlight-alternate",
+        "markup_annotations/highlight-vertical",
+        "markup_annotations/underline-72",
+        "markup_annotations/underline-144",
+        "markup_annotations/underline-alternate",
+        "markup_annotations/underline-vertical",
+        "markup_annotations/strikeout-72",
+        "markup_annotations/strikeout-144",
+        "markup_annotations/strikeout-alternate",
+        "markup_annotations/strikeout-vertical",
+        "markup_annotations/squiggly-72",
+        "markup_annotations/squiggly-144",
+        "markup_annotations/squiggly-alternate",
+        "markup_annotations/squiggly-vertical",
+        "markup_annotations/multiply-black",
+        "markup_annotations/multiply-cyan",
+        "markup_annotations/multiply-opacity",
+        "markup_annotations/separate-opacity",
+        "markup_annotations/underline-opacity",
+        "markup_annotations/strikeout-color",
+        "markup_annotations/squiggly-clipped",
+        "markup_annotations/rotated",
+        "markup_annotations/skewed",
+        "markup_annotations/skewed-underline",
+        "markup_annotations/overlap",
+        "markup_annotations/disjoint",
+        "markup_annotations/no-color",
+        "markup_annotations/zero-opacity",
+        "markup_annotations/zero-area",
+        "markup_annotations/indirect",
+        "markup_annotations/stored-ignores-geometry",
+        "markup_annotations/missing",
+        "markup_annotations/null",
+        "markup_annotations/type",
+        "markup_annotations/empty",
+        "markup_annotations/short",
+        "markup_annotations/number",
+        "markup_annotations/clockwise",
+        "markup_annotations/concave"
+      ],
+      "gaps": "Exact artwork dimensions are reader policy. Broader malformed-quad compatibility and competitor comparison of this new subset still require evidence. Strict-open fixture metadata only describes opening; a separate unit check establishes Strict rendering refusal of alternate quad order."
     }
   ]
 }
