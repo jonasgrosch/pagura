@@ -467,6 +467,21 @@ impl Header {
         if self.palette.is_some() != self.mapping.is_some() {
             return Err(syntax("JP2 palette and mapping disagree", 0));
         }
+        if self.palette.is_none() {
+            // The raw index and opacity are already distinct channels.
+            // Keep cdef so apply_channels can validate and reorder them.
+            return Ok(());
+        }
+        if self
+            .channels
+            .as_ref()
+            .is_some_and(|channels| channels.iter().any(|&(_, kind, _)| matches!(kind, 1 | 2)))
+        {
+            return Err(Error::unsupported(
+                crate::features::JPX_SAMPLE_LAYOUT,
+                "Indexed JPX container-palette opacity requires channel mapping",
+            ));
+        }
         self.palette = None;
         self.mapping = None;
         self.channels = None;

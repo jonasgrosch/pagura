@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `53777a6e5ca598b4252c35b3f8fa92cb0566cf98`. G00 source inventory is complete for this revision.
+Source audit: `847fb26f0616e8b70bec76883880c78cbc47915d`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
@@ -29,8 +29,8 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
 | `fonts.cid-substitution` / R04 | CID font substitution | partial / partial / partial / partial | Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. | Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. |
 | `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. | Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures. |
-| `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication. | Indexed opacity/channel mapping and additional colour/layout interactions are separate remaining R02 work. |
-| `images.jpx-colour` / R02 | JPX embedded colour interpretation | partial / partial / partial / partial | Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping. | Embedded ICC/sYCC and remaining precedence/channel-layout integration. |
+| `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication; explicit PDF Indexed spaces retain direct index/opacity channels without a container palette, including first/last opacity order. | Opacity combined with an explicit PDF Indexed space and a JPX container palette still requires channel mapping; broader colour/layout interactions remain R02 work. |
+| `images.jpx-colour` / R02 | JPX embedded colour interpretation | partial / partial / partial / partial | Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping; embedded ICC forward profiles use the bounded cache and existing transforms (Gray/RGB pixel fixtures); eight-bit unsigned sYCC converts through the IEC Annex F matrix with explicit PDF override and alpha fixtures. | Other/mixed sYCC precisions, Lab-input profiles, multiple-colour precedence and unsupported selected-transform fallback; remaining channel/layout and interaction coverage. |
 | `colour.transparency` / R05 | Group colour, transparency and overprint | partial / partial / partial / partial | Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display. | Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations. |
 | `render.graphics` / R06 | Graphics combinations and exact rendering | partial / partial / partial / partial | One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns. | Singular-transform/pattern compatibility cases and independent accuracy evidence for difficult geometry. |
 | `annotations.appearances` / V01 | Annotation appearance synthesis | partial / partial / partial / partial | Stored appearances, Link/Square borders, Text icons and supported empty widgets. | Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 332 registered requirement IDs map to capability rows in the ledger.
+All 335 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery
@@ -154,7 +154,7 @@ uses, aliases and helper calls; the checker verifies locators and hashes, not re
 | `function.calculator` / gap | `colour.transparency` | The static calculator checker rejects data-dependent stack effects, unequal branch depths/types and mixed dynamic roll; valid programs outside this bounded subset need probes. [check.rs](../crates/pagura-color/src/function/calculator/check.rs) |
 | `graphics.singular-stroke` / boundary | `render.graphics` | A noninvertible stroke transform cannot be planned. Degenerate-input semantics need a focused oracle; do not count all strokes as missing. [marks.rs](../crates/pagura-paint/src/prepare/planner/marks.rs) |
 | `image.JPX-colour` / gap | `images.jpx-colour` | Additional enumerated JPX colour spaces remain unsupported; recognized device-family mappings exist. [jpx_image.rs](../crates/pagura-image/src/jpx_image.rs) |
-| `image.JPX-sample-layout` / mixed | `images.jpx-alpha` | Indexed opacity/channel mapping and samples beyond 16 bits are real representation limits; incomplete association rejection is a separate defensive boundary. [jpx_channels.rs](../crates/pagura-image/src/jpx_channels.rs), [jpx_image.rs](../crates/pagura-image/src/jpx_image.rs) |
+| `image.JPX-sample-layout` / mixed | `images.jpx-alpha` | Direct PDF Indexed index/opacity channels are integrated. Container-palette opacity/channel mapping and samples beyond 16 bits remain representation limits; incomplete association rejection is a separate defensive boundary. [jpx_channels.rs](../crates/pagura-image/src/jpx_channels.rs), [jpx_image.rs](../crates/pagura-image/src/jpx_image.rs), [boxes.rs](../crates/pagura-image/src/jpx/boxes.rs) |
 | `image.embedded-alpha` / dormant | `images.jpx-alpha` | Retained declaration has no live refusal caller. SMaskInData 1/2 support exists; remaining layouts are tracked by JPX-sample-layout and decoder refusals. [features.rs](../crates/pagura-image/src/features.rs) |
 | `image.inline-colour-length` / boundary | `images.codecs` | The low-level inline-length helper cannot resolve a resource colour-space name by itself; callers can supply Length or resolved resources. Probe the end-to-end case before treating this API boundary as a render gap. [inline.rs](../crates/pagura-image/src/inline.rs) |
 | `jbig2.extended-template` / gap | `images.codecs` | Extended adaptive templates from the amendments are explicitly refused. [generic.rs](../crates/pagura-image/src/jbig2/generic.rs) |
@@ -202,5 +202,5 @@ uses, aliases and helper calls; the checker verifies locators and hashes, not re
 | `transparency.group` / boundary | `colour.transparency` | Unknown group subtypes refuse; standard Transparency groups are implemented. [group.rs](../crates/pagura-interpret/src/resources/group.rs) |
 | `transparency.group-colorspace` / gap | `colour.transparency` | Device families and ICC fallback are supported; calibrated/Lab-input and inverse destination ICC transforms remain missing. [group.rs](../crates/pagura-interpret/src/resources/group.rs) |
 | `transparency.transfer` / gap | `colour.transparency` | Fractional correlated coverage and per-colourant/pattern transfer-region selection remain unsupported. [finish.rs](../crates/pagura-paint/src/prepare/finish.rs), [marks.rs](../crates/pagura-paint/src/prepare/planner/marks.rs) |
-| `xobject.jpx-color` / gap | `images.jpx-colour` | Embedded JPX ICC/sYCC interpretation is not connected to rendering; device-family mappings already exist. [describe.rs](../crates/pagura-interpret/src/machine/image/describe.rs) |
+| `xobject.jpx-color` / gap | `images.jpx-colour` | Embedded ICC forward profiles and eight-bit unsigned sYCC are integrated. Other/mixed sYCC precisions, Lab-input ICC and unsupported component counts remain explicit rendering gaps; device-family mappings already exist. [describe.rs](../crates/pagura-interpret/src/machine/image/describe.rs), [colorspace.rs](../crates/pagura-interpret/src/resources/colorspace.rs) |
 | `xobject.subtype` / mixed | `render.graphics` | Form/Image paths exist; unknown or historical XObject subtypes refuse. Compare any valid baseline-supported PostScript XObject behavior separately from malformed subtype values. [form.rs](../crates/pagura-interpret/src/machine/form.rs) |

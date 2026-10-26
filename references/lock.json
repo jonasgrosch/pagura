@@ -1747,6 +1747,21 @@
       "sha256": "c5c3015eaf896ac564e94322f1b8b6fc965d2fc0149a3a6482821df4ec6fbaf9",
       "cache_path": ".cache/references/signatures/rfc/rfc8933.pdf",
       "bytes": 125832
+    },
+    {
+      "id": "iec-sycc-amendment-preview",
+      "title": "IEC 61966-2-1:1999/AMD1:2003 publisher preview, Annex F sYCC",
+      "kind": "format-standard",
+      "used_by": "color, paint_jpx",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://preview.sist.si/sist-preview/10795/ae461684569b40bbbb2d9a22b1047f05/IEC-61966-2-1-1999-AMD1-2003.pdf",
+      "resolved_url": "https://preview.sist.si/sist-preview/10795/ae461684569b40bbbb2d9a22b1047f05/IEC-61966-2-1-1999-AMD1-2003.pdf",
+      "sha256": "996996d757506d0d30ee4c1dad89c4fc4878b69dd91afb7a39bff497a4541831",
+      "bytes": 678308,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/996996d757506d0d30ee4c1dad89c4fc4878b69dd91afb7a39bff497a4541831.pdf",
+      "retrieved_at": "2026-10-26T01:31:19.367300+00:00"
     }
   ]
 }

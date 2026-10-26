@@ -7,7 +7,7 @@ Normative reference entries indexed: 82.
 | Status | Resources |
 |---|---:|
 | acquired-separately | 12 |
-| cached | 84 |
+| cached | 85 |
 | indexed-only | 48 |
 | locally-supplied | 10 |
 | unavailable | 8 |
