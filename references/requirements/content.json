@@ -1682,6 +1682,9 @@
         "rich_annotations/span-color",
         "rich_annotations/inheritance",
         "rich_annotations/default-style",
+        "rich_annotations/raw-font-plain",
+        "rich_annotations/raw-font-rich",
+        "rich_annotations/raw-font-default-style",
         "rich_annotations/mixed-size",
         "rich_annotations/line-break",
         "rich_annotations/paragraphs",
@@ -1692,6 +1695,10 @@
         "rich_annotations/right",
         "rich_annotations/margins",
         "rich_annotations/spacing",
+        "rich_annotations/space-relative-spacing",
+        "rich_annotations/negative-relative-spacing",
+        "rich_annotations/space-relative-size-order",
+        "rich_annotations/em-relative-size-order",
         "rich_annotations/wrap",
         "rich_annotations/entities",
         "rich_annotations/whitespace",
@@ -1731,10 +1738,15 @@
         "rich_annotations/embedded-object",
         "rich_annotations/rtl",
         "rich_annotations/unsupported-layout",
+        "rich_annotations/relative-margin",
+        "rich_annotations/relative-indent",
+        "rich_annotations/unitless-leading",
+        "rich_annotations/unitless-shorthand-leading",
+        "rich_annotations/adjacent-margins",
         "rich_annotations/automatic-size",
         "rich_annotations/invalid-stream-utf16"
       ],
-      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
+      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Relative or nonzero unitless paragraph measurements and adjoining nonzero paragraph margins are explicitly refused until independently validated. Absolute paragraph measurements use pt/in/cm/mm; relative letter spacing resolves em and percent against the final font metrics, with percent based on the space advance. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
     }
   ]
 }

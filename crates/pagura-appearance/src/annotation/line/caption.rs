@@ -49,19 +49,14 @@ impl Caption {
             document.limits().document_bytes,
             "caption storage budget exceeded",
         );
-        let text = if optional(document, annotation, b"RC")?.is_some() {
-            String::new()
-        } else {
-            rich::contents(document, annotation, &mut storage)?
-        };
         let text = rich::prepare(
             document,
             annotation,
-            &text,
             &appearance,
             Justification::Center,
             f64::INFINITY,
             fonts,
+            &mut storage,
         )?;
         if text.fonts.is_empty() {
             return Ok(None);

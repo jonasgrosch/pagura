@@ -1,11 +1,11 @@
 //! Inherited XFA 3.3 chapter 27 character and paragraph properties.
 
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Name, Result};
 use pagura_document::forms::Justification;
 
 #[derive(Clone, Debug)]
 pub(super) struct Style {
-    pub(super) family: String,
+    pub(super) family: Name,
     pub(super) size: f64,
     pub(super) bold: bool,
     pub(super) italic: bool,
@@ -13,7 +13,7 @@ pub(super) struct Style {
     pub(super) rise: f64,
     pub(super) scale: [f64; 2],
     pub(super) leading: Option<f64>,
-    pub(super) spacing: f64,
+    pub(super) spacing: Spacing,
     pub(super) decoration: u8,
     pub(super) alignment: Justification,
     pub(super) margin: [f64; 4],
@@ -21,8 +21,15 @@ pub(super) struct Style {
     pub(super) preserve: bool,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Spacing {
+    Absolute(f64),
+    Em(f64),
+    Space(f64),
+}
+
 impl Style {
-    pub(super) fn new(family: String, size: f64, alignment: Justification) -> Self {
+    pub(super) fn new(family: Name, size: f64, alignment: Justification) -> Self {
         Self {
             family,
             size,
@@ -32,7 +39,7 @@ impl Style {
             rise: 0.0,
             scale: [1.0; 2],
             leading: None,
-            spacing: 0.0,
+            spacing: Spacing::Absolute(0.0),
             decoration: 0,
             alignment,
             margin: [0.0; 4],
@@ -82,14 +89,18 @@ impl Style {
                     self.leading = if value == "normal" {
                         None
                     } else {
-                        Some(nonnegative(length(value, self.size)?)?)
+                        Some(nonnegative(paragraph_length(value)?)?)
                     }
                 }
                 "letter-spacing" => {
                     self.spacing = if value == "normal" {
-                        0.0
+                        Spacing::Absolute(0.0)
+                    } else if value.ends_with('%') {
+                        Spacing::Space(length(value, 1.0)?)
+                    } else if value.ends_with("em") {
+                        Spacing::Em(length(value, 1.0)?)
                     } else {
-                        length(value, self.size)?
+                        Spacing::Absolute(length(value, self.size)?)
                     }
                 }
                 "text-decoration" => self.decoration = decoration(value)?,
@@ -102,12 +113,12 @@ impl Style {
                         _ => return Err(Error::syntax("invalid rich text whitespace mode")),
                     }
                 }
-                "margin-top" => self.margin[0] = length(value, self.size)?,
-                "margin-right" => self.margin[1] = length(value, self.size)?,
-                "margin-bottom" => self.margin[2] = length(value, self.size)?,
-                "margin-left" => self.margin[3] = length(value, self.size)?,
+                "margin-top" => self.margin[0] = paragraph_length(value)?,
+                "margin-right" => self.margin[1] = paragraph_length(value)?,
+                "margin-bottom" => self.margin[2] = paragraph_length(value)?,
+                "margin-left" => self.margin[3] = paragraph_length(value)?,
                 "margin" => self.margins(value)?,
-                "text-indent" => self.indent = length(value, self.size)?,
+                "text-indent" => self.indent = paragraph_length(value)?,
                 // These are valid XFA formatting properties whose effect cannot
                 // be approximated by dropping them. Unknown CSS is ignored as XFA
                 // requires; supported vocabulary with missing semantics is explicit.
@@ -131,7 +142,7 @@ impl Style {
             let slot = values
                 .get_mut(count)
                 .ok_or(Error::syntax("too many rich text margins"))?;
-            *slot = length(part, self.size)?;
+            *slot = paragraph_length(part)?;
             count += 1;
         }
         self.margin = match count {
@@ -177,14 +188,14 @@ impl Style {
                 return Err(Error::syntax("rich text font size must be positive"));
             }
             self.leading = leading
-                .map(|value| length(value, self.size).and_then(nonnegative))
+                .map(|value| paragraph_length(value).and_then(nonnegative))
                 .transpose()?;
             if rest.starts_with('/') {
                 let (leading, family) = rest[1..]
                     .trim_start()
                     .split_once(char::is_whitespace)
                     .ok_or(Error::syntax("incomplete rich text font shorthand"))?;
-                self.leading = Some(nonnegative(length(leading, self.size)?)?);
+                self.leading = Some(nonnegative(paragraph_length(leading)?)?);
                 rest = family.trim_start();
             }
             self.family = family(rest)?;
@@ -193,7 +204,20 @@ impl Style {
     }
 }
 
-fn family(value: &str) -> Result<String> {
+fn paragraph_length(value: &str) -> Result<f64> {
+    if !["pt", "in", "cm", "mm"]
+        .iter()
+        .any(|unit| value.ends_with(unit))
+        && value.parse::<f64>().ok() != Some(0.0)
+    {
+        return Err(super::unsupported(
+            "relative or unitless paragraph measurements are unavailable",
+        ));
+    }
+    length(value, 1.0)
+}
+
+fn family(value: &str) -> Result<Name> {
     let value = value.trim();
     if value.contains(',') {
         return Err(super::unsupported(
@@ -212,7 +236,7 @@ fn family(value: &str) -> Result<String> {
     if value.is_empty() {
         return Err(Error::syntax("empty rich text font family"));
     }
-    Ok(value.to_owned())
+    Ok(Name::new(value.as_bytes()))
 }
 
 fn weight(value: &str) -> Result<bool> {

@@ -1,11 +1,11 @@
 //! Positioned rich-text glyphs, sharing the reversible PDF font encoder.
 
-use super::style::Style;
+use super::style::{Spacing, Style};
 use super::xml::Text;
 use crate::fonts::{Encoding, FontSource, annotation_resources};
 use crate::form::da::DefaultAppearance;
 use crate::program::Program;
-use pagura_core::{Dictionary, Error, Limits, Meter, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, Name, Result, Value};
 use pagura_document::{Document, forms::Justification};
 
 pub(crate) struct Layout {
@@ -42,11 +42,9 @@ pub(super) fn prepare(
     appearance: &DefaultAppearance,
     width: f64,
     source: &dyn FontSource,
-    limits: &Limits,
+    storage: &mut Meter,
     work: &mut Meter,
 ) -> Result<Layout> {
-    let mut storage = Meter::new(limits.document_bytes, "rich text layout storage exceeded");
-    let mut font_storage = Meter::new(limits.document_bytes, "rich text font storage exceeded");
     let mut fonts: Vec<Font> = Vec::new();
     let mut entries = Dictionary::new();
     let mut glyphs = Vec::new();
@@ -67,23 +65,21 @@ pub(super) fn prepare(
         {
             index
         } else {
-            font_storage.charge(256 * 64)?;
+            storage.charge(256 * 64)?;
             work.charge(256)?;
-            let resources = annotation_resources(document, family.as_bytes(), &mut font_storage)?;
+            let resources = annotation_resources(document, family.as_bytes(), storage)?;
             let entry = resources
                 .get(b"Font")
                 .and_then(Value::as_dictionary)
                 .and_then(|fonts| fonts.get(family.as_bytes()))
                 .ok_or(Error::syntax("missing rich text font"))?;
-            font_storage.charge(entry.retained_bytes())?;
+            storage.charge(entry.retained_bytes())?;
             let encoding = Encoding::load(document, &resources, family.as_bytes(), source)?;
             let index = fonts.len();
-            font_storage.reserve_capacity(&mut fonts, 1)?;
+            storage.reserve_capacity(&mut fonts, 1)?;
+            storage.charge(family.heap_bytes())?;
             entries.insert(Name::new(format!("Rich{index}").as_bytes()), entry.clone());
-            fonts.push(Font {
-                family: Name::new(family.as_bytes()),
-                encoding,
-            });
+            fonts.push(Font { family, encoding });
             index
         };
         let encoding = &fonts[index].encoding;
@@ -98,7 +94,12 @@ pub(super) fn prepare(
         } else {
             0.0
         };
-        let advance = (code.advance * style.size + style.spacing + word_space)
+        let spacing = match style.spacing {
+            Spacing::Absolute(value) => value,
+            Spacing::Em(value) => value * style.size,
+            Spacing::Space(value) => value * encoding.encode(' ')?.advance * style.size,
+        };
+        let advance = (code.advance * style.size + spacing + word_space)
             * style.scale[0]
             * appearance.scale
             * appearance.matrix[0];
@@ -142,8 +143,15 @@ pub(super) fn prepare(
 impl Layout {
     fn position(&mut self, width: f64, work: &mut Meter) -> Result<()> {
         let mut top = 0.0;
+        let mut previous_bottom = 0.0;
         for paragraph in &self.text.paragraphs {
             let style = &self.text.styles[paragraph.style];
+            if previous_bottom != 0.0 && style.margin[0] != 0.0 {
+                return Err(super::unsupported(
+                    "adjacent rich paragraph margins are unavailable",
+                ));
+            }
+            previous_bottom = style.margin[2];
             top += style.margin[0];
             let (mut start, end) = (paragraph.characters.start, paragraph.characters.end);
             let mut first = true;
@@ -342,11 +350,11 @@ impl Layout {
     }
 }
 
-fn font_name(style: &Style) -> Result<String> {
-    let (base, bold, italic) = match style.family.as_str() {
-        "sans-serif" | "Arial" | "Helvetica" => ("Helvetica", "Bold", "Oblique"),
-        "serif" | "Times" | "Times New Roman" | "Times-Roman" => ("Times", "Bold", "Italic"),
-        "monospace" | "Courier New" | "Courier" => ("Courier", "Bold", "Oblique"),
+fn font_name(style: &Style) -> Result<Name> {
+    let (base, bold, italic) = match style.family.as_bytes() {
+        b"sans-serif" | b"Arial" | b"Helvetica" => ("Helvetica", "Bold", "Oblique"),
+        b"serif" | b"Times" | b"Times New Roman" | b"Times-Roman" => ("Times", "Bold", "Italic"),
+        b"monospace" | b"Courier New" | b"Courier" => ("Courier", "Bold", "Oblique"),
         _ => {
             if style.bold || style.italic {
                 return Err(super::unsupported(
@@ -356,7 +364,7 @@ fn font_name(style: &Style) -> Result<String> {
             return Ok(style.family.clone());
         }
     };
-    Ok(match (style.bold, style.italic) {
+    let name = match (style.bold, style.italic) {
         (true, true) => format!("{base}-{bold}{italic}"),
         (true, false) => format!("{base}-{bold}"),
         (false, true) => format!("{base}-{italic}"),
@@ -367,5 +375,6 @@ fn font_name(style: &Style) -> Result<String> {
                 base.into()
             }
         }
-    })
+    };
+    Ok(Name::new(name.as_bytes()))
 }

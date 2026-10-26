@@ -31,7 +31,7 @@ struct Reader<'a, 'm> {
     work: &'m mut Meter,
     text: Text,
     stack: Vec<Frame<'a>>,
-    storage: Meter,
+    storage: &'m mut Meter,
     nodes: Meter,
     depth: usize,
     start: usize,
@@ -46,8 +46,9 @@ impl Text {
         base: Style,
         limits: &Limits,
         work: &mut Meter,
+        storage: &mut Meter,
     ) -> Result<Self> {
-        let mut reader = Reader::new(base, limits, work)?;
+        let mut reader = Reader::new(base, limits, work, storage)?;
         let mut rest = source.trim_start_matches('\u{feff}');
         while !rest.is_empty() {
             if let Some(tail) = rest.strip_prefix("<!--") {
@@ -116,8 +117,9 @@ impl Text {
         base: Style,
         limits: &Limits,
         work: &mut Meter,
+        storage: &mut Meter,
     ) -> Result<Self> {
-        let mut reader = Reader::new(base, limits, work)?;
+        let mut reader = Reader::new(base, limits, work, storage)?;
         reader.storage.reserve_capacity(&mut reader.stack, 1)?;
         reader.stack.push(Frame {
             name: "body",
@@ -146,9 +148,13 @@ enum Content {
 }
 
 impl<'a, 'm> Reader<'a, 'm> {
-    fn new(base: Style, limits: &Limits, work: &'m mut Meter) -> Result<Self> {
-        let mut storage = Meter::new(limits.document_bytes, "rich text syntax storage exceeded");
-        storage.charge(base.family.len())?;
+    fn new(
+        base: Style,
+        limits: &Limits,
+        work: &'m mut Meter,
+        storage: &'m mut Meter,
+    ) -> Result<Self> {
+        storage.charge(base.family.heap_bytes())?;
         let mut styles = Vec::new();
         storage.reserve_capacity(&mut styles, 1)?;
         styles.push(base);
@@ -190,7 +196,8 @@ impl<'a, 'm> Reader<'a, 'm> {
             return Err(super::unsupported("rich text lists are unavailable"));
         }
         self.work.charge(self.text.styles[parent].family.len())?;
-        self.storage.charge(self.text.styles[parent].family.len())?;
+        self.storage
+            .charge(self.text.styles[parent].family.heap_bytes())?;
         self.storage.reserve_capacity(&mut self.text.styles, 1)?;
         let mut style = self.text.styles[parent].clone();
         match tag {
@@ -207,7 +214,7 @@ impl<'a, 'm> Reader<'a, 'm> {
             _ => (),
         }
         let (rest, end) = self.attributes(rest, (!ignored).then_some(&mut style))?;
-        self.storage.charge(style.family.len())?;
+        self.storage.charge(style.family.heap_bytes())?;
         let index = self.text.styles.len();
         self.text.styles.push(style);
         if !ignored {
