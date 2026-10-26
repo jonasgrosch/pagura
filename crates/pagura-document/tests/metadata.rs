@@ -1,19 +1,19 @@
 #![forbid(unsafe_code)]
 //! Public metadata API against independently authored source bytes.
 
-use pagura_core::{ErrorKind, Limits, ObjectId, Recovery};
+use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Result};
 use pagura_document::{Document, OpenOptions, metadata::Trapped};
 use pagura_testkit::fixture;
 
-fn open(name: &str, options: &OpenOptions) -> Document {
-    Document::open(fixture("metadata", &format!("{name}.pdf")), options).unwrap()
+fn open(name: &str, options: &OpenOptions) -> Result<Document> {
+    Document::open(fixture("metadata", &format!("{name}.pdf")), options)
 }
 
 #[test]
 fn information_and_xmp_are_distinct_immutable_sources() {
     let packet = b"<?xpacket begin=\"\"?><x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><title>XMP title</title></x:xmpmeta><?xpacket end=\"w\"?>";
     for name in ["populated", "populated-flate"] {
-        let document = open(name, &OpenOptions::default());
+        let document = open(name, &OpenOptions::default()).unwrap();
         let info = document.information().unwrap().unwrap();
         assert_eq!(info.object, Some(ObjectId::new(5, 0)));
         assert_eq!(info.title.as_deref(), Some("Grüße Ω"));
@@ -54,12 +54,12 @@ fn information_and_xmp_are_distinct_immutable_sources() {
 #[test]
 fn absence_null_empty_and_unknown_have_distinct_meanings() {
     for name in ["absent", "null", "undefined"] {
-        let document = open(name, &OpenOptions::default());
+        let document = open(name, &OpenOptions::default()).unwrap();
         assert!(document.information().unwrap().is_none());
         assert!(document.metadata().unwrap().is_none());
         assert!(document.language().unwrap().is_none());
     }
-    let document = open("empty", &OpenOptions::default());
+    let document = open("empty", &OpenOptions::default()).unwrap();
     let info = document.information().unwrap().unwrap();
     assert!(info.title.is_none());
     assert_eq!(info.trapped, Trapped::Unknown);
@@ -78,6 +78,7 @@ fn absence_null_empty_and_unknown_have_distinct_meanings() {
     ] {
         assert_eq!(
             open(name, &OpenOptions::default())
+                .unwrap()
                 .information()
                 .unwrap()
                 .unwrap()
@@ -96,6 +97,7 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
     ] {
         assert_eq!(
             open(name, &OpenOptions::default())
+                .unwrap()
                 .information()
                 .unwrap_err()
                 .kind,
@@ -103,11 +105,13 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
         );
     }
     let field_error = open("info-field-wrong-type", &OpenOptions::default())
+        .unwrap()
         .information()
         .unwrap_err();
     assert_eq!(field_error.object, Some(ObjectId::new(8, 0)));
     assert_eq!(
         open("info-cycle", &OpenOptions::default())
+            .unwrap()
             .information()
             .unwrap_err()
             .kind,
@@ -115,6 +119,7 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
     );
     assert_eq!(
         open("language-wrong-type", &OpenOptions::default())
+            .unwrap()
             .language()
             .unwrap_err()
             .kind,
@@ -128,6 +133,7 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
     ] {
         assert_eq!(
             open(name, &OpenOptions::default())
+                .unwrap()
                 .metadata()
                 .unwrap_err()
                 .kind,
@@ -136,6 +142,7 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
     }
     assert_eq!(
         open("metadata-cycle", &OpenOptions::default())
+            .unwrap()
             .metadata()
             .unwrap_err()
             .kind,
@@ -149,9 +156,12 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
         recovery: Recovery::Strict,
         ..OpenOptions::default()
     };
-    let error = open("invalid-text", &strict).information().unwrap_err();
+    let error = open("invalid-text", &strict)
+        .unwrap()
+        .information()
+        .unwrap_err();
     assert_eq!(error.repair, Some(pagura_core::repairs::INVALID_TEXT));
-    let document = open("invalid-text", &OpenOptions::default());
+    let document = open("invalid-text", &OpenOptions::default()).unwrap();
     assert_eq!(
         document.information().unwrap().unwrap().title.as_deref(),
         Some("�")
@@ -178,7 +188,8 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
                 limits,
                 ..OpenOptions::default()
             },
-        );
+        )
+        .unwrap();
         assert_eq!(document.information().unwrap_err().kind, ErrorKind::Limit);
     }
     let document = open(
@@ -190,7 +201,8 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
             },
             ..OpenOptions::default()
         },
-    );
+    )
+    .unwrap();
     assert_eq!(
         document
             .metadata()
@@ -205,7 +217,7 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
 
 #[test]
 fn xml_is_returned_as_inert_bytes_without_entity_expansion() {
-    let document = open("metadata-inert-xml", &OpenOptions::default());
+    let document = open("metadata-inert-xml", &OpenOptions::default()).unwrap();
     assert_eq!(
         document
             .metadata()
