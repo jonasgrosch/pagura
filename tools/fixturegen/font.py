@@ -72,7 +72,7 @@ def sfnt(tables, otto=False):
     return (b"OTTO" if otto else u32(0x10000))+u16(len(tables))+bytes(6)+directory+body
 
 
-def truetype(fmt=4, short=False, glyph_override=None, cff=None, cff2=False, table_overrides=None, omit_tables=()):
+def truetype(fmt=4, short=False, glyph_override=None, cff=None, cff2=False, table_overrides=None, omit_tables=(), empty_glyphs=0):
     head = bytearray(54)
     head[:4] = u32(0x10000)
     head[12:16] = u32(0x5f0f3cf5)
@@ -86,7 +86,7 @@ def truetype(fmt=4, short=False, glyph_override=None, cff=None, cff2=False, tabl
     curve = simple([(0,0,True),(0,300,False),(300,0,True)])
     composite = i16(-1)+bytes(8)+u16(0x83)+u16(1)+i16(20)+i16(30)+i16(8192)+i16(4096)+i16(0)+i16(8192)
     attached = i16(-1)+bytes(8)+u16(0x23)+u16(1)+i16(0)+i16(0)+u16(1)+u16(1)+u16(2)+u16(0)
-    glyphs = [b"", rect, curve, composite, attached]
+    glyphs = [b"", rect, curve, composite, attached] + [b""] * empty_glyphs
     if glyph_override is not None:
         glyphs[1] = glyph_override
     if cff is not None:
@@ -1229,8 +1229,8 @@ def glyph_name_cases():
                  "count 5\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\nglyph-name 2 A\n"
                  "glyph-name-none 5\nglyph-name-none 4294967295\noutline 1\n"+RECT+"outline 2\n"+TRUETYPE_QUAD,req)
     standard = u32(0x10000)+bytes(28)
-    yield vector("glyph-names-post-standard",truetype(table_overrides={b"post":standard}),
-                 "count 5\nglyph-name 0 .notdef\nglyph-name 3 space\n",req)
+    yield vector("glyph-names-post-standard",truetype(table_overrides={b"post":standard},empty_glyphs=253),
+                 "count 258\nglyph-name 0 .notdef\nglyph-name 3 space\nglyph-name 257 dcroat\n",req)
     yield vector("glyph-names-type1-reordered",static_type1(notdef_last=True),
                  "count 2\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\noutline 1\n"+RECT,req,"type1")
     yield vector("glyph-names-cff",cff_font(conforming=True),

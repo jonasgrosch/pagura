@@ -4,10 +4,10 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) adds six independent pixel
+The companion [render manifest](rendering.json) retains six original pixel
 oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
-premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
-existing public render adapters. The ledger retains six competitor columns;
+premultiplied JPX alpha. Seven legacy font controls extend the manifest to
+13 cases and 91 cells, using the public Pagura CLI and all six render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -171,3 +171,36 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
   bind current results to each scoped capability subvariant. A successful basic
   fixture never closes an entire [capability family](../../docs/CAPABILITIES.md)
   or a release gate.
+
+## Legacy post-name inputs
+
+The font group adds seven independent rendering controls to the six original
+controls: three post 2.5 subjects, three matched post 2 cases, and an ordinary
+rectangle with the same analytically defined glyph area. Outlines, advances and
+cmap bytes match within each font pair. The routes are direct Unicode cmap,
+name fallback after an unmapped cmap code, and an explicit PDF Differences name.
+The original synthetic rectangle supplies every pixel expectation.
+
+[Hosted diagnostic run 40381321934](https://github.com/jonasgrosch/pagura/actions/runs/40381321934)
+at `cce9569c5e53ead8d42fcfc9c045931acfa633f6` used a reduced nine-case manifest.
+MuPDF passed all nine cases. Pagura passed all six controls; its three subject
+failures remain `adapter-error` in that older harness, which did not retain a
+named refusal. The source reader rejects the post 2.5 version. PDF.js and Poppler
+passed the direct subject and its pair, but missed the two name-based subjects
+while passing their post 2 controls. PDFium and CoreGraphics missed paired font
+controls; hayro missed the name-based controls. Those cells do not establish
+format-specific gaps. No tolerance was relaxed or measured artwork copied.
+
+Linux report SHA-256:
+`73beefea8ecaaafd6cb908477975d46c9cf795ed0dd3dab6130f533a375aacfb`.
+macOS report SHA-256:
+`76dee296a926897956bc6973451ee1907820a13aedf103d50b0f27930e58b43f`.
+The integrated 13-case manifest preserves the original six controls. Fresh
+hosted validation must accept every Pagura case after the reader change; the
+diagnostic failures are evidence of the previous behavior, not a passing gate.
+
+The preceding vertical-substitution checkpoint `a0533c2d6` passed
+[full hosted Ubuntu, macOS and Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40380082421).
+That validates its native synthetic maps, PDF metrics/extraction and bundled
+collection controls at that revision; it does not establish competitor-family
+parity or validate the later base and post-name combination.

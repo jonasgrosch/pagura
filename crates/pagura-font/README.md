@@ -13,10 +13,12 @@ the supported behavior, not complete font or PostScript conformance claims.
 
 Selected OpenType GSUB layout and `vert`/`vrt2` behavior have also been reviewed
 against Microsoft's primary specification, as recorded by
-`font-vertical-substitution`. The other TrueType Reference Manual and
+`font-vertical-substitution`. Post 1/2.5 count and signed-name-index rules were
+reviewed against Microsoft and Apple, recorded in `font-program-glyph-names`.
+Remaining TrueType Reference Manual and
 OpenType/ISO 14496-22 formats (including CFF2),
 TN 5015 supplements such as Type 1 lenIV -1, and TN 5040 PFB packaging remain
-**pending primary-text review** because their texts are unavailable. The
+**pending primary-format review**. The
 Type 1 book verifies binary/hex eexec, both ciphers, and lenIV 4/0/1.
 No external known-answer font dataset has been used.
 
@@ -50,11 +52,16 @@ filters, other substitution types and feature variations remain explicit gaps.
 Synthetic glyph-map, malformed-input and resource-bound controls are authored;
 hosted runtime acceptance is pending.
 
+Legacy post 2.5 offsets use the existing glyph-name index, including its work
+and entry budgets. Signed index bounds and the declared glyph count are checked.
+Post 1 requires exactly 258 glyphs. Independent paired PDF controls preserve
+cmap-first selection and name fallback; hosted acceptance of this change is pending.
+
 Implemented formats:
 
 - TrueType and OpenType `glyf`: short/long `loca`, simple contours, repeated
   point flags, implied quadratic points, affine composite components and
-  point attachments; cmap formats 0, 2, 4, 6, 10, 12 and 13; post formats 1, 2 and 3.
+  point attachments; cmap formats 0, 2, 4, 6, 10, 12 and 13; post formats 1, 2, 2.5 and 3.
 - Bare CFF and OpenType CFF: checked INDEX/DICT data, ISOAdobe and explicit
   charsets, all 391 standard SIDs, Expert/ExpertSubset predefined charsets,
   StandardEncoding/ExpertEncoding and explicit encodings with supplements,
@@ -109,7 +116,7 @@ Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
 Remaining coverage: nondefault variation instances, CFF2 Font DICT matrices,
-post formats other than 1/2/3, cmap format 8 and TrueType collections, and
+post formats other than 1/2/2.5/3, cmap format 8 and TrueType collections, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
 CFF CharstringType 1, standalone TN 5014 CIDFont programs or nonhorizontal
 Type 1 sbw advances. Unrecognized OtherSubrs use chapter 8’s required

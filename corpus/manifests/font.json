@@ -7065,11 +7065,11 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/glyph-names-post-standard.expect",
-          "sha256": "8bf705660777d1bfc896b8e68105a06827f27934a3d71b5caad44b9a53f0a048"
+          "sha256": "2143c4b9f542d310e5f1c64aaec269eef3ce2f798a91aa0264fa172627dba990"
         },
         ".font": {
           "path": "corpus/generated/font/glyph-names-post-standard.font",
-          "sha256": "42d43d8a4e69e4a9c47fba32364008013d69a523c83d5517738bc9f1e381ee36"
+          "sha256": "7e5bc06eea1f51f3f79b18f7d233c3761ded87554990a34610823c8cd0959dd2"
         }
       },
       "format": "truetype"

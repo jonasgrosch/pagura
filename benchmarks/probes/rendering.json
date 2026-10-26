@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct.",
   "cases": [
     {
       "id": "control.blank",
@@ -77,6 +77,97 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-name-fallback",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-name-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-name-fallback",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-name-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-differences",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-differences",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-differences",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-differences",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.ordinary-rectangle",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/ordinary-rectangle",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
         "tolerance": 0
       }
     }

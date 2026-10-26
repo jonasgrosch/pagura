@@ -382,7 +382,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected OpenType vert/vrt2 single substitutions are implemented with hosted acceptance pending.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected OpenType vert/vrt2 single substitutions and legacy post 2.5 standard-name offsets are implemented, with combined hosted acceptance pending.",
       "remaining": "Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
@@ -390,7 +390,8 @@
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
-        "crates/pagura-font/src/sfnt/vertical.rs"
+        "crates/pagura-font/src/sfnt/vertical.rs",
+        "crates/pagura-font/src/sfnt/names.rs"
       ],
       "tests": [
         "crates/pagura-font/tests/vectors/static_fonts.rs",
@@ -437,7 +438,15 @@
         "text-unicode",
         "font-vertical-substitution"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "font_formats/post25-direct",
+        "font_formats/post25-name-fallback",
+        "font_formats/post25-differences",
+        "font_formats/post2-control-direct",
+        "font_formats/post2-control-name-fallback",
+        "font_formats/post2-control-differences",
+        "font_formats/ordinary-rectangle"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
