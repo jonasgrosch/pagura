@@ -48,6 +48,10 @@ class Ranges {
 /** Drives the existing V2 client from caller-verified immutable ranges.
  * `read({start,end}, signal)` returns `{version,length,offset,bytes}`. The caller
  * owns URL/validator/security policy; no source-controlled address is followed.
+ * Optional `signal` invalidates every consumer of the registered source, and
+ * synchronous `close()` releases provider storage. Registration takes ownership,
+ * including when admission fails. Unrecovered read errors invalidate the source;
+ * consumer cancellation only drops that consumer's shared demand.
  * The engine sees only exact, bounded bytes. HTTP/native/browser worker-pool
  * adapters remain separate consumers of this contract.
  */
@@ -57,25 +61,44 @@ export class ProgressiveDriver {
     if (rangeBytes > MAX_FILE) throw new Error('Range supply exceeds the frame budget');
     this.client = client; this.rangeBytes = rangeBytes; this.sourceLimit = sources;
     this.io = new Ranges(concurrentRanges, queuedRanges); this.sources = new Map(); this.jobs = new Set(); this.registrations = 0; this.closed = false;
+    this.closing = new Set(); this.closeFailure = null;
   }
-  async register({ length, version, read }) {
+  async register({ length, version, read, signal, close = () => {} }) {
     length = exact(length);
-    if (this.closed || length < 0n || length > BigInt(MAX_FILE) || !(version instanceof Uint8Array) || version.length !== 32 || typeof read !== 'function') throw new Error('Invalid immutable source registration');
-    if (this.sources.size + this.registrations >= this.sourceLimit) throw new Error('Source registry budget exceeded');
-    version = version.slice(); this.registrations++;
+    if (length < 0n || length > BigInt(MAX_FILE) || !(version instanceof Uint8Array) || version.length !== 32 || typeof read !== 'function' || typeof close !== 'function') throw new Error('Invalid immutable source registration');
+    let admitted = false, counted = false;
     try {
+      check(signal);
+      if (this.closed) throw new Error('Progressive driver closed');
+      if (this.sources.size + this.registrations + this.closing.size >= this.sourceLimit) throw new Error('Source registry budget exceeded');
+      version = version.slice(); this.registrations++; counted = true;
       const { source } = await this.client.createSource(length, version);
-      if (this.closed) { await this.client.closeSource(source); throw new Error('Progressive driver closed'); }
-      this.sources.set(source, { length, version, read, pending: new Map(), closed: false });
+      if (this.closed || signal?.aborted) {
+        await this.client.closeSource(source); check(signal); throw new Error('Progressive driver closed');
+      }
+      const abort = () => {
+        const closing = this.closeSource(source, signal.reason);
+        this.closing.add(closing);
+        closing.then(() => this.closing.delete(closing), (error) => {
+          this.closing.delete(closing); this.closeFailure ??= error;
+        });
+      };
+      this.sources.set(source, { length, version, read, signal, abort, close, pending: new Map(), closed: false });
+      signal?.addEventListener('abort', abort, { once: true }); admitted = true;
       return source;
-    } finally { this.registrations--; }
+    } finally {
+      if (counted) this.registrations--;
+      if (!admitted) close();
+    }
   }
-  async closeSource(handle) {
+  async closeSource(handle, reason) {
     const source = this.sources.get(handle);
     if (!source) throw new Error('Unknown driver source');
     source.closed = true; this.sources.delete(handle);
-    for (const entry of source.pending.values()) entry.controller.abort();
-    await this.client.closeSource(handle);
+    source.signal?.removeEventListener('abort', source.abort);
+    for (const entry of source.pending.values()) entry.controller.abort(reason);
+    try { source.close(); }
+    finally { await this.client.closeSource(handle); }
   }
   async fill(demand, signal) {
     const handle = Number(demand.source), source = this.sources.get(handle);
@@ -104,13 +127,20 @@ export class ProgressiveDriver {
       current.promise = this.io.run(async () => {
         check(current.controller.signal);
         if (this.closed || source.closed) throw new DOMException('Source closed', 'AbortError');
-        const packet = await source.read({ start, end }, current.controller.signal);
-        check(current.controller.signal);
-        if (source.closed || !sameVersion(source.version, packet.version) || exact(packet.length) !== source.length
-          || exact(packet.offset) !== start || !(packet.bytes instanceof Uint8Array) || BigInt(packet.bytes.length) !== end - start) throw new Error('Range response changed representation or extent');
-        // Freeze the verified packet while it waits in the shared serial queue.
-        // At most one received packet plus one supplied copy is held per range.
-        return this.client.supplySource(handle, source.version, start, packet.bytes.slice());
+        try {
+          const packet = await source.read({ start, end }, current.controller.signal);
+          check(current.controller.signal);
+          if (source.closed || !sameVersion(source.version, packet.version) || exact(packet.length) !== source.length
+            || exact(packet.offset) !== start || !(packet.bytes instanceof Uint8Array) || BigInt(packet.bytes.length) !== end - start) throw new Error('Range response changed representation or extent');
+          // Freeze the verified packet while it waits in the shared serial queue.
+          // At most one received packet plus one supplied copy is held per range.
+          return await this.client.supplySource(handle, source.version, start, packet.bytes.slice());
+        } catch (error) {
+          if (!current.controller.signal.aborted && !source.closed) {
+            try { await this.closeSource(handle, error); } catch (failure) { this.closeFailure ??= failure; }
+          }
+          throw error;
+        }
       }, current.controller.signal).finally(() => {
         current.done = true;
         if (source.pending.get(key) === current) source.pending.delete(key);
@@ -174,12 +204,14 @@ export class ProgressiveDriver {
   async close() {
     this.closed = true;
     const results = await Promise.allSettled([...this.sources.keys()].map((source) => this.closeSource(source)));
+    await Promise.allSettled([...this.closing]);
     for (const job of [...this.jobs]) {
       if (!this.jobs.delete(job)) continue;
       try { await this.client.cancelJob(job); } catch (reason) { results.push({ status: 'rejected', reason }); }
       try { await this.client.closeJob(job); } catch (reason) { results.push({ status: 'rejected', reason }); }
     }
     const errors = results.filter((result) => result.status === 'rejected').map((result) => result.reason);
+    if (this.closeFailure) errors.push(this.closeFailure);
     if (errors.length) throw new AggregateError(errors, 'Progressive driver cleanup failed');
   }
 }

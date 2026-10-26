@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: progressive-source-jobs-${{ github.sha }}
+  group: progressive-source-jobs-${{ github.sha }}-${{ inputs.lane }}
   cancel-in-progress: false
 jobs:
   source-contracts:
@@ -67,7 +67,9 @@ jobs:
         with:
           node-version: 26.8.1
       - name: Verify literal protocol and range/output ownership
-        run: node tools/progressive_protocol_test.mjs
+        run: |
+          node tools/progressive_protocol_test.mjs
+          node tools/source_http_test.mjs
   host-portability:
     if: ${{ inputs.lane == 'portability' }}
     runs-on: ubuntu-latest

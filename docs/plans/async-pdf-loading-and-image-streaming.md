@@ -777,6 +777,26 @@ Fetch/close races are resolved by source version and demand ownership.
 
 These checks implement [HTTP range and validator semantics](https://www.rfc-editor.org/rfc/rfc9110.html#name-range).
 
+The browser `httpSource` adapter admits an explicitly authorized URL through one
+bounded GET probe. Sparse operation requires a visible strong ETag, exact total
+length and identity content coding. Cross-origin endpoints must expose ETag and
+Content-Range and explicitly expose `Content-Encoding: identity`; hidden encoding
+headers cannot prove that Fetch preserved byte offsets. Each subsequent request
+uses If-Range and revalidates identity, extent and body length. A late 200 or 416
+invalidates that registration, requiring a new source rather than inserting a
+full response at the requested offset. Missing/weak validators, unknown total
+length and incompatible coding use one complete response before registration.
+The browser never sets the forbidden Accept-Encoding header.
+
+The adapter has finite per-source request, range, spool, total-transfer, absolute
+deadline and idle limits, zero automatic retries and no deliberate overfetch.
+Unknown-length spooling uses fixed-size blocks, with at most twice the spool
+allowance while joining. Received browser buffers and the driver's bounded supply
+copies are separate from those retained bytes. Provider invalidation closes the
+existing engine source; cancellation of one shared consumer leaves other demand
+alive. The current literal HTTP/Fetch and driver tests require hosted acceptance;
+native HTTP/runtime integration and viewer activation remain incomplete.
+
 ## 14. Native async webserver integration
 
 Use one native integration workspace depending only on the public facade.
@@ -860,8 +880,9 @@ remain required. The JS payload codec uses the existing frame reader and serial
 client; ProgressiveDriver coordinates caller-verified immutable ranges and exact
 output acknowledgements. Identical active range reads are shared, their final
 consumer owns cancellation, range queues are bounded, and consumer demand drives
-output. Its literal lifecycle controls still require hosted acceptance; an HTTP
-validator/spool adapter and viewer integration remain unfinished. This does not complete P7/P8 or remove P3's bounded
+output. Its literal lifecycle controls still require hosted acceptance. The HTTP
+validator/spool adapter follows section 13; viewer integration remains unfinished.
+This does not complete P7/P8 or remove P3's bounded
 whole-scene retry limitation.
 
 
