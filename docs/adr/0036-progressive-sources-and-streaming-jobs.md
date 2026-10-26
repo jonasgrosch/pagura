@@ -69,6 +69,13 @@ Use bounded slice windows with absolute source positions. The parser must
 distinguish an open window from actual EOF and malformed syntax, without a
 virtual source call on every byte. Existing complete-input convenience APIs
 adapt this same model.
+Normal stream metadata reads the dictionary and declared terminator in separate
+windows; encoded payload is requested only for decoding or extraction. Direct
+stream and unusable-Length recovery retain bounded contiguous/terminator scans
+and charge them to the same loading allowance. Object waits retain only the
+missing-range frontier, suppress unchanged retries, and never hold an object
+lock while reading a dependency. Completed object values remain the only
+permanent cache entries; source closure is checked before either cache path.
 
 ### 2. Availability is control flow
 

@@ -28,9 +28,10 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 pub(crate) fn open(bytes: source::View, options: &OpenOptions) -> ReadResult<Document> {
     bytes.check()?;
     let mut diagnostics = Diagnostics::new(options.recovery);
-    let header = xref::header(&bytes, &mut diagnostics)?;
+    let lease = bytes.materialize()?;
+    let header = xref::header(lease.bytes(), &mut diagnostics)?;
     let mut attempt = Diagnostics::new(options.recovery);
-    let primary = xref::read(&bytes, header, &options.limits, &mut attempt)
+    let primary = xref::read(lease.bytes(), header, &options.limits, &mut attempt)
         .map(|table| (table, attempt.take()));
     from_primary(bytes, options, diagnostics, primary)
 }
@@ -60,7 +61,13 @@ pub(crate) fn from_primary(
         Err(ReadFault::Invalid(error))
             if options.recovery == Recovery::Repair && xref::structural(&error) =>
         {
-            let table = rebuild::read(&bytes, &options.limits, &mut diagnostics, error.position)?;
+            let lease = bytes.materialize()?;
+            let table = rebuild::read(
+                lease.bytes(),
+                &options.limits,
+                &mut diagnostics,
+                error.position,
+            )?;
             DocumentBuilder::new(bytes, options, table, diagnostics.take())?
                 .build(&options.password)
         }
@@ -322,6 +329,10 @@ impl Document {
         } = self;
         for slot in slots.values_mut() {
             slot.object.take();
+            *slot
+                .waiting
+                .get_mut()
+                .unwrap_or_else(PoisonError::into_inner) = None;
         }
         for contents in object_streams.values_mut() {
             contents.take();
@@ -346,39 +357,4 @@ impl Document {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::DocumentBuilder;
-    use crate::xref::{XrefEntry, XrefTable};
-    use crate::{Location, OpenOptions, memory};
-    use pagura_core::{ErrorKind, Limits, Name, ObjectId, Value};
-    use std::sync::Arc;
-
-    #[test]
-    fn structure_charges_belong_to_no_object() {
-        let mut table = XrefTable::default();
-        table.entries.insert(
-            1,
-            XrefEntry {
-                generation: 0,
-                location: Location::Offset(9),
-            },
-        );
-        table
-            .trailer
-            .insert(Name::new(b"Root"), Value::Reference(ObjectId::new(1, 0)));
-        let options = OpenOptions {
-            limits: Limits {
-                document_bytes: memory::slot_bytes(),
-                ..Limits::default()
-            },
-            ..OpenOptions::default()
-        };
-        let bytes: Arc<[u8]> = Arc::from(b"%PDF-1.7\n".as_slice());
-        let bytes = crate::source::View::local(bytes, &options.limits).unwrap();
-        let Err(error) = DocumentBuilder::new(bytes, &options, table, Vec::new()) else {
-            panic!("the trailer does not fit beside one slot");
-        };
-        assert_eq!(error.kind, ErrorKind::Limit);
-        assert_eq!(error.object, None);
-    }
-}
+mod tests;

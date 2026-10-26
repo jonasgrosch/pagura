@@ -139,7 +139,7 @@ fn literal_hashes(
     let ObjectSource::File(range) = object.source() else {
         return Ok(());
     };
-    let lease = document.bytes.lease(ByteRange::new(
+    let lease = document.bytes.scan(ByteRange::new(
         usize_to_u64(range.start),
         usize_to_u64(range.end),
     )?)?;

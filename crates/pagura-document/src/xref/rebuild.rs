@@ -141,7 +141,7 @@ fn object(
             }
         }
     }
-    recovery::end(parser, limits, id, diagnostics)?;
+    recovery::end(parser, id, diagnostics)?;
     if value
         .as_dictionary()
         .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
@@ -193,6 +193,7 @@ fn skip_direct(
         id,
         start..parser.data().len(),
         StreamContext::Direct,
+        0,
     )?;
     if let Some(end) = declared {
         diagnostics.repair(

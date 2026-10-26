@@ -3,12 +3,12 @@
 pub(crate) mod recovery;
 pub(crate) mod stream;
 
-use recovery::{StreamContext, corrected_offset, end, stream_extent, zero_catalog_header};
+use recovery::{corrected_offset, end, indirect_stream, stream_extent};
 
 use crate::Document;
 use crate::memory::path_bytes;
-use crate::source::{NeedData, ReadFault, ReadResult};
-use pagura_core::syntax::{InputEnd, ParseFault, Parser, WindowInput, WindowRead};
+use crate::source::{NeedData, ReadResult};
+use pagura_core::syntax::{ParseFault, Parser, WindowInput};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use std::ops::Range;
 
@@ -154,20 +154,19 @@ pub(crate) fn parse_at(
     offset: usize,
     path: &mut Vec<ObjectId>,
 ) -> ReadResult<(IndirectObject, Vec<Diagnostic>)> {
-    let mut repairs = pagura_core::Diagnostics::new(document.recovery());
-    let offset = corrected_offset(document, id, offset, &mut repairs)?;
-    let parser = document
-        .file_parser(offset)
-        .map_err(|error| error.in_object(id))?;
-    match parser.read_window_with_control(InputEnd::Complete, |parser| {
-        parse(document, id, offset, path, parser, &mut repairs)
-    })? {
-        WindowRead::Complete(parsed) => Ok(parsed.value),
-        WindowRead::Deferred(missing) => Err(ReadFault::Unavailable(missing)),
-        _ => Err(Error::syntax("incomplete indirect object at file end")
-            .in_object(id)
-            .into()),
-    }
+    let mut correction = pagura_core::Diagnostics::new(document.recovery());
+    let (offset, expected) = corrected_offset(document, id, offset, &mut correction)?;
+    let correction = correction.take();
+    let mut window = document
+        .bytes
+        .window(offset)?
+        .with_recovery(document.recovery());
+    let parsed = window.read(|parser| {
+        let mut repairs = pagura_core::Diagnostics::new(document.recovery());
+        repairs.absorb(correction.iter().cloned())?;
+        parse(document, id, offset, path, parser, &mut repairs, expected)
+    })?;
+    Ok(parsed.value)
 }
 
 fn parse(
@@ -177,13 +176,9 @@ fn parse(
     path: &mut Vec<ObjectId>,
     parser: &mut Parser<'_, WindowInput<NeedData>>,
     repairs: &mut pagura_core::Diagnostics,
+    expected: ObjectId,
 ) -> std::result::Result<(IndirectObject, Vec<Diagnostic>), ParseFault<NeedData>> {
-    let zero_catalog = zero_catalog_header(document, id, offset);
-    let expected = if zero_catalog {
-        ObjectId::new(0, id.generation)
-    } else {
-        id
-    };
+    let zero_catalog = expected.number == 0;
     header(parser, expected)?;
     let (value, direct) = parser
         .parse_with_streams(&mut |parser, dictionary| {
@@ -199,41 +194,30 @@ fn parse(
                 .in_object(id)
                 .into());
             }
-            if !parser.keyword(b"stream") {
+            if !parser.keyword_with_boundary(b"stream")? {
                 return Err(Error::syntax("missing direct stream keyword")
                     .in_object(id)
                     .into());
             }
-            stream_extent(
-                document,
-                id,
-                dictionary,
-                parser,
-                path,
-                repairs,
-                StreamContext::Direct,
-            )
-            .map(Some)
+            stream_extent(document, id, dictionary, parser, path, repairs, offset).map(Some)
         })
         .map_err(|fault| {
             <WindowInput<NeedData> as pagura_core::syntax::ParseMode>::map_error(fault, |error| {
                 error.in_object(id)
             })
         })?;
-    let stream = if parser.keyword(b"stream") {
-        Some(stream_extent(
-            document,
-            id,
-            value
-                .as_dictionary()
-                .ok_or_else(|| Error::syntax("stream value must be a dictionary").in_object(id))?,
-            parser,
-            path,
-            repairs,
-            StreamContext::Indirect,
-        )?)
+    let (stream, stream_end) = if parser.keyword_with_boundary(b"stream")? {
+        let dictionary = value
+            .as_dictionary()
+            .ok_or_else(|| Error::syntax("stream value must be a dictionary").in_object(id))?;
+        let start = crate::stream::start(parser, repairs, Some(id))?;
+        let start = offset
+            .checked_add(start)
+            .ok_or(Error::limit("stream source offset overflow"))?;
+        let (range, end) = indirect_stream(document, id, dictionary, start, path, repairs)?;
+        (Some(range), Some(end))
     } else {
-        None
+        (None, None)
     };
     if zero_catalog {
         // Only an exact positive Root xref entry establishes the replacement
@@ -246,7 +230,11 @@ fn parse(
                     .and_then(Value::as_reference)
                     .is_some_and(|pages| pages.number != 0 && pages != id)
         });
-        if !catalog || stream.is_some() || !direct.is_empty() || !parser.keyword(b"endobj") {
+        if !catalog
+            || stream.is_some()
+            || !direct.is_empty()
+            || !parser.keyword_with_boundary(b"endobj")?
+        {
             return Err(
                 Error::syntax("zero-numbered root is not a complete plain Catalog")
                     .at(Position::File(offset))
@@ -262,17 +250,23 @@ fn parse(
             .at(Position::File(offset))
             .in_object(id),
         )?;
-    } else {
-        end(parser, &document.limits(), id, repairs)?;
+    } else if stream_end.is_none() {
+        end(parser, id, repairs)?;
     }
-    let source = ObjectSource::File(offset..parser.offset());
+    let end = match stream_end {
+        Some(end) => end,
+        None => offset
+            .checked_add(parser.offset())
+            .ok_or(Error::limit("object source offset overflow"))?,
+    };
+    let source = ObjectSource::File(offset..end);
     repairs.absorb(
         parser
             .take_diagnostics()
             .into_iter()
             .map(|diagnostic| diagnostic.in_object(id)),
     )?;
-    let direct = direct_objects(id, &value, direct, document.limits().document_bytes)?;
+    let direct = direct_objects(id, &value, direct, document.limits().document_bytes, offset)?;
     let mut object = IndirectObject::new(id, value, stream, source);
     object.direct = direct;
     Ok((object, repairs.take()))
@@ -303,6 +297,7 @@ fn direct_objects(
     value: &Value,
     direct: Vec<pagura_core::syntax::DirectStream>,
     budget: usize,
+    origin: usize,
 ) -> Result<Vec<DirectObject>> {
     if direct.is_empty() {
         return Ok(Vec::new());
@@ -346,8 +341,8 @@ fn direct_objects(
         let mut object = IndirectObject::new(
             id,
             dictionary.clone(),
-            Some(direct.data),
-            ObjectSource::File(direct.source),
+            Some(absolute_range(origin, direct.data)?),
+            ObjectSource::File(absolute_range(origin, direct.source)?),
         );
         object.direct_source = true;
         records.push(DirectObject {
@@ -357,6 +352,16 @@ fn direct_objects(
     }
     records.sort_unstable_by(|left, right| left.path.cmp(&right.path));
     Ok(records)
+}
+
+fn absolute_range(origin: usize, range: Range<usize>) -> Result<Range<usize>> {
+    let start = origin
+        .checked_add(range.start)
+        .ok_or(Error::limit("stream source offset overflow"))?;
+    let end = origin
+        .checked_add(range.end)
+        .ok_or(Error::limit("stream source offset overflow"))?;
+    Ok(start..end)
 }
 
 #[cfg(test)]

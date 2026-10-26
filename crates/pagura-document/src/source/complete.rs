@@ -13,6 +13,25 @@ pub struct CompleteBytes {
 }
 
 impl CompleteBytes {
+    /// Complete convenience input has a document-local identity and is admitted
+    /// under file_bytes rather than the registered source-residency default.
+    pub(super) fn local(bytes: Arc<[u8]>, limits: &Limits) -> Result<Self> {
+        let (lease, budget) = admit(bytes, limits, None)?;
+        Ok(Self {
+            identity: SourceIdentity::new(0, [0; 32]),
+            lease,
+            budget,
+            work: Mutex::new(Meter::new(
+                SourceLimits::default().work,
+                "source work budget exceeded",
+            )),
+        })
+    }
+
+    pub(super) fn complete_lease(&self) -> ByteLease {
+        self.lease.clone()
+    }
+
     /// Admits complete immutable bytes under file and source storage limits.
     ///
     /// # Errors

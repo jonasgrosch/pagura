@@ -99,6 +99,7 @@ impl fmt::Debug for Document {
 struct Slot {
     location: Location,
     object: OnceLock<Result<IndirectObject>>,
+    waiting: Mutex<Option<source::NeedData>>,
 }
 
 impl Slot {
@@ -106,6 +107,7 @@ impl Slot {
         Self {
             location,
             object: OnceLock::new(),
+            waiting: Mutex::new(None),
         }
     }
 }
@@ -141,12 +143,6 @@ impl Document {
     /// The length has already been admitted under the target and file limits.
     pub fn source_len(&self) -> usize {
         self.bytes.len()
-    }
-
-    /// Complete-input compatibility inside the object-recovery owner. Removed
-    /// with its range-window migration; public consumers use explicit leases.
-    pub(crate) fn original_bytes(&self) -> &[u8] {
-        &self.bytes
     }
 
     /// Explicitly leases the complete original source prefix of this document.

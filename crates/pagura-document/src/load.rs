@@ -1,9 +1,9 @@
 //! Lazy object loading, dependency budgets and reference resolution (7.3.10).
 
-use crate::source::{ReadFault, ReadResult};
+use crate::source::{ByteSource, ReadFault, ReadResult};
 use crate::{Document, IndirectObject, Location, object};
-use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{Error, ObjectId, Result, Value};
+use pagura_core::{Error, ObjectId, Value};
+use std::sync::PoisonError;
 
 impl Document {
     /// Loads `id` while the objects in `path` are being loaded.
@@ -32,6 +32,16 @@ impl Document {
         if let Some(object) = slot.object.get() {
             return object.as_ref().map_err(|error| error.clone().into());
         }
+        let generation = self.bytes.generation();
+        {
+            let mut waiting = slot.waiting.lock().unwrap_or_else(PoisonError::into_inner);
+            if let Some(missing) = waiting.as_ref()
+                && missing.generation() == generation
+            {
+                return Err(ReadFault::Unavailable(missing.clone()));
+            }
+            *waiting = None;
+        }
         let top_level = path.is_empty();
         path.push(id);
         let parsed = match slot.location {
@@ -51,12 +61,20 @@ impl Document {
             })
             .map_err(|error| error.in_object(id));
         let loaded = match loaded {
-            Err(ReadFault::Unavailable(missing)) => return Err(ReadFault::Unavailable(missing)),
+            Err(ReadFault::Unavailable(missing)) => {
+                let mut waiting = slot.waiting.lock().unwrap_or_else(PoisonError::into_inner);
+                if let Some(object) = slot.object.get() {
+                    return object.as_ref().map_err(|error| error.clone().into());
+                }
+                *waiting = Some(missing.clone());
+                return Err(ReadFault::Unavailable(missing));
+            }
             Err(ReadFault::Invalid(error)) if !top_level => return Err(error.into()),
             Err(ReadFault::Invalid(error)) => Err(error),
             Ok(loaded) => Ok(loaded),
         };
-        slot.object
+        let result = slot
+            .object
             .get_or_init(|| {
                 let (object, diagnostics) = loaded?;
                 self.retained.charge(object.retained_bytes(), Some(id))?;
@@ -64,7 +82,9 @@ impl Document {
                 Ok(object)
             })
             .as_ref()
-            .map_err(|error| error.clone().into())
+            .map_err(|error| error.clone().into());
+        *slot.waiting.lock().unwrap_or_else(PoisonError::into_inner) = None;
+        result
     }
 
     /// Follows references from `value` to a direct value, also returning the
@@ -123,15 +143,5 @@ impl Document {
             ),
             other => other.clone(),
         })
-    }
-
-    /// A parser over the original file, configured with this document's
-    /// limits and recovery mode.
-    pub(crate) fn file_parser(&self, offset: usize) -> Result<Parser<'_>> {
-        self.bytes.check()?;
-        Ok(
-            Parser::with_offset(&self.bytes, offset, Origin::File, self.limits)?
-                .with_recovery(self.recovery),
-        )
     }
 }

@@ -33,6 +33,7 @@ enum State {
 struct Active {
     source: Arc<dyn ByteSource>,
     options: OpenOptions,
+    loading: LoadingLimits,
     phase: Phase,
 }
 
@@ -102,6 +103,7 @@ impl OpenJob {
             state: State::Active(Box::new(Active {
                 source,
                 options: options.clone(),
+                loading,
                 phase: Phase::Index(Box::new(loader)),
             })),
             work,
@@ -157,7 +159,7 @@ impl OpenJob {
 }
 
 impl Active {
-    fn advance(&mut self, work: &LoadingWork) -> ReadResult<Opening> {
+    fn advance(&mut self, work: &Arc<LoadingWork>) -> ReadResult<Opening> {
         match &mut self.phase {
             Phase::Index(loader) => {
                 let primary = match loader.advance() {
@@ -183,7 +185,7 @@ impl Active {
         }
     }
 
-    fn admit(&mut self, work: &LoadingWork) -> ReadResult<Opening> {
+    fn admit(&mut self, work: &Arc<LoadingWork>) -> ReadResult<Opening> {
         let Phase::Admitting(admission) = &mut self.phase else {
             return Ok(Opening::Yielded);
         };
@@ -204,7 +206,13 @@ impl Active {
             Err(error) => return Err(error),
         };
         work.charge(lease.bytes().len())?;
-        let bytes = View::admitted(Arc::clone(&self.source), lease)?;
+        let bytes = View::admitted(
+            Arc::clone(&self.source),
+            lease,
+            self.options.limits,
+            self.loading,
+            Arc::clone(work),
+        )?;
         self.finish(bytes)
     }
 
@@ -220,8 +228,9 @@ impl Active {
         let primary = admission.primary;
         let mut diagnostics = Diagnostics::new(self.options.recovery);
         diagnostics.absorb(primary.header_diagnostics)?;
+        let lease = bytes.materialize()?;
         let index = primary.index.and_then(|(table, reports)| {
-            xref::finish(&bytes, primary.header, &self.options.limits, table)
+            xref::finish(lease.bytes(), primary.header, &self.options.limits, table)
                 .map(|table| (table, reports))
         });
         let document = builder::from_primary(bytes, &self.options, diagnostics, index)?;
