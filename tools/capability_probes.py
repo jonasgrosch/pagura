@@ -98,7 +98,9 @@ def validate_manifest(data, inventory):
 def same_value(left, right):
     """JSON semantics, without Python's True == 1 or nonfinite numbers."""
     if isinstance(left, (int, float)) and type(left) is not bool:
-        return type(right) in (int, float) and math.isfinite(left) and math.isfinite(right) and left == right
+        return (type(right) in (int, float)
+                and (type(left) is int or math.isfinite(left))
+                and (type(right) is int or math.isfinite(right)) and left == right)
     if type(left) is not type(right):
         return False
     if isinstance(left, dict):
@@ -156,9 +158,19 @@ def public_identity(identity):
     """Keep reproducible identities without machine-specific absolute paths/logs."""
     if identity["status"] != "available":
         return {"status": "unavailable", "reason": "pinned engine identity could not be established"}
+    # The shared benchmark helper concatenates version stdout and stderr. Some
+    # bindings emit host/device warnings; never publish those as version data.
+    version_text = identity["version"].strip()
+    try:
+        version, end = json.JSONDecoder().raw_decode(version_text)
+        require(isinstance(version, dict) and set(version) == {"wrapper", "engine"}, "invalid version fields")
+        require(all(isinstance(value, str) and value.strip() for value in version.values()), "invalid version strings")
+    except (ValueError, TypeError):
+        return {"status": "unavailable", "reason": "binding did not supply structured version identity"}
     def locator(value):
         return value.replace(str(ROOT), "$REPO").replace(str(CACHE), "$COMPETITORS")
-    return {"status": "available", "version": identity["version"],
+    return {"status": "available", "version": version,
+            "version_diagnostics_sha256": sha(version_text[end:].encode()),
             "command": [locator(value) for value in identity["command"]],
             "artifacts": {locator(path): digest for path, digest in identity["artifacts"].items()},
             "configuration": "Pinned default Python binding; V8/XFA, optional providers and browser behavior are not probed."}

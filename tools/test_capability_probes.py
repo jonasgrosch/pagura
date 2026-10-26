@@ -40,6 +40,7 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(probes.adjudicate(self.case, response)["outcome"], "incorrect")
         self.assertFalse(probes.same_value(float("nan"), float("nan")))
         self.assertFalse(probes.same_value(float("inf"), float("inf")))
+        self.assertFalse(probes.same_value(10 ** 400, 1))
 
     def test_rejection_is_only_a_pass_for_invalid_input(self):
         response = {"schema": 1, "status": "rejected", "reason": "EngineOpenError"}
@@ -120,8 +121,11 @@ class ProbeTests(unittest.TestCase):
     def test_public_report_hides_machine_paths_and_raw_failure_logs(self):
         source = str(probes.ROOT / probes.ADAPTER)
         binary = str(probes.CACHE / "venv/bin/python")
-        identity = probes.public_identity({"status": "available", "version": "pinned",
+        version = '{"wrapper": "pinned-wrapper", "engine": "pinned-engine"}\nwarning: /private/device-path'
+        identity = probes.public_identity({"status": "available", "version": version,
                                            "command": [binary, source], "artifacts": {binary: "abc", source: "def"}})
+        self.assertEqual(identity["version"], {"wrapper": "pinned-wrapper", "engine": "pinned-engine"})
+        self.assertNotIn("/private/device-path", json.dumps(identity))
         self.assertNotIn(str(probes.ROOT), json.dumps(identity))
         self.assertNotIn(str(probes.CACHE), json.dumps(identity))
         self.assertNotIn("sensitive log", json.dumps(probes.public_identity({"status": "unavailable", "reason": "sensitive log"})))
