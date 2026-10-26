@@ -216,17 +216,22 @@ fn sweep(
         let rows = lo.floor() + 1.0 < hi;
         let mut from = lo;
         while from < hi {
-            let to = if rows {
+            let mut to = if rows {
                 (from.floor() + 1.0).min(hi)
             } else {
                 hi
             };
             let held = rows
+                && to > from
                 && place(points, &mut active, (from, to), refine).is_some()
                 && holds(points, &active, (from, to), first, margins, refine)
                 && refine.add(0).is_some();
             if !held {
-                let to = if refine.add(0).is_some() { to } else { hi };
+                // Stop walking the slab when refinement cannot make progress
+                // or its budget is spent; keep all remaining rows doubtful.
+                if to <= from || refine.add(0).is_none() {
+                    to = hi;
+                }
                 match failing.last_mut() {
                     Some(last) if last[1] >= from => last[1] = to,
                     _ => {
@@ -908,6 +913,24 @@ mod tests {
         )
         .unwrap();
         assert_eq!(slabs, Some(vec![[5.0, 10.0]]));
+    }
+
+    #[test]
+    fn doubtful_refinement_stops_at_its_budget_or_an_unrepresentable_row() {
+        for (lo, hi) in [
+            (0.0, 1e12),
+            (-2f64.powi(54), 10.0),
+            (2f64.powi(53), 2f64.powi(53) + 8.0),
+        ] {
+            let rectangle = [(0.0, lo), (5.0, lo), (5.0, hi), (0.0, hi)];
+            let slabs = uncertified(
+                &polygon(&[&rectangle, &rectangle]),
+                0.0,
+                &mut crate::testing::bytes(),
+            )
+            .unwrap();
+            assert_eq!(slabs, Some(vec![[lo, hi]]));
+        }
     }
 
     #[test]
