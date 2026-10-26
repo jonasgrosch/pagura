@@ -111,7 +111,7 @@ integration. Milestone numbers are outcomes, not completion claims.
   two-phase external signing (signature creation needs its own decision; ADR
   0015 is verification only); a native AcroForm AF function library, with no
   JavaScript engine. Broader script parity remains V03's explicit ADR decision.
-- **Document services and profiles:** typed metadata/attachments/portfolios
+- **Document services and profiles:** metadata validation/writes, typed attachments/portfolios
   and export APIs (D02), public-key security and encrypted history (D03), and
   version/profile validation (C01). Recognizing a version or PDF/X declaration
   does not establish conformance.
