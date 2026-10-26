@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "672b6be69cdc641d88ffe8bb6f3b2f9167058cc0",
+  "audited_revision": "57cfd3e302570e3198a0f641674f9280462b881e",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -43,6 +43,7 @@
     "crates/pagura-appearance/src/form/style.rs": "20e35fa393dede64c02a299c88984a93d35de65292e1b75f3eb518d3ab333db1",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
+    "crates/pagura-appearance/src/values.rs": "81a4c6cd359a805e408c594491f698f88b944c412a70b52d10cfec97a16d5d24",
     "crates/pagura-cli/src/args.rs": "cbc4f984036b2b89bee4afe2026db49d1dcdb8199946673bcc3bd2f524ddad0e",
     "crates/pagura-cli/src/args/tests.rs": "6b4e0a28f3c6b4ac1ecc800fb81e895068660aeea32c4308130e25218e96c5dd",
     "crates/pagura-cli/src/commands.rs": "a102647a956f32450483003a6946e73361c39264558dc53ac2ee578e1a2892e0",
@@ -179,9 +180,9 @@
     "crates/pagura-raster/src/adjust.rs": "6078b0ed25491d224123717039505c215a988b2e365cf9baeb0cf3b9be3f3181",
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
-    "crates/pagura-raster/src/flatten.rs": "a5c035e7618b2a326d1fefe5e9f9acd423e5b741e7683daaac0fcb9f436812c1",
+    "crates/pagura-raster/src/flatten.rs": "fcf15ec4acd0cb4e2c998f69e0c6f5f84f8279f2701d1c617c669b2498683fae",
     "crates/pagura-raster/src/pixmap.rs": "271183e63b7b4504e8f46b24c73061c3ccec03fa24cf15f941bd912c46ee8d65",
-    "crates/pagura-raster/src/stroke.rs": "9193359eda36ae015c831e2489b9d04393bc2ca1f66f9de25903dc334f53aa78",
+    "crates/pagura-raster/src/stroke.rs": "cd3a575e48c7ebe2397c50d3958aeabe6ac6442aa1135dbfbbcf305f79aa555b",
     "crates/pagura-raster/src/stroke/tests.rs": "b36a90a540c0ee0ead883c79d172f4eec55cf5d504b1a0ceb6bb9156d67e398d",
     "crates/pagura-raster/src/stroke/tiling.rs": "9d519a2a3046490fba6d4b937245943c2553baf86db25e608b1406fcbf286d75",
     "crates/pagura-raster/src/tests.rs": "cf66b5994f4b3b47131719da374621b71c03283353d3cce44764c08de26f708d",
@@ -986,7 +987,8 @@
         "crates/pagura-appearance/src/annotation/ink.rs",
         "crates/pagura-appearance/src/annotation/path.rs",
         "crates/pagura-appearance/src/annotation/polygon.rs",
-        "crates/pagura-appearance/src/annotation/line.rs"
+        "crates/pagura-appearance/src/annotation/line.rs",
+        "crates/pagura-appearance/src/values.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
