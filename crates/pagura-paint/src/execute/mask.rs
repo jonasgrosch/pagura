@@ -116,6 +116,21 @@ fn values(
         }
         return work;
     }
+    // So are a level buffer's levels, as `Read::pixel` takes each.
+    if let Buffer::Levels(offset) = buffer
+        && let Some(pixels) = read.levels.get(offset..offset + count)
+    {
+        let luminous = mask.kind == MaskKind::Luminosity;
+        for (out, pixel) in values.zip(pixels) {
+            let [r, g, b, alpha] = pixel.map(|level| f64::from(level) / 255.0);
+            *out = map(if luminous {
+                luminosity([r, g, b, 0.0], alpha)
+            } else {
+                alpha
+            });
+        }
+        return work;
+    }
     for (index, out) in values.enumerate() {
         let value = match (mask.kind, buffer) {
             (MaskKind::Alpha, Buffer::Wide(offset)) => read
