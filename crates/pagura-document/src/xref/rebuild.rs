@@ -227,7 +227,7 @@ fn skip_stream(
             parser.seek(exact.offset())?;
             return Ok(true);
         }
-        Err(ReadFault::Invalid(error)) if structural(&error) => {}
+        Err(error) if structural(&error) => {}
         Err(error) => return Err(error),
     }
     if !parser.keyword(b"stream") {

@@ -6,7 +6,7 @@ mod repair;
 
 use crate::source::{ReadFault, ReadResult};
 use crate::{Document, IndirectObject, Location, ObjectSource, features, repairs};
-use pagura_core::{Dictionary, Error, ErrorKind, Name, ObjectId, Result, ResultExt, Value};
+use pagura_core::{Dictionary, Error, ErrorKind, Name, ObjectId, Result, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
 use policy::Policy;
 use std::collections::BTreeMap;

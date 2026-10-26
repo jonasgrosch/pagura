@@ -97,7 +97,7 @@ impl Document {
         if index >= self.page_count()? {
             return Err((Error::invalid_argument("page label index outside document")).into());
         }
-        self.page_labels()?.label(index)
+        Ok(self.page_labels()?.label(index)?)
     }
 }
 

@@ -431,7 +431,7 @@ fn parsed_label_view_reuses_ranges_for_lookup_and_linear_iteration() {
     assert_eq!(
         labels
             .iter()
-            .collect::<Result<Vec<_>>>()
+            .collect::<pagura_core::Result<Vec<_>>>()
             .unwrap()
             .join("\n")
             + "\n",
@@ -442,7 +442,7 @@ fn parsed_label_view_reuses_ranges_for_lookup_and_linear_iteration() {
     }
     assert_eq!(labels.ranges().len(), 9);
     assert_eq!(
-        labels.label(10).unwrap_err().as_error().unwrap().kind,
+        labels.label(10).unwrap_err().kind,
         ErrorKind::InvalidArgument
     );
     let tree = document.number_tree(document.catalog().unwrap().get(b"PageLabels").unwrap());
@@ -464,7 +464,7 @@ fn indirect_null_is_absence_for_optional_navigation_metadata() {
     let error = document
         .destination(&Value::Name(Name::new(b"missing")))
         .unwrap_err();
-    assert_eq!(error.kind, ErrorKind::MissingObject);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::MissingObject);
     let links = document.pages().unwrap()[0].links(&document).unwrap();
     let Some(Target::Actions(sequence)) = &links[1].target else {
         panic!("missing URI")

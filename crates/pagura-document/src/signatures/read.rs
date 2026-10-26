@@ -64,10 +64,10 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> ReadResult<Signa
                     .map(|value| {
                         if value.as_reference().is_none() {
                             return Err(source
-                                .error(Error::syntax("signature field Lock must be indirect")));
+                                .fault(Error::syntax("signature field Lock must be indirect")));
                         }
                         let (d, source) = reader.ctx.dictionary(value, source)?;
-                        transforms::lock(&mut reader.ctx, d, source)
+                        Ok(transforms::lock(&mut reader.ctx, d, source)?)
                     })
                     .transpose()?;
                 let signature = if let Some(FieldValue::Signature(dictionary)) = &field.value {

@@ -111,7 +111,7 @@ pub(super) fn ranges(document: &Document) -> ReadResult<Vec<PageLabelRange>> {
         });
     }
     if result.first().is_none_or(|r| r.page != 0) {
-        return Err(tree_source.error(Error::syntax("page labels require a range at page zero")));
+        return Err(tree_source.fault(Error::syntax("page labels require a range at page zero")));
     }
     Ok(result)
 }

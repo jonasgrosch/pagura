@@ -5,7 +5,7 @@ use crate::{
     Document,
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Error, ObjectId, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use std::collections::BTreeSet;
 
 pub(super) struct Selection {
@@ -14,7 +14,7 @@ pub(super) struct Selection {
     names: BTreeSet<String>,
 }
 impl Selection {
-    fn read(ctx: &mut Context<'_>, selection: &FieldSelection<'_>) -> ReadResult<Self> {
+    fn read(ctx: &mut Context<'_>, selection: &FieldSelection<'_>) -> Result<Self> {
         let (all, exclude, raw) = match selection {
             FieldSelection::All => (true, false, &[][..]),
             FieldSelection::Include(names) => (false, false, names.as_slice()),
@@ -31,7 +31,7 @@ impl Selection {
             names,
         })
     }
-    fn locks(&self, ctx: &mut Context<'_>, name: &str) -> ReadResult<bool> {
+    fn locks(&self, ctx: &mut Context<'_>, name: &str) -> Result<bool> {
         ctx.step(0, Source::default())?;
         if self.all {
             return Ok(true);
@@ -62,7 +62,7 @@ impl Policy {
         id: ObjectId,
         signed: &Roles,
         later: &Roles,
-    ) -> ReadResult<bool> {
+    ) -> Result<bool> {
         // Original identity and name cannot be escaped by renaming a locked
         // field. New fields are tested too, particularly for All and Exclude.
         for name in [signed.fields.get(&id), later.fields.get(&id)]
@@ -92,7 +92,7 @@ fn references<'a>(
     d: &'a Dictionary,
     policy: &mut Policy,
     own: bool,
-) -> ReadResult<()> {
+) -> Result<()> {
     for reference in transforms::references(ctx, d, Source::default())? {
         match reference.transform {
             Transform::DocMdp(p) => {

@@ -327,7 +327,11 @@ mod unit {
             encryption.extend(dictionary(&[b"<< ".as_slice(), entry, b" >>"].concat()));
             let params = parameters(&encryption, &trailer()).unwrap();
             assert_eq!(
-                methods(&encryption, &params, Ok).unwrap_err().kind,
+                methods(&encryption, &params, Ok)
+                    .unwrap_err()
+                    .as_error()
+                    .unwrap()
+                    .kind,
                 ErrorKind::Syntax
             );
         }

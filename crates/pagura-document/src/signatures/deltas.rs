@@ -1,18 +1,17 @@
 //! Candidate identities from update xrefs and implicit stream dependencies.
 use super::roles::Roles;
-use crate::source::ReadResult;
 use crate::{
     Document,
     view::{Context, Source},
 };
-use pagura_core::ObjectId;
+use pagura_core::{ObjectId, Result};
 use std::collections::BTreeSet;
 
 pub(super) fn read(
     ctx: &mut Context<'_>,
     (before, old): (&Document, &Roles),
     (after, new): (&Document, &Roles),
-) -> ReadResult<BTreeSet<ObjectId>> {
+) -> Result<BTreeSet<ObjectId>> {
     let mut ids = BTreeSet::new();
     for &number in after.revisions()[0].entries.keys() {
         ctx.step(0, Source::default())?;
@@ -49,7 +48,7 @@ pub(super) fn read(
     }
     Ok(ids)
 }
-fn insert(ctx: &mut Context<'_>, ids: &mut BTreeSet<ObjectId>, id: ObjectId) -> ReadResult<bool> {
+fn insert(ctx: &mut Context<'_>, ids: &mut BTreeSet<ObjectId>, id: ObjectId) -> Result<bool> {
     if ids.contains(&id) {
         return Ok(false);
     }

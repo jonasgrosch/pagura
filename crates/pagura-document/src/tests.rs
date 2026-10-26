@@ -202,8 +202,14 @@ mod structure_tests {
                 .map(pagura_core::Diagnostic::tag)
                 .collect();
             assert_eq!(actual, tags, "{name}");
-            let strict = load(name, Recovery::Strict).and_then(|document| contents(&document));
-            assert_eq!(strict.unwrap_err().kind, ErrorKind::Syntax, "{name}");
+            let strict = load(name, Recovery::Strict)
+                .map_err(crate::source::ReadFault::from)
+                .and_then(|document| contents(&document));
+            assert_eq!(
+                strict.unwrap_err().as_error().unwrap().kind,
+                ErrorKind::Syntax,
+                "{name}"
+            );
         }
     }
 
@@ -684,7 +690,7 @@ mod page_ownership {
             second.content_streams(&page).unwrap_err(),
             page.label(&second).unwrap_err(),
         ] {
-            assert_eq!(error.kind, ErrorKind::InvalidArgument);
+            assert_eq!(error.as_error().unwrap().kind, ErrorKind::InvalidArgument);
         }
         // A page outliving its document still names it, not a successor.
         drop(first);

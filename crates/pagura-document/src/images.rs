@@ -198,14 +198,14 @@ fn asset<'a>(
         return Err((source.error(Error::syntax("image asset Subtype must be Image"))).into());
     }
     let mut dimension = |key| -> ReadResult<u32> {
-        context
+        Ok(context
             .required(dictionary, key, source)?
             .as_integer()
             .and_then(|value| u32::try_from(value).ok())
             .filter(|value| *value > 0)
             .ok_or_else(|| {
                 source.error(Error::syntax("image dimension must be a positive integer"))
-            })
+            })?)
     };
     let width = dimension(b"Width")?;
     let height = dimension(b"Height")?;

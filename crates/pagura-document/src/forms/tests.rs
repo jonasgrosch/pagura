@@ -1,6 +1,6 @@
 use super::*;
 use crate::Document;
-use pagura_core::{ErrorKind, Limits, Position, Recovery, Result};
+use pagura_core::{ErrorKind, Limits, Position, Recovery};
 use pagura_testkit::{fixture, fixture_path};
 use std::{collections::BTreeMap, fmt::Write};
 

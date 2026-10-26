@@ -271,7 +271,7 @@ fn parse(
             .in_object(id),
         )?;
     } else {
-        end(parser, &document.limits(), id, &mut repairs)?;
+        end(parser, &document.limits(), id, repairs)?;
     }
     let source = ObjectSource::File(offset..parser.offset());
     repairs.absorb(

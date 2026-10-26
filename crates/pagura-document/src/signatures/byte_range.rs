@@ -60,7 +60,7 @@ pub(super) fn check<'a>(
     ctx: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> ReadResult<std::result::Result<ByteRange<'a>, ByteRangeError>> {
+) -> ReadResult<Result<ByteRange<'a>, ByteRangeError>> {
     if dictionary
         .iter()
         .any(|(_, v)| matches!(v, Value::Reference(_)))
