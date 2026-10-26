@@ -153,8 +153,7 @@ impl<'a> Source<'a> {
         };
         let points = match &edges.kind {
             Kind::Curve { point, .. } => point.as_slice(),
-            Kind::Union { .. } => &[],
-            Kind::Polygon { points, .. } => points.as_slice(),
+            Kind::Union { points, .. } | Kind::Polygon { points, .. } => points.as_slice(),
         };
         let (outline, linear) = (&proof.outline, proof.linear);
         work.charge(outline.segments().len())?;

@@ -11,7 +11,8 @@
 //! slab, and the covered set's boundary there is the chains across which it
 //! changes between zero and not zero. Each is kept over the slab, running
 //! downward on the covered set's left and upward on its right, so that the
-//! covered set winds one; the others are dropped.
+//! covered set winds one, or the reverse to follow a spline that winds -1
+//! everywhere; the others are dropped.
 //! Chains tracing the same path, by their pieces or as vertical sides at one
 //! x, are kept or dropped together. Any other group is halved in height
 //! until the width its chains stay within, times its height, is at most
@@ -50,26 +51,38 @@ pub(crate) struct Covered {
     /// pieces can be from the spline's, beyond the kernel's measured
     /// arithmetic.
     pub(crate) allowance: f64,
+    /// The winding of the set, in units of a downward chain's right: +1
+    /// unless it follows a spline that winds the other way.
+    pub(crate) sign: i32,
+    /// Whether the spline winds twice or more anywhere.
+    pub(crate) overlapping: bool,
+}
+
+impl Covered {
+    /// The bytes its pieces keep.
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.lines.capacity() * size_of::<Line>() + self.curves.capacity() * size_of::<Mono>()
+    }
 }
 
 /// The covered set of `spline`, whose monotone curves are `curves`, with
-/// only its pieces' storage left charged to `bytes`. `None` when the
-/// sweep's work bound is exceeded or a slab's winding does not return to
-/// zero.
+/// only its pieces' storage left charged to `bytes`; winding as the spline
+/// does where `follow`, which needs one sign everywhere. `None` when the
+/// sweep's work bound is exceeded, a slab's winding does not return to
+/// zero, or a followed spline winds both ways.
 pub(crate) fn covered(
     spline: &Spline,
     curves: &[Mono],
+    follow: bool,
     bytes: &mut Meter,
 ) -> Result<Option<Covered>> {
     let before = bytes.used();
-    let result = sweep(spline, curves, bytes);
+    let result = sweep(spline, curves, follow, bytes);
     let retained = result
         .as_ref()
         .ok()
         .and_then(Option::as_ref)
-        .map_or(0, |c| {
-            c.lines.capacity() * size_of::<Line>() + c.curves.capacity() * size_of::<Mono>()
-        });
+        .map_or(0, Covered::retained_bytes);
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
@@ -86,14 +99,14 @@ struct Strand {
 }
 
 /// A run kept over heights `lo..hi`, from its piece `piece` containing
-/// `lo`, running downward or upward.
+/// `lo`, as the covered set's left or right side.
 #[derive(Debug, Clone, Copy)]
 struct Kept {
     run: usize,
     piece: usize,
     lo: f64,
     hi: f64,
-    down: bool,
+    left: bool,
 }
 
 struct Chains<'a> {
@@ -104,9 +117,16 @@ struct Chains<'a> {
     work: Work,
     kept: Vec<Kept>,
     allowance: f64,
+    /// The least and greatest winding between chains.
+    windings: [i32; 2],
 }
 
-fn sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<Covered>> {
+fn sweep(
+    spline: &Spline,
+    curves: &[Mono],
+    follow: bool,
+    bytes: &mut Meter,
+) -> Result<Option<Covered>> {
     let (downs, runs, magnitude) = spline_runs(spline, bytes)?;
     let top = |r: &Run| downs[r.start].a.y;
     let bottom = |r: &Run| downs[r.end - 1].b.y;
@@ -132,6 +152,7 @@ fn sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<C
         },
         kept: Vec::new(),
         allowance: 0.0,
+        windings: [0; 2],
     };
     // Active runs and their pieces at the slab's top.
     let mut active: Vec<(usize, usize)> = Vec::new();
@@ -170,15 +191,25 @@ fn sweep(spline: &Spline, curves: &[Mono], bytes: &mut Meter) -> Result<Option<C
     let Chains {
         mut kept,
         allowance,
+        windings: [least, most],
         mut work,
         ..
     } = chains;
-    emit(
+    if follow && least < 0 && most > 0 {
+        return Ok(None);
+    }
+    let sign = if follow && least < 0 { -1 } else { 1 };
+    let Some(mut covered) = emit(
         &mut kept,
         (&downs, &runs, curves),
-        (allowance, &mut work),
+        (allowance, sign, &mut work),
         bytes,
-    )
+    )?
+    else {
+        return Ok(None);
+    };
+    covered.overlapping = least < -1 || most > 1;
+    Ok(Some(covered))
 }
 
 impl Chains<'_> {
@@ -258,6 +289,7 @@ impl Chains<'_> {
                     self.keep_as(&group[0], winding == 0, (lo, hi), bytes)?;
                 }
                 winding += turn;
+                self.note(winding);
             } else if (hi - lo) * self.spread(group, (left, right), hi) <= LEAST
                 || !(lo < mid && mid < hi)
             {
@@ -391,12 +423,18 @@ impl Chains<'_> {
         if (winding == 0) != (after == 0) {
             self.keep_as(s, winding == 0, heights, bytes)?;
         }
+        self.note(after);
         Ok(after)
     }
 
-    /// Keeps `s` over `lo..hi` as the covered set's left side, running
-    /// downward, or its right side, running upward: the covered set winds
-    /// as a downward chain's right.
+    /// Records a winding found between chains.
+    fn note(&mut self, winding: i32) {
+        let [least, most] = &mut self.windings;
+        *least = (*least).min(winding);
+        *most = (*most).max(winding);
+    }
+
+    /// Keeps `s` over `lo..hi` as the covered set's left or right side.
     fn keep_as(
         &mut self,
         s: &Strand,
@@ -410,20 +448,21 @@ impl Chains<'_> {
             piece: s.piece,
             lo,
             hi,
-            down: left,
+            left,
         });
         Ok(())
     }
 }
 
 /// The pieces of the kept runs, each kept height range merged with the next
-/// one of its run where they meet in the same direction; `None` past the
-/// work bound. Each range visits only the pieces from the one containing
-/// its top to the one containing its bottom.
+/// one of its run where they meet on the same side; `None` past the work
+/// bound. Each range visits only the pieces from the one containing its top
+/// to the one containing its bottom. Left sides run downward and right
+/// sides upward for `sign` +1, and the other way for -1.
 fn emit(
     kept: &mut [Kept],
     (downs, runs, curves): (&[Down], &[Run], &[Mono]),
-    (mut allowance, work): (f64, &mut Work),
+    (mut allowance, sign, work): (f64, i32, &mut Work),
     bytes: &mut Meter,
 ) -> Result<Option<Covered>> {
     kept.sort_unstable_by(|a, b| a.run.cmp(&b.run).then(a.lo.total_cmp(&b.lo)));
@@ -431,7 +470,7 @@ fn emit(
     bytes.reserve(&mut merged, kept.len())?;
     for &k in kept.iter() {
         match merged.last_mut() {
-            Some(last) if last.run == k.run && last.down == k.down && last.hi == k.lo => {
+            Some(last) if last.run == k.run && last.left == k.left && last.hi == k.lo => {
                 last.hi = k.hi;
             }
             _ => merged.push(k),
@@ -440,6 +479,7 @@ fn emit(
     let mut lines = Vec::new();
     let mut monos = Vec::new();
     for k in &merged {
+        let down = k.left == (sign > 0);
         let pieces = downs[k.piece..runs[k.run].end]
             .iter()
             .take_while(|piece| piece.a.y < k.hi);
@@ -452,7 +492,7 @@ fn emit(
                 continue;
             }
             if let Some(c) = piece.curve {
-                let direction = if k.down { 1.0 } else { -1.0 };
+                let direction = if down { 1.0 } else { -1.0 };
                 bytes.reserve_capacity(&mut monos, 1)?;
                 monos.push(curves[c].restricted(top, bottom, direction));
                 continue;
@@ -474,7 +514,7 @@ fn emit(
                 allowance = outward(allowance + error * (bottom - top));
             }
             bytes.reserve_capacity(&mut lines, 1)?;
-            lines.push(if k.down {
+            lines.push(if down {
                 Line { a, b }
             } else {
                 Line { a: b, b: a }
@@ -485,6 +525,8 @@ fn emit(
         lines,
         curves: monos,
         allowance,
+        sign,
+        overlapping: false,
     }))
 }
 
