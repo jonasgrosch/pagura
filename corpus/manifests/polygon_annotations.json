@@ -871,17 +871,22 @@
     {
       "id": "polygon_annotations/arrow",
       "kind": "pdf",
-      "description": "Cloudy borders and polyline end styles remain explicit gaps",
-      "expected": "unsupported",
+      "description": "Zero-width open endings paint no marks",
+      "expected": "render",
       "requirements": [
-        "content-polygon-appearances"
+        "content-polygon-appearances",
+        "content-line-endings"
       ],
       "path": "corpus/generated/polygon_annotations/arrow.pdf",
       "sha256": "d255789a9722c8c3e8d3509d648c63fd844fca4f066b634841606794e94fb481",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "oracle": "corpus/generated/polygon_annotations/arrow.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
     }
   ]
 }

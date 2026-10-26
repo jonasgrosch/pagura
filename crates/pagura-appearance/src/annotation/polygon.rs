@@ -1,12 +1,11 @@
 //! Polygon/PolyLine appearances (12.5.6.9, Table 181).
 
 use super::border::{Border, plain_effect};
+use super::ending;
 use super::marks::{Color, Marks, Pen, color};
 use super::path;
-use crate::features;
 use crate::stream::AppearanceStream;
-use crate::values::optional;
-use pagura_core::{Dictionary, Error, Rect, Result};
+use pagura_core::{Dictionary, Rect, Result};
 use pagura_document::Document;
 
 pub(super) fn generate(
@@ -16,11 +15,12 @@ pub(super) fn generate(
     closed: bool,
 ) -> Result<Option<AppearanceStream>> {
     let geometry = path::read(document, annotation)?;
-    if closed {
+    let endings = if closed {
         plain_effect(document, annotation)?;
+        None
     } else {
-        no_endings(document, annotation)?;
-    }
+        Some(ending::read(document, annotation)?)
+    };
     let border = Border::read(document, annotation)?;
     let mut marks = Marks::new(document, annotation);
     let path = [geometry.subpath(closed)];
@@ -39,30 +39,17 @@ pub(super) fn generate(
             },
         )?;
     }
-    marks.finish(rect)
-}
-
-pub(super) fn no_endings(document: &Document, annotation: &Dictionary) -> Result<()> {
-    let Some(value) = optional(document, annotation, b"LE")? else {
-        return Ok(());
-    };
-    let values = value
-        .as_array()
-        .ok_or(Error::syntax("line endings must be an array"))?;
-    let [start, end] = values else {
-        return Err(Error::syntax("line endings require two names"));
-    };
-    for value in [start, end] {
-        let name = document
-            .resolve(value)?
-            .as_name()
-            .ok_or(Error::syntax("line ending must be a name"))?;
-        if name != b"None" {
-            return Err(Error::unsupported(
-                features::ANNOTATION_APPEARANCE,
-                "line ending generation is not implemented",
-            ));
-        }
+    if let Some(endings) = endings
+        && endings.iter().copied().any(ending::Style::visible)
+    {
+        ending::draw(
+            document,
+            annotation,
+            &mut marks,
+            endings,
+            geometry.endpoints()?,
+            &border,
+        )?;
     }
-    Ok(())
+    marks.finish(rect)
 }

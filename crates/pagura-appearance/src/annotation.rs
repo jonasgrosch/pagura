@@ -2,6 +2,7 @@
 //! borders, ink/polygon paths, note/file icons and empty widgets (12.5.6).
 
 mod border;
+mod ending;
 mod icon;
 mod ink;
 mod line;

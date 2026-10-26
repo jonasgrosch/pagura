@@ -6,6 +6,7 @@ geometry from the Ink fixtures, never a product or competitor renderer.
 import math
 
 from .ink_annotations import HORIZONTAL, DIAGONAL, oracle
+from .ending_annotations import oracle as ending_oracle
 from .model import Case, OPEN, RENDER, UNSUPPORTED
 from .pdf import document, stream
 
@@ -70,6 +71,10 @@ def cases():
         yield Case(name, source(extra=extra), OPEN, (REQUIREMENT,),
                    'Line parameter types, cardinality and sign restrictions are validated', extra={'render_error': 'syntax'})
     for name, extra in [('leader', b'/LL 4'), ('extension', b'/LL 0 /LLE 2'), ('offset', b'/LLO 2'),
-                        ('caption', b'/Cap true'), ('arrow', b'/LE [/None /OpenArrow]')]:
+                        ('caption', b'/Cap true')]:
         yield Case(name, source(extra=extra), UNSUPPORTED, (REQUIREMENT,),
                    'Leader, caption and non-None ending synthesis remain explicit', feature='annotation.appearance')
+
+    yield Case('arrow', source(extra=b'/LE [/None /OpenArrow]'), RENDER, (REQUIREMENT, 'content-line-endings'),
+               'Analytic arrow outline replaces the old explicit refusal without changing the PDF bytes',
+               oracle=ending_oracle(('None','OpenArrow'),width=2.,fill=None,line=((4.,8.),(28.,8.))),extra={'tolerance':1})

@@ -378,11 +378,23 @@ Additional ignored-legacy controls await their own hosted validation.
 **Straight Line appearances implemented:** required finite L coordinates resolve
 indirectly and validate before empty output. C, CA and BS width/dash use the
 existing bounded mark builder and annotation clip; absent/null/None endings and
-zero/null leaders are accepted. Forty-one authored controls include 22 independent
+zero/null leaders are accepted. The initial 41 controls include 22 independent
 pixel expectations for two resolutions, dashes, diagonals, rotation, clipping,
 opacity, indirection and stored appearance precedence. Hosted validation is pending.
-Non-None endings, nonzero leaders/extensions/offsets and captions still refuse
-explicitly and remain the next appearance increments.
+The ending increment below adds standard endings; nonzero leaders/extensions/
+offsets and captions still refuse explicitly and remain the next increments.
+
+**Line/PolyLine endings implemented:** all ten Table 179 styles resolve through
+LE, including indirect names. Endpoint orientation follows source derivatives,
+including repeated curve controls. Closed shapes fill IC/ca; outlines use C/CA
+and solid strokes. Reader policy fixes dimensions at three times max(width, 1),
+arrow depth twice that, and body/interior/outline mark order. Fixed stack geometry
+and bounded content handle zero-width/transparent cases without allocating path
+collections. Fifty-one controls contain 47 independent pixel expectations from
+analytic offset polygons and exact disk areas at two resolutions; they cover both
+subtypes, mixed styles, direction, rotation, clipping, opacity, indirection and
+straight-cubic Path endpoints. Hosted validation is pending. The existing Line
+arrow and zero-width PolyLine arrow controls now render without PDF byte changes.
 
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path
@@ -396,8 +408,8 @@ and malformed data. Native/WASI/client, partial-tile and viewer checks pass at
 `0e2c68e0e` in [run 40289812941](https://github.com/jonasgrosch/pagura/actions/runs/40289812941).
 Two further controls check ignored malformed and cyclic Vertices under the
 current Table 181 errata, bringing the corpus to 47 controls / 29 pixel oracles;
-their hosted validation is pending. Cloudy borders and non-None endings remain
-explicit gaps.
+their hosted validation is pending. Standard endings are now implemented above;
+cloudy borders remain an explicit gap.
 
 Complete missing normal appearances for FreeText, text markup, Line,
 Stamp, Caret and other ledger subtypes;

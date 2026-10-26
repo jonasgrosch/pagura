@@ -960,7 +960,7 @@
         "12.5.5",
         "12.5.6.9 Table 181"
       ],
-      "rule": "Polygon closes its geometry and fills IC with the nonzero rule; PolyLine leaves endpoints open and IC applies only to line endings. Vertices are finite coordinate pairs in default user space. A present Path overrides Vertices and begins with one moveto pair, followed by lineto pairs or six cubic operands. Arrays and coordinates resolve indirectly. BS width/dash, C, CA and independent ca apply under the original annotation rectangle. Null/plain polygon border effects and absent/null/None polyline endings are supported. Temporary storage, segment counts and emitted content are bounded before painting. Table 181 errata clarifies that Vertices is ignored when Path is present; appearance generation does not establish required-key document conformance.",
+      "rule": "Polygon closes its geometry and fills IC with the nonzero rule; PolyLine leaves endpoints open and IC applies only to line endings. Vertices are finite coordinate pairs in default user space. A present Path overrides Vertices and begins with one moveto pair, followed by lineto pairs or six cubic operands. Arrays and coordinates resolve indirectly. BS width/dash, C, CA and independent ca apply under the original annotation rectangle. Null/plain polygon border effects and standard polyline endings are supported through content-line-endings. Temporary storage, segment counts and emitted content are bounded before painting. Table 181 errata clarifies that Vertices is ignored when Path is present; appearance generation does not establish required-key document conformance.",
       "status": "Polygon/PolyLine vertices and PDF 2.0 path generation passed native/WASI/client/partial-tile/viewer accuracy checks at 0e2c68e0e",
       "tests": [
         "pagura-appearance annotation::tests::polygon_paths_override_vertices_and_resolve_indirect_operands",
@@ -1031,8 +1031,8 @@
         "12.5.5",
         "12.5.6.7 Tables 178 and 179"
       ],
-      "rule": "Line L contains four finite coordinates in default user space; indirect arrays and numbers resolve. Reader policy strokes the segment with butt caps, C, CA and BS width/dash inside the original annotation BBox. Geometry validates before zero-width or empty-color suppression. Stored appearances retain precedence. Absent/null/None endings and null/zero leaders are accepted. LLE requires LL; extension/offset values are nonnegative and Cap is boolean. Caption-only properties are ignored when Cap is false. Generated content remains bounded.",
-      "status": "straight Line implementation with 41 authored controls and 22 independent pixel expectations; hosted validation pending",
+      "rule": "Line L contains four finite coordinates in default user space; indirect arrays and numbers resolve. Reader policy strokes the segment with butt caps, C, CA and BS width/dash inside the original annotation BBox. Geometry validates before zero-width or empty-color suppression. Stored appearances retain precedence. All standard endings are provided by content-line-endings; null/zero leaders are accepted. LLE requires LL; extension/offset values are nonnegative and Cap is boolean. Caption-only properties are ignored when Cap is false. Generated content remains bounded.",
+      "status": "Line implementation with 41 authored controls and 23 independent pixel expectations; hosted validation pending",
       "tests": [
         "pagura-appearance annotation::tests::line_coordinates_resolve_indirectly_and_reject_nonfinite_values",
         "line_annotations/horizontal-72",
@@ -1077,7 +1077,84 @@
         "line_annotations/caption",
         "line_annotations/arrow"
       ],
-      "gaps": "Non-None endings, nonzero leader lines/extensions/offsets and captions remain explicit refusals. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
+      "gaps": "Nonzero leader lines/extensions/offsets and captions remain explicit refusals. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
+    },
+    {
+      "id": "content-line-endings",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.4 Table 168",
+        "12.5.6.7 Table 179",
+        "12.5.6.9 Table 181"
+      ],
+      "rule": "Line and PolyLine LE resolves two names with None defaults. All ten standard styles are recognized. Outward endpoint orientation uses line direction or the first/last nonzero source curve derivative, including repeated controls. Closed endings use optional IC/ca and C/CA outlines; open endings ignore IC. Reader artwork policy uses radius/half-height 3*max(width,1), arrow depth twice that, solid ending outlines and body/interior/outline paint order. A zero-width border suppresses strokes but permits interior fills. Geometry uses fixed stack storage and bounded output; unknown names remain explicit refusals.",
+      "status": "implemented with 51 authored controls and 47 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::polyline_endings_follow_curve_derivatives_through_repeated_controls",
+        "pagura-appearance annotation::tests::content_and_storage_budgets_bound_generation",
+        "ending_annotations/line-Square-72",
+        "ending_annotations/line-Square-144",
+        "ending_annotations/line-Circle-72",
+        "ending_annotations/line-Circle-144",
+        "ending_annotations/line-Diamond-72",
+        "ending_annotations/line-Diamond-144",
+        "ending_annotations/line-OpenArrow-72",
+        "ending_annotations/line-OpenArrow-144",
+        "ending_annotations/line-ClosedArrow-72",
+        "ending_annotations/line-ClosedArrow-144",
+        "ending_annotations/line-Butt-72",
+        "ending_annotations/line-Butt-144",
+        "ending_annotations/line-ROpenArrow-72",
+        "ending_annotations/line-ROpenArrow-144",
+        "ending_annotations/line-RClosedArrow-72",
+        "ending_annotations/line-RClosedArrow-144",
+        "ending_annotations/line-Slash-72",
+        "ending_annotations/line-Slash-144",
+        "ending_annotations/polyline-Square-72",
+        "ending_annotations/polyline-Square-144",
+        "ending_annotations/polyline-Circle-72",
+        "ending_annotations/polyline-Circle-144",
+        "ending_annotations/polyline-Diamond-72",
+        "ending_annotations/polyline-Diamond-144",
+        "ending_annotations/polyline-OpenArrow-72",
+        "ending_annotations/polyline-OpenArrow-144",
+        "ending_annotations/polyline-ClosedArrow-72",
+        "ending_annotations/polyline-ClosedArrow-144",
+        "ending_annotations/polyline-Butt-72",
+        "ending_annotations/polyline-Butt-144",
+        "ending_annotations/polyline-ROpenArrow-72",
+        "ending_annotations/polyline-ROpenArrow-144",
+        "ending_annotations/polyline-RClosedArrow-72",
+        "ending_annotations/polyline-RClosedArrow-144",
+        "ending_annotations/polyline-Slash-72",
+        "ending_annotations/polyline-Slash-144",
+        "ending_annotations/mixed",
+        "ending_annotations/vertical",
+        "ending_annotations/rotated",
+        "ending_annotations/opacity",
+        "ending_annotations/transparent-interior",
+        "ending_annotations/transparent-border",
+        "ending_annotations/zero-width",
+        "ending_annotations/clipped",
+        "ending_annotations/indirect",
+        "ending_annotations/path-cubic",
+        "ending_annotations/path-repeats",
+        "ending_annotations/line-unknown",
+        "ending_annotations/line-interior-type",
+        "ending_annotations/polyline-unknown",
+        "ending_annotations/polyline-interior-type",
+        "line_annotations/arrow",
+        "polygon_annotations/arrow"
+      ],
+      "gaps": "Line leaders and captions, FreeText callout synthesis, interaction and broader degenerate/overlapping ending combinations remain open. Artwork dimensions and mark order are reader choices; competing artwork is not a feature defect.",
+      "external_primary_review": [
+        {
+          "reference": "ref-e94148e56a97",
+          "locator": "12.5.6.7 Table 179; https://pdf-issues.pdfa.org/32000-2-2020/clause12.html",
+          "verdict": "verified with documented choices",
+          "reason": "Current errata explicitly includes interior color for RClosedArrow. Shape dimensions and solid ending outlines are documented reader policy."
+        }
+      ]
     }
   ]
 }

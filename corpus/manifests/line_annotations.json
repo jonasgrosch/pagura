@@ -739,17 +739,23 @@
     {
       "id": "line_annotations/arrow",
       "kind": "pdf",
-      "description": "Leader, caption and non-None ending synthesis remain explicit",
-      "expected": "unsupported",
+      "description": "Analytic arrow outline replaces the old explicit refusal without changing the PDF bytes",
+      "expected": "render",
       "requirements": [
-        "content-line-appearances"
+        "content-line-appearances",
+        "content-line-endings"
       ],
       "path": "corpus/generated/line_annotations/arrow.pdf",
       "sha256": "75c41cfd87614b79b0b78739e82cebcbe04288102f633fc85e12ab08b68d54db",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "oracle": "corpus/generated/line_annotations/arrow.ppm",
+      "oracle_sha256": "3c6b93125c1b445d80239ba652586dd24f12e0d030b9d1e377f6842b677257c9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
     }
   ]
 }

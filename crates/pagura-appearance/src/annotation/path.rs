@@ -1,5 +1,6 @@
 //! Bounded Polygon/PolyLine geometry and annotation Path (Tables 181/185).
 
+use super::ending::Endpoint;
 use super::marks::{PathOperator, Subpath};
 use crate::values::{number, optional};
 use pagura_core::{Dictionary, Error, Result, Value};
@@ -11,6 +12,55 @@ pub(super) enum Geometry {
 }
 
 impl Geometry {
+    /// Outward endpoint directions use the first/last nonzero source
+    /// derivative, not the chords used later by a renderer.
+    pub(super) fn endpoints(&self) -> Result<[Endpoint; 2]> {
+        let mut ends = [None; 2];
+        let mut first = None;
+        let mut point = (0.0, 0.0);
+        let mut segment = |from, controls: [(f64, f64); 3]| -> Result<()> {
+            if ends[0].is_none()
+                && let Some(adjacent) = controls.iter().find(|&&p| p != from)
+            {
+                ends[0] = Some(Endpoint::new(from, *adjacent)?);
+            }
+            let [c1, c2, end] = controls;
+            if let Some(adjacent) = [c2, c1, from].into_iter().find(|&p| p != end) {
+                ends[1] = Some(Endpoint::new(end, adjacent)?);
+            }
+            Ok(())
+        };
+        match self {
+            Self::Vertices(points) => {
+                first = points.first().copied();
+                for pair in points.windows(2) {
+                    segment(pair[0], [pair[1]; 3])?;
+                }
+            }
+            Self::Operators(commands) => {
+                for command in commands {
+                    match *command {
+                        PathOperator::Move([x, y]) => {
+                            point = (x, y);
+                            first = Some(point);
+                        }
+                        PathOperator::Line([x, y]) => {
+                            segment(point, [(x, y); 3])?;
+                            point = (x, y);
+                        }
+                        PathOperator::Cubic([x1, y1, x2, y2, x3, y3]) => {
+                            segment(point, [(x1, y1), (x2, y2), (x3, y3)])?;
+                            point = (x3, y3);
+                        }
+                    }
+                }
+            }
+        }
+        let first = first.ok_or(Error::syntax("annotation path has no endpoint"))?;
+        let fallback = Endpoint::new(first, first)?;
+        Ok([ends[0].unwrap_or(fallback), ends[1].unwrap_or(fallback)])
+    }
+
     pub(super) fn subpath(&self, closed: bool) -> Subpath<'_> {
         match self {
             Self::Vertices(points) if closed => Subpath::Polygon(points),

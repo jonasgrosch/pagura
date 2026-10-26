@@ -1,8 +1,8 @@
 //! Straight line annotations (12.5.6.7, Table 178).
 
 use super::border::Border;
+use super::ending::{self, Endpoint};
 use super::marks::{Color, Marks, Pen, Subpath, color};
-use super::polygon::no_endings;
 use crate::features;
 use crate::stream::AppearanceStream;
 use crate::values::{number, optional};
@@ -24,7 +24,7 @@ pub(super) fn generate(
         (number(document, x0)?, number(document, y0)?),
         (number(document, x1)?, number(document, y1)?),
     ];
-    no_endings(document, annotation)?;
+    let endings = ending::read(document, annotation)?;
     no_leaders_or_caption(document, annotation)?;
     let border = Border::read(document, annotation)?;
     let mut marks = Marks::new(document, annotation);
@@ -38,6 +38,19 @@ pub(super) fn generate(
                 width: border.width,
                 dash: &border.dash,
             },
+        )?;
+    }
+    if endings.iter().copied().any(ending::Style::visible) {
+        ending::draw(
+            document,
+            annotation,
+            &mut marks,
+            endings,
+            [
+                Endpoint::new(points[0], points[1])?,
+                Endpoint::new(points[1], points[0])?,
+            ],
+            &border,
         )?;
     }
     marks.finish(rect)
