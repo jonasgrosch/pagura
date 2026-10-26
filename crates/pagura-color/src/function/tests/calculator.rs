@@ -465,7 +465,7 @@ fn numbers_below(kinds: &[bool]) -> usize {
 #[test]
 fn random_programs_validate_and_match_the_previous_interpreter() {
     let mut rng = Rng::new(0xca1c);
-    let (mut valid, mut compared) = (0, 0);
+    let (mut valid, mut compared, mut compiled) = (0, 0, 0);
     for case in 0..6000 {
         let m = rng.below(4);
         let n = 1 + rng.below(3);
@@ -489,6 +489,7 @@ fn random_programs_validate_and_match_the_previous_interpreter() {
             continue;
         };
         valid += 1;
+        compiled += usize::from(new.compiled());
         let pair = Pair {
             new: Arc::new(new),
             old: old.unwrap(),
@@ -497,7 +498,11 @@ fn random_programs_validate_and_match_the_previous_interpreter() {
             compared += usize::from(compare(&pair, &input, &format!("{case}: {program}")));
         }
     }
-    assert!(valid > 4000 && compared > 40_000, "{valid} {compared}");
+    // Straight-line code runs most of them, interpretation the rest.
+    assert!(
+        valid > 4000 && compared > 40_000 && compiled > 1000 && compiled < valid,
+        "{valid} {compared} {compiled}"
+    );
 }
 
 #[test]
@@ -595,4 +600,42 @@ fn calculator_object(
 #[test]
 fn the_oracle_runs_with_ample_work() {
     assert!(unlimited().operations > 1 << 40);
+}
+
+/// DeviceN tint transforms as Illustrator writes them (one and two
+/// inputs, four outputs: stack moves around `1 x sub`) run as straight-line
+/// code and give the previous interpreter's results.
+#[test]
+fn tint_transforms_run_as_straight_line_code() {
+    const TINTS: &[(&str, usize)] = &[
+        (
+            "{1.000000 2 1 roll 1.000000 2 1 roll 0 index 1.000000 cvr exch sub 2 \
+             1 roll 1.000000 2 1 roll 5 -1 roll 1.000000 cvr exch sub 5 1 \
+             roll 4 -1 roll 1.000000 cvr exch sub 4 1 roll 3 -1 roll 1.000000 \
+             cvr exch sub 3 1 roll 2 -1 roll 1.000000 cvr exch sub 2 1 \
+             roll pop }",
+            1,
+        ),
+        (
+            "{1 index 1.000000 cvr exch sub 3 1 roll 1.000000 3 1 roll 0 index \
+             1.000000 cvr exch sub 3 1 roll 1.000000 3 1 roll 6 -1 roll 1.000000 \
+             cvr exch sub 6 1 roll 5 -1 roll 1.000000 cvr exch sub 5 1 \
+             roll 4 -1 roll 1.000000 cvr exch sub 4 1 roll 3 -1 roll 1.000000 \
+             cvr exch sub 3 1 roll pop pop }",
+            2,
+        ),
+    ];
+    let mut rng = Rng::new(0x7147);
+    for &(program, inputs_count) in TINTS {
+        let parameters = CalculatorFunction {
+            domain: vec![[0.0, 1.0]; inputs_count],
+            range: vec![[0.0, 1.0]; 4],
+            program: program.as_bytes().into(),
+        };
+        let pair = pair(&parameters);
+        assert!(pair.new.compiled(), "{program}");
+        for input in inputs(&mut rng, &parameters.domain, 200) {
+            compare(&pair, &input, program);
+        }
+    }
 }

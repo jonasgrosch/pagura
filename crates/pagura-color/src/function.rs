@@ -345,6 +345,12 @@ impl Function {
         self.cost
     }
 
+    /// Whether a calculator function runs as straight-line code.
+    #[cfg(test)]
+    pub(crate) fn compiled(&self) -> bool {
+        matches!(&self.kind, Kind::Calculator(program) if program.compiled())
+    }
+
     /// Fills `output` as [`Self::evaluate`] does and returns true when the
     /// result provably does not depend on the input, bit for bit: an
     /// exponential function with `C0 = C1` (no `-0.0` among them) whose
