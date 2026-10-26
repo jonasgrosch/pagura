@@ -361,6 +361,7 @@ fn assembled_outlines_keep_only_their_output_charged() {
             points: points.clone(),
             closed: true,
             tangent: Point::new(1.0, 0.0),
+            caps: [None; 2],
         }];
         let mut bytes = crate::testing::bytes();
         let (out, _, tiling) = assemble(
