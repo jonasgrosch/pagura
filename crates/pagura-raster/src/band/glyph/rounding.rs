@@ -37,15 +37,19 @@ pub(in crate::band) struct Proof {
 }
 
 impl Proof {
+    /// The proof of `outline` under `linear`; with the relative parts
+    /// placements integrate in closed form, and the area allowance by which
+    /// they can miss the outline's spline, also a direct admission.
     pub(super) fn new(
         outline: &Path,
         linear: Transform,
-        relative: Option<&Relative>,
+        relative: Option<(&Relative, f64)>,
         bytes: &mut Meter,
     ) -> Result<Arc<Self>> {
         bytes.charge(size_of::<Self>() + 2 * size_of::<usize>())?;
         let outline = outline.clone_with_bytes(bytes)?;
-        let direct = relative.and_then(|relative| Direct::new(&outline, linear, relative));
+        let direct = relative
+            .and_then(|(relative, allowance)| Direct::new(&outline, linear, relative, allowance));
         let curved = outline
             .segments()
             .iter()
@@ -88,6 +92,13 @@ impl Proof {
 
 /// Cached once per source outline and linear map. Kept quadratics remove
 /// reduction error, but not cancellation in H or mapping and translation.
+///
+/// A covered set's parts are the spline's own pieces over exact heights,
+/// placed like a certified spline's; they differ from the spline's covered
+/// area by at most its area allowance in any pixel (leaves and cut lines),
+/// beyond the same arithmetic. Reserving that allowance from DIRECT leaves
+/// its direct placements the same margin from exact as a certified
+/// spline's.
 #[derive(Debug)]
 pub(super) struct Direct {
     /// Largest translation whose arithmetic allowance still fits DIRECT.
@@ -95,7 +106,12 @@ pub(super) struct Direct {
 }
 
 impl Direct {
-    pub(super) fn new(outline: &Path, linear: Transform, relative: &Relative) -> Option<Self> {
+    pub(super) fn new(
+        outline: &Path,
+        linear: Transform,
+        relative: &Relative,
+        allowance: f64,
+    ) -> Option<Self> {
         if outline
             .segments()
             .iter()
@@ -117,10 +133,11 @@ impl Direct {
             .iter()
             .map(curve::Mono::arithmetic_allowance)
             .fold(0.0, |sum, error| (sum + error).next_up());
-        // Solve arithmetic + 384*EPS*pieces*(magnitude + |origin|)
-        // <= DIRECT once. Round every inverse step down so the cached
-        // translation bound cannot admit more than the original allowance.
-        let room = (DIRECT - arithmetic).next_down();
+        // Solve allowance + arithmetic + 384*EPS*pieces*(magnitude +
+        // |origin|) <= DIRECT once. Round every inverse step down so the
+        // cached translation bound cannot admit more than the original
+        // allowance.
+        let room = ((DIRECT - allowance).next_down() - arithmetic).next_down();
         let magnitude = mapped_magnitude(outline, linear, Point::default());
         let origin = ((room / (384.0 * f64::EPSILON * pieces)).next_down() - magnitude).next_down();
         (origin >= 0.0).then_some(Self { origin })
@@ -1489,6 +1506,25 @@ mod tests {
     }
 
     #[test]
+    fn covered_sets_reserve_their_allowance_from_the_direct_admission() {
+        let limits = Limits::default();
+        let edges = GlyphEdges::new(&circles(true, false), [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
+        let Kind::Union { allowance, .. } = edges.kind else {
+            panic!("a covered set");
+        };
+        let (proof, relative) = (edges.source().unwrap(), edges.relative().unwrap());
+        let admitted = |allowance| {
+            Direct::new(&proof.outline, proof.linear, relative, allowance).map(|d| d.origin)
+        };
+        // The set's own admission is the one its allowance leaves.
+        assert_eq!(proof.direct.as_ref().map(|d| d.origin), admitted(allowance));
+        let whole = admitted(0.0).unwrap();
+        assert!(admitted(DIRECT / 2.0).unwrap() < whole);
+        assert!(admitted(allowance).unwrap() <= whole);
+        assert_eq!(admitted(DIRECT), None);
+    }
+
+    #[test]
     fn local_bytes_leave_point_cells_and_clipped_placements_to_the_interval() {
         let limits = Limits::default();
         let edges =
@@ -1594,7 +1630,8 @@ mod tests {
         let (coverage, least, _) = certified(limits.raster_work, 0);
         // With them, at exactly the least work the intervals needed.
         let (settled, work, spare) = certified(least, limits.raster_work);
-        assert!(spare > 0 && work <= least, "{work} {least}");
+        // Admitted directly, this covered set needs no certificate work.
+        assert_eq!((least, work, spare), (0, 0, 0));
         assert_eq!(settled, coverage);
     }
 
