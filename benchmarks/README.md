@@ -9,6 +9,36 @@ and verified outputs. A fast average cannot hide a slow or incorrect cell.
 Unbound workloads, missing engines, unattested runners and unimplemented
 cross-platform/resolution/concurrency aggregation still block release.
 
+## Capability inventory (G00)
+
+`capabilities.json` is the reviewed source-inspection ledger for the
+[competitive plan](../docs/COMPETITIVE_PARITY.md). Its generated
+[review view](../docs/CAPABILITIES.md) separates library, CLI, host and viewer
+support. All 90 literal tags have manual dispositions with hashed call-site evidence.
+The 43 capability families own all 332 registered requirements and include untagged APIs.
+Every baseline family cell is explicitly unprobed; schema 2 rejects runtime support
+or N/A claims. G01 fixture-level results and build identities are recorded separately.
+
+```sh
+uv run --locked --offline python tools/capabilities.py --check
+# After reviewing ledger edits, regenerate the checked view:
+uv run --locked --offline python tools/capabilities.py
+```
+
+The check validates IDs, owners, packages, fixture/requirement references,
+LF-normalized source hashes, tag dispositions/locators, requirement/API ownership
+and the generated view.
+Regeneration never refreshes source hashes or reclassifies a tag automatically.
+When source evidence changes, review the affected observations before updating
+their hashes. Tests/fixtures are references to existing evidence, not new run
+results. The scan is lexical; the manual review followed symbol uses, aliases
+and decoder dispatch. New dynamic tags or APIs reopen the inventory.
+No competitor download, engine invocation or product behavior change occurs.
+
+G01's first [document-service probes](probes/README.md) exercise the pinned
+PDFium/MuPDF APIs on independent synthetic controls in hosted CI. Results remain
+fixture-scoped; the remaining baseline adapters stay explicit and unprobed.
+
 ## Offline checks and explicit competitor setup
 
 ```sh

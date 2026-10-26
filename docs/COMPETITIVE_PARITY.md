@@ -2,9 +2,11 @@
 
 Status: proposed implementation plan, reconciled against `render/one-pass` at
 `19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
-The documentation reconciliation is delivered; the implementation work below
-is pending. Component names identify ownership, not assigned people or active
-work. [STATUS.md](STATUS.md) records what exists now.
+The documentation reconciliation is delivered. G00 has started with the
+[checked capability inventory](CAPABILITIES.md); its call-site adjudication,
+exhaustive API inventory and all runtime comparisons remain open. Other packages
+below are pending. Component names identify ownership, not assigned people.
+[STATUS.md](STATUS.md) records what exists now.
 
 ## Baseline and consolidation
 
@@ -112,33 +114,49 @@ sizes the valid, baseline-supported cases.
 
 Owner: `references/requirements`, `docs`, `benchmarks`; depends on no new product code.
 
-- Add `benchmarks/capabilities.json` and a checked human-readable view. Each row
-  records ID, operation, feature/subvariant, source locator, current Pagura layer,
-  missing integration, work package, competitor build/API, fixtures, oracle,
-  result, source/binary/corpus hashes and last validation command.
-- Inspect reachable unsupported call sites, requirement gaps, public APIs,
-  renderer options and viewer flows. Do not count dormant tags, malformed-input
-  guards or generic image-filter dispatch tags as missing capabilities.
-- Reconcile stale broad registry entries, including document security/forms,
-  CFF/TrueType, text substitution, CMS modification analysis and host passwords,
-  against their later specific entries and code. Preserve normative audit history;
-  do not turn source inspection into a claimed primary-standard verification.
-- Inventory functionality without an unsupported tag: attachments, associated
-  files, portfolios, metadata/XMP, thumbnails, image extraction, print settings,
-  annotation editing, form import/export, accessibility, signing and exports;
-  probe optional OCR/table extraction exposed by baseline PDF APIs as well.
-- Probe multimedia/3D, PDF/E/PDF/VT, optional extension security handlers and
-  other advertised special formats against the actual six baseline APIs. Add
-  supported capabilities to a package; unsupported-by-all needs recorded evidence.
+- **Source inventory complete at `19059e684`:** `benchmarks/capabilities.json`,
+  the generated [review view](CAPABILITIES.md), and `tools/capabilities.py --check`
+  cover 43 capability families, all 90 reviewed literal tags, all 332 registered
+  requirement IDs and all six baseline API inventories. There are 258 unprobed
+  family cells. Schema 2 requires dispositions, source locators/hashes, ownership
+  and complete surface states; it does not infer runtime support or N/A.
+- The review includes dispatch guards (including Huffman JBIG2), dormant tags,
+  policy/unknown-input boundaries, actual refusals and untagged service APIs.
+  Later discoveries reopen G00. G01 results stay scoped to the executed fixture,
+  operation, configuration and engine identity rather than promoting a family.
+- The ledger records IDs, operations, source locators, layer states, remaining
+  integration, packages, requirement/fixture references and the full baseline
+  denominator. G01 owns executable oracles, build/configuration identities,
+  per-fixture results and run provenance; their absence never becomes N/A.
+- Call-site review followed aliases, helper functions and dispatch branches.
+  Dormant tags, malformed-input/policy boundaries and generic image-filter
+  dispatch are retained with dispositions rather than counted as missing features.
+- Current scope descriptions reconcile security/forms, font substitution, CMS
+  modification analysis, host passwords, navigation and interpreter ownership.
+  Normative review records remain historical; pending primary-standard review is
+  still pending in the owning registry.
+- Untagged rows cover attachments/associated files, portfolios, metadata/XMP,
+  thumbnails, image extraction, print settings, annotation/page editing, form
+  data exchange, accessibility, OCR/tables, signing and vector exports.
+- Multimedia/3D, PDF/E/PDF/VT and extension security handlers have explicit rows
+  and packages. Their actual baseline configurations and applicability are G01
+  probes, including any API/build distinction found during execution.
 
-Acceptance: every live capability refusal and every discovered competitor PDF
-operation has a disposition and package; zero unassigned or silently excluded
-rows. This establishes the exhaustive denominator that the initial source audit
-cannot establish alone. A later discovery reopens the ledger and relevant gate.
+Acceptance met for the reviewed source revision: every discovered refusal/tag,
+registered requirement and discovered baseline API family has a disposition and
+owner; no baseline column is silently excluded. This is a versioned source
+inventory, not proof that every PDF subvariant or competitor configuration has
+been exercised. Later discoveries reopen the inventory and relevant package.
 
 ## G01 — Build the feature comparison harness
 
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
+
+**Started:** the [document-service probe slice](../benchmarks/probes/README.md)
+adds nine independent populated/empty/rejection controls for PDFium and MuPDF,
+54 explicit case/engine cells, identity/source/fixture hashes, and hosted CI.
+The other four adapters and the wider operation matrix remain open. These
+fixture results do not promote any G00 family cell or establish Pagura parity.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
@@ -533,8 +551,9 @@ performance superiority remain separate claims.
 Start with these reviewable changes; each includes fixtures and its ledger/status
 update. Reorder later display work using G01's measured failure frequencies.
 
-1. G00 schema, checked inventory view and registry reconciliation. No product
-   behaviour changes; classify all existing refusals and API/integration gaps.
+1. G00 schema and checked inventory view are started. Next: adjudicate the
+   candidate call sites and expand/reconcile the API and requirement inventory.
+   No product behaviour changes; classify actual refusals and integration gaps.
 2. G01 adapter controls and current corpus baseline. Publish reproducible summaries
    and the ordered queue of valid missing features, not a single success percentage.
 3. R02 embedded ICC/sYCC interpretation and colour precedence, using existing
