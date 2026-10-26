@@ -71,7 +71,7 @@ fn catalog_waits_retain_completed_dependencies_and_publish_inference_once() {
         pagura_core::repairs::KEY_SOLIDUS,
         "dictionary key has no leading solidus",
     )
-    .at(Position::File(123))
+    .at(Position::File(124))
     .in_object(ObjectId::new(1, 0));
     assert_eq!(
         active.document.diagnostics(),
