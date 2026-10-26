@@ -303,6 +303,15 @@ mod tests {
     use pagura_core::{ErrorKind, Limits};
     use std::{cell::Cell, sync::Arc};
 
+    fn unsigned(
+        parser: &mut pagura_core::syntax::Parser<
+            '_,
+            pagura_core::syntax::WindowInput<crate::source::NeedData>,
+        >,
+    ) -> Result<u64, pagura_core::syntax::ParseFault<crate::source::NeedData>> {
+        parser.unsigned()
+    }
+
     #[test]
     fn dependent_windows_share_one_precharged_budget_without_holding_its_lock() {
         let limits = Limits::default();
@@ -332,7 +341,7 @@ mod tests {
         let value = first
             .read(|parser| {
                 let value = parser.unsigned()?;
-                let other = dependency.read(|parser| parser.unsigned())?;
+                let other = dependency.read(unsigned)?;
                 Ok((value, other.value))
             })
             .unwrap();
