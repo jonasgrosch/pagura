@@ -186,6 +186,9 @@ fn paint_box(
         marks.fill(&[rectangle(bounds)], background)?;
     }
     if border.width > 0.0 {
+        if border.paint_relief(marks, bounds, &Color::black())? {
+            return Ok(());
+        }
         let inner = inset(bounds, border.width / 2.0)?;
         let line = [(inner.x0(), inner.y0()), (inner.x1(), inner.y0())];
         let path = if border.underline {

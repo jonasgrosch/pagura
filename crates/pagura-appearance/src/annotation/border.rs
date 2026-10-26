@@ -1,5 +1,7 @@
 //! Link, square and circle borders (12.5.4, 12.5.6.5, 12.5.6.8).
 
+mod relief;
+
 use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
 use crate::features;
 use crate::stream::AppearanceStream;
@@ -72,7 +74,9 @@ pub(super) fn generate(
             width: border.width,
             dash: &border.dash,
         };
-        marks.stroke(&[path], &color, pen)?;
+        if !border.paint_relief(&mut marks, bounds, &color)? {
+            marks.stroke(&[path], &color, pen)?;
+        }
     }
     marks.finish(rect)
 }
@@ -149,6 +153,7 @@ pub(super) struct Border {
     pub(super) dash: Vec<f64>,
     pub(super) underline: bool,
     radii: [f64; 2],
+    relief: Option<relief::Kind>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -185,9 +190,27 @@ impl Border {
         }
     }
 
+    /// Paints B/I facets and returns whether a relief style was selected.
+    pub(super) fn paint_relief(
+        &self,
+        marks: &mut Marks<'_>,
+        bounds: Rect,
+        color: &Color,
+    ) -> Result<bool> {
+        let Some(kind) = self.relief else {
+            return Ok(false);
+        };
+        relief::paint(marks, bounds, self.width, color, kind)?;
+        Ok(true)
+    }
+
     /// Worst-case number of edges in one rectangular outline.
     pub(super) fn outline_segments(&self) -> usize {
-        if self.radii.contains(&0.0) { 4 } else { 12 }
+        if self.radii.contains(&0.0) && self.relief.is_none() {
+            4
+        } else {
+            12
+        }
     }
 
     fn read_with_corners(
@@ -241,11 +264,25 @@ impl Border {
         if width < 0.0 {
             return Err(Error::syntax("negative annotation border width"));
         }
-        if matches!(style, b"B" | b"I") {
+        let relief = match style {
+            b"B" => Some(relief::Kind::Raised),
+            b"I" => Some(relief::Kind::Sunken),
+            _ => None,
+        };
+        if corners == Corners::Square && relief.is_some() {
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,
-                "relief annotation borders are not implemented",
+                "relief borders require rectangular annotation geometry",
             ));
+        }
+        if relief.is_some() {
+            let limits = document.limits();
+            Meter::new(
+                limits.path_segments,
+                "relief border geometry budget exceeded",
+            )
+            .charge(16)?; // Optional rectangular fill and both six-edge facets.
+            Meter::new(limits.operations, "relief border work budget exceeded").charge(24)?;
         }
         if !radii.contains(&0.0) {
             // At most a fill and a stroke, each with eight arcs and four edges.
@@ -258,6 +295,7 @@ impl Border {
             Meter::new(limits.operations, "rounded border work budget exceeded").charge(24)?;
         }
         Ok(Self {
+            relief,
             radii,
             width,
             dash,

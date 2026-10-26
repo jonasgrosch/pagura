@@ -1,6 +1,7 @@
 mod caret;
 mod free_text;
 mod markup;
+mod relief;
 mod rounded;
 mod stamp;
 
@@ -239,7 +240,7 @@ fn unsupported_annotations_are_tagged() {
         b"<< /Subtype /Stamp /IT /StampImage >>".as_slice(),
         b"<< /Subtype /Square /BE << /S /C >> >>",
         b"<< /Subtype /Ink /InkList [[1 1 2 2]] /Border [2 2 1] >>",
-        b"<< /Subtype /Link /BS << /S /I >> >>",
+        b"<< /Subtype /Ink /InkList [[1 1 2 2]] /BS << /S /I >> >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",
         b"<< /Subtype /Widget /FT /Ch >>",
         b"<< /Subtype /Widget /FT /Tx /MK << /BC [0] /R 90 >> >>",

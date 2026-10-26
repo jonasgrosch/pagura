@@ -211,8 +211,13 @@ both Caret symbols, stored artwork, RD, opacity and indirection. Existing oracle
 bytes and tolerances are unchanged. Alternate-order cases measure recovery rather
 than strict rendering; their strict_valid metadata is false because the CLI
 strict audit includes opening, page enumeration and rendering.
-Hosted execution for this increment is pending; the 90-case measurement above
-remains tied to its recorded revision.
+[Run 40310593092](https://github.com/jonasgrosch/pagura/actions/runs/40310593092),
+at measured merge `2acedcc7b02b5332a3dd061576dfcf43cbf91447` from head
+`1616038d3a7996baa2fcaa981b1f862cdd93dbcc`, records 227 passes and 592 pixel
+disagreements across 819 cells; Pagura passes all 117 controls. Combined artifact
+`12647349843` has SHA-256 `fea927936968a52fb4b8f8c3ff0b364dd9b012b671ab60ef6558dc0546aa99b9`.
+Artwork, recovery and API-layer differences remain subject to adjudication.
+The earlier 90-case measurement remains tied to its recorded revision.
 
 The next text-appearance increment adds 63 independent controls for a current
 manifest of **180 oracles / 1,260 cells**. All fourteen standard stamps, regular/bold
@@ -506,7 +511,9 @@ Strict/repair and numeric/resource bounds are also registered. Hosted native/WAS
 `2c2a2ba54`. The full suites exposed incorrect strict_valid metadata for the
 alternate-order controls: the CLI audit includes rendering, so these now require
 strict refusal. Product recovery behavior and pixel expectations are unchanged;
-the full suites are rerunning. The 117-case G01 increment includes this subset.
+all twelve checks now pass at `e18503a20` (functional run 40310188629,
+reopen run 40310188609, capability run 40310188768). The 117-case G01
+increment includes this subset.
 
 **Caret appearances implemented:** Sy None/P and RD insets use original filled
 chevron/pilcrow artwork with no font dependency. C and ca (else CA) style one
@@ -519,8 +526,9 @@ and rational intersection areas, including direct stored appearances, two
 resolutions, unequal/asymmetric bounds, rotation, opacity, visibility, indirection
 and malformed fields. Numeric/budget controls and the earlier Circle/Square
 checks cover the shared reader. Hosted native/WASI/client, partial-tile and viewer
-pixel checks pass at `767603d14`; full suites are rerunning the corrected
-markup strict-audit metadata. The 117-case G01 increment includes this subset.
+pixel checks and all twelve hosted checks pass at `b329a075e` after the
+markup strict-audit metadata correction (functional run 40310589562, reopen
+run 40310589437, capability run 40310589425). The 117-case G01 increment includes this subset.
 
 **Rubber-stamp appearances implemented:** all fourteen standard Name values use
 original framed uppercase Helvetica-Bold/WinAnsi artwork through the configured
@@ -538,7 +546,8 @@ Green's theorem, with analytic clipping/hole/subdivision controls; existing
 straight-glyph rational oracles retain their behavior. Builds without font data
 explicitly report it. Hosted native/WASI/client, partial-tile and viewer checks
 pass at `05dd8d1db` in [run 40311664712](https://github.com/jonasgrosch/pagura/actions/runs/40311664712),
-as do the Windows/Ubuntu full suites. Remaining platform/report checks are pending.
+as do all three platform suites and both combined reports: all twelve checks
+pass (functional run 40311664668, capability run 40311664531).
 The 180-case G01 increment adds the stamp subset.
 
 **Plain FreeText appearances implemented:** required DA, decoded Contents, Q and
@@ -583,7 +592,24 @@ parallel-set strokes, with separately authored sixteen-arc stored artwork. They
 cover two resolutions, opacity, rotation, RD, clamped/zero radii, indirection,
 visibility, stored precedence and malformed values. Hosted validation is pending.
 Unequal-axis stroke/dash evidence, nonrectangular legacy radius handling and the
-separate filled-form border path remain open; relief/cloudy borders are still gaps.
+separate filled-form border path remain open; cloudy borders are still a gap.
+Stored sixteen-arc controls now use Decimal half-angle identities to avoid
+platform-libm serialization drift; pixel expectations and tolerances are unchanged.
+
+**Beveled/inset rectangular borders implemented:** BS B/I now synthesize raised
+or recessed frames for Link/Square, plain FreeText and supported empty widgets.
+Reader artwork uses two bounded facets, interpolating clamped device components
+halfway toward white/black and swapping top/left versus bottom/right shading for
+inset. Border width clamps to half the smaller extent. Scoped fill-alpha resources
+apply CA to facets without changing background/text ca, including opaque borders
+after translucent backgrounds. Forty-five controls contain 42 independent pixel
+expectations from separately specified trapezoids, exact-area coverage and
+source-over, with literal stored counterparts, two resolutions, RGB/Gray colours,
+RD, rotation, fractional geometry, opacity, visibility, indirection and malformed
+values. Geometry/work/resource checks and native/WASI/client/viewer controls are
+registered; hosted validation is pending. CMYK conversion expectations,
+nonrectangular relief, nonempty/rotated widgets and the separate filled-form path
+remain open. These original dimensions/lighting choices are reader policy.
 
 Complete richer FreeText and other ledger subtype appearances;
 add border effects, remaining callout combinations and required font/layout support.

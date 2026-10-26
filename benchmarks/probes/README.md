@@ -356,8 +356,14 @@ TL/TR/BL/BR ordering measures recovery policy: it is reported by Pagura and
 rejected by Strict rendering. Fixture `strict_valid` is false: the CLI strict
 audit includes opening, page enumeration and rendering.
 Caret controls cover both symbols, direct stored artwork, RD, opacity and
-indirect entries. Existing oracle bytes and tolerances are unchanged. Hosted
-results for this expanded matrix are pending.
+indirect entries. Existing oracle bytes and tolerances are unchanged.
+[Run 40310593092](https://github.com/jonasgrosch/pagura/actions/runs/40310593092),
+measured merge `2acedcc7b02b5332a3dd061576dfcf43cbf91447` from head
+`1616038d3a7996baa2fcaa981b1f862cdd93dbcc`, records 227 passes and 592 pixel
+disagreements across all 819 cells. Pagura passes all 117 controls. The combined
+artifact is `12647349843`, SHA-256
+`fea927936968a52fb4b8f8c3ff0b364dd9b012b671ab60ef6558dc0546aa99b9`.
+These observations still require artwork/recovery/API-layer adjudication.
 
 The current text-appearance increment adds 63 controls for **180 cases / 1,260
 cells**. It covers all fourteen stamp names, regular/bold text, short/long labels,

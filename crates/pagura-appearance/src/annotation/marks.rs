@@ -29,6 +29,26 @@ impl Color {
         Self(vec![1.0, 0.0, 0.0])
     }
 
+    /// Device-component light/shadow shades for simulated relief borders.
+    /// CMYK components run toward white in the opposite direction to Gray/RGB.
+    pub(super) fn relief_colors(&self) -> [Self; 2] {
+        let dark: Vec<_> = self
+            .0
+            .iter()
+            .map(|value| value.clamp(0.0, 1.0) / 2.0)
+            .collect();
+        let light: Vec<_> = self
+            .0
+            .iter()
+            .map(|value| (value.clamp(0.0, 1.0) + 1.0) / 2.0)
+            .collect();
+        if self.0.len() == 4 {
+            [Self(dark), Self(light)]
+        } else {
+            [Self(light), Self(dark)]
+        }
+    }
+
     fn operator(&self, paint: Paint) -> &'static str {
         match (self.0.len(), paint) {
             (1, Paint::Fill) => "g",
@@ -192,6 +212,26 @@ impl<'a> Marks<'a> {
         self.path(path)?;
         self.painted = true;
         self.content.text("S\n")
+    }
+
+    /// A filled border facet uses the border's CA, preserving the fill/text ca
+    /// around it. The temporary state sets even alpha 1: an earlier background
+    /// may have installed a smaller ca, so omission would incorrectly inherit it.
+    pub(super) fn fill_border(&mut self, path: &[Subpath<'_>], color: &Color) -> Result<()> {
+        const BORDER_ALPHA: &[u8] = b"BorderAlpha";
+        let alpha = self.stroke_alpha()?;
+        if !self.states.contains_key(BORDER_ALPHA) {
+            let mut state = Dictionary::new();
+            state.insert(Name::new(b"ca"), Value::Real(alpha));
+            self.states
+                .insert(Name::new(BORDER_ALPHA), Value::Dictionary(state));
+        }
+        self.content.text("q\n/BorderAlpha gs\n")?;
+        self.color(color, Paint::Fill)?;
+        self.path(path)?;
+        self.content.text("f\nQ\n")?;
+        self.painted = true;
+        Ok(())
     }
 
     /// Appends a prepared text object with its private font resources.

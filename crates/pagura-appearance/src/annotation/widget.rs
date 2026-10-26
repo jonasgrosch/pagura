@@ -87,6 +87,9 @@ fn characteristics(
             "rotated widget borders require an explicit appearance",
         ));
     }
+    if border.paint_relief(marks, rect, &color)? {
+        return Ok(());
+    }
     let inset = (border.width * 0.5)
         .min(rect.width() * 0.5)
         .min(rect.height() * 0.5);
