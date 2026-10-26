@@ -487,10 +487,14 @@ semantic/date/MIME/profile validation remain open.
 FileAttachment entries separately from catalog EmbeddedFiles and AF views. It
 preserves original indexes, resolved annotation/FS/payload identities, normalized
 geometry, Contents text and declared/default icon names. FS/Desc does not replace
-annotation Contents. Thirty-six independent fixtures cover page-only attachments,
+annotation Contents. Thirty-nine independent fixtures cover page-only attachments,
 reference/geometry indirection, external files, duplicates, malformed/late failures,
 reported Unicode repair, budgets, compressed and encrypted payloads. Discovery
-keeps payload decoding and authorization lazy; no file is activated. Library/facade
+keeps payload decoding and authorization lazy; no file is activated. Independent
+blank/red-rectangle oracles cover direct/indirect null Annots and indirect Rect
+coordinates. The renderer now handles those valid forms. Typed-view fixtures
+separately require malformed-input errors or the exact registered missing-icon
+appearance tag; they do not claim that discovery implements icon generation. Library/facade
 source checks pass, while hosted runtime checks are pending. CLI attachment
 commands now accept `--page PAGE` with distinct annotation JSON and exact original
 Annots index/EF selection for extraction and checks. Tests cover selection without

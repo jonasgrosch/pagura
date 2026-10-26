@@ -8,7 +8,7 @@
       "id": "file_annotations/populated",
       "kind": "pdf",
       "description": "populated",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -16,13 +16,14 @@
       "sha256": "4d881af1fdc7f72f585e6a1a16307a143d846ec12957e8ff204b31bbe07a4cd2",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/page-only",
       "kind": "pdf",
       "description": "page only",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -30,13 +31,14 @@
       "sha256": "28440ea319e9461fae4451222350af8991acbf1a7d5bcc01e691a98101bc8417",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/many",
       "kind": "pdf",
       "description": "many",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -44,7 +46,8 @@
       "sha256": "f5bdc523f05ff2f1c63d1c9de139bb6b1599b1e0e2cde2fe72f644fc02efe144",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/absent",
@@ -100,13 +103,14 @@
       "sha256": "ec201d7c0acd780c445382b15e6e98845916361c5f011b7e99d54f42e27016ca",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/indirect-array-and-geometry",
       "kind": "pdf",
       "description": "indirect array and geometry",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -114,13 +118,14 @@
       "sha256": "744e1849bfb696837f58d1defbb940006fef4d098441e1ccbe2328967c2ad3b7",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/external",
       "kind": "pdf",
       "description": "external",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -128,13 +133,14 @@
       "sha256": "c0d5d41876196e61e9fb59050a92a1399ccce53b97c1ef34eb24762f0ad78b60",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/direct-external-spec",
       "kind": "pdf",
       "description": "direct external spec",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -142,13 +148,14 @@
       "sha256": "dc34d1eecc672c9758854301fb9afa867321d5474ba9ab1af69aca63b608311a",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/null-optional",
       "kind": "pdf",
       "description": "null optional",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -156,13 +163,14 @@
       "sha256": "9ebdc5605ea093cb4e1df36e6296a68cbfe6da130534171e3e5b64564283c52c",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/no-type",
       "kind": "pdf",
       "description": "no type",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -170,13 +178,14 @@
       "sha256": "306e9d99cf283f3c38ad55238d9347e25ee958dfb247f28bb8cfeca12548c36a",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/absent-payload-type",
       "kind": "pdf",
       "description": "absent payload type",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -184,13 +193,14 @@
       "sha256": "6625f1a668924c58ee57550614b5be2f2ab6f103e9a1cf3623fd727603b6f1bf",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/flate",
       "kind": "pdf",
       "description": "flate",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -198,7 +208,8 @@
       "sha256": "5141d7d559badfc9cf79c1d6e6a3183d514d2fb3e82da65c621d5012fe892862",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/wrong-array",
@@ -212,13 +223,14 @@
       "sha256": "bfdb33e8c9d571e26cf2fed88464522cdcba089c06817fcc22f01d9f2ec38618",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/direct-annotation",
       "kind": "pdf",
       "description": "direct annotation",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -226,7 +238,8 @@
       "sha256": "529cbc17336772e9b7adccaf8a245996a22306feb59af41e16a5f2d8055a1356",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/null-member",
@@ -240,7 +253,8 @@
       "sha256": "cacf5aba9eb17454e2ea9b9e8d76e2c973c5dbb1328f197d95bd22efeffdd38d",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/missing-reference",
@@ -254,7 +268,8 @@
       "sha256": "602fc53bb1629db59e0150cd5fc3a055e71cc31ba6c04486dd69c16875844afc",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/reference-cycle",
@@ -268,13 +283,14 @@
       "sha256": "64250bcdf37811034885d0fae8c0d1ebab348ca16e9628a2b851c18d8339367e",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "limit"
     },
     {
       "id": "file_annotations/stream-annotation",
       "kind": "pdf",
       "description": "stream annotation",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -282,7 +298,8 @@
       "sha256": "0b67b29745bdeae13caa0ee52ee35dfb2ddbcab993a0ec9ae2b09b7067480e6f",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/missing-subtype",
@@ -296,7 +313,8 @@
       "sha256": "d88ff55adba70c041a7c48ea6d7aa2adcf86aca2e4854debdfee274171529f43",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/wrong-subtype",
@@ -310,13 +328,14 @@
       "sha256": "7f7a8316027c81f83262e7b35efc3fdec10420d492e411f37f363bbb3141f735",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/wrong-type",
       "kind": "pdf",
       "description": "wrong type",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -324,13 +343,14 @@
       "sha256": "fbcbddaf86c357ca29aaebe598063c1bac1003b86cbea84bb056ad68922e48ec",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/missing-file",
       "kind": "pdf",
       "description": "missing file",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -338,13 +358,14 @@
       "sha256": "3bdc07f48acf7b4315a637dcdd0dce09c21bf31e84b61399ebcca5891f933444",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/null-file",
       "kind": "pdf",
       "description": "null file",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -352,13 +373,14 @@
       "sha256": "7485d875ad6583aff0d359c1b1298ef121fed553819f60a6c9038eb64d472088",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/wrong-file",
       "kind": "pdf",
       "description": "wrong file",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -366,7 +388,8 @@
       "sha256": "980785160342a6bf362bc60e7c4bc389ffab1a25327744a2e7544a719ef522c1",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/missing-rectangle",
@@ -380,7 +403,8 @@
       "sha256": "b41ba1a834cc6bcd9547a818d93448f3ba478025c47179ca8c5537aef9f5961e",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/wrong-rectangle",
@@ -394,7 +418,8 @@
       "sha256": "5f4db8dc229533ba39be061e31c5c4812b2463996ad8b7f5bd83aef59e470a36",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/short-rectangle",
@@ -408,7 +433,8 @@
       "sha256": "efc84d5b226017838403cf85a39ee9fa1bea2cbe279d6171773035e8e6b1f248",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/wrong-coordinate",
@@ -422,13 +448,14 @@
       "sha256": "bfda4fc071475b28d6d79495c22dd833c6e95ba7d2c5f6f445e5e125a0bd8183",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/wrong-contents",
       "kind": "pdf",
       "description": "wrong contents",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -436,13 +463,14 @@
       "sha256": "bfd1dd32c31b0cec5ce3eee886f3d2ddbe15b5f1ee22373aeacd1c09be913d5a",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/wrong-icon",
       "kind": "pdf",
       "description": "wrong icon",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -450,13 +478,14 @@
       "sha256": "362618909cf37b6fb2778aaa322eb1bf48f6ea6f5253ce890e73f22ecc5d8476",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/invalid-unicode",
       "kind": "pdf",
       "description": "invalid unicode",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -464,13 +493,14 @@
       "sha256": "b7608c67a6b1563baf64267b1a69e59c6bcb815b340af2e7f5a07e9dcd9e0f4f",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/late-failure",
       "kind": "pdf",
       "description": "late failure",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations"
       ],
@@ -478,13 +508,14 @@
       "sha256": "4241071076bab66a3adf148f76a4d1a43ca117ab68780357002de882f59356e1",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/encrypted-no-type",
       "kind": "pdf",
       "description": "Annotation payload authentication remains lazy",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations",
         "security-authorization-events"
@@ -495,13 +526,14 @@
       "strict_valid": false,
       "repairs": [
         "security.crypt-filter-event"
-      ]
+      ],
+      "feature": "annotation.appearance"
     },
     {
       "id": "file_annotations/encrypted-identity",
       "kind": "pdf",
       "description": "Annotation payload authentication remains lazy",
-      "expected": "open",
+      "expected": "unsupported",
       "requirements": [
         "document-file-annotations",
         "security-authorization-events"
@@ -512,7 +544,68 @@
       "strict_valid": false,
       "repairs": [
         "security.crypt-filter-event"
-      ]
+      ],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "file_annotations/render-null",
+      "kind": "pdf",
+      "description": "Null Annots is absent; indirect rectangle numbers preserve exact appearance placement",
+      "expected": "render",
+      "requirements": [
+        "document-file-annotations",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_annotations/render-null.pdf",
+      "sha256": "6c24616d50bfea35f5ed4b4ad4b6a2eec14286229dacc725463d9836d27418d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_annotations/render-null.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "file_annotations/render-indirect-null",
+      "kind": "pdf",
+      "description": "Null Annots is absent; indirect rectangle numbers preserve exact appearance placement",
+      "expected": "render",
+      "requirements": [
+        "document-file-annotations",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_annotations/render-indirect-null.pdf",
+      "sha256": "b7cc39756e24b55a6117e1d343d4f39faeba570c198c139efb1dc0c961e7c30e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_annotations/render-indirect-null.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "file_annotations/render-indirect-rectangle",
+      "kind": "pdf",
+      "description": "Null Annots is absent; indirect rectangle numbers preserve exact appearance placement",
+      "expected": "render",
+      "requirements": [
+        "document-file-annotations",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_annotations/render-indirect-rectangle.pdf",
+      "sha256": "6d36378531c48138482df5552491585ae80437285ace956b43ddc116265ee6f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_annotations/render-indirect-rectangle.ppm",
+      "oracle_sha256": "b075b18a9df4e8d09591d3fc8fd201a8071e259c87968ea3c77a25f85e8358eb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
     }
   ]
 }

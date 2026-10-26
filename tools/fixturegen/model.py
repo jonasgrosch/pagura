@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 # Expected outcomes understood by tools/conformance.py.
 RENDER = "render"            # renders; output must equal the oracle exactly
 UNSUPPORTED = "unsupported"  # opens; rendering fails with the given feature tag
-OPEN = "open"                # opens and enumerates pages; nothing rendered
+OPEN = "open"                # opens/pages; scan must render unless extra.render_error is set
 INVALID = "invalid"          # opening fails even with recovery
 
 

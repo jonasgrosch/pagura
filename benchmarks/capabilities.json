@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "d91c522309052a69e0c44a27d4410824759055e5",
+  "audited_revision": "b085c2347a9001e50a4cac44d8fff50be0226ca8",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -14,7 +14,7 @@
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "corpus/manifests/classic.json": "0929560398e6541b7e30966479633fae180eefe4eeea1453d4adbf5da57aaf20",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
-    "corpus/manifests/file_annotations.json": "235663dfe28e180fa357eb6fceea96f1affacfdde938b291a8a6eea221bf64d8",
+    "corpus/manifests/file_annotations.json": "b8cef341bacf0cdf59d04f509654072fcb1aad33f97ad71db8e4a97089550d94",
     "corpus/manifests/files.json": "f5ca2b13bd6a27f7b5cffd15ede3d9a86b2120eb64f71f92ab2f2089a6dbb12e",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/metadata.json": "c81e1a2e7c12211130185219e5d2738ea4d98658d3038a8274df86a69e914554",
@@ -135,7 +135,7 @@
     "crates/pagura-interpret/src/dump.rs": "9af4c6ef19ca9f2c3c41a29cd5afc2769422706cb5a7aed471ac165170fcf776",
     "crates/pagura-interpret/src/features.rs": "7e5a38d35b2250c7e352e0ae74cc14b61325aad361c4e75cd93af5a0a84c7e5f",
     "crates/pagura-interpret/src/lib.rs": "4fee62ce36e00bb76d99ba852a2179ae9a9fd1de6249bb77cae0a1a87983d302",
-    "crates/pagura-interpret/src/machine/annotations.rs": "258a4b488ab721b2fac962ebd4b7160b927e9a76e7ab0f0ae38f717a158ffade",
+    "crates/pagura-interpret/src/machine/annotations.rs": "b1c17ad4eaac8d0297d4c0fa27c2ee479923760c3ef1c63c11229beb00a2a199",
     "crates/pagura-interpret/src/machine/extgstate.rs": "b434259c3831d7dab8da80f28507519f1042c501bded4353d96823361b31527f",
     "crates/pagura-interpret/src/machine/form.rs": "c7339375a5c88f8be5fd0f5c20be8fc31eff38d033efd1772bac70940c8fce83",
     "crates/pagura-interpret/src/machine/image/describe.rs": "37a614ca83376150926a58dc22c64ad9436e06d1732872e173a1f78166ef35e0",
@@ -222,7 +222,7 @@
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/document_services_test.mjs": "013ff3e4858049094cd069a44cee7e66b94cc4e455a8d8e637e41172d4b8abdb",
     "tools/document_services_view_test.mjs": "2f4e78500305680b2d281d2af0707834bf8fee62176a978aa74b5e8a6271884e",
-    "tools/fixturegen/file_annotations.py": "10261abd76f1e8068355834c6ca3f137605fc76ef5c5a6a8f69aeb93f3fc88bf",
+    "tools/fixturegen/file_annotations.py": "84de5349dd74bd3a008ee5ba47ddb8b2b67d5ccf0f0302b257c24b222c4a93f3",
     "tools/fixturegen/files.py": "eb590a18a172631ce232d38ba5365749bf2b5a4f21362b93e04f1dc2f0d87d36",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
@@ -937,7 +937,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets.",
+      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement.",
       "remaining": "Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
@@ -947,14 +947,19 @@
         "web/viewer.mjs"
       ],
       "tests": [
-        "crates/pagura-appearance/src/annotation/tests.rs"
+        "crates/pagura-appearance/src/annotation/tests.rs",
+        "tools/fixturegen/file_annotations.py"
       ],
       "requirements": [
         "content-annotation-generation",
         "content-annotation-view",
         "content-annotations"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "file_annotations/render-null",
+        "file_annotations/render-indirect-null",
+        "file_annotations/render-indirect-rectangle"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
