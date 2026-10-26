@@ -474,6 +474,9 @@ uses a bottom 1/12-height underline, a centred 1/12-height strikeout and a
 1/24-height zigzag ribbon. Quads share a single nonzero fill, preserving union
 opacity; C and ca (else CA) apply under the original annotation clip. Geometry,
 work, temporary storage and output are bounded before empty-color suppression.
+Validated zero-area quads emit no marks: the independent empty-region control
+exposed device hairlines when such quads were emitted as PDF fills. Mixed
+empty/nonempty quads retain the valid geometry; the original oracle is unchanged.
 The common alternate TL/TR/BL/BR order uses the explicit `annotation.quad-order`
 repair; Strict rendering refuses it. Stored appearances retain precedence.
 Forty-one controls include 33 independent pixel expectations from literal polygons,
