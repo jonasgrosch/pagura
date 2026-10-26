@@ -1086,7 +1086,7 @@ def rich_field_cases():
         data[75]=stream(b'900 0 d0 0 0 700 700 re f');data[76]=stream(b'900 0 d0')
         data[91]=b'91 0 R';change(data)
         extra={}
-        if label in ('stream','stream-need','utf16-stream'):extra['rich_input']=xml
+        if label in ('stream','stream-need','utf16-stream'):extra|={'rich_input':xml,'rich_plain':'AB'}
         if label=='v-independent':extra['rich_plain']='AB'
         if label in ('password','empty-null','plain-ignores-rich'):extra['rich_input']=None
         yield case(label,data,marks,extra=extra)
