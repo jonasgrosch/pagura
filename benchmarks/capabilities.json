@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "b22491b8792725664ce901b92d034d2effe916b0",
+  "audited_revision": "1e1486fd3aae370ec2b10a01289f73c5779859c5",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -19,6 +19,7 @@
     "corpus/manifests/jpx_fragment_probe.json": "b7eefdcf2b0b75b80ee0d3c1c1f0427d066ac426bf8a104afba38becfe3791e4",
     "corpus/manifests/jpx_lab_probe.json": "52a4e2e6bc5e08249fa101ccda1be515b95fa0de54f29813860812f52722c3eb",
     "corpus/manifests/jpx_layout_probe.json": "d7cc49cfe79a0aabb9d2fcb893167fd5c58d2bea5ba242234631733bba4613e2",
+    "corpus/manifests/jpx_precision_probe.json": "a75c6fba49746b111673626811ab079a76f9f2ecbb0bb4d7229b8f50057153b3",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "53c41ce4c58ea6d0b21ff15c8d3356cd1a5ecc4950f9e8baae5961db929832ba",
     "corpus/manifests/paint_jpx_integration.json": "8258fd5dd43962b35152fa2817a688d320b3a9cb79832eae5b775ba3c7ac47d8",
@@ -201,6 +202,7 @@
     "references/requirements/image.json": "c38f1c6f006b7997d2ca6103c11e6ccbb09ab5b7e9ca7dc72821d76aa6cfb948",
     "references/requirements/jbig2.json": "ee69056398af0d7757e076b88530d81885135766d3b839c404c185fdaee8fc10",
     "references/requirements/jpx.json": "b3ecb25601064dc33407bece3a0129c891286b14b2c842959a7d55168be2202e",
+    "references/requirements/jpx_precision_probe.json": "f573e99d3e4c04c8f902badff9e244e40ce871a5f8bf2414cf760eae7dc7a82b",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
     "references/requirements/paint.json": "3ea2f792fe01aaba53f712f752b2392b701748be9ce6f21b0fa9b89a3f8a0897",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
@@ -220,6 +222,7 @@
     "tools/fixturegen/jpx_fragment_probe.py": "bea8486f764d1b1af7309a1035e2a3f0417518c0b4c2cb6bbae164f19c02fc44",
     "tools/fixturegen/jpx_lab_probe.py": "be56958f3180cf37f8621f70385719ec9abe429f8eb7b98983afed70659fec82",
     "tools/fixturegen/jpx_layout_probe.py": "6a8566e26a17281b0925db8594b67fed8936254f29220836079073d45291672b",
+    "tools/fixturegen/jpx_precision_probe.py": "da0ff084f97b1782cb948aea35edfd600eecf9c5d1517dbae674b37f9682a8b7",
     "tools/fixturegen/paint_jpx.py": "8b0982a69967d8529afc9cbf19c082cd492304a190e5ceb6ef3012e9f1728745",
     "tools/fixturegen/paint_jpx_integration.py": "26650219340f4c4f5fca7edeba1f9ebf9ab744d1af48559a0e34337dbf66569f",
     "tools/fixturegen/paint_jpx_native.py": "42cc8e73d3c54091027572e095c890637ce69d940641707b2caed6cfb5e348a7",
