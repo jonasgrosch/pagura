@@ -429,8 +429,11 @@ impl Contour {
             let t1 = tx.min(ty).min(1.0);
             if let Some(row) = row_at(scratch, r - top) {
                 let h = (t1 - t0) * dy;
-                // Both parameters lie in 0..=1, where `f64::midpoint` is
-                // this sum and halving; without its overflow guards.
+                #[expect(
+                    clippy::manual_midpoint,
+                    reason = "both parameters lie in 0..=1, where the sum halved is \
+                              `f64::midpoint` without its overflow guards"
+                )]
                 let x = p.x + (t0 + t1) * 0.5 * dx;
                 let (sum, ones) = value::<N>(row, (k, x, width), &scratch.sums);
                 for (out, value) in out.iter_mut().zip(sum) {
