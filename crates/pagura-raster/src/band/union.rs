@@ -434,8 +434,8 @@ impl Resolver {
             let (a, b) = (&lanes[i as usize], &lanes[j as usize]);
             let error = a.error + b.error;
             let (d0, d1) = (
-                a.x(p.line, lo) - b.x(q.line, lo),
-                a.x(p.line, hi) - b.x(q.line, hi),
+                a.x(&p.line, lo) - b.x(&q.line, lo),
+                a.x(&p.line, hi) - b.x(&q.line, hi),
             );
             (d0 > error && d1 > error) || (d0 < -error && d1 < -error)
         };
@@ -509,7 +509,7 @@ impl Resolver {
             arrange((&mut self.order, &mut self.joining), exact, work)?;
         } else {
             let lanes = &self.lanes;
-            let plain = |i: u32| lanes[i as usize].x(pieces[i as usize].line, mid);
+            let plain = |i: u32| lanes[i as usize].x(&pieces[i as usize].line, mid);
             arrange((&mut self.order, &mut self.joining), plain, work)?;
             let error = self.lane_error;
             let mut start = 0;
@@ -547,6 +547,26 @@ impl Resolver {
             None => self.windings.fill(0),
         }
         self.sides.clear();
+        // One group, as for most marks: its winding stays in a register.
+        if let ([winding], &[rule]) = (&mut self.windings[..], rules) {
+            let mut inside = covered(*winding, rule);
+            let mut n = 0;
+            while let Some(&(x, first)) = self.order.get(n) {
+                while let Some(&(_, i)) = self.order.get(n).filter(|o| o.0 == x) {
+                    let p = &pieces[i as usize];
+                    if p.group == 0 {
+                        *winding += i64::from(p.direction);
+                    }
+                    n += 1;
+                }
+                let now = covered(*winding, rule);
+                if now != inside {
+                    self.sides.push((first, if now { 1 } else { -1 }));
+                    inside = now;
+                }
+            }
+            return;
+        }
         let mut inside = self
             .windings
             .iter()
@@ -706,8 +726,9 @@ impl Lane {
         }
     }
 
-    /// The edge's x at a height within it.
-    fn x(&self, line: Line, y: f64) -> f64 {
+    /// The edge's x at a height within it. The edge is read only for the
+    /// exact form, so it is passed by reference.
+    fn x(&self, line: &Line, y: f64) -> f64 {
         if self.exact {
             line.x(y)
         } else {
@@ -723,11 +744,30 @@ impl Lane {
 /// Reserve the remaining work before starting, spend at most that many
 /// moves, then return the unused reservation to the meter.
 fn settle(order: &mut [Place], work: &mut Meter) -> Result<()> {
+    // Before the first place not strictly above the one before it, the
+    // entries are in order whatever their indices: no move to make there.
+    let Some(first) = order
+        .windows(2)
+        .position(|w| w[0].0.partial_cmp(&w[1].0) != Some(std::cmp::Ordering::Less))
+    else {
+        return Ok(());
+    };
+    // Distinct places compare as floats; equal or unordered ones by their
+    // total order and index.
+    let before = |p: &Place, q: &Place| {
+        if p.0 < q.0 {
+            true
+        } else if p.0 > q.0 {
+            false
+        } else {
+            ordered(p, q).is_lt()
+        }
+    };
     let mut remaining = work.remaining();
     work.charge(remaining)?;
-    for n in 1..order.len() {
+    for n in first + 1..order.len() {
         let mut j = n;
-        while j > 0 && ordered(&order[j], &order[j - 1]).is_lt() {
+        while j > 0 && before(&order[j], &order[j - 1]) {
             if remaining == 0 {
                 // The reservation exhausted the meter; refuse before the move.
                 return work.charge(1);

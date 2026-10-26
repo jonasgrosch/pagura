@@ -42,6 +42,45 @@ fn ordering_refuses_before_spending_unavailable_work() {
 }
 
 #[test]
+fn settling_matches_the_total_order_of_places_and_indices() {
+    // Sorted prefixes, equal places, signed zeros and NaN, as plain and
+    // exact places give them.
+    let values = [-1.0, -0.0, 0.0, 0.5, 0.5, 1.0, f64::NAN];
+    let mut rng = Lcg(31);
+    for _ in 0..2_000 {
+        let len = 1 + rng.next() as usize % 12;
+        let mut order: Vec<Place> = (0..len)
+            .map(|i| {
+                (
+                    values[rng.next() as usize % values.len()],
+                    u32::try_from(i).unwrap(),
+                )
+            })
+            .collect();
+        if rng.next().is_multiple_of(2) {
+            // Most sub-slabs find their order sorted but for one move.
+            order.sort_unstable_by(ordered);
+            let k = rng.next() as usize % len;
+            order[k].0 = values[rng.next() as usize % values.len()];
+        }
+        let mut expected = order.clone();
+        expected.sort_unstable_by(ordered);
+        let mut work = Meter::new(usize::MAX, "ordering work");
+        settle(&mut order, &mut work).unwrap();
+        assert_eq!(
+            order
+                .iter()
+                .map(|o| (o.0.to_bits(), o.1))
+                .collect::<Vec<_>>(),
+            expected
+                .iter()
+                .map(|o| (o.0.to_bits(), o.1))
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
+#[test]
 fn close_plain_places_charge_their_exact_run() {
     // Coincident edges are placed exactly after the plain pass; a third
     // edge apart from them keeps its plain place.
