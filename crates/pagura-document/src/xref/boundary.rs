@@ -9,7 +9,7 @@ const HEADER_WINDOW: usize = 1024;
 /// `%PDF-1.x` or `%PDF-2.x`.
 const HEADER_LENGTH: usize = 8;
 /// `startxref` must lie within the last 1024 bytes (7.5.5).
-const TAIL_WINDOW: usize = 1024;
+pub(super) const TAIL_WINDOW: usize = 1024;
 
 /// Finds the `%PDF-` header and returns its offset (7.5.2).
 pub(crate) fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {

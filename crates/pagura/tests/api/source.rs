@@ -45,6 +45,9 @@ fn admitted_source_document_uses_the_existing_render_context_and_checks_cached_s
     .unwrap();
     assert!(matches!(job.advance(), Err(ReadFault::Unavailable(_))));
     source.supply(identity, 0, &bytes).unwrap();
+    for _ in 0..3 {
+        assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+    }
     let Opening::Ready(document) = job.advance().unwrap() else {
         panic!("source document")
     };

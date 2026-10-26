@@ -2,7 +2,9 @@
 
 mod boundary;
 mod chain;
+mod loading;
 pub(crate) use boundary::header;
+pub(crate) use loading::{Loader, Primary};
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 
@@ -376,8 +378,19 @@ fn is_section(bytes: &[u8], offset: usize, limits: &Limits) -> bool {
     let Ok(mut parser) = Parser::with_offset(bytes, offset, Origin::File, *limits) else {
         return false;
     };
-    parser.keyword(b"xref")
-        || (parser.unsigned().is_ok() && parser.unsigned().is_ok() && parser.keyword(b"obj"))
+    section_header(&mut parser).unwrap_or(false)
+}
+
+/// The same bounded-window probe retains undecided tokens as incomplete.
+/// A caller probing an alternative offset may classify terminal Syntax as
+/// a known mismatch; required section parsing still reports that failure.
+fn section_header<M: ParseMode>(parser: &mut Parser<'_, M>) -> std::result::Result<bool, M::Fault> {
+    if parser.keyword_with_boundary(b"xref")? {
+        return Ok(true);
+    }
+    parser.unsigned()?;
+    parser.unsigned()?;
+    parser.keyword_with_boundary(b"obj")
 }
 
 pub(crate) fn integer_offset(dictionary: &Dictionary, key: &[u8]) -> Result<Option<usize>> {

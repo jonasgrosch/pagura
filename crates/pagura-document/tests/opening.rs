@@ -1,10 +1,11 @@
 //! Source admission uses independently positioned PDF literals, not an engine writer.
 
-use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Result, Value};
+use pagura_core::{Error, ErrorKind, Limits, ObjectId, Recovery, Result, Value};
 use pagura_document::source::{
-    ByteRange, ByteSource, LoadingLimits, ReadFault, SourceIdentity, SourceLimits, SparseBytes,
+    ByteRange, ByteSource, LoadingLimits, ReadFault, ReadResult, SourceIdentity, SourceLimits,
+    SparseBytes,
 };
-use pagura_document::{OpenJob, OpenOptions, Opening};
+use pagura_document::{Document, OpenJob, OpenOptions, Opening};
 use std::sync::Arc;
 
 const ID: SourceIdentity = SourceIdentity::new(810, [17; 32]);
@@ -46,6 +47,17 @@ fn job(source: Arc<SparseBytes>) -> Result<OpenJob> {
     )
 }
 
+fn ready(job: &mut OpenJob) -> ReadResult<Arc<Document>> {
+    for _ in 0..32 {
+        match job.advance()? {
+            Opening::Yielded => {}
+            Opening::Ready(document) => return Ok(document),
+            _ => return Err(Error::invalid_argument("unexpected terminal opening state").into()),
+        }
+    }
+    Err(Error::limit("test opening step bound exceeded").into())
+}
+
 #[test]
 fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_model() {
     let source = source().unwrap();
@@ -54,24 +66,30 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
         panic!("initial wait")
     };
     assert_eq!(missing.identity(), ID);
-    assert_eq!(missing.ranges(), &[ByteRange::new(0, 1024).unwrap()]);
+    assert_eq!(missing.ranges(), &[ByteRange::new(0, 256).unwrap()]);
     assert_eq!(job.work(), 1);
     let bytes = literal();
     source.supply(ID, 512, &bytes[512..]).unwrap();
     let Err(ReadFault::Unavailable(missing)) = job.advance() else {
         panic!("prefix wait")
     };
-    assert_eq!(missing.ranges(), &[ByteRange::new(0, 512).unwrap()]);
+    assert_eq!(missing.ranges(), &[ByteRange::new(0, 256).unwrap()]);
     let Err(ReadFault::Unavailable(again)) = job.advance() else {
         panic!("unchanged wait")
     };
     assert!(std::ptr::eq(missing.ranges(), again.ranges()));
     assert_eq!(job.work(), 2);
     source.supply(ID, 0, &bytes[..512]).unwrap();
+    // Header: 256 bytes; tail: 256, 512, 1024; xref: 256; final
+    // materialization: 1024. Each read costs one, including the two waits.
+    for expected_work in [259, 2054, 2311] {
+        assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+        assert_eq!(job.work(), expected_work);
+    }
     let Opening::Ready(document) = job.advance().unwrap() else {
         panic!("admitted document")
     };
-    assert_eq!(job.work(), LENGTH + 3);
+    assert_eq!(job.work(), 3336);
     assert_eq!(document.original_bytes(), bytes);
     assert_eq!(document.object_count(), 4);
     assert_eq!(document.page_count().unwrap(), 1);
@@ -89,9 +107,7 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
         let source = source().unwrap();
         let bytes = literal();
         source.supply(ID, 0, &bytes).unwrap();
-        let Opening::Ready(document) = job(source.clone()).unwrap().advance().unwrap() else {
-            panic!("ready")
-        };
+        let document = ready(&mut job(source.clone()).unwrap()).unwrap();
         let root = document.object(ObjectId::new(1, 0)).unwrap();
         let page = document.page(0).unwrap();
         let stream = document.object(ObjectId::new(4, 0)).unwrap();
@@ -160,7 +176,7 @@ fn cancellation_and_budget_failure_cannot_become_success_after_later_supply() {
         },
     )
     .unwrap();
-    let Err(ReadFault::Invalid(error)) = bounded.advance() else {
+    let Err(ReadFault::Invalid(error)) = ready(&mut bounded) else {
         panic!("work admission")
     };
     assert_eq!(error.kind, ErrorKind::Limit);
@@ -205,9 +221,7 @@ fn historical_cache_preserves_registered_source_lifecycle() {
         .unwrap(),
     );
     source.supply(ID, 0, &bytes).unwrap();
-    let Opening::Ready(document) = job(source.clone()).unwrap().advance().unwrap() else {
-        panic!("historical source")
-    };
+    let document = ready(&mut job(source.clone()).unwrap()).unwrap();
     let id = ObjectId::new(7, 0);
     let old = document.object_at_revision(1, id).unwrap();
     assert_eq!(
@@ -237,4 +251,129 @@ fn historical_cache_preserves_registered_source_lifecycle() {
     assert!(source.retained_bytes() >= bytes.len());
     drop(document);
     assert_eq!(source.retained_bytes(), 0);
+}
+
+#[test]
+fn bootstrap_retains_completed_header_tail_and_index_before_complete_admission() {
+    let mut bytes = literal();
+    bytes[960..].fill(b' ');
+    bytes.resize(4096, b' ');
+    bytes[4000..4020].copy_from_slice(b"startxref\n700\n%%EOF\n");
+    let source =
+        Arc::new(SparseBytes::new(ID, 4096, &Limits::default(), &SourceLimits::default()).unwrap());
+    source.supply(ID, 0, &bytes[..9]).unwrap();
+    source.supply(ID, 3072, &bytes[3072..]).unwrap();
+    let mut job = job(source.clone()).unwrap();
+    assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+    assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+    let Err(ReadFault::Unavailable(missing)) = job.advance() else {
+        panic!("xref section wait")
+    };
+    assert_eq!(missing.ranges(), &[ByteRange::new(700, 956).unwrap()]);
+    let work = job.work();
+    assert!(matches!(job.advance(), Err(ReadFault::Unavailable(_))));
+    assert_eq!(job.work(), work);
+    source.supply(ID, 700, &bytes[700..900]).unwrap();
+    assert!(matches!(job.advance().unwrap(), Opening::Yielded));
+    let Err(ReadFault::Unavailable(missing)) = job.advance() else {
+        panic!("explicit complete-document admission")
+    };
+    assert_eq!(
+        missing.ranges(),
+        &[
+            ByteRange::new(9, 700).unwrap(),
+            ByteRange::new(900, 3072).unwrap()
+        ]
+    );
+    let work = job.work();
+    for range in missing.ranges() {
+        source
+            .supply(
+                ID,
+                range.start(),
+                &bytes[usize::try_from(range.start()).unwrap()
+                    ..usize::try_from(range.end()).unwrap()],
+            )
+            .unwrap();
+    }
+    let Opening::Ready(document) = job.advance().unwrap() else {
+        panic!("retained index completes without replaying bootstrap")
+    };
+    assert_eq!(job.work(), work + 1 + 4096);
+    assert_eq!(document.page_count().unwrap(), 1);
+    assert_eq!(document.original_bytes(), bytes);
+    assert_eq!(document.diagnostics(), []);
+}
+
+#[test]
+fn complete_and_windowed_opening_preserve_frozen_repair_and_revision_controls() {
+    for name in [
+        "xref-stream",
+        "hybrid-precedence",
+        "header-offset",
+        "header-physical-offsets",
+        "prev-cycle",
+        "stream-prev-cycle",
+        "rebuild-malformed-table",
+        "rebuild-stream-length",
+        "rebuild-missing-startxref",
+        "rebuild-truncated-trailer",
+        "rebuild-catalog-offset",
+    ] {
+        let bytes = pagura_testkit::fixture("document", &format!("{name}.pdf"));
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let options = OpenOptions {
+                recovery,
+                ..OpenOptions::default()
+            };
+            let complete = Document::open(bytes.clone(), &options);
+            let source = Arc::new(
+                SparseBytes::new(
+                    ID,
+                    u64::try_from(bytes.len()).unwrap(),
+                    &options.limits,
+                    &SourceLimits::default(),
+                )
+                .unwrap(),
+            );
+            source.supply(ID, 0, &bytes).unwrap();
+            let ranged =
+                ready(&mut OpenJob::new(source, &options, LoadingLimits::default()).unwrap());
+            match (complete, ranged) {
+                (Ok(complete), Ok(ranged)) => {
+                    assert_eq!(
+                        ranged.revisions(),
+                        complete.revisions(),
+                        "{name} {recovery:?}"
+                    );
+                    assert_eq!(
+                        ranged.diagnostics(),
+                        complete.diagnostics(),
+                        "{name} {recovery:?}"
+                    );
+                    assert_eq!(
+                        ranged.object_count(),
+                        complete.object_count(),
+                        "{name} {recovery:?}"
+                    );
+                    assert_eq!(
+                        ranged.page_count(),
+                        complete.page_count(),
+                        "{name} {recovery:?}"
+                    );
+                    for id in complete.object_ids() {
+                        assert_eq!(
+                            ranged.object(id),
+                            complete.object(id),
+                            "{name} {recovery:?} {id:?}"
+                        );
+                    }
+                }
+                (Err(complete), Err(ReadFault::Invalid(ranged))) => {
+                    assert_eq!(ranged, complete, "{name} {recovery:?}");
+                }
+                other => panic!("opening differs for {name} {recovery:?}: {other:?}"),
+            }
+        }
+    }
 }
