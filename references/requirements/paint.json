@@ -737,6 +737,11 @@
           "locator": "ISO 32000-2 7.4.9; T.801 M.11.7.2 and Table M.23; ICC.1:2010 6.3.4 and 10.10",
           "rule": "Preserve ranked colour choices; skip unsupported profiles and selected transforms, retain malformed/limit errors, and use ordinary-channel device fallback only after exhausting candidates. Decode Lab input across physical Lab ranges after undoing stored-sample premultiplication. Cache candidates separately and respect inherited/image rendering intent.",
           "verdict": "Primary clauses reviewed; authored sample, pixel, cache and budget controls; runtime checks pending hosted CI."
+        },
+        {
+          "locator": "T.800 (06/2019) I.5.3.6, Table I.16, equation I-5; ISO 32000-2 EC3 Table 87 SMaskInData and 8.9.5.2; ICC.1:2010 6.3.4",
+          "rule": "Equation I-5 associates the stored sample, so recover the original sample before the Decode linear mapping or ICC Lab input range mapping. Explicit PDF Indexed first selects the preblended base colour. A zero-opacity sample contributes no colour.",
+          "verdict": "Independent order-sensitive controls retain their authored expectations: stored gray 64 with alpha 128 maps through Decode [1 0] to gray 1/2; stored Lab components 64 with alpha 128 map to L=50, a=-0.5, b=-0.5. Both product and independent reference must meet the fixed pixel oracle; changing both implementations cannot redefine it."
         }
       ],
       "gaps": "Remaining full JPX Part 2 colour models and decoder extensions are separate R03 work. Signed ICC samples have no standardized ICC interpretation. Competitive observations remain unadjudicated."
