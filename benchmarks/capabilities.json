@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "93b4e780751bd80da9a261e4382e73f6ac873edf",
+  "audited_revision": "9565f735f4f0739aa73372d4584058cadebca94f",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -101,7 +101,7 @@
     "crates/pagura-image/src/jpx/mod.rs": "e747e524bd324038cfb7573082934bc25aefa3d92e68faeb8e58684e88165651",
     "crates/pagura-image/src/jpx/packet.rs": "59c21e1adb720a157b2934dbf7665ed7ba90e3541ff48abe60b6a6cbee66c0eb",
     "crates/pagura-image/src/jpx/wavelet.rs": "4581edddd14389a5ba8d29b0564532c37595f67d7c6547b057da6ec0b12b9661",
-    "crates/pagura-image/src/jpx_image.rs": "b84d912c3deba3b6a4fe158b4b6927120026f201417d3a371715490c357fc068",
+    "crates/pagura-image/src/jpx_image.rs": "48b9972072198a344796ced3865651a81248e4623f187f2db4cdbb992364360f",
     "crates/pagura-image/src/lib.rs": "37e114eb323198642f45a4feb82ab9b5690b65d925a7d986d75ec000a7be5040",
     "crates/pagura-image/src/parameters.rs": "c454ce06a8fb47ae4ac72db37c527b629da6c80da6ca0699abf8dafaf0a4f0a4",
     "crates/pagura-image/src/source.rs": "7f082f1e471a09f0260670d8e2a30aeecb8d5dbe5b9270c029f2ea775ca1a31d",
