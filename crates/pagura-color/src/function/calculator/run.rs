@@ -60,10 +60,7 @@ fn patch(code: &mut [Instruction], at: usize) {
 
 /// Runs `code` on `inputs` and writes the stack, bottom first, to `output`.
 pub(super) fn evaluate(code: &[Instruction], inputs: &[f64], output: &mut [f64]) {
-    let mut stack = Stack {
-        values: [Value::Integer(0); Limits::CALCULATOR_STACK],
-        len: 0,
-    };
+    let mut stack = Stack::new();
     for &input in inputs {
         stack.push(Value::Real(input));
     }
@@ -124,7 +121,7 @@ pub(super) fn integer(operator: Operator, a: i32, b: i32) -> i32 {
 
 impl Value {
     /// The value as a real; a boolean (never a validated result) reads as 0.
-    fn number(self) -> f64 {
+    pub(super) fn number(self) -> f64 {
         match self {
             Self::Integer(n) => f64::from(n),
             Self::Real(v) => v,
@@ -147,29 +144,74 @@ impl Value {
     }
 }
 
+/// `value` as the stack holds it: a real made finite.
+pub(super) fn pushed(value: Value) -> Value {
+    match value {
+        Value::Real(v) => Value::Real(make_finite(v)),
+        other => other,
+    }
+}
+
+/// `add`, `sub`, `mul`, `div`, `exp` and `atan` on reals, before the
+/// result is made finite.
+pub(super) fn real_binary(operator: Operator, a: f64, b: f64) -> f64 {
+    match operator {
+        Operator::Add => a + b,
+        Operator::Sub => a - b,
+        Operator::Mul => a * b,
+        Operator::Div => a / b,
+        Operator::Exp => a.powf(b),
+        _ if a == 0.0 && b == 0.0 => 0.0,
+        _ => a.atan2(b).to_degrees().rem_euclid(360.0),
+    }
+}
+
+/// The unary operators with real results on a real, before the result is
+/// made finite (`cvr` keeps the value).
+pub(super) fn real_unary(operator: Operator, v: f64) -> f64 {
+    use Operator as O;
+    match operator {
+        O::Abs => v.abs(),
+        O::Neg => -v,
+        O::Floor => v.floor(),
+        O::Ceiling => v.ceil(),
+        O::Round => (v + 0.5).floor(),
+        O::Truncate => v.trunc(),
+        O::Sqrt => v.sqrt(),
+        O::Ln => v.ln(),
+        O::Log => v.log10(),
+        O::Sin => v.to_radians().sin(),
+        O::Cos => v.to_radians().cos(),
+        _ => v,
+    }
+}
+
 /// The operand stack of one run.
-struct Stack {
+pub(super) struct Stack {
     values: [Value; Limits::CALCULATOR_STACK],
     len: usize,
 }
 
 impl Stack {
+    pub(super) fn new() -> Self {
+        Self {
+            values: [Value::Integer(0); Limits::CALCULATOR_STACK],
+            len: 0,
+        }
+    }
+
     fn slice(&self) -> &[Value] {
         self.values.get(..self.len).unwrap_or(&[])
     }
 
-    fn push(&mut self, value: Value) {
-        let value = match value {
-            Value::Real(v) => Value::Real(make_finite(v)),
-            other => other,
-        };
+    pub(super) fn push(&mut self, value: Value) {
         if let Some(slot) = self.values.get_mut(self.len) {
-            *slot = value;
+            *slot = pushed(value);
             self.len += 1;
         }
     }
 
-    fn pop(&mut self) -> Value {
+    pub(super) fn pop(&mut self) -> Value {
         if let Some(len) = self.len.checked_sub(1) {
             self.len = len;
             self.values.get(len).copied().unwrap_or(Value::Integer(0))
@@ -182,7 +224,7 @@ impl Stack {
         self.push(Value::Real(value));
     }
 
-    fn apply(&mut self, operator: Operator) {
+    pub(super) fn apply(&mut self, operator: Operator) {
         use Operator as O;
         match operator {
             O::Pop | O::Dup | O::Exch | O::Copy | O::Index | O::Roll => self.stack(operator),
@@ -270,16 +312,7 @@ impl Stack {
             self.push(Value::Integer(result));
             return;
         }
-        let (a, b) = (a.number(), b.number());
-        self.real(match operator {
-            Operator::Add => a + b,
-            Operator::Sub => a - b,
-            Operator::Mul => a * b,
-            Operator::Div => a / b,
-            Operator::Exp => a.powf(b),
-            _ if a == 0.0 && b == 0.0 => 0.0,
-            _ => a.atan2(b).to_degrees().rem_euclid(360.0),
-        });
+        self.real(real_binary(operator, a.number(), b.number()));
     }
 
     fn unary(&mut self, operator: Operator) {
@@ -302,20 +335,7 @@ impl Stack {
             self.push(Value::Integer(Value::Real(v.trunc()).integer()));
             return;
         }
-        self.real(match operator {
-            O::Abs => v.abs(),
-            O::Neg => -v,
-            O::Floor => v.floor(),
-            O::Ceiling => v.ceil(),
-            O::Round => (v + 0.5).floor(),
-            O::Truncate => v.trunc(),
-            O::Sqrt => v.sqrt(),
-            O::Ln => v.ln(),
-            O::Log => v.log10(),
-            O::Sin => v.to_radians().sin(),
-            O::Cos => v.to_radians().cos(),
-            _ => v,
-        });
+        self.real(real_unary(operator, v));
     }
 
     fn compare(&mut self, operator: Operator) {
