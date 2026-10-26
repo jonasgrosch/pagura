@@ -968,8 +968,9 @@ impl Resolver {
 /// than [`SURE`] from the crossing found, or, coming that close at an end
 /// without one, near that end: a crossing found lies within the pair's
 /// height times twice `error` over the change of their difference of where
-/// they cross. The same edge twice, as the shared sides of a union give,
-/// two verticals, and two edges from one vertex cannot cross.
+/// they cross. Even two edges from one vertex are placed only so closely
+/// near it. The same edge twice, as the shared sides of a union give, and
+/// two verticals keep their order.
 fn doubtful(
     (p, q): (Line, Line),
     (lo, hi): (f64, f64),
@@ -977,14 +978,7 @@ fn doubtful(
     error: f64,
 ) -> Option<(f64, f64)> {
     let crossing = (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0);
-    // Two edges from one vertex, where their places are its own, meet only
-    // there.
-    let vertex = |y: f64| (p.a.y == y || p.b.y == y) && (q.a.y == y || q.b.y == y);
-    if !crossing
-        && (d0.abs().min(d1.abs()) > 2.0 * error
-            || (d0 == 0.0 && vertex(lo))
-            || (d1 == 0.0 && vertex(hi)))
-    {
+    if !crossing && d0.abs().min(d1.abs()) > 2.0 * error {
         return None;
     }
     let apart = ((d0 - d1).abs() - 2.0 * error).max(0.0);

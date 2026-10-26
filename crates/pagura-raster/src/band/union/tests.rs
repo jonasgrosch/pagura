@@ -589,8 +589,8 @@ fn swept(pieces: &[Piece], rules: &[FillRule], full: bool) -> (Vec<Line>, usize,
 }
 
 /// Fans of quadrilaterals crossing many times over inside their union, alone,
-/// twice over, beside and over random polygons and across chunks, under
-/// either rule: the swaps leave every
+/// twice over, with collinear edges from one vertex, beside and over random
+/// polygons and across chunks, under either rule: the swaps leave every
 /// side as the full sweep emits it, bit for bit and in the same order, and
 /// charge no more.
 #[test]
@@ -609,6 +609,19 @@ fn swaps_inside_the_union_keep_every_side() {
         // Every edge twice, as strokes drawn twice or shared sides give.
         if case % 7 == 1 {
             lines.extend_from_within(..);
+        }
+        // Collinear edges from one vertex through the fans, whose places
+        // differ only by rounding.
+        if case % 5 == 2 {
+            for _ in 0..24 {
+                let (x, y) = (rng.grid(0.0, 64, 8) / 3.0, rng.grid(-0.5, 17, 8) / 3.0);
+                let (dx, dy) = (rng.grid(-1.0, 17, 8) / 3.0, rng.grid(0.125, 8, 8) / 7.0);
+                let t = f64::from(1 + rng.next() % 7) / 9.0;
+                lines.extend(polygon(
+                    &[(x, y), (x + dx, y + dy), (x + t * dx, y + t * dy)],
+                    0,
+                ));
+            }
         }
         if case % 3 == 0 {
             lines.extend(random_lines(&mut rng, 1 + case % 8, 1));
