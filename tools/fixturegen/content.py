@@ -380,7 +380,29 @@ def usage_cases():
         yield Case(name,optional_pdf(b'/OC /On BDC 0 0 8 8 re f EMC',configuration=configuration,usage_on=usage),RENDER,('content-usage',),'Initial View usage recommendation with AND aggregation',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)] if visible else []))
 
 
+def appearance_selection_cases():
+    for name,appearance,color in [
+        ('streams',b'/AP << /N 5 0 R /R 6 0 R /D 7 0 R >>',RED),
+        ('states',b'/AP << /N << /Off 5 0 R /On 6 0 R >> /R << /Off 6 0 R /On 7 0 R >> /D << /Off 7 0 R /On 5 0 R >> >> /AS /On',(0,255,0)),
+        ('null',b'/AP null',None),
+        ('null-state',b'/AP << /N << /On 8 0 R >> >> /AS /On',None),
+    ]:
+        annotation=b'<< /Subtype /Link /Rect [2 1 6 7] /Border [0 0 0] '+appearance+b' >>'
+        objects=[b'<< /Type /Catalog /Pages 2 0 R >>',
+                 b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                 b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R /Annots ['+annotation+b'] >>',
+                 stream(b'')]
+        for components in (b'1 0 0',b'0 1 0',b'0 0 1'):
+            objects.append(stream(components+b' rg 0 0 2 4 re f',
+                                  b'/Type /XObject /Subtype /Form /BBox [0 0 2 4] /Resources << >>'))
+        objects.append(b'null')
+        yield Case('annotation-appearance-'+name,document(objects),RENDER,('content-annotations',),
+                   'Table 170 selects independent red/green/blue streams; null entries are absent',
+                   oracle=opaque_rectangles(8,8,[((2,1,4,6),color)] if color else []))
+
+
 def annotation_cases():
+    yield from appearance_selection_cases()
     def pdf(extra=b'',form=b'1 0 0 rg 0 0 2 4 re f',box=b'[0 0 2 4]',matrix=b'[1 0 0 1 0 0]',page=b'0 0 1 rg 0 0 8 8 re f',normal=b'5 0 R',rect=b'[2 1 6 7]'):
         return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R /Annots [<< /Subtype /Stamp /Rect '+rect+b' /AP << /N '+normal+b' >> '+extra+b' >>] >>',stream(page),stream(form,b'/Type /XObject /Subtype /Form /BBox '+box+b' /Matrix '+matrix+b' /Resources << >>')])
     for name,options,visible in [

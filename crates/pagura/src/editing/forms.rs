@@ -2,23 +2,25 @@
 
 use super::{SaveOptions, Transaction, features};
 use crate::form_appearance::{self, Appearance};
-use crate::forms::{Field, FieldFlags, FieldKind, FilledValue, FormFiller};
+use crate::forms::{ButtonKind, Field, FieldFlags, FieldKind, FilledValue, FormFiller};
 use crate::{Dictionary, Document, Error, Name, NewObject, ObjectId, Result, Value};
 use pagura_core::text_string;
 
 /// Saves a filled form as one incremental revision, leaving its source intact.
 ///
 /// Text and choice fields receive explicit normal appearances. Button widgets
-/// preserve their original state dictionaries and select the validated AS.
+/// preserve original state dictionaries or generate both Off and on states.
 /// Rollover/down appearances, default values and unrelated entries survive.
 /// NeedAppearances is cleared only after all requested appearances are prepared.
 /// No calculation, validation or other action is executed. Password changes are
 /// refused, never silently omitted. An empty unchanged form saves byte-for-byte.
+/// Rich replacements save RV, parser-derived plain V and an explicitly replaced
+/// DS together; their entire normal appearance is regenerated (12.7.4.3).
 ///
 /// # Errors
 /// Returns transaction/source-policy errors and appearance-generation errors.
-/// Nested direct fields/widgets, password changes and buttons without reusable
-/// appearance states currently return explicit `Unsupported` errors.
+/// Nested direct fields/widgets and password changes currently return explicit
+/// `Unsupported` errors.
 pub fn save_filled_form(filler: &FormFiller<'_>, options: &SaveOptions) -> Result<Vec<u8>> {
     let mut transaction = Transaction::new(filler.document());
     if filler.changes().next().is_none() && !filler.form().need_appearances {
@@ -32,9 +34,22 @@ pub fn save_filled_form(filler: &FormFiller<'_>, options: &SaveOptions) -> Resul
             .ok_or(Error::invalid_argument("filled field index is absent"))?;
         refuse_password(field)?;
         let id = identity(filler.document(), field.object, field.dictionary)?;
-        let value = field_value(change.value(), filler.document())?;
+        let value = if matches!(change.value(), FilledValue::RichText { .. }) {
+            text_value(
+                &form_appearance::rich_text_value(filler, change.field())?,
+                filler.document(),
+            )?
+        } else {
+            field_value(change.value(), filler.document())?
+        };
         transaction.edit_dictionary(id, |dictionary| {
             dictionary.insert(Name::new(b"V"), value);
+            if let FilledValue::RichText { xml, default_style } = change.value() {
+                dictionary.insert(Name::new(b"RV"), text_value(xml, filler.document())?);
+                if let Some(style) = default_style {
+                    dictionary.insert(Name::new(b"DS"), text_value(style, filler.document())?);
+                }
+            }
             if let FilledValue::Choice(choice) = change.value() {
                 if field.flags.contains(FieldFlags::MULTI_SELECT) {
                     let indices = choice
@@ -97,19 +112,15 @@ fn prepare_appearances(
         let appearance =
             form_appearance::prepare_widget_with_policy(filler, index, provider, policy)?;
         if let Appearance::Generated(stream) = appearance {
-            // Saving only a selected generated button state would lose the
-            // opposite state and make the reopened field impossible to toggle.
-            if matches!(field.kind, FieldKind::Button { .. }) {
-                return Err(Error::unsupported(
-                    features::BUTTON_APPEARANCE,
-                    "saving buttons requires existing normal appearance states",
-                ));
-            }
             let id = identity(filler.document(), widget.object, widget.dictionary)?;
-            let appearance_id = transaction.add(NewObject::Stream {
-                dictionary: stream.dictionary().clone(),
-                data: stream.content().to_vec(),
-            })?;
+            let generated_button = matches!(
+                field.kind,
+                FieldKind::Button {
+                    kind: ButtonKind::CheckBox | ButtonKind::Radio,
+                    ..
+                }
+            );
+            let normal = normal_appearance(filler, transaction, index, field, stream, provider)?;
             let mut appearances = match widget.dictionary.get(b"AP") {
                 Some(value) => match filler.document().resolve(value)? {
                     Value::Null => Dictionary::new(),
@@ -118,14 +129,61 @@ fn prepare_appearances(
                 },
                 None => Dictionary::new(),
             };
-            appearances.insert(Name::new(b"N"), Value::Reference(appearance_id));
+            appearances.insert(Name::new(b"N"), normal);
             transaction.edit_dictionary(id, |dictionary| {
                 dictionary.insert(Name::new(b"AP"), Value::Dictionary(appearances));
+                if generated_button && filler.get(widget.field).is_none() {
+                    // NeedAppearances may generate an untouched button. Make
+                    // its preview selection explicit for the new state dictionary.
+                    let state = filler.button_appearance_state(index)?;
+                    dictionary.insert(
+                        Name::new(b"AS"),
+                        Value::Name(state.cloned().unwrap_or_else(|| Name::new(b"Off"))),
+                    );
+                }
                 Ok(())
             })?;
         }
     }
     Ok(())
+}
+
+fn normal_appearance(
+    filler: &FormFiller<'_>,
+    transaction: &mut Transaction<'_>,
+    index: usize,
+    field: &Field<'_>,
+    stream: form_appearance::AppearanceStream,
+    provider: Option<&dyn crate::Provider>,
+) -> Result<Value> {
+    if matches!(
+        field.kind,
+        FieldKind::Button {
+            kind: ButtonKind::CheckBox | ButtonKind::Radio,
+            ..
+        }
+    ) {
+        // Drop the preview state before reserving both persistent states.
+        drop(stream);
+        let mut states = Dictionary::new();
+        for (name, stream) in form_appearance::prepare_button_states(filler, index, provider)? {
+            let appearance_id = add_appearance(transaction, &stream)?;
+            states.insert(name, Value::Reference(appearance_id));
+        }
+        Ok(Value::Dictionary(states))
+    } else {
+        Ok(Value::Reference(add_appearance(transaction, &stream)?))
+    }
+}
+
+fn add_appearance(
+    transaction: &mut Transaction<'_>,
+    stream: &form_appearance::AppearanceStream,
+) -> Result<ObjectId> {
+    transaction.add(NewObject::Stream {
+        dictionary: stream.dictionary().clone(),
+        data: stream.content().to_vec(),
+    })
 }
 
 fn field_value(value: &FilledValue, document: &Document) -> Result<Value> {

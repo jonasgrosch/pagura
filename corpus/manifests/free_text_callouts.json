@@ -1,0 +1,659 @@
+{
+  "schema": 2,
+  "area": "free_text_callouts",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "free_text_callouts/None",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/None.pdf",
+      "sha256": "69ade0c37ba051f272ef94c3bd44e3e1f338785dc606be15177a19a97a72a6c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/None.ppm",
+      "oracle_sha256": "89ae31076ed7ec9c1d968d08c63256984a5dcce6fed22e7032d443eb3359e0fa",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/Square",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/Square.pdf",
+      "sha256": "26c07a376ea1d3728d97ebd9d17ce9c4c2b657b8acbb81e1e98129606aedc353",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/Square.ppm",
+      "oracle_sha256": "98af2570f2624267078e442d966beb094c9111fbe4f8173fbcc17654eeb80c55",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/Circle",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/Circle.pdf",
+      "sha256": "3b059ad08c3847bc63d501fc88336c10c1bb74e26102018008da276f9d92d5f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/Circle.ppm",
+      "oracle_sha256": "ef319d9dd32a1413972a8b9e9757e3b616de03a8a77ce68985896b26aaaf40f8",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/Diamond",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/Diamond.pdf",
+      "sha256": "0dcce454173ca7245ae0d19530f66eac7b4b36099b2635008ed9a7d36c1f8377",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/Diamond.ppm",
+      "oracle_sha256": "52d6b8baf013ef9f832e77ecd0ace4a9876d8837d35a0c70a39b1531fbba663d",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/OpenArrow",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/OpenArrow.pdf",
+      "sha256": "bec495884ef9aaad318a4a83424d5da226e27f07572c4f7be6554a05e35faf97",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/OpenArrow.ppm",
+      "oracle_sha256": "851dc586fb989951d734274912cf2dba8e431c42b2bcd00d052240e80411247a",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/ClosedArrow",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/ClosedArrow.pdf",
+      "sha256": "980bb283586681e92a3f8235e1b8c564dd43ab69841cecbcef66cab58aae7620",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/ClosedArrow.ppm",
+      "oracle_sha256": "ab6376304c637ba10ce9321ad327d853c4d659bb7374b9f640779d070244d59b",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/Butt",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/Butt.pdf",
+      "sha256": "59d5762d0cc4cea345dc997d26619d976534e03c9276a269cf3e093cec114b28",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/Butt.ppm",
+      "oracle_sha256": "c3aa912c6f225a0a1e3c1f8c7ebdc895ead4466d147dba340d821a908300e6cd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/ROpenArrow",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/ROpenArrow.pdf",
+      "sha256": "d02ad473654cdd3689854f0d2a3addb10cbaf1afde1a639e2e1339a0c1a54e73",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/ROpenArrow.ppm",
+      "oracle_sha256": "2fdde241d1a4f524b812681f2498eb68672bb26511d03df43c914e01f666c188",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/RClosedArrow",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/RClosedArrow.pdf",
+      "sha256": "877feef888c077a3ed6b308f27f1861fcee6fa42400e106fe7cdda01aca85c79",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/RClosedArrow.ppm",
+      "oracle_sha256": "d6286263186d42e0ef13f92ea67f3ca96a3c13f1b051f1310c38bdb784ae1ea2",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/Slash",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/Slash.pdf",
+      "sha256": "abc25f85ea7e705a495bfd18c396de8a6923bdbe61495d824db0814cee2663ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/Slash.ppm",
+      "oracle_sha256": "8cf7c2d34182c647792829da02ea8a40a4e6358b4d9d245e4d4be4c8a7ba63cc",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/OpenArrow-144",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/OpenArrow-144.pdf",
+      "sha256": "bec495884ef9aaad318a4a83424d5da226e27f07572c4f7be6554a05e35faf97",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/OpenArrow-144.ppm",
+      "oracle_sha256": "f0d416a2a02fa10016c71ed41cb54e7a2e6d6eab47f395024f6b124d97a70c53",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/ClosedArrow-144",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/ClosedArrow-144.pdf",
+      "sha256": "980bb283586681e92a3f8235e1b8c564dd43ab69841cecbcef66cab58aae7620",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/ClosedArrow-144.ppm",
+      "oracle_sha256": "4c7581c723d08ca09a9780976af544f9bf819998d7bdd94b9c65d1e5010361b7",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/Circle-144",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/Circle-144.pdf",
+      "sha256": "3b059ad08c3847bc63d501fc88336c10c1bb74e26102018008da276f9d92d5f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/Circle-144.ppm",
+      "oracle_sha256": "785868e67e7ac42c875d17bc37c4e01e40f2a854616355f20feaf7d00258cf6d",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/null-ending",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/null-ending.pdf",
+      "sha256": "776fdc5cedecb0493fc994ab58b21c7ac4ca91b592003361422cf4e225e7342b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/null-ending.ppm",
+      "oracle_sha256": "89ae31076ed7ec9c1d968d08c63256984a5dcce6fed22e7032d443eb3359e0fa",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/straight",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/straight.pdf",
+      "sha256": "0e78487a00a573cbf9e6be26c77264a9fa890712d5803ad283f27869c94f6246",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/straight.ppm",
+      "oracle_sha256": "4d5a519368b028f2517c5d4ee17e501327d15692d4026112acb96436493b5668",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/vertical",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/vertical.pdf",
+      "sha256": "79b0d6f67daf8d5fe96451d0fd72417fb1ec4321f4f96ef26bcfd2e3deb5a4d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/vertical.ppm",
+      "oracle_sha256": "c889e260a02c8245c6716b552db14d25ea05e839e2a480f90028ab9db378194d",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/rotated",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/rotated.pdf",
+      "sha256": "f2bfb40bf01b91b744b0786e3129e3f321cf328315eed64a7250090898748a99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/rotated.ppm",
+      "oracle_sha256": "69c075a07bb9f1332df6ac605ea675eda0f0d7aa89e8f22fbf2d39c8ffc7b740",
+      "dpi": 144,
+      "width": 96,
+      "height": 256,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/opacity",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/opacity.pdf",
+      "sha256": "2b09809027a1b61b0b67072e558863801c8cd16de4b8c8b9b5d81586074cf9e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/opacity.ppm",
+      "oracle_sha256": "67bea79c6f528e02f133cbcb822146732b5a020c19721540a14e2e692cfc94c1",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/separate-opacity",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/separate-opacity.pdf",
+      "sha256": "243334a2652afa24c17251f0ddff41bc00dd315212eab448dd94120ccec277d1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/separate-opacity.ppm",
+      "oracle_sha256": "608523cf0d6092e9e3f84ff5ab8128439aaed37523a0c0e6120813a2d7653634",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/transparent-background",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/transparent-background.pdf",
+      "sha256": "222204c828f9deb2ee1a6e45546fbf8f4faa89dfcea7d35a755fd3ebe599e237",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/transparent-background.ppm",
+      "oracle_sha256": "d38c03980e0602d067432324bd9b567dc7e8226127f6639172a2680f84d6cc61",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/zero-width-filled-ending",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/zero-width-filled-ending.pdf",
+      "sha256": "7953ada2fc9dd3c5af55db158a0295e00fa9bea06e127283c062f31976c7d86a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/zero-width-filled-ending.ppm",
+      "oracle_sha256": "abd24dac2ac1dec9e1f20d19d0954546d20bcab1374892cd6c33d65b2f07552b",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/no-text",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/no-text.pdf",
+      "sha256": "ff8924615af54abce5c26330db43074e65eb59c04ca6e78cdc6a0b5b944db504",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_callouts/no-text.ppm",
+      "oracle_sha256": "9a58dd577b39127a703b54bfac4ebed60426b5deece9e0e9935bd3a1928459aa",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/hidden",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/hidden.pdf",
+      "sha256": "1a9d7bbf0391905a657d8c7b6a5da040a198ae495aff173453e9b0c4b98750eb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_callouts/hidden.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/indirect",
+      "kind": "pdf",
+      "description": "Literal callout stroke polygons, analytic ending regions and independently placed glyph integrals establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/indirect.pdf",
+      "sha256": "47b2c64c513a58a6e46ab236a735b0ea631b332c11d53d10f451e952cb379299",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_callouts/indirect.ppm",
+      "oracle_sha256": "ab6376304c637ba10ce9321ad327d853c4d659bb7374b9f640779d070244d59b",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_callouts/cl-type",
+      "kind": "pdf",
+      "description": "Cardinality and operand types validate before zero-width or empty-text suppression",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/cl-type.pdf",
+      "sha256": "5d0b19c83d26b27adceb12d5a9710d1070c053959b09c16955199ea1cbe66831",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_callouts/cl-short",
+      "kind": "pdf",
+      "description": "Cardinality and operand types validate before zero-width or empty-text suppression",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/cl-short.pdf",
+      "sha256": "b8d99e5bc1254efd6a44905fe6ce67d9d43be3e90658ac6b290d570f5c3013f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_callouts/cl-odd",
+      "kind": "pdf",
+      "description": "Cardinality and operand types validate before zero-width or empty-text suppression",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/cl-odd.pdf",
+      "sha256": "d600c2e23477681253d9e9b968f149cc66c83a46dfd01663e999c698c2147145",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_callouts/cl-long",
+      "kind": "pdf",
+      "description": "Cardinality and operand types validate before zero-width or empty-text suppression",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/cl-long.pdf",
+      "sha256": "d937ec17ace830f6dbbcfd18adb82f87fd740ba700d1ad750fc1c84225e66d68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_callouts/cl-value",
+      "kind": "pdf",
+      "description": "Cardinality and operand types validate before zero-width or empty-text suppression",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/cl-value.pdf",
+      "sha256": "669a7f6643075a3c1d58335615e6209177742153c42b460889a4dca1c0e715f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_callouts/le-type",
+      "kind": "pdf",
+      "description": "Cardinality and operand types validate before zero-width or empty-text suppression",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/le-type.pdf",
+      "sha256": "b4141474ec0d3e3d957c0f811efbeccc08c015ff908ed53daa64477b4a71eddd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_callouts/unknown-ending",
+      "kind": "pdf",
+      "description": "Unknown endings retain an explicit capability refusal",
+      "expected": "unsupported",
+      "requirements": [
+        "content-free-text-callouts"
+      ],
+      "path": "corpus/generated/free_text_callouts/unknown-ending.pdf",
+      "sha256": "5dd6264b0acde4d1475a48d384196d08756ae86d7aafd3843ee1f163237b5251",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    }
+  ]
+}

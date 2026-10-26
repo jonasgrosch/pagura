@@ -75,13 +75,20 @@ pub(super) fn append(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<bool> {
+    // The tiling certificate uses chord-normal end lines. A source curve's
+    // tangent may cut the first/last piece differently; retain its component
+    // union until a certificate covers that geometry too.
+    if run.caps.iter().any(Option::is_some) || !run.joins.is_empty() {
+        super::draw(out, run, pen, stroke, limits, bytes)?;
+        return Ok(false);
+    }
     // The chains stay charged, as the output does, for the runs after.
     let before = bytes
         .used()
         .saturating_sub(out.heap_bytes().saturating_add(chains.heap_bytes()));
     let result = (|| {
         let Pen { radius, .. } = pen;
-        let points = centreline(run, bytes)?;
+        let points = &run.points;
         let [first, .., last] = points.as_slice() else {
             // A point's two caps; two round caps are the same circle.
             if let Some(&point) = points.first() {
@@ -104,7 +111,7 @@ pub(super) fn append(
                 points.len() - 1
             },
         };
-        let segments = segments(&points, joints, bytes)?;
+        let segments = segments(points, joints, bytes)?;
         let turns = turns(&segments, joints, radius, bytes)?;
         let tiles = !turns.iter().any(|j| matches!(j, Joint::Overlap))
             && advances(&segments, joints.closed);
@@ -126,7 +133,7 @@ pub(super) fn append(
             return Err(Error::limit("stroke outline budget exceeded"));
         }
         let traced = Traced {
-            points: &points,
+            points,
             segments: &segments,
             turns: &turns,
             joints,
@@ -214,22 +221,6 @@ pub(super) fn apart<'a>(
     })();
     bytes.refund(bytes.used().saturating_sub(before));
     result
-}
-
-/// The run's points without repeats, a closed run's closing point removed,
-/// as [`super::draw`] strokes them.
-pub(super) fn centreline(run: &Run, bytes: &mut Meter) -> Result<Vec<Point>> {
-    let mut points = Vec::new();
-    bytes.reserve(&mut points, run.points.len())?;
-    for &point in &run.points {
-        if points.last() != Some(&point) {
-            points.push(point);
-        }
-    }
-    if run.closed && points.len() > 1 && points.first() == points.last() {
-        points.pop();
-    }
-    Ok(points)
 }
 
 /// How a run's joints border its segments: segment `i` runs from point `i`
@@ -1081,7 +1072,16 @@ mod tests {
                 assert_eq!(pen, tiled_pen);
                 let round_caps = stroke.cap == LineCap::Round
                     && !matches!(path.segments().last(), Some(crate::Segment::Close));
-                if round_caps && tiling == Tiling::Components {
+                let source_caps = path
+                    .segments()
+                    .iter()
+                    .any(|segment| matches!(segment, crate::Segment::CubicTo { .. }));
+                if source_caps {
+                    // This open arch's source tangent differs from its first
+                    // chord: the chord-normal certificate must not certify it.
+                    assert_eq!(tiling, Tiling::Components, "{stroke:?}");
+                    assert_eq!(tiles.segments(), components.segments());
+                } else if round_caps && tiling == Tiling::Components {
                     assert_eq!(tiles.segments(), components.segments());
                 } else {
                     assert_eq!(tiling, Tiling::Proven, "{stroke:?}");
@@ -1729,6 +1729,8 @@ mod tests {
             points: star().into_iter().map(|(x, y)| Point::new(x, y)).collect(),
             closed: true,
             tangent: Point::new(1.0, 0.0),
+            caps: [None; 2],
+            joins: Vec::new(),
         };
         let pen = super::Pen {
             radius: 15.0,
@@ -1861,6 +1863,8 @@ mod tests {
                 points: vec![Point::new(0.0, 0.0), Point::new(f64::from(i), 9.0)],
                 closed: false,
                 tangent: Point::new(1.0, 0.0),
+                caps: [None; 2],
+                joins: Vec::new(),
             })
             .collect();
         let stroke = Stroke {
@@ -1904,6 +1908,8 @@ mod tests {
                 ],
                 closed: false,
                 tangent: Point::new(1.0, 0.0),
+                caps: [None; 2],
+                joins: Vec::new(),
             })
             .collect();
         let stroke = Stroke {

@@ -79,8 +79,11 @@ Review findings affecting the design:
    required normal appearances before clearing NeedAppearances. Failed
    generation or serialization returns no partial file; the filler stays intact.
    XFA/rich text/unsupported appearances keep their existing explicit errors.
-   Buttons currently need existing normal state dictionaries: generating just
-   their selected state would discard the opposite state needed for later use.
+   Checkboxes/radio buttons without stored appearances generate both Off and on
+   states using the preview generator; generating only the selected state would
+   discard the opposite state needed after reopening. Push buttons without normal AP use the same normal caption/icon generator
+   for source display, explicit regeneration and saving. They receive an AP/N
+   stream, never a synthetic V, DV or on-state; untouched saves remain byte-identical.
 6. Output is bounded by file_bytes; staged objects have a separate caller-owned
    document_bytes allowance, matching FormFiller. Count retained capacities and
    map entries. Structural/value/depth/stream/string limits apply before writing.

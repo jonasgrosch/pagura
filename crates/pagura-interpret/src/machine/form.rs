@@ -3,15 +3,16 @@
 
 use super::emit::GroupStart;
 use super::path::add_clip;
-use super::{Machine, Scope, matrix};
+use super::{Machine, Scope};
 use crate::device::{Device, Marked};
 use crate::features;
 use crate::model::GroupCause;
 use crate::resources::group;
+use pagura_appearance::form_geometry as geometry;
 use pagura_content::Content;
-use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::Document;
-use pagura_raster::{FillRule, Path, Transform};
+use pagura_raster::{FillRule, Path};
 use std::borrow::Cow;
 use std::sync::Arc;
 
@@ -81,42 +82,6 @@ pub(crate) fn resource<'a>(
         .transpose()?
         .and_then(|d| d.get(name))
         .ok_or(Error::syntax("undefined content resource"))
-}
-
-/// A form's `BBox` and `Matrix` (Table 93).
-///
-/// # Errors
-///
-/// `Syntax` for a missing or malformed `BBox` or `Matrix`.
-pub(crate) fn geometry(document: &Document, dictionary: &Dictionary) -> Result<(Rect, Transform)> {
-    let bbox = dictionary
-        .get(b"BBox")
-        .map(|v| document.resolve(v))
-        .transpose()?
-        .and_then(Value::as_array)
-        .and_then(Rect::from_array)
-        .ok_or(Error::syntax("form has invalid BBox"))?;
-    let matrix = dictionary
-        .get(b"Matrix")
-        .map(|v| {
-            let values = document
-                .resolve(v)?
-                .as_array()
-                .ok_or(Error::syntax("form Matrix must be an array"))?;
-            if values.len() != 6 {
-                return Err(Error::syntax("matrix must have six numbers"));
-            }
-            let mut m = [0.0; 6];
-            for (out, value) in m.iter_mut().zip(values) {
-                *out = value
-                    .as_number()
-                    .ok_or(Error::syntax("numeric operand expected"))?;
-            }
-            Ok(matrix(m))
-        })
-        .transpose()?
-        .unwrap_or(Transform::IDENTITY);
-    Ok((bbox, matrix))
 }
 
 impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {

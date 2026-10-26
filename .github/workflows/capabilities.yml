@@ -29,6 +29,12 @@ on:
       - 'uv.lock'
       - 'pyproject.toml'
   workflow_dispatch:
+    inputs:
+      annotation_observations:
+        description: 'Capture one raw annotation set only; none runs the ordinary suites'
+        type: choice
+        options: [none, sound, redact, widgets, buttons]
+        default: none
 permissions:
   contents: read
 concurrency:
@@ -36,6 +42,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   inventory:
+    if: ${{ (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
     strategy:
       fail-fast: false
       matrix:
@@ -104,32 +111,54 @@ jobs:
           PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
         run: python tools/competitors.py setup --engines "${{ matrix.install }}"
       - name: Probe synthetic document services
+        if: ${{ (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
         env:
           PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
         run: python tools/capability_probes.py run --engines "${{ matrix.engines }}" --output "$RUNNER_TEMP/capability-report.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ always() && (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
         with:
           name: capability-document-services-${{ matrix.os }}
           path: ${{ runner.temp }}/capability-report.json
           if-no-files-found: error
       - name: Probe independent render oracles
+        if: ${{ (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
         env:
           PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
         run: python tools/capability_render.py run --engines "${{ matrix.render_engines }}" --output "$RUNNER_TEMP/render-report.json" --images "$RUNNER_TEMP/render-images"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ always() && (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
         with:
           name: capability-rendering-${{ matrix.os }}
           path: ${{ runner.temp }}/render-report.json
           if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ always() && (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
         with:
           name: capability-render-images-${{ matrix.os }}
           path: ${{ runner.temp }}/render-images
           if-no-files-found: error
+      - name: Observe the selected annotation set and matched controls
+        if: ${{ inputs.annotation_observations && inputs.annotation_observations != 'none' }}
+        env:
+          PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
+        run: |
+          python -m unittest discover -s tools -p test_capability_render.py -v
+          python tools/capability_render.py observe --annotation-set "${{ inputs.annotation_observations }}" --engines "${{ matrix.render_engines }}" --output "$RUNNER_TEMP/render-observations.json" --images "$RUNNER_TEMP/render-observation-images"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() && inputs.annotation_observations && inputs.annotation_observations != 'none' }}
+        with:
+          name: capability-render-observations-${{ matrix.os }}
+          path: ${{ runner.temp }}/render-observations.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() && inputs.annotation_observations && inputs.annotation_observations != 'none' }}
+        with:
+          name: capability-observation-images-${{ matrix.os }}
+          path: ${{ runner.temp }}/render-observation-images
+          if-no-files-found: error
   combined-report:
+    if: ${{ (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
     needs: document-services
     runs-on: ubuntu-latest
     steps:
@@ -149,6 +178,7 @@ jobs:
           path: ${{ runner.temp }}/capability-report.json
           if-no-files-found: error
   combined-render-report:
+    if: ${{ (!inputs.annotation_observations || inputs.annotation_observations == 'none') }}
     needs: document-services
     runs-on: ubuntu-latest
     steps:

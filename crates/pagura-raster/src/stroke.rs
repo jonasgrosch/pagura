@@ -5,7 +5,7 @@
 //! preserves elliptical pens under nonuniform transforms.
 
 use crate::band::{Mapped, Polygon, RASTER_WORK, RENDER_BYTES};
-use crate::flatten::{TOLERANCE, bounded, flatten};
+use crate::flatten::{CurvePiece, Join, Source, TOLERANCE, bounded, flatten};
 use crate::{Path, PathBuilder, Point, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -114,8 +114,101 @@ pub(crate) struct Run {
     pub(crate) points: Vec<Point>,
     pub(crate) closed: bool,
     tangent: Point,
+    /// Source endpoint directions when they differ from the flattened chord.
+    caps: [Option<Point>; 2],
+    joins: Vec<Join>,
 }
 impl Run {
+    fn new(tangent: Point) -> Self {
+        Self {
+            points: Vec::new(),
+            joins: Vec::new(),
+            tangent,
+            closed: false,
+            caps: [None; 2],
+        }
+    }
+
+    fn push(
+        &mut self,
+        point: Point,
+        source: Option<Join>,
+        direction: Option<Point>,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        bytes.reserve_capacity(&mut self.points, 1)?;
+        // A subdivision vertex is smooth. Retain its source normal too: a
+        // chord-normal strip can protrude past a nearby curved dash cap.
+        if let Some(mut join) = source.or_else(|| {
+            direction.map(|direction| Join {
+                index: 0,
+                tangents: [direction; 2],
+            })
+        }) {
+            bytes.reserve_capacity(&mut self.joins, 1)?;
+            join.index = self.points.len();
+            self.joins.push(join);
+        }
+        self.points.push(point);
+        Ok(())
+    }
+
+    fn heap_bytes(&self) -> usize {
+        self.points
+            .capacity()
+            .saturating_mul(size_of::<Point>())
+            .saturating_add(self.joins.capacity().saturating_mul(size_of::<Join>()))
+    }
+
+    /// Keep sparse source indices aligned when repeated vertices disappear.
+    fn normalize(&mut self) {
+        let mut next = 0;
+        let mut joins = self.joins.iter_mut().peekable();
+        for index in 0..self.points.len() {
+            let point = self.points[index];
+            if next == 0 || self.points[next - 1] != point {
+                self.points[next] = point;
+                next += 1;
+            }
+            while joins.peek().is_some_and(|join| join.index == index) {
+                if let Some(join) = joins.next() {
+                    join.index = next - 1;
+                }
+            }
+        }
+        self.points.truncate(next);
+        self.joins.dedup_by(|later, earlier| {
+            if later.index != earlier.index {
+                return false;
+            }
+            earlier.tangents[1] = later.tangents[1];
+            true
+        });
+        if self.closed && next > 1 && self.points.first() == self.points.last() {
+            self.points.pop();
+            if self.joins.last().is_some_and(|join| join.index == next - 1)
+                && let Some(mut closing) = self.joins.pop()
+            {
+                closing.index = 0;
+                if let Some(first) = self.joins.first_mut().filter(|join| join.index == 0) {
+                    first.tangents[0] = closing.tangents[0];
+                } else {
+                    self.joins.insert(0, closing);
+                }
+            }
+        }
+        if self.closed {
+            self.caps = [None; 2];
+        } else {
+            if let Some(join) = source_join(&self.joins, 0) {
+                self.caps[0] = Some(join.tangents[1]);
+            }
+            if let Some(join) = source_join(&self.joins, self.points.len().saturating_sub(1)) {
+                self.caps[1] = Some(join.tangents[0]);
+            }
+        }
+    }
+
     pub(crate) fn transformed(mut self, transform: Transform) -> Self {
         for point in &mut self.points {
             *point = *point * transform;
@@ -129,14 +222,20 @@ impl Run {
             .max(transform.c.abs())
             .max(transform.d.abs());
         if scale > 0.0 {
-            let x = (transform.a / scale) * self.tangent.x + (transform.c / scale) * self.tangent.y;
-            let y = (transform.b / scale) * self.tangent.x + (transform.d / scale) * self.tangent.y;
-            let tangent = Point::new(x, y);
-            let length = tangent.length();
-            if length > 0.0 {
-                self.tangent = tangent / length;
+            for direction in std::iter::once(&mut self.tangent)
+                .chain(self.caps.iter_mut().flatten())
+                .chain(self.joins.iter_mut().flat_map(|join| &mut join.tangents))
+            {
+                let x = (transform.a / scale) * direction.x + (transform.c / scale) * direction.y;
+                let y = (transform.b / scale) * direction.x + (transform.d / scale) * direction.y;
+                let tangent = Point::new(x, y);
+                let length = tangent.length();
+                if length > 0.0 {
+                    *direction = tangent / length;
+                }
             }
         }
+        self.normalize();
         self
     }
 }
@@ -364,7 +463,12 @@ fn construct<O: Outline>(
     // then transform each run before constructing the hairline pen.
     // The centreline keeps the exact tolerance: near a cusp, chords of
     // another tolerance turn otherwise and move whole joins.
-    let contours = flatten(path, transform, limits, bytes)?;
+    let source = if stroke.dash_array.is_empty() {
+        Source::Stroke
+    } else {
+        Source::Dashed
+    };
+    let contours = flatten(path, transform, source, limits, bytes)?;
     let hairline = stroke.width == 0.0;
     let pen_transform = if hairline {
         Transform::IDENTITY
@@ -389,12 +493,12 @@ fn construct<O: Outline>(
         .saturating_mul(size_of::<crate::flatten::Polyline>());
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
-            let released = contour.points.capacity().saturating_mul(size_of::<Point>());
+            let released = contour.heap_bytes();
             drop(contour);
             bytes.refund(released);
             continue;
         }
-        let dashed = dash(contour.points, contour.closed, stroke, limits, bytes)?;
+        let dashed = dash_contour(contour, transform, stroke, limits, bytes)?;
         let dashed_bytes = dashed.capacity().saturating_mul(size_of::<Run>());
         for run in dashed {
             let run = if hairline {
@@ -507,7 +611,7 @@ fn closed_boundary(
     work: &mut usize,
     bytes: &mut Meter,
 ) -> Result<Option<[Vec<Point>; 2]>> {
-    if !run.closed || run.points.len() < convex::MIN_VERTICES {
+    if !run.closed || !run.joins.is_empty() || run.points.len() < convex::MIN_VERTICES {
         return Ok(None);
     }
     // The component stroker uses the same cleanup: duplicate endpoints
@@ -546,21 +650,136 @@ pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn dash(
-    points: Vec<Point>,
+/// Dash in user space, retaining true source directions at both original
+/// endpoints and cuts inside curves (8.4.3.6).
+pub(crate) fn dash_contour(
+    contour: crate::flatten::Polyline,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Vec<Run>> {
+    let ends = [
+        contour.points.first().copied(),
+        contour.points.last().copied(),
+    ];
+    let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
+    let accuracy = TOLERANCE / 64.0 / stretch.max(1.0);
+    let mut runs = dash(
+        contour.points,
+        contour.joins,
+        (contour.pieces, accuracy),
+        contour.closed,
+        stroke,
+        limits,
+        bytes,
+    )?;
+    if !contour.closed {
+        for (index, end) in ends.into_iter().enumerate() {
+            if !contour.curves[index] {
+                continue;
+            }
+            let Some(tangent) = contour.tangents[index] else {
+                continue;
+            };
+            let run = if index == 0 {
+                runs.first_mut()
+            } else {
+                runs.last_mut()
+            };
+            if let Some(run) = run {
+                let mut points = run.points.iter();
+                let endpoint = if index == 0 {
+                    points.next()
+                } else {
+                    points.next_back()
+                };
+                if endpoint.copied() != end {
+                    continue;
+                }
+                let adjacent = if index == 0 {
+                    points.find(|point| Some(*point) != endpoint)
+                } else {
+                    points.rfind(|point| Some(*point) != endpoint)
+                };
+                if let (Some(&endpoint), Some(&adjacent)) = (endpoint, adjacent) {
+                    let chord = if index == 0 {
+                        adjacent - endpoint
+                    } else {
+                        endpoint - adjacent
+                    };
+                    if tangent != chord / chord.length() {
+                        run.caps[index] = Some(tangent);
+                    }
+                }
+            }
+        }
+    }
+    Ok(runs)
+}
+
+fn dash(
+    mut points: Vec<Point>,
+    mut joins: Vec<Join>,
+    (pieces, accuracy): (Vec<CurvePiece>, f64),
     closed: bool,
     stroke: &Stroke,
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<Vec<Run>> {
-    let before = bytes
-        .used()
-        .saturating_sub(points.capacity().saturating_mul(size_of::<Point>()));
-    let result = split_dashes(points, closed, stroke, limits, bytes);
+    let before = bytes.used().saturating_sub(
+        points
+            .capacity()
+            .saturating_mul(size_of::<Point>())
+            .saturating_add(joins.capacity().saturating_mul(size_of::<Join>()))
+            .saturating_add(pieces.capacity().saturating_mul(size_of::<CurvePiece>())),
+    );
+    let result = (|| {
+        if stroke.dash_array.is_empty() {
+            let mut runs = Vec::new();
+            bytes.reserve(&mut runs, 1)?;
+            runs.push(Run {
+                points,
+                closed,
+                tangent: Point::new(1.0, 0.0),
+                caps: [None; 2],
+                joins,
+            });
+            return Ok(runs);
+        }
+        if closed
+            && points.first() != points.last()
+            && let Some(&first) = points.first()
+        {
+            bytes.reserve_capacity(&mut points, 1)?;
+            points.push(first);
+            if let Some(mut join) = source_join(&joins, 0) {
+                join.index = points.len() - 1;
+                bytes.reserve_capacity(&mut joins, 1)?;
+                joins.push(join);
+            }
+        }
+        split_dashes(
+            &points,
+            &joins,
+            (&pieces, accuracy),
+            closed,
+            stroke,
+            limits,
+            bytes,
+        )
+    })()
+    .map(|mut runs| {
+        for run in &mut runs {
+            run.normalize();
+        }
+        runs
+    });
+    drop(pieces);
     let retained = result.as_ref().map_or(0, |runs| {
         runs.iter().fold(
             runs.capacity().saturating_mul(size_of::<Run>()),
-            |n, run| n.saturating_add(run.points.capacity().saturating_mul(size_of::<Point>())),
+            |n, run| n.saturating_add(run.heap_bytes()),
         )
     });
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
@@ -568,26 +787,192 @@ pub(crate) fn dash(
 }
 
 fn split_dashes(
-    mut points: Vec<Point>,
+    points: &[Point],
+    joins: &[Join],
+    (pieces, accuracy): (&[CurvePiece], f64),
     closed: bool,
     stroke: &Stroke,
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<Vec<Run>> {
-    if stroke.dash_array.is_empty() {
-        let mut runs = Vec::new();
-        bytes.reserve(&mut runs, 1)?;
-        runs.push(Run {
-            points,
-            closed,
-            tangent: Point::new(1.0, 0.0),
-        });
-        return Ok(runs);
+    let (mut index, mut remaining) = dash_start(stroke)?;
+    let cycle_count = stroke.dash_array.len() * 2;
+    let initial_on = index % 2 == 0;
+    let mut result = Vec::new();
+    let mut run = Run::new(Point::new(1.0, 0.0));
+    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+    let mut tangent = Point::new(1.0, 0.0);
+    // Each source piece contributes at most its share of the length error;
+    // two further shares cover inversion at the current cut.
+    let count = u32::try_from(pieces.len())
+        .map_err(|_| Error::limit("dash curve count exceeds numeric range"))?;
+    let precision = accuracy / (f64::from(count) + 2.0);
+    if count > 0 && precision <= 0.0 {
+        return Err(Error::limit("dash curve precision underflow"));
     }
-    if closed && let Some(&first) = points.first() {
-        bytes.reserve_capacity(&mut points, 1)?;
-        points.push(first);
+    let mut pieces = pieces.iter().peekable();
+    for (index_in_path, pair) in points.windows(2).enumerate() {
+        let [a, b] = [pair[0], pair[1]];
+        let controls = pieces
+            .next_if(|piece| piece.index == index_in_path)
+            .map(|piece| [a, piece.controls[0], piece.controls[1], b]);
+        let distance = if let Some(controls) = controls {
+            curve_length(controls, precision, 0, &mut work)?
+        } else {
+            (b - a).length()
+        };
+        if distance == 0.0 {
+            if index % 2 == 0 {
+                for (point, index) in [(a, index_in_path), (b, index_in_path + 1)] {
+                    run.push(point, source_join(joins, index), None, bytes)?;
+                }
+            }
+            continue;
+        }
+        if a != b {
+            tangent = (b - a) / (b - a).length();
+        }
+        let mut offset = 0.0;
+        while offset < distance || remaining == 0.0 {
+            work.charge(1)?;
+            if result.len() + run.points.len() > limits.path_segments {
+                return Err(Error::limit("dashed segment budget exceeded"));
+            }
+            let step = remaining.min(distance - offset);
+            let end = offset + step;
+            if step > 0.0 && end == offset {
+                return Err(Error::limit("dash lengths below numeric resolution"));
+            }
+            let mut sample = |d: f64| {
+                controls.map_or_else(
+                    || Ok((a.lerp(b, d / distance), None)),
+                    |curve| {
+                        curve_sample(curve, (d, distance), precision, &mut work)
+                            .map(|(point, direction)| (point, Some(direction)))
+                    },
+                )
+            };
+            if index % 2 == 0 {
+                if run.points.is_empty() {
+                    let (point, direction) = sample(offset)?;
+                    run.caps[0] = direction;
+                    run.push(
+                        point,
+                        (offset == 0.0)
+                            .then(|| source_join(joins, index_in_path))
+                            .flatten(),
+                        direction,
+                        bytes,
+                    )?;
+                }
+                let (point, direction) = sample(end)?;
+                run.caps[1] = direction;
+                tangent = direction.unwrap_or(tangent);
+                run.push(
+                    point,
+                    (end == distance)
+                        .then(|| source_join(joins, index_in_path + 1))
+                        .flatten(),
+                    direction,
+                    bytes,
+                )?;
+            }
+            offset = end;
+            remaining -= step;
+            if remaining == 0.0 {
+                if index % 2 == 0 && !run.points.is_empty() {
+                    bytes.reserve_capacity(&mut result, 1)?;
+                    run.tangent = tangent;
+                    result.push(std::mem::replace(&mut run, Run::new(tangent)));
+                }
+                index = (index + 1) % cycle_count;
+                remaining = dash_length(stroke, index);
+            }
+        }
     }
+    if !run.points.is_empty() {
+        bytes.reserve_capacity(&mut result, 1)?;
+        run.tangent = tangent;
+        result.push(run);
+    }
+    join_seam(&mut result, points, closed && initial_on, bytes)?;
+    Ok(result)
+}
+
+/// A cubic's chord and control polygon bound its arclength. Subdivision
+/// halves the assigned uncertainty, so the summed estimates retain the
+/// caller's absolute error bound. Only dashed curves pay this work.
+fn curve_length(points: [Point; 4], precision: f64, depth: usize, work: &mut Meter) -> Result<f64> {
+    work.charge(1)?;
+    let lower = (points[3] - points[0]).length();
+    let upper: f64 = points.windows(2).map(|p| (p[1] - p[0]).length()).sum();
+    if upper - lower <= 2.0 * precision {
+        return Ok(f64::midpoint(lower, upper));
+    }
+    if depth == 64 {
+        return Err(Error::limit("dash curve length below numeric resolution"));
+    }
+    let [left, right] = curve_split(points, 0.5);
+    Ok(curve_length(left, precision * 0.5, depth + 1, work)?
+        + curve_length(right, precision * 0.5, depth + 1, work)?)
+}
+
+fn curve_split([a, b, c, d]: [Point; 4], t: f64) -> [[Point; 4]; 2] {
+    let (ab, bc, cd) = (a.lerp(b, t), b.lerp(c, t), c.lerp(d, t));
+    let (abc, bcd) = (ab.lerp(bc, t), bc.lerp(cd, t));
+    let point = abc.lerp(bcd, t);
+    [[a, ab, abc, point], [point, bcd, cd, d]]
+}
+
+/// Invert source arclength by bounded bisection. The summed error of the
+/// at most 64 partial measurements is at most half a precision share;
+/// the final control polygon bounds the remaining position uncertainty.
+fn curve_sample(
+    source: [Point; 4],
+    (mut offset, length): (f64, f64),
+    precision: f64,
+    work: &mut Meter,
+) -> Result<(Point, Point)> {
+    let mut t = if offset == 0.0 { 0.0 } else { 1.0 };
+    if offset > 0.0 && offset < length {
+        let mut piece = source;
+        let (mut lo, mut hi) = (0.0, 1.0);
+        for depth in 0..64 {
+            work.charge(1)?;
+            let upper: f64 = piece.windows(2).map(|p| (p[1] - p[0]).length()).sum();
+            t = f64::midpoint(lo, hi);
+            if upper <= precision {
+                break;
+            }
+            if depth == 63 {
+                return Err(Error::limit("dash curve cut below numeric resolution"));
+            }
+            let [left, right] = curve_split(piece, 0.5);
+            let distance = curve_length(left, precision / 128.0, 0, work)?;
+            if offset < distance {
+                piece = left;
+                hi = t;
+            } else {
+                piece = right;
+                lo = t;
+                offset -= distance;
+            }
+        }
+    }
+    let [left, right] = curve_split(source, t);
+    let point = left[3];
+    let direction = [
+        right[1] - left[2],
+        right[2] - left[1],
+        source[3] - source[0],
+    ]
+    .into_iter()
+    .find(|d| d.length() > 0.0)
+    .ok_or(Error::limit("dash curve tangent below numeric resolution"))?;
+    Ok((point, direction / direction.length()))
+}
+
+fn dash_start(stroke: &Stroke) -> Result<(usize, f64)> {
     let cycle_count = stroke
         .dash_array
         .len()
@@ -607,69 +992,14 @@ fn split_dashes(
         phase -= dash_length(stroke, index);
         index = (index + 1) % cycle_count;
     }
-    let initial_on = index % 2 == 0;
-    let mut remaining = dash_length(stroke, index) - phase;
-    let mut result = Vec::new();
-    let mut run = Vec::new();
-    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
-    let mut tangent = Point::new(1.0, 0.0);
-    for pair in points.windows(2) {
-        let [a, b] = [pair[0], pair[1]];
-        let distance = (b - a).length();
-        if distance == 0.0 {
-            if index % 2 == 0 {
-                bytes.reserve_capacity(&mut run, 2)?;
-                run.extend([a, b]);
-            }
-            continue;
-        }
-        tangent = (b - a) / distance;
-        let mut offset = 0.0;
-        while offset < distance || remaining == 0.0 {
-            work.charge(1)?;
-            if result.len() + run.len() > limits.path_segments {
-                return Err(Error::limit("dashed segment budget exceeded"));
-            }
-            let step = remaining.min(distance - offset);
-            let end = offset + step;
-            if step > 0.0 && end == offset {
-                return Err(Error::limit("dash lengths below numeric resolution"));
-            }
-            let interpolate = |d: f64| a.lerp(b, d / distance);
-            if index % 2 == 0 {
-                if run.is_empty() {
-                    bytes.reserve_capacity(&mut run, 1)?;
-                    run.push(interpolate(offset));
-                }
-                bytes.reserve_capacity(&mut run, 1)?;
-                run.push(interpolate(end));
-            }
-            offset = end;
-            remaining -= step;
-            if remaining == 0.0 {
-                if index % 2 == 0 && !run.is_empty() {
-                    bytes.reserve_capacity(&mut result, 1)?;
-                    result.push(Run {
-                        points: std::mem::take(&mut run),
-                        closed: false,
-                        tangent,
-                    });
-                }
-                index = (index + 1) % cycle_count;
-                remaining = dash_length(stroke, index);
-            }
-        }
-    }
-    if !run.is_empty() {
-        bytes.reserve_capacity(&mut result, 1)?;
-        result.push(Run {
-            points: run,
-            closed: false,
-            tangent,
-        });
-    }
-    join_seam(&mut result, &points, closed && initial_on, bytes)?;
-    Ok(result)
+    Ok((index, dash_length(stroke, index) - phase))
+}
+
+fn source_join(joins: &[Join], index: usize) -> Option<Join> {
+    joins
+        .binary_search_by_key(&index, |join| join.index)
+        .ok()
+        .map(|index| joins[index])
 }
 
 fn join_seam(
@@ -686,14 +1016,20 @@ fn join_seam(
         if result.len() == 1 {
             if let Some(run) = result.first_mut() {
                 run.closed = true;
-                run.points.pop();
             }
         } else if let Some(mut tail) = result.pop()
             && let Some(head) = result.first_mut()
         {
+            let offset = tail.points.len().saturating_sub(1);
             bytes.reserve_capacity(&mut tail.points, head.points.len().saturating_sub(1))?;
             tail.points.extend(head.points.iter().skip(1).copied());
-            let released = head.points.capacity().saturating_mul(size_of::<Point>());
+            bytes.reserve_capacity(&mut tail.joins, head.joins.len())?;
+            tail.joins.extend(head.joins.iter().map(|join| Join {
+                index: join.index.saturating_add(offset),
+                ..*join
+            }));
+            tail.caps[1] = head.caps[1];
+            let released = head.heap_bytes();
             *head = tail;
             bytes.refund(released);
         }
@@ -721,7 +1057,7 @@ pub(crate) fn draw(
     let result = (|| {
         let Pen { radius, .. } = pen;
         let closed = run.closed;
-        let points = tiling::centreline(run, bytes)?;
+        let points = &run.points;
         if points.len() < 2 {
             if let Some(&point) = points.first() {
                 cap(out, point, run.tangent, pen, stroke.cap, limits, bytes)?;
@@ -738,13 +1074,30 @@ pub(crate) fn draw(
             .copied()
             .ok_or(Error::invalid_argument("empty stroke"))?;
         let mut directions = Vec::new();
-        for (&a, &b) in points
+        let segments = points.len() - usize::from(!closed);
+        for (i, (&a, &b)) in points
             .iter()
             .zip(points.iter().skip(1).chain(closed.then_some(&first)))
+            .enumerate()
         {
             let d = (b - a) / (b - a).length();
-            let n = d.perp() * radius;
-            polygon(out, &[a + n, b + n, b - n, a - n], limits, bytes)?;
+            let start = if let Some(join) = source_join(&run.joins, i) {
+                join.tangents[1]
+            } else if i == 0 && !closed {
+                run.caps[0].unwrap_or(d)
+            } else {
+                d
+            };
+            let next = (i + 1) % points.len();
+            let end = if let Some(join) = source_join(&run.joins, next) {
+                join.tangents[0]
+            } else if i + 1 == segments && !closed {
+                run.caps[1].unwrap_or(d)
+            } else {
+                d
+            };
+            let [na, nb] = [start.perp() * radius, end.perp() * radius];
+            polygon(out, &[a + na, b + nb, b - nb, a - na], limits, bytes)?;
             bytes.reserve_capacity(&mut directions, 1)?;
             directions.push(d);
         }
@@ -756,9 +1109,33 @@ pub(crate) fn draw(
             };
             let after = directions.get(i);
             match (before, after) {
-                (Some(&a), Some(&b)) => join(out, point, [a, b], pen, stroke, limits, bytes)?,
-                (None, Some(&d)) => cap(out, first, -d, pen, stroke.cap, limits, bytes)?,
-                (Some(&d), None) => cap(out, last, d, pen, stroke.cap, limits, bytes)?,
+                (Some(&a), Some(&b)) => join(
+                    out,
+                    point,
+                    source_join(&run.joins, i).map_or([a, b], |join| join.tangents),
+                    pen,
+                    stroke,
+                    limits,
+                    bytes,
+                )?,
+                (None, Some(&d)) => cap(
+                    out,
+                    first,
+                    -run.caps[0].unwrap_or(d),
+                    pen,
+                    stroke.cap,
+                    limits,
+                    bytes,
+                )?,
+                (Some(&d), None) => cap(
+                    out,
+                    last,
+                    run.caps[1].unwrap_or(d),
+                    pen,
+                    stroke.cap,
+                    limits,
+                    bytes,
+                )?,
                 _ => {}
             }
         }

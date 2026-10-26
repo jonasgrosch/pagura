@@ -121,3 +121,7 @@ integration. Milestone numbers are outcomes, not completion claims.
 Deferred capabilities remain release blockers wherever the performance or
 feature contract requires them. Exclusions are explicit product decisions,
 never post-hoc benchmark filtering.
+
+The [competitive plan's review groups](COMPETITIVE_PARITY.md#review-groups-and-pr-budget)
+bound the remaining implementation to 18 feature PRs, with a ceiling of 20.
+Subtype, probe, CI and documentation follow-ups remain in their owning feature PR.

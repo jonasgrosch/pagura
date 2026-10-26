@@ -8,7 +8,7 @@
 //! midpoint can round to different keys; it then fills ordinarily and paints
 //! nothing.
 
-use crate::flatten::{bounded, flatten};
+use crate::flatten::{Source, bounded, flatten};
 use crate::{FillRegion, FillRule, Path, PathBuilder, Point, Segment, Stroke, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -58,7 +58,7 @@ fn classify_lines(
     if !linear_curves(path)? {
         return Ok(FillRegion::Ordinary);
     }
-    let contours = flatten(path, Transform::IDENTITY, limits, bytes)?;
+    let contours = flatten(path, Transform::IDENTITY, Source::Fill, limits, bytes)?;
     let mut edges = Vec::new();
     for contour in &contours {
         let Some(&first) = contour.points.first() else {
@@ -360,7 +360,7 @@ fn boundary(
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    let contours = flatten(path, transform, limits, bytes)?;
+    let contours = flatten(path, transform, Source::Fill, limits, bytes)?;
     let mut boundary = PathBuilder::new();
     let mut points = Vec::new();
     for (i, contour) in contours.iter().enumerate() {

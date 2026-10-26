@@ -1,21 +1,31 @@
-//! Empty variable-text and unsigned signature widgets (12.5.6.19, 12.7.5).
-//! Values and field types inherit through Parent; appearance characteristics
-//! do not. Nonempty values require text layout or a supplied appearance
-//! stream.
+//! Source text, choice, button and unsigned signature widgets (12.5.6.19, 12.7.5).
+//! AcroForm values use the document's requested-field view and shared form
+//! generator. Without an AcroForm, empty text/signature widgets retain the
+//! geometric fallback; inconsistent membership in a present AcroForm is an error.
+//! Appearance characteristics belong to the widget itself.
 
 use super::border::Border;
 use super::marks::{Marks, Pen, Subpath, color};
 use crate::features;
+use crate::fonts::FontSource;
 use crate::stream::AppearanceStream;
+use crate::widget_rotation;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
-/// The MK background and border of an empty text or signature widget.
+/// Source Tx/Ch/Btn content, or empty-widget geometry after AcroForm membership checks.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
+    fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
+    if let Some(field) = document.widget_field(annotation)? {
+        if rect.width() == 0.0 || rect.height() == 0.0 {
+            return Ok(None);
+        }
+        return crate::form::source_widget(document, annotation, rect, &field, fonts).map(Some);
+    }
     let unsupported = || {
         Error::unsupported(
             features::ANNOTATION_APPEARANCE,
@@ -44,7 +54,7 @@ pub(super) fn generate(
     marks.finish(rect)
 }
 
-/// Table 189: absent BG and BC mean no background and no border. DA's
+/// Table 192: absent BG and BC mean no background and no border. DA's
 /// colours apply to variable text, not to the widget rectangle.
 fn characteristics(
     marks: &mut Marks<'_>,
@@ -53,18 +63,12 @@ fn characteristics(
     mk: &Dictionary,
     rect: Rect,
 ) -> Result<()> {
-    let rotation = mk
-        .get(b"R")
-        .map(|value| {
-            document
-                .resolve(value)?
-                .as_integer()
-                .filter(|n| n % 90 == 0)
-                .ok_or(Error::syntax("widget rotation must be a multiple of 90"))
-        })
-        .transpose()?
-        .unwrap_or(0)
-        .rem_euclid(360);
+    let rotation = widget_rotation::read(document, Some(mk))?;
+    let frame = widget_rotation::frame(rotation, rect)?;
+    if let Some(matrix) = frame.matrix {
+        marks.transform(matrix)?;
+    }
+    let rect = frame.bounds;
     if let Some(background) = color(document, mk, b"BG", None)? {
         let area = Subpath::Rect {
             x: rect.x0(),
@@ -77,15 +81,12 @@ fn characteristics(
     let Some(color) = color(document, mk, b"BC", None)? else {
         return Ok(());
     };
-    let border = Border::read(document, annotation)?;
+    let border = Border::read_rectangular(document, annotation)?;
     if border.width == 0.0 {
         return Ok(());
     }
-    if rotation != 0 {
-        return Err(Error::unsupported(
-            features::ANNOTATION_APPEARANCE,
-            "rotated widget borders require an explicit appearance",
-        ));
+    if border.paint_relief(marks, rect, &color)? {
+        return Ok(());
     }
     let inset = (border.width * 0.5)
         .min(rect.width() * 0.5)
@@ -97,12 +98,14 @@ fn characteristics(
     let path = if border.underline {
         Subpath::Polyline(&underline)
     } else {
-        Subpath::Rect {
-            x: rect.x0() + inset,
-            y: rect.y0() + inset,
-            width: (rect.width() - 2.0 * inset).max(0.0),
-            height: (rect.height() - 2.0 * inset).max(0.0),
-        }
+        let bounds = Rect::from_corners(
+            rect.x0() + inset,
+            rect.y0() + inset,
+            rect.x1() - inset,
+            rect.y1() - inset,
+        )
+        .ok_or(Error::limit("widget border bounds exceed numeric range"))?;
+        border.outline(bounds)
     };
     let pen = Pen {
         width: border.width,

@@ -5,10 +5,10 @@ support. It is **not a complete PDF implementation**, and feature parity with
 PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
 Work spans M1–M7; none of those milestones is declared complete by this page.
 
-This inventory was reconciled against `render/one-pass` at
-`847fb26f0616e8b70bec76883880c78cbc47915d`, the embedded-colour follow-up to the fetched
-one-pass head `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a` (PR #118).
-It describes that branch, including refactoring not yet merged into `main`.
+This inventory describes this review branch against `render/one-pass`. The
+[checked inventory](CAPABILITIES.md) records its source revision and evidence.
+The [18 review groups](COMPETITIVE_PARITY.md#review-groups-and-pr-budget) separate
+pending implementations; support in another PR is not support in this branch.
 **Implemented** below means an implementation and associated tests exist, within the stated
 limits. It does not mean those tests or all corpora were rerun for this audit.
 Library support, PDF integration and viewer support are listed separately where
@@ -16,7 +16,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 335 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and every registered requirement ID assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -36,8 +36,8 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Paths and shading | Fills/strokes, dashes, clipping, forms, tiling patterns, mesh shadings, functions, crop/rotation/UserUnit and tiled output | Explicit refusals remain for singular transforms and pattern-placement/state/image-mask cases; classify each as valid unsupported input, invalid input or a resource/numerical limit. Difficult mesh/geometry cases need independent accuracy evidence. |
 | Colour and transparency | Device/Default/Indexed, ICC forward matrix/TRC and LUT processing, calibrated colours, Lab, Separation/DeviceN; Gray/RGB/CMYK transparency groups, standard blend modes, knockout and soft masks | ICC destination/inverse transforms and calibrated group destinations; nonzero calibrated black points/black-point compensation; fractional, pattern and per-colourant transfer-region selection. Supported ICC group destinations currently use their resolved device base. Lab is prohibited as a blending destination, not a feature to implement. |
 | Overprint | CMYK process and spot display simulation, including group interactions, with `Auto`/`Always`/`Never` library and CLI options; catalog/page PDF/X intent detection | Destination ICC output transforms and transfer/overprint combinations; viewer control. Spot display uses alternate-based ink equivalents with a 32-plate bound, not physical ink prediction. PDF/X detection is not conformance validation. |
-| Annotation display | Existing normal appearance streams and states; screen visibility and NoZoom/NoRotate placement; generated Link/Square borders, Text icons and supported empty widgets | Appearance synthesis for other subtypes and richer borders; ordinary rendering of nonempty widgets without an appearance remains limited. Playing media or interacting with 3D content is not provided by painting an appearance. Annotation authoring is not yet a general editing API. |
-| AcroForms | Field tree/types/inheritance/widgets; text, checkbox, radio and choice filling; appearance generation; filled-page rendering; incremental saved values and appearances; browser controls, preview, discard and download | XFA, rich text, generated button states, nested direct field/widget identities, password-field persistence, complex appearance updates, rotated widgets and encodings outside the reversible simple horizontal model. See [editing](EDITING.md) for library and browser boundaries. |
+| Annotation display | Stored normal streams/states; generated icons, geometric and text markup, Line endings/leaders, Caret, standard stamps, plain/common RC/DS rich captions and FreeText/callouts, cloudy effects, and rounded/relief rectangular borders; source Tx/Ch and normal button artwork share form layout/resources; Screen defaults to blank, explicit Movie image posters use the ordinary image interpreter, and subtypes requiring AP validate its presence | Advanced rich layout/font variants, interaction-selected R/D states and outstanding curved stroke/dash/CMYK evidence remain open. Movie-file poster retrieval and media activation need host support. Stored artwork retains precedence; the static-subtype boundary has hosted acceptance at `fc0a302dc`. |
+| AcroForms | Field tree/types/inheritance/widgets; text, checkbox, radio and choice filling; shared source/preview/save appearance generation with quarter-turn MK R; normal button captions and icon fitting, AS/Opt state selection and push streams; bounded RV/DS rich source generation and explicit library rich replacements; incremental saved values and appearances; browser plain controls, preview, discard and download | The new rich-field path awaits hosted acceptance. Advanced rich formatting/automatic sizing, browser rich input, XFA, ambiguous source-only radio selection without AP/AS/Opt, nested direct field/widget identities, password-field persistence, complex appearance updates, rotated-MK browser controls and encodings outside the reversible simple horizontal model remain open. See [editing](EDITING.md) for library and browser boundaries. |
 | Navigation and actions | Name/number trees, destinations, outlines, links and page labels; inert action data; browser internal destinations and controlled URI activation | No JavaScript calculations/events or automatic action execution. General external-file, launch, submission and media actions need explicit host contracts. |
 | Text extraction and accessibility | Positioned glyphs, words/lines/reading order, ActualText/Alt/ReversedChars, Unicode search and quads; separate tagged logical view; viewer search/copy/selection and screen-reader-readable DOM text | Tagged logical structure is not connected to the viewer accessibility tree. Custom namespaces/RoleMapNS and some cross-stream/cross-page replacements are unsupported; bidi/script-specific reconstruction remains incomplete. The DOM text layer alone is not PDF/UA support. |
 | PDF signature structure | Current and discoverable historical signatures, source-bound ByteRange/revisions, DocMDP/FieldMDP structural modification analysis, per-signature errors and explicit inconclusive results | Inaccessible encrypted/repaired history, unsupported roles/transforms/template operations and DSS/timestamp exceptions remain inconclusive. Structural permission analysis does not establish cryptographic validity or enforce save policy. |
@@ -180,3 +180,11 @@ requirement entry and this page together. Record library, renderer, CLI, host
 and viewer availability separately. Replace a historical scoreboard only with
 an actual run that records the new source/binary/corpus identities. Unknown or
 untested competitor cells remain open in the parity plan; they are never a pass.
+
+At `fc0a302dc`, hosted save/reopen, native/WASI and browser editing checks and
+all three functional platforms pass. Pagura passes all 596 registered rendering
+controls, including normal buttons, static subtypes, common annotation rich text,
+cloudy fills and stored appearance selection. The
+[probe record](../benchmarks/probes/README.md) binds those observations to the
+exact source and report artifact. The subsequent rich-field extension brings the
+set to 644 and still requires hosted validation. Wider V01/V02 gates remain open.

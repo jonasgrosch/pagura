@@ -6,7 +6,11 @@ use pagura::{form_appearance, tags};
 #[test]
 fn rendering_tags_are_unique_and_well_formed() {
     let features = [tags::appearance::ALL, tags::color::ALL, tags::content::ALL];
-    let mut seen: Vec<&str> = form_appearance::information::ALL.to_vec();
+    let mut seen: Vec<&str> = form_appearance::information::ALL
+        .iter()
+        .copied()
+        .chain(form_appearance::repairs::ALL.iter().map(|tag| tag.as_str()))
+        .collect();
     for tag in features.iter().flat_map(|all| all.iter()) {
         let tag = tag.as_str();
         let (area, item) = tag.split_once('.').unwrap_or_default();

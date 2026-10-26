@@ -17,7 +17,7 @@
         "forms/text-password",
         "pagura-document forms::fill::tests"
       ],
-      "gaps": "Rich text, XFA and actions remain unsupported or inert; DoNotScroll is checked during appearance generation. Passwords remain in caller-owned memory."
+      "gaps": "Explicit rich replacement and common RV/DS layout/save are covered by content-rich-field-appearance. Plain Text replacement of RichText fields remains refused; XFA and actions remain unsupported or inert. DoNotScroll is checked during appearance generation. Passwords remain in caller-owned memory."
     },
     {
       "id": "forms-fill-button",
@@ -67,7 +67,7 @@
         "forms/text-need-appearances",
         "forms/text-preserve-existing"
       ],
-      "gaps": "No saving. Composite font encoding, oblique Tm and updates containing inline images or multiple Tx sections fail explicitly. Existing Tx sections inside BT or crossing graphics scopes fail explicitly."
+      "gaps": "Persistence is covered by filled-form-save. Composite font encoding, oblique Tm and updates containing inline images or multiple Tx sections fail explicitly. Existing Tx sections inside BT or crossing graphics scopes fail explicitly."
     },
     {
       "id": "forms-appearance-style",
@@ -77,15 +77,84 @@
         "12.5.4; Table 168",
         "12.7.4.3"
       ],
-      "status": "implemented for solid, dashed and underline borders",
+      "status": "implemented for standard rectangular borders and quarter-turn MK R",
       "tests": [
         "forms/text-background-border",
         "forms/text-quadding-0",
         "forms/text-comb",
         "forms/text-multiline-wrap",
-        "forms/text-auto-shrink"
+        "forms/text-auto-shrink",
+        "pagura-appearance form::tests::shared_border_budgets_protect_filled_appearances",
+        "pagura-appearance form::tests::style_reader_rejects_malformed_borders_and_rotations",
+        "pagura API editing::form_borders::filled_border_pixels_survive_save_and_strict_reopen",
+        "tools/form_border_test.mjs",
+        "form_borders/Tx-rounded-72",
+        "form_borders/Ch-rounded-72",
+        "form_borders/Btn-rounded-72",
+        "form_borders/Tx-rounded-144",
+        "form_borders/Ch-rounded-144",
+        "form_borders/Btn-rounded-144",
+        "form_borders/background-rounded",
+        "form_borders/rotated-rounded",
+        "form_borders/stored-rounded",
+        "form_borders/Tx-B-72",
+        "form_borders/Ch-B-72",
+        "form_borders/Btn-B-72",
+        "form_borders/Tx-B-144",
+        "form_borders/Ch-B-144",
+        "form_borders/Btn-B-144",
+        "form_borders/background-B",
+        "form_borders/rotated-B",
+        "form_borders/stored-B",
+        "form_borders/Tx-I-72",
+        "form_borders/Ch-I-72",
+        "form_borders/Btn-I-72",
+        "form_borders/Tx-I-144",
+        "form_borders/Ch-I-144",
+        "form_borders/Btn-I-144",
+        "form_borders/background-I",
+        "form_borders/rotated-I",
+        "form_borders/stored-I",
+        "form_borders/unknown-style",
+        "form_borders/null-bs",
+        "form_borders/bs-precedence",
+        "form_borders/zero-width",
+        "form_borders/no-border-color",
+        "form_borders/wide-off",
+        "form_borders/hidden",
+        "form_borders/no-view",
+        "form_borders/rotation-Tx-0-72",
+        "form_borders/rotation-Ch-0-72",
+        "form_borders/rotation-Btn-0-72",
+        "form_borders/rotation-Tx-0-144",
+        "form_borders/rotation-Tx-90-72",
+        "form_borders/rotation-Ch-90-72",
+        "form_borders/rotation-Btn-90-72",
+        "form_borders/rotation-Tx-90-144",
+        "form_borders/rotation-Tx-180-72",
+        "form_borders/rotation-Ch-180-72",
+        "form_borders/rotation-Btn-180-72",
+        "form_borders/rotation-Tx-180-144",
+        "form_borders/rotation-Tx-270-72",
+        "form_borders/rotation-Ch-270-72",
+        "form_borders/rotation-Btn-270-72",
+        "form_borders/rotation-Tx-270-144",
+        "form_borders/rotation-Tx--90-72",
+        "form_borders/rotation-Ch--90-72",
+        "form_borders/rotation-Btn--90-72",
+        "form_borders/rotation-Tx--90-144",
+        "form_borders/rotation-Tx-450-72",
+        "form_borders/rotation-Ch-450-72",
+        "form_borders/rotation-Btn-450-72",
+        "form_borders/rotation-Tx-450-144",
+        "form_borders/rotation-stored-90",
+        "form_borders/rotation-stored-180",
+        "form_borders/rotation-stored-270",
+        "form_borders/rotation-null",
+        "form_borders/rotation-indirect"
       ],
-      "gaps": "Rotated widgets, beveled/inset and rounded borders fail explicitly. Detailed layout and sizing are documented reader policy."
+      "gaps": "Text boxes with no remaining layout area and richer font/layout behavior remain explicit boundaries. Sixty-four independent pixel controls cover rounded/B/I text, choice and button forms, two resolutions, page rotation, backgrounds, stored Tx updates, BS precedence/nulls, unknown-style fallback, visibility, zero width, absent colour, wide button frames and MK R through filled rendering, tiles, save/reopen and WASI editing. Unequal-axis rounded strokes/dashes and CMYK relief colour expectations remain open. Detailed layout, radius clamping and light/shadow geometry are documented reader policy.",
+      "rule": "Fresh text, choice and button appearances share the annotation border reader and fixed rounded/relief geometry. BS takes precedence; null values are absent, malformed styles/negative radii/invalid dashes are syntax errors, and unknown named styles use solid as Table 168 requires. Existing appearance backgrounds remain when only the Tx section is updated. Filled-form artwork retains the initial opaque graphics state and validated MK colours; text inset remains width plus two units when BC is present. Work, geometry and output limits apply before painting. Fresh appearances apply counterclockwise MK R quarter-turns in local coordinates before page placement. Null R means zero; indirect, negative and repeated turns normalize through the shared Rotation type. Invalid values fail explicitly. Existing appearance Matrix and BBox are retained without applying MK R again."
     },
     {
       "id": "forms-render-filled",
@@ -110,7 +179,7 @@
         "forms/render-shared-embedded-font",
         "pagura-render interpreter::forms::tests"
       ],
-      "gaps": "No saving or host protocol edits. Generation retains the supported font and layout capabilities of forms-appearance-update."
+      "gaps": "Persistence and host editing are covered by their dedicated requirements. Generation retains the supported font and layout capabilities of forms-appearance-update."
     },
     {
       "id": "forms-render-placement",

@@ -566,12 +566,18 @@ fn components(path: &Path, transform: Transform, stroke: &Stroke) -> Path {
     let limits = Limits::default();
     let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
     let mut components = PathBuilder::new();
-    for contour in
-        crate::flatten::flatten(path, transform, &limits, &mut crate::testing::bytes()).unwrap()
+    for contour in crate::flatten::flatten(
+        path,
+        transform,
+        crate::flatten::Source::Dashed,
+        &limits,
+        &mut crate::testing::bytes(),
+    )
+    .unwrap()
     {
-        for run in crate::stroke::dash(
-            contour.points,
-            contour.closed,
+        for run in crate::stroke::dash_contour(
+            contour,
+            transform,
             stroke,
             &limits,
             &mut crate::testing::bytes(),

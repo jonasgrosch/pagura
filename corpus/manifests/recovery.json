@@ -565,8 +565,8 @@
     {
       "id": "recovery/widget-rotated-border",
       "kind": "pdf",
-      "description": "widget-rotated-border",
-      "expected": "unsupported",
+      "description": "Right-angle widget borders preserve their original rectangle",
+      "expected": "render",
       "requirements": [
         "recovery-widgets"
       ],
@@ -575,7 +575,11 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "oracle": "corpus/generated/recovery/widget-rotated-border.ppm",
+      "oracle_sha256": "a28eef58688363056abb52fbae0bd59c358299c21df20fc5fc2ac6d4419f0599",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
     },
     {
       "id": "recovery/widget-invalid-rotation",

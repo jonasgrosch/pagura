@@ -1,31 +1,52 @@
 //! Appearances of annotations that have no appearance stream (12.5.5):
-//! link and square borders, note icons and empty widgets (12.5.6).
+//! borders, ink/polygon paths, static icons and source widgets (12.5.6).
 
-mod border;
+pub(crate) mod border;
+mod caret;
+mod cloud;
+mod ending;
+mod free_text;
 mod icon;
+mod ink;
+mod line;
 mod marks;
+mod markup;
+mod path;
+mod polygon;
+mod stamp;
 mod widget;
 
 use crate::features;
+use crate::fonts::{FontSource, ProviderFonts};
 use crate::stream::AppearanceStream;
+use crate::values::optional_dictionary;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
 /// Generates the normal appearance of `annotation`, which has no `AP`, in
 /// its rectangle `rect` (the normalized `Rect` entry).
 ///
-/// The appearance is a Form XObject whose BBox is `rect` and which has no
-/// Matrix, so fitting it into the rectangle (12.5.5) is the identity and its
-/// content is in default user space; the BBox clips every mark to the
-/// rectangle. Strokes use the annotation's `CA` and fills its `ca` (else
+/// Most generated appearances use `rect` as their BBox with no Matrix, keeping
+/// their content in default user space. Widget content and rotated Movie posters
+/// may use a local BBox and the shared quarter-turn Matrix. All use the same
+/// appearance fitting (12.5.5), and the BBox clips every mark. Strokes use the
+/// annotation's `CA` and fills its `ca` (else
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
-/// resources; its Resources hold nothing else, so page resources such as
-/// default colour spaces do not apply. Reader policy draws Link and Square
-/// borders, the seven Text icons, and the MK background and border of empty
+/// resources. Generated text uses private font resources; page resources such as
+/// default colour spaces do not apply. Reader policy draws Link, Square and Circle
+/// borders, Line/Ink/Polygon/PolyLine paths, plain and common RC/DS styled Line
+/// captions and FreeText with an explicit font provider, standard rubber stamps,
+/// four text-markup styles, Redact region outlines, Caret symbols,
+/// seven Text icons, four FileAttachment icons, two static Sound icons,
+/// explicit Movie image posters, and the MK background and border of empty
 /// text and signature widgets.
+/// AcroForm Tx/Ch widgets share the form generator's effective field values,
+/// resources and layout, with a local BBox and optional MK rotation Matrix.
+/// Icon artwork never resolves file or sound payloads and cannot activate media.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
-/// point, for Popup and Projection annotations, for links without a border,
+/// point, for Popup, Projection and Screen annotations, for Movie annotations
+/// without a selected poster, for links without a border,
 /// for annotations whose entries select no mark, and for a rectangle
 /// without area; the last is decided after reading the annotation, so its
 /// errors do not depend on the rectangle's area.
@@ -33,12 +54,36 @@ use pagura_document::Document;
 /// # Errors
 /// `Syntax` errors for malformed entries, `Limit` errors for content and
 /// storage budgets, and [`features::ANNOTATION_APPEARANCE`] for subtypes,
-/// border styles, rotations and widget values that generation does not
-/// cover.
+/// border styles and widget types that generation does not cover. Variable
+/// text uses the form generator's explicit font, rich-text and XFA boundaries.
 pub fn annotation_appearance(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
+) -> Result<Option<AppearanceStream>> {
+    let fonts = ProviderFonts::new(None, &document.limits());
+    annotation_appearance_with_fonts(document, annotation, rect, &fonts)
+}
+
+/// Generates a normal annotation appearance using `fonts` for text layout.
+///
+/// As [`annotation_appearance`], with host-supplied font metrics. Plain Line
+/// captions use Helvetica with WinAnsi encoding at 12 points; their generated
+/// font resource is resolved by the same provider when the stream is drawn.
+/// Rubber stamps use Helvetica-Bold/WinAnsi, fitted to the annotation rectangle.
+/// Plain FreeText uses DA and the shared form layout with AcroForm DR fonts.
+/// Common RC/DS styles share the caption layout and the same bounded font loader.
+/// Existing callers without a provider still generate all non-text artwork.
+///
+/// # Errors
+/// As [`annotation_appearance`], plus font loading or encoding errors when a
+/// caption, stamp or FreeText needs unavailable data, or rich layout needs an
+/// unsupported font, character mapping or formatting property.
+pub fn annotation_appearance_with_fonts(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+    fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
     if rect.width() == 0.0 && rect.height() == 0.0 {
         return Ok(None);
@@ -50,12 +95,37 @@ pub fn annotation_appearance(
         .and_then(Value::as_name)
         .ok_or(Error::syntax("annotation has no Subtype"))?;
     let appearance = match subtype.as_bytes() {
-        b"Popup" | b"Projection" => return Ok(None),
+        b"Popup" | b"Projection" | b"Screen" => return Ok(None),
+        // These subtypes define their static artwork only through a required
+        // normal AP (13.6.2, 13.7.2, 14.11.3 and 14.11.6.2).
+        b"3D" | b"RichMedia" | b"PrinterMark" | b"TrapNet" => {
+            return Err(Error::syntax(
+                "annotation type requires a normal appearance",
+            ));
+        }
         b"Link" if no_border(document, annotation)? => return Ok(None),
         b"Link" => border::generate(document, annotation, rect, border::Shape::Link)?,
         b"Square" => border::generate(document, annotation, rect, border::Shape::Square)?,
-        b"Text" => icon::generate(document, annotation, rect)?,
-        b"Widget" => widget::generate(document, annotation, rect)?,
+        b"Circle" => border::generate(document, annotation, rect, border::Shape::Circle)?,
+        b"Ink" => ink::generate(document, annotation, rect)?,
+        b"Highlight" => markup::generate(document, annotation, rect, markup::Style::Highlight)?,
+        b"Underline" => markup::generate(document, annotation, rect, markup::Style::Underline)?,
+        b"StrikeOut" => markup::generate(document, annotation, rect, markup::Style::StrikeOut)?,
+        b"Squiggly" => markup::generate(document, annotation, rect, markup::Style::Squiggly)?,
+        b"Redact" => markup::generate(document, annotation, rect, markup::Style::Redact)?,
+        b"Caret" => caret::generate(document, annotation, rect)?,
+        b"Stamp" => stamp::generate(document, annotation, rect, fonts)?,
+        b"FreeText" => free_text::generate(document, annotation, rect, fonts)?,
+        b"Line" => line::generate(document, annotation, rect, fonts)?,
+        b"Polygon" => polygon::generate(document, annotation, rect, true)?,
+        b"PolyLine" => polygon::generate(document, annotation, rect, false)?,
+        b"Text" => icon::generate(document, annotation, rect, icon::Kind::Text)?,
+        b"FileAttachment" => {
+            icon::generate(document, annotation, rect, icon::Kind::FileAttachment)?
+        }
+        b"Sound" => icon::generate(document, annotation, rect, icon::Kind::Sound)?,
+        b"Movie" => icon::movie_poster(document, annotation, rect)?,
+        b"Widget" => widget::generate(document, annotation, rect, fonts)?,
         _ => {
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,
@@ -77,8 +147,7 @@ fn no_border(document: &Document, annotation: &Dictionary) -> Result<bool> {
     {
         return Ok(true);
     }
-    if let Some(style) = annotation.get(b"BS") {
-        let style = document.resolve_dictionary(style)?;
+    if let Some(style) = optional_dictionary(document, annotation, b"BS")? {
         return style
             .get(b"W")
             .map(|value| {

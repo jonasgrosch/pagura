@@ -4,13 +4,16 @@
 //! the fixed views of `NoZoom` and `NoRotate`.
 
 use super::emit::GroupStart;
-use super::form::{FormBody, geometry};
+use super::form::FormBody;
 use super::state::Graphics;
 use super::{Machine, Scope, Text};
 use crate::device::{Device, Marked, Needs};
 use crate::model::{GroupAttributes, GroupCause, ViewFit};
 use crate::repairs;
-use pagura_appearance::{Appearance, AppearanceStream, FilledWidgets, FontSource};
+use pagura_appearance::{
+    Appearance, FilledWidgets, FontSource, appearance_bounds as envelope,
+    appearance_placement as placement, form_geometry as geometry,
+};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, Page};
 use pagura_raster::{Path, Point, Transform};
@@ -22,13 +25,6 @@ const NO_ZOOM: i64 = 8;
 /// `NoRotate`.
 const NO_ROTATE: i64 = 16;
 
-/// What an annotation draws.
-enum Drawn {
-    Stored(ObjectId),
-    Generated(AppearanceStream),
-    Nothing,
-}
-
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// The annotations of `page`, in order.
     pub(super) fn annotations(&mut self, page: &Page) -> Result<()> {
@@ -36,8 +32,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(values) = page.dictionary().get(b"Annots") else {
             return Ok(());
         };
-        let values = document
-            .resolve(values)?
+        let values = document.resolve(values)?;
+        // A null dictionary entry is equivalent to absence (7.3.9), including
+        // an indirect null. Do not turn a page with no annotations into an error.
+        if matches!(values, Value::Null) {
+            return Ok(());
+        }
+        let values = values
             .as_array()
             .ok_or(Error::syntax("Annots must be an array"))?;
         if values.len() > self.session.limits.traversal_work {
@@ -48,7 +49,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             _ => None,
         };
         for value in values {
-            self.annotation(value, page.resources(), filled.as_ref())
+            self.annotation(value, page, filled.as_ref())
                 .map_err(|error| error.in_object_opt(value.as_reference()))?;
         }
         Ok(())
@@ -57,7 +58,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     fn annotation(
         &mut self,
         value: &Value,
-        resources: &Dictionary,
+        page: &Page,
         filled: Option<&FilledWidgets<'_, '_>>,
     ) -> Result<()> {
         let document = self.document();
@@ -99,21 +100,32 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return Ok(());
         }
         let rect = rectangle(document, d, b"Rect")?;
-        let text_icon = subtype == b"Text";
-        let drawn = if let Some(appearance) = self.filled(filled, d, rect)? {
-            match appearance {
-                Appearance::Existing(id) => Drawn::Stored(id),
-                Appearance::Generated(stream) => Drawn::Generated(stream),
-                Appearance::Hidden => Drawn::Nothing,
-            }
-        } else if let Some(ap) = d.get(b"AP") {
-            let Some(id) = normal_appearance(document, d, ap)? else {
-                return Ok(());
-            };
-            Drawn::Stored(id)
+        let (rect, flags) = if subtype == b"Watermark"
+            && let Some(rect) = fixed_print(document, d, rect, page)?
+        {
+            // The existing fixed view cancels page rotation about the media
+            // anchor. Display zoom and UserUnit retain their usual meaning.
+            (rect, flags | NO_ROTATE)
         } else {
-            match pagura_appearance::annotation_appearance(document, d, rect)? {
-                Some(stream) => Drawn::Generated(stream),
+            (rect, flags)
+        };
+        let resources = page.resources();
+        let text_icon = subtype == b"Text";
+        let appearance = match self.filled(filled, d, rect)? {
+            Some(appearance) => Some(appearance),
+            None => pagura_appearance::stored_appearance(
+                document,
+                d,
+                pagura_appearance::AppearanceMode::Normal,
+                None,
+            )?,
+        };
+        let drawn = if let Some(appearance) = appearance {
+            appearance
+        } else {
+            let fonts = SessionFonts(&self.session.fonts);
+            match pagura_appearance::annotation_appearance_with_fonts(document, d, rect, &fonts)? {
+                Some(stream) => Appearance::Generated(stream),
                 None => return Ok(()),
             }
         };
@@ -124,13 +136,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             flags
         };
         self.annotation_view(rect, flags, |machine| match &drawn {
-            Drawn::Stored(id) => {
+            Appearance::Existing(id) => {
                 let object = document.object(*id)?;
                 machine
                     .appearance(FormBody::Stored(object), rect, resources, Text::Paint)
                     .map_err(|e| e.in_object(*id))
             }
-            Drawn::Generated(stream) => machine.appearance(
+            Appearance::Generated(stream) => machine.appearance(
                 FormBody::Generated {
                     dictionary: stream.dictionary(),
                     bytes: stream.content(),
@@ -139,7 +151,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 resources,
                 Text::Paint,
             ),
-            Drawn::Nothing => Ok(()),
+            Appearance::Hidden => Ok(()),
         })
     }
 
@@ -301,86 +313,112 @@ impl FontSource for SessionFonts<'_, '_> {
     }
 }
 
-/// The normal appearance stream of an annotation (12.5.5): `N` itself, or
-/// its entry for the appearance state `AS`; `None` for an undefined state.
-fn normal_appearance(document: &Document, d: &Dictionary, ap: &Value) -> Result<Option<ObjectId>> {
-    let ap = document.resolve_dictionary(ap)?;
-    let normal = ap
-        .get(b"N")
-        .ok_or(Error::syntax("appearance dictionary has no N"))?;
-    let stream = if let Some(id) = normal.as_reference() {
-        document.object(id)?.is_stream()
-    } else {
-        false
-    };
-    let normal = if stream {
-        normal
-    } else {
-        let states = document.resolve_dictionary(normal)?;
-        let state = d
-            .get(b"AS")
-            .map(|v| document.resolve(v))
-            .transpose()?
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("annotation has no appearance state"))?;
-        // 12.5.5 permits displaying nothing for an undefined state.
-        let Some(normal) = states.get(state.as_bytes()) else {
-            return Ok(None);
-        };
-        normal
-    };
-    normal
-        .as_reference()
-        .map(Some)
-        .ok_or(Error::syntax("appearance must be a stream reference"))
-}
-
 /// A rectangle entry.
 fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> Result<Rect> {
-    d.get(key)
+    let values = d
+        .get(key)
         .map(|v| document.resolve(v))
         .transpose()?
         .and_then(Value::as_array)
-        .and_then(Rect::from_array)
-        .ok_or(Error::syntax("invalid annotation or appearance rectangle"))
+        .ok_or(Error::syntax("invalid annotation rectangle"))?;
+    let [x0, y0, x1, y1] = values else {
+        return Err(Error::syntax("annotation rectangle requires four numbers"));
+    };
+    let coordinate = |value| {
+        document.resolve(value)?.as_number().ok_or(Error::syntax(
+            "annotation rectangle coordinate must be numeric",
+        ))
+    };
+    Rect::from_corners(
+        coordinate(x0)?,
+        coordinate(y0)?,
+        coordinate(x1)?,
+        coordinate(y1)?,
+    )
+    .ok_or(Error::syntax("invalid annotation rectangle"))
 }
 
-/// The transform that fits the upright envelope of the transformed `BBox`
-/// into the annotation rectangle (12.5.5, Algorithm 8.1); `None` when
-/// either has no area.
-///
-/// # Errors
-///
-/// `Syntax` for a matrix that collapses a box with area, `Limit` for a fit
-/// beyond the numeric range.
-pub(crate) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
-    let points = [
-        Point::new(b.x0(), b.y0()),
-        Point::new(b.x1(), b.y0()),
-        Point::new(b.x0(), b.y1()),
-        Point::new(b.x1(), b.y1()),
-    ]
-    .map(|p| p * m);
-    let x0 = points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
-    let x1 = points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
-    let y0 = points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
-    let y1 = points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
-    if x1 <= x0 || y1 <= y0 {
-        if b.width() == 0.0 || b.height() == 0.0 {
-            return Ok(None);
-        }
-        return Err(Error::syntax("degenerate appearance bounds"));
-    }
-    if r.width() == 0.0 || r.height() == 0.0 {
+/// Screen placement of a `FixedPrint` watermark (12.5.6.22, Tables 193–194).
+/// `MediaBox` defines the media; `CropBox` clips the resulting display as usual.
+/// The returned upright rectangle's upper-left corner is in default user
+/// space. The existing `NoRotate` view keeps the fitted appearance upright at
+/// that anchor. This does not supply physical print media, tiling or n-up.
+fn fixed_print(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+    page: &Page,
+) -> Result<Option<Rect>> {
+    let Some(value) = annotation.get(b"FixedPrint") else {
+        return Ok(None);
+    };
+    let value = document.resolve(value)?;
+    if matches!(value, Value::Null) {
         return Ok(None);
     }
-    let sx = r.width() / (x1 - x0);
-    let sy = r.height() / (y1 - y0);
-    let a = Transform::new(sx, 0.0, 0.0, sy, r.x0() - sx * x0, r.y0() - sy * y0);
-    if !a.is_finite() {
-        return Err(Error::limit("appearance fitting exceeds numeric range"));
+    let dictionary = value
+        .as_dictionary()
+        .ok_or(Error::syntax("FixedPrint must be a dictionary"))?;
+    let entry = |key: &[u8]| {
+        dictionary
+            .get(key)
+            .map(|value| document.resolve(value))
+            .transpose()
+            .map(|value| value.filter(|value| !matches!(value, Value::Null)))
+    };
+    if entry(b"Type")?
+        .and_then(Value::as_name)
+        .is_none_or(|name| name != b"FixedPrint")
+    {
+        return Err(Error::syntax("FixedPrint Type must be FixedPrint"));
     }
-    Ok(Some(a))
+    let mut matrix = Transform::IDENTITY;
+    if let Some(value) = entry(b"Matrix")? {
+        let Some(values @ [_, _, _, _, _, _]) = value.as_array() else {
+            return Err(Error::syntax("FixedPrint Matrix requires six numbers"));
+        };
+        let mut components = [0.0; 6];
+        for (target, value) in components.iter_mut().zip(values) {
+            *target = document
+                .resolve(value)?
+                .as_number()
+                .ok_or(Error::syntax("FixedPrint Matrix requires six numbers"))?;
+        }
+        matrix = super::matrix(components);
+    }
+    let fraction = |key: &[u8]| {
+        entry(key)?
+            .map(|value| {
+                value
+                    .as_number()
+                    .ok_or(Error::syntax("FixedPrint offset must be numeric"))
+            })
+            .transpose()
+            .map(|value| value.unwrap_or(0.0))
+    };
+    let origin = Rect::from_corners(0.0, 0.0, rect.width(), rect.height())
+        .ok_or(Error::limit("FixedPrint rectangle exceeds numeric range"))?;
+    let target = envelope(origin, matrix)?;
+    let view = Transform::page_view(page.media_box(), page.rotation());
+    let media = envelope(page.media_box(), view)?;
+    let anchor = Point::new(
+        target.x0() + fraction(b"H")? * media.width(),
+        media.height() - (target.y1() + fraction(b"V")? * media.height()),
+    );
+    let anchor = view
+        .inverse()
+        .ok_or(Error::limit(
+            "FixedPrint media transform exceeds numeric range",
+        ))?
+        .apply(anchor);
+    Rect::from_corners(
+        anchor.x,
+        anchor.y - target.height(),
+        anchor.x + target.width(),
+        anchor.y,
+    )
+    .map(Some)
+    .ok_or(Error::limit("FixedPrint placement exceeds numeric range"))
 }
 
 fn standard_type(name: &[u8]) -> bool {

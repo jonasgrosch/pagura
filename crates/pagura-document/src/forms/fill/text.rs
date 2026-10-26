@@ -1,8 +1,28 @@
 //! Text flag validation, before retaining any replacement (12.7.5.3).
 
 use crate::features;
-use crate::forms::{Field, FieldFlags, FieldKind};
+use crate::forms::{Field, FieldFlags, FieldKind, FilledValue};
 use pagura_core::{Error, Limits, Meter, Result};
+
+/// Keep XML inert at the document layer. The shared appearance parser validates
+/// the selected replacement before it can be displayed or persisted.
+pub(super) fn rich(
+    xml: &str,
+    default_style: Option<&str>,
+    limits: &Limits,
+    budget: &mut Meter,
+) -> Result<FilledValue> {
+    if xml.len() > limits.string_bytes
+        || default_style.is_some_and(|style| style.len() > limits.string_bytes)
+    {
+        return Err(Error::limit("form rich text input budget exceeded"));
+    }
+    budget.charge(xml.len().saturating_add(default_style.map_or(0, str::len)))?;
+    Ok(FilledValue::RichText {
+        xml: xml.to_owned(),
+        default_style: default_style.map(str::to_owned),
+    })
+}
 
 pub(super) fn validate(
     field: &Field<'_>,
