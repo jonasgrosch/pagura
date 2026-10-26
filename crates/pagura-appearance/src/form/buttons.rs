@@ -19,7 +19,7 @@ pub(super) fn check_mark(
 ) -> Result<AppearanceStream> {
     let limits = document.limits();
     let style = Style::read(document, widget.dictionary)?;
-    let frame = crate::widget_rotation::frame(style.rotation, bounds(widget)?)?;
+    let frame = crate::widget_rotation::frame(style.rotation, bounds(widget.rectangle)?)?;
     let bbox = frame.bounds;
     let mut content = Program::new(&limits);
     style.paint(&mut content, bbox)?;
