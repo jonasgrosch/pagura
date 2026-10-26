@@ -4593,6 +4593,9 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
       "dpi": 72
     },
     {
@@ -4695,6 +4698,9 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
       "dpi": 72
     },
     {
@@ -4797,6 +4803,9 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
       "dpi": 72
     },
     {
@@ -4831,6 +4840,9 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
       "dpi": 72
     },
     {
