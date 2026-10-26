@@ -61,7 +61,7 @@ fn owned_cursor_retains_completed_occurrences_and_inheritance_across_waits() {
     };
     assert_eq!(missing.ranges(), &[ByteRange::new(4000, 4256).unwrap()]);
     assert_eq!(cursor.pages.len(), 1);
-    let first_resources = Arc::clone(&cursor.pages[0].resources);
+    let first_resources = Arc::clone(&cursor.pages[0].data.resources);
     let retained = document.retained.used();
     let work = cursor.work.used();
     for _ in 0..3 {
@@ -79,7 +79,10 @@ fn owned_cursor_retains_completed_occurrences_and_inheritance_across_waits() {
     };
     assert_eq!(missing.ranges(), &[ByteRange::new(6000, 6256).unwrap()]);
     assert_eq!(cursor.pages.len(), 1);
-    assert!(Arc::ptr_eq(&first_resources, &cursor.pages[0].resources));
+    assert!(Arc::ptr_eq(
+        &first_resources,
+        &cursor.pages[0].data.resources
+    ));
     assert_eq!(document.diagnostics(), []);
     source.supply(ID, 6000, b"6 0 obj 90 endobj\n").unwrap();
     run(&mut cursor, &document).unwrap();
@@ -101,7 +104,7 @@ fn owned_cursor_retains_completed_occurrences_and_inheritance_across_waits() {
         Rotation::try_from(90).unwrap()
     );
     for page in &finished.pages {
-        assert!(Arc::ptr_eq(&first_resources, &page.resources));
+        assert!(Arc::ptr_eq(&first_resources, &page.data.resources));
     }
     assert_eq!(
         finished
@@ -179,15 +182,21 @@ fn selected_page_reservation_follows_the_issued_value_and_its_clones() {
         }
     }
     let page = result.unwrap();
-    let expected = size_of::<Page>() + page.dictionary.retained_bytes() - size_of::<Dictionary>()
-        + page.resources.retained_bytes()
+    let expected = size_of::<Page>() + size_of::<Payload>() + page.data.dictionary.retained_bytes()
+        - size_of::<Dictionary>()
+        + page.data.resources.retained_bytes()
         + ARC_COUNTS
-        + size_of::<Reservation>()
         + ARC_COUNTS;
     assert_eq!(document.retained.used(), baseline + expected);
     drop(job);
     assert_eq!(document.retained.used(), baseline + expected);
     let copy = page.clone();
+    assert!(Arc::ptr_eq(&copy.data, &page.data));
+    assert_eq!(
+        copy.dictionary().get(b"MediaBox"),
+        page.dictionary().get(b"MediaBox")
+    );
+    assert_eq!(document.retained.used(), baseline + expected);
     drop(page);
     assert_eq!(document.retained.used(), baseline + expected);
     assert_eq!(copy.index(), 0);

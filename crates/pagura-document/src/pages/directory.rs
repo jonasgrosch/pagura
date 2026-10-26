@@ -1,7 +1,7 @@
 //! One retained page-tree traversal for complete enumeration and requested pages.
 //! Frames contain source addresses, never references into their owning Document.
 
-use super::{Page, branch, geometry};
+use super::{Page, Payload, branch, geometry};
 use crate::memory::{Reservation, path_bytes};
 use crate::source::{ByteSource, NeedData, ReadFault, ReadResult};
 use crate::view::ValueIdentity;
@@ -300,19 +300,11 @@ impl Cursor {
     /// Transfers the selected page and its exact retained charge to the caller.
     /// The remaining structural cursor can then be dropped without losing it.
     pub(super) fn take_page(&mut self, document: &Document) -> ReadResult<Option<Page>> {
-        let Some(page) = self.pages.last() else {
+        if self.pages.is_empty() {
             return Ok(None);
-        };
+        }
         document.check_source()?;
-        self.reservation.charge(
-            ARC_COUNTS.saturating_add(size_of::<Reservation>()),
-            page.id(),
-        )?;
-        let retained = std::mem::replace(&mut self.reservation, document.retained.reservation());
-        let page = self.pages.pop().map(|page| Page {
-            _reservation: Some(Arc::new(retained)),
-            ..page
-        });
+        let page = self.pages.pop();
         document.report(self.diagnostics.take());
         Ok(page)
     }
@@ -757,10 +749,12 @@ impl Cursor {
                     .into());
             }
         };
+        let bytes = dictionary
+            .map_or(size_of::<Dictionary>(), Dictionary::cloned_retained_bytes)
+            .saturating_add(ARC_COUNTS);
+        self.reservation.charge(bytes, page)?;
         let resources =
             dictionary.map_or_else(Arc::default, |dictionary| Arc::new(dictionary.clone()));
-        self.reservation
-            .charge(resources.retained_bytes().saturating_add(ARC_COUNTS), page)?;
         self.shared.insert(key, Arc::clone(&resources));
         Ok(resources)
     }
@@ -803,28 +797,37 @@ impl Cursor {
             }
         };
         let resources = self.resources(document, id, inherited)?;
-        let dictionary = dictionary.clone();
-        let source_path = source_path.to_vec();
         let bytes = size_of::<Page>()
+            .saturating_add(size_of::<Payload>())
+            .saturating_add(ARC_COUNTS)
             .saturating_add(
                 dictionary
-                    .retained_bytes()
+                    .cloned_retained_bytes()
                     .saturating_sub(size_of::<Dictionary>()),
             )
-            .saturating_add(path_bytes(&source_path, source_path.capacity()));
+            .saturating_add(path_bytes(source_path, source_path.len()));
         self.reservation.charge(bytes, id)?;
+        let reservation = match self.selection {
+            Selection::All => None,
+            Selection::Page(_) => Some(std::mem::replace(
+                &mut self.reservation,
+                document.retained.reservation(),
+            )),
+        };
         Ok(Page {
             document: Arc::downgrade(&document.token),
-            id,
-            index: self.count,
-            media_box,
-            crop_box,
-            rotation,
-            user_unit,
-            resources,
-            dictionary,
-            source_path,
-            _reservation: None,
+            data: Arc::new(Payload {
+                id,
+                index: self.count,
+                media_box,
+                crop_box,
+                rotation,
+                user_unit,
+                resources,
+                dictionary: dictionary.clone(),
+                source_path: source_path.to_vec(),
+                _reservation: reservation,
+            }),
         })
     }
 }

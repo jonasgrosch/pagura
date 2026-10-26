@@ -40,10 +40,15 @@ impl Dictionary {
     /// bookkeeping per entry; cloned index keys own their heap bytes
     /// independently of entry keys.
     pub(crate) fn allocation_bytes(&self) -> usize {
-        let entries = self
-            .entries
-            .capacity()
-            .saturating_mul(size_of::<(Name, Value)>());
+        self.allocation_bytes_with_capacity(self.entries.capacity())
+    }
+
+    pub(crate) fn cloned_allocation_bytes(&self) -> usize {
+        self.allocation_bytes_with_capacity(self.entries.len())
+    }
+
+    fn allocation_bytes_with_capacity(&self, capacity: usize) -> usize {
+        let entries = capacity.saturating_mul(size_of::<(Name, Value)>());
         let keys = self.entries.iter().fold(0_usize, |sum, (name, _)| {
             sum.saturating_add(name.heap_bytes())
         });

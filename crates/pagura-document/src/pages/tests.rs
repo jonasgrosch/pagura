@@ -14,11 +14,17 @@ fn pages_share_one_copy_of_each_resource_dictionary() {
         panic!("expected four pages, found {}", pages.len());
     };
     // Pages 3, 4 and 9 use object 7 (two inherit it, one names it itself).
-    assert!(Arc::ptr_eq(&inherited.resources, &sibling.resources));
-    assert!(Arc::ptr_eq(&inherited.resources, &own.resources));
+    assert!(Arc::ptr_eq(
+        &inherited.data.resources,
+        &sibling.data.resources
+    ));
+    assert!(Arc::ptr_eq(&inherited.data.resources, &own.data.resources));
     assert!(inherited.resources().contains_key(b"ExtGState"));
     // Page 8 inherits node 5's direct dictionary instead.
-    assert!(!Arc::ptr_eq(&inherited.resources, &direct.resources));
+    assert!(!Arc::ptr_eq(
+        &inherited.data.resources,
+        &direct.data.resources
+    ));
     assert!(!direct.resources().contains_key(b"ExtGState"));
     assert_eq!(direct.media_box(), inherited.media_box());
     // The page dictionary is the page object's own, without inherited entries.
@@ -55,14 +61,17 @@ mod retained_tests {
         let mut unique = Vec::new();
         let mut expected = 0;
         for page in pages {
-            expected +=
-                size_of::<Page>() + page.dictionary.retained_bytes() - size_of::<Dictionary>();
+            expected += size_of::<Page>()
+                + size_of::<crate::pages::Payload>()
+                + 2 * size_of::<usize>()
+                + page.data.dictionary.retained_bytes()
+                - size_of::<Dictionary>();
             if !unique
                 .iter()
-                .any(|resource| Arc::ptr_eq(resource, &page.resources))
+                .any(|resource| Arc::ptr_eq(resource, &page.data.resources))
             {
-                unique.push(Arc::clone(&page.resources));
-                expected += page.resources.retained_bytes() + 2 * size_of::<usize>();
+                unique.push(Arc::clone(&page.data.resources));
+                expected += page.data.resources.retained_bytes() + 2 * size_of::<usize>();
             }
         }
         assert_eq!(unique.len(), 2);
@@ -189,19 +198,23 @@ mod recovery_tests {
             let mut unique = Vec::new();
             let mut expected = 0;
             for page in pages {
-                expected += size_of::<Page>() + page.dictionary.retained_bytes()
+                expected += size_of::<Page>()
+                    + size_of::<crate::pages::Payload>()
+                    + 2 * size_of::<usize>()
+                    + page.data.dictionary.retained_bytes()
                     - size_of::<Dictionary>()
                     + page
+                        .data
                         .source_path
                         .iter()
                         .map(pagura_core::syntax::PathComponent::retained_bytes)
                         .sum::<usize>();
                 if !unique
                     .iter()
-                    .any(|resource| Arc::ptr_eq(resource, &page.resources))
+                    .any(|resource| Arc::ptr_eq(resource, &page.data.resources))
                 {
-                    unique.push(Arc::clone(&page.resources));
-                    expected += page.resources.retained_bytes() + 2 * size_of::<usize>();
+                    unique.push(Arc::clone(&page.data.resources));
+                    expected += page.data.resources.retained_bytes() + 2 * size_of::<usize>();
                 }
             }
             assert_eq!(retained, initial + expected, "{name}");
@@ -223,11 +236,17 @@ mod recovery_tests {
         assert_eq!(pages[0].id(), ObjectId::new(3, 0));
         assert_eq!(pages[1].id(), pages[0].id());
         assert_eq!(pages[1].index(), 1);
-        assert!(Arc::ptr_eq(&pages[0].resources, &pages[1].resources));
+        assert!(Arc::ptr_eq(
+            &pages[0].data.resources,
+            &pages[1].data.resources
+        ));
         let direct = preloaded("pages-direct-kids", usize::MAX);
         let pages = direct.pages().unwrap();
         assert_eq!(pages[0].id(), ObjectId::new(2, 0));
-        assert!(!Arc::ptr_eq(&pages[0].resources, &pages[1].resources));
+        assert!(!Arc::ptr_eq(
+            &pages[0].data.resources,
+            &pages[1].data.resources
+        ));
         assert!(pages[0].resources().contains_key(b"ProcSet"));
         assert!(pages[1].resources().contains_key(b"ExtGState"));
     }

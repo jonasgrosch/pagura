@@ -34,9 +34,16 @@ pub(crate) fn branch(document: &Document, dictionary: &Dictionary) -> ReadResult
 }
 
 /// A page with inherited attributes applied and boxes validated.
+/// Cloning shares its immutable payload and retained-memory ownership.
 #[derive(Debug, Clone)]
 pub struct Page {
     document: Weak<()>,
+    data: Arc<Payload>,
+}
+
+/// One immutable allocation for a page's metadata, dictionary and source path.
+#[derive(Debug)]
+struct Payload {
     id: ObjectId,
     index: usize,
     media_box: Rect,
@@ -47,7 +54,7 @@ pub struct Page {
     dictionary: Dictionary,
     source_path: Vec<PathComponent>,
     /// Owned selected-page results retain their charge across caller clones.
-    _reservation: Option<Arc<crate::memory::Reservation>>,
+    _reservation: Option<crate::memory::Reservation>,
 }
 
 impl Page {
@@ -55,42 +62,42 @@ impl Page {
     /// is the containing indirect object's identity; [`Self::index`] distinguishes
     /// its page occurrences. The original dictionary is available unchanged.
     pub fn id(&self) -> ObjectId {
-        self.id
+        self.data.id
     }
 
     /// Zero-based position in document order.
     pub fn index(&self) -> usize {
-        self.index
+        self.data.index
     }
 
     /// The media box in default user space.
     pub fn media_box(&self) -> Rect {
-        self.media_box
+        self.data.media_box
     }
 
     /// The crop box, already intersected with the media box.
     pub fn crop_box(&self) -> Rect {
-        self.crop_box
+        self.data.crop_box
     }
 
     /// Display rotation.
     pub fn rotation(&self) -> Rotation {
-        self.rotation
+        self.data.rotation
     }
 
     /// Size of a default user-space unit in 1/72 inch (`/UserUnit`).
     pub fn user_unit(&self) -> f64 {
-        self.user_unit
+        self.data.user_unit
     }
 
     /// The resource dictionary, resolved and possibly inherited; empty if the
     /// page has none. Pages sharing a resource dictionary share one copy.
     pub fn resources(&self) -> &Dictionary {
-        &self.resources
+        &self.data.resources
     }
 
     pub(crate) fn source_path(&self) -> &[PathComponent] {
-        &self.source_path
+        &self.data.source_path
     }
 
     /// The token of the document this page came from.
@@ -101,7 +108,7 @@ impl Page {
     /// The page object's own dictionary. Inherited attributes (Table 31) are
     /// not copied in; the typed accessors above resolve them.
     pub fn dictionary(&self) -> &Dictionary {
-        &self.dictionary
+        &self.data.dictionary
     }
 }
 
@@ -109,15 +116,15 @@ impl PartialEq for Page {
     /// The same page of the same document.
     fn eq(&self, other: &Self) -> bool {
         Weak::ptr_eq(&self.document, &other.document)
-            && self.id == other.id
-            && self.index == other.index
-            && self.media_box == other.media_box
-            && self.crop_box == other.crop_box
-            && self.rotation == other.rotation
-            && self.user_unit == other.user_unit
-            && self.resources == other.resources
-            && self.dictionary == other.dictionary
-            && self.source_path == other.source_path
+            && self.data.id == other.data.id
+            && self.data.index == other.data.index
+            && self.data.media_box == other.data.media_box
+            && self.data.crop_box == other.data.crop_box
+            && self.data.rotation == other.data.rotation
+            && self.data.user_unit == other.data.user_unit
+            && self.data.resources == other.data.resources
+            && self.data.dictionary == other.data.dictionary
+            && self.data.source_path == other.data.source_path
     }
 }
 
