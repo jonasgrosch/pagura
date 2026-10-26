@@ -1301,6 +1301,53 @@
         "markup_annotations/concave"
       ],
       "gaps": "Exact artwork dimensions are reader policy. Broader malformed-quad compatibility and competitor comparison of this new subset still require evidence. Strict-open fixture metadata only describes opening; a separate unit check establishes Strict rendering refusal of alternate quad order."
+    },
+    {
+      "id": "content-caret-appearances",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.11 Table 183",
+        "12.5.6.8 Table 180"
+      ],
+      "rule": "Caret normal appearance synthesis supports Sy None (including absent/null) and P with indirect values. Reader artwork is an original filled chevron and optional geometric pilcrow, scaled from a 16-unit grid to RD-inset bounds; both use a single nonzero fill with C (black default) and ca (else CA). No fonts are required. RD follows left/top/right/bottom order, requires four nonnegative finite values and positive remaining width/height, and preserves the original appearance BBox. The shared Square/Circle/Caret reader checks cardinality before resolving into fixed stack numbers and rejects extent/sum overflow. Geometry/work and output are bounded before empty-color suppression. Unrecognized symbols refuse explicitly; stored appearances retain precedence.",
+      "status": "implemented with 31 authored controls and 21 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::caret::caret_and_paragraph_need_no_font_and_keep_the_original_clip",
+        "pagura-appearance annotation::tests::caret::rectangle_insets_use_fixed_storage_and_reject_numeric_overflow",
+        "pagura-appearance annotation::tests::caret::caret_generation_bounds_fixed_geometry_and_content",
+        "caret_annotations/caret-72",
+        "caret_annotations/paragraph-72",
+        "caret_annotations/paragraph-stored-72",
+        "caret_annotations/caret-144",
+        "caret_annotations/paragraph-144",
+        "caret_annotations/paragraph-stored-144",
+        "caret_annotations/none",
+        "caret_annotations/null",
+        "caret_annotations/rotated",
+        "caret_annotations/inset",
+        "caret_annotations/asymmetric",
+        "caret_annotations/unequal",
+        "caret_annotations/opacity",
+        "caret_annotations/separate-opacity",
+        "caret_annotations/no-color",
+        "caret_annotations/zero-opacity",
+        "caret_annotations/hidden",
+        "caret_annotations/no-view",
+        "caret_annotations/indirect",
+        "caret_annotations/unrelated-fields",
+        "caret_annotations/stored-ignores-geometry",
+        "caret_annotations/rd-type",
+        "caret_annotations/rd-empty",
+        "caret_annotations/rd-short",
+        "caret_annotations/rd-long",
+        "caret_annotations/rd-number",
+        "caret_annotations/rd-negative",
+        "caret_annotations/rd-wide",
+        "caret_annotations/rd-tall",
+        "caret_annotations/symbol-type",
+        "caret_annotations/symbol-unknown"
+      ],
+      "gaps": "Exact chevron/pilcrow geometry and placement are documented reader artwork, not standardized pixels. Competitor comparison of this new subset remains pending."
     }
   ]
 }

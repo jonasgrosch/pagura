@@ -1,3 +1,4 @@
+mod caret;
 mod markup;
 
 use super::*;

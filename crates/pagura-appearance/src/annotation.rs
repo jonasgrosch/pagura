@@ -2,6 +2,7 @@
 //! borders, ink/polygon paths, note/file icons and empty widgets (12.5.6).
 
 mod border;
+mod caret;
 mod ending;
 mod icon;
 mod ink;
@@ -29,7 +30,7 @@ use pagura_document::Document;
 /// resources. Caption fonts use private resources; page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
 /// borders, Line/Ink/Polygon/PolyLine paths, plain Line captions with an explicit
-/// font provider, four text-markup styles, seven Text icons, four FileAttachment
+/// font provider, four text-markup styles, Caret symbols, seven Text icons, four FileAttachment
 /// icons, and the MK background and border of empty text and signature widgets.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
@@ -88,6 +89,7 @@ pub fn annotation_appearance_with_fonts(
         b"Underline" => markup::generate(document, annotation, rect, markup::Style::Underline)?,
         b"StrikeOut" => markup::generate(document, annotation, rect, markup::Style::StrikeOut)?,
         b"Squiggly" => markup::generate(document, annotation, rect, markup::Style::Squiggly)?,
+        b"Caret" => caret::generate(document, annotation, rect)?,
         b"Line" => line::generate(document, annotation, rect, fonts)?,
         b"Polygon" => polygon::generate(document, annotation, rect, true)?,
         b"PolyLine" => polygon::generate(document, annotation, rect, false)?,

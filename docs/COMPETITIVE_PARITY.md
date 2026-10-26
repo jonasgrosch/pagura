@@ -444,7 +444,10 @@ resolutions, multiline/CRLF text, offsets, reversal, rotation, vertical lines,
 clipping, opacity, leader integration, indirection and PDF text-string encodings.
 Missing fonts remain explicit in builds without bundled data; empty/inactive
 captions need no fonts. Text/work/output and nonfinite-offset checks are registered.
-Hosted native/WASI/client, partial-tile and viewer checks are wired but pending.
+Hosted native/WASI/client, partial-tile and viewer checks pass at `a406c638a` in
+[run 40305190338](https://github.com/jonasgrosch/pagura/actions/runs/40305190338).
+The harness uses protocol 1.4 full diagnostics on every surface, retaining both
+repair and informational assertions. The remaining platform suites are running.
 Rich text, complex scripts/bidi, broader font selection and unsupported characters
 remain gaps; this does not establish full caption or annotation parity.
 
@@ -480,7 +483,19 @@ black/cyan page content, indirection, stored precedence and malformed values.
 Strict/repair and numeric/resource bounds are also registered. Hosted validation
 and competitor probes for this new subset are pending.
 
-Complete missing normal appearances for FreeText, Stamp, Caret and other ledger subtypes;
+**Caret appearances implemented:** Sy None/P and RD insets use original filled
+chevron/pilcrow artwork with no font dependency. C and ca (else CA) style one
+compound fill under the original annotation BBox. The shared Square/Circle/Caret
+RD reader checks four-element cardinality before resolving fixed stack operands,
+requires positive remaining bounds and rejects nonfinite extents/sums. Geometry,
+work and output are bounded; unknown Sy names refuse explicitly. Thirty-one
+controls include 21 independent pixel expectations from literal page polygons
+and rational intersection areas, including direct stored appearances, two
+resolutions, unequal/asymmetric bounds, rotation, opacity, visibility, indirection
+and malformed fields. Numeric/budget controls and the earlier Circle/Square
+checks cover the shared reader. Hosted validation and competitor probes are pending.
+
+Complete missing normal appearances for FreeText, Stamp and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.

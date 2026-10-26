@@ -3,7 +3,7 @@
 use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
 use crate::features;
 use crate::stream::AppearanceStream;
-use crate::values::{numbers, optional};
+use crate::values::{number, numbers, optional};
 use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use pagura_document::Document;
 
@@ -30,7 +30,8 @@ pub(super) fn generate(
     let bounds = if shape == Shape::Link {
         rect
     } else {
-        shape_bounds(document, annotation, rect)?
+        plain_effect(document, annotation)?;
+        inset_bounds(document, annotation, rect)?
     };
     let border = Border::read(document, annotation)?;
     let inset = (border.width * 0.5)
@@ -77,19 +78,38 @@ pub(super) fn generate(
     marks.finish(rect)
 }
 
-/// Table 180 specifies RD in left, top, right, bottom order, unlike a Rect.
-fn shape_bounds(document: &Document, annotation: &Dictionary, rect: Rect) -> Result<Rect> {
-    plain_effect(document, annotation)?;
+/// Tables 180/183 specify RD in left, top, right, bottom order, unlike a Rect.
+pub(super) fn inset_bounds(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+) -> Result<Rect> {
+    if !rect.width().is_finite() || !rect.height().is_finite() {
+        return Err(Error::limit("annotation extent exceeds numeric range"));
+    }
     let Some(differences) = optional(document, annotation, b"RD")? else {
         return Ok(rect);
     };
-    let differences = numbers(document, differences)?;
-    let [left, top, right, bottom] = differences.as_slice() else {
+    let differences = differences
+        .as_array()
+        .ok_or(Error::syntax("annotation RD must be an array"))?;
+    let [left, top, right, bottom] = differences else {
         return Err(Error::syntax("annotation RD must have four numbers"));
     };
-    if differences.iter().any(|value| *value < 0.0)
-        || left + right >= rect.width()
-        || top + bottom >= rect.height()
+    let [left, top, right, bottom] = [
+        number(document, left)?,
+        number(document, top)?,
+        number(document, right)?,
+        number(document, bottom)?,
+    ];
+    let horizontal = left + right;
+    let vertical = top + bottom;
+    if !horizontal.is_finite() || !vertical.is_finite() {
+        return Err(Error::limit("annotation insets exceed numeric range"));
+    }
+    if [left, top, right, bottom].iter().any(|value| *value < 0.0)
+        || horizontal >= rect.width()
+        || vertical >= rect.height()
     {
         return Err(Error::syntax("annotation RD leaves invalid shape bounds"));
     }
