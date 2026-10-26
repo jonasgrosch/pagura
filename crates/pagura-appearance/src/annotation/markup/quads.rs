@@ -10,6 +10,13 @@ pub(super) type Point = (f64, f64);
 pub(super) struct Quad(pub(super) [Point; 4]);
 
 impl Quad {
+    /// Collinear vertices have no markup region. Do not send them to a PDF
+    /// fill, whose empty-area scan conversion can paint device hairlines.
+    pub(super) fn has_area(&self) -> bool {
+        let [a, b, c, d] = self.0;
+        cross(a, b, c) != 0.0 || cross(b, c, d) != 0.0
+    }
+
     pub(super) fn at(&self, u: f64, v: f64) -> Result<Point> {
         let [a, b, c, d] = self.0;
         let bottom = lerp(a, b, u);
@@ -90,11 +97,15 @@ fn counterclockwise(points: &[Point; 4]) -> Result<bool> {
     let [a, b, c, d] = *points;
     let mut valid = true;
     for (a, b, c) in [(a, b, c), (b, c, d), (c, d, a), (d, a, b)] {
-        let cross = (b.0 - a.0) * (c.1 - b.1) - (b.1 - a.1) * (c.0 - b.0);
+        let cross = cross(a, b, c);
         if !cross.is_finite() {
             return Err(Error::limit("markup orientation exceeds numeric range"));
         }
         valid &= cross >= 0.0;
     }
     Ok(valid)
+}
+
+fn cross(a: Point, b: Point, c: Point) -> f64 {
+    (b.0 - a.0) * (c.1 - b.1) - (b.1 - a.1) * (c.0 - b.0)
 }
