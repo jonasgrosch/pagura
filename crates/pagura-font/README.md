@@ -64,14 +64,26 @@ at `2d92bdc21`, including the last permitted index and rejection before allocati
 Legacy Apple TrueType post 4 code arrays are admitted after maxp-count and
 work-budget validation, so their existing cmap can select glyphs. This does not
 synthesize printer-specific names or assert OpenType conformance. Four unchanged
-direct-cmap subjects/controls join the integrated render manifest; hosted
-acceptance is pending. No new font selection path or allocation is introduced.
+direct-cmap subjects/controls pass with the preceding controls: 17/17 at
+`b1fd431a8` in [hosted run 40393132189](https://github.com/jonasgrosch/pagura/actions/runs/40393132189).
+Its three-platform functional run remains pending. No new font selection path
+or allocation is introduced.
+
+Legacy cmap format 8 reuses the existing bounded sequential-group validator
+and binary lookup. It accepts the caller's complete numeric code unchanged;
+it does not decode a word stream or pack a Unicode scalar into UTF-16 words.
+The bitmap's extent is checked, while its word-decoding semantics remain
+outside this API. Microsoft and Apple describe conflicting details, recorded
+in `font-truetype`; no heuristic resolves them. Eight preserved diagnostic
+PDFs isolate BMP and supplementary numeric mappings with format-12 controls.
+The new implementation awaits hosted acceptance.
 
 Implemented formats:
 
 - TrueType and OpenType `glyf`: short/long `loca`, simple contours, repeated
   point flags, implied quadratic points, affine composite components and
-  point attachments; cmap formats 0, 2, 4, 6, 10, 12 and 13; post formats 1, 2, 2.5 and 3.
+  point attachments; cmap formats 0, 2, 4, 6, 8, 10, 12 and 13; post names from
+  formats 1, 2, 2.5 and 3, with legacy post 4 admission for cmap use.
 - Bare CFF and OpenType CFF: checked INDEX/DICT data, ISOAdobe and explicit
   charsets, all 391 standard SIDs, Expert/ExpertSubset predefined charsets,
   StandardEncoding/ExpertEncoding and explicit encodings with supplements,
@@ -126,7 +138,7 @@ Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
 Remaining coverage: nondefault variation instances, CFF2 Font DICT matrices,
-derived post 4 printer names and unknown post formats, cmap format 8 and TrueType collections, and
+derived post 4 printer names and unknown post formats, TrueType collections, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
 CFF CharstringType 1, standalone TN 5014 CIDFont programs or nonhorizontal
 Type 1 sbw advances. Unrecognized OtherSubrs use chapter 8’s required

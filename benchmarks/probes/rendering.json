@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct. Legacy post4 cmap admission and format8 numeric-code groups have paired controls. Supplementary numeric codes are isolated from literal-byte fallback; no UTF-16 stream-decoding or family-conformance claim.",
   "cases": [
     {
       "id": "control.blank",
@@ -215,6 +215,110 @@
       "capability": "fonts.programs",
       "operation": "render",
       "fixture": "font_formats/post3-control-direct-unnamed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-windows-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-windows-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-windows-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-windows-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-unicode-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-unicode-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-unicode-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-unicode-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-windows-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-windows-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-windows-ucs4-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-windows-ucs4-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-unicode-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-unicode-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-unicode-ucs4-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-unicode-ucs4-isolated",
       "oracle": "rgb8",
       "expected": {
         "width": 32,

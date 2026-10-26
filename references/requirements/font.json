@@ -11,7 +11,7 @@
         "9.6.5.4",
         "9.9.1"
       ],
-      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review",
+      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/8/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review",
       "tests": [
         "font/truetype-cmap0",
         "font/truetype-cmap4",
@@ -33,9 +33,17 @@
         "font/truetype-cmap10",
         "font/truetype-cmap13",
         "font/truetype-cmap14",
-        "font/sfnt-legacy-true"
+        "font/sfnt-legacy-true",
+        "font_formats/cmap8-windows-bmp",
+        "font_formats/cmap12-windows-bmp",
+        "font_formats/cmap8-unicode-bmp",
+        "font_formats/cmap12-unicode-bmp",
+        "font_formats/cmap12-windows-utf16-isolated",
+        "font_formats/cmap8-windows-ucs4-isolated",
+        "font_formats/cmap12-unicode-utf16-isolated",
+        "font_formats/cmap8-unicode-ucs4-isolated"
       ],
-      "gaps": "Other cmap/post formats and collections are unsupported. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies require TrueType primary review.",
+      "gaps": "Collections and remaining post formats are unsupported. Format 8 accepts complete numeric codes without decoding UTF-16 word streams; no scalar-to-packed-surrogate heuristic is introduced. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies and other internal layouts still require primary-format review.",
       "tables": [
         "124"
       ],
@@ -53,6 +61,17 @@
         "external_status": "pending primary-text review of TrueType and OpenType",
         "evidence": "ISO-derived PDF constraints plus analytic binary fixtures. Secondary read-fonts 0.41.0 comparison agrees on 26 cmap 10/13 code queries. Its mapping API does not implement format 2; no differential claim for format 2 or a primary-format known-answer dataset.",
         "choices": "Platform 0 and (3,10) are exposed separately; supplementary Unicode mappings never impersonate PDF (3,1). Format 14 is unused because 9.6.5.4 selects by a single mapped value, while 9.7.4.2 uses explicit CIDs/GIDs. Legacy component offsets use unscaled translation; external semantics pending."
+      },
+      "cmap8_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cmap#format-8-mixed-16-bit-and-32-bit-coverage",
+          "https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6cmap.html"
+        ],
+        "rule": "Format 8 has a long header, 8192-byte word-length bitmap and sorted, disjoint sequential groups. Glyph ranges must fit maxp. The API receives one complete numeric code; it does not decode an encoded word stream.",
+        "implementation": "The existing group validator and binary lookup also handle format 8, retaining the original table bytes. It validates bitmap extent, ordering, glyph bounds and declared group budgets; no range is expanded. Format 8 permits numeric keys across u32 while formats 12/13 retain the Unicode ceiling. Existing subtable selection remains unchanged, preferring 12/10 before 8 before BMP formats.",
+        "scope": "Microsoft's UTF-16 introduction and UCS4 high-word example disagree; Apple also differs on bitmap bit order. This change does not adjudicate a stream decoder or validate bitmap encoding semantics. It looks up the caller's numeric key unchanged, preserving PDF glyph-name selection and all existing cmap identities.",
+        "expectations": "Native controls distinguish BMP, scalar and packed-surrogate numeric keys, gaps, group order/overlap, glyph overflow, exact work/entry bounds, truncated headers/groups and one deduplicated repair. Format 12/13 shared-path controls preserve sequential/constant mapping and their Unicode ceiling. Eight PDF controls retain the earlier diagnostic bytes and literal rectangle oracles; isolated supplementary cases map the literal PDF byte to a different glyph.",
+        "evidence": "Diagnostic e8ffe19a1b380592191970f43d37712e4ebbbdec, hosted run40393193630: MuPDF passes both BMP subjects with paired format12 controls, and the isolated Windows UCS4 subject/control. Its isolated UTF16 subject fails; platform0 supplementary control also fails, preventing a format-specific conclusion there. Pagura before this change fails all format8 subjects but passes the paired format12 controls. Linux artifact12686106513 ZIP SHA256 a9e7ad3da9b26fc702e7b3e325f62ace290ed31ce5e44a663bda706b72d5d346; report SHA256 bd01f3e8635b336fe37ff184ad401b5caba157a25413fa606c26fe2005d8223f. Historical observations are unchanged; hosted acceptance of the implementation is pending."
       }
     },
     {
@@ -2041,7 +2060,7 @@
       "clauses": [
         "9.10.2"
       ],
-      "status": "Constant-time glyph-index name lookup for TrueType post, name-keyed Type 1 and CFF; shared program metadata is included in retained-byte estimates. Post 2.5 signed standard-name offsets reuse the same index and work/entry limits; post 1 requires all 258 standard glyphs. Hosted acceptance pending.",
+      "status": "Constant-time glyph-index name lookup for TrueType post, name-keyed Type 1 and CFF; shared program metadata is included in retained-byte estimates. Post 2.5 signed standard-name offsets reuse the same index and work/entry limits; post 1 requires all 258 standard glyphs. The post 2.5 and reserved-index changes passed hosted checks; post 4 admission passes all 17 integrated rendering controls at b1fd431a8, with its functional run still pending.",
       "tests": [
         "font/glyph-names-post-alias",
         "font/glyph-names-post-standard",
@@ -2050,7 +2069,7 @@
         "font/glyph-names-cid",
         "font/glyph-names-cff2"
       ],
-      "gaps": "Custom post name validation and Apple-only post 4 remain open. CID-keyed CFF and bare CFF2 charsets do not provide glyph names. The primary review below covers post 1/2.5 count and index rules; it is not full OpenType certification.",
+      "gaps": "Custom post name validation and Apple-only post 4 printer-name derivation remain open; post 4 numeric code arrays are admitted for existing cmap selection. CID-keyed CFF and bare CFF2 charsets do not provide glyph names. The primary review below covers post 1/2.5 count and index rules; it is not full OpenType certification.",
       "verification": {
         "primary_text": "Local ISO 32000-2:2020 sponsored EC3; Adobe Type 1 Font Format; Adobe TN 5176 CFF",
         "locator": "PDF 9.10.2; Type 1 chapter 6; CFF section 13; ADR 0012",

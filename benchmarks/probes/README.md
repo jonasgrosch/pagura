@@ -6,8 +6,8 @@ controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
 The companion [render manifest](rendering.json) retains six original pixel
 oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
-premultiplied JPX alpha. Seven legacy font controls extend the manifest to
-13 cases and 91 cells, using the public Pagura CLI and all six render adapters. The ledger retains six competitor columns;
+premultiplied JPX alpha. Nineteen legacy font controls extend the manifest to
+25 cases and 175 cells, using the public Pagura CLI and all six render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -230,3 +230,37 @@ The existing post reader now admits the complete code array for cmap use, with
 no synthesized printer names, copied metadata or alternate selector. Exact
 count, truncation and work-budget controls are authored. Integrated hosted
 validation of the new 17-case manifest is pending; no family support is claimed.
+
+
+## Legacy cmap numeric-code lookup
+
+The eight integrated format-8/format-12 PDFs retain the bytes and independent
+rectangle oracles from diagnostic `e8ffe19a1`. The two supplementary pairs
+map the literal PDF byte A to a different curved glyph, preventing byte fallback
+from accidentally passing the expected supplementary mapping. Earlier nonisolated
+subjects remain in their diagnostic branch and are not counted as isolated
+supplementary evidence. Packed-surrogate candidates remain observations there;
+this reader API looks up an already delimited numeric code unchanged.
+
+[Diagnostic run 40393193630](https://github.com/jonasgrosch/pagura/actions/runs/40393193630)
+records 21 cases. MuPDF passes both BMP subjects and their format-12 controls,
+and the isolated Windows UCS4 subject/control; its isolated packed-UTF16
+subject fails. Its platform-0 supplementary control fails too, preventing a
+format-specific negative there. Pagura before the implementation passes both
+isolated format-12 controls but fails their format-8 subjects. PDFium, PDF.js
+and hayro also fail paired font controls. Poppler's platform-0 isolated
+format-12 control passes while its format-8 subject fails. These scoped
+observations do not establish engine-wide absence or font conformance.
+Linux artifact `12686106513` has ZIP SHA-256
+`a9e7ad3da9b26fc702e7b3e325f62ace290ed31ce5e44a663bda706b72d5d346`
+and report SHA-256
+`bd01f3e8635b336fe37ff184ad401b5caba157a25413fa606c26fe2005d8223f`.
+
+The preceding [17-control post4 render run](https://github.com/jonasgrosch/pagura/actions/runs/40393132189)
+passes at `b1fd431a8f2e7709b8a356064c21e382c2415117`, with 119 cells.
+Artifact `12685656614` has ZIP SHA-256
+`956d550a6fdfdcff527e8e768ec2d876a1576e73475bd3dd9fcf940ed3da6c58`
+and report SHA-256
+`8c98d6aa0ab8c81f872c0f5c52f0ea7ff42a95b9f899b55213c98084667c02ec`.
+This result does not attest the subsequent cmap change. Its acceptance remains
+pending; all prior controls and tolerances are preserved.

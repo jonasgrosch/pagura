@@ -405,7 +405,7 @@ impl FontProgram {
     }
 
     /// Whether the program has a usable TrueType `cmap` subtable of this kind
-    /// (formats 0, 2, 4, 6, 10, 12 or 13). How a PDF character code selects a TrueType
+    /// (formats 0, 2, 4, 6, 8, 10, 12 or 13). How a PDF character code selects a TrueType
     /// glyph depends on which subtables exist (9.6.5.4).
     pub fn has_cmap_subtable(&self, subtable: CmapSubtable) -> bool {
         match self.parsed.as_ref() {
@@ -416,7 +416,9 @@ impl FontProgram {
 
     /// The glyph for `code` in a TrueType `cmap` subtable. Subtables are
     /// validated at parse time; a code that a repaired, truncated subtable
-    /// no longer maps has no glyph.
+    /// no longer maps has no glyph. The complete numeric code is looked up
+    /// unchanged, including for legacy format 8; this does not decode a text
+    /// stream or combine UTF-16 words.
     pub fn glyph_for_code(&self, subtable: CmapSubtable, code: u32) -> Option<GlyphId> {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.code(&self.data, subtable, code),
