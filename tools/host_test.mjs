@@ -316,17 +316,17 @@ async function testRenderCases({ client, root, native, wasiRun, cases }) {
     const scale = (entry.dpi ?? 72) / 72;
     const tile = { x: 0, y: 0, width: entry.width, height: entry.height };
     const input = Buffer.concat([
-      encodeRequest(1, 1), encodeRequest(2, 2, { bytes: pdf, password: new Uint8Array(), recovery: 1 }),
+      encodeRequest(1, 1, { version: VERSION_1_4 }), encodeRequest(2, 2, { bytes: pdf, password: new Uint8Array(), recovery: 1 }),
       encodeRequest(3, 3, { document: 1, page: 0 }),
       encodeRequest(4, 4, { document: 1, page: 0, scale, ...tile }),
-      encodeRequest(5, 5, { document: 1 }), encodeRequest(6, 6, { document: 1 }),
+      encodeRequest(17, 5, { document: 1 }), encodeRequest(6, 6, { document: 1 }),
     ]);
     const nativeRun = spawnSync(native, [], { input, maxBuffer: 128 * 1024 * 1024, timeout: 30000 });
     assert.ifError(nativeRun.error); assert.equal(nativeRun.status, 0, nativeRun.stderr?.toString());
     const wasi = await wasiRun(input, `case-${entry.id.replaceAll('/', '-')}`);
     assert.equal(wasi.code, 0, wasi.stderr.toString()); bytesEqual(wasi.bytes, nativeRun.stdout, `${entry.id}: native/WASI response identity`);
     const frames = parse(wasi.bytes);
-    assert.deepEqual(frames.map((frame) => frame.kind), [129, 130, 131, 132, 133, 134]);
+    assert.deepEqual(frames.map((frame) => frame.kind), [129, 130, 131, 132, 145, 134]);
     assert.deepEqual(frames.map((frame) => frame.id), [1, 2, 3, 4, 5, 6]);
     const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
     checkPixels(frames[3].value, rgb, entry.tolerance ?? 0, entry.id);
@@ -336,7 +336,7 @@ async function testRenderCases({ client, root, native, wasiRun, cases }) {
     const browserTile = await client.renderTile(opened.document, 0, scale, tile);
     bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
     const diagnostics = await client.diagnostics(opened.document);
-    assert.deepEqual(diagnostics, frames[4].value);
+    assert.deepEqual(diagnostics, frames[4].value, `${entry.id}: full diagnostic parity`);
     assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair').map((item) => item.tag), entry.repairs);
     assert.deepEqual(diagnostics.filter((item) => item.kind === 'information').map((item) => item.tag), entry.information ?? []);
     if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
