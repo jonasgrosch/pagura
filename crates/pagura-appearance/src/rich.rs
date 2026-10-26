@@ -20,6 +20,7 @@ pub(crate) use xml::Text;
 
 /// Field generation supplies its DR resources; annotations use their existing
 /// exact-name resource/provider policy. Both feed the same encoder and layout.
+#[derive(Clone, Copy)]
 pub(crate) struct Fonts<'a> {
     pub(crate) source: &'a dyn FontSource,
     pub(crate) resources: Option<&'a Dictionary>,
@@ -72,7 +73,7 @@ pub(crate) fn prepare(
         let text = contents(document, annotation, storage)?;
         work.charge(text.len())?;
         let base = base(appearance, alignment, ds.as_deref(), &mut work)?;
-        xml::Text::plain(&text, base, &limits, &mut work, storage)?
+        Text::plain(&text, base, &limits, &mut work, storage)?
     };
     layout::prepare(
         document,

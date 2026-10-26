@@ -7,8 +7,8 @@ use pagura_core::{
 use pagura_document::OpenOptions;
 use pagura_testkit::fixture;
 
-fn parse(source: &str, base: Style, limits: &Limits) -> Result<xml::Text> {
-    xml::Text::parse(
+fn parse(source: &str, base: Style, limits: &Limits) -> Result<Text> {
+    Text::parse(
         source,
         base,
         limits,
