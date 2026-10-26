@@ -68,12 +68,14 @@ fn own(parts: &Parts, group: u32, rows: usize) -> Tops {
     let Some(plan) = parts.groups.get(index(group)) else {
         return Tops::default();
     };
-    let pixels = pagura_core::convert::u32_to_usize(plan.bounds.width())
-        .saturating_mul(pagura_core::convert::u32_to_usize(plan.bounds.height()).min(rows));
+    let height = pagura_core::convert::u32_to_usize(plan.bounds.height()).min(rows);
+    let pixels = pagura_core::convert::u32_to_usize(plan.bounds.width()).saturating_mul(height);
     match plan.format {
+        // A knockout group starts lazily, row interval by row interval.
         Format::F64 => Tops {
             wide: pixels.saturating_mul(plan.layout.stride()),
-            ..Tops::default()
+            levels: 0,
+            rows: if plan.knockout { height } else { 0 },
         },
         Format::F32 | Format::N16 => Tops {
             levels: pixels,
@@ -86,6 +88,7 @@ fn add(a: Tops, b: Tops) -> Tops {
     Tops {
         wide: a.wide.saturating_add(b.wide),
         levels: a.levels.saturating_add(b.levels),
+        rows: a.rows.saturating_add(b.rows),
     }
 }
 
@@ -93,6 +96,7 @@ fn max(a: Tops, b: Tops) -> Tops {
     Tops {
         wide: a.wide.max(b.wide),
         levels: a.levels.max(b.levels),
+        rows: a.rows.max(b.rows),
     }
 }
 
