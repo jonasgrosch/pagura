@@ -140,15 +140,15 @@ fn first_headers_inherit_only_missing_owners_and_require_complete_metadata() {
     ] {
         assert_eq!(parse(&data).err().unwrap().kind, ErrorKind::Syntax);
     }
-    // A selected first-header dependency is not made irrelevant by later data.
+    // A malformed selected reference is not made irrelevant by later data.
     let first_extension = boxed(*b"jpch", &boxed(*b"cref", &[]));
-    assert!(matches!(
+    assert_eq!(
         parse(&file(Some(&defaults), &first_extension))
             .err()
             .unwrap()
             .kind,
-        ErrorKind::Unsupported(_)
-    ));
+        ErrorKind::Syntax
+    );
     // Later headers belong to other images. Outer lengths stay checked, but
     // their internal metadata cannot change the selected first image.
     let later_headers = [
@@ -165,6 +165,7 @@ fn first_headers_inherit_only_missing_owners_and_require_complete_metadata() {
 fn ordinary_jp2_header_error_identity_and_order_are_unchanged() {
     let options = super::Options::default();
     let policy = super::HeaderPolicy {
+        file: &[],
         options: &options,
         selection: super::ColorSelection::Pdf,
         format: super::FileType::Jp2,
@@ -201,6 +202,7 @@ fn ordinary_jp2_header_error_identity_and_order_are_unchanged() {
 fn implicit_opacity_uses_exactly_one_definition_per_final_channel() {
     let options = super::Options::default();
     let policy = super::HeaderPolicy {
+        file: &[],
         options: &options,
         selection: super::ColorSelection::Pdf,
         format: super::FileType::JpxBaseline,
@@ -230,7 +232,7 @@ fn implicit_opacity_uses_exactly_one_definition_per_final_channel() {
         };
         let result = header
             .read_boxes(&b, super::HeaderLocation::Layer, &mut budget, &policy)
-            .and_then(|()| header.finish_first_image(&mut budget));
+            .and_then(|()| header.finish_first_image(200, &mut budget));
         if valid {
             result.unwrap();
             assert_eq!(
@@ -305,6 +307,7 @@ fn first_image_depth_ownership_and_default_opacity_override_are_explicit() {
     let opacity = boxed(*b"opct", &[1]);
     let options = super::Options::default();
     let policy = super::HeaderPolicy {
+        file: &[],
         options: &options,
         selection: super::ColorSelection::Pdf,
         format: super::FileType::JpxBaseline,
@@ -331,7 +334,7 @@ fn first_image_depth_ownership_and_default_opacity_override_are_explicit() {
     header
         .read_boxes(&layer, super::HeaderLocation::Layer, &mut budget, &policy)
         .unwrap();
-    header.finish_first_image(&mut budget).unwrap();
+    header.finish_first_image(200, &mut budget).unwrap();
     assert_eq!(header.channels.as_ref().unwrap()[3], (3, 2, 0));
     for body in [
         [channels.clone(), opacity.clone()].concat(),
@@ -352,4 +355,242 @@ fn first_image_depth_ownership_and_default_opacity_override_are_explicit() {
             ErrorKind::Syntax
         );
     }
+}
+
+fn reference_body(kind: [u8; 4], spans: &[(u64, u32)]) -> Vec<u8> {
+    let mut list = u16::try_from(spans.len()).unwrap().to_be_bytes().to_vec();
+    for &(offset, length) in spans {
+        list.extend(offset.to_be_bytes());
+        list.extend(length.to_be_bytes());
+        list.extend([0, 0]); // DR=0: this file.
+    }
+    [kind.to_vec(), boxed(*b"flst", &list)].concat()
+}
+
+fn reference_file(
+    defaults: &[u8],
+    owner: [u8; 4],
+    kind: [u8; 4],
+    parts: &[&[u8]],
+    extra: &[u8],
+) -> Vec<u8> {
+    let stream = boxed(*b"jp2c", &[255, 79, 255, 217]);
+    let mut data = file(Some(defaults), &[]);
+    data.truncate(data.len() - stream.len());
+    let start = data.len();
+    let mut spans: Vec<_> = parts
+        .iter()
+        .map(|part| (0, u32::try_from(part.len()).unwrap()))
+        .collect();
+    let field = boxed(*b"cref", &reference_body(kind, &spans));
+    data.extend(boxed(owner, &[field, extra.to_vec()].concat()));
+    for (part, span) in parts.iter().zip(&mut spans) {
+        span.0 = u64::try_from(data.len() + 8).unwrap();
+        data.extend(boxed(*b"mdat", part));
+    }
+    let field = boxed(*b"cref", &reference_body(kind, &spans));
+    let header = boxed(owner, &[field, extra.to_vec()].concat());
+    data[start..start + header.len()].copy_from_slice(&header);
+    data.extend(stream);
+    data
+}
+
+#[test]
+fn references_reuse_field_ownership_and_variable_depth_rules() {
+    let dimensions = dimensions(3);
+    let color = color();
+    let data = reference_file(&color, *b"jpch", *b"ihdr", &[&dimensions[8..]], &[]);
+    let header = parse(&data).unwrap();
+    assert_eq!(header.dimensions, Some((4, 1, 3, 7)));
+    let data = reference_file(
+        &dimensions,
+        *b"jplh",
+        *b"cgrp",
+        &[&color[..3], &color[3..]],
+        &[],
+    );
+    let header = parse(&data).unwrap();
+    assert_eq!(header.colors.len(), 1);
+    assert_eq!(header.colors[0].color, super::JpxColor::Enumerated(16));
+    let defaults = [dimensions.clone(), color.clone()].concat();
+    let duplicate = reference_file(&defaults, *b"jpch", *b"ihdr", &[&dimensions[8..]], &[]);
+    assert_eq!(parse(&duplicate).err().unwrap().kind, ErrorKind::Syntax);
+    let misplaced = reference_file(&color, *b"jplh", *b"ihdr", &[&dimensions[8..]], &[]);
+    assert_eq!(parse(&misplaced).err().unwrap().kind, ErrorKind::Syntax);
+    let mut variable = dimensions.clone();
+    variable[18] = 255;
+    let depths = boxed(*b"bpcc", &[7, 11, 15]);
+    let data = reference_file(&color, *b"jpch", *b"ihdr", &[&variable[8..]], &depths);
+    assert_eq!(
+        parse(&data).unwrap().depths.as_deref(),
+        Some(&[7, 11, 15][..])
+    );
+    let incomplete = reference_file(&color, *b"jpch", *b"ihdr", &[&variable[8..]], &[]);
+    assert_eq!(parse(&incomplete).err().unwrap().kind, ErrorKind::Syntax);
+    // NF=0 and LEN=0 are permitted in Table M.17; neither supplies ihdr's
+    // fourteen required bytes. The field parser owns that Syntax failure.
+    for parts in [&[][..], &[&[][..]][..]] {
+        let empty = reference_file(&color, *b"jpch", *b"ihdr", parts, &[]);
+        assert_eq!(parse(&empty).err().unwrap().kind, ErrorKind::Syntax);
+    }
+}
+
+#[test]
+fn referenced_colour_errors_keep_physical_offsets_across_split_headers() {
+    let color = color();
+    let mut data = reference_file(
+        &dimensions(3),
+        *b"jplh",
+        *b"cgrp",
+        &[&color[..3], &color[3..]],
+        &[],
+    );
+    let media: Vec<_> = data
+        .windows(4)
+        .enumerate()
+        .filter_map(|(index, kind)| (kind == b"mdat").then_some(index + 4))
+        .collect();
+    assert_eq!(media.len(), 2);
+    // Child colr APPROX is logical byte 10. The first fragment has three bytes;
+    // the remaining seven-byte displacement is in the second physical span.
+    let approximation = media[1] + 7;
+    data[approximation] = 0;
+    let error = parse(&data).err().unwrap();
+    assert_eq!(error.kind, ErrorKind::Syntax);
+    assert_eq!(error.position, pagura_core::Position::Buffer(approximation));
+}
+
+#[test]
+fn references_charge_only_required_storage_and_every_inspection() {
+    let bytes = color();
+    let mut file = vec![0; 80];
+    file[16..19].copy_from_slice(&bytes[..3]);
+    file[50..62].copy_from_slice(&bytes[3..]);
+    let body = reference_body(*b"cgrp", &[(16, 3), (50, 12)]);
+    let b = BoxData {
+        kind: b"cref",
+        body: &body,
+        position: 0,
+        to_end: false,
+    };
+    // 42 reference bytes + one flst inspection + 28 re-inspected tuple bytes,
+    // two initialized source spans and 15 copied metadata bytes = 88 operations.
+    let storage = 2 * size_of::<super::Span>() + 15;
+    for (decoded_bytes, operations, valid) in [
+        (storage, 88, true),
+        (storage - 1, 88, false),
+        (storage, 87, false),
+    ] {
+        let limits = Limits {
+            decoded_bytes,
+            operations,
+            ..Limits::default()
+        };
+        let result = super::Reference::read(&b, &file, &mut Budget::new(&limits));
+        if valid {
+            let reference = result.unwrap();
+            assert_eq!(reference.body.as_ref(), bytes.as_slice());
+            assert!(matches!(&reference.body, std::borrow::Cow::Owned(_)));
+        } else {
+            assert_eq!(result.err().unwrap().kind, ErrorKind::Limit);
+        }
+    }
+    let body = reference_body(*b"ihdr", &[(16, 14)]);
+    let b = BoxData {
+        kind: b"cref",
+        body: &body,
+        position: 0,
+        to_end: false,
+    };
+    // A sole span borrows its fourteen bytes: 28 inspected bytes + one box.
+    for (operations, valid) in [(29, true), (28, false)] {
+        let limits = Limits {
+            decoded_bytes: 0,
+            operations,
+            ..Limits::default()
+        };
+        let result = super::Reference::read(&b, &file, &mut Budget::new(&limits));
+        if valid {
+            let reference = result.unwrap();
+            assert!(matches!(&reference.body, std::borrow::Cow::Borrowed(_)));
+            assert!(std::ptr::eq(reference.body.as_ptr(), file[16..].as_ptr()));
+            assert_eq!(reference.field().position, 16);
+        } else {
+            assert_eq!(result.err().unwrap().kind, ErrorKind::Limit);
+        }
+    }
+}
+
+#[test]
+fn invalid_reference_framing_is_checked_before_allocation() {
+    let file = [0; 80];
+    let limits = Limits {
+        decoded_bytes: 0,
+        ..Limits::default()
+    };
+    let mut truncated = reference_body(*b"ihdr", &[(16, 14)]);
+    truncated[12..14].copy_from_slice(&2_u16.to_be_bytes());
+    let mut wrong_list = reference_body(*b"ihdr", &[(16, 14)]);
+    wrong_list[8..12].copy_from_slice(b"free");
+    let mut unbounded_list = reference_body(*b"ihdr", &[(16, 14)]);
+    unbounded_list[4..8].fill(0);
+    for (body, expected) in [
+        (Vec::new(), ErrorKind::Syntax),
+        (reference_body(*b"cref", &[(16, 14)]), ErrorKind::Syntax),
+        (reference_body(*b"ihdr", &[(11, 14)]), ErrorKind::Syntax),
+        (reference_body(*b"ihdr", &[(4096, 1)]), ErrorKind::Syntax),
+        (reference_body(*b"ihdr", &[(12, 4096)]), ErrorKind::Syntax),
+        (reference_body(*b"ihdr", &[(u64::MAX, 1)]), ErrorKind::Limit),
+        (truncated, ErrorKind::Syntax),
+        (wrong_list, ErrorKind::Syntax),
+        (unbounded_list, ErrorKind::Syntax),
+    ] {
+        let b = BoxData {
+            kind: b"cref",
+            body: &body,
+            position: 0,
+            to_end: false,
+        };
+        let result = super::Reference::read(&b, &file, &mut Budget::new(&limits));
+        assert_eq!(result.err().unwrap().kind, expected);
+    }
+    let mut external = reference_body(*b"ihdr", &[(16, 14)]);
+    *external.last_mut().unwrap() = 1;
+    for body in [external, reference_body(*b"ihdr", &[(32, 14), (16, 14)])] {
+        let b = BoxData {
+            kind: b"cref",
+            body: &body,
+            position: 0,
+            to_end: false,
+        };
+        let result = super::Reference::read(&b, &file, &mut Budget::new(&limits));
+        assert!(matches!(
+            result.err().unwrap().kind,
+            ErrorKind::Unsupported(_)
+        ));
+    }
+}
+
+#[test]
+fn selected_metadata_precedes_the_codestream_and_later_fragments_are_irrelevant() {
+    let dimensions = dimensions(3);
+    let mut data = reference_file(&color(), *b"jpch", *b"ihdr", &[&dimensions[8..]], &[]);
+    let offset = data.windows(4).position(|kind| kind == b"flst").unwrap() + 6;
+    let after_stream = u64::try_from(data.len() + 8).unwrap();
+    data[offset..offset + 8].copy_from_slice(&after_stream.to_be_bytes());
+    data.extend(boxed(*b"mdat", &dimensions[8..]));
+    assert!(matches!(
+        parse(&data).err().unwrap().kind,
+        ErrorKind::Unsupported(_)
+    ));
+    let defaults = [dimensions, color()].concat();
+    let mut data = file(Some(&defaults), &[]);
+    data.extend(boxed(*b"ftbl", &[]));
+    data.extend(boxed(*b"mdat", &[0, 1, 2]));
+    assert_eq!(parse(&data).unwrap().dimensions, Some((4, 1, 3, 7)));
+    let selected = file(Some(&defaults), &boxed(*b"ftbl", &[]));
+    assert!(matches!(
+        parse(&selected).err().unwrap().kind,
+        ErrorKind::Unsupported(_)
+    ));
 }

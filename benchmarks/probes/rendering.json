@@ -5045,6 +5045,214 @@
         "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
         "tolerance": 0
       }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-image-header",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-image-header",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-image-header-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-image-header-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-image-header-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-image-header-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-image-header-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-image-header-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-color-group",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-color-group",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-color-group-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-color-group-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-color-group-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-color-group-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-color-group-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-color-group-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.later-image-fragments",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/later-image-fragments",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.later-image-fragments-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/later-image-fragments-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.later-image-fragments-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/later-image-fragments-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.later-image-fragments-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/later-image-fragments-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 0
+      }
     }
   ]
 }

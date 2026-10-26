@@ -446,7 +446,7 @@ prevent display. Legacy jp2-compatible behaviour remains unchanged. The
 hashes and the dated-edition distinction. No primary text is redistributed.
 
 Remaining applicable work includes 17–38-bit components, nonzero CRG, early packed
-headers, ordered in-file fragments and cross-references, non-D50 CIELab
+headers, selected-codestream fragmentation and nonbaseline metadata references, non-D50 CIELab
 illuminants, e-sRGB 20, ROMM-RGB 21,
 e-sYCC 24, and the restricted baseline array/nonlinear transforms. PDF 7.4.9 excludes
 CIEJab 19, multilayer composition/animation and used per-colour/multiple opacity;
@@ -677,12 +677,50 @@ The area now has 62 records: 56 render PDFs, five malformed vectors and one
 unadjudicated vector. The full manifest
 has 388 observations, including the six historical malformed colour groups
 qualified above. Public raw-sample tests, native/WASI/browser-shim checks and
-reference conformance use the existing paths. Hosted acceptance of this new
-implementation is pending.
+reference conformance use the existing paths. Checkpoint `42795ad26` passes
+all twelve hosted gates: functional `40404510603` on three OSes, editing
+`40404510344` and capability `40404510406`. The combined report records
+388/388 Pagura observations and 2,716 cells at merge
+`922ef0300e67b53772e344229e16622f1ba24a6c`; artifact `12690936675`, ZIP
+SHA256 `03ebc954fecf6fa304be338958953a23bb7980d69b307653fbfc32fc0ec73352`,
+report SHA256 `513d86e2e0b2421d79dcc305b9e4c84cf82c4caed0127f6f9e17a40e17f5081a`.
 
 The JPX requirement preserves the T.801 M.11.7.6/Table M.34 field-presence
 contradiction (and the repeated Otyp=0/undefined PR wording in Table M.33).
 Single-byte opacity types 0/1 are supported; chroma-key is explicitly
-unadjudicated, with no guessed pixel/error oracle. Selected-image fragments,
-cross-references, nonidentity registration and unimplemented required reader
-features remain explicit gaps.
+unadjudicated, with no guessed pixel/error oracle. Selected-codestream fragments,
+nonbaseline metadata references, nonidentity registration and unimplemented
+required reader features remain explicit gaps.
+
+
+## R02/R03 local JPX metadata references
+
+Frozen diagnostic `6c94698fa`, run `40402247140`, establishes the referenced
+`ihdr` case in hayro with all paired controls. The original sRGB `cgrp` output
+also matches an implicit RGB guess. A single additional unit-TRC ICC group at
+`e18daf40f`, run `40404830282`, discriminates that behavior: MuPDF passes the
+codec, flat-brand and RGB controls but returns stored RGB for the referenced
+subject. Other engines fail encoded ICC or RGB/brand controls. No baseline
+colour dereferencing is inferred. Exact platform, binary and artifact identities
+remain in `jpx-pdf-contract.external_review`; all frozen bytes/results are kept.
+
+T.801 M.9.2.6/.7 and M.11.3.1/.4 place ordered internal reference contents before
+the selected codestream. The existing `Header` field checks now resolve first
+`jpch`/`jplh` references. One span is borrowed; multiple spans gather metadata
+with checked allocation and physical error mapping. Packed packet-header
+semantics in `Reader::mapped` and the codec remain unchanged. Later `ftbl` data
+is irrelevant only after the selected contiguous codestream is fixed.
+
+Only four covered groups transfer into acceptance: image-header, sRGB colour,
+linear-ICC colour and irrelevant later fragments, each with three matched
+controls. Their 16 PDFs/oracles/IDs are byte-identical to the frozen diagnostic;
+the prior 388 rows are unchanged, giving 404 observations awaiting hosted checks.
+The ICC case guards the shared resolver's primary-defined colour semantics.
+Selected fragmented-codestream subjects remain unresolved diagnostic evidence.
+
+A single reference charges 29 work units and zero allocation. Two spans holding
+15 metadata bytes charge 88 work units and `2*sizeof(Span)+15` allocation bytes;
+one-short bounds refuse. These are allocation-admission charges, not live-memory
+measurements. Native controls cover finite extents versus overflow, malformed
+count, recursive targets, ownership, variable depths and physical error offsets;
+public native/interleaved samples preserve the original four RGB pixels.

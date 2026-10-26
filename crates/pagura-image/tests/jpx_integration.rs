@@ -365,3 +365,41 @@ fn signed_palette_components_keep_independent_bias_and_unsigned_opacity() {
     assert_eq!(alpha.samples, Samples::Bytes(vec![0, 128, 255]));
     assert!(alpha.premultiplied);
 }
+
+#[test]
+fn selected_metadata_references_preserve_public_sample_layouts() {
+    // These samples are the original independently encoded input, before the
+    // restricted ICC profile's transfer. Rendering has its own RGB oracle.
+    let expected = [0, 64, 255, 255, 128, 0, 64, 192, 32, 128, 32, 192];
+    for name in [
+        "reference-image-header",
+        "reference-split-color-group",
+        "reference-split-linear-icc",
+        "later-image-fragments",
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("jpx_fragment_probe", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let source = source(&document).unwrap();
+        assert_eq!(source.components(), 3, "{name}");
+        for layout in [
+            pagura_image::Layout::Interleaved,
+            pagura_image::Layout::Native,
+        ] {
+            let image = source
+                .decode(
+                    &DecodeRequest::new(pagura_image::Reduce::Full, None, layout),
+                    &document.limits(),
+                    Recovery::Strict,
+                )
+                .unwrap()
+                .image;
+            assert_eq!((image.width, image.height), (4, 1), "{name}");
+            for (index, sample) in expected.into_iter().enumerate() {
+                assert_eq!(image.samples.get(index), Some(sample), "{name}");
+            }
+        }
+    }
+}

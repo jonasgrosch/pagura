@@ -1,8 +1,11 @@
 //! JP2/JPX fields, T.800 I.4–I.5, T.801 M.8/M.11 and PDF 7.4.9.
 
-use pagura_core::{Error, Result};
+use std::borrow::Cow;
+use std::ops::Range;
 
-use super::io::{Budget, Reader, area, syntax};
+use pagura_core::{Error, Position, Result};
+
+use super::io::{Budget, Reader, Span, area, source_position, syntax};
 use super::{
     ColorSelection, ColorSpecification, Decoded, JpxColor, JpxComponent, JpxImage, Options,
     unsupported,
@@ -67,6 +70,7 @@ pub(super) struct Header {
     color_present: bool,
     baseline_color: bool,
     resolution_seen: bool,
+    reference_end: usize,
 }
 
 #[derive(Default, PartialEq, Eq)]
@@ -126,6 +130,7 @@ impl HeaderLocation {
                 | b"cgrp"
                 | b"opct"
                 | b"creg"
+                | b"cref"
         ) {
             return Err(syntax("misplaced JPX header field", b.position));
         }
@@ -145,9 +150,150 @@ impl HeaderLocation {
 }
 
 struct HeaderPolicy<'a> {
+    file: &'a [u8],
     options: &'a Options,
     selection: ColorSelection,
     format: FileType,
+}
+
+/// A referenced field's contents, not a second box parser (T.801 M.11.4).
+/// Only fragmented metadata is copied; the codestream remains borrowed.
+struct Reference<'a> {
+    kind: &'a [u8],
+    body: Cow<'a, [u8]>,
+    base: usize,
+    spans: Vec<Span>,
+    end: usize,
+}
+
+impl<'a> Reference<'a> {
+    fn read(b: &BoxData<'a>, file: &'a [u8], budget: &mut Budget<'_>) -> Result<Self> {
+        budget.work(b.body.len())?;
+        let mut fields = Reader::new(b.body, b.position);
+        let kind = fields.take(4)?;
+        if kind == b"cref" {
+            return Err(syntax(
+                "JPX cross-reference targets another reference",
+                b.position,
+            ));
+        }
+        let list = next_box(&mut fields, budget)?;
+        fields.finish()?;
+        if list.kind != b"flst" || list.to_end {
+            return Err(syntax("invalid JPX reference fragment list", list.position));
+        }
+        let mut entries = Reader::new(list.body, list.position);
+        let count = usize::from(entries.u16()?);
+        if entries.remaining() != count * 14 {
+            return Err(syntax("incorrect JPX fragment count", list.position));
+        }
+        let records = entries.take(entries.remaining())?;
+        let base = entries.base + 2;
+        let mut first = b.position;
+        let mut end = 0;
+        let mut total = 0_usize;
+        for (index, record) in records.chunks_exact(14).enumerate() {
+            let range = fragment(record, base + index * 14, file.len())?;
+            if range.start < end {
+                return Err(unsupported(
+                    "unordered JPX metadata fragments",
+                    base + index * 14,
+                ));
+            }
+            if index == 0 {
+                first = range.start;
+            }
+            total = total
+                .checked_add(range.len())
+                .ok_or_else(|| Error::limit("JPX reference length overflow"))?;
+            end = range.end;
+        }
+        if count <= 1 {
+            let body = if count == 0 {
+                &[][..]
+            } else {
+                &file[first..end]
+            };
+            return Ok(Self {
+                kind,
+                body: Cow::Borrowed(body),
+                base: first,
+                spans: Vec::new(),
+                end,
+            });
+        }
+        // Validate every extent before reserving. The second bounded traversal
+        // copies bytes and records their physical positions for error mapping.
+        budget.work(records.len())?;
+        budget.charge::<Span>(count)?;
+        budget.charge::<u8>(total)?;
+        let mut spans = Vec::new();
+        spans
+            .try_reserve_exact(count)
+            .map_err(|_| Error::limit("JPX reference allocation failed"))?;
+        let mut body = Vec::new();
+        body.try_reserve_exact(total)
+            .map_err(|_| Error::limit("JPX reference allocation failed"))?;
+        for (index, record) in records.chunks_exact(14).enumerate() {
+            let range = fragment(record, base + index * 14, file.len())?;
+            spans.push(Span {
+                logical: body.len(),
+                source: range.start,
+            });
+            body.extend_from_slice(&file[range]);
+        }
+        Ok(Self {
+            kind,
+            body: Cow::Owned(body),
+            base: 0,
+            spans,
+            end,
+        })
+    }
+
+    fn field(&self) -> BoxData<'_> {
+        BoxData {
+            kind: self.kind,
+            body: &self.body,
+            position: self.base,
+            to_end: false,
+        }
+    }
+
+    fn place(&self, mut error: Error) -> Error {
+        if !self.spans.is_empty()
+            && let Position::Buffer(offset) = error.position
+        {
+            error.position = Position::Buffer(source_position(&self.spans, offset, self.base));
+        }
+        error
+    }
+}
+
+/// Table M.17 offsets are unsigned 64-bit; checked narrowing/overflow is Limit.
+fn fragment(record: &[u8], position: usize, file_len: usize) -> Result<Range<usize>> {
+    let mut fields = Reader::new(record, position);
+    let offset = (u64::from(fields.u32()?) << 32) | u64::from(fields.u32()?);
+    let length = u64::from(fields.u32()?);
+    let end = offset.checked_add(length).ok_or_else(|| {
+        Error::limit("JPX fragment offset overflow").at(Position::Buffer(position))
+    })?;
+    let start = usize::try_from(offset).map_err(|_| {
+        Error::limit("JPX fragment offset exceeds address space").at(Position::Buffer(position))
+    })?;
+    let end = usize::try_from(end).map_err(|_| {
+        Error::limit("JPX fragment extent exceeds address space").at(Position::Buffer(position))
+    })?;
+    if fields.u16()? != 0 {
+        return Err(unsupported(
+            "external JPX metadata reference",
+            position + 12,
+        ));
+    }
+    if offset < 12 || end > file_len {
+        return Err(syntax("JPX fragment lies outside its file", position));
+    }
+    Ok(start..end)
 }
 
 fn file_type(box_data: &BoxData<'_>, budget: &mut Budget<'_>) -> Result<FileType> {
@@ -247,14 +393,17 @@ pub(super) fn parse<'a>(
     }
     let mut header = None;
     let mut codestream = None;
+    let mut codestream_start = 0;
     let mut stream_header_seen = false;
     let mut layer_header_seen = false;
     let policy = HeaderPolicy {
+        file: data,
         options,
         selection,
         format,
     };
     while reader.remaining() != 0 {
+        let start = reader.position();
         let b = next_box(&mut reader, budget)?;
         match b.kind {
             b"jp2h" => {
@@ -294,8 +443,15 @@ pub(super) fn parse<'a>(
                 }
                 if codestream.is_none() {
                     codestream = Some((b.body, b.position));
+                    codestream_start = start;
                 }
             }
+            b"mdat" if format == FileType::JpxBaseline => {
+                if header.is_none() {
+                    return Err(syntax("JPX media data precedes defaults", b.position));
+                }
+            }
+            b"ftbl" if format == FileType::JpxBaseline && codestream.is_some() => {}
             b"cmap" => misplaced_mapping(&b, header.as_mut(), codestream.is_some(), budget)?,
             b"jP  " | b"ftyp" => {
                 return Err(syntax("repeated JP2 signature or file type", b.position));
@@ -305,7 +461,7 @@ pub(super) fn parse<'a>(
             }
             b"jp2i" | b"xml " | b"uuid" | b"uinf" | b"free" => {}
             _ if format == FileType::JpxBaseline => {
-                // Selected-image fragments/cross-references and other layouts
+                // Selected codestream fragments and other layouts
                 // still need their own semantics, even with DCM=0.
                 return Err(unsupported(
                     "JPX first-image layout is not implemented",
@@ -319,7 +475,7 @@ pub(super) fn parse<'a>(
         codestream.ok_or_else(|| syntax("missing JP2 codestream", data.len()))?;
     let mut header = header.ok_or_else(|| syntax("missing JP2 header", 0))?;
     if format == FileType::JpxBaseline {
-        header.finish_first_image(budget)?;
+        header.finish_first_image(codestream_start, budget)?;
     }
     Ok((stream, position, header))
 }
@@ -355,6 +511,24 @@ fn misplaced_mapping(
     fields.finish()
 }
 
+#[derive(Default, PartialEq, Eq)]
+enum ColorRun {
+    #[default]
+    Absent,
+    Contiguous,
+    Ended,
+}
+
+#[derive(Default)]
+struct HeaderFields {
+    count: usize,
+    color: ColorRun,
+    depth: Option<u8>,
+    layer_channels: bool,
+    registration_seen: bool,
+    depths_in_header: bool,
+}
+
 impl Header {
     fn read_boxes(
         &mut self,
@@ -367,14 +541,8 @@ impl Header {
             self.base = container.position;
         }
         let mut reader = Reader::new(container.body, container.position);
-        let mut color_seen = false;
-        let mut color_ended = false;
-        let mut layer_channels = false;
-        let mut registration_seen = false;
-        let mut variable_dimensions = false;
-        let mut depths_in_header = false;
+        let mut state = HeaderFields::default();
         while reader.remaining() != 0 {
-            let first = reader.position() == container.position;
             let b = next_box(&mut reader, budget)?;
             if b.to_end {
                 return Err(syntax(
@@ -382,58 +550,23 @@ impl Header {
                     b.position,
                 ));
             }
-            if location == HeaderLocation::Defaults
-                && ((policy.format != FileType::JpxBaseline
-                    && self.dimensions.is_none()
-                    && b.kind != b"ihdr")
-                    || (self.dimensions.is_none() && b.kind == b"ihdr" && !first))
+            if policy.format == FileType::JpxBaseline
+                && b.kind == b"cref"
+                && matches!(location, HeaderLocation::Codestream | HeaderLocation::Layer)
             {
-                return Err(syntax("JP2 image header must be first", b.position));
+                let reference = Reference::read(&b, policy.file, budget)?;
+                self.reference_end = self.reference_end.max(reference.end);
+                self.read_header(&reference.field(), location, budget, policy, &mut state)
+                    .map_err(|error| reference.place(error))?;
+            } else {
+                self.read_header(&b, location, budget, policy, &mut state)?;
             }
-            if b.kind == b"colr" {
-                if color_ended {
-                    return Err(syntax(
-                        "noncontiguous JP2 colour specifications",
-                        b.position,
-                    ));
-                }
-                color_seen = true;
-                self.color_present = true;
-            } else if color_seen {
-                color_ended = true;
-            }
-            if policy.format == FileType::JpxBaseline && !location.accepts(&b)? {
-                continue;
-            }
-            if location == HeaderLocation::Layer {
-                if b.kind == b"cdef" {
-                    if self.opacity.is_some() {
-                        return Err(syntax(
-                            "JPX layer combines opacity and channel definitions",
-                            b.position,
-                        ));
-                    }
-                    layer_channels = true;
-                } else if b.kind == b"opct" && layer_channels {
-                    return Err(syntax(
-                        "JPX layer combines opacity and channel definitions",
-                        b.position,
-                    ));
-                } else if b.kind == b"creg" {
-                    if registration_seen {
-                        return Err(syntax("repeated JPX codestream registration", b.position));
-                    }
-                    registration_seen = true;
-                }
-            }
-            self.read_field(&b, location, budget, policy)?;
-            if b.kind == b"ihdr" {
-                variable_dimensions = self.dimensions.is_some_and(|(_, _, _, depth)| depth == 255);
-            } else if b.kind == b"bpcc" {
-                depths_in_header = true;
-            }
+            state.count += 1;
         }
-        if policy.format == FileType::JpxBaseline && variable_dimensions && !depths_in_header {
+        if policy.format == FileType::JpxBaseline
+            && state.depth == Some(255)
+            && !state.depths_in_header
+        {
             return Err(syntax(
                 "JPX variable depths must share their image header",
                 container.position,
@@ -441,10 +574,71 @@ impl Header {
         }
         if (location == HeaderLocation::Defaults
             && policy.format != FileType::JpxBaseline
-            && (self.dimensions.is_none() || !color_seen))
-            || (location == HeaderLocation::Colors && !color_seen)
+            && (self.dimensions.is_none() || state.color == ColorRun::Absent))
+            || (location == HeaderLocation::Colors && state.color == ColorRun::Absent)
         {
             return Err(syntax("incomplete JP2 header", container.position));
+        }
+        Ok(())
+    }
+
+    fn read_header(
+        &mut self,
+        b: &BoxData<'_>,
+        location: HeaderLocation,
+        budget: &mut Budget<'_>,
+        policy: &HeaderPolicy<'_>,
+        state: &mut HeaderFields,
+    ) -> Result<()> {
+        if location == HeaderLocation::Defaults
+            && ((policy.format != FileType::JpxBaseline
+                && self.dimensions.is_none()
+                && b.kind != b"ihdr")
+                || (self.dimensions.is_none() && b.kind == b"ihdr" && state.count != 0))
+        {
+            return Err(syntax("JP2 image header must be first", b.position));
+        }
+        if b.kind == b"colr" {
+            if state.color == ColorRun::Ended {
+                return Err(syntax(
+                    "noncontiguous JP2 colour specifications",
+                    b.position,
+                ));
+            }
+            state.color = ColorRun::Contiguous;
+            self.color_present = true;
+        } else if state.color == ColorRun::Contiguous {
+            state.color = ColorRun::Ended;
+        }
+        if policy.format == FileType::JpxBaseline && !location.accepts(b)? {
+            return Ok(());
+        }
+        if location == HeaderLocation::Layer {
+            if b.kind == b"cdef" {
+                if self.opacity.is_some() {
+                    return Err(syntax(
+                        "JPX layer combines opacity and channel definitions",
+                        b.position,
+                    ));
+                }
+                state.layer_channels = true;
+            } else if b.kind == b"opct" && state.layer_channels {
+                return Err(syntax(
+                    "JPX layer combines opacity and channel definitions",
+                    b.position,
+                ));
+            } else if b.kind == b"creg" {
+                if state.registration_seen {
+                    return Err(syntax("repeated JPX codestream registration", b.position));
+                }
+                state.registration_seen = true;
+            }
+        }
+        self.read_field(b, location, budget, policy)?;
+        if b.kind == b"ihdr" {
+            state.depth = self.dimensions.map(|(_, _, _, depth)| depth);
+        } else if b.kind == b"bpcc" {
+            state.depths_in_header = true;
         }
         Ok(())
     }
@@ -537,7 +731,17 @@ impl Header {
         fields.finish()
     }
 
-    fn finish_first_image(&mut self, budget: &mut Budget<'_>) -> Result<()> {
+    fn finish_first_image(
+        &mut self,
+        codestream_start: usize,
+        budget: &mut Budget<'_>,
+    ) -> Result<()> {
+        if self.reference_end > codestream_start {
+            return Err(unsupported(
+                "JPX metadata reference follows selected codestream",
+                codestream_start,
+            ));
+        }
         let (_, _, components, _) = self
             .dimensions
             .ok_or_else(|| syntax("incomplete JP2 header", self.base))?;
