@@ -298,7 +298,7 @@ fn convert_png(
     let bytes = pagura::png::encode_pixmap(
         surface,
         pagura::png::Level::Default,
-        context.document().limits(),
+        &context.document().limits(),
     )?;
     write_new(path, &bytes)?;
     Ok(Stage {
