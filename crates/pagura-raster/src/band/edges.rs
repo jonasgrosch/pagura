@@ -819,6 +819,8 @@ fn shared_order(
             from,
             side,
             _size: [0; 3],
+            #[cfg(target_pointer_width = "32")]
+            _word: 0,
         }
     }));
     // Sides with equal undirected keys and directions are equal.
@@ -842,6 +844,8 @@ struct Keyed {
     from: (i64, i64),
     side: usize,
     _size: [u64; 3],
+    #[cfg(target_pointer_width = "32")]
+    _word: u32,
 }
 
 /// A hash of an undirected edge key: equal keys have equal fingerprints.
