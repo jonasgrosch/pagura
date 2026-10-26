@@ -63,16 +63,7 @@ fn scoped_listing_and_related_payloads_preserve_exact_selection() -> Result<()> 
         assert!(text.contains("checksum_hex"));
         assert!(text.contains("identifiers_hex"));
         assert!(text.contains("9007199254740993"));
-        assert!(
-            text.contains(
-                "same-name"
-                    .as_bytes()
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>()
-                    .as_str()
-            )
-        );
+        assert!(text.contains("73616d652d6e616d65"));
     }
     let directory = Directory::new()?;
     let path = directory.0.join("related.bin");
@@ -166,7 +157,7 @@ fn malformed_sources_and_bad_options_do_not_emit_complete_reports() -> Result<()
     ] {
         let output = run(command, &options, name, &[])?;
         assert_eq!(output.status.code(), Some(1));
-        assert!(output.stdout.is_empty());
+        assert_eq!(output.stdout, [] as [u8; 0]);
     }
     for options in [
         vec!["--object", "10"],
@@ -176,7 +167,7 @@ fn malformed_sources_and_bad_options_do_not_emit_complete_reports() -> Result<()
     ] {
         let output = run("attachments", &options, "complete.pdf", &[])?;
         assert_eq!(output.status.code(), Some(2));
-        assert!(output.stdout.is_empty());
+        assert_eq!(output.stdout, [] as [u8; 0]);
     }
     Ok(())
 }

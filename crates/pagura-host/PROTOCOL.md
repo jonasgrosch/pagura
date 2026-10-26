@@ -17,8 +17,8 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-`hello(65540)` (0x00010004) for v1.4, through `hello(65547)`
-(0x0001000b) for v1.11. Versions 1.5–1.7 add the form operations below.
+`hello(65540)` (0x00010004) for v1.4, through `hello(65548)`
+(0x0001000c) for v1.12. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean

@@ -255,6 +255,11 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
     round_trip(AttachmentKey::ALL, AttachmentKey::code);
     round_trip(AttachmentCheckStatus::ALL, AttachmentCheckStatus::code);
     round_trip(PngBackground::ALL, PngBackground::code);
+    round_trip(FileScopeCode::ALL, FileScopeCode::code);
+    round_trip(MetadataOwnerCode::ALL, MetadataOwnerCode::code);
+    round_trip(PayloadKind::ALL, PayloadKind::code);
+    round_trip(ImageTransferCode::ALL, ImageTransferCode::code);
+    round_trip(ImageAssetCode::ALL, ImageAssetCode::code);
     // Responses answer requests with the high bit set (PROTOCOL.md).
     for &kind in RequestKind::ALL {
         assert_eq!(kind.response().code(), kind.code() | 0x80);
@@ -273,7 +278,8 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
             0x0001_0008,
             0x0001_0009,
             0x0001_000a,
-            0x0001_000b
+            0x0001_000b,
+            0x0001_000c
         ]
     );
     assert!(Version::try_from(2).is_err());
