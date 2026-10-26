@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "9f213c1a2ee1c6efbfe99baa9a2944bfa1513714",
+  "audited_revision": "fc98fce0d88b85b88d864c4f568dd34ce2acaf8b",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -48,7 +48,7 @@
     "crates/pagura-appearance/src/annotation/line/caption.rs": "98c5a844d3329bd48b5fcbc50e1da03ddc643f98f0c612696e69b0a2128c9070",
     "crates/pagura-appearance/src/annotation/line/caption/text.rs": "4eaff6d2f8198135c416ad18be2ab1cdfa708ac6e8488e9f6cb6b40f0ad0f1af",
     "crates/pagura-appearance/src/annotation/line/leader.rs": "37bd1455e49b5854e62a501482fc6400ceae625ea5df1d63af25beb7f9ef707c",
-    "crates/pagura-appearance/src/annotation/marks.rs": "d1ea3b5bc6562be38bad9befd38bf4da553649b2ed08fc5ce1f052dae43ee016",
+    "crates/pagura-appearance/src/annotation/marks.rs": "a049d1068e8c2da8e53170c51ae829cdf4bb86075e50fd19cfdb29bc5038a8bd",
     "crates/pagura-appearance/src/annotation/marks/rounded.rs": "15a5528c2bae74f8352fccee81204db6bcc064ea41f09d4ad4c9ce4941b95d74",
     "crates/pagura-appearance/src/annotation/markup.rs": "8af86c6d9edf6b04d359c6c31e3a4fcc7cb239852a517adbe3bb67acd04fbd8e",
     "crates/pagura-appearance/src/annotation/markup/quads.rs": "37ee6d20858c547e8160e5e4db1e5a617770509a89003cf420367c7046e7afb1",
