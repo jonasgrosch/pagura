@@ -4492,7 +4492,7 @@
     {
       "id": "annotation_display/widget-source-xfa",
       "kind": "pdf",
-      "description": "Advanced layout and XFA keep the existing explicit capability boundary",
+      "description": "XFA form execution keeps its existing explicit capability boundary",
       "expected": "unsupported",
       "requirements": [
         "content-source-widget-display"
@@ -9702,7 +9702,8 @@
       "height": 48,
       "tolerance": 1,
       "widget_display": "same",
-      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>"
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
     },
     {
       "id": "annotation_display/rich-field-stream-need",
@@ -9724,7 +9725,8 @@
       "height": 48,
       "tolerance": 1,
       "widget_display": "same",
-      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>"
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
     },
     {
       "id": "annotation_display/rich-field-utf16-stream",
@@ -9746,7 +9748,8 @@
       "height": 48,
       "tolerance": 1,
       "widget_display": "same",
-      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>"
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
     },
     {
       "id": "annotation_display/rich-field-v-independent",
