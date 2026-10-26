@@ -241,6 +241,13 @@ pub fn describe(error: &Error) -> String {
     )
 }
 
+/// A source read retains terminal PDF context or identifies its unmet range.
+pub fn describe_read(fault: &pagura_document::ReadFault) -> String {
+    fault
+        .as_error()
+        .map_or_else(|| format!("{fault:?}"), describe)
+}
+
 /// A JSON string literal.
 fn string(text: &str) -> String {
     let mut out = String::from("\"");

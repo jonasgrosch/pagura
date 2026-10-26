@@ -39,7 +39,7 @@ use compare::{Comparison, parse_ppm, rgb_on_white};
 use pagura_core::{Error, ErrorKind, Limits};
 use pagura_raster::DeviceRect;
 use renderer::{Cache, Run, fresh};
-use report::{Report, Status, describe};
+use report::{Report, Status, describe, describe_read};
 
 /// Band heights every case renders at.
 const BAND_HEIGHTS: [u32; 5] = [1, 7, 16, 32, 256];
@@ -53,8 +53,17 @@ enum Recording {
 fn record(case: &Case, provider: &dyn pagura_text::Provider) -> Recording {
     match case.record(provider) {
         Ok(recorded) => Recording::Ready(Box::new(recorded)),
-        Err(error) if pending(&error) => Recording::Done(Status::Pending(describe(&error))),
-        Err(error) => Recording::Done(Status::Declined(format!("recording: {}", describe(&error)))),
+        Err(error) if error.as_error().is_some_and(pending) => {
+            Recording::Done(Status::Pending(describe_read(&error)))
+        }
+        Err(error) if error.as_error().is_some() => Recording::Done(Status::Declined(format!(
+            "recording: {}",
+            describe_read(&error)
+        ))),
+        Err(error) => Recording::Done(Status::Failed(format!(
+            "complete input requested unavailable bytes: {}",
+            describe_read(&error)
+        ))),
     }
 }
 

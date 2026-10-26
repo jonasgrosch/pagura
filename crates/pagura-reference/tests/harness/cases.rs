@@ -1,7 +1,7 @@
 //! The conformance fixtures' render cases, recorded as scenes.
 
-use pagura_core::{Error, Limits, Result};
-use pagura_document::{Document, OpenOptions};
+use pagura_core::{Error, Limits};
+use pagura_document::{Document, OpenOptions, ReadResult};
 use pagura_interpret::{Interpreter, Scene};
 use pagura_raster::{DeviceRect, Transform};
 use pagura_testkit::{Json, Manifest, workspace_root};
@@ -96,7 +96,7 @@ impl Case {
     /// # Errors
     ///
     /// Returns the document's and the interpreter's errors.
-    pub fn record(&self, provider: &dyn pagura_text::Provider) -> Result<Recorded> {
+    pub fn record(&self, provider: &dyn pagura_text::Provider) -> ReadResult<Recorded> {
         let bytes =
             std::fs::read(&self.path).map_err(|_| Error::invalid_argument("fixture missing"))?;
         let options = OpenOptions {

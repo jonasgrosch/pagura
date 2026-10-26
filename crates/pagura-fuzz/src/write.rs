@@ -80,8 +80,8 @@ pub fn run(data: &[u8]) {
             Ok(object) => object,
             Err(error) => {
                 assert_eq!(
-                    error.kind,
-                    ErrorKind::Limit,
+                    error.as_error().map(|error| &error.kind),
+                    Some(&ErrorKind::Limit),
                     "{id} does not read back: {error}"
                 );
                 continue;

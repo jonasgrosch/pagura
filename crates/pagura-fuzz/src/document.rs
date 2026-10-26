@@ -55,8 +55,8 @@ pub(crate) fn walk(document: Document) {
                     Ok(again) => assert_eq!(again.marks(), scene.marks(), "the scene differs"),
                     Err(error) => {
                         assert_eq!(
-                            error.kind,
-                            ErrorKind::Limit,
+                            error.as_error().map(|error| &error.kind),
+                            Some(&ErrorKind::Limit),
                             "recording again failed: {error}"
                         );
                     }

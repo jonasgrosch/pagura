@@ -15,7 +15,8 @@
 //! selector byte picks the format, decoder or recovery mode where a target
 //! has more than one. `fuzz/README.md` documents each layout.
 
-use pagura_core::{Diagnostic, Error, Limits, Recovery, Result};
+use pagura::ReadFault;
+use pagura_core::{Diagnostic, Error, Limits, Recovery};
 
 pub mod cmap;
 pub mod content;
@@ -106,11 +107,18 @@ fn recovery(strict: bool) -> Recovery {
 /// The value of a successful result. An error must be structured: it has a
 /// fixed message, and its feature and refused-repair tags follow the
 /// `area.item` convention, so callers can branch on them.
-fn checked<T>(result: Result<T>) -> Option<T> {
+fn checked<T, E: Into<ReadFault>>(result: std::result::Result<T, E>) -> Option<T> {
     match result {
         Ok(value) => Some(value),
         Err(error) => {
-            assert_structured(&error);
+            let fault = error.into();
+            assert!(
+                fault.as_error().is_some(),
+                "complete-input fuzz driver requested unavailable bytes: {fault:?}"
+            );
+            if let Some(error) = fault.as_error() {
+                assert_structured(error);
+            }
             None
         }
     }
