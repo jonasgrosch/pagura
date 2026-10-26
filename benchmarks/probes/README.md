@@ -677,3 +677,41 @@ The corrected independent oracle therefore includes blue at `(29/3,12)` and
 green at `(44/3,12)`, both `10/3` by `10`, plus the existing black 5-by-7
 caption at `(43,21)`. No product code, tolerance or other oracle is changed by
 this adjudication. The original failure remains in the hosted run history.
+
+### Final static subtype boundary
+
+ISO 12.5.6.18 defines Screen without AP as blank, even when MK/I is present.
+Absent/null AP therefore returns no artwork; an existing AP still wins and
+malformed selected AP/N remains Syntax. Movie `Poster` (13.4, Table 306) is
+absent/false by default, an explicit image XObject, or true to request a poster
+from the movie file. Only the explicit image case generates artwork. It keeps
+the original image reference in an ordinary Form and uses the existing image
+interpreter; `Poster=true` retains `annotation.appearance` Unsupported. Movie
+files and all activation/actions remain inert.
+
+Movie Rotate is normatively clockwise in multiples of 90. The existing shared
+quarter-turn frame implements it. Fitting the explicit image to Rect is declared
+reader policy; Table 306 describes Aspect as the movie's pixel dimensions and
+provides no required poster-fitting algorithm. Ordinary image and stored-vector
+controls independently establish the same placement. The original 2-by-2 image
+has black/red top samples and green/blue bottom samples; its literal quadrants
+cover all rotations, two DPIs, crop, UserUnit and explicit NoZoom/NoRotate.
+Image XObject colour spaces are direct PDF objects (8.6.3, Table 87), so generated
+resources need not inherit page colour names/defaults. A resource-only colour
+name is a malformed selected poster control. Decoder/colour/mask capabilities
+and limits remain those of the existing image path.
+
+3D (13.6.2), RichMedia (13.7.2), PrinterMark (14.11.3) and TrapNet (14.11.6.2)
+require normal AP. Stored artwork/state controls paint without resolving unused
+payloads; absent/null AP is Syntax after ordinary visibility and text-only
+culling. They do not represent a generic appearance-synthesis backlog.
+
+The 72 new cases include 48 pixel controls, bringing G01 to 596. They are
+independently authored acceptance fixtures, not measured competitor artwork. They await the retained PR's hosted gates. Existing Sound,
+Redact, widget and button observations and all prior input identities are retained.
+The advertised static boundary uses one stored selector, generator and interpreter.
+Richer font/encoding coverage depends on group 04; rich form editing and complex
+Tx updates on group 07; media decoding/activation, XFA and host interactions on
+group 08; physical print on group 10; sanitizing redaction on group 16. Remaining
+common-rich-text layout and difficult geometric accuracy cases stay explicit V01
+gates, without promoting this finite static boundary to full V01 acceptance.

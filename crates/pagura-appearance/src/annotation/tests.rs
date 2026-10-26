@@ -396,6 +396,45 @@ fn sound_defaults_and_indirect_names_ignore_media_payloads() {
 }
 
 #[test]
+fn movie_posters_keep_an_indirect_image_and_share_quarter_turn_frames() {
+    let document = Document::open(
+        fixture("annotation_display", "static-movie-poster-0-72.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let annotation = dictionary(
+        b"<< /Subtype /Movie /Movie << /F 999 0 R /Poster 8 0 R /Rotate 90 >> /A 999 0 R >>",
+    );
+    let generated = annotation_appearance(&document, &annotation, rect(12.0, 8.0, 20.0, 12.0))
+        .unwrap()
+        .unwrap();
+    assert_eq!(generated.content(), b"q\n4 0 0 8 0 0 cm\n/Poster Do\nQ\n");
+    let resources = generated
+        .dictionary()
+        .get(b"Resources")
+        .and_then(Value::as_dictionary)
+        .unwrap();
+    let objects = resources
+        .get(b"XObject")
+        .and_then(Value::as_dictionary)
+        .unwrap();
+    assert_eq!(resources.len(), 1);
+    assert_eq!(objects.len(), 1);
+    assert_eq!(
+        objects.get(b"Poster").and_then(Value::as_reference),
+        Some(pagura_core::ObjectId::new(8, 0))
+    );
+    let (bounds, transform) =
+        crate::stream::form_geometry(&document, generated.dictionary()).unwrap();
+    assert_eq!(bounds, rect(0.0, 0.0, 4.0, 8.0));
+    assert_eq!(
+        transform,
+        pagura_raster::Transform::new(0.0, -1.0, 1.0, 0.0, 12.0, 12.0)
+    );
+    assert_eq!(document.diagnostics(), []);
+}
+
+#[test]
 fn static_icons_have_bounded_content_and_validate_visual_entries() {
     let area = rect(8.0, 8.0, 24.0, 24.0);
     for (subtype, name) in [

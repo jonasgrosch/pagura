@@ -46,6 +46,7 @@ REQUIREMENT = 'content-static-annotation-placement'
 REDACT_REQUIREMENT = 'content-redact-preview'
 WIDGET_REQUIREMENT = 'content-source-widget-display'
 BUTTON_REQUIREMENT = 'content-normal-button-display'
+SUBTYPE_REQUIREMENT = 'content-static-subtype-display'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
 # Original rectangular ink regions in a 32-unit grid. These are the geometric
 # union of one-unit orthogonal strokes with miter corners and butt endpoints,
@@ -422,6 +423,7 @@ def cases():
     yield from widget_observation_cases()
     yield from button_observation_cases()
     yield from normal_button_cases()
+    yield from static_subtype_cases()
 
 
 def widget_objects(variant='text', stored=False):
@@ -886,3 +888,113 @@ def button_group_objects(flags,selected):
         objects[21+index]={'Subtype':pdf_name('Widget'),'Parent':ref(11),
                            'Rect':[8+28*index,8,28+28*index,40],'MK':{'CA':'AB'[index]}}
     return objects
+
+
+def static_subtype_cases():
+    """Screen defaults, explicit Movie image posters and required stored AP.
+
+    Table 306 gives the clockwise rotation, not a poster sizing algorithm.
+    Fitting the explicit image to Rect is declared reader policy. These four
+    original samples have literal quadrant expectations; neither product image
+    decoding nor its rotation/frame helpers participate in the oracle.
+    """
+    colors=((0,0,0),(255,0,0),(0,255,0),(0,0,255))  # TL, TR, BL, BR
+    quadrants={0:(0,1,2,3),90:(2,0,3,1),180:(3,2,1,0),270:(1,3,0,2)}
+    image=stream(bytes(sum((list(c) for c in colors),[])),
+                 b'/Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8')
+    def pixels(rotation=0,*,rect=(12,8,8,4),size=(32,24),scale=1,order=None):
+        x,y,w,h=rect
+        blocks=((x,y+h//2,w//2,h//2),(x+w//2,y+h//2,w//2,h//2),
+                (x,y,w//2,h//2),(x+w//2,y,w//2,h//2))
+        return opaque_rectangles(size[0]*scale,size[1]*scale,
+                                 [((x*scale,y*scale,w*scale,h*scale),colors[c])
+                                  for (x,y,w,h),c in zip(blocks,quadrants[rotation] if order is None else order)])
+    def rendered(label,pdf,expected,*,dpi=72):
+        return Case('static-'+label,pdf,RENDER,(SUBTYPE_REQUIREMENT,),
+                    'Independent static appearance pixels; media payloads/actions remain inert',oracle=expected,dpi=dpi)
+    def movie(poster=b'8 0 R',*,extra=b'',image_object=image,**options):
+        return source(subtype=b'Movie',stored=False,
+                      entries=b'/Movie << /F 999 0 R /Poster '+poster+b' '+extra+b' >>',
+                      objects=(image_object,),**options)
+    # Missing Screen AP is explicitly blank even if MK/I is supplied (12.5.6.18).
+    for label,entries in [('absent',b''),('null',b'/AP null'),
+                          ('unused-artwork',b'/MK << /I 6 0 R /BC [1 0 0] >>'),
+                          ('ignored-payloads',b'/MK 999 0 R /A 999 0 R /AA 999 0 R /P 999 0 R')]:
+        yield rendered('screen-'+label,source(subtype=b'Screen',stored=False,entries=entries,objects=(image,)),oracle(None))
+    for dpi in (72,144):
+        yield rendered(f'screen-stored-{dpi}',source(subtype=b'Screen',entries=b'/MK 999 0 R /A 999 0 R'),oracle(dpi=dpi),dpi=dpi)
+    # Poster=false is the default; no movie or activation entry is evaluated.
+    for label,poster in [('false',b'false'),('null',b'null')]:
+        yield rendered('movie-'+label,movie(poster,extra=b'/Rotate /Ignored /Aspect 999 0 R'),oracle(None))
+    yield rendered('movie-absent-poster',source(subtype=b'Movie',stored=False,
+                   entries=b'/Movie << /F 999 0 R /Rotate /Ignored >>'),oracle(None))
+    yield rendered('movie-indirect-false',movie(b'8 0 R',image_object=b'false',extra=b'/Rotate /Ignored'),oracle(None))
+    for rotation in (0,90,180,270):
+        for dpi in (72,144):
+            yield rendered(f'movie-poster-{rotation}-{dpi}',movie(extra=b'/Rotate %d' % rotation),
+                           pixels(rotation,scale=dpi//72),dpi=dpi)
+        # Ordinary page image Do uses explicit quarter-turn matrices, separately
+        # authored from the product's frame and the stored vector artwork below.
+        matrix={0:b'8 0 0 4 12 8',90:b'0 -4 8 0 12 12',
+                180:b'-8 0 0 -4 20 12',270:b'0 4 -8 0 20 8'}[rotation]
+        yield rendered(f'movie-ordinary-{rotation}',source(body=True,objects=(image,),
+                       content=b'q '+matrix+b' cm /Original Do Q',resources=b'<< /XObject << /Original 8 0 R >> >>'),pixels(rotation))
+        art=[]
+        for (x,y),index in zip(((0,2),(4,2),(0,0),(4,0)),quadrants[rotation]):
+            r,g,b=colors[index]
+            art.append(f'{r//255} {g//255} {b//255} rg {x} {y} 4 2 re f'.encode())
+        yield rendered(f'movie-stored-{rotation}',source(subtype=b'Movie',entries=b'/Movie 999 0 R /A 999 0 R',
+                       artwork=b' '.join(art)),pixels(rotation))
+    yield rendered('movie-negative-rotation',movie(extra=b'/Rotate -90'),pixels(270))
+    yield rendered('movie-large-rotation',movie(extra=b'/Rotate 450'),pixels(90))
+    yield rendered('movie-null-rotation',movie(extra=b'/Rotate null'),pixels())
+    yield rendered('movie-inert-entries',source(subtype=b'Movie',stored=False,objects=(image,),
+                   entries=b'/Movie << /F 999 0 R /Poster 8 0 R /Aspect [1920 1080] >> /A 999 0 R /AA 999 0 R',
+                   catalog=b'/OpenAction 999 0 R'),pixels())
+    yield rendered('movie-page-rotation',movie(page=b'/Rotate 90'),pixels(90,rect=(8,12,4,8),size=(24,32)))
+    yield rendered('movie-crop',movie(page=b'/CropBox [10 6 22 16]'),pixels(rect=(2,2,8,4),size=(12,10)))
+    yield rendered('movie-user-unit-144',movie(page=b'/UserUnit 2'),pixels(scale=4),dpi=144)
+    yield rendered('movie-nozoom-144',movie(flags=12),pixels(rect=(24,20,8,4),size=(64,48)),dpi=144)
+    yield rendered('movie-norotate',movie(flags=20,page=b'/Rotate 90'),pixels(rect=(12,16,8,4),size=(24,32)))
+    yield rendered('movie-page-resources-ignored',movie(resources=b'<< /ColorSpace << /DefaultRGB 999 0 R >> /XObject << /Poster 999 0 R >> >>'),pixels())
+    for flags,label in [(2,'hidden'),(32,'no-view')]:
+        yield rendered('movie-'+label,source(subtype=b'Movie',stored=False,flags=flags,entries=b'/Movie 999 0 R'),oracle(None))
+    # Subtype-specific clauses require normal AP: no generic synthesis exists.
+    for subtype,payload in [(b'3D',b'/3DD 999 0 R'),(b'RichMedia',b'/RichMediaContent 999 0 R'),
+                            (b'PrinterMark',b'/MN /Original'),(b'TrapNet',b'/AS /Selected /AnnotStates 999 0 R')]:
+        label=subtype.decode().lower()
+        yield rendered(label+'-stored',source(subtype=subtype,flags=68,entries=payload),oracle())
+        for kind,entry in [('absent',b''),('null',b'/AP null')]:
+            yield Case(f'static-{label}-{kind}',source(subtype=subtype,stored=False,flags=68,entries=entry),
+                       OPEN,(SUBTYPE_REQUIREMENT,),'This subtype requires a normal AP; missing artwork is malformed, not a generator backlog',
+                       extra={'render_error':'syntax'})
+        yield rendered(label+'-hidden',source(subtype=subtype,stored=False,flags=2,entries=payload),oracle(None))
+    for subtype in (b'PrinterMark',b'TrapNet'):
+        yield rendered(subtype.decode().lower()+'-state',source(subtype=subtype,stored=False,flags=68,
+                       entries=b'/AS /Selected /AP << /N << /Selected 6 0 R >> /R 999 0 R /D 999 0 R >>'),oracle())
+    for label,subtype,entries in [
+        ('screen-ap-type',b'Screen',b'/AP 42'),
+        ('screen-ap-no-normal',b'Screen',b'/AP << >>'),
+        ('screen-ap-null-normal',b'Screen',b'/AP << /N null >>'),
+        ('movie-missing-dictionary',b'Movie',b''),
+        ('movie-dictionary-type',b'Movie',b'/Movie 42'),
+        ('movie-null-dictionary',b'Movie',b'/Movie null'),
+    ]:
+        yield Case('static-'+label,source(stored=False,subtype=subtype,entries=entries),OPEN,(SUBTYPE_REQUIREMENT,),
+                   'Selected static-display entry has an explicit syntax boundary',extra={'render_error':'syntax'})
+    for label,options in [
+        ('poster-number',{'poster':b'42'}),('poster-dictionary',{'image_object':b'<< /Subtype /Image >>'}),
+        ('poster-form',{'image_object':stream(b'',b'/Subtype /Form /BBox [0 0 1 1]')}),
+        ('poster-subtype',{'image_object':stream(b'',b'/Subtype /Unknown')}),
+        ('rotation-type',{'extra':b'/Rotate 90.0'}),('rotation-angle',{'extra':b'/Rotate 45'}),
+        ('image-width',{'image_object':stream(b'\0',b'/Subtype /Image /Width /Bad /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray')}),
+        ('resource-color-name',{'image_object':stream(b'\0\0\0',b'/Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /Alias'),
+                                'resources':b'<< /ColorSpace << /Alias /DeviceRGB >> >>'}),
+    ]:
+        yield Case('static-movie-'+label,movie(**options),OPEN,(SUBTYPE_REQUIREMENT,),
+                   'Poster selection validates the stream; ordinary image execution owns its descriptor errors',extra={'render_error':'syntax'})
+    yield Case('static-movie-file-poster',movie(b'true'),UNSUPPORTED,(SUBTYPE_REQUIREMENT,),
+               'Poster=true requires movie-file retrieval; no media decoding or activation is attempted',feature='annotation.appearance')
+    yield Case('static-movie-reference-limit',source(subtype=b'Movie',stored=False,
+               entries=b'/Movie << /Poster 8 0 R >>',objects=(b'8 0 R',)),OPEN,(SUBTYPE_REQUIREMENT,),
+               'The selected Poster uses the existing reference-depth budget',extra={'render_error':'limit'})

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls, MediaBox-relative FixedPrint screen placement and non-destructive Redact region-outline previews and source Tx/Ch/Btn widget text, normal captions and Form icons through the shared form generator. Caption/icon partitioning and default toggle marks are reader policy; icon fitting follows Table 250. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls, MediaBox-relative FixedPrint screen placement and non-destructive Redact region-outline previews and source Tx/Ch/Btn widget text, normal captions and Form icons through the shared form generator; blank Screen defaults, explicit Movie image posters and required stored-AP subtype controls. Caption/icon partitioning and default toggle marks are reader policy; icon fitting follows Table 250. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -7124,6 +7124,630 @@
         "height": 48,
         "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
         "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.static-screen-absent",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-screen-absent",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-screen-null",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-screen-null",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-screen-unused-artwork",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-screen-unused-artwork",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-screen-ignored-payloads",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-screen-ignored-payloads",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-screen-stored-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-screen-stored-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-screen-stored-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-screen-stored-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "bddadbef0c0663fb2a8291ec889ed44b9d79d4d4e45898e3ef94619aed9d9c78",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-false",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-false",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-null",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-null",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-absent-poster",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-absent-poster",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-indirect-false",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-indirect-false",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-0-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-0-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "695772145fb49fc1056cf44547b51510ddb70f52b52ebb56ce46f1d054117dcd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-0-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-0-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "fcf207a1c946313f11084e5710cb1249b6f1c2ce8f44946c49958d6dc7e6af74",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-ordinary-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-ordinary-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "695772145fb49fc1056cf44547b51510ddb70f52b52ebb56ce46f1d054117dcd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-stored-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-stored-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "695772145fb49fc1056cf44547b51510ddb70f52b52ebb56ce46f1d054117dcd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-90-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-90-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "87baf53db46b0fd97c408e10189d24606f10686cb8df10a6c6ee4133ec70ca8f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-90-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-90-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "dceed91f1308567cbdefac0c34862f2aa605bd073a6c52b8ce991ed55576d74d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-ordinary-90",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-ordinary-90",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "87baf53db46b0fd97c408e10189d24606f10686cb8df10a6c6ee4133ec70ca8f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-stored-90",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-stored-90",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "87baf53db46b0fd97c408e10189d24606f10686cb8df10a6c6ee4133ec70ca8f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-180-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-180-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "efb187902d6da143a22ee7be5be6f24169bf2ed3cc4879440a104920012ff157",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-180-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-180-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "d33107b7ddd262f9e26ad49e244d0d87a740bfb85bac3d76c54ab4408e4f3d01",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-ordinary-180",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-ordinary-180",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "efb187902d6da143a22ee7be5be6f24169bf2ed3cc4879440a104920012ff157",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-stored-180",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-stored-180",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "efb187902d6da143a22ee7be5be6f24169bf2ed3cc4879440a104920012ff157",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-270-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-270-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "6995db281c8ff62d29cab8320886a07e3b0b3ae6cd933b623f3a61ff09652824",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-poster-270-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-poster-270-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "7842f7eca8f3b44466677031f4dcedae60ff3879a60542cbcbc07cdc512e5b7d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-ordinary-270",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-ordinary-270",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "6995db281c8ff62d29cab8320886a07e3b0b3ae6cd933b623f3a61ff09652824",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-stored-270",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-stored-270",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "6995db281c8ff62d29cab8320886a07e3b0b3ae6cd933b623f3a61ff09652824",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-negative-rotation",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-negative-rotation",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "6995db281c8ff62d29cab8320886a07e3b0b3ae6cd933b623f3a61ff09652824",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-large-rotation",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-large-rotation",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "87baf53db46b0fd97c408e10189d24606f10686cb8df10a6c6ee4133ec70ca8f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-null-rotation",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-null-rotation",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "695772145fb49fc1056cf44547b51510ddb70f52b52ebb56ce46f1d054117dcd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-inert-entries",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-inert-entries",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "695772145fb49fc1056cf44547b51510ddb70f52b52ebb56ce46f1d054117dcd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-page-rotation",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-page-rotation",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "ade7b0dfca8a691b59511b4b867f4f72b0a12d14ce9cbfd35394d15784d82eda",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-crop",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-crop",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 12,
+        "height": 10,
+        "rgb_sha256": "416370fb9d1fba77ff2f4c2b67b2c411f35dc09a5df38bf4d087dcfa9a85bf0f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-user-unit-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-user-unit-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "e6ca4dec35d1a42e085b2fd642654af518376587b884993f01bb45e9d0507c56",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-nozoom-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-nozoom-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "7efb94ba045daa76f261425585d44ddfee5d6cf234be030faeb37d62adfa1e70",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-norotate",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-norotate",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "510ad7d4032f9ed834b6ecdb15a522ffa9b0bc6dc60bcc79b5e72e293011adee",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-page-resources-ignored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-page-resources-ignored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "695772145fb49fc1056cf44547b51510ddb70f52b52ebb56ce46f1d054117dcd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-movie-no-view",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-movie-no-view",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-3d-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-3d-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-3d-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-3d-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-richmedia-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-richmedia-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-richmedia-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-richmedia-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-printermark-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-printermark-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-printermark-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-printermark-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-trapnet-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-trapnet-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-trapnet-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-trapnet-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-printermark-state",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-printermark-state",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.static-trapnet-state",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/static-trapnet-state",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
       }
     }
   ]
