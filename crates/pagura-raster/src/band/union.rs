@@ -138,6 +138,10 @@ pub(crate) struct Resolver {
     row_ends: Vec<(f64, f64)>,
     lasts: Vec<f64>,
     cuts: Vec<f64>,
+    /// Sort keys of heights and spans, and spans in their sorted order.
+    height_keys: Vec<u64>,
+    span_keys: Vec<u128>,
+    sorted: Vec<Span>,
     /// The pieces reaching the current chunk, and its pieces clipped to it.
     live: Vec<u32>,
     local: Vec<Piece>,
@@ -232,9 +236,11 @@ impl Resolver {
             self.spans.push((first, last, i));
             self.lasts.push(last);
         }
-        self.spans
-            .sort_unstable_by(|a, b| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2)));
-        self.lasts.sort_unstable_by(f64::total_cmp);
+        room(&mut self.span_keys, count, bytes)?;
+        room(&mut self.sorted, count, bytes)?;
+        room(&mut self.height_keys, count, bytes)?;
+        sort_spans(&mut self.spans, (&mut self.span_keys, &mut self.sorted));
+        sort_values(&mut self.lasts, &mut self.height_keys);
         self.cuts.clear();
         let (mut entered, mut reached) = (0, 0);
         for n in 1..count {
@@ -325,7 +331,8 @@ impl Resolver {
         self.lane_error = self.lanes.iter().fold(0.0, |e, lane| e.max(lane.error));
         self.crossings(pieces, total, (work, bytes))?;
         work.charge(sort_work(self.heights.len()))?;
-        self.heights.sort_unstable_by(f64::total_cmp);
+        room(&mut self.height_keys, self.heights.len(), bytes)?;
+        sort_values(&mut self.heights, &mut self.height_keys);
         self.heights.dedup();
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
@@ -439,9 +446,10 @@ impl Resolver {
             );
             (d0 > error && d1 > error) || (d0 < -error && d1 < -error)
         };
-        let by_start = |a: &Span, b: &Span| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2));
-        self.columns.sort_unstable_by(by_start);
-        self.rows.sort_unstable_by(by_start);
+        room(&mut self.span_keys, pieces.len(), bytes)?;
+        room(&mut self.sorted, pieces.len(), bytes)?;
+        sort_spans(&mut self.columns, (&mut self.span_keys, &mut self.sorted));
+        sort_spans(&mut self.rows, (&mut self.span_keys, &mut self.sorted));
         let (across, down) = (overlapping(&self.columns), overlapping(&self.rows));
         let spans = if down < across {
             &self.rows
@@ -636,6 +644,59 @@ fn clip(piece: Piece, (start, end): (f64, f64), (left, right): (f64, f64)) -> Op
         }
     }
     (lo < hi).then_some(Piece { lo, hi, ..piece })
+}
+
+/// The total order of f64, as `f64::total_cmp` gives it, as unsigned
+/// integers; the map is its own inverse once the top bit is flipped back.
+#[expect(
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    reason = "bit reinterpretation of the total order"
+)]
+fn total_key(bits: u64) -> u64 {
+    let bits = bits as i64;
+    (bits ^ (((bits >> 63) as u64) >> 1) as i64) as u64 ^ (1 << 63)
+}
+
+#[expect(
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    reason = "bit reinterpretation of the total order"
+)]
+fn from_total_key(key: u64) -> u64 {
+    let bits = (key ^ (1 << 63)) as i64;
+    (bits ^ (((bits >> 63) as u64) >> 1) as i64) as u64
+}
+
+/// Sorts `values` in the total order of f64 through integer keys: the same
+/// values in the same order as sorting them by `f64::total_cmp`.
+fn sort_values(values: &mut [f64], keys: &mut Vec<u64>) {
+    keys.clear();
+    keys.extend(values.iter().map(|v| total_key(v.to_bits())));
+    keys.sort_unstable();
+    for (value, &key) in values.iter_mut().zip(keys.iter()) {
+        *value = f64::from_bits(from_total_key(key));
+    }
+}
+
+/// Sorts `spans`, listed by piece, by start in the total order of f64 and
+/// then by piece, through one integer key each: the order sorting them by
+/// `f64::total_cmp` and then piece gives.
+fn sort_spans(spans: &mut Vec<Span>, (keys, sorted): (&mut Vec<u128>, &mut Vec<Span>)) {
+    keys.clear();
+    keys.extend(
+        spans
+            .iter()
+            .map(|&(start, _, i)| u128::from(total_key(start.to_bits())) << 32 | u128::from(i)),
+    );
+    keys.sort_unstable();
+    sorted.clear();
+    sorted.extend(keys.iter().map(|&key| {
+        // The low word is the piece, and the spans are listed by piece.
+        let piece = u32::try_from(key & u128::from(u32::MAX)).unwrap_or(u32::MAX);
+        spans[piece as usize]
+    }));
+    std::mem::swap(spans, sorted);
 }
 
 /// The pairs of `spans`, ordered by start, that overlap: for each, the
