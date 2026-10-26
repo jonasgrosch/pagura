@@ -494,7 +494,7 @@ owner: selected Parent ancestry must agree with Fields/Kids membership, and the
 owning field must be terminal. It reuses the full view's attribute, flag, type
 and value readers without building all fields/names or reading actions and DV.
 Unnamed separate widgets use their parent's field attributes (12.7.4.2); MK is
-widget-local (Table 189). One borrowed input feeds the existing variable-text
+widget-local (Table 192). One borrowed input feeds the existing variable-text
 font/layout, style, resource, MK rotation and appearance serializer for source
 and filled values. No per-page FormFiller, borrowing cache or second renderer
 is introduced. Existing traversal/depth/result-memory and generated-content/

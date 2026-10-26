@@ -54,10 +54,10 @@ fn source_widgets_untouched_previews_and_saved_reopens_share_layout() {
             assert_eq!(preview, actual, "{name}: source/untouched preview");
         }
         let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
-        if !filler.form().need_appearances {
-            assert_eq!(saved, original, "{name}: no-op save changed source bytes");
-        } else {
+        if filler.form().need_appearances {
             assert!(saved.starts_with(&original), "{name}");
+        } else {
+            assert_eq!(saved, original, "{name}: no-op save changed source bytes");
         }
         let reopened = open(saved.clone()).unwrap();
         let after = pagura::render_page(&reopened, reopened.page(0).unwrap(), &options).unwrap();

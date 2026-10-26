@@ -53,7 +53,7 @@ pub(super) fn generate(
     marks.finish(rect)
 }
 
-/// Table 189: absent BG and BC mean no background and no border. DA's
+/// Table 192: absent BG and BC mean no background and no border. DA's
 /// colours apply to variable text, not to the widget rectangle.
 fn characteristics(
     marks: &mut Marks<'_>,
