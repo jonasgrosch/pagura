@@ -328,7 +328,9 @@
     "crates/pagura-appearance/src/annotation/tests/cloud.rs": "2cc07655554a4776b55a1b295592a63cdaa0059b68e54951d46dd449d630c2eb",
     "crates/pagura-appearance/src/rich/tests.rs": "e952d272b07aacf78b89a99b93bfc321195d3f71aacbe96d110c2ce27c1c6d21",
     "tools/fixturegen/cloud_annotations.py": "d93296240b6d563e8629263a732b11a3fc323512acdd5496c3fa5b51f3da0a55",
-    "tools/fixturegen/rich_annotations.py": "64ea2c4e0eac5711f7e498d43dc93658b27ea59acf5a287340cd9f7b8645063f"
+    "tools/fixturegen/rich_annotations.py": "64ea2c4e0eac5711f7e498d43dc93658b27ea59acf5a287340cd9f7b8645063f",
+    "corpus/manifests/cloud_annotations.json": "71ed6208b9bb9008748f2f168cdb5937dbc2ea51b7042c804b6baf80292d487f",
+    "corpus/manifests/rich_annotations.json": "cc03450150dd14facb0ab231ff093e2eff8312034fa3c27d39e8934a572ee53a"
   },
   "capabilities": [
     {
