@@ -7,13 +7,19 @@ export class ExtendedServices {
   constructor(view) {
     this.view = view; const $ = id => view.document.getElementById(id);
     this.form = $('document-service-source-form'); this.choice = $('document-service-source');
-    this.object = $('document-service-object'); this.output = $('document-service-source-results'); this.serial = 0;
+    this.object = $('document-service-object'); this.output = $('document-service-source-results'); this.serial = 0; this.buttons = [];
     this.form.addEventListener('submit', event => { event.preventDefault(); void this.show(); });
   }
-  reset() { this.serial++; this.output.replaceChildren(); }
+  clear() {
+    const previous = new Set(this.buttons); this.buttons = [];
+    this.view.buttons = this.view.buttons.filter(button => !previous.has(button));
+    this.output.replaceChildren();
+  }
+  reset() { this.serial++; this.clear(); }
   async show() {
-    const view = this.view, snapshot = { ...view.state() }, serial = view.serial, selection = ++this.serial;
-    if (!view.current(snapshot, serial)) return;
+    const view = this.view, snapshot = { ...view.state() }, serial = view.serial;
+    if (!view.current(snapshot, serial) || view.buttons.some(button => button.disabled)) return;
+    const selection = ++this.serial; this.clear();
     const current = () => selection === this.serial && view.current(snapshot, serial);
     this.output.replaceChildren(view.node('p', 'Loading source…'));
     try {
@@ -61,10 +67,11 @@ export class ExtendedServices {
     } catch (error) { if (current()) this.output.replaceChildren(view.node('p', `Source unavailable: ${error}`)); }
   }
   button(label, snapshot, serial, current, read, name) {
-    return this.view.button(label, snapshot, serial, async handle => {
+    const button = this.view.button(label, snapshot, serial, async handle => {
       if (!current()) throw new Error('Source selection changed');
       const value = await read(handle); if (!current()) throw new Error('Source selection changed'); return value;
     }, name);
+    this.buttons.push(button); return button;
   }
   file(file, scope, snapshot, serial, current) {
     const view = this.view, item = view.document.createElement('section');
@@ -87,7 +94,7 @@ export class ExtendedServices {
   }
   check(item, file, scope, key, related, snapshot, serial, current) {
     const view = this.view, button = view.node('button', related === null ? 'Check file payload' : `Check related file ${related + 1}`), result = view.node('p', 'Declarations have not been checked.');
-    button.type = 'button'; view.buttons.push(button);
+    button.type = 'button'; view.buttons.push(button); this.buttons.push(button);
     button.addEventListener('click', () => {
       if (!current()) return;
       void view.checkResult(snapshot, serial, async handle => {

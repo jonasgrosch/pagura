@@ -47,6 +47,20 @@
       "repairs": []
     },
     {
+      "id": "document_services/null-resources",
+      "kind": "pdf",
+      "description": "null resources",
+      "expected": "open",
+      "requirements": [
+        "document-services-scoped-extraction"
+      ],
+      "path": "corpus/generated/document_services/null-resources.pdf",
+      "sha256": "913f6d7c9ad4a76ee6783aa1b47b7630a9f353921adc182ab6a3a1447bdaa02c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
       "id": "document_services/empty-collection",
       "kind": "pdf",
       "description": "empty collection",

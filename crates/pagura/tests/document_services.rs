@@ -240,6 +240,14 @@ fn metadata_and_source_images_do_not_conflate_source_and_rendered_appearance() {
             .iter()
             .all(|image| image.asset.object() == id(9))
     );
+    assert_eq!(
+        open("null-resources")
+            .unwrap()
+            .page_image_resources(0)
+            .unwrap()
+            .len(),
+        2
+    );
     let images = document.page_image_resources(0).unwrap();
     assert_eq!(images.len(), 2);
     assert!(

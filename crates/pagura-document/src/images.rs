@@ -138,8 +138,11 @@ impl Document {
         let (objects, source) = context.dictionary(value, source)?;
         context.allocate::<ImageResource<'_>>(objects.len(), source)?;
         let mut images = Vec::new();
-        for (name, value) in objects {
+        for (name, _) in objects {
             context.step(0, source)?;
+            let Some(value) = context.present(objects, name.as_bytes(), source)? else {
+                continue;
+            };
             let (dictionary, location) = context.dictionary(value, source)?;
             if context
                 .entry(dictionary, b"Subtype", location)?

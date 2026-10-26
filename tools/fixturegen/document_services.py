@@ -16,7 +16,7 @@ PIXELS = bytes([255, 0, 0, 0, 255, 0])
 PACKET = b'<x:xmpmeta xmlns:x="adobe:ns:meta/">object packet</x:xmpmeta>'
 
 
-def source(*, collection=None, spec=None, image=None, thumb=None, page_extra=b'', owner=None, direct_collection=False, chained_assets=False):
+def source(*, collection=None, spec=None, image=None, thumb=None, page_extra=b'', owner=None, direct_collection=False, chained_assets=False, resource_entries=b''):
     if collection is None:
         collection = (b'<< /Type /Collection /View /H /D (primary) /Schema << /Type /CollectionSchema '
                       b'/label << /Subtype /S /N (Label) /O 1 /E true >> '
@@ -38,7 +38,7 @@ def source(*, collection=None, spec=None, image=None, thumb=None, page_extra=b''
     return document([
         b'<< /Type /Catalog /Pages 2 0 R /AF [5 0 R] /Names << /EmbeddedFiles << /Names [(primary) 5 0 R] >> >> /Collection ' + (collection if direct_collection else b'14 0 R') + b' /Metadata 15 0 R >>',
         b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] /Contents 4 0 R /AF [5 0 R 5 0 R] /Metadata 8 0 R /Thumb ' + (b'16 0 R' if chained_assets else b'12 0 R') + b' /Resources << /XObject << /Image ' + (b'17 0 R' if chained_assets else b'9 0 R') + b' /Alias 9 0 R /UnusedForm 11 0 R >> >> ' + page_extra + b' >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] /Contents 4 0 R /AF [5 0 R 5 0 R] /Metadata 8 0 R /Thumb ' + (b'16 0 R' if chained_assets else b'12 0 R') + b' /Resources << /XObject << /Image ' + (b'17 0 R' if chained_assets else b'9 0 R') + b' /Alias 9 0 R /UnusedForm 11 0 R' + (b' ' + resource_entries if resource_entries else b'') + b' >> >> ' + page_extra + b' >>',
         stream(b''), spec, stream(zlib.compress(PAYLOAD), b'/Filter /FlateDecode ' + params),
         stream(RELATED[0]), stream(PACKET, b'/Type /Metadata /Subtype /XML'), image,
         owner if owner is not None else b'<< /AF [5 0 R] /Metadata 8 0 R /Thumb 12 0 R >>',
@@ -54,6 +54,7 @@ def cases():
     yield case('complete')
     yield case('direct-collection', direct_collection=True)
     yield case('chained-assets', chained_assets=True)
+    yield case('null-resources', resource_entries=b'/Null null /Undefined 999 0 R')
     yield case('empty-collection', collection=b'<< >>')
     yield case('null-collection', collection=b'null')
     yield case('nonstring-initial', collection=b'<< /D 12 >>')

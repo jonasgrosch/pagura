@@ -79,6 +79,7 @@ async function sourcePanels() {
   control(view, 'Download source metadata packet').fire('click'); await tick();
   assert.deepEqual(downloads.at(-1), { bytes: Uint8Array.of(60, 0, 62), name: 'page-2-metadata.xmp' });
   view.extended.choice.value = 'collection'; await view.extended.show();
+  assert.equal(view.buttons.length, 0, 'replacing a source releases its download closures');
   assert.ok(all(view.extended.output).some(node => node.textContent.includes('<script>label</script>')));
   assert.ok(all(view.extended.output).some(node => node.textContent.includes('descending')));
   view.extended.choice.value = 'images'; await view.extended.show();
@@ -87,7 +88,7 @@ async function sourcePanels() {
     ['thumbnail', 7, { kind: MetadataOwnerCode.Page, page: 1 }],
   ]);
   const sections = view.extended.output.children.filter(node => node.tagName === 'SECTION');
-  assert.equal(sections.length, 2);
+  assert.equal(sections.length, 2); assert.equal(view.buttons.length, 4);
   const click = async (section, label) => { all(section).find(node => node.tagName === 'BUTTON' && node.textContent === label).fire('click'); await tick(); };
   await click(sections[0], 'Download stored stream');
   assert.deepEqual(calls.at(-1), ['imageBytes', 7, image.object, ImageTransferCode.Stored, false]);
@@ -95,6 +96,7 @@ async function sourcePanels() {
   assert.deepEqual(calls.at(-1), ['imageBytes', 7, { page: 1 }, ImageTransferCode.Encoded, true]);
   assert.equal(downloads.at(-1).name, 'image-12-0-encoded.bin');
   view.extended.choice.value = 'thumbnail-object'; view.extended.object.value = '10:0'; await view.extended.show();
+  assert.equal(view.buttons.length, 2);
   assert.deepEqual(calls.at(-1), ['thumbnail', 7, { kind: MetadataOwnerCode.Object, object: { number: 10, generation: 0 } }]);
   control(view, 'Download encoded asset').fire('click'); await tick();
   assert.deepEqual(calls.at(-1), ['imageBytes', 7, { number: 10, generation: 0 }, ImageTransferCode.Encoded, true]);

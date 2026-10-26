@@ -431,13 +431,19 @@ within the current selection. The host listing cap is 1024 attachments, and each
 response is at most 32 MiB. Document stream limits bound complete-buffer decoding;
 a browser resource-limit failure ends the session and requires host recovery.
 
-Protocol 1.8 provides properties/catalog reads, 1.10 adds parameter checks and
-1.11 adds page annotation selection. Host/native/WASI and viewer tests live in
-`tools/document_services_test.mjs`, `tools/document_services_view_test.mjs`,
-`tools/attachment_checks_test.mjs`, `tools/page_attachments_test.mjs`,
-`tools/page_attachments_view_test.mjs` and the corresponding `pagura-host/tests`
-files. Catalog properties/check workflows have passing hosted evidence recorded
-in [the plan](../docs/COMPETITIVE_PARITY.md); the new page viewer controls pass the hosted browser shim, with real-browser
-interaction validation still open. AF/RF selection,
-attachment-only password prompts, icon activation, streaming,
-metadata validation and editing remain open.
+Protocol 1.8 provides properties/catalog reads, 1.10 adds parameter checks,
+1.11 adds page annotation selection and 1.12 adds explicit AF/RF, object/page
+metadata, collection declarations and source-image/thumbnails. The Other document
+sources panel selects one source at a time. Image downloads distinguish original
+stored stream bytes from decoded general-filter bytes with an image codec retained;
+PDF colour/mask dependencies remain. They do not promise standalone image appearance.
+
+A password-required attachment download/check prompts explicitly, creates a fresh
+authenticated temporary handle, retries the same selection and closes the temporary
+handle. The original document and its form edits remain unchanged. Prompt bytes
+are cleared after use; obsolete operations cannot download.
+
+Native/WASI/client and viewer-shim controls live in the document-services,
+extended-services, attachment-check and page-attachment test modules. Real-browser
+interaction validation remains open. Icon activation, interpreted image occurrence
+extraction, streaming, metadata semantic validation and editing remain separate work.
