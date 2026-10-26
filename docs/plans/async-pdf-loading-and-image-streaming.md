@@ -246,6 +246,74 @@ API. Protocol v1 remains a complete-input adapter, so no new wait state is
 encoded as a v1 error. Update cross-crate call sites and tests together; avoid
 maintaining a separate progressive object model or duplicate parser.
 
+### 5.4 Public API and error-flow map
+
+This migration changes the existing owners. It does not add parallel
+`ProgressiveDocument`, `try_object` or `async_render` implementations. Source
+jobs receive explicit caller registration and version identity. Complete-buffer
+convenience callers retain document-local identity; opening must not add an
+eager whole-file hash or a process-global identity allocator.
+
+| Boundary | Public result and ownership after migration |
+|---|---|
+| `Document::open(bytes, options)` | Keeps terminal `Result<Document>` and its complete-input validation policy. Admits shared complete backing before driving the common opener. |
+| `OpenJob` | Owns source registration, validation policy, cumulative loading work, bootstrap state and provisional diagnostics. Returns wait/yield/ready/cancelled or terminal failure; the ready value is the same `Document`. |
+| `Document::object`, reference/dictionary resolution and catalog access | Return `ReadResult` through the existing loading and typed-view traversal. Authoritative absence/free still resolves to null. Source closure/conflict is checked before returning a cached value. |
+| Raw/decoded/image stream services and source-backed attachment/metadata/image readers | Return `ReadResult`; raw bytes use retained leases rather than borrowing a fictional complete source slice. Codec-only validation and decoding retain terminal `Result`. |
+| Page count, lazy page lookup, complete page enumeration and page content streams | Return `ReadResult`. A requested page can become ready independently; complete enumeration retains its separate completeness contract. Page ownership checks do not perform I/O. |
+| Navigation, forms, revision and signature document views | Propagate `ReadResult` at actual source reads. A known malformed value remains terminal even if an unrelated range is absent. Pure value transforms and cryptographic primitives retain terminal `Result`. |
+| `RenderContext` scene recording, text extraction, dependency preparation and image extraction jobs | Propagate `ReadResult` to their owning job; the generic `Store` accepts that builder error without acquiring a source dependency itself. |
+| Existing complete-input render/PNG functions and protocol v1 | Admit a pinned complete-source capability before invoking the common source-dependent path. Their terminal result API stays available; calling a complete-only API before admission is an explicit argument-contract failure, never a fabricated PDF syntax/repair result. |
+| Prepared paint, `RenderSession`, codec `Encoder` and `RenderEncoder` | Keep their current terminal/output-state contracts. They own completed input and never fetch document bytes. |
+
+Replace the borrowed `original_bytes()` promise with explicit document
+materialization returning a checked lease for that document's source prefix.
+Admission shares contiguous backing or reserves an assembly allocation once;
+it is not an untracked `to_vec`. A completed materialization can be retained by
+the document and shared by historical prefix views. Every later document read
+still checks the source's terminal state, including when a complete lease or
+parsed dependency is already cached. Previously handed-out immutable leases
+remain readable according to the source lifetime contract.
+
+Complete-only conversion belongs at those named entry points, after admission
+has made unavailable byte reads impossible for that invocation. There is no
+blanket `From<ReadFault> for Error`, error-like dereference, or forwarding layer
+that maps missing bytes to null, syntax, unsupported features or repairs. A v2
+job owns and returns an unavailable frontier; it does not pass through the v1
+terminal adapter. Tests inspect `Unavailable` and `Invalid` separately.
+
+Editing transactions, no-op/full/append save, signature byte-range hashing,
+signature source/coverage analysis and the current whole-file reconstruction
+fallback explicitly admit their complete document or revision prefix before
+starting. Authentication and ordinary object/stream access are not allowed to
+silently materialize a sparse document to preserve a borrowed API. Any remaining
+full-source requirement is documented at its actual entry point and covered by
+a wait-before-mutation/output control.
+
+### 5.5 Atomic publication during the migration
+
+An object, decoded object stream, page or historical snapshot publishes only
+after its current semantic unit completes. `Unavailable` bypasses permanent
+result cells and releases provisional allocations; already completed
+dependencies remain reusable. Only terminal failures that are independent of
+the caller's active dependency path and validation policy may be cached.
+
+The interpreter records into one private scene attempt. An unavailable font,
+resource, image or nested form drops that attempt without publishing a partial
+scene or its diagnostics to `Store`. Source-ordered preparation likewise keeps
+its reservations and reports private until successful completion. Rendering and
+encoding start only after the requested scene and preparation are complete;
+neither pixels nor a successful PNG terminator can be emitted by an input wait.
+The prepared executor and encoder then retain their existing independent
+backpressure/cancellation states.
+
+Review the migration against the complete-only code it replaces: remove the
+old borrowed file parser, whole-file stream slicing and duplicate opening
+drivers when their consumers move. Track changed public signatures and removed
+owners in the review diff; do not claim a smaller implementation solely from
+moving code behind new wrappers. Source-backed and complete inputs must execute
+the same header/tail grammar, owned xref chain, object parser and interpreter.
+
 ## 6. Windows, retries and cache publication
 
 The syntax parser remains slice-based on its hot path. Introduce a file-window
