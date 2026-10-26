@@ -18,6 +18,7 @@ use pagura_color::{ColorSpace, Converter};
 use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
+use std::num::NonZeroUsize;
 
 /// The most components an image has (DeviceN's 32 colorants).
 const MAX_COMPONENTS: usize = pagura_color::MAX_COMPONENTS;
@@ -922,8 +923,7 @@ pub(super) struct MemoLayout {
 pub(super) struct Memo {
     layout: MemoLayout,
     slots: Vec<f64>,
-    /// Initial probe-table entries; `limit + 1` marks direct lookup.
-    len: usize,
+    state: MemoState,
     /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
 }
@@ -931,7 +931,35 @@ pub(super) struct Memo {
 /// A free slot: no key is negative.
 const FREE: f64 = -1.0;
 
+/// Probing keeps displaced keys until the first miss at the retention
+/// limit. The nonzero count includes that final miss, so the state fits
+/// in one word without using an entry count as a mode sentinel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MemoState {
+    Probing(NonZeroUsize),
+    Replacing,
+}
+
+impl MemoState {
+    /// Accounts for a miss; true when it must replace the root slot.
+    fn miss(&mut self) -> bool {
+        if let Self::Probing(remaining) = *self {
+            *self = NonZeroUsize::new(remaining.get() - 1).map_or(Self::Replacing, Self::Probing);
+        }
+        matches!(self, Self::Replacing)
+    }
+}
+
 impl MemoLayout {
+    fn state(self) -> MemoState {
+        if self.replacing {
+            MemoState::Replacing
+        } else {
+            NonZeroUsize::new(self.limit.saturating_add(1))
+                .map_or(MemoState::Replacing, MemoState::Probing)
+        }
+    }
+
     /// The largest initial retention limit.
     pub(super) const CAP: usize = 1 << 20;
 
@@ -999,7 +1027,7 @@ impl MemoLayout {
         Ok(Memo {
             layout: self,
             slots,
-            len: 0,
+            state: self.state(),
             spare: [0.0; MAX_LANES],
         })
     }
@@ -1014,7 +1042,7 @@ impl Memo {
     /// Invalidates conversions between renders without reallocating.
     pub(super) fn reset(&mut self) {
         self.slots.fill(FREE);
-        self.len = 0;
+        self.state = self.layout.state();
     }
 
     /// The `held` values of the texel of `key`, converted by `convert` into
@@ -1028,7 +1056,7 @@ impl Memo {
             reason = "keys have at most 48 bits, which f64 holds exactly"
         )]
         let wanted = key as f64;
-        let probing = !self.layout.replacing && self.len <= self.layout.limit;
+        let probing = matches!(self.state, MemoState::Probing(_));
         let slot = if probing {
             self.slot(key, wanted)
         } else {
@@ -1037,11 +1065,8 @@ impl Memo {
         let mut at = slot * stride;
         if self.slots.get(at).copied() != Some(wanted) {
             convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
-            if probing {
-                if self.len == self.layout.limit {
-                    at = hash_slot(key, self.slots.len() / stride - 1) * stride;
-                }
-                self.len += 1;
+            if probing && self.state.miss() {
+                at = hash_slot(key, self.slots.len() / stride - 1) * stride;
             }
             if let Some(entry) = self.slots.get_mut(at..at + stride) {
                 entry[0] = wanted;
@@ -1384,7 +1409,7 @@ mod tests {
                 assert_eq!(held, texel(k), "key {k} round {round}");
             }
         }
-        assert_eq!(memo.len, memo.layout.limit + 1);
+        assert_eq!(memo.state, super::MemoState::Replacing);
         let stride = 1 + memo.layout.held;
         let mask = memo.slots.len() / stride - 1;
         let replacement = (20_000..30_000u64)
@@ -1398,7 +1423,8 @@ mod tests {
             });
             assert_eq!(held, texel(replacement));
         }
-        assert_eq!((converted, memo.len), (1, memo.layout.limit + 1));
+        assert_eq!(converted, 1);
+        assert_eq!(memo.state, super::MemoState::Replacing);
     }
 
     /// Filling every reserved slot must not turn a later miss into an
@@ -1425,14 +1451,14 @@ mod tests {
             }
         }
         assert_eq!(converted, 128);
-        assert_eq!(memo.len, layout.limit + 1);
+        assert_eq!(memo.state, super::MemoState::Replacing);
         assert!(
             memo.slots
                 .chunks_exact(1 + layout.held)
                 .all(|slot| slot[0] != super::FREE)
         );
         memo.reset();
-        assert_eq!(memo.len, 0);
+        assert_eq!(memo.state, layout.state());
         assert!(memo.slots.iter().all(|&value| value == super::FREE));
     }
 
@@ -1467,7 +1493,11 @@ mod tests {
                 );
             }
         }
-        assert_eq!((converted, memo.len), (layout.limit, layout.limit));
+        assert_eq!(converted, layout.limit);
+        assert_eq!(
+            memo.state,
+            super::MemoState::Probing(std::num::NonZeroUsize::MIN)
+        );
     }
 
     /// A replacing memo stays within its slots however large its image,

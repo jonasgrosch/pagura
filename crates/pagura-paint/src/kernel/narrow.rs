@@ -355,6 +355,13 @@ pub(crate) fn store_f32_runs(
 /// Stores `colors` at `alpha` into F32 levels on 0..255: full opacity
 /// overwrites, other stores evaluate `x += a·(t − x)` in f32.
 pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
+    if let Colors::Strided { values, stride: 3 } = *colors
+        && full(alpha)
+    {
+        // At full opacity the store is the target's levels.
+        overwrite_f32(pixels, values);
+        return;
+    }
     match *colors {
         Colors::Constant(color) => {
             let target = levels(color);
@@ -371,6 +378,26 @@ pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f
                 lerp(pixel, levels(color), single(a));
             }
         }
+    }
+}
+
+/// The levels of opaque colours, three values a pixel, over `pixels`: a
+/// store at full opacity, [`levels`] of each colour. Eight pixels at a time,
+/// their 24 values convert as one run, which vectorizes.
+fn overwrite_f32(pixels: &mut [[f32; 4]], values: &[f64]) {
+    let (blocks, last) = pixels.as_chunks_mut::<8>();
+    let (colors, rest) = values.as_chunks::<24>();
+    for (block, color) in blocks.iter_mut().zip(colors) {
+        let mut levels = [0.0; 24];
+        for (out, &value) in levels.iter_mut().zip(color) {
+            *out = level(value);
+        }
+        for (pixel, levels) in block.iter_mut().zip(levels.as_chunks::<3>().0) {
+            *pixel = [levels[0], levels[1], levels[2], 255.0];
+        }
+    }
+    for (pixel, color) in last.iter_mut().zip(rest.as_chunks::<3>().0) {
+        *pixel = levels(color);
     }
 }
 
@@ -520,6 +547,49 @@ mod tests {
         dynamic_n16(&mut a, &fast, &alpha);
         dynamic_n16(&mut b, &general, &alpha);
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn full_opacity_f32_spans_store_as_any_span_does() {
+        let values = [
+            0.0,
+            1.0,
+            0.5,
+            -0.25,
+            1.5,
+            f64::NAN,
+            127.5 / 255.0,
+            0.2,
+            0.999_999,
+            0.123,
+            1e-300,
+        ];
+        // Eleven pixels: a block of eight and a tail of three.
+        let colors: Vec<f64> = values.iter().cycle().take(33).copied().collect();
+        let padded: Vec<f64> = colors
+            .chunks(3)
+            .flat_map(|c| [c[0], c[1], c[2], 0.0])
+            .collect();
+        let alpha = [1.0; 11];
+        let (mut a, mut b) = ([[7.0_f32; 4]; 11], [[7.0_f32; 4]; 11]);
+        store_f32(
+            &mut a,
+            &Colors::Strided {
+                values: &colors,
+                stride: 3,
+            },
+            &alpha,
+        );
+        store_f32(
+            &mut b,
+            &Colors::Strided {
+                values: &padded,
+                stride: 4,
+            },
+            &alpha,
+        );
+        let bits = |pixels: [[f32; 4]; 11]| pixels.map(|p| p.map(f32::to_bits));
+        assert_eq!(bits(a), bits(b));
     }
 
     #[test]

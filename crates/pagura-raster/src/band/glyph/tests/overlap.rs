@@ -35,10 +35,15 @@ fn outline(first: bool, second: bool) -> Path {
 /// The same edges placed through the polygon, resolving rows per placement.
 fn per_placement(outline: &Path, linear: [f64; 4], limits: &Limits) -> Arc<GlyphEdges> {
     let mut edges = GlyphEdges::new(outline, linear, limits).unwrap();
-    let Kind::Polygon { resolved, .. } = &mut edges.kind else {
+    let Kind::Polygon { state, .. } = &mut edges.kind else {
         panic!("an uncertified polygon");
     };
-    assert!(resolved.take().is_some());
+    let PolygonState::Resolved { source, .. } = state else {
+        panic!("resolved sides");
+    };
+    *state = PolygonState::Checked {
+        source: Some(Arc::clone(source)),
+    };
     Arc::new(edges)
 }
 
@@ -66,8 +71,7 @@ fn resolved_overlaps_place_the_bytes_of_resolving_each_placement() {
             assert!(matches!(
                 &edges.kind,
                 Kind::Polygon {
-                    certified: false,
-                    resolved: Some(_),
+                    state: PolygonState::Resolved { .. },
                     ..
                 }
             ));
@@ -148,7 +152,7 @@ fn resolved_sides_are_retained_within_the_segment_budget() {
     let edges = GlyphEdges::new(&outline, [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
     let Kind::Polygon {
         polygon,
-        resolved: Some(relative),
+        state: PolygonState::Resolved { relative, .. },
         ..
     } = &edges.kind
     else {
@@ -171,8 +175,7 @@ fn resolved_sides_are_retained_within_the_segment_budget() {
     assert!(matches!(
         edges.kind,
         Kind::Polygon {
-            certified: false,
-            resolved: None,
+            state: PolygonState::Checked { .. },
             ..
         }
     ));

@@ -42,18 +42,25 @@ fn ordering_refuses_before_spending_unavailable_work() {
 }
 
 #[test]
-fn uncertain_plain_order_charges_both_passes() {
-    // Coincident edges force exact placement after the plain pass.
-    let pieces = pieces(&[(line(0.5, 0.0, 0.5, 1.0), 0); 2]);
+fn close_plain_places_charge_their_exact_run() {
+    // Coincident edges are placed exactly after the plain pass; a third
+    // edge apart from them keeps its plain place.
+    let pieces = pieces(&[
+        (line(0.5, 0.0, 0.5, 1.0), 0),
+        (line(0.5, 0.0, 0.5, 1.0), 0),
+        (line(0.0, 0.0, 1.0, 1.0), 0),
+    ]);
+    let lanes: Vec<_> = pieces.iter().map(|p| Lane::new(p.line)).collect();
     let mut resolver = Resolver {
-        rows: vec![(0.0, 1.0, 0), (0.0, 1.0, 1)],
-        lanes: pieces.iter().map(|p| Lane::new(p.line)).collect(),
+        rows: vec![(0.0, 1.0, 0), (0.0, 1.0, 1), (0.0, 1.0, 2)],
+        lane_error: lanes.iter().fold(0.0, |e, lane| e.max(lane.error)),
+        lanes,
         ..Resolver::default()
     };
     let mut work = Meter::new(usize::MAX, "placement work");
-    resolver.place(&pieces, (0.0, 1.0), 0, &mut work).unwrap();
-    assert_eq!(work.used(), 2 * sort_work(pieces.len()));
-    assert_eq!(resolver.order, [(0.5, 0), (0.5, 1)]);
+    resolver.place(&pieces, (0.0, 0.5), 0, &mut work).unwrap();
+    assert_eq!(work.used(), sort_work(pieces.len()) + 2);
+    assert_eq!(resolver.order, [(0.25, 2), (0.5, 0), (0.5, 1)]);
 }
 
 fn line(x0: f64, y0: f64, x1: f64, y1: f64) -> Line {
@@ -111,7 +118,7 @@ fn chunk_boundary_verticals_keep_half_open_ownership_when_reversed() {
     for (x, kept) in [(-0.5, false), (0.0, true), (0.5, true), (1.0, false)] {
         for (a, b) in [(0.0, 1.0), (1.0, 0.0)] {
             let piece = Piece::new(line(x, a, x, b), 0.0, 0).unwrap();
-            let actual = clip(piece, (0.0, 1.0));
+            let actual = clip(piece, piece.ends(), (0.0, 1.0));
             assert_eq!(actual.is_some(), kept, "x{x}, direction{a}->{b}");
             if let Some(clipped) = actual {
                 assert_eq!((clipped.lo, clipped.hi), (0.0, 1.0));

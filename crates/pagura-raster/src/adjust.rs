@@ -10,9 +10,12 @@
 //! minimum one-pixel pen), without introducing corners into flattened curves.
 
 use crate::flatten::{MAX_COORDINATE, TOLERANCE, flatten};
+use crate::stroke::{Pen, Run};
 use crate::{LineCap, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
+/// The fitted stroke's components, as [`crate::stroke::draw`] makes them,
+/// and the transform from their construction space to device space.
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
@@ -21,23 +24,36 @@ pub(crate) fn outline(
     bytes: &mut Meter,
 ) -> Result<(Path, Transform)> {
     let before = bytes.used();
-    let result = fitted_outline(path, transform, stroke, limits, bytes);
+    let result = runs(path, transform, stroke, limits, bytes).and_then(|(runs, pen, t)| {
+        let mut out = PathBuilder::new();
+        for run in &runs {
+            crate::stroke::draw(&mut out, run, pen, stroke, limits, bytes)?;
+        }
+        Ok((out.finish(), t))
+    });
     let retained = result.as_ref().map_or(0, |(path, _)| path.retained_bytes());
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
 
-fn fitted_outline(
+/// The fitted runs in the construction space of the fitted pen, the pen
+/// there (radius one half) and the transform from that space to device
+/// space; no runs when nothing is strokeable.
+pub(crate) fn runs(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
     bytes: &mut Meter,
-) -> Result<(Path, Transform)> {
+) -> Result<(Vec<Run>, Pen, Transform)> {
     crate::stroke::validate(stroke, limits)?;
     let contours = flatten(path, transform, limits, bytes)?;
     if !contours.iter().any(|c| c.strokeable(stroke.cap)) {
-        return Ok((PathBuilder::new().finish(), Transform::IDENTITY));
+        let pen = Pen {
+            radius: 0.5,
+            tolerance: TOLERANCE,
+        };
+        return Ok((Vec::new(), pen, Transform::IDENTITY));
     }
     let axis =
         (transform.b == 0.0 && transform.c == 0.0) || (transform.a == 0.0 && transform.d == 0.0);
@@ -66,8 +82,7 @@ fn fitted_outline(
     if !wx.is_finite() || !wy.is_finite() || wx.max(wy) > MAX_COORDINATE {
         return Err(Error::limit("adjusted pen exceeds numeric working range"));
     }
-    let pen = Transform::scale(wx, wy);
-    let mut out = PathBuilder::new();
+    let mut fitted_runs = Vec::new();
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             let released = contour.points.capacity().saturating_mul(size_of::<Point>());
@@ -76,9 +91,7 @@ fn fitted_outline(
             continue;
         }
         let runs = crate::stroke::dash(contour.points, contour.closed, stroke, limits, bytes)?;
-        let header_bytes = runs
-            .capacity()
-            .saturating_mul(size_of::<crate::stroke::Run>());
+        let header_bytes = runs.capacity().saturating_mul(size_of::<Run>());
         for run in runs {
             let mut run = run.transformed(transform);
             let device = &run.points;
@@ -95,25 +108,16 @@ fn fitted_outline(
             let released = run.points.capacity().saturating_mul(size_of::<Point>());
             run.points = fitted;
             bytes.refund(released);
-            let run = run.transformed(Transform::scale(1.0 / wx, 1.0 / wy));
-            crate::stroke::draw(
-                &mut out,
-                &run,
-                crate::stroke::Pen {
-                    radius: 0.5,
-                    tolerance: TOLERANCE / (wx + wy),
-                },
-                stroke,
-                limits,
-                bytes,
-            )?;
-            let released = run.points.capacity().saturating_mul(size_of::<Point>());
-            drop(run);
-            bytes.refund(released);
+            bytes.reserve_capacity(&mut fitted_runs, 1)?;
+            fitted_runs.push(run.transformed(Transform::scale(1.0 / wx, 1.0 / wy)));
         }
         bytes.refund(header_bytes);
     }
-    Ok((out.finish(), pen))
+    let pen = Pen {
+        radius: 0.5,
+        tolerance: TOLERANCE / (wx + wy),
+    };
+    Ok((fitted_runs, pen, Transform::scale(wx, wy)))
 }
 fn snap(value: f64, width: f64) -> f64 {
     (value - width * 0.5).round() + width * 0.5
@@ -149,7 +153,7 @@ fn general(
     stroke: &Stroke,
     limits: &Limits,
     bytes: &mut Meter,
-) -> Result<(Path, Transform)> {
+) -> Result<(Vec<Run>, Pen, Transform)> {
     let pen = if stroke.width == 0.0 {
         Transform::IDENTITY
     } else {
@@ -160,7 +164,7 @@ fn general(
         .ok_or(Error::limit("adjusted pen inverse overflow"))?;
     let normalize = transform.then(inverse);
     let scale = pen.a.hypot(pen.b).max(pen.c.hypot(pen.d));
-    let mut out = PathBuilder::new();
+    let mut fitted_runs = Vec::new();
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             let released = contour.points.capacity().saturating_mul(size_of::<Point>());
@@ -169,29 +173,18 @@ fn general(
             continue;
         }
         let runs = crate::stroke::dash(contour.points, contour.closed, stroke, limits, bytes)?;
-        let header_bytes = runs
-            .capacity()
-            .saturating_mul(size_of::<crate::stroke::Run>());
+        let header_bytes = runs.capacity().saturating_mul(size_of::<Run>());
         for run in runs {
-            let run = run.transformed(normalize);
-            crate::stroke::draw(
-                &mut out,
-                &run,
-                crate::stroke::Pen {
-                    radius: 0.5,
-                    tolerance: TOLERANCE / (2.0 * scale),
-                },
-                stroke,
-                limits,
-                bytes,
-            )?;
-            let released = run.points.capacity().saturating_mul(size_of::<Point>());
-            drop(run);
-            bytes.refund(released);
+            bytes.reserve_capacity(&mut fitted_runs, 1)?;
+            fitted_runs.push(run.transformed(normalize));
         }
         bytes.refund(header_bytes);
     }
-    Ok((out.finish(), pen))
+    let fitted = Pen {
+        radius: 0.5,
+        tolerance: TOLERANCE / (2.0 * scale),
+    };
+    Ok((fitted_runs, fitted, pen))
 }
 
 fn fitted_pen(t: Transform, width: f64) -> Result<Transform> {

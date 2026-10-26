@@ -69,7 +69,7 @@ fn store_geometry_counts_all_retained_storage_independently_of_render_bytes() {
     let Kind::Curve {
         spline,
         relative,
-        outline: copy,
+        source,
         ..
     } = &edges.kind
     else {
@@ -79,11 +79,9 @@ fn store_geometry_counts_all_retained_storage_independently_of_render_bytes() {
         + spline.retained_bytes()
         + relative.lines.capacity() * size_of::<Line>()
         + relative.curves.capacity() * size_of::<Mono>()
-        + size_of::<Path>()
-        + 2 * size_of::<usize>()
-        + copy.retained_bytes();
+        + source.retained_bytes();
     assert_eq!(edges.retained_bytes(), retained);
-    assert_eq!(**copy, outline);
+    assert_eq!(source.outline, outline);
     let limits = Limits {
         decoded_bytes: size_of::<GlyphEdges>() + size_of::<usize>() + size_of::<Piece>() - 1,
         ..limits

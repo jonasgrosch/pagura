@@ -13,16 +13,15 @@ fn stored(points: Vec<Point>, starts: Vec<usize>) -> Arc<GlyphEdges> {
     assert!(certified(&polygon, 0.0, &mut crate::testing::bytes()).unwrap());
     let summary = Summary::new(&polygon).unwrap();
     Arc::new(GlyphEdges {
-        direct: None,
         retained: size_of::<GlyphEdges>() + polygon.heap_bytes(),
         hull: polygon.bounds().map(|[a, b]| [a.x, a.y, b.x, b.y]),
         kind: Kind::Polygon {
             polygon,
             points: Vec::new(),
-            certified: true,
-            source: None,
-            summary: Some(summary),
-            resolved: None,
+            state: PolygonState::Certified {
+                summary: Some(summary),
+                source: None,
+            },
         },
     })
 }
@@ -123,13 +122,10 @@ fn source_summary_bounds_rectangle_pixels_and_work_across_windows() {
     path.close();
     let limits = Limits::default();
     let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-    assert!(matches!(
-        edges.kind,
-        Kind::Polygon {
-            summary: Some(_),
-            ..
-        }
-    ));
+    let Kind::Polygon { state, .. } = &edges.kind else {
+        panic!("polygon source");
+    };
+    assert!(state.summary().is_some());
     for origin in [
         Point::new(0.0, 0.0),
         Point::new(-0.25, 0.5),
@@ -324,7 +320,11 @@ fn source_summary_full_glyph_dimensions_keep_indexed_setup_for_outliers() {
             vec![0],
         );
         let Kind::Polygon {
-            summary: Some(summary),
+            state:
+                PolygonState::Certified {
+                    summary: Some(summary),
+                    ..
+                },
             ..
         } = &edges.kind
         else {
