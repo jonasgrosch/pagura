@@ -404,7 +404,7 @@ fn retention_and_supervisor_cancellation_release_on_close() {
 #[test]
 fn every_request_is_gated_by_the_version_that_added_it() {
     // Kinds 1-6 in v1, 7-9 in 1.1, 10-15 in 1.2, 16 in 1.3, 17 in 1.4,
-    // 18-19 in 1.5, 20 in 1.6, 21 in 1.7 and 22-25 in 1.8.
+    // 18-19 in 1.5, 20 in 1.6, 21 in 1.7, 22-25 in 1.8 and 26 in 1.9.
     let since = |kind: u8| match kind {
         1..=6 => 1,
         7..=9 => 0x0001_0001,
@@ -415,6 +415,7 @@ fn every_request_is_gated_by_the_version_that_added_it() {
         20 => 0x0001_0006,
         21 => 0x0001_0007,
         22..=25 => 0x0001_0008,
+        26 => 0x0001_0009,
         _ => panic!("no independent version oracle for request {kind}"),
     };
     for &version in Version::ALL {

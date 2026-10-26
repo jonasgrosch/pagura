@@ -1,6 +1,8 @@
 //! Request decoding: the only code that knows request layouts.
 
-use super::{Field, OpenFlags, PageRef, Request, RequestFrame, RequestKind, TileRequest};
+use super::{
+    Field, OpenFlags, PageRef, PngRequest, Request, RequestFrame, RequestKind, TileRequest,
+};
 use crate::editing;
 use crate::reading::{self, MAX_QUERY_BYTES, Search};
 use pagura::{Error, Limits, Position, Result, Tile};
@@ -60,6 +62,11 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
         },
         RequestKind::FormWidgets => Request::FormWidgets(reader.page()?),
         RequestKind::FormStyles => Request::FormStyles(reader.page()?),
+        RequestKind::PagePng => Request::PagePng(PngRequest {
+            page: reader.page()?,
+            scale: reader.field(Reader::f64)?,
+            background: reader.field(Reader::code)?,
+        }),
         RequestKind::Metadata => {
             Request::Reading(reading::Request::Metadata(reader.field(Reader::u32)?))
         }

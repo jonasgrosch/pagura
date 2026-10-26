@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.8
+# Pagura session protocol v1 through v1.9
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -17,8 +17,8 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-`hello(65540)` (0x00010004) for v1.4, through `hello(65544)`
-(0x00010008) for v1.8. Versions 1.5–1.7 add the form operations below.
+`hello(65540)` (0x00010004) for v1.4, through `hello(65545)`
+(0x00010009) for v1.9. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -451,7 +451,7 @@ widgets are described. Versions 1.0–1.6 retain their existing layouts.
 
 `hello(65544)` adds the following requests without changing earlier layouts.
 Older negotiated versions reject these operations with InvalidArgument and stay
-usable. The default browser client negotiates 1.8.
+usable. These requests require protocol 1.8 or newer.
 
 | Request kind | Payload | Success kind | Payload |
 |---|---|---|---|
@@ -513,3 +513,44 @@ use an octet-stream Blob and fixed local filenames (`metadata.xmp` or
 replacing the document or restarting the host invalidates pending results and
 downloads. Payload content is never previewed or executed. Errors in one listing
 remain visible without hiding the other service or the document's pages.
+
+
+## Version 1.9: complete PNG page export
+
+Request 26 `page_png` contains `u32 handle,page | f64 scale | u8 background`.
+Scale is positive and finite, relative to 72 DPI. Background 0 composites onto
+opaque white; 1 retains transparent unpainted pixels. Other background codes,
+truncation and trailing bytes are terminal protocol errors. Missing page/handle,
+invalid scale, rendering/encoding failures and budget limits are operational
+errors; the session remains usable. Earlier negotiated versions refuse the new
+request without ending the session.
+
+Response 154 contains `u32 byte_count | PNG bytes`. The complete page uses its
+PDF crop, rotation and UserUnit, screen annotation policy and Auto overprint.
+It shares the document render store and ordinary preparation/rasterization path.
+PNG is straight RGBA8, non-interlaced and without ancillary color/profile chunks.
+No partial image is returned. View-only rotation and viewport generations do not
+change this source-page operation.
+
+Surface pixel and decoded-byte budgets are checked before page recording. The
+encoder retains the document's input/scratch limits; its output stream-byte cap
+is additionally lowered to `max_frame_bytes - 9` for the frame header and byte
+count. PNG does not borrow the reading-response budget. The operation retains a
+whole surface plus encoder scratch, then complete encoded bytes and the outgoing
+frame. It is synchronous: incremental output, active-request cancellation and
+host backpressure remain separate work.
+
+The browser client defaults to 1.9 and exposes `pagePng(handle, page, scale,
+background)`. More → Export page PNG lets the user choose a page, 1–2400 DPI and
+a white or transparent background. Downloads use fixed `page-NNNN.png` names and
+`image/png`; object URLs are revoked. Current form values are copied at the click
+and, when present, saved to a disposable document handle. That handle is closed
+on completion, failure or a stale result. The open source and drafts are not
+replaced. Closing the dialog or changing the document discards pending results;
+it does not interrupt a running host command. Failed form snapshot/render/encode
+operations produce an error instead of a download.
+
+Evidence: public Rust wire/version/budget tests, Python PNG/CRC/zlib pixel decoding
+against independent page oracles, native/WASI/client byte parity, and viewer
+option/snapshot/race/cleanup tests. These checks are authored; hosted runtime
+validation and real-browser interaction verification are pending.

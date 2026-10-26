@@ -15,6 +15,7 @@ export const Version = Object.freeze({
   V1_6: 0x00010006,
   V1_7: 0x00010007,
   V1_8: 0x00010008,
+  V1_9: 0x00010009,
 });
 
 /** Request kind bytes. */
@@ -44,6 +45,7 @@ export const RequestKind = Object.freeze({
   Attachments: 23,
   MetadataBytes: 24,
   AttachmentBytes: 25,
+  PagePng: 26,
 });
 
 /** Response kind bytes. */
@@ -73,7 +75,14 @@ export const ResponseKind = Object.freeze({
   Attachments: 151,
   MetadataBytes: 152,
   AttachmentBytes: 153,
+  PagePng: 154,
   Error: 255,
+});
+
+/** Background of an exported PNG page (1.9). */
+export const PngBackground = Object.freeze({
+  White: 0,
+  Transparent: 1,
 });
 
 /** Explicit embedded-file filename keys (1.8). */

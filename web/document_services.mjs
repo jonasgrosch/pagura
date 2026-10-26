@@ -8,8 +8,8 @@ function byteName(bytes) {
 }
 
 /** Explicit byte downloads only. Source filenames, MIME types and URLs are inert. */
-export function downloadDocumentBytes(bytes, name, document = globalThis.document) {
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+export function downloadDocumentBytes(bytes, name, document = globalThis.document, type = 'application/octet-stream') {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   try {
     const link = document.createElement('a'); link.href = url; link.download = name;
     document.body.append(link); try { link.click(); } finally { link.remove(); }

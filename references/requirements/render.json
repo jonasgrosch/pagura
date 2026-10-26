@@ -123,7 +123,7 @@
         "tools/test_png_export.py",
         "pagura-cli/src/args/tests.rs"
       ],
-      "gaps": "Incremental PNG/DEFLATE, resumable output, host backpressure, host/viewer export and ancillary color metadata remain open.",
+      "gaps": "Incremental PNG/DEFLATE, resumable output, host backpressure and ancillary color metadata remain open. Protocol/viewer integration is tracked separately by host-png-export.",
       "rule": "Public pixel buffers use the existing bounded Gray/RGB/straight-RGBA encoder. Consumed Pixmaps convert premultiplied RGBA in place, clearing hidden RGB at zero alpha. CLI render/convert selects PNG explicitly, supports white or transparent backgrounds and never overwrites an existing path. Independent Python decoding checks pixels, PNG framing and zlib termination; PPM remains the default."
     }
   ]

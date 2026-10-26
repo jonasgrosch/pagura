@@ -80,11 +80,13 @@ wire_codes! {
     V1_7 = 0x0001_0007,
     /// Document metadata and explicit embedded-file reads.
     V1_8 = 0x0001_0008,
+    /// Complete PNG page export.
+    V1_9 = 0x0001_0009,
 }
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_8;
+    pub const LATEST: Self = Self::V1_9;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -98,6 +100,7 @@ impl Version {
             Self::V1_6 => "inline form editing requires protocol 1.6",
             Self::V1_7 => "form text styles require protocol 1.7",
             Self::V1_8 => "document services require protocol 1.8",
+            Self::V1_9 => "PNG export requires protocol 1.9",
         })
     }
 }
@@ -155,6 +158,8 @@ wire_codes! {
     MetadataBytes = 24,
     /// Explicit catalog attachment and EF key selection (1.8).
     AttachmentBytes = 25,
+    /// Complete PNG page image (1.9).
+    PagePng = 26,
 }
 
 impl RequestKind {
@@ -179,6 +184,7 @@ impl RequestKind {
             Self::FormFields | Self::SaveForm => Version::V1_5,
             Self::FormWidgets => Version::V1_6,
             Self::FormStyles => Version::V1_7,
+            Self::PagePng => Version::V1_9,
             Self::Metadata | Self::Attachments | Self::MetadataBytes | Self::AttachmentBytes => {
                 Version::V1_8
             }
@@ -213,6 +219,7 @@ impl RequestKind {
             Self::Attachments => ResponseKind::Attachments,
             Self::MetadataBytes => ResponseKind::MetadataBytes,
             Self::AttachmentBytes => ResponseKind::AttachmentBytes,
+            Self::PagePng => ResponseKind::PagePng,
         }
     }
 }
@@ -270,6 +277,8 @@ wire_codes! {
     MetadataBytes = 152,
     /// Selected embedded-file bytes.
     AttachmentBytes = 153,
+    /// Complete PNG page image (1.9).
+    PagePng = 154,
     /// A structured failure.
     Error = 255,
 }
@@ -510,4 +519,13 @@ impl OpenFlags {
             Recovery::Strict
         }
     }
+}
+
+wire_codes! {
+    /// Background of an exported PNG page (1.9).
+    pub enum PngBackground: u8, unknown = Error::syntax("unknown PNG background");
+    /// Composite onto opaque white.
+    White = 0,
+    /// Retain straight alpha with transparent unpainted pixels.
+    Transparent = 1,
 }

@@ -1,3 +1,4 @@
+import { testPngExport, testPngExportView } from './png_export_test.mjs';
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
 import { pagePoint } from '../web/page_geometry.mjs';
@@ -226,6 +227,8 @@ async function main() {
     await testReading(client, root, native, wasiRun);
     await testDocumentServices(client, root, native, wasiRun);
     await testDocumentServicesView();
+    await testPngExport(client, root, native, wasiRun);
+    await testPngExportView();
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
     const emptyStats = { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 };
@@ -453,6 +456,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
     'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
+    'png-export-dialog', 'png-export-open', 'png-export-form', 'png-export-page', 'png-export-dpi', 'png-export-transparent', 'png-export-submit', 'png-export-close', 'png-export-status',
     'document-services-dialog', 'document-services-open', 'document-services-close', 'document-properties', 'document-attachments', 'document-services-status',
     'edit-open', 'form-status', 'form-reset', 'form-download',
     'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
