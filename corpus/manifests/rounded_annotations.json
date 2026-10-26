@@ -113,7 +113,7 @@
         "content-rounded-borders"
       ],
       "path": "corpus/generated/rounded_annotations/stored-72.pdf",
-      "sha256": "870871de110b48b6d088f89764bdfdd5c90edde5bbbbeead4d8b860e345383be",
+      "sha256": "9091201d8f6c191ae4c59a274185ae7bb41b87951ee7c8277161c8a8879df198",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -253,7 +253,7 @@
         "content-rounded-borders"
       ],
       "path": "corpus/generated/rounded_annotations/stored-144.pdf",
-      "sha256": "870871de110b48b6d088f89764bdfdd5c90edde5bbbbeead4d8b860e345383be",
+      "sha256": "9091201d8f6c191ae4c59a274185ae7bb41b87951ee7c8277161c8a8879df198",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -473,7 +473,7 @@
         "content-rounded-borders"
       ],
       "path": "corpus/generated/rounded_annotations/stored-ignores-fields.pdf",
-      "sha256": "5eaa9ca2d9a9a5be8453c84d2690ca54d1c1e87a9cc651697992e76d0febea4b",
+      "sha256": "4d18c75e012240251ed6b402bc4394a061faa2cd5cdafbd75bfda836e0008b00",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

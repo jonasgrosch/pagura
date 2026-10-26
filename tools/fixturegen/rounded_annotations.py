@@ -5,6 +5,7 @@ corners have fill controls; their stroke/dash accuracy remains a separate gate.
 Stored controls use independently constructed sixteen-arc paths.
 """
 import math
+from decimal import Decimal, localcontext
 
 from .circle_annotations import rectangle_area
 from .model import Case, OPEN, RENDER, UNSUPPORTED
@@ -65,18 +66,28 @@ def oracle(*,bounds=(4,4,28,28),radii=(6.,6.),width=2.,fill=None,color=(0.,0.,0.
 
 
 def stored_path(rect,radii,width):
-    x0,y0,x1,y1=rect;half=width/2;x0+=half;y0+=half;x1-=half;y1-=half
-    rx=min(radii[0],(x1-x0)/2);ry=min(radii[1],(y1-y0)/2)
-    program=[]
-    for index,(cx,cy,start) in enumerate([(x1-rx,y0+ry,-math.pi/2),(x1-rx,y1-ry,0),
-                                         (x0+rx,y1-ry,math.pi/2),(x0+rx,y0+ry,math.pi)]):
-        program.append(f'{cx+rx*math.cos(start):.15g} {cy+ry*math.sin(start):.15g} '+('m' if index==0 else 'l'))
-        for step in range(4):
-            a=start+step*math.pi/8;b=a+math.pi/8;k=4/3*math.tan((b-a)/4)
-            points=(cx+rx*(math.cos(a)-k*math.sin(a)),cy+ry*(math.sin(a)+k*math.cos(a)),
-                    cx+rx*(math.cos(b)+k*math.sin(b)),cy+ry*(math.sin(b)-k*math.cos(b)),cx+rx*math.cos(b),cy+ry*math.sin(b))
-            program.append(' '.join(f'{v:.15g}' for v in points)+' c')
-    return '\n'.join(program)+'\nh\n'
+    # Decimal half-angle identities make the independently authored 16-arc
+    # control identical across platforms; binary libm sin/cos last bits differ.
+    with localcontext() as context:
+        context.prec=60
+        zero,one=Decimal(0),Decimal(1)
+        x0,y0,x1,y1=map(lambda value:Decimal(str(value)),rect)
+        half=Decimal(str(width))/2;x0+=half;y0+=half;x1-=half;y1-=half
+        rx=min(Decimal(str(radii[0])),(x1-x0)/2);ry=min(Decimal(str(radii[1])),(y1-y0)/2)
+        diagonal=(one/2).sqrt();c=((one+diagonal)/2).sqrt();s=((one-diagonal)/2).sqrt()
+        c16=((one+c)/2).sqrt();k=4*((one-c16)/(one+c16)).sqrt()/3
+        quarter=[(one,zero),(c,s),(diagonal,diagonal),(s,c),(zero,one)]
+        program=[]
+        for index,(cx,cy) in enumerate([(x1-rx,y0+ry),(x1-rx,y1-ry),(x0+rx,y1-ry),(x0+rx,y0+ry)]):
+            directions=[(y,-x) if index==0 else (x,y) if index==1 else (-y,x) if index==2 else (-x,-y) for x,y in quarter]
+            def coordinates(values):
+                return ' '.join(format(value.quantize(Decimal('0.000000000001')),'f') for value in values)
+            ax,ay=directions[0]
+            program.append(coordinates((cx+rx*ax,cy+ry*ay))+(' m' if index==0 else ' l'))
+            for (ax,ay),(bx,by) in zip(directions,directions[1:]):
+                points=(cx+rx*(ax-k*ay),cy+ry*(ay+k*ax),cx+rx*(bx+k*by),cy+ry*(by-k*bx),cx+rx*bx,cy+ry*by)
+                program.append(coordinates(points)+' c')
+        return '\n'.join(program)+'\nh\n'
 
 
 def source(*,shape='Square',rect=(4,4,28,28),radii=(6.,6.),width=2.,fill=None,color=(0.,0.,0.),alpha=1.,fill_alpha=1.,
