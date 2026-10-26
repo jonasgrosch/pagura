@@ -190,6 +190,14 @@ External-resource fixtures prove no implicit IO and stable object/revision ident
 
 Owner: `pagura-image`, `pagura-color`, `pagura-interpret`, `pagura-paint`; depends on G01.
 
+**Started from `render/one-pass` at `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a`:**
+`b410d2bcafac55cbe9dbf337dbdbc88144e59ac4` connects embedded ICC profiles to the existing
+forward transforms and bounded profile cache. Independent Gray/RGB, alpha,
+PDF override and malformed-profile fixtures accompany cache/budget controls;
+hosted validation is pending. sYCC, Lab-input profiles, multiple-profile ranking
+and fallback after an unsupported selected transform remain open. This slice
+does not complete R02 or its platform/interaction acceptance gate.
+
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
    respect explicit PDF colour spaces and expose all relevant colour candidates.
 2. Complete Indexed JPX opacity/channel mapping and residual palette/layout cases;

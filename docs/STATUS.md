@@ -6,7 +6,8 @@ PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
 Work spans M1–M7; none of those milestones is declared complete by this page.
 
 This inventory was reconciled against `render/one-pass` at
-`19059e68448288ccad84a3bc2f4c6c69c5142e2f`, the fetched head of PR #118.
+`b410d2bcafac55cbe9dbf337dbdbc88144e59ac4`, the embedded-ICC follow-up to the fetched
+one-pass head `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a` (PR #118).
 It describes that branch, including refactoring not yet merged into `main`.
 **Implemented** below means an implementation and associated tests exist, within the stated
 limits. It does not mean those tests or all corpora were rerun for this audit.
@@ -15,7 +16,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 332 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and all 333 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -31,7 +32,7 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/10/12/13 and post 1/2/3; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends; static Type 1/PFA/PFB programs | Nondefault variations, CFF2 Font DICT matrices, cmap 8, other post formats, collections, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs and nonhorizontal Type 1 `sbw`. Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
 | PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources | Vertical substituted CID fonts, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Substitution coverage depends on the provider and build features. |
 | Image codecs | JPEG baseline/extended/progressive, Huffman and arithmetic, 8/12-bit, CMYK/YCCK; CCITT G3/G4; JBIG2 generic/refinement/symbol/text/halftone/Huffman regions; JPEG 2000 Part 1 with progression, precincts, ROI and partial-quality reconstruction | JPEG lossless/hierarchical modes, CCITT extension mode, JBIG2 extended templates/necessary extensions, and JPX profiles/layouts outside the implemented subset. Codec success does not establish complete PDF image rendering. |
-| PDF image integration | Inline images and XObjects, 1–16-bit samples, Decode arrays, masks, separate soft masks and interpolation/minification; JPX straight/premultiplied embedded alpha is decoded and composited, with Gray/RGB/CMYK embedded spaces and mixed-precision/reference-grid adaptation | Indexed JPX opacity/channel mapping, embedded ICC/sYCC interpretation and remaining JPX colour/layout cases need integration. See [image description](../crates/pagura-interpret/src/machine/image/describe.rs) and [painting](../crates/pagura-paint/src/source/image.rs). |
+| PDF image integration | Inline images and XObjects, 1–16-bit samples, Decode arrays, masks, separate soft masks and interpolation/minification; JPX straight/premultiplied embedded alpha is decoded and composited, with Gray/RGB/CMYK embedded spaces, bounded embedded ICC forward transforms, and mixed-precision/reference-grid adaptation | Indexed JPX opacity/channel mapping, sYCC, Lab-input ICC, multi-profile precedence and unsupported selected-transform fallback remain open. Gray/RGB embedded ICC has independent pixel fixtures; broader interactions still need evidence. See [image description](../crates/pagura-interpret/src/machine/image/describe.rs) and [painting](../crates/pagura-paint/src/source/image.rs). |
 | Paths and shading | Fills/strokes, dashes, clipping, forms, tiling patterns, mesh shadings, functions, crop/rotation/UserUnit and tiled output | Explicit refusals remain for singular transforms and pattern-placement/state/image-mask cases; classify each as valid unsupported input, invalid input or a resource/numerical limit. Difficult mesh/geometry cases need independent accuracy evidence. |
 | Colour and transparency | Device/Default/Indexed, ICC forward matrix/TRC and LUT processing, calibrated colours, Lab, Separation/DeviceN; Gray/RGB/CMYK transparency groups, standard blend modes, knockout and soft masks | ICC destination/inverse transforms and calibrated group destinations; nonzero calibrated black points/black-point compensation; fractional, pattern and per-colourant transfer-region selection. Supported ICC group destinations currently use their resolved device base. Lab is prohibited as a blending destination, not a feature to implement. |
 | Overprint | CMYK process and spot display simulation, including group interactions, with `Auto`/`Always`/`Never` library and CLI options; catalog/page PDF/X intent detection | Destination ICC output transforms and transfer/overprint combinations; viewer control. Spot display uses alternate-based ink equivalents with a 32-plate bound, not physical ink prediction. PDF/X detection is not conformance validation. |
@@ -69,7 +70,7 @@ Source entry points and existing tests supporting this reconciliation include:
   [offline CRL validation](../crates/pagura-pki/src/validation/revocation/mod.rs).
 - [JPX alpha adaptation](../crates/pagura-image/src/jpx_image.rs),
   [alpha sampling](../crates/pagura-paint/src/source/image/texels.rs) and
-  [paint fixtures](../corpus/manifests/paint.json), including `image-jpx-alpha-1/2`.
+  [paint fixtures](../corpus/manifests/paint.json), including `image-jpx-alpha-1/2`, plus the new [embedded ICC fixtures](../corpus/manifests/paint_jpx.json).
 - [PNG encoder](../crates/pagura-codec/src/png.rs) and
   [zlib compressor](../crates/pagura-codec/src/flate/encode.rs).
 - [Public band/stop API](../crates/pagura-render/src/context.rs),
