@@ -298,7 +298,10 @@ pub(super) fn cid_map(
                 if bytes.len() > CidToGidMap::MAX_BYTES {
                     return Err(Error::syntax("invalid CIDToGIDMap length").in_object(id));
                 }
-                Some(CidToGidMap::new(bytes.into()).map_err(|e| e.in_object(id))?)
+                Some(
+                    CidToGidMap::new(bytes.into_owned().into_boxed_slice())
+                        .map_err(|e| e.in_object(id))?,
+                )
             }
         }
     } else {
