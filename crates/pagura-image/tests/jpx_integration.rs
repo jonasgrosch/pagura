@@ -5,7 +5,7 @@ use pagura_core::{ErrorKind, Limits, ObjectId, Recovery};
 use pagura_document::{Document, OpenOptions};
 use pagura_image::{DecodeRequest, ImageKind, ImageSource, MaskKind, Samples, jpx::JpxColor};
 
-fn document(name: &str, limits: Limits) -> Document {
+fn document(name: &str, limits: Limits) -> pagura_core::Result<Document> {
     Document::open(
         pagura_testkit::fixture("paint_jpx_integration", &format!("{name}.pdf")),
         &OpenOptions {
@@ -13,7 +13,6 @@ fn document(name: &str, limits: Limits) -> Document {
             ..OpenOptions::default()
         },
     )
-    .unwrap()
 }
 
 fn source(document: &Document) -> pagura_core::Result<ImageSource> {
@@ -22,7 +21,7 @@ fn source(document: &Document) -> pagura_core::Result<ImageSource> {
 
 #[test]
 fn ranked_candidates_remain_visible_without_decoding() {
-    let document = document("precedence-signed", Limits::default());
+    let document = document("precedence-signed", Limits::default()).unwrap();
     let source = source(&document).unwrap();
     let ImageKind::EmbeddedColor {
         color: JpxColor::Alternatives(choices),
@@ -65,7 +64,7 @@ fn pdf_index_and_opacity_have_separate_sample_precision_and_order() {
                     u8::from(mapped),
                     u8::from(first)
                 );
-                let document = document(&name, Limits::default());
+                let document = document(&name, Limits::default()).unwrap();
                 let source = source(&document).unwrap();
                 assert_eq!(
                     (source.components(), source.component_bits(0)),
@@ -114,7 +113,8 @@ fn candidate_metadata_and_palette_adaptation_obey_output_limits() {
                 decoded_bytes: 64,
                 ..Limits::default()
             },
-        );
+        )
+        .unwrap();
         assert!(
             matches!(source(&document).unwrap_err().kind, ErrorKind::Limit),
             "{name}"
