@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "9328f8d0c484c23d555ed32a8e1f89ac3b78684a",
+  "audited_revision": "fc7c3c86a1b74229f833097990491a78fe35d33d",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -12,7 +12,7 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "corpus/manifests/annotation_display.json": "850d82b86325984640bcd863955063819053767ec1baa3d7c0431f05a24d9cbb",
+    "corpus/manifests/annotation_display.json": "d1ef14d0d6bcc9758d48800b688ba670ac02cc80b0baee3b04c2b52df5eed998",
     "corpus/manifests/caption_annotations.json": "f8b2f53a7dae3548db53813d21d423659d292507c60070456d573551ee7690e9",
     "corpus/manifests/caret_annotations.json": "388dd60ceba28ffde3d51d456b446bbe6c57f96b420d3cb74dff7f035cf95a3f",
     "corpus/manifests/circle_annotations.json": "0b333e347129ad536339916c86de9465b0bfc279a6a8226799b1dfa723e35ee7",
@@ -241,7 +241,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "4e7690114984619663313730a28dfdaa5a878b8267f238e31d74e7a93e19f68f",
+    "references/requirements/content.json": "ef666b719c7014af1c76757de68c9ab5a039e307c461218105836e2977fc8419",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -265,7 +265,7 @@
     "references/requirements/write.json": "4b4471e84dc53c6849058ee5fea0401b90e21c32d916b8cccda6188315279be7",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/editing_host_test.mjs": "22571ef2e3c3c3209123c78c84dbacbb416dddba1edd9c8950ffb5630541a933",
-    "tools/fixturegen/annotation_display.py": "eb7735f809f5df144c06b1e0803c1eae337d1195e92cdc78bad9eb6b91ea5784",
+    "tools/fixturegen/annotation_display.py": "199aba3699d1863792b535a0b2465420e72ebe19f2fea06c459ff1c1dd5ef941",
     "tools/fixturegen/caption_annotations.py": "218731bda9d174f372b6e8983bcec0c7b2c89dafe74f760c08824f2ced7319ea",
     "tools/fixturegen/caret_annotations.py": "1f09d1b11af910a1cf0a5ba21e25fad5eb153fd1b1a9f67608ade3ebdb542687",
     "tools/fixturegen/circle_annotations.py": "4ea27044fa8030a8323ac01a057b7943b1969ac14e93269f30666e1bbef5049d",
