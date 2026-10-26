@@ -666,3 +666,14 @@ That evidence does not validate this new normal-button source checkpoint.
 The new batch awaits hosted acceptance; no local build, test or engine was run.
 R/D activation, richer form data/actions, rich/CID/complex-script captions,
 physical print and broader V01/V02 closure remain outside this batch.
+
+Hosted editing run `40404196880` at retained head `4b42c5b43` exposed one
+authored oracle omission in `button-normal-opt-stored-control`: its first
+widget explicitly selects the original coloured Off stream, while the oracle
+included only the second widget's selected black caption. The PDF is unchanged
+(`6423293a228803fd2ee58a9ff9f2432e015eb123c4068d07ef588d67b86e3bbd`).
+Fitting Off's 48-by-32 BBox into `[8,8,28,40]` gives `x'=8+5x/12`, `y'=8+y`.
+The corrected independent oracle therefore includes blue at `(29/3,12)` and
+green at `(44/3,12)`, both `10/3` by `10`, plus the existing black 5-by-7
+caption at `(43,21)`. No product code, tolerance or other oracle is changed by
+this adjudication. The original failure remains in the hosted run history.

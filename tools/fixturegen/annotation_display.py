@@ -836,7 +836,12 @@ def normal_button_cases():
         objects[21+index]|={'AS':pdf_name(str(index) if index==1 else 'Off'),
                             'AP':{'N':{str(index):ref(86),'Off':ref(81)}}}
     objects[86]=stream(b'0 g 7 13 5 7 re f',b'/Subtype /Form /BBox [0 0 20 32] /Resources << >>')
-    yield case('opt-stored-control',objects,widget_glyphs('B',x=43,y=21))
+    # Off selects the original blue/green stream 81, not a blank appearance.
+    # Its 48x32 BBox fits the first 20x32 widget: x'=8+5*x/12, y'=8+y.
+    # Retain both the explicit Off artwork and the second widget's selected ink.
+    yield case('opt-stored-control',objects,[((F(29,3),12,F(10,3),10),blue),
+                                           ((F(44,3),12,F(10,3),10),(0,1,0))]
+               +widget_glyphs('B',x=43,y=21))
     for mode,flags in [('unison',(1<<15)|(1<<25)),('check',0)]:
         objects=button_group_objects(flags,1);objects[11]['V']=pdf_name('Shared')
         for index in (21,22):objects[index]['AS']=pdf_name('Shared')
