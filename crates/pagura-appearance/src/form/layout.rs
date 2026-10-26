@@ -2,7 +2,7 @@
 //! auto-size cap. 12.7.4.3 leaves auto-size and detailed line layout to the
 //! reader.
 
-use super::{da::DefaultAppearance, font::Font};
+use super::{Font, da::DefaultAppearance};
 use crate::program::Program;
 use pagura_core::{Error, Limits, Rect, Result};
 use pagura_document::forms::Justification;

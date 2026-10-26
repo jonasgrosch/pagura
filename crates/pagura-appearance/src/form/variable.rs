@@ -1,9 +1,8 @@
 //! Plain text and combo content inside a Tx marked-content section (12.7.4.3).
 
 use super::{
-    choice,
+    Font, choice,
     da::DefaultAppearance,
-    font::Font,
     layout::{self, TextLayout},
 };
 use crate::program::Program;

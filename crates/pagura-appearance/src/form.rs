@@ -15,7 +15,6 @@ mod choice;
 mod compatibility;
 mod da;
 mod filled;
-mod font;
 mod layout;
 mod style;
 mod update;
@@ -24,12 +23,12 @@ mod variable;
 pub use da::{TextStyle, default_text_style};
 pub use filled::FilledWidgets;
 
+use crate::fonts::Encoding as Font;
 use crate::fonts::{FontSource, ProviderFonts};
 use crate::program::Program;
 use crate::stream::{Appearance, AppearanceStream, form_dictionary};
 use crate::values::optional_dictionary;
 use da::DefaultAppearance;
-use font::Font;
 use pagura_core::{Error, Name, Rect, Result, Value};
 use pagura_document::{
     Document,

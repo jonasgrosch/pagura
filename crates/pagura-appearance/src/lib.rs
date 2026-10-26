@@ -28,7 +28,7 @@ mod program;
 mod stream;
 mod values;
 
-pub use annotation::annotation_appearance;
+pub use annotation::{annotation_appearance, annotation_appearance_with_fonts};
 pub use fonts::{FontSource, ProviderFonts};
 pub use form::{
     FilledWidgets, TextStyle, UpdatePolicy, WidgetAppearance, default_text_style, prepare,

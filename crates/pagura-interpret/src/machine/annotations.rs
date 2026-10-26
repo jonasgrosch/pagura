@@ -117,7 +117,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             };
             Drawn::Stored(id)
         } else {
-            match pagura_appearance::annotation_appearance(document, d, rect)? {
+            let fonts = SessionFonts(&self.session.fonts);
+            match pagura_appearance::annotation_appearance_with_fonts(document, d, rect, &fonts)? {
                 Some(stream) => Drawn::Generated(stream),
                 None => return Ok(()),
             }

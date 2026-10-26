@@ -12,6 +12,7 @@ mod polygon;
 mod widget;
 
 use crate::features;
+use crate::fonts::{FontSource, ProviderFonts};
 use crate::stream::AppearanceStream;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
@@ -24,9 +25,10 @@ use pagura_document::Document;
 /// content is in default user space; the BBox clips every mark to the
 /// rectangle. Strokes use the annotation's `CA` and fills its `ca` (else
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
-/// resources; its Resources hold nothing else, so page resources such as
+/// resources. Caption fonts use private resources; page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
-/// borders, Line/Ink/Polygon/PolyLine paths, seven Text icons, four FileAttachment
+/// borders, Line/Ink/Polygon/PolyLine paths, plain Line captions with an explicit
+/// font provider, seven Text icons, four FileAttachment
 /// icons, and the MK background and border of empty text and signature widgets.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
@@ -45,6 +47,26 @@ pub fn annotation_appearance(
     annotation: &Dictionary,
     rect: Rect,
 ) -> Result<Option<AppearanceStream>> {
+    let fonts = ProviderFonts::new(None, &document.limits());
+    annotation_appearance_with_fonts(document, annotation, rect, &fonts)
+}
+
+/// Generates a normal annotation appearance using `fonts` for caption layout.
+///
+/// As [`annotation_appearance`], with host-supplied font metrics. Plain Line
+/// captions use Helvetica with WinAnsi encoding at 12 points; their generated
+/// font resource is resolved by the same provider when the stream is drawn.
+/// Existing callers without a provider still generate all non-text artwork.
+///
+/// # Errors
+/// As [`annotation_appearance`], plus font loading or encoding errors when a
+/// caption needs unavailable data. Rich text remains explicitly unsupported.
+pub fn annotation_appearance_with_fonts(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+    fonts: &dyn FontSource,
+) -> Result<Option<AppearanceStream>> {
     if rect.width() == 0.0 && rect.height() == 0.0 {
         return Ok(None);
     }
@@ -61,7 +83,7 @@ pub fn annotation_appearance(
         b"Square" => border::generate(document, annotation, rect, border::Shape::Square)?,
         b"Circle" => border::generate(document, annotation, rect, border::Shape::Circle)?,
         b"Ink" => ink::generate(document, annotation, rect)?,
-        b"Line" => line::generate(document, annotation, rect)?,
+        b"Line" => line::generate(document, annotation, rect, fonts)?,
         b"Polygon" => polygon::generate(document, annotation, rect, true)?,
         b"PolyLine" => polygon::generate(document, annotation, rect, false)?,
         b"Text" => icon::generate(document, annotation, rect)?,

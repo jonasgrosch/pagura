@@ -1,11 +1,12 @@
 //! Straight line annotations (12.5.6.7, Table 178).
 
+mod caption;
 mod leader;
 
 use super::border::Border;
 use super::ending::{self, Endpoint};
 use super::marks::{Color, Marks, Pen, Subpath, color};
-use crate::features;
+use crate::fonts::FontSource;
 use crate::stream::AppearanceStream;
 use crate::values::{number, optional};
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
@@ -15,6 +16,7 @@ pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
+    fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
     let values = optional(document, annotation, b"L")?
         .and_then(Value::as_array)
@@ -28,7 +30,7 @@ pub(super) fn generate(
     ];
     let endings = ending::read(document, annotation)?;
     let layout = leader::Layout::read(document, annotation, points)?;
-    no_caption(document, annotation)?;
+    let caption = caption::Caption::read(document, annotation, layout.line, fonts)?;
     let border = Border::read(document, annotation)?;
     let mut marks = Marks::new(document, annotation);
     if border.width != 0.0
@@ -38,10 +40,17 @@ pub(super) fn generate(
             Subpath::Polyline(&layout.line),
             Subpath::Polyline(&[]),
             Subpath::Polyline(&[]),
+            Subpath::Polyline(&[]),
         ];
+        if let Some(caption) = &caption {
+            paths[0] = Subpath::Polyline(&caption.body[0]);
+            if caption.body[1][0] != caption.body[1][1] {
+                paths[1] = Subpath::Polyline(&caption.body[1]);
+            }
+        }
         if let Some([first, second]) = &layout.leaders {
-            paths[1] = Subpath::Polyline(first);
-            paths[2] = Subpath::Polyline(second);
+            paths[2] = Subpath::Polyline(first);
+            paths[3] = Subpath::Polyline(second);
         }
         marks.stroke(
             &paths,
@@ -65,20 +74,10 @@ pub(super) fn generate(
             &border,
         )?;
     }
-    marks.finish(rect)
-}
-
-fn no_caption(document: &Document, annotation: &Dictionary) -> Result<()> {
-    if let Some(value) = optional(document, annotation, b"Cap")? {
-        let caption = value
-            .as_bool()
-            .ok_or(Error::syntax("line Cap must be boolean"))?;
-        if caption {
-            return Err(Error::unsupported(
-                features::ANNOTATION_APPEARANCE,
-                "line caption generation is not implemented",
-            ));
-        }
+    if let Some(caption) = caption
+        && let Some(color) = color(document, annotation, b"C", Some(Color::black()))?
+    {
+        marks.text(&caption.content, caption.fonts, &color)?;
     }
-    Ok(())
+    marks.finish(rect)
 }

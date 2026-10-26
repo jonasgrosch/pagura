@@ -381,8 +381,8 @@ existing bounded mark builder and annotation clip; absent/null/None endings and
 zero/null leaders are accepted. The initial 41 controls include 22 independent
 pixel expectations for two resolutions, dashes, diagonals, rotation, clipping,
 opacity, indirection and stored appearance precedence. Hosted validation is pending.
-The increments below add standard endings and leaders; captions remain an
-explicit refusal. The existing corpus now contains 26 independent pixel expectations.
+The increments below add standard endings and leaders; plain captions are
+implemented below. The existing corpus now contains 27 independent pixel expectations.
 
 **Line/PolyLine endings implemented:** all ten Table 179 styles resolve through
 LE, including indirect names. Endpoint orientation follows source derivatives,
@@ -405,9 +405,25 @@ leaders share one stroke, opacity and dash pattern. Twenty-seven controls contai
 21 literal rectangle-union pixel expectations, covering both signs, vertical and
 reversed direction, rotation, clipping, coincident endpoints, dashes, opacity,
 indirection and ending integration. Numeric overflow and content-budget controls
-are also registered. Hosted validation is pending; diagonal and caption
-interactions still need further evidence. The three former leader refusals now
+are also registered. Hosted validation is pending; diagonal interactions still need further evidence. The three former leader refusals now
 render with unchanged PDF bytes.
+
+**Plain Line captions implemented:** Cap/Contents, Inline/Top positioning and CO
+offsets use the line frame after leader displacement. The shared form font encoder
+now lives under `fonts`; a font-aware appearance entry point uses the interpreter's
+existing provider. Reader policy uses 12-point Helvetica/WinAnsi, centred rows,
+1.2-em leading and two units of clearance. Overlong captions move above the line;
+inline captions interrupt the body where their metric box overlaps it. Text paints
+with C/ca after body and endings, retaining the original annotation clip. Thirty
+controls include 22 independent pixel expectations from explicit placements, AFM
+metrics and straight contours in the pinned Arimo substitute. They cover two
+resolutions, multiline/CRLF text, offsets, reversal, rotation, vertical lines,
+clipping, opacity, leader integration, indirection and PDF text-string encodings.
+Missing fonts remain explicit in builds without bundled data; empty/inactive
+captions need no fonts. Text/work/output and nonfinite-offset checks are registered.
+Hosted native/WASI/client, partial-tile and viewer checks are wired but pending.
+Rich text, complex scripts/bidi, broader font selection and unsupported characters
+remain gaps; this does not establish full caption or annotation parity.
 
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path

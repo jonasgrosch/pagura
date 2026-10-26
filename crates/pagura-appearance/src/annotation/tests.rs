@@ -735,3 +735,111 @@ fn line_leaders_reject_numeric_overflow_before_empty_output() {
         ErrorKind::Limit,
     );
 }
+
+#[test]
+fn line_caption_fonts_are_explicit_and_use_private_resources() {
+    let document = document();
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    let annotation = dictionary(b"<< /Subtype /Line /L [4 16 28 16] /Cap true /Contents (I) >>");
+    assert_eq!(
+        annotation_appearance(&document, &annotation, area)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED),
+    );
+    let provider = pagura_data::Bundled::default();
+    let fonts = ProviderFonts::new(Some(&provider), &document.limits());
+    let appearance = annotation_appearance_with_fonts(&document, &annotation, area, &fonts)
+        .unwrap()
+        .unwrap();
+    let resources = appearance
+        .dictionary()
+        .get(b"Resources")
+        .and_then(Value::as_dictionary)
+        .unwrap();
+    let font = resources
+        .get(b"Font")
+        .and_then(Value::as_dictionary)
+        .and_then(|fonts| fonts.get(b"Caption"))
+        .and_then(Value::as_dictionary)
+        .unwrap();
+    assert!(font.is_name(b"BaseFont", b"Helvetica"));
+    assert!(font.is_name(b"Encoding", b"WinAnsiEncoding"));
+    let content = String::from_utf8_lossy(appearance.content());
+    assert!(content.contains("/Caption 12 Tf\n"));
+    assert!(content.ends_with("<49> Tj\nET\n"));
+}
+
+#[test]
+fn inactive_or_empty_captions_need_no_font_and_nonfinite_offsets_fail() {
+    let document = document();
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    let expected = generate(b"<< /Subtype /Line /L [4 16 28 16] >>", area).unwrap();
+    for entries in [
+        "/Cap false /CP 42 /CO 42 /Contents 42 /RC 42",
+        "/Cap true",
+        "/Cap true /Contents null",
+        "/Cap true /Contents ()",
+    ] {
+        assert_eq!(
+            generate(
+                format!("<< /Subtype /Line /L [4 16 28 16] {entries} >>").as_bytes(),
+                area,
+            )
+            .unwrap(),
+            expected,
+        );
+    }
+    for number in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let mut annotation = dictionary(b"<< /Subtype /Line /L [4 16 28 16] /Cap true >>");
+        annotation.insert(
+            pagura_core::Name::new(b"CO"),
+            Value::Array(vec![Value::Integer(0), Value::Real(number)]),
+        );
+        assert_eq!(
+            annotation_appearance(&document, &annotation, area)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit,
+        );
+    }
+}
+
+#[test]
+fn caption_text_and_layout_are_bounded_even_without_a_border() {
+    let provider = pagura_data::Bundled::default();
+    for limits in [
+        Limits {
+            operations: 256,
+            ..Limits::default()
+        },
+        Limits {
+            stream_bytes: 16,
+            ..Limits::default()
+        },
+    ] {
+        let document = Document::open(
+            fixture("forms", "text-quadding-0.pdf"),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let fonts = ProviderFonts::new(Some(&provider), &document.limits());
+        let annotation = dictionary(
+            b"<< /Subtype /Line /L [4 16 28 16] /Cap true /Contents (I) /BS << /W 0 >> >>",
+        );
+        assert_eq!(
+            annotation_appearance_with_fonts(
+                &document,
+                &annotation,
+                rect(0.0, 0.0, 32.0, 32.0),
+                &fonts,
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Limit,
+        );
+    }
+}

@@ -113,6 +113,7 @@ pub(super) struct Marks<'a> {
     stroke_alpha: Option<f64>,
     fill_alpha: Option<f64>,
     states: Dictionary,
+    fonts: Option<Dictionary>,
     painted: bool,
 }
 
@@ -125,6 +126,7 @@ impl<'a> Marks<'a> {
             stroke_alpha: None,
             fill_alpha: None,
             states: Dictionary::new(),
+            fonts: None,
             painted: false,
         }
     }
@@ -174,6 +176,16 @@ impl<'a> Marks<'a> {
         self.content.text("S\n")
     }
 
+    /// Appends a prepared text object with its private font resources.
+    pub(super) fn text(&mut self, program: &[u8], fonts: Dictionary, color: &Color) -> Result<()> {
+        self.opacity(Paint::Fill)?;
+        self.color(color, Paint::Fill)?;
+        self.content.bytes(program)?;
+        self.fonts = Some(fonts);
+        self.painted = true;
+        Ok(())
+    }
+
     /// The appearance: the marks in a form whose BBox is `rect`, or `None`
     /// without marks.
     pub(super) fn finish(self, rect: Rect) -> Result<Option<AppearanceStream>> {
@@ -183,6 +195,9 @@ impl<'a> Marks<'a> {
         let mut resources = Dictionary::new();
         if !self.states.is_empty() {
             resources.insert(Name::new(b"ExtGState"), Value::Dictionary(self.states));
+        }
+        if let Some(fonts) = self.fonts {
+            resources.insert(Name::new(b"Font"), Value::Dictionary(fonts));
         }
         let mut dictionary = form_dictionary(rect);
         dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));

@@ -1032,7 +1032,7 @@
         "12.5.6.7 Tables 178 and 179"
       ],
       "rule": "Line L contains four finite coordinates in default user space; indirect arrays and numbers resolve. Reader policy strokes the segment with butt caps, C, CA and BS width/dash inside the original annotation BBox. Geometry validates before zero-width or empty-color suppression. Stored appearances retain precedence. All standard endings are provided by content-line-endings; leader geometry is provided by content-line-leaders. LLE requires LL; extension/offset values are nonnegative and Cap is boolean. Caption-only properties are ignored when Cap is false. Generated content remains bounded.",
-      "status": "Line implementation with 41 authored controls and 26 independent pixel expectations; hosted validation pending",
+      "status": "Line implementation with 41 authored controls and 27 independent pixel expectations; hosted validation pending",
       "tests": [
         "pagura-appearance annotation::tests::line_coordinates_resolve_indirectly_and_reject_nonfinite_values",
         "line_annotations/horizontal-72",
@@ -1077,7 +1077,7 @@
         "line_annotations/caption",
         "line_annotations/arrow"
       ],
-      "gaps": "Captions remain explicit refusals. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
+      "gaps": "Plain captions are covered by content-line-captions; rich text remains explicit. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
     },
     {
       "id": "content-line-endings",
@@ -1146,7 +1146,7 @@
         "line_annotations/arrow",
         "polygon_annotations/arrow"
       ],
-      "gaps": "Line captions, FreeText callout synthesis, interaction and broader degenerate/overlapping ending combinations remain open. Artwork dimensions and mark order are reader choices; competing artwork is not a feature defect.",
+      "gaps": "Rich Line captions, FreeText callout synthesis, interaction and broader degenerate/overlapping ending combinations remain open. Artwork dimensions and mark order are reader choices; competing artwork is not a feature defect.",
       "external_primary_review": [
         {
           "reference": "ref-e94148e56a97",
@@ -1196,7 +1196,54 @@
         "leader_annotations/negative-offset",
         "leader_annotations/missing-length"
       ],
-      "gaps": "Line captions remain explicit. Independent expected regions are literal rectangles with exact union coverage; these controls do not establish broader diagonal or caption interaction parity."
+      "gaps": "Plain captions are covered by content-line-captions. Independent leader regions are literal rectangles with exact union coverage; broader diagonal interactions still need evidence."
+    },
+    {
+      "id": "content-line-captions",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.9.2.2",
+        "12.5.6.7 Table 178",
+        "12.5.6.7 Figures 81–82"
+      ],
+      "rule": "Cap true paints a plain Contents caption; false/absent ignores caption-only entries. Contents uses the common PDF text-string decoder and reported recovery. CP selects Inline or Top and CO supplies two finite offsets in the line frame. Reader layout policy uses 12-point Helvetica/WinAnsi, 1.2-em leading, two units of clearance, centred rows and the source line direction. CR, LF and CRLF separate rows; tabs become spaces. Inline text interrupts the line where its metric box overlaps it; overlong text moves above the line. Leader-translated geometry and standard endings retain their positions. Caption text uses C and ca (else CA) after body and endings under the original annotation clip. Font encoding is shared with form appearances; host-supplied fonts are explicit and generated resources are private. Text storage, characters, work, numeric positions and output remain bounded.",
+      "status": "plain captions implemented with 30 authored controls and 22 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::line_caption_fonts_are_explicit_and_use_private_resources",
+        "pagura-appearance annotation::tests::inactive_or_empty_captions_need_no_font_and_nonfinite_offsets_fail",
+        "pagura-appearance annotation::tests::caption_text_and_layout_are_bounded_even_without_a_border",
+        "caption_annotations/inline-72",
+        "caption_annotations/top-72",
+        "caption_annotations/multiline-72",
+        "caption_annotations/inline-144",
+        "caption_annotations/top-144",
+        "caption_annotations/multiline-144",
+        "caption_annotations/offset",
+        "caption_annotations/above",
+        "caption_annotations/wide",
+        "caption_annotations/zero-width",
+        "caption_annotations/opacity",
+        "caption_annotations/separate-opacity",
+        "caption_annotations/clipped",
+        "caption_annotations/rotated",
+        "caption_annotations/reversed",
+        "caption_annotations/vertical",
+        "caption_annotations/leaders",
+        "caption_annotations/indirect",
+        "caption_annotations/utf16",
+        "caption_annotations/utf8",
+        "caption_annotations/crlf",
+        "caption_annotations/empty",
+        "caption_annotations/position-type",
+        "caption_annotations/offset-type",
+        "caption_annotations/offset-count",
+        "caption_annotations/offset-number",
+        "caption_annotations/contents-type",
+        "caption_annotations/position-unknown",
+        "caption_annotations/rich-text",
+        "caption_annotations/unmapped"
+      ],
+      "gaps": "Rich text, complex-script/bidi shaping, broader font selection and characters outside the reversible WinAnsi map remain explicit gaps. Exact pixel controls independently read AFM advances and straight contours from the pinned Arimo substitute; they establish the documented reader policy, not identical competitor artwork."
     }
   ]
 }
