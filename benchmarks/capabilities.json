@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "82c35da8fcba6ae96fec0d5c96ac4643f71d1225",
+  "audited_revision": "7adc88faa1bd6e445a7ac5c3720b771c761f982f",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -12,7 +12,7 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "corpus/manifests/annotation_display.json": "6af3004be905395d61740ad4d85d067d18d8579076077f7e3d7de0ddfc6ea7de",
+    "corpus/manifests/annotation_display.json": "22a32a0ed94a763d3e934a0f2473d9836e83b9755d83d81dc89f837a42d13056",
     "corpus/manifests/caption_annotations.json": "f8b2f53a7dae3548db53813d21d423659d292507c60070456d573551ee7690e9",
     "corpus/manifests/caret_annotations.json": "388dd60ceba28ffde3d51d456b446bbe6c57f96b420d3cb74dff7f035cf95a3f",
     "corpus/manifests/circle_annotations.json": "0b333e347129ad536339916c86de9465b0bfc279a6a8226799b1dfa723e35ee7",
@@ -231,7 +231,7 @@
     "crates/pagura/tests/api/editing.rs": "fb4cdd93fc2da9d18041f4796fc69039dd2e2578bf6a34777a145581c24a90c2",
     "crates/pagura/tests/api/editing/button_states.rs": "fce5fe9215887fbf5389142d6c70538cb2771fb39983ab779358f25f43e205a2",
     "crates/pagura/tests/api/editing/form_borders.rs": "b2e80049a2b875dac15d5474164c5323cfdc5a6b0e480403f57a91767939909c",
-    "crates/pagura/tests/api/editing/widget_display.rs": "d657ad1836aa1a8ebb80007a33edf3560c3bf895f49af277b24ea971f2c42307",
+    "crates/pagura/tests/api/editing/widget_display.rs": "b1988f9d74394874ace4447c9cef1563797109acb9ba2fd8f8f67f7d465e265b",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
@@ -240,7 +240,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "a3f4770f21fe0d8d853c2899f91fc0d58b6dc6937f22f95933c1fdc61c432996",
+    "references/requirements/content.json": "36888d6fa2ebc3b54a8fcf66246cbae5160405c93623a11ac2c7cb1110a01c41",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -264,7 +264,7 @@
     "references/requirements/write.json": "4b4471e84dc53c6849058ee5fea0401b90e21c32d916b8cccda6188315279be7",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/editing_host_test.mjs": "22571ef2e3c3c3209123c78c84dbacbb416dddba1edd9c8950ffb5630541a933",
-    "tools/fixturegen/annotation_display.py": "86cd469846b7e4cc1e84b58333d33c0da26df6476fa7ef6e4f0d595fd30a78f2",
+    "tools/fixturegen/annotation_display.py": "5fdadc84e2aed77547bc585077b3b5166c83144455b0e86b07e6650e7c0b52e3",
     "tools/fixturegen/caption_annotations.py": "218731bda9d174f372b6e8983bcec0c7b2c89dafe74f760c08824f2ced7319ea",
     "tools/fixturegen/caret_annotations.py": "1f09d1b11af910a1cf0a5ba21e25fad5eb153fd1b1a9f67608ade3ebdb542687",
     "tools/fixturegen/circle_annotations.py": "4ea27044fa8030a8323ac01a057b7943b1969ac14e93269f30666e1bbef5049d",
@@ -1000,7 +1000,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored normal appearances and state dictionaries; generated Text/FileAttachment/Sound icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment or sound payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions. Forms and annotations share stored normal/rollover/down selection as data; host/viewer rendering still selects normal appearance. Watermark FixedPrint screen placement reuses shared MediaBox page geometry and the existing NoRotate view; authored controls cover all quarter turns, nonzero origins, asymmetric crop, UserUnit, DPI, NoZoom and AP matrices/groups. Hidden/text-only requests skip placement data; stored Sound AP never reads its sound payload. The retained 352-control hosted run covers these screen-placement pixels. MuPDF/Poppler raw Sound observations preceded the original Speaker/Mic geometry; ordinary Sound scale/rotation and explicit view flags use the existing view contract. The retained 386-control hosted run passes its 34 independent Sound pixel controls, with native/WASI/client/save-reopen checks. Redact preview uses one-unit red QuadPoints/Rect outlines through shared markup validation and Marks generation, preserving underlying page content and extraction. Matched baseline observations preceded the policy; 30 independent geometry controls passed in the retained 416-control hosted run at b042f0230, alongside malformed/default/ignored-entry/budget checks. Missing source Tx/Ch widgets now share the form generator through a bounded requested-widget field projection; stored AP precedence, field inheritance, separate widgets, source choice values and untouched filler layout have independent controls. One layout/resource/style path serves source, explicit preview and saved appearances; the 48 new pixels and source/preview/save/limit checks await hosted product validation. Raw 28-case baseline observations are scoped evidence, not oracle truth. Full V01 remains partial.",
+      "implemented": "Stored normal appearances and state dictionaries; generated Text/FileAttachment/Sound icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment or sound payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions. Forms and annotations share stored normal/rollover/down selection as data; host/viewer rendering still selects normal appearance. Watermark FixedPrint screen placement reuses shared MediaBox page geometry and the existing NoRotate view; authored controls cover all quarter turns, nonzero origins, asymmetric crop, UserUnit, DPI, NoZoom and AP matrices/groups. Hidden/text-only requests skip placement data; stored Sound AP never reads its sound payload. The retained 352-control hosted run covers these screen-placement pixels. MuPDF/Poppler raw Sound observations preceded the original Speaker/Mic geometry; ordinary Sound scale/rotation and explicit view flags use the existing view contract. The retained 386-control hosted run passes its 34 independent Sound pixel controls, with native/WASI/client/save-reopen checks. Redact preview uses one-unit red QuadPoints/Rect outlines through shared markup validation and Marks generation, preserving underlying page content and extraction. Matched baseline observations preceded the policy; 30 independent geometry controls passed in the retained 416-control hosted run at b042f0230, alongside malformed/default/ignored-entry/budget checks. Missing source Tx/Ch widgets now share the form generator through a bounded requested-widget field projection; stored AP precedence, field inheritance, separate widgets, source choice values and untouched filler layout have independent controls. One layout/resource/style path serves source, explicit preview and saved appearances; the 47 new pixels and source/preview/save/limit checks await hosted product validation. Raw 28-case baseline observations are scoped evidence, not oracle truth. Full V01 remains partial.",
       "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, unvalidated character/paragraph measurements and interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; broader unequal-ellipse/concave/curved cloud and diagonal/overlapping callout accuracy; other subtype synthesis and custom artwork variants; applied redaction and post-application replacement/removal stay group 16; nonrectangular relief/radii and elliptical dashed-border evidence; other widget types and interaction-selected AP/R/AP/D states. FixedPrint physical print media/scaling, tiling and n-up remain V05 contract/probe gaps. Full V01 acceptance remains open. Advanced rich/CID/complex-script widget layout, push-button artwork, orphan nonempty widgets and malformed-membership repair are outside this source Tx/Ch subset; explicit form regeneration remains separate from ordinary viewing.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
