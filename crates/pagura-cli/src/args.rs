@@ -18,6 +18,10 @@ usage: pagura inspect [--strict] [--password TEXT] INPUT
        pagura extract-metadata [--strict] [--password TEXT] INPUT OUTPUT
        pagura extract-attachment [--strict] [--password TEXT] [--page PAGE] INPUT INDEX KEY OUTPUT
        pagura check-attachment [--strict] [--password TEXT] [--page PAGE] INPUT INDEX KEY
+       pagura collection [--strict] [--password TEXT] INPUT
+       pagura images [--strict] [--password TEXT] [--page PAGE | --object N:G] INPUT
+       pagura extract-image [--strict] [--password TEXT] [--stored] --object N:G INPUT OUTPUT
+       pagura extract-thumbnail [--strict] [--password TEXT] [--stored] [--page PAGE | --object N:G] INPUT OUTPUT
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
        pagura render [--strict] [--password TEXT] [--overprint MODE] [--timings]
@@ -92,6 +96,15 @@ options:
 --page PAGE selects file-attachment annotations on the zero-based page for
 attachments, extract-attachment and check-attachment. INDEX then identifies the
 original page Annots slot, including other annotation types. No catalog fallback.
+
+--associated selects catalog AF, or page AF with --page. --object N:G selects
+object AF for attachment commands, or an object metadata owner. --related PAIR
+selects an RF pair under the exact EF key for extraction/checks. Metadata packet
+commands also accept --page. See docs/CLI.md for source-image transfer semantics.
+collection reads inert portfolio declarations; images lists direct page resources
+or an explicit image object. Image extraction returns binary encoded asset bytes;
+--stored preserves original stream bytes, including ciphertext. Neither is a
+standalone appearance export.
 
 An option that a command does not take is a usage error; --version accepts
 the rendering option --overprint and ignores it, so a harness can put it

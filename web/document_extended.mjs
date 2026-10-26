@@ -89,7 +89,7 @@ export function encodeExtended(kind, values) {
     code(values.related === null || values.related === undefined ? PayloadKind.Embedded : PayloadKind.Related, PayloadKind);
     if (values.related !== null && values.related !== undefined) integer(values.related);
   } else if ([RequestKind.ObjectMetadata, RequestKind.ObjectMetadataBytes, RequestKind.Images, RequestKind.Thumbnail].includes(kind)) owner(values.owner);
-  else if (kind === RequestKind.ImageBytes) { object(values.object); code(values.thumbnail ? ImageAssetCode.Thumbnail : ImageAssetCode.Image, ImageAssetCode); code(values.mode, ImageTransferCode); }
+  else if (kind === RequestKind.ImageBytes) { owner(values.owner); code(values.thumbnail ? ImageAssetCode.Thumbnail : ImageAssetCode.Image, ImageAssetCode); code(values.mode, ImageTransferCode); }
   else if (kind !== RequestKind.Collection) throw new Error('Unknown extended-service request');
   const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } return bytes;
 }

@@ -173,3 +173,41 @@ surface is consumed on success or failure. `pagura::png::encode` also accepts
 caller-owned Gray, RGB or straight RGBA buffers and encoding options. Incremental
 PNG and resumable jobs remain D02 work. Protocol 1.9 and the viewer expose a
 separate complete-page PNG export path, described in the [host protocol](../crates/pagura-host/PROTOCOL.md#version-19-complete-png-page-export).
+
+### Scoped document source services
+
+Attachment commands also accept `--associated`, `--object NUMBER:GENERATION`, and
+(for extraction/checks) `--related PAIR`. `--associated` chooses catalog AF, or
+page AF with `--page`; `--object` chooses that object's AF array. Without
+`--associated`, `--page` retains its original Annots-slot semantics. Related pair
+indexes start at zero within the exact EF key and distinguish duplicate names.
+Scoped listings use schema 2 and expose RF and collection/encrypted-payload data.
+No source filename is used as a path. `metadata` and `extract-metadata` accept
+`--page` or `--object` for their packet owner; document Info remains separate.
+
+```
+pagura attachments --associated INPUT
+pagura attachments --associated --page 0 INPUT
+pagura extract-attachment --object 10:0 --related 1 INPUT 0 F OUTPUT
+pagura check-attachment --associated INPUT 0 F
+pagura extract-metadata --object 10:0 INPUT OUTPUT
+pagura collection INPUT
+pagura images --page 0 INPUT
+pagura images --object 9:0 INPUT
+pagura extract-image --object 9:0 INPUT OUTPUT
+pagura extract-thumbnail --page 0 INPUT OUTPUT
+```
+
+`collection` reports schema/initial-view/sort declarations and never activates a
+navigator or nested document. `images` enumerates only direct page image resource
+entries, including unused/duplicate aliases, or the explicitly requested object.
+It does not enumerate painted occurrences or recurse into forms, patterns,
+annotations or inline images. Stored thumbnails are separate source assets.
+
+Image/thumbnail extraction defaults to **encoded asset bytes**: decryption and
+general-purpose filters are applied, while an image codec, if present, remains.
+`--stored` selects the exact original stream bytes, which may be ciphertext or
+PDF-filter data. Both are binary source transfers retaining PDF colour/Decode/
+mask dependencies; neither promises standalone JPEG/PNG appearance. Use ordinary
+page PNG export for rendered page appearance. Every destination is explicit and
+created only after successful selection/decoding; existing files are refused.

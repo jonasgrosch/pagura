@@ -23,7 +23,7 @@ function dom() {
 
 const nodes = root => [root, ...root.children.flatMap(nodes)];
 const button = (root, label) => nodes(root).find(node => node.tagName === 'BUTTON' && node.textContent === label);
-const tick = async () => { await Promise.resolve(); await Promise.resolve(); };
+const tick = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
 
 export async function testPageAttachmentView() {
   const document = dom(), calls = [], downloads = [];

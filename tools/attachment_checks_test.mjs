@@ -82,7 +82,7 @@ export async function testAttachmentCheckView() {
   const nodes = root => [root, ...root.children.flatMap(nodes)];
   const result = () => nodes(view.files).find(node => node.textContent === 'Size and checksum have not been checked.');
   await view.show(); assert.equal(calls.length, 0, 'listing must not check payloads');
-  let output = result(); view.buttons[1].fire('click'); await Promise.resolve(); await Promise.resolve();
+  let output = result(); view.buttons[1].fire('click'); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   assert.deepEqual(calls, [[3, 7, 1]], 'the selected catalog index and EF key are exact');
   assert.match(output.textContent, /9007199254740993 decoded bytes/);
   assert.match(output.textContent, /Declared size: not declared\. Declared checksum: not declared/);

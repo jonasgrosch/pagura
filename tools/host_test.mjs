@@ -1,3 +1,5 @@
+import { testExtendedServicesView } from './document_services_extended_view_test.mjs';
+import { testExtendedServices } from './document_services_extended_test.mjs';
 import { testAttachmentChecks, testAttachmentCheckView } from './attachment_checks_test.mjs';
 import { testPageAttachments } from './page_attachments_test.mjs';
 import { testPageAttachmentView } from './page_attachments_view_test.mjs';
@@ -219,7 +221,9 @@ async function main() {
     }
     await testReading(client, root, native, wasiRun);
     await testDocumentServices(client, root, native, wasiRun);
+    await testExtendedServices(client, root, native, wasiRun);
     await testDocumentServicesView();
+    await testExtendedServicesView();
     await testAttachmentChecks(client, root, native, wasiRun);
     await testPageAttachments(client, root, native, wasiRun, () => new SessionClient(new TestWorker()));
     await testPageAttachmentView();

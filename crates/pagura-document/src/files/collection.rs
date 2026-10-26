@@ -283,7 +283,9 @@ fn sort<'a>(
             None | Some((Value::Null, _)) => true,
             Some((Value::Boolean(value), _)) => *value,
             _ => {
-                return Err(source.error(Error::syntax("collection sort direction must be boolean")));
+                return Err(
+                    source.error(Error::syntax("collection sort direction must be boolean"))
+                );
             }
         };
         result.push(CollectionSort { key, ascending });

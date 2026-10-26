@@ -54,27 +54,29 @@ impl Document {
     /// # Errors
     /// Invalid page/object identity, malformed views, cycles and document budgets.
     pub fn files(&self, scope: FileScope) -> Result<Vec<FileRecord<'_>>> {
-        let records: Vec<FileRecord<'_>> = match scope {
-            FileScope::Catalog => self
-                .embedded_files()?
-                .into_iter()
-                .enumerate()
-                .map(|(index, file)| FileRecord {
-                    index,
-                    key: Some(file.key),
-                    specification: file.specification,
-                })
-                .collect(),
-            FileScope::PageAnnotations(page) => self
-                .page(page)?
-                .attachment_annotations(self)?
-                .into_iter()
-                .map(|annotation| FileRecord {
-                    index: annotation.index,
-                    key: None,
-                    specification: annotation.specification,
-                })
-                .collect(),
+        match scope {
+            FileScope::Catalog => records(
+                self,
+                self.embedded_files()?
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, file)| FileRecord {
+                        index,
+                        key: Some(file.key),
+                        specification: file.specification,
+                    }),
+            ),
+            FileScope::PageAnnotations(page) => records(
+                self,
+                self.page(page)?
+                    .attachment_annotations(self)?
+                    .into_iter()
+                    .map(|annotation| FileRecord {
+                        index: annotation.index,
+                        key: None,
+                        specification: annotation.specification,
+                    }),
+            ),
             _ => {
                 let files = match scope {
                     FileScope::Associated => self.associated_files()?,
@@ -89,22 +91,19 @@ impl Document {
                     }
                     _ => return Err(Error::invalid_argument("unsupported file scope")),
                 };
-                files
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, specification)| FileRecord {
-                        index,
-                        key: None,
-                        specification,
-                    })
-                    .collect()
+                records(
+                    self,
+                    files
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, specification)| FileRecord {
+                            index,
+                            key: None,
+                            specification,
+                        }),
+                )
             }
-        };
-        // The source views above separately budget their traversal. The adapted
-        // records are also charged before they are returned to the caller.
-        let mut context = crate::view::Context::new(self);
-        context.allocate::<FileRecord<'_>>(records.len(), crate::view::Source::default())?;
-        Ok(records)
+        }
     }
 
     /// Selects one EF or RF stream using the same indexes as [`Self::files`].
@@ -123,7 +122,7 @@ impl Document {
             .into_iter()
             .find(|file| file.index == index)
             .ok_or_else(|| {
-                Error::invalid_argument("file index is outside the selected collection")
+                Error::invalid_argument("attachment index outside selected collection")
             })?;
         match payload {
             FilePayload::Embedded(key) => file
@@ -142,4 +141,13 @@ impl Document {
         }
         .ok_or_else(|| Error::invalid_argument("file has no payload for this exact selection"))
     }
+}
+
+fn records<'a>(
+    document: &Document,
+    values: impl ExactSizeIterator<Item = FileRecord<'a>>,
+) -> Result<Vec<FileRecord<'a>>> {
+    let mut context = crate::view::Context::new(document);
+    context.allocate::<FileRecord<'_>>(values.len(), crate::view::Source::default())?;
+    Ok(values.collect())
 }

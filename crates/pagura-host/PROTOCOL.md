@@ -646,3 +646,57 @@ Evidence includes literal wire values, old-version gates, exact original slots,
 page-only/catalog separation, missing/malformed/duplicate entries, declaration
 checks, password failures/Identity and independent response/decode limits. Hosted
 native/WASI/client tests are authored; current-head runtime validation is pending.
+
+## Version 1.12: scoped document source services
+
+Every request below begins with `u32 document`; every response is encoded under
+the reading-response cap. Request and response kinds remain offset by 128.
+Earlier versions refuse these operations without changing their own records.
+
+| Request / response | Remaining request payload | Successful response |
+|---|---|---|
+| 31 / 159 Files | file scope | counted records: index, optional key bytes, 1.8 specification, extended details |
+| 32 / 160 FileBytes | file scope, u32 index, u8 EF key, payload selection | byte blob |
+| 33 / 161 FileCheck | same as FileBytes | existing 1.10 parameter-check record |
+| 34 / 162 ObjectMetadata | owner | optional metadata object identity |
+| 35 / 163 ObjectMetadataBytes | owner | optional byte blob |
+| 36 / 164 Collection | none | optional collection declaration |
+| 37 / 165 Images | page/object owner | counted optional resource name and image declaration |
+| 38 / 166 ImageBytes | page/object owner, u8 image kind, u8 transfer mode | mode text, optional codec text, byte blob |
+| 39 / 167 Reauthenticate | password byte blob | new u32 handle, u32 page count |
+| 40 / 168 Thumbnail | page/object owner | optional image declaration |
+
+File scope is a code: 0 catalog EmbeddedFiles, 1 catalog AF, 2 page AF followed
+by u32 page, 3 object AF followed by object identity, or 4 page annotations
+followed by u32 page. Annotation indexes retain original Annots slots. Payload
+selection is 0 EF or 1 RF followed by u32 pair ordinal within that exact EF key.
+There is no fallback or deduplication. Owner is 0 document, 1 page followed by
+u32 page, or 2 object followed by identity. Images/Thumbnail require page/object;
+ordinary ImageBytes requires an image object. Image kind 0 means image, 1 means
+thumbnail of the selected owner. Transfer modes are 0 stored and 1 encoded.
+
+Extended file details contain optional ID byte pairs; a parameter record per EF
+entry; RF records (key/name byte blobs, object, optional MIME, parameter record);
+CI records (key bytes, optional prefix, type name and value); and optional EP
+subtype/version byte names. Parameters retain optional exact u64 size, decoded
+date strings and checksum bytes. CI integer values use decimal text, decoded by
+the client into BigInt; real values use finite f64. CI value type names are
+absent, text, integer and real. Sort/presentation declarations remain inert.
+Collection responses contain optional identity/initial key, view name, fields
+(key, label, kind, optional decimal order, visible/editable flags) and sort keys.
+Collection views are Details, Tiles, Hidden or Navigator; field kinds are the
+public CollectionFieldKind variant names. Counts are capped at 1024.
+
+An image declaration contains object identity, u32 width, u32 height and a
+thumbnail flag. It validates source shape, not image samples or complete PDF
+colour/mask semantics. Source transfers are binary assets: stored bytes may be
+encrypted, encoded bytes retain codec/PDF interpretation dependencies. Codec
+names are DCTDecode, JPXDecode, JBIG2Decode or CCITTFaxDecode; absent codec in
+encoded mode means packed PDF samples. No standalone appearance is asserted.
+
+Reauthentication opens a separate immutable snapshot with the original recovery
+and engine limits. Wrong EFOpen-only credentials fail immediately; failed
+attempts consume no handle. Source/handle budgets are checked before opening.
+The existing document is unchanged, and the new handle must be closed. The
+viewer uses it only for the explicitly requested operation and clears supplied
+password bytes after each attempt. Stale dialogs cannot download its output.

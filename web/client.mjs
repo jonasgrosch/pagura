@@ -1,6 +1,6 @@
 import { HostFailure } from './failure.mjs';
 import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_12 } from './protocol.mjs';
-import { PngBackground, RequestKind } from './protocol_constants.mjs';
+import { MetadataOwnerCode, PngBackground, RequestKind } from './protocol_constants.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
@@ -86,7 +86,7 @@ export class SessionClient {
   collection(document) { return this.request(RequestKind.Collection, { document }); }
   images(document, owner) { return this.request(RequestKind.Images, { document, owner }); }
   thumbnail(document, owner) { return this.request(RequestKind.Thumbnail, { document, owner }); }
-  imageBytes(document, object, mode, thumbnail = false) { return this.request(RequestKind.ImageBytes, { document, object, mode, thumbnail }); }
+  imageBytes(document, identity, mode, thumbnail = false) { const owner = identity.page === undefined ? { kind: MetadataOwnerCode.Object, object: identity } : { kind: MetadataOwnerCode.Page, page: identity.page }; return this.request(RequestKind.ImageBytes, { document, owner, mode, thumbnail }); }
   reauthenticate(document, password) { return this.request(RequestKind.Reauthenticate, { document, password }); }
   metadata(document) { return this.request(RequestKind.Metadata, { document }); }
   attachments(document) { return this.request(RequestKind.Attachments, { document }); }

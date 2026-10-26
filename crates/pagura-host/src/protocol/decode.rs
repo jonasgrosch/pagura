@@ -273,7 +273,7 @@ impl<'a> Reader<'a> {
             RequestKind::Images => ServiceRequest::Images(self.owner()?),
             RequestKind::Thumbnail => ServiceRequest::Thumbnail(self.owner()?),
             RequestKind::ImageBytes => ServiceRequest::ImageBytes {
-                object: self.object()?,
+                owner: self.owner()?,
                 thumbnail: self.code::<super::ImageAssetCode>()?
                     == super::ImageAssetCode::Thumbnail,
                 mode: match self.code()? {

@@ -206,34 +206,15 @@ fn attachment<'a>(
     index: usize,
     key: &str,
 ) -> Result<EmbeddedFile<'a>, Failure> {
-    let specification = if let Some(page) = page {
-        document
-            .page(page)?
-            .attachment_annotations(document)?
-            .into_iter()
-            .find(|annotation| annotation.index == index)
-            .map(|annotation| annotation.specification)
-            .ok_or_else(|| {
-                Failure::Request(
-                    "INDEX does not identify a file attachment in this page's Annots".into(),
-                )
-            })?
-    } else {
-        document
-            .embedded_files()?
-            .into_iter()
-            .nth(index)
-            .map(|file| file.specification)
-            .ok_or_else(|| {
-                Failure::Request("attachment INDEX is outside the catalog listing".into())
-            })?
-    };
-    specification
-        .embedded
-        .into_iter()
-        .find(|entry| entry.key.as_bytes() == key.as_bytes())
-        .map(|entry| entry.file)
-        .ok_or_else(|| Failure::Request("attachment has no EF payload with this KEY".into()))
+    let scope = page.map_or(
+        pagura::files::FileScope::Catalog,
+        pagura::files::FileScope::PageAnnotations,
+    );
+    Ok(document.file_payload(
+        scope,
+        index,
+        pagura::files::FilePayload::Embedded(key.as_bytes()),
+    )?)
 }
 
 pub(crate) fn check_attachment(

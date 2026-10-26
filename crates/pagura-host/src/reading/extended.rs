@@ -40,8 +40,8 @@ pub enum ServiceRequest {
     Images(MetadataOwner),
     /// Exact image bytes. A thumbnail selection names its owner, not its stream.
     ImageBytes {
-        /// Owner for thumbnails, or image object identity otherwise.
-        object: ObjectId,
+        /// Page/object owner for thumbnails, or an explicit image object.
+        owner: MetadataOwner,
         /// Whether `object` owns a Thumb entry.
         thumbnail: bool,
         /// Stored ciphertext/filter bytes or decrypted encoded asset bytes.
@@ -115,10 +115,11 @@ pub(crate) fn service(
         ServiceRequest::Collection => collection(&mut out, document)?,
         ServiceRequest::Images(owner) => images(&mut out, document, owner)?,
         ServiceRequest::ImageBytes {
-            object,
+            owner,
             thumbnail,
             mode,
         } => {
+            let object = owner_object(document, owner)?;
             let asset = if thumbnail {
                 document
                     .thumbnail(object)?
@@ -219,7 +220,7 @@ fn file_details(out: &mut Writer, file: &pagura::files::FileSpecification<'_>) -
     for entry in &file.embedded {
         parameters(out, &entry.file)?;
     }
-    out.count(file.related.len())?;
+    bounded_count(out, file.related.len())?;
     for related in &file.related {
         services::blob(out, related.key.as_bytes())?;
         services::blob(out, related.name)?;
@@ -227,7 +228,7 @@ fn file_details(out: &mut Writer, file: &pagura::files::FileSpecification<'_>) -
         services::bytes(out, related.file.media_type().map(Name::as_bytes))?;
         parameters(out, &related.file)?;
     }
-    out.count(file.collection_item.len())?;
+    bounded_count(out, file.collection_item.len())?;
     for item in &file.collection_item {
         services::blob(out, item.key.as_bytes())?;
         services::text(out, item.prefix.as_deref())?;
@@ -278,7 +279,7 @@ fn collection(out: &mut Writer, document: &Document) -> Result<()> {
         services::object(out, collection.object)?;
         services::bytes(out, collection.initial_file)?;
         out.text(&format!("{:?}", collection.view))?;
-        out.count(collection.fields.len())?;
+        bounded_count(out, collection.fields.len())?;
         for field in collection.fields {
             services::blob(out, field.key.as_bytes())?;
             out.text(&field.name)?;
@@ -287,11 +288,18 @@ fn collection(out: &mut Writer, document: &Document) -> Result<()> {
             out.flag(field.visible)?;
             out.flag(field.editable)?;
         }
-        out.count(collection.sort.len())?;
+        bounded_count(out, collection.sort.len())?;
         for sort in collection.sort {
             services::blob(out, sort.key.as_bytes())?;
             out.flag(sort.ascending)?;
         }
     }
     Ok(())
+}
+
+fn bounded_count(out: &mut Writer, count: usize) -> Result<()> {
+    if count > MAX_ATTACHMENTS {
+        return Err(Error::limit("document-service record budget exceeded"));
+    }
+    out.count(count)
 }

@@ -1,4 +1,6 @@
-import { AttachmentCheckStatus, AttachmentKey } from './protocol_constants.mjs';
+import { requestPassword, cancelPassword } from './password.mjs';
+import { ExtendedServices } from './document_services_extended.mjs';
+import { AttachmentCheckStatus, AttachmentKey, ErrorCategory } from './protocol_constants.mjs';
 
 const keyNames = { [AttachmentKey.File]: 'F', [AttachmentKey.Unicode]: 'UF', [AttachmentKey.Dos]: 'DOS', [AttachmentKey.Mac]: 'Mac', [AttachmentKey.Unix]: 'Unix' };
 function byteName(bytes) {
@@ -18,21 +20,23 @@ export function downloadDocumentBytes(bytes, name, document = globalThis.documen
 
 /** A properties dialog owns no PDF bytes; stale requests cannot alter or download a newer document. */
 export class DocumentServices {
-  constructor({ state, document = globalThis.document, download = downloadDocumentBytes }) {
-    Object.assign(this, { state, document, download }); this.serial = 0; this.buttons = [];
+  constructor({ state, document = globalThis.document, download = downloadDocumentBytes, password = requestPassword, cancel = cancelPassword }) {
+    Object.assign(this, { state, document, download, password, cancel }); this.serial = 0; this.buttons = [];
     const $ = id => document.getElementById(id);
     this.dialog = $('document-services-dialog'); this.openButton = $('document-services-open');
     this.info = $('document-properties'); this.files = $('document-attachments'); this.message = $('document-services-status');
     this.pageFiles = $('document-page-attachments'); this.pageTitle = $('document-page-attachments-title');
     this.pageForm = $('document-attachment-page-form'); this.pageInput = $('document-attachment-page'); this.pageSubmit = $('document-attachment-page-submit');
     this.loading = false; this.selectedPage = null;
+    this.extended = new ExtendedServices(this);
     this.pageForm.addEventListener('submit', event => { event.preventDefault(); void this.selectPage(); });
     this.openButton.addEventListener('click', () => { void this.show(); });
     $('document-services-close').addEventListener('click', () => { this.reset(); this.openButton.focus(); });
-    this.dialog.addEventListener('close', () => { this.serial++; });
+    this.dialog.addEventListener('close', () => { this.serial++; this.cancel(); this.extended.reset(); });
   }
   controls() { this.openButton.disabled = this.state().handle === null; }
   reset() {
+    this.cancel(); this.extended.reset();
     this.serial++; this.buttons = []; this.loading = false; this.selectedPage = null;
     this.info.replaceChildren(); this.files.replaceChildren(); this.pageFiles.replaceChildren(); this.message.textContent = '';
     if (this.dialog.open) this.dialog.close(); this.controls();
@@ -55,6 +59,7 @@ export class DocumentServices {
     const snapshot = { ...this.state() }; if (snapshot.handle === null) return;
     const count = snapshot.count ?? 0, page = selectedPage ?? snapshot.page ?? 0;
     if (count && (!Number.isInteger(page) || page < 0 || page >= count)) return;
+    this.extended.reset();
     const serial = ++this.serial; this.buttons = []; this.message.textContent = '';
     this.loading = true; this.selectedPage = count ? page : null;
     this.pageInput.value = count ? String(page + 1) : ''; this.pageInput.max = String(count);
@@ -91,7 +96,7 @@ export class DocumentServices {
     row('Language (declared)', value.language); this.info.append(list);
     if (!value.info && value.language === null) this.info.append(this.node('p', 'No document properties declared.'));
     if (value.metadataObject) this.info.append(this.button('Download metadata packet', snapshot, serial,
-      () => snapshot.client.metadataBytes(snapshot.handle), 'metadata.xmp'));
+      handle => snapshot.client.metadataBytes(handle), 'metadata.xmp'));
   }
   attachments(files, snapshot, serial, { page = null, target = this.files } = {}) {
     if (!files.length) { target.append(this.node('p', page === null ? 'No document attachments.' : 'No attachments on this page.')); return; }
@@ -108,8 +113,8 @@ export class DocumentServices {
       for (const payload of file.payloads) {
         const name = keyNames[payload.key], label = file.payloads.length === 1 ? 'Download attachment' : `Download ${name} payload`;
         const group = this.document.createElement('div');
-        const read = () => page === null ? snapshot.client.attachmentBytes(snapshot.handle, index, payload.key)
-          : snapshot.client.pageAttachmentBytes(snapshot.handle, page, index, payload.key);
+        const read = handle => page === null ? snapshot.client.attachmentBytes(handle, index, payload.key)
+          : snapshot.client.pageAttachmentBytes(handle, page, index, payload.key);
         group.append(this.button(label, snapshot, serial, read, `${page === null ? '' : `page-${page + 1}-`}attachment-${index + 1}-${name}.bin`));
         if (payload.declaredSize !== null) group.append(this.node('span', ` ${payload.declaredSize} bytes (declared)`));
         const result = this.node('p', 'Size and checksum have not been checked.');
@@ -127,23 +132,47 @@ export class DocumentServices {
     const button = this.node('button', label); button.type = 'button'; this.buttons.push(button);
     button.addEventListener('click', () => { void this.extract(snapshot, serial, read, name); }); return button;
   }
+  async authorized(snapshot, serial, read) {
+    try { return await read(snapshot.handle); }
+    catch (error) { if (error.category !== ErrorCategory.Password) throw error; }
+    let retry = false;
+    while (this.current(snapshot, serial)) {
+      const password = await this.password(retry ? 'Incorrect attachment password. Try again.' : 'This attachment requires a password.');
+      if (password === null) throw new Error('Attachment operation cancelled');
+      let temporary = null;
+      try {
+        if (!this.current(snapshot, serial)) return null;
+        temporary = await snapshot.client.reauthenticate(snapshot.handle, password);
+        if (!this.current(snapshot, serial)) return null;
+        return await read(temporary.document);
+      } catch (error) { if (error.category !== ErrorCategory.Password) throw error; retry = true; }
+      finally {
+        password.fill(0);
+        if (temporary) await snapshot.client.close(temporary.document).catch(() => {});
+      }
+    }
+    return null;
+  }
   async extract(snapshot, serial, read, name) {
     if (!this.current(snapshot, serial) || this.buttons.some(button => button.disabled)) return;
     this.buttons.forEach(button => { button.disabled = true; }); this.message.textContent = 'Preparing download…';
     try {
-      const bytes = await read(); if (!this.current(snapshot, serial)) return;
+      const bytes = await this.authorized(snapshot, serial, read); if (!this.current(snapshot, serial)) return;
       if (bytes === null) throw new Error('No metadata packet is present');
       this.download(bytes, name, this.document); this.message.textContent = 'Download started.';
     } catch (error) { if (this.current(snapshot, serial)) this.message.textContent = `Download unavailable: ${error}`; }
     finally { if (this.current(snapshot, serial)) this.buttons.forEach(button => { button.disabled = false; }); }
   }
   async check(snapshot, serial, index, key, result, page = null) {
+    return this.checkResult(snapshot, serial, handle => page === null ? snapshot.client.attachmentCheck(handle, index, key)
+      : snapshot.client.pageAttachmentCheck(handle, page, index, key), result);
+  }
+  async checkResult(snapshot, serial, read, result) {
     if (!this.current(snapshot, serial) || this.buttons.some(button => button.disabled)) return;
     this.buttons.forEach(button => { button.disabled = true; });
     this.message.textContent = 'Checking attachment…'; result.textContent = 'Checking size and checksum…';
     try {
-      const checked = await (page === null ? snapshot.client.attachmentCheck(snapshot.handle, index, key)
-        : snapshot.client.pageAttachmentCheck(snapshot.handle, page, index, key));
+      const checked = await this.authorized(snapshot, serial, read);
       if (!this.current(snapshot, serial)) return;
       const label = value => {
         if (value === AttachmentCheckStatus.NotDeclared) return 'not declared';

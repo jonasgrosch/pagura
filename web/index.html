@@ -91,6 +91,27 @@
       <button id="document-attachment-page-submit" type="submit">Show page attachments</button>
     </form>
     <div id="document-page-attachments"></div>
+    <h3>Other document sources</h3>
+    <form id="document-service-source-form">
+      <label for="document-service-source">Source</label>
+      <select id="document-service-source">
+        <option value="catalog">Catalog files, including related files</option>
+        <option value="associated">Document associated files</option>
+        <option value="page-associated">Selected page associated files</option>
+        <option value="page-annotations">Selected page files, including related files</option>
+        <option value="object-associated">Object associated files</option>
+        <option value="metadata">Object metadata packet</option>
+        <option value="images">Selected page image resources and thumbnail</option>
+        <option value="image-object">Image object</option>
+        <option value="thumbnail-object">Object thumbnail</option>
+        <option value="collection">Collection properties</option>
+      </select>
+      <label for="document-service-object">Object number:generation</label>
+      <input id="document-service-object" type="text" inputmode="text" placeholder="10:0" aria-describedby="document-service-object-help">
+      <small id="document-service-object-help">Used only for object sources. Page sources use the page selected above.</small>
+      <button type="submit">Read selected source</button>
+    </form>
+    <div id="document-service-source-results"></div>
     <p id="document-services-status" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="png-export-dialog" aria-labelledby="png-export-title">
