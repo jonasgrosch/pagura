@@ -114,9 +114,11 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     let mut colors = Colors::new(&document, Some(&store));
     let color = pagura_image::jpx::JpxColor::Icc(data.clone());
     let intent = pagura_color::Intent::Relative;
-    let space = colors.embedded_jpx(id, &color, 3, intent, false).unwrap();
+    let space = colors
+        .embedded_jpx(id, &color, 3, intent, super::JpxSamples::Unsigned)
+        .unwrap();
     let other = Colors::new(&document, Some(&store))
-        .embedded_jpx(id, &color, 3, intent, false)
+        .embedded_jpx(id, &color, 3, intent, super::JpxSamples::Unsigned)
         .unwrap();
     let (ColorSpace::Icc(first), ColorSpace::Icc(second)) = (space.as_ref(), other.as_ref()) else {
         panic!("embedded ICC did not produce an ICC space");
@@ -129,7 +131,7 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     assert_eq!(first.range, [[0.0, 1.0]; 4]);
     assert!(matches!(
         colors
-            .embedded_jpx(id, &color, 1, intent, false)
+            .embedded_jpx(id, &color, 1, intent, super::JpxSamples::Unsigned)
             .unwrap_err()
             .kind,
         ErrorKind::Syntax
@@ -141,7 +143,7 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
                 &pagura_image::jpx::JpxColor::Icc(b"broken".to_vec()),
                 3,
                 intent,
-                false,
+                super::JpxSamples::Unsigned,
             )
             .unwrap_err()
             .kind,
@@ -171,7 +173,7 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
         )
         .unwrap();
         let error = Colors::new(&bounded, None)
-            .embedded_jpx(id, &color, 3, intent, false)
+            .embedded_jpx(id, &color, 3, intent, super::JpxSamples::Unsigned)
             .unwrap_err();
         assert!(matches!(error.kind, ErrorKind::Limit), "{error}");
     }
@@ -200,7 +202,9 @@ fn jpx_candidates_and_intents_do_not_alias_in_profile_caches() {
         Intent::Absolute,
     ] {
         let mut colors = Colors::new(&document, Some(&store));
-        let space = colors.embedded_jpx(id, color, 3, intent, false).unwrap();
+        let space = colors
+            .embedded_jpx(id, color, 3, intent, super::JpxSamples::Unsigned)
+            .unwrap();
         assert_eq!(
             matches!(space.as_ref(), ColorSpace::Icc(_)),
             intent == Intent::Perceptual

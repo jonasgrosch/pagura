@@ -3,7 +3,7 @@
 //! Unsupported profiles and selected transforms advance to the next
 //! specification. Malformed profiles and exhausted budgets remain errors.
 
-use super::Colors;
+use super::{Colors, JpxSamples};
 use pagura_color::{ColorSpace, IccSpace, Intent};
 use pagura_core::{Error, ErrorKind, ObjectId, Result};
 use pagura_image::jpx::JpxColor;
@@ -16,25 +16,25 @@ impl Colors<'_> {
         color: &JpxColor,
         components: u8,
         intent: Intent,
-        signed: bool,
+        samples: JpxSamples,
     ) -> Result<Arc<ColorSpace>> {
         match color {
             JpxColor::Alternatives(choices) => {
                 for (ordinal, choice) in choices.iter().enumerate() {
                     if let Some(space) =
-                        self.jpx_choice(id, ordinal, &choice.color, components, intent, signed)?
+                        self.jpx_choice(id, ordinal, &choice.color, components, intent, samples)?
                     {
                         return Ok(space);
                     }
                 }
             }
             color => {
-                if let Some(space) = self.jpx_choice(id, 0, color, components, intent, signed)? {
+                if let Some(space) = self.jpx_choice(id, 0, color, components, intent, samples)? {
                     return Ok(space);
                 }
             }
         }
-        if signed {
+        if samples == JpxSamples::Signed {
             return Err(Error::unsupported(
                 pagura_image::features::JPX_COLOUR,
                 "signed JPX input requires a restricted XYZ matrix/TRC profile",
@@ -50,10 +50,10 @@ impl Colors<'_> {
         color: &JpxColor,
         components: u8,
         intent: Intent,
-        signed: bool,
+        samples: JpxSamples,
     ) -> Result<Option<Arc<ColorSpace>>> {
         let data = match color {
-            JpxColor::Enumerated(_) if signed => return Ok(None),
+            JpxColor::Enumerated(_) if samples == JpxSamples::Signed => return Ok(None),
             JpxColor::Enumerated(12 | 16 | 17) => return self.jpx_device(components).map(Some),
             JpxColor::Enumerated(18) => return Ok(Some(Arc::new(ColorSpace::Sycc))),
             JpxColor::Icc(data) => data,
@@ -76,7 +76,7 @@ impl Colors<'_> {
         // T.800 Table I.9 permits negative-input clipping for these restricted
         // models. General signed ICC input remains undefined; a lower-ranked
         // restricted candidate can still supply a defined interpretation.
-        if signed && !profile.restricted_trc(intent) {
+        if samples == JpxSamples::Signed && !profile.restricted_trc(intent) {
             return Ok(None);
         }
         // ICC.1:2010 6.3.4 and 10.8: the profile receives physical Lab

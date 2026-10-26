@@ -419,11 +419,8 @@ fn embedded_space(
     color: jpx::JpxColor,
     components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
 ) -> Result<ImageKind> {
-    let count =
-        u8::try_from(components.len()).map_err(|_| Error::limit("too many JPX components"))?;
-    let signed = components.iter().any(|c| c.0.signed);
-    validate_color(&color, count, signed)?;
-    let sample_bias = if signed {
+    validate_color(&color, components)?;
+    let sample_bias = if components.iter().any(|c| c.0.signed) {
         components
             .iter()
             .map(|(c, _)| if c.signed { 1 << (c.bits - 1) } else { 0 })
@@ -434,11 +431,16 @@ fn embedded_space(
     Ok(ImageKind::EmbeddedColor { color, sample_bias })
 }
 
-fn validate_color(color: &jpx::JpxColor, count: u8, signed: bool) -> Result<()> {
+fn validate_color(
+    color: &jpx::JpxColor,
+    components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
+) -> Result<()> {
+    let count = components.len();
+    let signed = components.iter().any(|c| c.0.signed);
     match color {
         jpx::JpxColor::Alternatives(choices) => {
             for choice in choices {
-                validate_color(&choice.color, count, signed)?;
+                validate_color(&choice.color, components)?;
             }
         }
         jpx::JpxColor::Enumerated(16..=18) if signed => {

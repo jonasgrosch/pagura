@@ -37,6 +37,13 @@ pub(crate) struct Colors<'a> {
     complement: Option<Arc<Function>>,
 }
 
+/// The integer domain of embedded JPEG 2000 colour samples.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JpxSamples {
+    Unsigned,
+    Signed,
+}
+
 /// Whether `Default` spaces replace device names (8.6.5.6). They do at the
 /// top of a resolution and never inside a default's own definition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

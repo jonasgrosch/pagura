@@ -5,6 +5,7 @@
 use super::super::Machine;
 use crate::device::Device;
 use crate::model::{Image, ImageMask};
+use crate::resources::colorspace::JpxSamples;
 use pagura_color::{ColorSpace, Components, Intent, MAX_COMPONENTS};
 use pagura_core::{Dictionary, Error, ObjectId, Result};
 use pagura_image::{ImageId, ImageKind, ImageSource, SourceMask};
@@ -102,7 +103,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                         color,
                         source.components(),
                         intent,
-                        !sample_bias.is_empty(),
+                        if sample_bias.is_empty() {
+                            JpxSamples::Unsigned
+                        } else {
+                            JpxSamples::Signed
+                        },
                     )
                     .map(Some)
             }
