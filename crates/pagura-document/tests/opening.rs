@@ -96,7 +96,8 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
     assert_eq!(job.work(), 2);
     source.supply(ID, 0, &bytes[..512]).unwrap();
     // Header: 256 bytes; tail: 256, 512, 1024; xref: 256; final
-    // materialization: 1024. Each read costs one, including the two waits.
+    // materialization: 1024. Catalog identity and value each read 256 bytes.
+    // Each read costs one, including the two waits; document reads share work.
     for expected_work in [259, 2054, 2311] {
         assert!(matches!(job.advance().unwrap(), Opening::Yielded));
         assert_eq!(job.work(), expected_work);
@@ -104,7 +105,7 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
     let Opening::Ready(document) = job.advance().unwrap() else {
         panic!("admitted document")
     };
-    assert_eq!(job.work(), 3336);
+    assert_eq!(job.work(), 3336 + 2 * (1 + 256));
     assert_eq!(document.materialize().unwrap().bytes(), bytes);
     assert_eq!(document.object_count(), 4);
     assert_eq!(document.page_count().unwrap(), 1);
@@ -367,7 +368,8 @@ fn bootstrap_retains_completed_header_tail_and_index_before_complete_admission()
     let Opening::Ready(document) = job.advance().unwrap() else {
         panic!("retained index completes without replaying bootstrap")
     };
-    assert_eq!(job.work(), work + 1 + 4096);
+    // Materialization plus Catalog identity/value windows, without bootstrap replay.
+    assert_eq!(job.work(), work + 1 + 4096 + 2 * (1 + 256));
     assert_eq!(document.page_count().unwrap(), 1);
     assert_eq!(document.materialize().unwrap().bytes(), bytes);
     assert_eq!(document.diagnostics(), []);
