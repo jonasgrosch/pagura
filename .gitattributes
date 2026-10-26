@@ -6,3 +6,6 @@
 data/** -text
 # Form values keep their exact line endings (fixtures.py records their hashes).
 corpus/generated/forms/*.value -text
+# These files are reproducible; review the authored fixture generators first.
+corpus/generated/** linguist-generated=true
+corpus/manifests/** linguist-generated=true

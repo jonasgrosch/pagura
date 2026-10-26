@@ -147,6 +147,51 @@ pub fn prepare_widget_with_policy(
     widget_appearance(filler, index, &fonts, policy)
 }
 
+/// Generates both normal states for a checkbox/radio widget without an AP.
+///
+/// The on-state name follows the filler's selection rules. Both programs use the
+/// same generator as live preview, so saving Off does not remove the ability to
+/// toggle the reopened field. The pair has one aggregate storage budget.
+///
+/// # Errors
+/// Returns InvalidArgument for an existing AP or a non-toggle button. Other
+/// errors are the source-form, appearance and resource-limit errors of [`prepare`].
+pub fn prepare_button_states(
+    filler: &FormFiller<'_>,
+    index: usize,
+) -> Result<[(Name, AppearanceStream); 2]> {
+    let widget = widget(filler, index)?;
+    let field = field(filler, widget)?;
+    let document = filler.document();
+    if document.optional(widget.dictionary, b"AP")?.is_some() {
+        return Err(Error::invalid_argument(
+            "button already has appearance states",
+        ));
+    }
+    if filler.form().has_xfa {
+        return Err(Error::unsupported(
+            pagura_document::features::XFA,
+            "XFA appearance generation is unavailable",
+        ));
+    }
+    let on = filler.button_on_state(index)?;
+    let off = Name::new(b"Off");
+    let off_stream = buttons::check_mark(document, widget, Some(&off), field)?;
+    let on_stream = buttons::check_mark(document, widget, Some(&on), field)?;
+    let bytes = off_stream
+        .retained_bytes()
+        .saturating_add(on_stream.retained_bytes())
+        .saturating_add(off.len())
+        .saturating_add(on.len())
+        .saturating_add(size_of::<[(Name, AppearanceStream); 2]>());
+    if bytes > document.limits().document_bytes {
+        return Err(Error::limit(
+            "button appearance states exceed storage budget",
+        ));
+    }
+    Ok([(off, off_stream), (on, on_stream)])
+}
+
 /// One widget's appearance, with errors placed at the widget.
 fn widget_appearance(
     filler: &FormFiller<'_>,
@@ -227,7 +272,8 @@ impl Context<'_, '_> {
             ));
         }
         if button {
-            return buttons::check_mark(self.document(), self.widget, state, self.field);
+            return buttons::check_mark(self.document(), self.widget, state, self.field)
+                .map(Appearance::Generated);
         }
         self.variable(original.as_ref())
     }

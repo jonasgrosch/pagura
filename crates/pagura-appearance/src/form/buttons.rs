@@ -2,7 +2,7 @@
 
 use super::{bounds, inset, style::Style};
 use crate::program::Program;
-use crate::stream::{Appearance, AppearanceStream, form_dictionary};
+use crate::stream::{AppearanceStream, form_dictionary};
 use pagura_core::{Dictionary, Name, Result, Value};
 use pagura_document::{
     Document,
@@ -16,7 +16,7 @@ pub(super) fn check_mark(
     widget: &Widget<'_>,
     state: Option<&Name>,
     field: &Field<'_>,
-) -> Result<Appearance> {
+) -> Result<AppearanceStream> {
     let limits = document.limits();
     let bbox = bounds(widget)?;
     let style = Style::read(document, widget.dictionary)?;
@@ -27,7 +27,10 @@ pub(super) fn check_mark(
         _ => None,
     });
     let mut resources = Dictionary::new();
-    if state.is_some_and(|name| name.as_bytes() != b"Off") {
+    if state.is_some_and(|name| name.as_bytes() != b"Off")
+        && bbox.width() > 2.0 * style.inset
+        && bbox.height() > 2.0 * style.inset
+    {
         let area = inset(bbox, style.inset)?;
         let size = area.height().min(area.width());
         resources.insert(Name::new(b"Font"), Value::Dictionary(zapf_dingbats()));
@@ -43,7 +46,7 @@ pub(super) fn check_mark(
     }
     let mut dictionary = form_dictionary(bbox);
     dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
-    AppearanceStream::new(document, dictionary, content.finish()).map(Appearance::Generated)
+    AppearanceStream::new(document, dictionary, content.finish())
 }
 
 /// A font dictionary with the standard ZapfDingbats font as `/ZaDb`.

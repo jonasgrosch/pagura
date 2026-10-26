@@ -26,11 +26,12 @@ fn fill(input: Vec<u8>, field_index: usize, value: &str) -> Result<Vec<u8>> {
 
 Field indexes come from the filler form's typed field list. Text/choice values
 and normal appearances save together; existing checkbox/radio state dictionaries
-are retained. Default values, rollover/down appearances and unrelated dictionary
+are retained. Missing checkbox/radio appearances generate both Off and on states
+using the same selection and artwork as preview. Default values, rollover/down appearances and unrelated dictionary
 entries survive. The existing appearance generator's font and feature limits
 apply. A failed save returns no partial output and leaves the filler available
 for correction. Password changes, nested direct field/widget identities and
-buttons requiring generated state dictionaries return explicit unsupported tags.
+push buttons without stored artwork return explicit unsupported tags.
 
 For lower-level edits, start `Transaction::new(&document)`, use
 `edit_dictionary(id, closure)`, `replace(id, object)` or `add(object)`, and call

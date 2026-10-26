@@ -46,7 +46,7 @@ pub mod features {
     pub const DIRECT_FIELD: Feature = Feature::new("edit.direct-field");
     /// Password values and appearances must not be saved.
     pub const PASSWORD: Feature = Feature::new("edit.password");
-    /// A button without reusable state appearances cannot yet be saved.
+    /// Push-button appearances still require stored artwork when saving.
     pub const BUTTON_APPEARANCE: Feature = Feature::new("edit.button-appearance");
     /// Every editing capability tag.
     pub const ALL: &[Feature] = &[

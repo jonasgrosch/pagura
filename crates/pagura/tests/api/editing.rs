@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Independently authored input syntax and saved revision/form contracts.
 
+mod button_states;
 mod form_borders;
 
 use pagura::editing::{SaveOptions, SignaturePolicy, Transaction, features, save_filled_form};
@@ -457,7 +458,7 @@ fn checkbox_and_radio_states_and_appearances_survive() {
 }
 
 #[test]
-fn password_and_missing_button_state_appearances_fail_atomically() {
+fn password_changes_fail_atomically() {
     let document = open(fixture("forms", "text-password.pdf")).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     filler.set(0, FillValue::Text("secret")).unwrap();
@@ -468,23 +469,6 @@ fn password_and_missing_button_state_appearances_fail_atomically() {
         ErrorKind::Unsupported(features::PASSWORD)
     );
     assert!(filler.get(0).is_some());
-    let document = open(fixture("forms", "render-checkbox-generated.pdf")).unwrap();
-    let mut filler = document.form_filler().unwrap().unwrap();
-    filler
-        .set(
-            0,
-            FillValue::Button(ButtonValue::Widget {
-                index: 0,
-                state: None,
-            }),
-        )
-        .unwrap();
-    assert_eq!(
-        save_filled_form(&filler, &SaveOptions::default())
-            .unwrap_err()
-            .kind,
-        ErrorKind::Unsupported(features::BUTTON_APPEARANCE)
-    );
 }
 
 #[test]

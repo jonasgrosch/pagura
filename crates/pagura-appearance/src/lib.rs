@@ -34,6 +34,6 @@ pub use annotation::{annotation_appearance, annotation_appearance_with_fonts};
 pub use fonts::{FontSource, ProviderFonts};
 pub use form::{
     FilledWidgets, TextStyle, UpdatePolicy, WidgetAppearance, default_text_style, prepare,
-    prepare_widget, prepare_widget_with_policy,
+    prepare_button_states, prepare_widget, prepare_widget_with_policy,
 };
 pub use stream::{Appearance, AppearanceStream};
