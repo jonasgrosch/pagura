@@ -148,6 +148,7 @@ pub(crate) fn enclose_encode(v: Affine) -> Result<Option<Affine>, Undecided> {
         Err(Undecided::Split {
             form: v,
             at: LINEAR_LIMIT,
+            count: 1,
         })
     }
 }

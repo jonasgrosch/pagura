@@ -41,10 +41,11 @@ pub(crate) struct Affine {
 /// Why an evaluation could not enclose an interval.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Undecided {
-    /// A choice changes inside the interval, where `form` reaches `at`;
-    /// inputs within `form`'s radius of the threshold are left to the exact
-    /// evaluation.
-    Split { form: Affine, at: f64 },
+    /// A choice changes inside the interval, where `form` reaches `at`, and
+    /// for grid cells at each of the `count − 1` boundaries after it, one
+    /// apart; inputs within `form`'s radius of a threshold are left to the
+    /// exact evaluation.
+    Split { form: Affine, at: f64, count: usize },
     /// The evaluation includes a step without an enclosure.
     Unsupported,
 }
@@ -211,6 +212,7 @@ impl Affine {
         Err(Undecided::Split {
             form: self,
             at: if from < low { low } else { high },
+            count: 1,
         })
     }
 
@@ -224,6 +226,7 @@ impl Affine {
             Err(Undecided::Split {
                 form: self,
                 at: bound,
+                count: 1,
             })
         }
     }
@@ -231,7 +234,8 @@ impl Affine {
     /// The grid cells `k` (`floor(x)` clipped to `last`) the values take:
     /// one cell, or two adjacent cells when the values lie within [`FLAT`]
     /// of their common boundary; the caller joins the enclosures of what
-    /// each cell computes. Piecewise-linear interpolation is continuous
+    /// each cell computes. Otherwise every boundary the values cross splits
+    /// them. Piecewise-linear interpolation is continuous
     /// across a boundary, so both cells compute nearly the same value there.
     pub(crate) fn cells(self, last: usize) -> Result<[usize; 2], Undecided> {
         // Grid positions are clipped to the grid, so no value is negative.
@@ -247,9 +251,12 @@ impl Affine {
         if end == first + 1 && top - bottom <= FLAT {
             return Ok([first, end]);
         }
+        // Every boundary crossed at once: the cells between them are the
+        // parts, without an enclosure for each boundary.
         Err(Undecided::Split {
             form: self,
             at: usize_f64(first + 1),
+            count: end - first,
         })
     }
 }

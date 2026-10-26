@@ -167,11 +167,13 @@ impl Ramp {
                 // Over the whole interval: the stage itself has no enclosure.
                 Err(Undecided::Unsupported) if [low, high] == inputs => break,
                 Err(Undecided::Unsupported) => {}
-                Err(Undecided::Split { form, at }) => {
-                    let [left, right] = split([low, high], x, form, at);
-                    bytes.reserve_capacity(&mut pending, 2)?;
-                    pending.extend(right);
-                    pending.extend(left);
+                Err(Undecided::Split { form, at, count }) => {
+                    // No more parts pending than pieces may still come, but
+                    // at least the two around one threshold.
+                    let room = limit - self.pieces.len();
+                    let count = count.min(room.saturating_sub(pending.len())).max(1);
+                    bytes.reserve_capacity(&mut pending, count + 1)?;
+                    split([low, high], x, form, (at, count), &mut pending);
                 }
             }
         }
@@ -405,26 +407,46 @@ fn shrink<T>(values: &mut Vec<T>, bytes: &mut Meter) {
     bytes.refund((old + values.len() - values.capacity()) * size_of::<T>());
 }
 
-/// The parts of `low..=high` (whose input form is `x`) on either side of
-/// where `form` reaches `at`, leaving out the inputs within twice `form`'s
-/// radius of the threshold, whose choice the enclosure cannot tell. A part
-/// that would not shrink the interval is dropped.
-fn split([low, high]: [f64; 2], x: Affine, form: Affine, at: f64) -> [Option<[f64; 2]>; 2] {
+/// Pushes onto `pending`, the leftmost last, the parts of `low..=high`
+/// (whose input form is `x`) between where `form` reaches `at`, `at + 1`,
+/// …, `at + count − 1`, leaving out the inputs within twice `form`'s radius
+/// of each threshold, whose choice the enclosure cannot tell. A part that
+/// would not shrink the interval is dropped.
+fn split(
+    [low, high]: [f64; 2],
+    x: Affine,
+    form: Affine,
+    (at, count): (f64, usize),
+    pending: &mut Vec<[f64; 2]>,
+) {
     if form.s == 0.0 || x.s == 0.0 {
-        return [None, None];
+        return;
     }
-    let centre = (at - form.c) / form.s;
     let width = 2.0 * (form.r + f64::EPSILON * (form.c.abs() + form.s.abs() + form.r))
         / form.s.abs()
         + 1.0 / (1_u64 << 40) as f64;
-    // The inputs at `ξ` rise with it.
+    // The inputs at `ξ` rise with it, and so do the thresholds' where
+    // `form` rises.
     let input = |xi: f64| x.c + x.s * xi;
-    let (first, second) = (input(centre - width), input(centre + width));
-    let left_end = first.next_down().min(high.next_down());
-    let right_start = left_end.next_up().max(second.next_up()).max(low.next_up());
-    let left = (left_end >= low && left_end < high).then_some([low, left_end]);
-    let right = (right_start <= high && right_start > low).then_some([right_start, high]);
-    [left, right]
+    let first = pending.len();
+    let mut start = low;
+    for i in 0..count {
+        let k = if form.s > 0.0 { i } else { count - 1 - i };
+        let centre = (at + usize_f64(k) - form.c) / form.s;
+        let (before, after) = (input(centre - width), input(centre + width));
+        let end = before.next_down().min(high.next_down());
+        if end >= start && end < high {
+            pending.push([start, end]);
+        }
+        start = start
+            .max(end.next_up())
+            .max(after.next_up())
+            .max(low.next_up());
+    }
+    if start <= high && start > low {
+        pending.push([start, high]);
+    }
+    pending[first..].reverse();
 }
 
 #[cfg(test)]
