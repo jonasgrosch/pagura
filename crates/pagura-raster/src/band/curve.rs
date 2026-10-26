@@ -403,6 +403,38 @@ impl Mono {
     pub(crate) fn control(&self) -> Point {
         Point::new(self.x0 + self.bx * 0.5, self.y0 + self.by * 0.5)
     }
+
+    /// The derivative, dx/dt and dy/dt, at `t`.
+    pub(crate) fn tangent(&self, t: f64) -> Point {
+        Point::new(self.bx + 2.0 * self.ax * t, self.by + 2.0 * self.ay * t)
+    }
+
+    /// Parameters just outside those of heights `lo <= hi` within the
+    /// piece, whose heights with their evaluation error are at most `lo`
+    /// and at least `hi`: every point between those heights lies between
+    /// them.
+    pub(crate) fn parameters(&self, lo: f64, hi: f64) -> [f64; 2] {
+        const STEPS: [f64; 4] = [
+            1.0 / 1_099_511_627_776.0,
+            1.0 / 1_073_741_824.0,
+            1.0 / 1_048_576.0,
+            1.0 / 1024.0,
+        ];
+        let slack = |t: f64, delta: f64| {
+            self.coordinate_error(t, false) + 4.0 * f64::EPSILON * (self.dy(t).abs() + delta.abs())
+        };
+        let (lo, hi) = (lo - self.y0, hi - self.y0);
+        let (t, u) = (self.ty(lo), self.ty(hi));
+        let first = STEPS
+            .into_iter()
+            .map(|step| (t - step).max(0.0))
+            .find(|&t| self.dy(t) + slack(t, lo) <= lo);
+        let last = STEPS
+            .into_iter()
+            .map(|step| (u + step).min(1.0))
+            .find(|&u| self.dy(u) - slack(u, hi) >= hi);
+        [first.unwrap_or(0.0), last.unwrap_or(1.0)]
+    }
 }
 
 /// A glyph outline as boundary pieces in contour order: `pieces` from

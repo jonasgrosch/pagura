@@ -246,14 +246,50 @@ fn same_bytes(outline: &Path, linear: [f64; 4]) -> f64 {
 fn covered_sets_place_the_bytes_of_resolving_each_placement() {
     for (first, second) in [(false, false), (true, true), (false, true)] {
         for linear in [[1.0, 0.0, 0.0, 1.0], [1.5, 0.0, 0.25, 1.25]] {
-            // The circles cross: the slabs around each crossing are halved
-            // down to the least height, which leaves a tiny allowance.
+            // The circles cross: each crossing is bisected down to the least
+            // area, which leaves a tiny allowance.
             let allowance = same_bytes(&outline(first, second), linear);
             assert!(allowance > 0.0 && allowance < 1e-9, "{allowance}");
         }
     }
     // Overlapping bars keep the outer sides whole, with no allowance.
     assert_eq!(same_bytes(&bars(), [1.0, 0.0, 0.0, 1.0]), 0.0);
+}
+
+/// Two triangles whose sides cross: the left one's from (5, 0) to (9, 4)
+/// and the right one's from (8, 0) to (`foot`, 4); and a blob to the right
+/// that makes the outline curved.
+fn crossing(foot: f64) -> Path {
+    let mut path = PathBuilder::new();
+    for corners in [
+        [(4.5, 0.0), (5.0, 0.0), (9.0, 4.0), (0.0, 4.0)],
+        [(8.0, 0.0), (11.0, 0.0), (11.0, 4.0), (foot, 4.0)],
+    ] {
+        path.move_to(Point::new(corners[0].0, corners[0].1));
+        for (x, y) in &corners[1..] {
+            path.line_to(Point::new(*x, *y)).unwrap();
+        }
+        path.close();
+    }
+    blob(&mut path, (14.5, 2.0, 1.5), false);
+    path.finish()
+}
+
+#[test]
+fn crossings_are_bisected_by_the_sign_of_the_chains_difference() {
+    // With the foot at 6 the sides cross at height 2, the middle of their
+    // slab, where the sign cannot be told: the slab is halved, and each
+    // half ends where the sides meet. With the foot at 6.5 they cross
+    // lower, and the bisection settles around the crossing.
+    for foot in [6.0, 6.5] {
+        for linear in [[1.0, 0.0, 0.0, 1.0], [1.5, 0.0, 0.25, 1.25]] {
+            let allowance = same_bytes(&crossing(foot), linear);
+            assert!(
+                allowance > 0.0 && allowance < 1e-9,
+                "{foot} {linear:?} {allowance}"
+            );
+        }
+    }
 }
 
 /// A bar with one small curved corner at `x`, `height` tall.
