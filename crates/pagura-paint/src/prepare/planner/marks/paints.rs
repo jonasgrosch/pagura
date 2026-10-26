@@ -63,7 +63,7 @@ impl Planner<'_> {
                     pixels,
                     (&mut budget.functions, &budget.bytes),
                 )?;
-                let index = self.add_paint(prepared, pixels, None, budget)?;
+                let index = self.add_paint(prepared, bounds, None, budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     budget.bytes.reserve_map_capacity(self.solids(), 1)?;
                     self.solids().insert(key, index);
@@ -112,7 +112,7 @@ impl Planner<'_> {
                 prepared?
             }
         };
-        self.add_paint(prepared, pixels, image, budget)
+        self.add_paint(prepared, bounds, image, budget)
     }
 
     /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
@@ -150,12 +150,12 @@ impl Planner<'_> {
     }
 
     /// Keeps a prepared paint, reserving its bytes and its geometry work
-    /// over `pixels` (mesh shadings), the repairs preparing it made and its
+    /// over `region` (mesh shadings), the repairs preparing it made and its
     /// execution storage, shared by the draws of `image`.
     fn add_paint(
         &mut self,
         paint: Source,
-        pixels: usize,
+        region: pagura_raster::DeviceRect,
         image: Option<ImageKey>,
         budget: &mut Budget,
     ) -> Result<u32> {
@@ -165,7 +165,9 @@ impl Planner<'_> {
         budget.bytes.charge(payload)?;
         let layout = paint.scratch_layout();
         let retained = (|| {
-            budget.work.charge_product(pixels, paint.work_per_pixel())?;
+            budget
+                .work
+                .charge(paint.geometry_work(region, budget.work.remaining()))?;
             budget.bytes.reserve_capacity(&mut self.parts.paints, 1)?;
             budget.bytes.reserve_capacity(&mut self.parts.slots.of, 1)?;
             budget
@@ -253,6 +255,6 @@ impl Planner<'_> {
             pixels,
             (&mut budget.functions, &budget.bytes),
         )?;
-        self.add_paint(prepared, pixels, None, budget)
+        self.add_paint(prepared, bounds, None, budget)
     }
 }

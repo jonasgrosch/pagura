@@ -427,11 +427,11 @@ impl Source {
         }
     }
 
-    /// Render work units one pixel costs besides compositing (mesh
-    /// geometry tests).
-    pub(crate) fn work_per_pixel(&self) -> usize {
+    /// Render work units filling `region` costs besides compositing (mesh
+    /// geometry tests), counted until it passes `limit`.
+    pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
         match self {
-            Self::Shading(shading) => shading.geometry_work(),
+            Self::Shading(shading) => shading.geometry_work(region, limit),
             Self::Solid { .. } | Self::Image(_) => 0,
         }
     }
