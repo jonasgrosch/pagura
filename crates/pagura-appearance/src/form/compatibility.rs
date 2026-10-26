@@ -30,7 +30,7 @@ const STANDARD_FONTS: [&[u8]; 14] = [
 /// Supplies only an exact standard-14 name. Never replaces a present
 /// resource or guesses a custom font or subset encoding from a similarly
 /// named font.
-pub(super) fn supply_font(
+pub(crate) fn supply_font(
     document: &Document,
     resources: &mut Dictionary,
     name: &[u8],

@@ -13,15 +13,17 @@
 mod buttons;
 mod choice;
 mod compatibility;
-mod da;
+pub(crate) mod da;
 mod filled;
-mod layout;
+pub(crate) mod layout;
 mod style;
 mod update;
 mod variable;
 
 pub use da::{TextStyle, default_text_style};
 pub use filled::FilledWidgets;
+
+pub(crate) use compatibility::supply_font;
 
 use crate::fonts::Encoding as Font;
 use crate::fonts::{FontSource, ProviderFonts};

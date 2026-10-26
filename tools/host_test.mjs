@@ -202,8 +202,9 @@ async function main() {
     let tested = await testRenderCases({ client, root, native, wasiRun, cases: manifest.cases });
     const captions = JSON.parse(await readFile(join(root, 'corpus/manifests/caption_annotations.json'), 'utf8'));
     const stamps = JSON.parse(await readFile(join(root, 'corpus/manifests/stamp_annotations.json'), 'utf8'));
-    const fontAppearances = { cases: [...captions.cases, ...stamps.cases] };
-    for (const id of ['caption_annotations/inline-72', 'stamp_annotations/Draft']) {
+    const freeText = JSON.parse(await readFile(join(root, 'corpus/manifests/free_text_annotations.json'), 'utf8'));
+    const fontAppearances = { cases: [...captions.cases, ...stamps.cases, ...freeText.cases] };
+    for (const id of ['caption_annotations/inline-72', 'stamp_annotations/Draft', 'free_text_annotations/quadding-0-72']) {
       const needsFont = fontAppearances.cases.find((entry) => entry.id === id);
       const missingFont = await client.open(new Uint8Array(await readFile(join(root, needsFont.path))));
       await assert.rejects(client.renderTile(missingFont.document, 0, 1,
@@ -586,7 +587,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       return;
     }
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
-      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/', 'stamp_annotations/'].some((area) => entry.id.startsWith(area));
+      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/', 'stamp_annotations/', 'free_text_annotations/'].some((area) => entry.id.startsWith(area));
       // The viewer supersamples reduced pages. At 25% it uses 4 device pixels
       // per CSS pixel (72 dpi overall); at 100% it uses 2 (144 dpi overall).
       // Compare icon oracles on that exact device grid: CSS box averaging is

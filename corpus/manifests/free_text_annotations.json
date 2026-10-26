@@ -1,0 +1,985 @@
+{
+  "schema": 2,
+  "area": "free_text_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "free_text_annotations/quadding-0-72",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-0-72.pdf",
+      "sha256": "7fdd5f8012b5b0bbe7be972b04b95bbf329a2da36680c210a895eca1039347b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/quadding-0-72.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/quadding-0-144",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-0-144.pdf",
+      "sha256": "7fdd5f8012b5b0bbe7be972b04b95bbf329a2da36680c210a895eca1039347b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/quadding-0-144.ppm",
+      "oracle_sha256": "b0ba10c0ff9b1ed0abe7f4e801981acd7c0359821c9267696894f829f8b460e0",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/quadding-1-72",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-1-72.pdf",
+      "sha256": "31590ca6ee02afd53854e59eea04106d6a2c731d48f2e2217171cc6720e03c19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/quadding-1-72.ppm",
+      "oracle_sha256": "fde903b66d92d9fda14a8a85e46795a4eeadf2ac66b01a753e8e79ccfcbc1379",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/quadding-1-144",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-1-144.pdf",
+      "sha256": "31590ca6ee02afd53854e59eea04106d6a2c731d48f2e2217171cc6720e03c19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/quadding-1-144.ppm",
+      "oracle_sha256": "aa6de97f1e934892d4abaa3353696dee9e1e73fa87d5f99b2d99cdc948ca33e9",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/quadding-2-72",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-2-72.pdf",
+      "sha256": "a829e7c77175026740f1f627c64b48036af0776285ef6e667062c3835094d86e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/quadding-2-72.ppm",
+      "oracle_sha256": "3a1345f13320ab5a052cf148e75dbc6d38e87742f980fc458758d4610b8b7322",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/quadding-2-144",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-2-144.pdf",
+      "sha256": "a829e7c77175026740f1f627c64b48036af0776285ef6e667062c3835094d86e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/quadding-2-144.ppm",
+      "oracle_sha256": "ff1ef1e410c4e71a44c866113221c35bdc0ce7653df39df919b2cbe72c55f652",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/curved-glyphs",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/curved-glyphs.pdf",
+      "sha256": "b27afd47b19786fc853cb06e325f0eacfe8ff1c0525d9e8c135896f885dd5735",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/curved-glyphs.ppm",
+      "oracle_sha256": "9ab86265d172d5636d6739fde9f350223b482ee64da856543fad5b9b0ae720e8",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/explicit-lines",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/explicit-lines.pdf",
+      "sha256": "a371f9628b5499bd4a5430587a1d88de937d8fb5b5a9aae3ac32f7697ecee5e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/explicit-lines.ppm",
+      "oracle_sha256": "cc4a176c3441956ec2fb76e4328d1ee42960ff2fc532be228802f7e97cdc42f9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/crlf-lines",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/crlf-lines.pdf",
+      "sha256": "b4faaff8b1cffad7f116e7e1d1cf01b539bd22b13b01192898aa943446c1b67e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/crlf-lines.ppm",
+      "oracle_sha256": "cc4a176c3441956ec2fb76e4328d1ee42960ff2fc532be228802f7e97cdc42f9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/wrap-spaces",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/wrap-spaces.pdf",
+      "sha256": "e9109d9344e98bf45e1cfd0cfb0e42c9d51b432f2be6a42ac2ad1b5f4355868a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/wrap-spaces.ppm",
+      "oracle_sha256": "fc7e4f7026e1b7791c3df3a0b7661ea0b046287f30f306a37b83e64f3aa6cbfe",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/wrap-long-word",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/wrap-long-word.pdf",
+      "sha256": "3ab7da7954619bdffd462d74a23be060da62c70dd654e0590544c91ce894a444",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/wrap-long-word.ppm",
+      "oracle_sha256": "d30d0e17440edb9e0b52444fecf9dd707f0bd5eaf2b3c7c88771b388d9599504",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/clip-overflow",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/clip-overflow.pdf",
+      "sha256": "1f5209c9538761f97518964a79030be4f4d10f6abe758a90954356869e92b7ec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/clip-overflow.ppm",
+      "oracle_sha256": "b1576e856e907c5830053ff164a962380f1eccfc71894505c65a3e5574b8b058",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/auto-size-cap",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/auto-size-cap.pdf",
+      "sha256": "abf58a66dc334e7713e65e467686e368a0f1e9aaa4c6f072079ebeb3d22737d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/auto-size-cap.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/auto-size-height",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/auto-size-height.pdf",
+      "sha256": "eca3c917772ae9a0293e1be892e882f24eec19e549044cd6ca60c6db0b33ab02",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/auto-size-height.ppm",
+      "oracle_sha256": "9aa5c7c5fc5c94131ac38bc8fc2ffe1fbd6e6f2416b53d90c4d4d9340c052b4c",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/rd",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/rd.pdf",
+      "sha256": "891fa0fb4931969114a535f852b29fba15b44e8a18032addfdc11eafffd0c626",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/rd.ppm",
+      "oracle_sha256": "c57c6bb1a246d86eb4a6d573fb60514d31a5b8dd4da61320821c3f16ac6d0551",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/border-background",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/border-background.pdf",
+      "sha256": "fe37b0fdad133110b6c9617426a71340aa66e6c6b90e3ca895582c1a28f69ff0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/border-background.ppm",
+      "oracle_sha256": "4627cb25a6520577c861f00b5ecb086f03030c894084e640ad8e6a7b97e3df71",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/background-empty-text",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/background-empty-text.pdf",
+      "sha256": "dc77e3144e05ab0f7b6dba5c4037b25768c10cbf375460b9be6c94dd90c779c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_annotations/background-empty-text.ppm",
+      "oracle_sha256": "8e293256cf68c625b9630f34b33a70f4c13f46aef8389410b2390ab5e946f867",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/text-color",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/text-color.pdf",
+      "sha256": "dbadc03c4e2375f16a3c1f24e106b02f8e6fe09a592b1ad33f55ad099901560e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/text-color.ppm",
+      "oracle_sha256": "8569e62a8ef888c1c609183cf878e617a8c3189dd0c8bdda3451992b5d42b7fd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/opacity",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/opacity.pdf",
+      "sha256": "48ccc485a22cd92e35b21a3ea8546182c502fd1f7ef38e9a1d368634538d8e94",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/opacity.ppm",
+      "oracle_sha256": "e9f3e268dd724d593a1d15cfa55e773485c68450575a1f1fcfbc369a22436975",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/separate-opacity",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/separate-opacity.pdf",
+      "sha256": "ad1efa168843526905681d6de03c6f0db48f29fe77cec2a6e398b773c1d10a73",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/separate-opacity.ppm",
+      "oracle_sha256": "0bef3c93e46c37da73f3e0a1e155773ba0bb0f240f3c7485b3938752f4757518",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/leading",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/leading.pdf",
+      "sha256": "cf1acc941e60ccfdaf7e2b719f6ccc5a1fb103e54d6fa558505eb5c2d012ae59",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/leading.ppm",
+      "oracle_sha256": "c4c2ebf05c61a07fd2c5c4546b938546b61fee2b5eab0802ee10c17defd8c642",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/rotated",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/rotated.pdf",
+      "sha256": "2408d81a3e4466d826e2f682509c572145d2e1790a6e23752281b6248dadd082",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/rotated.ppm",
+      "oracle_sha256": "3dc57a6753774e4ef13d704f4a8c8c4b8ccd69f53a03fb26a2cdb193f78bc44e",
+      "dpi": 144,
+      "width": 96,
+      "height": 256,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/typewriter-ignores-callout",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/typewriter-ignores-callout.pdf",
+      "sha256": "2c7aa28bb5e303b136471a08e63c685affcc11653bf36222c5330b30177db0dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/typewriter-ignores-callout.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/plain-ignores-callout",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/plain-ignores-callout.pdf",
+      "sha256": "629cb4851ccc5db9df51aecf0bf2b3f7a665f09e3c35c9925f20134aafa667c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/plain-ignores-callout.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/utf16",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/utf16.pdf",
+      "sha256": "48997897614f12f95ae713184495ae7bdf3cb79c1b2ba3a8344ff948bd9f1330",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/utf16.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/null-optionals",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/null-optionals.pdf",
+      "sha256": "667f0e1b053292078fb3a497b10771b610c1a48904028dd36caa32eaaa6df91e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/null-optionals.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/indirect",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/indirect.pdf",
+      "sha256": "9f177b43ed129f83e77046033cfb7b5b0cbda189aab861a52bf610d604162851",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/indirect.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/stored-72",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/stored-72.pdf",
+      "sha256": "29387613d76fd26747653a0ed7b6a9343e2c883e0c2883c40fff3cfc65324924",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/stored-72.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/stored-144",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/stored-144.pdf",
+      "sha256": "29387613d76fd26747653a0ed7b6a9343e2c883e0c2883c40fff3cfc65324924",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/stored-144.ppm",
+      "oracle_sha256": "b0ba10c0ff9b1ed0abe7f4e801981acd7c0359821c9267696894f829f8b460e0",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/hidden",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/hidden.pdf",
+      "sha256": "f7e51f9b132196547d7b1197ad4d3c8394ba57eee47bbcaa0eaa44f48082c0df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_annotations/hidden.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/no-view",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/no-view.pdf",
+      "sha256": "55c7f1e50d8d14dbe2ff7720eccac21501db4231b4e9e8e8663a764dbdaead3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_annotations/no-view.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/absent-contents",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/absent-contents.pdf",
+      "sha256": "7a99dc93ef8bc1530e6d20cd1ca18e09212ea643b113239142c6e2affb3f5839",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_annotations/absent-contents.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/null-contents",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/null-contents.pdf",
+      "sha256": "d362cebb5c143443d5b6f4731f937827e96b166595ffb3ee61c07b2b692288ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/free_text_annotations/null-contents.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/dr-font",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/dr-font.pdf",
+      "sha256": "1e07b62fbbbf4fdf9bd0443057f69ceaa5ef86e760e16107a00216fa338a3ba6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/dr-font.ppm",
+      "oracle_sha256": "ea3ffbbb0ed9886d1c889092421cd81b04f9108cb5cf66480bc4beb247959cc7",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/missing-da",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/missing-da.pdf",
+      "sha256": "4c8de599edc37c2a958be2b908d6e18e00f869728b5d7490993d8e3c0bd2bd77",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/da-type",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/da-type.pdf",
+      "sha256": "76e68c2aea4ae899e847aac6a95de6259cc1fe15c8f6f4a943baf11b41a76700",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/contents-type",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/contents-type.pdf",
+      "sha256": "1bf22e84f739620c37a873b112b51ff95b4ab4c34f5ef36a22fde1e8a7a26e89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/quadding-type",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-type.pdf",
+      "sha256": "c8eb39840a120f2cfe8d8e9ddc1bb214368bb52d78ad7996d6f49dae846d93d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/quadding-range",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/quadding-range.pdf",
+      "sha256": "bc5e7ce2a717aa7b1c057d8e889e40ee5e1607ec2445e8d298f31a9bd0246d9b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/intent-type",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/intent-type.pdf",
+      "sha256": "c845903c5f95594db2c78f9bdbb41cf3d51eb99c41519b2beea668749a83ef53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/rd-cardinality",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/rd-cardinality.pdf",
+      "sha256": "a46f5540c77ffffe902b4718dab604ceea088ea02364cd63ec3f8af3d8c25382",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/unknown-font",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/unknown-font.pdf",
+      "sha256": "b6621817300267a34381ffcff17186e1e5f5d504ea585fc0efad4595313d3852",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/present-bad-font",
+      "kind": "pdf",
+      "description": "Malformed selected values fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/present-bad-font.pdf",
+      "sha256": "2ba23d679709a6a70bf05793e4c8bfd1d362ca23438c86c080070dac649b858b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/callout",
+      "kind": "pdf",
+      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
+      "expected": "unsupported",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/callout.pdf",
+      "sha256": "9c85e0b15d1ff6691fc6b7d44c489218d831eb37dc8620c1972fbbbc76e8dc79",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "free_text_annotations/rich-text",
+      "kind": "pdf",
+      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
+      "expected": "unsupported",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/rich-text.pdf",
+      "sha256": "9ba68517fc02407c7e00cf340941a5d4438968569055155e1be28bcaa360c3c1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "free_text_annotations/default-style",
+      "kind": "pdf",
+      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
+      "expected": "unsupported",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/default-style.pdf",
+      "sha256": "dd6d2469e073e1fae0087855bb6af3b6dbe2b7f53802accd59ded2281ad98175",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "free_text_annotations/cloudy",
+      "kind": "pdf",
+      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
+      "expected": "unsupported",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/cloudy.pdf",
+      "sha256": "e2c81376d3497f2cf1de8e7bace02d07500407ef62680323fc5366db46a13282",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "free_text_annotations/complex-text",
+      "kind": "pdf",
+      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
+      "expected": "unsupported",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/complex-text.pdf",
+      "sha256": "132df9a9a16b6d1f80493dc46fd3fa715130793da2ddca50b7812c8c13f6bb52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "appearance.font-encoding"
+    }
+  ]
+}

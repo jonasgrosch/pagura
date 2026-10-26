@@ -4,6 +4,7 @@
 mod border;
 mod caret;
 mod ending;
+mod free_text;
 mod icon;
 mod ink;
 mod line;
@@ -31,7 +32,7 @@ use pagura_document::Document;
 /// resources. Generated text uses private font resources; page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
 /// borders, Line/Ink/Polygon/PolyLine paths, plain Line captions with an explicit
-/// font provider, standard rubber stamps, four text-markup styles, Caret symbols,
+/// font provider, plain FreeText, standard rubber stamps, four text-markup styles, Caret symbols,
 /// seven Text icons, four FileAttachment
 /// icons, and the MK background and border of empty text and signature widgets.
 ///
@@ -61,11 +62,12 @@ pub fn annotation_appearance(
 /// captions use Helvetica with WinAnsi encoding at 12 points; their generated
 /// font resource is resolved by the same provider when the stream is drawn.
 /// Rubber stamps use Helvetica-Bold/WinAnsi, fitted to the annotation rectangle.
+/// Plain FreeText uses DA and the shared form layout with AcroForm DR fonts.
 /// Existing callers without a provider still generate all non-text artwork.
 ///
 /// # Errors
 /// As [`annotation_appearance`], plus font loading or encoding errors when a
-/// caption or stamp needs unavailable data. Rich text remains explicitly unsupported.
+/// caption, stamp or FreeText needs unavailable data. Rich text remains explicitly unsupported.
 pub fn annotation_appearance_with_fonts(
     document: &Document,
     annotation: &Dictionary,
@@ -94,6 +96,7 @@ pub fn annotation_appearance_with_fonts(
         b"Squiggly" => markup::generate(document, annotation, rect, markup::Style::Squiggly)?,
         b"Caret" => caret::generate(document, annotation, rect)?,
         b"Stamp" => stamp::generate(document, annotation, rect, fonts)?,
+        b"FreeText" => free_text::generate(document, annotation, rect, fonts)?,
         b"Line" => line::generate(document, annotation, rect, fonts)?,
         b"Polygon" => polygon::generate(document, annotation, rect, true)?,
         b"PolyLine" => polygon::generate(document, annotation, rect, false)?,

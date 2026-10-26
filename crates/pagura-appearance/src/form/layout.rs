@@ -9,18 +9,18 @@ use pagura_document::forms::Justification;
 use std::ops::Range;
 
 /// The text of one field or row and how to lay it out.
-pub(super) struct TextLayout<'a> {
-    pub(super) text: &'a str,
-    pub(super) multiline: bool,
-    pub(super) comb: Option<usize>,
-    pub(super) password: bool,
-    pub(super) quadding: Justification,
-    pub(super) no_scroll: bool,
+pub(crate) struct TextLayout<'a> {
+    pub(crate) text: &'a str,
+    pub(crate) multiline: bool,
+    pub(crate) comb: Option<usize>,
+    pub(crate) password: bool,
+    pub(crate) quadding: Justification,
+    pub(crate) no_scroll: bool,
 }
 
 /// Writes the text state and the positioned strings of `layout` in `area`;
 /// the caller wraps them in `BT` and `ET`.
-pub(super) fn write(
+pub(crate) fn write(
     out: &mut Program,
     font: &Font,
     da: &DefaultAppearance,

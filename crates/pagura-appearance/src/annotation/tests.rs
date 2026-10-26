@@ -1,4 +1,5 @@
 mod caret;
+mod free_text;
 mod markup;
 mod stamp;
 

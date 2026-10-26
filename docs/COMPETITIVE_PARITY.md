@@ -529,7 +529,23 @@ Green's theorem, with analytic clipping/hole/subdivision controls; existing
 straight-glyph rational oracles retain their behavior. Builds without font data
 explicitly report it. Hosted validation and competitor probes are pending.
 
-Complete missing normal appearances for FreeText and other ledger subtypes;
+**Plain FreeText appearances implemented:** required DA, decoded Contents, Q and
+RD feed the existing form parser, reversible font encoder and variable-text
+layout. Plain and TypeWriter intents use whitespace wrapping, explicit line breaks,
+1.2-em default leading and the 12-point auto-size ceiling. Only the selected
+AcroForm DR font is retained; an absent exact standard-14 name may use the explicit
+provider. Present resources are never replaced and unused resources are not
+resolved. Reader policy paints the optional C background, black BS/Border outline
+and text clipped inside two units of padding. CA and ca retain their separate
+roles; stored appearances win. Forty-eight controls contain 34 independent pixel
+expectations with authored line breaks/sizes, AFM metrics and original quadratic
+glyph areas. Controls cover alignment at two resolutions, wrapping, explicit
+lines, clipping, auto sizing, colors/opacity, RD, rotation, indirection, DR selection,
+visibility, stored precedence and malformed input. Font, work, geometry, storage
+and output limits are also registered. Hosted validation is pending. Rich RC/DS,
+callouts and the form layout's richer font/matrix boundaries remain open.
+
+Complete richer FreeText and other ledger subtype appearances;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.
