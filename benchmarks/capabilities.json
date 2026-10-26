@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "ae6daca4c001afdbf678c9dc14afd884f1d74958",
+  "audited_revision": "0cae9c4d2f5c2240c8e0dfbdf18f810422d2109e",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -12,17 +12,21 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
+    "corpus/manifests/circle_annotations.json": "6c04407d961b0b0574d2561b010c7f88debc8fe0d4d51223209e436f9ea9158c",
     "corpus/manifests/classic.json": "0929560398e6541b7e30966479633fae180eefe4eeea1453d4adbf5da57aaf20",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
     "corpus/manifests/file_annotations.json": "f3c88d0cdbf99a52e51bf6321e3aab73d428b7b8f278531f7bf89a94c247b448",
+    "corpus/manifests/file_attachment_icons.json": "493b67db592c150500c7a86f773c30480f1d36b8c4540ffcf02a5a0a501e6f2d",
     "corpus/manifests/files.json": "f5ca2b13bd6a27f7b5cffd15ede3d9a86b2120eb64f71f92ab2f2089a6dbb12e",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/metadata.json": "c81e1a2e7c12211130185219e5d2738ea4d98658d3038a8274df86a69e914554",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
-    "crates/pagura-appearance/src/annotation.rs": "3da780ba74295c06905aa4fa09eebd7aef54f7a18110c08f35d17fb913b82d24",
-    "crates/pagura-appearance/src/annotation/border.rs": "4423feb6d972c20fccde3e8ad80ecc7a02540c94db1e2fa268601b29627e96e8",
-    "crates/pagura-appearance/src/annotation/tests.rs": "560825e0fa3178ffe849eba0d06ba48f4ba666de0c3964764278458f0ea07900",
+    "crates/pagura-appearance/src/annotation.rs": "4abad4426fab0a59a17cb9597195f28edc191612d6435ee8e619fd8345a45001",
+    "crates/pagura-appearance/src/annotation/border.rs": "075bfbf3f3e9e22de86651e23391659578fa217dc2be9ecdd01e0920380eb43a",
+    "crates/pagura-appearance/src/annotation/icon.rs": "dc0187460c1eb25d93a3979788e6eae1a6b2fa70afdaa60d6991a19db2b695c6",
+    "crates/pagura-appearance/src/annotation/marks.rs": "cdd2197ce9c253e89a1afbe190a7c88674cffe9ab3ca6784f7571fbc89c29fc9",
+    "crates/pagura-appearance/src/annotation/tests.rs": "9ca4d3fbfa22af5c053b28aead4d63b422bf03e298a0a8a4466457a4573b4046",
     "crates/pagura-appearance/src/annotation/widget.rs": "c966238e9e4a0d05794f25e15708b344280aeda8150af97f09d4e5cb763b22ea",
     "crates/pagura-appearance/src/features.rs": "2db34d4fb337df1ff5fd57f85623cd783131cae399e98b3c90aaaccbaa982ec1",
     "crates/pagura-appearance/src/form.rs": "d33b9c7d017538680ad7e85be1c0be4ab94e9c4ba33794e53e36abeb0a23041a",
@@ -196,7 +200,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "dd9605b7d2d577512f07f8937f7c4c6f2549bce6c6b1e48599c3eaaaf45b6cf9",
+    "references/requirements/content.json": "411156fabe3a7bc396d43c2f1b3904b922d595b3c6354bbc950cf0b049d1aaad",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -224,11 +228,15 @@
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/document_services_test.mjs": "013ff3e4858049094cd069a44cee7e66b94cc4e455a8d8e637e41172d4b8abdb",
     "tools/document_services_view_test.mjs": "2f4e78500305680b2d281d2af0707834bf8fee62176a978aa74b5e8a6271884e",
+    "tools/fixturegen/circle_annotations.py": "0df6ff5b1a44dde18154dde40cd7b58265b4856b24d1c9dacd863a56f0a7172e",
     "tools/fixturegen/file_annotations.py": "a8acf4b00f0f73aea843c5b542fec7244631520c6988ca7f0489505034f91a87",
+    "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
     "tools/fixturegen/files.py": "eb590a18a172631ce232d38ba5365749bf2b5a4f21362b93e04f1dc2f0d87d36",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
+    "tools/host_test.mjs": "52fcd12d79c667c924b8f48e165a2d52e75328d0833a9b5083a3007f93acd456",
     "tools/page_attachments_test.mjs": "253795e1c4e96ba4c49ad44acc2217889dce1b8af5e09658ad06d36a55f61fcb",
+    "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
     "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
     "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
     "web/client.mjs": "ea78b0bf556c12346a1b9769a078e7835d6915637c7a653967786c9b1e40f3f2",
@@ -242,12 +250,7 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "cd03035fae86aaea06a7090288a557045dc3c16f4f1554d666186afc5c8effda",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
-    "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
-    "crates/pagura-appearance/src/annotation/icon.rs": "dc0187460c1eb25d93a3979788e6eae1a6b2fa70afdaa60d6991a19db2b695c6",
-    "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
-    "tools/host_test.mjs": "d4e40f9a1508120dbdbe3357d1cf22719b2cde203b37d548db211ed49f30e7c3",
-    "corpus/manifests/file_attachment_icons.json": "493b67db592c150500c7a86f773c30480f1d36b8c4540ffcf02a5a0a501e6f2d"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
   },
   "capabilities": [
     {
@@ -945,27 +948,31 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored appearances, Link/Square borders, Text icons, four standard FileAttachment icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement. Generated file icons use original geometry, explicit annotation visibility/view flags, bounded content, declared colors and independent CA/ca. Stored appearances retain precedence. Null/absent icon names choose PushPin; unknown-name fallback is reader policy. Painting does not resolve or decode a payload.",
-      "remaining": "Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states.",
+      "implemented": "Stored appearances, Link/Square/Circle borders, Text icons, four standard FileAttachment icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement. Generated file icons use original geometry, explicit annotation visibility/view flags, bounded content, declared colors and independent CA/ca. Stored appearances retain precedence. Null/absent icon names choose PushPin; unknown-name fallback is reader policy. Painting does not resolve or decode a payload. Circle/ellipse paths use bounded tangent cubics; Square/Circle RD insets preserve the original appearance BBox and accept null/plain border effects. Independent conic-area expectations cover fill, circle strokes, unequal axes, rotation, opacity and indirect geometry; current-source hosted execution is pending.",
+      "remaining": "Other subtype appearances, cloudy/rounded/relief borders, independent unequal-axis stroke/dash controls, nonempty/rotated widgets and interaction states.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
-        "crates/pagura-appearance/src/annotation/icon.rs"
+        "crates/pagura-appearance/src/annotation/icon.rs",
+        "crates/pagura-appearance/src/annotation/border.rs",
+        "crates/pagura-appearance/src/annotation/marks.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
         "tools/fixturegen/file_annotations.py",
         "tools/fixturegen/file_attachment_icons.py",
-        "tools/host_test.mjs"
+        "tools/host_test.mjs",
+        "tools/fixturegen/circle_annotations.py"
       ],
       "requirements": [
         "content-annotation-generation",
         "content-annotation-view",
         "content-annotations",
-        "content-file-attachment-icons"
+        "content-file-attachment-icons",
+        "content-circle-appearances"
       ],
       "fixtures": [
         "file_annotations/render-null",
@@ -1012,7 +1019,39 @@
         "file_attachment_icons/stored-ignores-style",
         "file_attachment_icons/wrong-name",
         "file_attachment_icons/wrong-color",
-        "file_attachment_icons/wrong-alpha"
+        "file_attachment_icons/wrong-alpha",
+        "circle_annotations/circle-outline-72",
+        "circle_annotations/circle-fill-72",
+        "circle_annotations/circle-stored-72",
+        "circle_annotations/circle-border-fill-72",
+        "circle_annotations/ellipse-fill-72",
+        "circle_annotations/ellipse-rotated-72",
+        "circle_annotations/circle-outline-144",
+        "circle_annotations/circle-fill-144",
+        "circle_annotations/circle-stored-144",
+        "circle_annotations/circle-border-fill-144",
+        "circle_annotations/ellipse-fill-144",
+        "circle_annotations/ellipse-rotated-144",
+        "circle_annotations/circle-opacity",
+        "circle_annotations/no-mark",
+        "circle_annotations/transparent-border",
+        "circle_annotations/circle-rd",
+        "circle_annotations/circle-null",
+        "circle_annotations/circle-empty-effect",
+        "circle_annotations/square-rd",
+        "circle_annotations/square-null",
+        "circle_annotations/square-empty-effect",
+        "circle_annotations/indirect-rd",
+        "circle_annotations/reversed-rectangle",
+        "circle_annotations/rd-type",
+        "circle_annotations/rd-short",
+        "circle_annotations/rd-negative",
+        "circle_annotations/rd-width",
+        "circle_annotations/rd-height",
+        "circle_annotations/rd-entry",
+        "circle_annotations/effect-type",
+        "circle_annotations/effect-style",
+        "circle_annotations/cloudy"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2572,7 +2611,7 @@
       ],
       "review": "gap",
       "capability": "annotations.appearances",
-      "rationale": "Synthesis covers Link/Square borders, Text and FileAttachment icons and selected empty widgets. Other subtypes, nonempty widgets, rotated widgets, relief/rounded borders and Square BE/RD still refuse. Existing appearance streams remain supported.",
+      "rationale": "Synthesis covers Link/Square/Circle borders, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, nonempty/rotated widgets and cloudy/relief/rounded borders still refuse. Existing appearance streams remain supported.",
       "evidence": [
         {
           "path": "crates/pagura-appearance/src/annotation.rs",
