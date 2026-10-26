@@ -883,12 +883,26 @@ impl Resolver {
             .iter()
             .take_while(|&&c| c >> 64 <= until)
             .count();
+        if taken == 0 {
+            return Ok(None);
+        }
+        // Reserve the skipped slabs before attempting their swaps. A
+        // declined attempt keeps the full sweep's reservation instead.
+        let after_index = last + 1;
+        let each = self
+            .order
+            .len()
+            .saturating_mul(2)
+            .saturating_add(self.open.len())
+            .saturating_add(1);
+        let charge = each.saturating_mul(after_index - k).saturating_add(taken);
+        work.charge(charge)?;
         let mid = below.midpoint(after);
-        if taken == 0
-            || self
-                .swap_inside(pieces, (cross..cross + taken, doubtful), mid)
-                .is_none()
+        if self
+            .swap_inside(pieces, (cross..cross + taken, doubtful), mid)
+            .is_none()
         {
+            work.refund(charge);
             return Ok(None);
         }
         // The order is the exact order below them.
@@ -897,22 +911,11 @@ impl Resolver {
             let x = |i: u32| pieces[i as usize].line.x(mid);
             debug_assert!(x(pair[0].1) <= x(pair[1].1));
         }
-        // Per sub-slab a unit per piece placed and joined, one to join, and
-        // one move per crossing.
-        let after = last + 1;
-        let each = self
-            .order
-            .len()
-            .saturating_mul(2)
-            .saturating_add(self.open.len())
-            .saturating_add(1);
-        work.charge_product(each, after - k)?;
-        work.charge(taken)?;
         #[cfg(test)]
         {
-            self.swapped += after - k;
+            self.swapped += after_index - k;
         }
-        Ok(Some((after, taken)))
+        Ok(Some((after_index, taken)))
     }
 
     /// Makes the swaps of `crosses[crossings]`, which are the only ones
