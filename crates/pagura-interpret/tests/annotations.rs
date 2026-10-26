@@ -246,12 +246,13 @@ fn sound_uses_explicit_view_flags_while_text_keeps_its_fixed_icon_view() {
 }
 
 #[test]
-fn source_widget_text_is_lazy_and_cannot_become_extracted_page_text() {
+fn source_widget_artwork_is_lazy_and_cannot_become_extracted_page_text() {
     let manifest = pagura_testkit::Manifest::load("annotation_display");
-    for case in manifest
-        .cases()
-        .filter(|case| case.name().starts_with("widget-"))
-    {
+    for case in manifest.cases().filter(|case| {
+        case.name().starts_with("widget-")
+            || case.name().starts_with("button-normal-")
+            || case.name().starts_with("button-invalid-")
+    }) {
         let document = open(case.name(), Limits::default()).unwrap();
         let page = document.page(0).unwrap();
         let interpreter = Interpreter::new(&document);
@@ -278,18 +279,24 @@ fn source_widget_text_is_lazy_and_cannot_become_extracted_page_text() {
 
 #[test]
 fn missing_widget_generation_uses_the_existing_content_byte_budget() {
-    let document = open(
+    for name in [
         "widget-observe-text-72-missing",
-        Limits {
-            stream_bytes: 96,
-            ..Limits::default()
-        },
-    )
-    .unwrap();
-    let interpreter = Interpreter::new(&document);
-    let page = document.page(0).unwrap();
-    assert!(interpreter.text(page).unwrap().glyphs.is_empty());
-    let error = interpreter.scene(page).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
-    assert_eq!(error.message, "appearance content budget exceeded");
+        "button-normal-push-caption-72",
+        "button-normal-push-position-6-72",
+    ] {
+        let document = open(
+            name,
+            Limits {
+                stream_bytes: 96,
+                ..Limits::default()
+            },
+        )
+        .unwrap();
+        let interpreter = Interpreter::new(&document);
+        let page = document.page(0).unwrap();
+        assert!(interpreter.text(page).unwrap().glyphs.is_empty());
+        let error = interpreter.scene(page).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(error.message, "appearance content budget exceeded");
+    }
 }

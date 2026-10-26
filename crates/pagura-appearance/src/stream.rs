@@ -3,6 +3,94 @@
 use crate::values::{optional, optional_dictionary};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Rect, Result, Value};
 use pagura_document::Document;
+use pagura_raster::{Path, Transform};
+
+/// A form's `BBox` and `Matrix` (Table 93).
+///
+/// # Errors
+///
+/// `Syntax` for a missing or malformed `BBox` or `Matrix`.
+pub fn form_geometry(document: &Document, dictionary: &Dictionary) -> Result<(Rect, Transform)> {
+    let bbox = dictionary
+        .get(b"BBox")
+        .map(|v| document.resolve(v))
+        .transpose()?
+        .and_then(Value::as_array)
+        .and_then(Rect::from_array)
+        .ok_or(Error::syntax("form has invalid BBox"))?;
+    let matrix = dictionary
+        .get(b"Matrix")
+        .map(|v| {
+            let values = document
+                .resolve(v)?
+                .as_array()
+                .ok_or(Error::syntax("form Matrix must be an array"))?;
+            if values.len() != 6 {
+                return Err(Error::syntax("matrix must have six numbers"));
+            }
+            let mut m = [0.0; 6];
+            for (out, value) in m.iter_mut().zip(values) {
+                *out = value
+                    .as_number()
+                    .ok_or(Error::syntax("numeric operand expected"))?;
+            }
+            Ok(Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]))
+        })
+        .transpose()?
+        .unwrap_or(Transform::IDENTITY);
+    Ok((bbox, matrix))
+}
+
+/// The upright envelope shared by Form icons, appearance fitting and FixedPrint.
+///
+/// # Errors
+/// `Limit` when transformed coordinates exceed the numeric range.
+pub fn appearance_bounds(rect: Rect, transform: Transform) -> Result<Rect> {
+    let points = Path::rect_corners(rect).map(|point| transform.apply(point));
+    if points.iter().any(|point| !point.is_finite()) {
+        return Err(Error::limit("appearance bounds exceed numeric range"));
+    }
+    let x0 = points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
+    let x1 = points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
+    let y0 = points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
+    let y1 = points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
+    Rect::from_corners(x0, y0, x1, y1).ok_or(Error::limit("appearance bounds exceed numeric range"))
+}
+
+/// The transform that fits the upright envelope of the transformed `BBox`
+/// into the annotation rectangle (12.5.5, Algorithm 8.1); `None` when
+/// either has no area.
+///
+/// # Errors
+///
+/// `Syntax` for a matrix that collapses a box with area, `Limit` for a fit
+/// beyond the numeric range.
+pub fn appearance_placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
+    let bounds = appearance_bounds(b, m)?;
+    if bounds.is_empty() {
+        if b.width() == 0.0 || b.height() == 0.0 {
+            return Ok(None);
+        }
+        return Err(Error::syntax("degenerate appearance bounds"));
+    }
+    if r.width() == 0.0 || r.height() == 0.0 {
+        return Ok(None);
+    }
+    let sx = r.width() / bounds.width();
+    let sy = r.height() / bounds.height();
+    let a = Transform::new(
+        sx,
+        0.0,
+        0.0,
+        sy,
+        r.x0() - sx * bounds.x0(),
+        r.y0() - sy * bounds.y0(),
+    );
+    if !a.is_finite() {
+        return Err(Error::limit("appearance fitting exceeds numeric range"));
+    }
+    Ok(Some(a))
+}
 
 /// The three interaction appearances defined by Table 170. The set is closed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

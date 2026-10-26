@@ -4,13 +4,16 @@
 //! the fixed views of `NoZoom` and `NoRotate`.
 
 use super::emit::GroupStart;
-use super::form::{FormBody, geometry};
+use super::form::FormBody;
 use super::state::Graphics;
 use super::{Machine, Scope, Text};
 use crate::device::{Device, Marked, Needs};
 use crate::model::{GroupAttributes, GroupCause, ViewFit};
 use crate::repairs;
-use pagura_appearance::{Appearance, FilledWidgets, FontSource};
+use pagura_appearance::{
+    Appearance, FilledWidgets, FontSource, appearance_bounds as envelope,
+    appearance_placement as placement, form_geometry as geometry,
+};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, Page};
 use pagura_raster::{Path, Point, Transform};
@@ -416,54 +419,6 @@ fn fixed_print(
     )
     .map(Some)
     .ok_or(Error::limit("FixedPrint placement exceeds numeric range"))
-}
-
-/// The upright envelope shared by appearance fitting and `FixedPrint` Matrix.
-fn envelope(rect: Rect, transform: Transform) -> Result<Rect> {
-    let points = Path::rect_corners(rect).map(|point| transform.apply(point));
-    if points.iter().any(|point| !point.is_finite()) {
-        return Err(Error::limit("appearance bounds exceed numeric range"));
-    }
-    let x0 = points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
-    let x1 = points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
-    let y0 = points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
-    let y1 = points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
-    Rect::from_corners(x0, y0, x1, y1).ok_or(Error::limit("appearance bounds exceed numeric range"))
-}
-
-/// The transform that fits the upright envelope of the transformed `BBox`
-/// into the annotation rectangle (12.5.5, Algorithm 8.1); `None` when
-/// either has no area.
-///
-/// # Errors
-///
-/// `Syntax` for a matrix that collapses a box with area, `Limit` for a fit
-/// beyond the numeric range.
-pub(crate) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
-    let bounds = envelope(b, m)?;
-    if bounds.is_empty() {
-        if b.width() == 0.0 || b.height() == 0.0 {
-            return Ok(None);
-        }
-        return Err(Error::syntax("degenerate appearance bounds"));
-    }
-    if r.width() == 0.0 || r.height() == 0.0 {
-        return Ok(None);
-    }
-    let sx = r.width() / bounds.width();
-    let sy = r.height() / bounds.height();
-    let a = Transform::new(
-        sx,
-        0.0,
-        0.0,
-        sy,
-        r.x0() - sx * bounds.x0(),
-        r.y0() - sy * bounds.y0(),
-    );
-    if !a.is_finite() {
-        return Err(Error::limit("appearance fitting exceeds numeric range"));
-    }
-    Ok(Some(a))
 }
 
 fn standard_type(name: &[u8]) -> bool {

@@ -1,4 +1,4 @@
-//! Source variable-text and unsigned signature widgets (12.5.6.19, 12.7.5).
+//! Source text, choice, button and unsigned signature widgets (12.5.6.19, 12.7.5).
 //! AcroForm values use the document's requested-field view and shared form
 //! generator. Without an AcroForm, empty text/signature widgets retain the
 //! geometric fallback; inconsistent membership in a present AcroForm is an error.
@@ -13,14 +13,14 @@ use crate::widget_rotation;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
-/// Source Tx/Ch text, or empty-widget geometry after AcroForm membership checks.
+/// Source Tx/Ch/Btn content, or empty-widget geometry after AcroForm membership checks.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
     fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
-    if let Some(field) = document.widget_text(annotation)? {
+    if let Some(field) = document.widget_field(annotation)? {
         if rect.width() == 0.0 || rect.height() == 0.0 {
             return Ok(None);
         }

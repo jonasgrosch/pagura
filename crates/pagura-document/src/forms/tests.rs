@@ -347,12 +347,12 @@ fn duplicate_comparison_shares_the_traversal_budget() {
 }
 
 #[test]
-fn requested_widget_text_agrees_with_the_full_effective_field_view() {
+fn requested_widget_field_agrees_with_the_full_effective_field_view() {
     let manifest = pagura_testkit::Manifest::load("annotation_display");
-    for case in manifest
-        .cases()
-        .filter(|case| matches!(case.string("widget_display"), Some("same" | "regenerate")))
-    {
+    for case in manifest.cases().filter(|case| {
+        matches!(case.string("widget_display"), Some("same" | "regenerate"))
+            || case.string("button_display") == Some("same")
+    }) {
         let name = case.name();
         let document = Document::open(
             fixture("annotation_display", &format!("{name}.pdf")),
@@ -364,7 +364,7 @@ fn requested_widget_text_agrees_with_the_full_effective_field_view() {
         .unwrap();
         let form = document.acro_form().unwrap().unwrap();
         for widget in &form.widgets {
-            let selected = document.widget_text(widget.dictionary).unwrap().unwrap();
+            let selected = document.widget_field(widget.dictionary).unwrap().unwrap();
             let field = &form.fields[widget.field];
             assert_eq!(selected.kind, field.kind, "{name}");
             assert_eq!(selected.flags, field.flags, "{name}");
@@ -384,7 +384,7 @@ fn requested_widget_text_agrees_with_the_full_effective_field_view() {
 }
 
 #[test]
-fn requested_widget_text_does_not_visit_actions_default_values_or_sibling_trees() {
+fn requested_widget_field_does_not_visit_actions_default_values_or_sibling_trees() {
     for name in ["ignored-actions", "ignored-sibling", "ignored-need"] {
         let document = Document::open(
             fixture("annotation_display", &format!("widget-source-{name}.pdf")),
@@ -399,7 +399,7 @@ fn requested_widget_text_does_not_visit_actions_default_values_or_sibling_trees(
             .unwrap()
             .dictionary()
             .unwrap();
-        let selected = document.widget_text(dictionary).unwrap().unwrap();
+        let selected = document.widget_field(dictionary).unwrap().unwrap();
         assert_eq!(
             selected.value,
             Some(FieldValue::Text("AB".to_owned())),
@@ -413,7 +413,7 @@ fn requested_widget_text_does_not_visit_actions_default_values_or_sibling_trees(
 }
 
 #[test]
-fn requested_widget_text_shares_the_existing_traversal_budget() {
+fn requested_widget_field_shares_the_existing_traversal_budget() {
     let document = Document::open(
         fixture("annotation_display", "widget-observe-text-72-missing.pdf"),
         &crate::OpenOptions {
@@ -430,7 +430,7 @@ fn requested_widget_text_shares_the_existing_traversal_budget() {
         .unwrap()
         .dictionary()
         .unwrap();
-    let error = document.widget_text(dictionary).unwrap_err();
+    let error = document.widget_field(dictionary).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
     assert_eq!(error.message, "navigation traversal budget exceeded");
 }

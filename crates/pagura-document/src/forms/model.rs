@@ -241,19 +241,20 @@ pub struct Field<'a> {
     pub dictionary: &'a Dictionary,
 }
 
-/// The effective variable-text data of one source widget (12.7.4.3).
+/// The effective appearance data of one source widget (12.7.4.3–12.7.5).
 ///
 /// Unlike [`AcroForm`], this projection does not build a full field/name index
-/// or read actions or default values. Its owning field dictionary supplies I and TI;
+/// or read actions or default values. Its owning choice dictionary supplies I and TI;
 /// appearance characteristics remain on the widget itself.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
-pub struct WidgetText<'a> {
-    /// Effective text or choice configuration.
+pub struct WidgetField<'a> {
+    /// Effective text, choice or button configuration.
     pub kind: FieldKind<'a>,
     /// Effective field flags.
     pub flags: FieldFlags,
-    /// Effective source V, decoded without modifying source bytes.
+    /// Effective source V for stateful fields, decoded without modifying source
+    /// bytes. Push buttons do not use a value.
     pub value: Option<FieldValue<'a>>,
     /// Effective DA, including AcroForm fallback.
     pub default_appearance: Option<&'a [u8]>,

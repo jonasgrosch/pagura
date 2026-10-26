@@ -26,7 +26,7 @@ pub use fill::{
 
 pub use model::{
     AcroForm, AdditionalAction, ButtonKind, ChoiceOption, ChoiceStyle, Field, FieldFlags,
-    FieldKind, FieldValue, Justification, Widget, WidgetText,
+    FieldKind, FieldValue, Justification, Widget, WidgetField,
 };
 use pagura_core::{Dictionary, Result};
 
@@ -42,22 +42,27 @@ impl Document {
             .transpose()
     }
 
-    /// Reads only the variable-text source data of `annotation` (12.7.4.3).
+    /// Reads only the appearance source data of `annotation` (12.7.4.3–12.7.5).
     ///
     /// Parent ancestry must agree with Fields/Kids membership. Only those
     /// membership arrays, selected ancestors and owning-field child names are
     /// visited; unrelated field subtrees, actions and default values are not
     /// read. Returns None without AcroForm or
-    /// for a field type other than Tx/Ch. Call after stored/hidden appearance
+    /// for a field type other than Tx/Ch/Btn. Call after stored/hidden appearance
     /// selection, so unused field data stays lazy.
     ///
     /// # Errors
-    /// Positioned Syntax for inconsistent membership or malformed selected
+    /// Syntax for inconsistent membership or malformed selected
     /// entries, Cycle for cyclic Parent ancestry, and existing reference,
-    /// traversal, depth and result-memory Limit errors. This narrow view does
-    /// not search the whole tree to repair inconsistent backlinks; [`Self::acro_form`]
+    /// traversal, depth and result-memory Limit errors. Resolved objects retain
+    /// their source locations; a caller-supplied dictionary has no known location.
+    /// This narrow view does not search the whole tree to repair inconsistent
+    /// backlinks; [`Self::acro_form`]
     /// retains its full-tree repair contract.
-    pub fn widget_text<'a>(&'a self, annotation: &'a Dictionary) -> Result<Option<WidgetText<'a>>> {
+    pub fn widget_field<'a>(
+        &'a self,
+        annotation: &'a Dictionary,
+    ) -> Result<Option<WidgetField<'a>>> {
         display::read(self, annotation)
     }
 

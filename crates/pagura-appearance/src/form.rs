@@ -34,7 +34,7 @@ use da::DefaultAppearance;
 use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use pagura_document::{
     Document,
-    forms::{Field, FieldKind, FilledField, FormFiller, Widget, WidgetState, WidgetText},
+    forms::{Field, FieldKind, FilledField, FormFiller, Widget, WidgetField, WidgetState},
 };
 use pagura_text::Provider;
 use style::Style;
@@ -77,7 +77,8 @@ impl WidgetAppearance {
 /// Unchanged fields retain AP unless NeedAppearances requests regeneration.
 /// Changed text/choice fields replace only the Tx section of an existing AP;
 /// existing resources win collisions with DR. Buttons always select an existing
-/// state when AP exists; only an absent AP permits a generated ZaDb check mark.
+/// state when AP exists; only an absent AP permits a generated normal caption,
+/// mark or icon.
 /// Other field types, such as signatures, keep AP. Without AP, they and any
 /// widget whose Rect has no area are hidden. No partial result is returned.
 /// Storage is separately capped by document_bytes.
@@ -148,6 +149,7 @@ pub fn prepare_widget_with_policy(
 }
 
 /// Generates both normal states for a checkbox/radio widget without an AP.
+/// Caption fonts use `provider`, or only document resources for `None`.
 ///
 /// The on-state name follows the filler's selection rules. Both programs use the
 /// same generator as live preview, so saving Off does not remove the ability to
@@ -159,6 +161,7 @@ pub fn prepare_widget_with_policy(
 pub fn prepare_button_states(
     filler: &FormFiller<'_>,
     index: usize,
+    provider: Option<&dyn Provider>,
 ) -> Result<[(Name, AppearanceStream); 2]> {
     let widget = widget(filler, index)?;
     let field = field(filler, widget)?;
@@ -176,8 +179,17 @@ pub fn prepare_button_states(
     }
     let on = filler.button_on_state(index)?;
     let off = Name::new(b"Off");
-    let off_stream = buttons::check_mark(document, widget, Some(&off), field)?;
-    let on_stream = buttons::check_mark(document, widget, Some(&on), field)?;
+    let fonts = ProviderFonts::new(provider, &document.limits());
+    let context = Context {
+        filler,
+        index,
+        widget,
+        field,
+        fonts: &fonts,
+        policy: UpdatePolicy::Specification,
+    };
+    let off_stream = context.generate(None, Some(&off))?;
+    let on_stream = context.generate(None, Some(&on))?;
     let bytes = off_stream
         .retained_bytes()
         .saturating_add(on_stream.retained_bytes())
@@ -271,11 +283,16 @@ impl Context<'_, '_> {
                 "XFA appearance generation is unavailable",
             ));
         }
-        if button {
-            return buttons::check_mark(self.document(), self.widget, state, self.field)
-                .map(Appearance::Generated);
-        }
-        Variable {
+        self.generate(original.as_ref(), state)
+            .map(Appearance::Generated)
+    }
+
+    fn generate(
+        &self,
+        original: Option<&Appearance>,
+        state: Option<&Name>,
+    ) -> Result<AppearanceStream> {
+        Generation {
             field: variable::Inputs {
                 document: self.document(),
                 kind: &self.field.kind,
@@ -292,13 +309,12 @@ impl Context<'_, '_> {
             fonts: self.fonts,
             policy: self.policy,
         }
-        .appearance(original.as_ref())
-        .map(Appearance::Generated)
+        .appearance(original, state)
     }
 }
 
-/// The same variable-text generator serves source display and explicit edits.
-struct Variable<'a, 'd> {
+/// The same normal generator serves source display, explicit edits and persistence.
+struct Generation<'a, 'd> {
     field: variable::Inputs<'a, 'd>,
     widget: &'d Dictionary,
     bounds: Rect,
@@ -307,9 +323,16 @@ struct Variable<'a, 'd> {
     policy: UpdatePolicy,
 }
 
-impl Variable<'_, '_> {
-    /// A new Tx section in a new or the original stream (12.7.4.3).
-    fn appearance(&self, original: Option<&Appearance>) -> Result<AppearanceStream> {
+impl Generation<'_, '_> {
+    /// A normal button stream or a new Tx section in the existing/new stream.
+    fn appearance(
+        &self,
+        original: Option<&Appearance>,
+        state: Option<&Name>,
+    ) -> Result<AppearanceStream> {
+        if let FieldKind::Button { kind, .. } = self.field.kind {
+            return buttons::generate(self, *kind, state);
+        }
         let document = self.field.document;
         let limits = document.limits();
         let original_id = match original {
@@ -400,12 +423,12 @@ impl Variable<'_, '_> {
     }
 }
 
-/// Generates a missing source Tx/Ch appearance through the ordinary form path.
+/// Generates a missing source Tx/Ch/Btn appearance through the ordinary form path.
 pub(crate) fn source_widget(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
-    field: &WidgetText<'_>,
+    field: &WidgetField<'_>,
     fonts: &dyn FontSource,
 ) -> Result<AppearanceStream> {
     if field.has_xfa {
@@ -414,7 +437,25 @@ pub(crate) fn source_widget(
             "XFA appearance generation is unavailable",
         ));
     }
-    Variable {
+    let state = if matches!(
+        field.kind,
+        FieldKind::Button {
+            kind: pagura_document::forms::ButtonKind::CheckBox
+                | pagura_document::forms::ButtonKind::Radio,
+            ..
+        }
+    ) {
+        crate::values::optional(document, annotation, b"AS")?
+            .map(|value| {
+                value
+                    .as_name()
+                    .ok_or(Error::syntax("widget AS must be a name"))
+            })
+            .transpose()?
+    } else {
+        None
+    };
+    Generation {
         field: variable::Inputs {
             document,
             kind: &field.kind,
@@ -431,7 +472,7 @@ pub(crate) fn source_widget(
         fonts,
         policy: UpdatePolicy::Specification,
     }
-    .appearance(None)
+    .appearance(None, state)
 }
 
 /// The stored normal appearance a widget selects with its current state,

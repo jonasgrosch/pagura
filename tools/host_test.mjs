@@ -352,7 +352,7 @@ async function testRenderCases({ client, root, native, wasiRun, cases }) {
     assert.deepEqual(diagnostics, frames[4].value, `${entry.id}: full diagnostic parity`);
     assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair').map((item) => item.tag), entry.repairs);
     assert.deepEqual(diagnostics.filter((item) => item.kind === 'information').map((item) => item.tag), entry.information ?? []);
-    if (entry.widget_display === 'same' || entry.widget_display === 'regenerate') {
+    if (entry.widget_display === 'same' || entry.widget_display === 'regenerate' || entry.button_display === 'same') {
       const saved = await client.saveForm(opened.document, []);
       bytesEqual(saved, pdf, `${entry.id}: empty host edit keeps source bytes`);
       const reopened = await client.open(saved);

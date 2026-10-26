@@ -46,7 +46,8 @@ pub mod features {
     pub const DIRECT_FIELD: Feature = Feature::new("edit.direct-field");
     /// Password values and appearances must not be saved.
     pub const PASSWORD: Feature = Feature::new("edit.password");
-    /// Push-button appearances still require stored artwork when saving.
+    /// Legacy tag retained for API compatibility; normal push-button appearance
+    /// generation no longer emits it.
     pub const BUTTON_APPEARANCE: Feature = Feature::new("edit.button-appearance");
     /// Every editing capability tag.
     pub const ALL: &[Feature] = &[

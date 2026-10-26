@@ -421,6 +421,7 @@ def cases():
 
     yield from widget_observation_cases()
     yield from button_observation_cases()
+    yield from normal_button_cases()
 
 
 def widget_objects(variant='text', stored=False):
@@ -555,11 +556,11 @@ def button_observation_cases():
             for stored in (False,True):
                 off=variant in ('check-off','check-as-off','radio-off')
                 yield Case(f'button-observe-{variant}-{dpi}-'+('stored' if stored else 'missing'),
-                           widget_pdf(button_objects(variant,stored)),RENDER if stored else UNSUPPORTED,
+                           widget_pdf(button_objects(variant,stored)),RENDER if stored else OPEN,
                            (BUTTON_REQUIREMENT,),
                            'Matched normal checkbox/radio/push-button source display; no field edits or interaction',
                            oracle=button_control_pixels('off' if off else 'on',dpi,variant=='push-page-rotation') if stored else None,
-                           dpi=dpi,feature=None if stored else 'annotation.appearance',extra={'dpi':dpi})
+                           dpi=dpi,extra={'dpi':dpi})
 
 
 @lru_cache(maxsize=32)
@@ -720,3 +721,124 @@ def widget_source_cases():
         objects=widget_objects();change(objects)
         yield Case('widget-source-'+label,widget_pdf(objects),UNSUPPORTED,(WIDGET_REQUIREMENT,),
                    'Advanced layout and XFA keep the existing explicit capability boundary',feature=feature)
+
+
+def normal_button_cases():
+    """Literal regions, independent of the generator's layout or Form fitting.
+
+    The widget is [8,8,56,40]. The Type3 font advances six units and paints
+    five by seven at size ten. A centered AB thus starts at x=26, y=21.
+    Equal caption partitions use [2,2,46,30]; icon partitions use [0,0,48,32]
+    before border adjustment. The default 16x8 icon fits as 48x24 at (8,12).
+    SW=B leaves its original 16x8 at (24,20); the 96x64 icon fits as 48x32.
+    Matrix [0 1 -1 0 11 -2] maps [2,3,18,11] to [0,0,8,16], with its black
+    half below the red half. None of these rectangles call product geometry.
+    """
+    black,red,blue=(0,0,0),(1,0,0),(0,0,1)
+    def halves(x,y,w,h):return [((x,y,w/2,h),black),((x+w/2,y,w/2,h),red)]
+    caption=widget_glyphs(x=26,y=21)
+    full=halves(8,12,48,24)
+    small=halves(24,20,16,8)
+    large=halves(8,8,48,32)
+    border=[((8,8,48,2),blue),((8,38,48,2),blue),((8,10,2,28),blue),((54,10,2,28),blue)]
+    expected={
+        'check-caption':widget_glyphs('A',x=29,y=21),
+        'check-as-off':[], 'radio-caption':widget_glyphs('B',x=29,y=21),
+        'push-caption':caption, 'push-need':caption,
+        'push-icon':full, 'push-matrix':[((24,8,16,16),black),((24,24,16,16),red)],
+        'push-scale-B-small':small, 'push-scale-B-large':large,
+        'push-scale-S-small':full, 'push-scale-S-large':large, 'push-scale-N-small':small,
+        'push-anamorphic':large, 'push-aligned':halves(8,16,48,24),
+        'push-border':border+halves(10,13,44,22), 'push-full-bounds':border+full,
+        'push-position-2':halves(16,24,32,16)+widget_glyphs(x=26,y=14),
+        'push-position-3':halves(16,8,32,16)+widget_glyphs(x=26,y=28),
+        'push-position-4':halves(8,18,24,12)+widget_glyphs(x=37,y=21),
+        'push-position-5':halves(32,18,24,12)+widget_glyphs(x=15,y=21),
+        'push-position-6':full+caption,
+        'push-widget-rotation':[((28,8,8,8),black),((28,16,8,8),red),
+                                ((28,25,7,5),black),((28,31,7,5),black)],
+        'push-page-rotation':full,
+    }
+    def case(label,objects,marks,*,dpi=72,preview=True,rotated=False):
+        return Case('button-normal-'+label,widget_pdf(objects),RENDER,(BUTTON_REQUIREMENT,),
+                    'Independent normal button geometry; stored source, untouched preview and incremental save retain one contract',
+                    oracle=widget_area_pixels(marks,transform=(0,-1,1,0,0,64) if rotated else (1,0,0,1,0,0),
+                                              size=(48,64) if rotated else (64,48),scale=dpi//72),dpi=dpi,
+                    extra={'tolerance':1,**({'button_display':'same'} if preview else {})})
+    for variant,marks in expected.items():
+        for dpi in (72,144):
+            yield case(f'{variant}-{dpi}',button_objects(variant),marks,dpi=dpi,rotated=variant=='push-page-rotation')
+    for variant in ('check-caption','radio-caption','push-icon','push-matrix','push-position-6'):
+        objects=button_objects(variant);objects[10]['NeedAppearances']=True
+        yield case(variant+'-save-generated',objects,expected[variant])
+    for variant in ('check-caption','push-caption'):
+        objects=button_objects(variant,True);objects[10]['NeedAppearances']=True
+        yield case(variant+'-stored-need',objects,[((12,12,8,10),black),((24,12,8,10),red)])
+    for label,variant,change,marks in [
+        ('check-v-on','check-caption',lambda o:o[11].pop('AS'),expected['check-caption']),
+        ('check-as-on-v-off','check-caption',lambda o:o[11].update(V=pdf_name('Off')),expected['check-caption']),
+        ('check-off-ignores-caption','check-as-off',lambda o:o[11]['MK'].update(CA=42),[]),
+        ('toggle-ignores-push-entries','check-caption',lambda o:o[11]['MK'].update(I=42,IF=42,TP=42),expected['check-caption']),
+        ('caption-ignores-icon','push-caption',lambda o:o[11]['MK'].update(I=42,IF=42,RI=42,IX=42,RC=42,AC=42),caption),
+        ('icon-ignores-caption','push-icon',lambda o:(o[11]['MK'].update(CA=42),o[10].update(DA=b'/Missing 10 Tf'),o[10]['DR'].update(XObject=42)),full),
+        ('empty-caption-no-font','push-caption',lambda o:(o[11]['MK'].update(CA=''),o[10].update(DA=b'/Missing 10 Tf')),[]),
+        ('anamorphic-ignores-align','push-anamorphic',lambda o:o[11]['MK']['IF'].update(A=42),large),
+        ('null-defaults','push-icon',lambda o:o[11]['MK'].update(IF={'SW':None,'S':None,'FB':None,'A':None}),full),
+        ('null-icon','push-icon',lambda o:o[11]['MK'].update(I=None,IF=42),[]),
+        ('hidden-invalid','push-icon',lambda o:(o[11].update(F=2),o[11]['MK'].update(TP=42)),[]),
+        ('no-view-invalid','push-icon',lambda o:(o[11].update(F=32),o[11]['MK'].update(TP=42)),[]),
+        ('resource-name-collision','push-position-6',lambda o:o[10]['DR'].update(XObject={'Icon':ref(80)}),full+caption),
+    ]:
+        objects=button_objects(variant);change(objects)
+        yield case(label,objects,marks)
+    objects=button_objects('check-caption');parent=objects[11]
+    objects[21]={'Subtype':pdf_name('Widget'),'Rect':[8,8,56,40],'Parent':ref(11),
+                 'AS':pdf_name('Yes'),'MK':parent.pop('MK'),'FT':pdf_name('Tx'),'V':'ignored widget value'}
+    parent.pop('Subtype');parent.pop('Rect');parent.pop('AS');parent['Kids']=[ref(21)]
+    objects[3]['Annots']=[ref(21)];objects[10]['NeedAppearances']=True
+    yield case('check-separate-save-generated',objects,expected['check-caption'])
+    objects=button_objects('push-caption');objects[10]|={'Fields':[ref(12)],'NeedAppearances':True}
+    objects[12]={'T':'parent','Kids':[ref(11)],'FT':objects[11].pop('FT'),'Ff':objects[11].pop('Ff')}
+    objects[11]['Parent']=ref(12)
+    yield case('push-inherited-save-generated',objects,caption)
+    objects=button_objects('push-caption');objects[11]['A']={'S':pdf_name('URI'),'URI':'https://example.invalid/inert-button'}
+    yield case('push-action-inert',objects,caption)
+    # Scaling an anamorphic icon is a whole-icon decision, not separate clamps
+    # on the two dimensions: 96x8 is wider but shorter than a 48x32 widget.
+    for when,marks in [('B',large),('S',halves(8,20,48,8))]:
+        objects=button_objects('push-icon');objects[11]['MK']['IF']={'SW':pdf_name(when),'S':pdf_name('A')}
+        objects[83]=stream(b'0 g 0 0 48 8 re f 1 0 0 rg 48 0 48 8 re f',
+                           b'/Type /XObject /Subtype /Form /BBox [0 0 96 8] /Resources << >>')
+        yield case('anamorphic-mixed-'+when,objects,marks)
+    # Normal source AP wins over unneeded malformed generation entries.
+    objects=button_objects('push-caption',True);objects[11]['MK']={'TP':42,'CA':42,'I':42,'IF':42}
+    yield case('stored-ignores-generation',objects,[((12,12,8,10),black),((24,12,8,10),red)])
+    # Ordinary Form execution isolates the relocated Table 93 parser from
+    # annotation fitting: matrix alone yields these original page rectangles.
+    objects=button_objects('push-matrix');objects[1].pop('AcroForm');objects[3].pop('Annots')
+    objects[3]|={'Contents':ref(50),'Resources':{'XObject':{'Original':ref(85)}}}
+    objects[50]=stream(b'q 2 0 0 2 24 8 cm /Original Do Q')
+    yield case('ordinary-form-matrix',objects,expected['push-matrix'],preview=False)
+    objects[85]=stream(b'0 g -100 -100 300 300 re f',
+                       b'/Type /XObject /Subtype /Form /BBox [2 3 18 11] /Matrix [0 1 -1 0 11 -2] /Resources << >>')
+    yield case('ordinary-form-bbox-clip',objects,[((24,8,16,32),black)],preview=False)
+    for label,variant,change in [
+        ('position-range','push-icon',lambda o:o[11]['MK'].update(TP=7)),
+        ('position-real','push-icon',lambda o:o[11]['MK'].update(TP=1.0)),
+        ('caption-type','push-caption',lambda o:o[11]['MK'].update(CA=42)),
+        ('caption-da','push-caption',lambda o:o[10].pop('DA')),
+        ('icon-reference','push-icon',lambda o:o[11]['MK'].update(I=42)),
+        ('icon-stream','push-icon',lambda o:o.update({83:{'Subtype':pdf_name('Form'),'BBox':[0,0,16,8]}})),
+        ('icon-subtype','push-icon',lambda o:o.update({83:stream(b'',b'/Subtype /Image /BBox [0 0 16 8]')})),
+        ('icon-bbox','push-icon',lambda o:o.update({83:stream(b'',b'/Subtype /Form /BBox [0 0 16]')})),
+        ('icon-matrix','push-icon',lambda o:o.update({83:stream(b'',b'/Subtype /Form /BBox [0 0 16 8] /Matrix [0 0 0 0 0 0]')})),
+        ('fit-type','push-icon',lambda o:o[11]['MK'].update(IF=42)),
+        ('fit-when','push-icon',lambda o:o[11]['MK'].update(IF={'SW':pdf_name('Unknown')})),
+        ('fit-scale','push-icon',lambda o:o[11]['MK'].update(IF={'S':42})),
+        ('fit-align-length','push-icon',lambda o:o[11]['MK'].update(IF={'A':[0]})),
+        ('fit-align-range','push-icon',lambda o:o[11]['MK'].update(IF={'A':[0,2]})),
+        ('fit-bounds','push-icon',lambda o:o[11]['MK'].update(IF={'FB':42})),
+    ]:
+        objects=button_objects(variant);change(objects)
+        yield Case('button-invalid-'+label,widget_pdf(objects),OPEN,(BUTTON_REQUIREMENT,),
+                   'Selected normal-button generation input has a named syntax boundary',extra={'render_error':'syntax'})

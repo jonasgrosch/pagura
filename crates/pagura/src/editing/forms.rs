@@ -98,8 +98,14 @@ fn prepare_appearances(
             form_appearance::prepare_widget_with_policy(filler, index, provider, policy)?;
         if let Appearance::Generated(stream) = appearance {
             let id = identity(filler.document(), widget.object, widget.dictionary)?;
-            let generated_button = matches!(field.kind, FieldKind::Button { .. });
-            let normal = normal_appearance(filler, transaction, index, field, stream)?;
+            let generated_button = matches!(
+                field.kind,
+                FieldKind::Button {
+                    kind: ButtonKind::CheckBox | ButtonKind::Radio,
+                    ..
+                }
+            );
+            let normal = normal_appearance(filler, transaction, index, field, stream, provider)?;
             let mut appearances = match widget.dictionary.get(b"AP") {
                 Some(value) => match filler.document().resolve(value)? {
                     Value::Null => Dictionary::new(),
@@ -136,24 +142,19 @@ fn normal_appearance(
     index: usize,
     field: &Field<'_>,
     stream: form_appearance::AppearanceStream,
+    provider: Option<&dyn crate::Provider>,
 ) -> Result<Value> {
     if matches!(
         field.kind,
         FieldKind::Button {
-            kind: ButtonKind::Push,
+            kind: ButtonKind::CheckBox | ButtonKind::Radio,
             ..
         }
     ) {
-        return Err(Error::unsupported(
-            features::BUTTON_APPEARANCE,
-            "saving push buttons requires an existing appearance",
-        ));
-    }
-    if matches!(field.kind, FieldKind::Button { .. }) {
         // Drop the preview state before reserving both persistent states.
         drop(stream);
         let mut states = Dictionary::new();
-        for (name, stream) in form_appearance::prepare_button_states(filler, index)? {
+        for (name, stream) in form_appearance::prepare_button_states(filler, index, provider)? {
             let appearance_id = add_appearance(transaction, &stream)?;
             states.insert(name, Value::Reference(appearance_id));
         }

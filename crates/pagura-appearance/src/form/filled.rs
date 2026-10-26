@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 ///
 /// Changed widgets use generated text and choice programs or the selected
 /// button state; NeedAppearances also regenerates unchanged text and choice
-/// fields. Missing text/choice appearances use their source values even without
+/// fields. Missing text/choice/button appearances use their source values even without
 /// edits. An untouched field with a stored AP keeps it when generation is
 /// unsupported, reporting [`information::APPEARANCE_KEPT`] in both
 /// recovery modes; edited fields and other errors fail.
@@ -56,8 +56,8 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
     /// `annotation` must be the dictionary the filler's document resolves
     /// for the annotation: identity, not content, selects the widget, so a
     /// value never applies to an unrelated annotation with the same field
-    /// name. An untouched widget keeps its stored appearance unless
-    /// NeedAppearances requests regeneration; missing Tx/Ch appearances are
+    /// name. Stored button appearances are retained; untouched text/choice widgets
+    /// keep theirs unless NeedAppearances requests regeneration. Missing Tx/Ch/Btn appearances are
     /// generated from source values. When the widget selects a stored stream,
     /// `culled` receives that stream's dictionary and returns whether the
     /// stream would paint nothing (hidden by optional content, or an empty
@@ -81,17 +81,17 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
         let form = self.filler.form();
         let widget = super::widget(self.filler, index)?;
         let field = super::field(self.filler, widget)?;
-        let variable = matches!(
+        let generated = matches!(
             field.kind,
-            FieldKind::Text { .. } | FieldKind::Choice { .. }
+            FieldKind::Text { .. } | FieldKind::Choice { .. } | FieldKind::Button { .. }
         );
         let regenerate =
-            self.filler.get(widget.field).is_some() || form.need_appearances && variable;
+            self.filler.get(widget.field).is_some() || form.need_appearances && generated;
         let original = original(self.filler, index)?;
         if !regenerate
             && rect.width() != 0.0
             && rect.height() != 0.0
-            && (!variable || original.is_some())
+            && (!generated || original.is_some())
         {
             return Ok(None);
         }

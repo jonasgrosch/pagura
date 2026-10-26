@@ -159,3 +159,150 @@ fn need_appearances_preserves_untouched_button_selection() {
         exported(&format!("generated-button-need-{flags}"), &saved, &original).unwrap();
     }
 }
+
+#[test]
+fn normal_captions_persist_both_states_and_explicit_edits_override_source_as() {
+    for variant in ["check-caption", "radio-caption"] {
+        let original = fixture(
+            "annotation_display",
+            &format!("button-normal-{variant}-72.pdf"),
+        );
+        let mut bytes = original.clone();
+        for (revision, selected) in [false, true, false, true].into_iter().enumerate() {
+            let document = open(bytes.clone()).unwrap();
+            let mut filler = document.form_filler().unwrap().unwrap();
+            let field = filler.form().widgets[0].field;
+            filler
+                .set(
+                    field,
+                    FillValue::Button(if selected {
+                        ButtonValue::Widget {
+                            index: 0,
+                            state: None,
+                        }
+                    } else {
+                        ButtonValue::Off
+                    }),
+                )
+                .unwrap();
+            let saved = save_filled_form(&filler, &SaveOptions::default())
+                .unwrap_or_else(|error| panic!("{variant}: save: {error}"));
+            assert!(saved.starts_with(&bytes), "{variant}");
+            let reopened = open(saved.clone()).unwrap();
+            let form = reopened.acro_form().unwrap().unwrap();
+            let widget = &form.widgets[0];
+            let ap = reopened
+                .resolve_dictionary(widget.dictionary.get(b"AP").unwrap())
+                .unwrap();
+            let states = reopened.resolve_dictionary(ap.get(b"N").unwrap()).unwrap();
+            assert_eq!(states.len(), 2, "{variant}: state persistence");
+            assert!(
+                states.get(b"Off").is_some() && states.get(b"Yes").is_some(),
+                "{variant}"
+            );
+            let expected = if selected {
+                b"Yes".as_slice()
+            } else {
+                b"Off".as_slice()
+            };
+            assert_eq!(
+                widget.appearance_state.unwrap().as_bytes(),
+                expected,
+                "{variant}"
+            );
+            let image = pagura::render_page(
+                &reopened,
+                reopened.page(0).unwrap(),
+                &RenderOptions::from_dpi(72.0),
+            )
+            .unwrap();
+            let oracle = fixture(
+                "annotation_display",
+                &if selected {
+                    format!("button-normal-{variant}-72.ppm")
+                } else {
+                    "button-normal-check-as-off-72.ppm".to_owned()
+                },
+            );
+            assert_eq!(
+                crate::support::ppm(&image),
+                oracle,
+                "{variant}: reopened caption pixels"
+            );
+            exported(&format!("normal-{variant}-{revision}"), &saved, &bytes).unwrap();
+            bytes = saved;
+        }
+        assert!(bytes.starts_with(&original), "{variant}");
+    }
+}
+
+#[test]
+fn generating_a_push_appearance_never_creates_a_field_value_or_state() {
+    for name in [
+        "button-normal-push-caption-72",
+        "button-normal-push-need-72",
+        "button-normal-push-position-6-save-generated",
+    ] {
+        let original = fixture("annotation_display", &format!("{name}.pdf"));
+        let document = open(original.clone()).unwrap();
+        let mut filler = document.form_filler().unwrap().unwrap();
+        assert_eq!(
+            filler
+                .set(0, FillValue::Button(ButtonValue::Off))
+                .unwrap_err()
+                .kind,
+            ErrorKind::InvalidArgument
+        );
+        let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
+        if !filler.form().need_appearances {
+            assert_eq!(saved, original, "{name}: no-op save");
+        }
+        let reopened = open(saved).unwrap();
+        let form = reopened.acro_form().unwrap().unwrap();
+        let field = &form.fields[0];
+        assert!(
+            field.value.is_none() && field.default_value.is_none(),
+            "{name}"
+        );
+        for key in [b"V".as_slice(), b"DV", b"AS"] {
+            assert!(
+                field.dictionary.get(key).is_none(),
+                "{name}: synthetic value/state"
+            );
+        }
+        if filler.form().need_appearances {
+            let ap = reopened
+                .resolve_dictionary(form.widgets[0].dictionary.get(b"AP").unwrap())
+                .unwrap();
+            let normal = ap.get(b"N").unwrap().as_reference().unwrap();
+            assert!(
+                reopened.object(normal).unwrap().is_stream(),
+                "{name}: normal AP must be a stream"
+            );
+        }
+    }
+}
+
+#[test]
+fn persisting_off_validates_the_unselected_caption_without_partial_state() {
+    let original = fixture(
+        "annotation_display",
+        "button-normal-check-off-ignores-caption.pdf",
+    );
+    let document = open(original.clone()).unwrap();
+    let mut filler = document.form_filler().unwrap().unwrap();
+    filler.set(0, FillValue::Button(ButtonValue::Off)).unwrap();
+    // Off itself draws no caption; persistence must also prepare the on-state.
+    assert!(matches!(
+        pagura::form_appearance::prepare_widget(&filler, 0, None).unwrap(),
+        pagura::form_appearance::Appearance::Generated(_)
+    ));
+    assert_eq!(
+        save_filled_form(&filler, &SaveOptions::default())
+            .unwrap_err()
+            .kind,
+        ErrorKind::Syntax
+    );
+    assert_eq!(document.original_bytes(), original);
+    assert_eq!(filler.changes().count(), 1);
+}

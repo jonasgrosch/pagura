@@ -1,16 +1,16 @@
-//! One source/preview/save contract against independently derived Type 3 pixels.
+//! One source/preview/save contract against independent text and icon pixels.
 
 use super::*;
 use pagura_testkit::{Json, Manifest};
 use std::sync::Arc;
 
 #[test]
-fn source_widgets_untouched_previews_and_saved_reopens_share_layout() {
+fn source_widgets_untouched_previews_and_saved_reopens_share_appearance() {
     let manifest = Manifest::load("annotation_display");
-    for case in manifest
-        .cases()
-        .filter(|case| matches!(case.string("widget_display"), Some("same" | "regenerate")))
-    {
+    for case in manifest.cases().filter(|case| {
+        matches!(case.string("widget_display"), Some("same" | "regenerate"))
+            || case.string("button_display") == Some("same")
+    }) {
         let name = case.name();
         let original = fixture("annotation_display", &format!("{name}.pdf"));
         let document = Arc::new(open(original.clone()).unwrap());
@@ -56,7 +56,9 @@ fn source_widgets_untouched_previews_and_saved_reopens_share_layout() {
         // Generated text has the same predeclared one-level coverage bound as
         // the missing-AP controls, including when stored artwork was exact.
         assert!(worst <= 1, "{name}: untouched preview pixel error {worst}");
-        if case.string("widget_display") == Some("same") {
+        if case.string("widget_display") == Some("same")
+            || case.string("button_display") == Some("same")
+        {
             assert_eq!(preview, actual, "{name}: source/untouched preview");
         }
         let saved = save_filled_form(&filler, &SaveOptions::default())

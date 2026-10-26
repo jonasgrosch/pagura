@@ -37,4 +37,7 @@ pub use form::{
     FilledWidgets, TextStyle, UpdatePolicy, WidgetAppearance, default_text_style, prepare,
     prepare_button_states, prepare_widget, prepare_widget_with_policy,
 };
-pub use stream::{Appearance, AppearanceMode, AppearanceStream, stored_appearance};
+pub use stream::{
+    Appearance, AppearanceMode, AppearanceStream, appearance_bounds, appearance_placement,
+    form_geometry, stored_appearance,
+};

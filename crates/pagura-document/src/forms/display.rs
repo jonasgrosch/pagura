@@ -1,7 +1,7 @@
 //! Requested-widget field data, sharing the full form view's attribute readers.
 
 use super::{
-    WidgetText,
+    FieldFlags, WidgetField,
     attributes::{self, Inherited, Key},
     values,
 };
@@ -21,7 +21,7 @@ struct Node<'a> {
 pub(super) fn read<'a>(
     document: &'a Document,
     annotation: &'a Dictionary,
-) -> Result<Option<WidgetText<'a>>> {
+) -> Result<Option<WidgetField<'a>>> {
     let mut context = Context::new(document);
     let (catalog, catalog_source) = context.catalog()?;
     let Some(form) = context.present(catalog, b"AcroForm", catalog_source)? else {
@@ -29,7 +29,89 @@ pub(super) fn read<'a>(
     };
     let (form, form_source) = context.dictionary(form, catalog_source)?;
     let (dictionary, source) = (annotation, Source::default());
-    let mut current = Node { dictionary, source };
+    let ancestors = ancestry(
+        &mut context,
+        Node { dictionary, source },
+        Node {
+            dictionary: form,
+            source: form_source,
+        },
+    )?;
+    // An unnamed child is a separate representation of its parent field;
+    // its own field-like entries do not override the parent (12.7.4.2).
+    let separate = ancestors.len() > 1 && context.present(dictionary, b"T", source)?.is_none();
+    let field = ancestors
+        .get(usize::from(separate))
+        .copied()
+        .ok_or_else(|| source.error(Error::syntax("widget has no owning field")))?;
+    let mut effective = Inherited::default();
+    for node in ancestors.iter().skip(usize::from(separate)).rev() {
+        effective = effective.overlay(
+            &mut context,
+            node.dictionary,
+            node.source,
+            [Key::Ft, Key::Ff],
+        )?;
+    }
+    let kind = values::field_type(&mut context, &effective)?;
+    if !kind.is_some_and(|kind| matches!(kind.as_bytes(), b"Tx" | b"Ch" | b"Btn")) {
+        return Ok(None);
+    }
+    let flags = effective.flags(&mut context)?;
+    let push = kind.is_some_and(|kind| kind.as_bytes() == b"Btn")
+        && flags.contains(FieldFlags::PUSHBUTTON);
+    // Push buttons do not use V or DV (12.7.5.2.2). Reuse the already bounded
+    // ancestor list to read applicable data, never a second field-tree walk.
+    effective = effective.overlay(&mut context, form, form_source, [Key::Da, Key::Q])?;
+    for node in ancestors.iter().skip(usize::from(separate)).rev() {
+        effective = effective.overlay(
+            &mut context,
+            node.dictionary,
+            node.source,
+            [Key::V, Key::Da, Key::Q, Key::Opt, Key::MaxLen]
+                .into_iter()
+                .filter(|key| !push || !matches!(key, Key::V | Key::Opt)),
+        )?;
+    }
+    if attributes::has_field_children(&mut context, field.dictionary, field.source)? {
+        return Err(field
+            .source
+            .error(Error::syntax("widget belongs to a nonterminal field")));
+    }
+    let kind = values::kind(
+        &mut context,
+        field.dictionary,
+        &effective,
+        flags,
+        field.source,
+    )?;
+    let value = values::read(&mut context, &kind, effective.get(Key::V))?.map(|(value, _)| value);
+    context.allocate::<WidgetField<'_>>(1, field.source)?;
+    Ok(Some(WidgetField {
+        kind,
+        flags,
+        value,
+        default_appearance: attributes::appearance(&mut context, effective.get(Key::Da))?,
+        justification: attributes::quadding(&mut context, effective.get(Key::Q))?,
+        dictionary: field.dictionary,
+        default_resources: context
+            .present(form, b"DR", form_source)?
+            .map(|value| {
+                context
+                    .dictionary(value, form_source)
+                    .map(|(dictionary, _)| dictionary)
+            })
+            .transpose()?,
+        has_xfa: context.present(form, b"XFA", form_source)?.is_some(),
+    }))
+}
+
+/// Walk only Parent edges, proving each forward membership along the way.
+fn ancestry<'a>(
+    context: &mut Context<'a>,
+    mut current: Node<'a>,
+    form: Node<'a>,
+) -> Result<Vec<Node<'a>>> {
     let mut ancestors = Vec::new();
     let mut seen = BTreeSet::new();
     loop {
@@ -47,74 +129,15 @@ pub(super) fn read<'a>(
         };
         let (dictionary, source) = context.dictionary(parent, current.source)?;
         member(
-            &mut context,
+            context,
             Node { dictionary, source },
             b"Kids",
             current.dictionary,
         )?;
         current = Node { dictionary, source };
     }
-    member(
-        &mut context,
-        Node {
-            dictionary: form,
-            source: form_source,
-        },
-        b"Fields",
-        current.dictionary,
-    )?;
-    // An unnamed child is a separate representation of its parent field;
-    // its own field-like entries do not override the parent (12.7.4.2).
-    let separate = ancestors.len() > 1 && context.present(dictionary, b"T", source)?.is_none();
-    let field = ancestors
-        .get(usize::from(separate))
-        .copied()
-        .ok_or_else(|| source.error(Error::syntax("widget has no owning field")))?;
-    let mut effective = Inherited::defaults(&mut context, form, form_source)?;
-    for node in ancestors.iter().skip(usize::from(separate)).rev() {
-        effective = effective.overlay(
-            &mut context,
-            node.dictionary,
-            node.source,
-            Key::ALL.into_iter().filter(|key| *key != Key::Dv),
-        )?;
-    }
-    let kind = values::field_type(&mut context, &effective)?;
-    if !kind.is_some_and(|kind| matches!(kind.as_bytes(), b"Tx" | b"Ch")) {
-        return Ok(None);
-    }
-    if attributes::has_field_children(&mut context, field.dictionary, field.source)? {
-        return Err(field
-            .source
-            .error(Error::syntax("widget belongs to a nonterminal field")));
-    }
-    let flags = effective.flags(&mut context)?;
-    let kind = values::kind(
-        &mut context,
-        field.dictionary,
-        &effective,
-        flags,
-        field.source,
-    )?;
-    let value = values::read(&mut context, &kind, effective.get(Key::V))?.map(|(value, _)| value);
-    context.allocate::<WidgetText<'_>>(1, field.source)?;
-    Ok(Some(WidgetText {
-        kind,
-        flags,
-        value,
-        default_appearance: attributes::appearance(&mut context, effective.get(Key::Da))?,
-        justification: attributes::quadding(&mut context, effective.get(Key::Q))?,
-        dictionary: field.dictionary,
-        default_resources: context
-            .present(form, b"DR", form_source)?
-            .map(|value| {
-                context
-                    .dictionary(value, form_source)
-                    .map(|(dictionary, _)| dictionary)
-            })
-            .transpose()?,
-        has_xfa: context.present(form, b"XFA", form_source)?.is_some(),
-    }))
+    member(context, form, b"Fields", current.dictionary)?;
+    Ok(ancestors)
 }
 
 /// Check the forward edge without descending into any sibling dictionary.

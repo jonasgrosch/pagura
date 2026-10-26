@@ -9,7 +9,7 @@ pagura           ──► pagura-render, pagura-appearance (appearance data), p
 pagura-render    ──► pagura-paint, pagura-interpret, pagura-extract, pagura-text, pagura-document, pagura-raster
 pagura-paint     ──► pagura-interpret, pagura-color, pagura-image, pagura-raster
 pagura-interpret ──► pagura-content, pagura-appearance, pagura-color, pagura-image, pagura-raster, pagura-extract, pagura-text, pagura-font, pagura-document
-pagura-appearance ─► pagura-text, pagura-document
+pagura-appearance ─► pagura-text, pagura-document, pagura-raster (shared geometry only)
 pagura-extract   ──► pagura-text (font kinds, writing modes, glyph text), pagura-document, pagura-raster
 pagura-color     ──► pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font (ADR 0026)
