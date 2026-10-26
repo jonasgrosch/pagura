@@ -34,7 +34,7 @@
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
     "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
-    "crates/pagura-color/src/cie.rs": "187e794533176cfd9055caa40bf58a402a643149c74705cda91d30f59d37e582",
+    "crates/pagura-color/src/cie.rs": "950b76a2561a9a14ffa46ed12171913148f52edd8c6a3f82f3c20d64e62a2c2e",
     "crates/pagura-color/src/convert/plan.rs": "e388c0db3721d292ad48c8db3b78d625f19ba472e64efbc8b1aa4c9e601094a0",
     "crates/pagura-color/src/features.rs": "d41d21ac1bb7622de6e5fb3a6955d06bfd31ab84af27ac891efc0ac04adb6bd3",
     "crates/pagura-color/src/function/calculator/check.rs": "42eca4b64aa07d0f6a5fec0177bde1890195e7d67625366b5326603198dd493d",

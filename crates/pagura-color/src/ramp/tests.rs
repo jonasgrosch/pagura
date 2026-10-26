@@ -216,3 +216,66 @@ fn construction_charges_its_peak_storage() {
     let kept = 4096 * (size_of::<[f64; 2]>() + 3 * size_of::<Term>() + 4 * size_of::<u32>());
     assert!(high > kept, "{high} bytes built it, {kept} kept");
 }
+
+/// A sampled function of many cells splits at every grid boundary its
+/// input crosses at once, one enclosure a cell, with `Encode` rising or
+/// falling, and its certified colours still round as the exact ones.
+#[test]
+fn grid_boundaries_split_at_once() {
+    let mut rng = Rng::new(0x9e1d_ce11);
+    let samples: Vec<u8> = (0..200 * 3)
+        .map(|_| u8::try_from(rng.below(256)).unwrap())
+        .collect();
+    let converter = Converter::new(
+        &ColorSpace::DeviceRgb,
+        &Target::new(Process::Rgb),
+        &Conversion::default(),
+    )
+    .unwrap();
+    for encode in [[0.0, 199.0], [199.0, 0.0]] {
+        let function = Function::sampled(
+            crate::function::SampledFunction {
+                domain: vec![[0.0, 1.0]],
+                range: vec![[0.0, 1.0]; 3],
+                size: vec![200],
+                bits_per_sample: 8,
+                order: 1,
+                encode: Some(vec![encode]),
+                decode: None,
+                samples: samples.clone().into(),
+            },
+            &Limits::default(),
+        )
+        .unwrap();
+        let stage = RampStage::Single(&function);
+        let ramp = Ramp::new(
+            stage,
+            3,
+            &converter,
+            ([0.0, 1.0], 4096),
+            &mut Meter::new(usize::MAX, "ramp test"),
+        );
+        assert!(ramp.len() >= 199, "{} pieces", ramp.len());
+        assert!(
+            ramp.enclosures() <= ramp.len() + 2,
+            "{} enclosures for {} pieces",
+            ramp.enclosures(),
+            ramp.len()
+        );
+        let mut out = [0.0; 3];
+        let mut certified = 0;
+        for i in 0..=4000 {
+            let x = f64::from(i) / 4000.0;
+            if !ramp.convert(x, &mut out, level) {
+                continue;
+            }
+            certified += 1;
+            let expected = exact(stage, &converter, 3, x);
+            for (c, (&got, &want)) in out.iter().zip(&expected).enumerate() {
+                assert_eq!(level(got), level(want), "x {x}, channel {c}");
+            }
+        }
+        // Values touching zero or a level's edge stay uncertified.
+        assert!(certified * 10 > 4001 * 9, "{certified} certified");
+    }
+}

@@ -563,7 +563,11 @@ impl Function {
         let index = if bounds.first() == Some(&min) && x.low() <= min {
             // The first degenerate interval owns its endpoint (7.10.4).
             if x.value() != Some(min) {
-                return Err(Undecided::Split { form: x, at: min });
+                return Err(Undecided::Split {
+                    form: x,
+                    at: min,
+                    count: 1,
+                });
             }
             0
         } else {
