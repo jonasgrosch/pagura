@@ -44,7 +44,7 @@ export class PngExport {
   }
   async export() {
     if (this.busy || !this.dialog.open) return;
-    const snapshot = this.state(), serial = this.serial;
+    const snapshot = { ...this.state() }, serial = this.serial;
     if (snapshot.handle === null) return;
     const page = Number(this.page.value) - 1, dpi = Number(this.dpi.value);
     if (!Number.isInteger(page) || page < 0 || page >= snapshot.count || !Number.isInteger(dpi) || dpi < 1 || dpi > 2400) {
