@@ -13,7 +13,7 @@ fn alternate_markup_quad_order_is_reported_and_strict_mode_refuses_it() {
         );
         let repaired = document();
         let expected = annotation_appearance(&repaired, &normal, area).unwrap();
-        assert!(repaired.diagnostics().is_empty());
+        assert_eq!(repaired.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
         assert_eq!(
             annotation_appearance(&repaired, &alternate, area).unwrap(),
             expected
