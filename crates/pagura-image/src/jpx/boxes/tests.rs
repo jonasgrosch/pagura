@@ -206,7 +206,7 @@ fn implicit_opacity_uses_exactly_one_definition_per_final_channel() {
         format: super::FileType::JpxBaseline,
     };
     // One box inspection plus four initialized cdef tuples: five work units,
-    // 4 * 6 = 24 retained bytes. Neither source reading nor channel count grows
+    // 4 * 6 = 24 bytes charged for definition storage. Neither source reading nor channel count grows
     // with the image area, and no sample plane is allocated here.
     for (bytes, operations, valid) in [(24, 5, true), (23, 5, false), (24, 4, false)] {
         let limits = Limits {

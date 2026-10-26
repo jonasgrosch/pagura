@@ -654,14 +654,15 @@ they are not dependencies of that layer.
 Opacity types 0/1 become the existing channel definitions after the palette's
 final channel count is known. The same `ChannelsUse` and PDF Indexed/SMaskInData
 paths preserve raw samples, alpha precision and premultiplication. Four final
-channels require exactly 24 retained bytes and five work units (one box plus
+channels charge exactly 24 bytes for definition storage and five work units (one box plus
 four initialized definitions); one-short controls refuse before allocation.
 Identity registration reads ten bytes, with a nine-unit refusal. No extra
 sample pass, decoded plane, colour engine or external-data provider is added.
 
 All 54 diagnostic records retain their exact files/oracles. Two further paired
 groups cover dimensions supplied by `jpch` and unrelated later-image overrides.
-The area now has 56 render PDFs and six separate vectors; the full manifest
+The area now has 62 records: 56 render PDFs, five malformed vectors and one
+unadjudicated vector. The full manifest
 has 388 observations, including the six historical malformed colour groups
 qualified above. Public raw-sample tests, native/WASI/browser-shim checks and
 reference conformance use the existing paths. Hosted acceptance of this new
