@@ -6,7 +6,7 @@
 use super::{Active, Tops};
 use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Output, Plan};
-use crate::source::{PaintScratch, Source, SpanColors};
+use crate::source::{PaintScratch, ScratchLayout, SpanColors};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect};
@@ -390,11 +390,18 @@ impl Sizes {
             .saturating_add(active.saturating_mul(size_of::<u32>()))
             .saturating_add(plan.groups.len() * size_of::<Active>())
             .saturating_add(plan.masks.len() * size_of::<MaskCache>())
-            .saturating_add(plan.paints.len().saturating_mul(size_of::<PaintScratch>()))
             .saturating_add(
-                plan.paints
+                plan.slots
+                    .layouts
+                    .len()
+                    .saturating_mul(size_of::<PaintScratch>()),
+            )
+            .saturating_add(
+                plan.slots
+                    .layouts
                     .iter()
-                    .map(Source::scratch_bytes)
+                    .flatten()
+                    .map(|layout| layout.bytes())
                     .fold(0, usize::saturating_add),
             )
     }
@@ -443,18 +450,18 @@ fn allocate<T>(count: usize) -> Result<Vec<T>> {
 /// Fits paint storage after [`keep_paints`] dropped owners outside the
 /// new reservation, charging matching reuse and new storage alike.
 fn paint_storage(
-    sources: &[Source],
+    layouts: &[Option<ScratchLayout>],
     previous: Option<Vec<PaintScratch>>,
     bytes: &mut Meter,
 ) -> Result<Vec<PaintScratch>> {
-    bytes.charge_items::<PaintScratch>(sources.len())?;
+    bytes.charge_items::<PaintScratch>(layouts.len())?;
     let mut storage = match previous {
         Some(previous) => previous,
-        None => allocate(sources.len())?,
+        None => allocate(layouts.len())?,
     };
-    storage.resize_with(sources.len(), PaintScratch::default);
-    for (scratch, source) in storage.iter_mut().zip(sources) {
-        *scratch = source.make_scratch(Some(std::mem::take(scratch)), bytes)?;
+    storage.resize_with(layouts.len(), PaintScratch::default);
+    for (scratch, &layout) in storage.iter_mut().zip(layouts) {
+        *scratch = PaintScratch::make(layout, Some(std::mem::take(scratch)), bytes)?;
     }
     Ok(storage)
 }
@@ -475,7 +482,7 @@ impl Workspace {
             coverage,
             paints,
         } = previous.unwrap_or_default();
-        let paint_scratch = paint_storage(&plan.paints, paints, bytes)?;
+        let paint_scratch = paint_storage(&plan.slots.layouts, paints, bytes)?;
         let (format, layout) = page_layout(plan);
         let zeroed = |count: usize, bytes: &mut Meter| -> Result<Vec<f64>> {
             let mut values = reserve(count, bytes)?;
@@ -622,20 +629,23 @@ impl Kept {
         Self {
             page: page.pixels.keep(page_layout(plan), pixels),
             coverage: (capacity == (plan.sizes.rows, pixels)).then_some(coverage),
-            paints: keep_paints(&plan.paints, paint_scratch),
+            paints: keep_paints(&plan.slots.layouts, paint_scratch),
         }
     }
 }
 
 /// Paint owners inside the new reservation, with incompatible layouts
 /// dropped before any replacement is made.
-fn keep_paints(sources: &[Source], mut previous: Vec<PaintScratch>) -> Option<Vec<PaintScratch>> {
-    if previous.capacity() != sources.len() {
+fn keep_paints(
+    layouts: &[Option<ScratchLayout>],
+    mut previous: Vec<PaintScratch>,
+) -> Option<Vec<PaintScratch>> {
+    if previous.capacity() != layouts.len() {
         return None;
     }
-    previous.truncate(sources.len());
-    for (scratch, source) in previous.iter_mut().zip(sources) {
-        if !scratch.fits(source) {
+    previous.truncate(layouts.len());
+    for (scratch, &layout) in previous.iter_mut().zip(layouts) {
+        if !scratch.fits(layout) {
             *scratch = PaintScratch::default();
         }
     }

@@ -9,7 +9,7 @@ use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, OutlineKey, Pen};
 use pagura_raster::{
     BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, MarkCoverage, Path,
-    Point, RowOut, Shape, ShapeOptions, Transform,
+    Point, RowOut, Shape, ShapeOptions, StrokeTemplates, Transform,
 };
 use std::sync::Arc;
 
@@ -37,6 +37,8 @@ pub(crate) struct ShapeBuilder<'a> {
     handles: Vec<Arc<GlyphEdges>>,
     /// The clip state shapes are prepared in.
     clip: Option<u32>,
+    /// The strokes prepared so far, for their repeats elsewhere.
+    strokes: StrokeTemplates,
 }
 
 /// The identity of glyph edges in the [`Store`]: the outline and the bits
@@ -76,6 +78,7 @@ impl<'a> ShapeBuilder<'a> {
             edges: FastMap::default(),
             handles: Vec::new(),
             clip: None,
+            strokes: StrokeTemplates::default(),
         }
     }
 
@@ -142,13 +145,15 @@ impl<'a> ShapeBuilder<'a> {
         options: &ShapeOptions<'_>,
         bytes: &mut Meter,
     ) -> Result<Option<Prepared>> {
-        let shape = Shape::stroke_with_clip(
+        let clip = self.clip.and_then(|k| self.clips.get(u32_to_usize(k)));
+        let shape = Shape::stroke_repeated(
             path,
             &pen.stroke,
             (inverse, transform),
             pen.adjustment,
-            self.current_clip(),
+            clip,
             options,
+            &mut self.strokes,
         )?;
         self.shape(shape, bytes)
     }

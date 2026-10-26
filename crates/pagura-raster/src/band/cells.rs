@@ -467,7 +467,8 @@ impl<const MEASURE: bool> Window<'_, MEASURE> {
     /// crosses, integrated under the curve: per row one root for the row's
     /// lower side (its upper one is the row above's) and one per column
     /// side crossed, and each cell's area from the closed-form integral of
-    /// x dy between them. Returns the cells and rows visited.
+    /// x dy between them. A restricted curve's ends are taken as row sides
+    /// are. Returns the cells and rows visited.
     pub(crate) fn curve(&mut self, curve: &Mono, origin: Point) -> usize {
         self.curve_with(curve, origin)
     }
@@ -493,17 +494,17 @@ impl<const MEASURE: bool> Window<'_, MEASURE> {
         reason = "glyph curves take this path inside the curve loop"
     )]
     #[inline(always)]
-    fn curve_with(&mut self, curve: &Mono, origin: Point) -> usize {
-        let m = curve;
+    fn curve_with(&mut self, m: &Mono, origin: Point) -> usize {
         let (x0, y0) = (m.x0 + origin.x, m.y0 + origin.y);
         let (x1, y1) = (m.x1 + origin.x, m.y1 + origin.y);
+        let (from, to) = (m.top + origin.y, m.bottom + origin.y);
         let increasing = x1 >= x0;
         let mut visited = 0;
         let mut carried = None;
-        for r in self.span(y0, y1) {
+        for r in self.span(from, to) {
             let top = f64::from(self.y0) + r as f64;
-            let lo = y0.max(top);
-            let hi = y1.min(top + 1.0);
+            let lo = from.max(top);
+            let hi = to.min(top + 1.0);
             if lo >= hi || self.skipped(r) {
                 carried = None;
                 continue;

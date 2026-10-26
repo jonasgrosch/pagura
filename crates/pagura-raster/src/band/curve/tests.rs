@@ -17,6 +17,37 @@ fn area(spline: &Spline) -> f64 {
 }
 
 #[test]
+fn parameters_bracket_heights_just_outside() {
+    // A piece leaving its top level, where the root is ill conditioned, a
+    // steep one, and one running down to the left.
+    for points in [
+        [(0.0, 0.0), (3.0, 0.0), (4.0, 5.0)],
+        [(1.0, 0.0), (1.5, 6.0), (4.0, 7.0)],
+        [(9.0, -2.0), (2.0, 1.0), (0.5, 3.0)],
+    ] {
+        let m = Mono::new(Quadratic {
+            points: points.map(|(x, y)| Point::new(x, y)),
+        });
+        let height = m.y1 - m.y0;
+        for (lo, hi) in [
+            (0.0, 1.0),
+            (1e-9, 0.25),
+            (0.3, 0.3 + 1e-7),
+            (0.5, 1.0),
+            (0.999_999, 1.0),
+        ] {
+            let (lo, hi) = (lo * height, hi * height);
+            let [first, last] = m.parameters(m.y0 + lo, m.y0 + hi);
+            let (t, u) = (m.ty(lo), m.ty(hi));
+            assert!(0.0 <= first && first <= t && t <= u && u <= last && last <= 1.0);
+            assert!(first == 0.0 || m.dy(first) < lo);
+            assert!(last == 1.0 || m.dy(last) > hi);
+            assert!(t - first <= 1.0 / 1024.0 && last - u <= 1.0 / 1024.0);
+        }
+    }
+}
+
+#[test]
 fn elevated_quadratics_split_into_monotone_pieces() {
     // The quadratic (0,0) (2,4) (4,0) as a cubic.
     let mut path = PathBuilder::new();

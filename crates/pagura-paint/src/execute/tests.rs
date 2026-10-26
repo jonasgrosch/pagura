@@ -297,6 +297,7 @@ impl Fixture {
                 clip: None,
             },
             paint: paint_index,
+            scratch: paint_index,
             compositing,
             select,
             records: true,
@@ -338,11 +339,18 @@ impl Fixture {
         for group in &mut groups {
             group.order = (0..u32::try_from(group.items.len()).unwrap()).collect();
         }
+        // Every paint takes its own storage, as marks name them.
+        let slots = crate::plan::Slots {
+            of: (0..u32::try_from(self.paints.len()).unwrap()).collect(),
+            layouts: self.paints.iter().map(Source::scratch_layout).collect(),
+            empty: None,
+        };
         let parts = crate::prepare::planner::Parts {
             groups,
             items: self.items,
             masks: self.masks,
             paints: self.paints,
+            slots,
             conversions: self.conversions,
             transfers: Vec::new(),
         };
@@ -361,6 +369,7 @@ impl Fixture {
             items: parts.items,
             masks: parts.masks,
             paints: parts.paints,
+            slots: parts.slots,
             conversions: parts.conversions,
             output: self.output,
             stack,
@@ -695,6 +704,7 @@ impl Fixture {
         let mark = |shape: Option<u32>| Mark {
             cover: Cover { shape, clip: None },
             paint,
+            scratch: paint,
             compositing,
             select: 0,
             records: false,
@@ -874,7 +884,7 @@ fn background_stores_reach_only_stored_columns() {
     let mut meter = Meter::new(usize::MAX, "budget");
     let mut extents = Extents::new(2, &mut meter).unwrap();
     extents.mark(1, 3, 4);
-    let mut out = StoreOut::new(&mut page, &mut extents, rect, (white, white));
+    let mut out = StoreOut::new(&mut page, Some(&mut extents), rect, (white, white));
     out.push_row(0);
     out.put_run(0, 14, u8::MAX);
     out.push_row(1);
@@ -916,7 +926,7 @@ fn emitted_rows_store_as<S: super::Stores<Pixel: std::fmt::Debug>>(
         let mut coverage = BandCoverage::default();
         coverage.clear();
         // Random pixels hold no background: every pixel takes its stores.
-        let mut out = StoreOut::new(&mut direct, &mut emitted, rect, (color, background));
+        let mut out = StoreOut::new(&mut direct, Some(&mut emitted), rect, (color, background));
         // Rows from above the frame to below it, with gaps, full and
         // partial runs and cells, some reaching past its sides.
         for y in 8..18 {

@@ -16,7 +16,7 @@ pub(crate) use groups::view_transform;
 use super::storage::{self, Inputs, Storage};
 use super::{Budget, ShapeBuilder, index, overprint};
 use crate::plan::{
-    Conversion, Curve, GroupPlan, Item, Layout, MaskPlan, Start, TargetNames, union,
+    Conversion, Curve, GroupPlan, Item, Layout, MaskPlan, Slots, Start, TargetNames, union,
 };
 use crate::request::RenderRequest;
 use crate::source::Source;
@@ -32,6 +32,20 @@ use std::sync::Arc;
 pub(crate) struct SolidKey {
     /// The scene paint.
     pub(crate) paint: u32,
+    /// The composite state.
+    pub(crate) state: u32,
+    /// The buffer's channels.
+    pub(crate) layout: Layout,
+    /// How the target takes colorants.
+    pub(crate) colorants: pagura_color::Colorants,
+}
+
+/// Draws of one scene image under one composite state into one target:
+/// their paints convert texels alike, so they share execution storage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct ImageKey {
+    /// The scene image, by address.
+    pub(crate) image: usize,
     /// The composite state.
     pub(crate) state: u32,
     /// The buffer's channels.
@@ -76,6 +90,8 @@ pub(crate) struct Planner<'s> {
     /// The clip state looked up last: marks in a row usually share one.
     last_clip: Option<(clips::Key, clips::State)>,
     solids: FastMap<SolidKey, u32>,
+    /// Per image key, the storage its latest paint took.
+    images: FastMap<ImageKey, u32>,
     masks: FastMap<MaskKey, u32>,
     /// Masks whose content is being walked.
     open: Vec<MaskKey>,
@@ -107,6 +123,7 @@ pub(crate) struct Parts {
     pub(crate) items: Vec<Item>,
     pub(crate) masks: Vec<MaskPlan>,
     pub(crate) paints: Vec<Source>,
+    pub(crate) slots: Slots,
     pub(crate) conversions: Vec<Conversion>,
     pub(crate) transfers: Vec<[Option<Curve>; 3]>,
 }
@@ -226,6 +243,7 @@ impl<'s> Planner<'s> {
             built_clips: FastMap::default(),
             last_clip: None,
             solids: FastMap::default(),
+            images: FastMap::default(),
             masks: FastMap::default(),
             open: Vec::new(),
             users: Vec::new(),
