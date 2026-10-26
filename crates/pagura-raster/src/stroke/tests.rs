@@ -1,6 +1,50 @@
 use super::*;
 
 #[test]
+fn only_open_source_endpoints_supply_dash_cap_directions() {
+    let limits = Limits::default();
+    for closed in [false, true] {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(4.0, 4.0));
+        path.cubic_to(
+            Point::new(4.0, 12.0),
+            Point::new(12.0, 12.0),
+            Point::new(12.0, 4.0),
+        )
+        .unwrap();
+        if closed {
+            path.close();
+        }
+        let path = path.finish();
+        for (dash_array, dash_phase) in [
+            (vec![], 0.0),
+            (vec![100.0, 1.0], 0.0),
+            (vec![1.0, 1.0], 1.0),
+        ] {
+            let stroke = Stroke {
+                dash_array,
+                dash_phase,
+                ..Stroke::default()
+            };
+            let mut bytes = crate::testing::bytes();
+            let mut contours = flatten(&path, Transform::IDENTITY, &limits, &mut bytes).unwrap();
+            let runs = dash_contour(contours.remove(0), &stroke, &limits, &mut bytes).unwrap();
+            assert!(!runs.is_empty(), "every pattern paints part of the arch");
+            if closed {
+                assert!(runs.iter().all(|run| run.caps == [None; 2]));
+            } else if dash_phase == 0.0 {
+                assert_eq!(
+                    runs[0].caps,
+                    [Some(Point::new(0.0, 1.0)), Some(Point::new(0.0, -1.0))]
+                );
+            } else {
+                assert!(runs.iter().all(|run| run.caps[0].is_none()));
+            }
+        }
+    }
+}
+
+#[test]
 fn round_pen_points_are_bounded_before_large_subdivision_allocates() {
     let mut out = PathBuilder::new();
     let mut bytes = Meter::new(128, RENDER_BYTES);
