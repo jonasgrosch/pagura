@@ -20,7 +20,12 @@ impl Executor<'_> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
-        if let Some(mut direct) = Direct::new(self.plan, &mut self.ws.page, mark, frame) {
+        let storage = (
+            &mut self.ws.page,
+            &mut self.ws.wide[..],
+            &mut self.ws.levels[..],
+        );
+        if let Some(mut direct) = Direct::new(self.plan, storage, mark, frame) {
             for glyph in &run.glyphs {
                 if meets(glyph, frame, self.band) {
                     let stored = direct.rasterize(|out| {

@@ -357,6 +357,18 @@ fn sources(
             let Some(pixels) = levels.get(offset + first..offset + first + len) else {
                 return 0;
             };
+            // Without conversion, straight colours go to their slots directly.
+            if conversion.is_none() && to.channels() == 3 {
+                let colors = colors.as_chunks_mut::<3>().0;
+                let targets = colors.iter_mut().zip(alpha.iter_mut().zip(shape));
+                for (k, (pixel, (color, (alpha, shape)))) in pixels.iter().zip(targets).enumerate()
+                {
+                    let pixel = pixel.map(f64::from).map(|v| v / 255.0);
+                    let removed = narrow_straight(pixel, color);
+                    (*alpha, *shape) = covered(cover, k, removed);
+                }
+                return 0;
+            }
             for (k, pixel) in pixels.iter().enumerate() {
                 let pixel = pixel.map(f64::from).map(|v| v / 255.0);
                 let removed = narrow_straight(pixel, &mut straight);
@@ -464,7 +476,7 @@ fn convert(
 /// The straight RGB of a narrow premultiplied pixel, and its alpha as both
 /// group alpha and shape (a narrow buffer starts transparent and stores
 /// source-over only, so its alpha is its group alpha).
-fn narrow_straight(pixel: [f64; 4], straight: &mut [f64; CHANNELS]) -> (f64, f64) {
+fn narrow_straight(pixel: [f64; 4], straight: &mut [f64]) -> (f64, f64) {
     let alpha = pixel[3];
     for (value, &c) in straight.iter_mut().zip(&pixel[..3]) {
         *value = if alpha > 0.0 {

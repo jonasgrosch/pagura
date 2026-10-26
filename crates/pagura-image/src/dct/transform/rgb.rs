@@ -43,6 +43,11 @@ impl Rgb {
 /// Pixels converted together: fixed lane arrays the compiler vectorizes.
 const LANES: usize = 16;
 
+/// The most bytes [`Offsets`] holds per luma column: three chroma and three
+/// channel rows of `i16`, and a tie for every chroma pair, reserved once
+/// per row so that pushing it never grows past the row's pairs.
+pub(in crate::dct) const ROW_BYTES: usize = 6 * size_of::<i16>() + size_of::<(usize, u8, u8)>();
+
 /// Table 13 offsets of one chroma row, replicated to its luma columns, so a
 /// luma row converts as independent lanes of clamped additions. Pixels of a
 /// chroma pair at a green half tie are converted again with its [`Rgb`].
@@ -61,6 +66,7 @@ impl Offsets {
         let count = width.div_ceil(repeat).min(blue.len()).min(red.len());
         let (blue, red) = (&blue[..count], &red[..count]);
         for channel in &mut self.chroma {
+            channel.reserve_exact(count.saturating_sub(channel.len()));
             channel.resize(count, 0);
         }
         let [r, g, b] = &mut self.chroma;
@@ -87,6 +93,7 @@ impl Offsets {
             tied |= tie;
         }
         if tied {
+            self.ties.reserve_exact(count);
             for (index, (&cb, &cr)) in blue.iter().zip(red).enumerate() {
                 if offset(cb, cr).3 {
                     self.ties.push((index * repeat, cb, cr));
@@ -94,6 +101,7 @@ impl Offsets {
             }
         }
         for (channel, chroma) in self.channels.iter_mut().zip(&self.chroma) {
+            channel.reserve_exact(width.saturating_sub(channel.len()));
             channel.resize(width, 0);
             match repeat {
                 1 => replicate::<1>(chroma, channel),
@@ -185,7 +193,31 @@ fn clamp(value: i16) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Offsets, Rgb};
+    use super::{Offsets, ROW_BYTES, Rgb};
+
+    #[test]
+    fn a_row_of_ties_stays_within_its_admitted_bytes() {
+        // Cb 178 and Cr 78 are a green half tie: every pair of the row ties.
+        for (width, repeat) in [1_usize, 2, 3, 4, 17, 1025, 1027]
+            .into_iter()
+            .flat_map(|width| (1..=4).map(move |repeat| (width, repeat)))
+        {
+            let count = width.div_ceil(repeat);
+            let mut offsets = Offsets::default();
+            for _ in 0..3 {
+                offsets.fill(&vec![178; count], &vec![78; count], repeat, width);
+                assert_eq!(offsets.ties.len(), count);
+                let held = offsets
+                    .chroma
+                    .iter()
+                    .chain(&offsets.channels)
+                    .map(|row| row.capacity() * size_of::<i16>())
+                    .sum::<usize>()
+                    + offsets.ties.capacity() * size_of::<(usize, u8, u8)>();
+                assert!(held <= width * ROW_BYTES, "{width}/{repeat}: {held}");
+            }
+        }
+    }
 
     #[test]
     fn lane_rows_match_each_pixel_and_green_tie() {

@@ -63,6 +63,11 @@ impl Axial {
         let t = parameter(t, self.extend)?;
         Some(self.domain[0] + t * (self.domain[1] - self.domain[0]))
     }
+
+    /// Bounds of every function input a sample takes.
+    pub(super) fn inputs(&self) -> [f64; 2] {
+        inputs(self.domain)
+    }
 }
 
 impl Sampler for Axial {
@@ -101,6 +106,13 @@ impl Radial {
     }
 }
 
+impl Radial {
+    /// Bounds of every function input a sample takes.
+    pub(super) fn inputs(&self) -> [f64; 2] {
+        inputs(self.domain)
+    }
+}
+
 impl Sampler for Radial {
     fn sample(&self, point: Point, input: &mut Input) -> bool {
         if self.radius == 0.0 && self.change == 0.0 {
@@ -134,6 +146,14 @@ impl Sampler for FunctionDomain {
         input[1] = p.y;
         true
     }
+}
+
+/// Bounds in IEEE total order of `d0 + t·(d1 − d0)` for every extended
+/// parameter `t`, which lies in `−0..=1`: the inputs rise or fall with `t`.
+fn inputs(domain: [f64; 2]) -> [f64; 2] {
+    let mut ends = [-0.0, 0.0, 1.0].map(|t| domain[0] + t * (domain[1] - domain[0]));
+    ends.sort_by(f64::total_cmp);
+    [ends[0], ends[2]]
 }
 
 /// `t` clipped to `0..=1` where `Extend` allows it, or `None`.

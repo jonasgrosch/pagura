@@ -9,9 +9,9 @@
 //! bit for bit.
 
 use super::geometry::{BilinearRows, Geometry, Texels};
-use super::texels::{Opacity, OpacityTexels, SampleTexels};
+use super::texels::{Opacity, OpacityTexels, SampleTexels, TexelMode};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
-use crate::source::{Pixels, SpanColors};
+use crate::source::{PaintScratch, Pixels, ScratchLayout, SpanColors};
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_raster::Transform;
@@ -968,24 +968,31 @@ fn reused_paint_storage_drops_source_values_and_charges_the_same_layout() {
     let first = make(11);
     let second = make(17);
     let mut cold = Meter::new(usize::MAX, "test storage");
-    let mut storage = first.make_scratch(None, &mut cold).unwrap();
-    assert!(storage.fits(&second));
+    let mut storage = PaintScratch::make(first.scratch_layout(), None, &mut cold).unwrap();
+    assert!(storage.fits(second.scratch_layout()));
     let pixels = Pixels::new(0, 0, 20);
     let mut out = SpanColors::default();
     first.fill(pixels, &mut storage, &mut out, &mut Vec::new());
     let previous = bits(&out.colors);
     let mut reused = Meter::new(usize::MAX, "test storage");
-    let mut storage = second.make_scratch(Some(storage), &mut reused).unwrap();
+    let mut storage =
+        PaintScratch::make(second.scratch_layout(), Some(storage), &mut reused).unwrap();
     assert_eq!(cold.used(), reused.used());
-    assert_eq!(storage.bytes(), second.scratch_bytes());
+    assert_eq!(
+        storage.bytes(),
+        second.scratch_layout().map_or(0, ScratchLayout::bytes)
+    );
     second.fill(pixels, &mut storage, &mut out, &mut Vec::new());
     assert_ne!(previous, bits(&out.colors));
-    let mut fresh = second.make_scratch(None, &mut cold).unwrap();
+    let mut fresh = PaintScratch::make(second.scratch_layout(), None, &mut cold).unwrap();
     let mut expected = SpanColors::default();
     second.fill(pixels, &mut fresh, &mut expected, &mut Vec::new());
     assert_eq!(bits(&out.colors), bits(&expected.colors));
-    let mut tight = Meter::new(second.scratch_bytes() - 1, "test storage");
-    assert!(second.make_scratch(Some(storage), &mut tight).is_err());
+    let mut tight = Meter::new(
+        second.scratch_layout().map_or(0, ScratchLayout::bytes) - 1,
+        "test storage",
+    );
+    assert!(PaintScratch::make(second.scratch_layout(), Some(storage), &mut tight).is_err());
 }
 
 #[test]
@@ -1132,7 +1139,7 @@ fn rows_and_tables_sum_as_samples_do() {
                         (plan, source_paint),
                         Pixels::new(x0, y, len),
                         &mut storage,
-                        lanes - 1,
+                        (lanes - 1, TexelMode::Exact),
                         &mut whole.0,
                     );
                     assert_eq!(storage.bytes(), reserved);
@@ -1152,7 +1159,7 @@ fn rows_and_tables_sum_as_samples_do() {
                             (plan, source_paint),
                             span,
                             &mut storage,
-                            lanes - 1,
+                            (lanes - 1, TexelMode::Exact),
                             &mut rows,
                         );
                         let part = &whole.0[start * lanes..(start + count) * lanes];
@@ -1243,4 +1250,163 @@ fn words_store_as_opaque_spans_do() {
         }
     }
     assert!(written > 0 && averaged > 0);
+}
+
+/// A large source of few colours, indexed at preparation, samples bit for
+/// bit as its memo does, and writes the same words: opaque and
+/// colour-keyed, retained and replacing.
+#[test]
+fn indexed_sources_sample_as_their_memo_does() {
+    let palette = [
+        [0u8, 0, 0],
+        [255, 255, 255],
+        [200, 30, 90],
+        [17, 140, 230],
+        [90, 90, 91],
+    ];
+    let (width, height) = (64, 48);
+    // Runs of one to four samples of one colour.
+    let mut samples = Vec::new();
+    for code in codes(width * height, 8, 9).into_iter().map(usize::from) {
+        for _ in 0..=code % 4 {
+            samples.extend(palette[code % 5]);
+        }
+    }
+    samples.truncate(width * height * 3);
+    let rgb = image(
+        (
+            u32::try_from(width).unwrap(),
+            u32::try_from(height).unwrap(),
+        ),
+        3,
+        8,
+        Samples::Bytes(samples),
+    );
+    let mut keyed = case(rgb.clone());
+    keyed.key = Some(vec![[150, 255], [0, 40], [0, 255]]);
+    let lab = pagura_color::cie::Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0; 4]);
+    let lab = Case {
+        space: Some(ColorSpace::Calibrated(Arc::new(lab.unwrap()))),
+        decode: vec![[0.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]],
+        ..case(rgb.clone())
+    };
+    let (mut indexed, mut written) = (0, 0);
+    for (case, target) in [(&case(rgb), 4), (&keyed, 3), (&lab, 3)] {
+        for unit_to_device in placements(case.image.width, case.image.height) {
+            let fast = sampler(case, unit_to_device, target);
+            let mut memo = sampler(case, unit_to_device, target);
+            // The same source through its memo, before capacity discovery.
+            let prepared = memo.prepared.as_deref_mut().unwrap();
+            if let super::Plan::Texels {
+                paint: Paint::Colors(paint),
+                ..
+            } = &mut prepared.plan
+            {
+                assert!(matches!(paint.1, super::texels::Strategy::Indexed(..)));
+                indexed += 1;
+                let image = &prepared.image.image;
+                paint.1 = super::texels::Strategy::new(
+                    image,
+                    &paint.0,
+                    false,
+                    None,
+                    &mut meter(),
+                    &mut meter(),
+                )
+                .unwrap();
+                assert!(matches!(paint.1, super::texels::Strategy::Memo(_)));
+            }
+            let (mut fast_storage, mut memo_storage) = (scratch(&fast), scratch(&memo));
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut a, mut b) = (SpanColors::default(), SpanColors::default());
+            let (mut a_shape, mut b_shape) = (Vec::new(), Vec::new());
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                fast.span_with_shape(pixels, &mut fast_storage, &mut a, &mut a_shape);
+                memo.span_with_shape(pixels, &mut memo_storage, &mut b, &mut b_shape);
+                let context = || format!("{unit_to_device:?} target {target} row {y}");
+                assert_eq!(bits(&a.colors), bits(&b.colors), "{}", context());
+                assert_eq!(bits(&a.alpha), bits(&b.alpha), "{}", context());
+                assert_eq!(bits(&a_shape), bits(&b_shape), "{}", context());
+                let short = (x0..x1).step_by(5).map(|x| (x, 3));
+                for (x, len) in std::iter::once((x0, len)).chain(short) {
+                    let pixels = Pixels::new(x, y, len);
+                    let (mut a, mut b) = (vec![[0u16; 4]; len], vec![[0u16; 4]; len]);
+                    let wrote = fast.words(pixels, &mut fast_storage, &mut a);
+                    assert_eq!(wrote, memo.words(pixels, &mut memo_storage, &mut b));
+                    assert_eq!(a, b, "words of {}", context());
+                    written += usize::from(wrote);
+                }
+            }
+        }
+    }
+    assert!(indexed > 0 && written > 0);
+}
+
+/// An ICCBased RGB space through the sampled, sRGB-like profile of the
+/// colour fixtures: its conversion ends in the sRGB transfer function's
+/// power.
+fn icc_rgb() -> ColorSpace {
+    let bytes = pagura_testkit::fixture("color", "sampled-rgb.icc");
+    let profile = pagura_color::Profile::parse(&bytes, 3, &pagura_core::Limits::default())
+        .unwrap()
+        .unwrap();
+    ColorSpace::Icc(Arc::new(pagura_color::IccSpace {
+        profile: Some(Arc::new(profile)),
+        alternate: Arc::new(ColorSpace::DeviceRgb),
+        components: 3,
+        range: [[0.0, 1.0]; 4],
+        object: None,
+    }))
+}
+
+/// Spans kept to F32 levels that copy one opaque texel per pixel convert
+/// texels to values of the same levels: their levels and alphas are those
+/// of exact spans, under every placement, with and without a soft mask
+/// (which keeps texels exact).
+#[test]
+fn rounded_texels_keep_the_levels_of_exact_texels() {
+    let level = |values: &[f64]| {
+        values
+            .iter()
+            .map(|&v| crate::kernel::level(v).to_bits())
+            .collect::<Vec<_>>()
+    };
+    let photo = Case {
+        space: Some(icc_rgb()),
+        ..case(image((29, 19), 3, 8, bytes(29 * 19 * 3, 8, 83)))
+    };
+    let soft = Case {
+        mask: Some((
+            image((29, 19), 1, 8, bytes(29 * 19, 8, 89)),
+            [0.0, 1.0],
+            MaskUse::Soft(None),
+        )),
+        ..photo.clone()
+    };
+    let mut rounded = 0;
+    for case in [&photo, &soft] {
+        for unit_to_device in placements(29, 19) {
+            let sampler = sampler(case, unit_to_device, 3);
+            let (mut exact_storage, mut kept_storage) = (scratch(&sampler), scratch(&sampler));
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut exact, mut kept) = (SpanColors::default(), SpanColors::default());
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                let levels = Pixels {
+                    precision: crate::source::Precision::Level,
+                    ..pixels
+                };
+                sampler.span(pixels, &mut exact_storage, &mut exact);
+                sampler.span(levels, &mut kept_storage, &mut kept);
+                let place = format!("{unit_to_device:?} row {y}");
+                assert_eq!(level(&kept.colors), level(&exact.colors), "{place}");
+                assert_eq!(bits(&kept.alpha), bits(&exact.alpha), "{place}");
+                rounded += usize::from(kept_storage.mode == TexelMode::Rounded);
+            }
+        }
+    }
+    assert!(rounded > 20, "{rounded} rounded spans");
 }
