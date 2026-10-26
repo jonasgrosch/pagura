@@ -21,11 +21,9 @@ fn dictionary(text: &[u8]) -> Dictionary {
 }
 
 fn document() -> Document {
-    Document::open(
-        fixture("forms", "text-quadding-0.pdf"),
-        &OpenOptions::default(),
-    )
-    .unwrap()
+    // These independently parsed annotations are not members of an AcroForm.
+    // Source-field membership and resources have their own document fixtures.
+    Document::open(fixture("classic", "blank.pdf"), &OpenOptions::default()).unwrap()
 }
 
 fn rect(x0: f64, y0: f64, x1: f64, y1: f64) -> Rect {
