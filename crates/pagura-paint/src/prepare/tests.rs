@@ -5,6 +5,7 @@
 mod composition;
 mod formats;
 mod functions;
+mod images;
 mod invariance;
 mod mixed;
 mod patterns;
@@ -14,7 +15,7 @@ mod streaming;
 use crate::execute::Rendering;
 use crate::plan::{Conversion, Curve, Glyph, GroupPlan, Item, ItemKind, MaskPlan, Plan, SpotPlan};
 use crate::request::RenderRequest;
-use crate::source::Source;
+use crate::source::{ScratchLayout, Source};
 use crate::testing::Build;
 use crate::{Charges, Scratch};
 use pagura_core::{Limits, Result};
@@ -111,5 +112,7 @@ fn plan_bytes(plan: &Plan) -> usize {
         + glyphs
         + plan.masks.capacity() * size_of::<MaskPlan>()
         + plan.paints.capacity() * size_of::<Source>()
+        + plan.slots.of.capacity() * size_of::<u32>()
+        + plan.slots.layouts.capacity() * size_of::<Option<ScratchLayout>>()
         + plan.conversions.capacity() * size_of::<Conversion>()
 }

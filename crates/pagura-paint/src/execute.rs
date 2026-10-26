@@ -547,9 +547,10 @@ fn fill_colors(
             Precision::Exact
         },
     };
-    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.scratch)) else {
         return false;
     };
+    scratch.claim(mark.paint);
     paint.fill(pixels, scratch, &mut ws.colors, &mut ws.texel_shape);
     true
 }
@@ -579,9 +580,10 @@ fn paint_words(
 ) -> bool {
     let compositing = &mark.compositing;
     let len = cover.len();
-    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.scratch)) else {
         return false;
     };
+    scratch.claim(mark.paint);
     let written = cover.coverage().is_none()
         && !mark.records
         && mark.boundary == Boundary::Absent

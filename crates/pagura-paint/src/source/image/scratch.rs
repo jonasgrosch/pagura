@@ -75,12 +75,19 @@ impl Scratch {
 
     /// Invalidates source-dependent caches between renders.
     pub(crate) fn reset(&mut self) {
+        self.switch();
+        if let Some(memo) = &mut self.memo {
+            memo.reset();
+        }
+    }
+
+    /// Invalidates the caches of one placement before another draw of the
+    /// same image takes this storage; their texels, and so the memo, are
+    /// the same.
+    pub(crate) fn switch(&mut self) {
         self.plan.reset();
         if let Some(mask) = &mut self.mask {
             mask.reset();
-        }
-        if let Some(memo) = &mut self.memo {
-            memo.reset();
         }
     }
 }

@@ -409,6 +409,7 @@ impl Planner<'_> {
         let mark = Mark {
             cover: covered.cover,
             paint,
+            scratch: self.scratch_of(paint),
             compositing,
             select,
             records,

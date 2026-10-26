@@ -11,7 +11,7 @@
 use super::geometry::{BilinearRows, Geometry, Texels};
 use super::texels::{Opacity, OpacityTexels, SampleTexels, TexelMode};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
-use crate::source::{Pixels, SpanColors};
+use crate::source::{PaintScratch, Pixels, ScratchLayout, SpanColors};
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_raster::Transform;
@@ -968,24 +968,31 @@ fn reused_paint_storage_drops_source_values_and_charges_the_same_layout() {
     let first = make(11);
     let second = make(17);
     let mut cold = Meter::new(usize::MAX, "test storage");
-    let mut storage = first.make_scratch(None, &mut cold).unwrap();
-    assert!(storage.fits(&second));
+    let mut storage = PaintScratch::make(first.scratch_layout(), None, &mut cold).unwrap();
+    assert!(storage.fits(second.scratch_layout()));
     let pixels = Pixels::new(0, 0, 20);
     let mut out = SpanColors::default();
     first.fill(pixels, &mut storage, &mut out, &mut Vec::new());
     let previous = bits(&out.colors);
     let mut reused = Meter::new(usize::MAX, "test storage");
-    let mut storage = second.make_scratch(Some(storage), &mut reused).unwrap();
+    let mut storage =
+        PaintScratch::make(second.scratch_layout(), Some(storage), &mut reused).unwrap();
     assert_eq!(cold.used(), reused.used());
-    assert_eq!(storage.bytes(), second.scratch_bytes());
+    assert_eq!(
+        storage.bytes(),
+        second.scratch_layout().map_or(0, ScratchLayout::bytes)
+    );
     second.fill(pixels, &mut storage, &mut out, &mut Vec::new());
     assert_ne!(previous, bits(&out.colors));
-    let mut fresh = second.make_scratch(None, &mut cold).unwrap();
+    let mut fresh = PaintScratch::make(second.scratch_layout(), None, &mut cold).unwrap();
     let mut expected = SpanColors::default();
     second.fill(pixels, &mut fresh, &mut expected, &mut Vec::new());
     assert_eq!(bits(&out.colors), bits(&expected.colors));
-    let mut tight = Meter::new(second.scratch_bytes() - 1, "test storage");
-    assert!(second.make_scratch(Some(storage), &mut tight).is_err());
+    let mut tight = Meter::new(
+        second.scratch_layout().map_or(0, ScratchLayout::bytes) - 1,
+        "test storage",
+    );
+    assert!(PaintScratch::make(second.scratch_layout(), Some(storage), &mut tight).is_err());
 }
 
 #[test]
