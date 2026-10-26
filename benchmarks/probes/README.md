@@ -228,8 +228,9 @@ observations, not six normative obligations. Report SHA-256:
 
 The existing post reader now admits the complete code array for cmap use, with
 no synthesized printer names, copied metadata or alternate selector. Exact
-count, truncation and work-budget controls are authored. Integrated hosted
-validation of the new 17-case manifest is pending; no family support is claimed.
+count, truncation and work-budget controls pass the
+[three-platform functional run](https://github.com/jonasgrosch/pagura/actions/runs/40393127365)
+at `b1fd431a8`, together with all 17 rendering controls. No family support is claimed.
 
 
 ## Legacy cmap numeric-code lookup
@@ -262,5 +263,12 @@ Artifact `12685656614` has ZIP SHA-256
 `956d550a6fdfdcff527e8e768ec2d876a1576e73475bd3dd9fcf940ed3da6c58`
 and report SHA-256
 `8c98d6aa0ab8c81f872c0f5c52f0ea7ff42a95b9f899b55213c98084667c02ec`.
-This result does not attest the subsequent cmap change. Its acceptance remains
-pending; all prior controls and tolerances are preserved.
+The subsequent cmap implementation at `e399327d78c1a1c302235977cfb9a5532c88a759`
+passes all 25 Pagura controls in [hosted run 40395913198](https://github.com/jonasgrosch/pagura/actions/runs/40395913198),
+with 175 cells. Artifact `12685388918` has ZIP SHA-256
+`83f2818c0602e4514f86f570fe62f9c03d77e4ad98df2714e649cd56118f766b`
+and report SHA-256
+`25f988c14b8dc61ca4d94f06eed99ef08c618f0a609b28bff7a236dcf3d126fe`.
+All prior controls and tolerances are preserved. The corresponding
+[functional run](https://github.com/jonasgrosch/pagura/actions/runs/40395908628)
+passes on Ubuntu, macOS and Windows.

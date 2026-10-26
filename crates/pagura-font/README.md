@@ -66,8 +66,8 @@ work-budget validation, so their existing cmap can select glyphs. This does not
 synthesize printer-specific names or assert OpenType conformance. Four unchanged
 direct-cmap subjects/controls pass with the preceding controls: 17/17 at
 `b1fd431a8` in [hosted run 40393132189](https://github.com/jonasgrosch/pagura/actions/runs/40393132189).
-Its three-platform functional run remains pending. No new font selection path
-or allocation is introduced.
+Its [three-platform functional run](https://github.com/jonasgrosch/pagura/actions/runs/40393127365)
+also passes. No new font selection path or allocation is introduced.
 
 Legacy cmap format 8 reuses the existing bounded sequential-group validator
 and binary lookup. It accepts the caller's complete numeric code unchanged;
@@ -76,7 +76,10 @@ The bitmap's extent is checked, while its word-decoding semantics remain
 outside this API. Microsoft and Apple describe conflicting details, recorded
 in `font-truetype`; no heuristic resolves them. Eight preserved diagnostic
 PDFs isolate BMP and supplementary numeric mappings with format-12 controls.
-The new implementation awaits hosted acceptance.
+All 25 integrated rendering controls pass at `e399327d7` in
+[hosted run 40395913198](https://github.com/jonasgrosch/pagura/actions/runs/40395913198).
+The corresponding [functional run](https://github.com/jonasgrosch/pagura/actions/runs/40395908628)
+passes on Ubuntu, macOS and Windows.
 
 Implemented formats:
 

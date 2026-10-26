@@ -71,7 +71,7 @@
         "implementation": "The existing group validator and binary lookup also handle format 8, retaining the original table bytes. It validates bitmap extent, ordering, glyph bounds and declared group budgets; no range is expanded. Format 8 permits numeric keys across u32 while formats 12/13 retain the Unicode ceiling. Existing subtable selection remains unchanged, preferring 12/10 before 8 before BMP formats.",
         "scope": "Microsoft's UTF-16 introduction and UCS4 high-word example disagree; Apple also differs on bitmap bit order. This change does not adjudicate a stream decoder or validate bitmap encoding semantics. It looks up the caller's numeric key unchanged, preserving PDF glyph-name selection and all existing cmap identities.",
         "expectations": "Native controls distinguish BMP, scalar and packed-surrogate numeric keys, gaps, group order/overlap, glyph overflow, exact work/entry bounds, truncated headers/groups and one deduplicated repair. Format 12/13 shared-path controls preserve sequential/constant mapping and their Unicode ceiling. Eight PDF controls retain the earlier diagnostic bytes and literal rectangle oracles; isolated supplementary cases map the literal PDF byte to a different glyph.",
-        "evidence": "Diagnostic e8ffe19a1b380592191970f43d37712e4ebbbdec, hosted run40393193630: MuPDF passes both BMP subjects with paired format12 controls, and the isolated Windows UCS4 subject/control. Its isolated UTF16 subject fails; platform0 supplementary control also fails, preventing a format-specific conclusion there. Pagura before this change fails all format8 subjects but passes the paired format12 controls. Linux artifact12686106513 ZIP SHA256 a9e7ad3da9b26fc702e7b3e325f62ace290ed31ce5e44a663bda706b72d5d346; report SHA256 bd01f3e8635b336fe37ff184ad401b5caba157a25413fa606c26fe2005d8223f. Historical observations are unchanged; hosted acceptance of the implementation is pending."
+        "evidence": "Diagnostic e8ffe19a1b380592191970f43d37712e4ebbbdec, hosted run40393193630: MuPDF passes both BMP subjects with paired format12 controls, and the isolated Windows UCS4 subject/control. Its isolated UTF16 subject fails; platform0 supplementary control also fails, preventing a format-specific conclusion there. Pagura before this change fails all format8 subjects but passes the paired format12 controls. Linux artifact12686106513 ZIP SHA256 a9e7ad3da9b26fc702e7b3e325f62ace290ed31ce5e44a663bda706b72d5d346; report SHA256 bd01f3e8635b336fe37ff184ad401b5caba157a25413fa606c26fe2005d8223f. Historical observations are unchanged. The implementation at e399327d78c1a1c302235977cfb9a5532c88a759 passes all 25 integrated Pagura rendering controls in hosted run40395913198 (175 cells); artifact12685388918 ZIP SHA256 83f2818c0602e4514f86f570fe62f9c03d77e4ad98df2714e649cd56118f766b, report SHA256 25f988c14b8dc61ca4d94f06eed99ef08c618f0a609b28bff7a236dcf3d126fe. Functional run40395908628 passes on Ubuntu, macOS and Windows."
       }
     },
     {
@@ -2060,7 +2060,7 @@
       "clauses": [
         "9.10.2"
       ],
-      "status": "Constant-time glyph-index name lookup for TrueType post, name-keyed Type 1 and CFF; shared program metadata is included in retained-byte estimates. Post 2.5 signed standard-name offsets reuse the same index and work/entry limits; post 1 requires all 258 standard glyphs. The post 2.5 and reserved-index changes passed hosted checks; post 4 admission passes all 17 integrated rendering controls at b1fd431a8, with its functional run still pending.",
+      "status": "Constant-time glyph-index name lookup for TrueType post, name-keyed Type 1 and CFF; shared program metadata is included in retained-byte estimates. Post 2.5 signed standard-name offsets reuse the same index and work/entry limits; post 1 requires all 258 standard glyphs. The post 2.5 and reserved-index changes passed hosted checks; post 4 admission passes all 17 integrated rendering controls at b1fd431a8, and its three-platform functional run 40393127365 passes.",
       "tests": [
         "font/glyph-names-post-alias",
         "font/glyph-names-post-standard",
@@ -2150,7 +2150,7 @@
         "9.7.4.3",
         "9.7.5"
       ],
-      "status": "Selected OpenType vertical single substitutions for external CID provider fonts; PDF metrics and extraction stay independent. Hosted acceptance pending.",
+      "status": "Selected OpenType vertical single substitutions for external CID provider fonts; PDF metrics and extraction stay independent. Synthetic maps, malformed-input/resource bounds, bundled CJK substitutions and PDF metrics/extraction controls pass the three-platform hosted functional checks at 6ac4b1d27 (run40385513689).",
       "tests": [
         "vertical_fonts/pdf-mode-0",
         "vertical_fonts/pdf-mode-1",
@@ -2218,7 +2218,7 @@
         "expectations": "Original synthetic sfnt/GSUB bytes have literal glyph maps, an independent horizontal/vertical PDF metric and extraction pair, malformed tables, truncated selected tables and exact work/entry bounds. Existing bundled Adobe collection fixtures retain PDF bytes.",
         "choices": "For Adobe collections, the provider policy requests hani with JAN/ZHS/ZHT/KOR by collection and falls back to DFLT/default LangSys when absent. This is a substitution policy, not general script shaping or an embedded CID/GID rewrite.",
         "outside": "GDEF-dependent lookup filters, contextual/multiple/alternate/ligature substitutions, nonzero FeatureVariations, arbitrary shaping and unsupported provider/collection coverage. Other TrueType/OpenType primary-format review remains pending.",
-        "verdict": "Primary-defined selected layout subset implemented; no runtime or competitive-family acceptance claimed before hosted checks."
+        "verdict": "Primary-defined selected layout subset implemented and validated by the scoped hosted controls at 6ac4b1d27. Competitive-family acceptance remains unprobed."
       }
     }
   ]

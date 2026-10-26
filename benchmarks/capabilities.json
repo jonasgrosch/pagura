@@ -385,7 +385,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission passes 17 rendering controls. Format8 numeric groups reuse the existing cmap reader and await hosted validation; neither change adds a font-selection path.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7.",
       "remaining": "Remaining formats, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
@@ -488,7 +488,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Provider-backed horizontal substitution and selected vertical vert/vrt2 forms for Adobe collections, preserving PDF W/W2/DW/DW2 and independent extraction; hosted vertical acceptance pending. Embedded vertical text works.",
+      "implemented": "Provider-backed horizontal substitution and selected vertical vert/vrt2 forms for Adobe collections, preserving PDF W/W2/DW/DW2 and independent extraction; synthetic and bundled-collection controls pass hosted checks at 6ac4b1d27. Embedded vertical text works.",
       "remaining": "GDEF-dependent or other vertical lookup types, feature variations, missing applicable provider features and unavailable collection coverage; competitive family unprobed.",
       "sources": [
         "crates/pagura-text/src/substitute/cid.rs",
