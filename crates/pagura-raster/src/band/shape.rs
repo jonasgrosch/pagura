@@ -332,12 +332,14 @@ impl Shape {
         options: &Prep<'_>,
         bytes: &mut Meter,
     ) -> Result<Option<Self>> {
-        let winding = match tiling {
-            Tiling::Proven => Winding::Certified,
+        let winding = match (tiling, &spine) {
+            (Tiling::Proven, _) => Winding::Certified,
+            // Around what a spine proves covered, resolving a row costs less
+            // than certifying it.
+            (Tiling::Unproven, Some(_)) | (Tiling::Components, _) => Winding::Unknown,
             // Only the slabs where the outline may overlap itself need the
             // union resolver.
-            Tiling::Unproven => Winding::Check(0.0),
-            Tiling::Components => Winding::Unknown,
+            (Tiling::Unproven, None) => Winding::Check(0.0),
         };
         let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
         let shape = Self::from_polygon(
