@@ -407,34 +407,12 @@ fn normal(
     widget: &Widget<'_>,
     state: Option<&Name>,
 ) -> Result<Option<Appearance>> {
-    let Some(ap) = widget.dictionary.get(b"AP") else {
-        return Ok(None);
-    };
-    let ap = document.resolve(ap)?;
-    if ap.is_null() {
-        return Ok(None);
-    }
-    let ap = ap
-        .as_dictionary()
-        .ok_or(Error::syntax("widget AP must be a dictionary"))?;
-    let normal = ap.get(b"N").ok_or(Error::syntax("widget AP requires N"))?;
-    if let Some(id) = normal.as_reference()
-        && document.object(id)?.is_stream()
-    {
-        return Ok(Some(Appearance::Existing(id)));
-    }
-    let states = document.resolve_dictionary(normal)?;
-    let state = state.ok_or(Error::syntax("widget appearance state is absent"))?;
-    let Some(value) = states.get(state.as_bytes()) else {
-        return Ok(Some(Appearance::Hidden));
-    };
-    let id = value
-        .as_reference()
-        .ok_or(Error::syntax("widget state appearance must be indirect"))?;
-    if !document.object(id)?.is_stream() {
-        return Err(Error::syntax("widget state appearance must be a stream"));
-    }
-    Ok(Some(Appearance::Existing(id)))
+    crate::stream::stored_appearance(
+        document,
+        widget.dictionary,
+        crate::stream::AppearanceMode::Normal,
+        state,
+    )
 }
 
 /// The widget's rectangle moved to the origin, the BBox of a new appearance.

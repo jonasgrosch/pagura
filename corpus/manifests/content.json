@@ -3311,6 +3311,82 @@
       "render_error": "Syntax"
     },
     {
+      "id": "content/annotation-appearance-streams",
+      "kind": "pdf",
+      "description": "Table 170 selects independent red/green/blue streams; null entries are absent",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-appearance-streams.pdf",
+      "sha256": "99e7c77e554ad1c239accf1f291c7bea773a8016262863f67c2d391165342312",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-appearance-streams.ppm",
+      "oracle_sha256": "98af018413cedddf60951ae646630994a4d47fbad82222bf73b32f8f70abc42b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-appearance-states",
+      "kind": "pdf",
+      "description": "Table 170 selects independent red/green/blue streams; null entries are absent",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-appearance-states.pdf",
+      "sha256": "9a4b5f5248f06b6eda810282e268acee96d81d35eb7743cc0b52533024f2979e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-appearance-states.ppm",
+      "oracle_sha256": "8e05f602a3489f05726a69d7e9591e852f10f40958206859e59c5d16050bc12b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-appearance-null",
+      "kind": "pdf",
+      "description": "Table 170 selects independent red/green/blue streams; null entries are absent",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-appearance-null.pdf",
+      "sha256": "90db29b8faad467f508c2eedec585f86132d23e42e5d50fc902a01b2d3f472ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-appearance-null.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-appearance-null-state",
+      "kind": "pdf",
+      "description": "Table 170 selects independent red/green/blue streams; null entries are absent",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-appearance-null-state.pdf",
+      "sha256": "ff73c4ef9cb01a3d7570bfcb31df76189e300ba55f2faff939cbfbbd3385e0a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-appearance-null-state.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
       "id": "content/annotation",
       "kind": "pdf",
       "description": "Normal appearance fitted by transformed BBox envelope after page content",

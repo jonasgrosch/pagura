@@ -4,9 +4,9 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) contains 180 independent pixel
+The companion [render manifest](rendering.json) contains 249 independent pixel
 oracles for basic graphics, JPX and stored/generated annotation appearances. Its
-1,260 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
+1,743 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -178,10 +178,16 @@ Stored/generated counterparts, 72/144 DPI, clipping, opacity, view flags and fon
 identity remain explicit. Independent geometry/colour/glyph calculations supply
 expectations; reader artwork differences are observations awaiting adjudication.
 
-[Hosted run 40323485296](https://github.com/jonasgrosch/pagura/actions/runs/40323485296)
-measured merge `1e63dd9abc19a938e09dac17727afbe34321fa4f` from head
-`424839e7a1e25d8b7de7f92cc98460542b9ff3b0`: 296 passing cells and
-964 pixel disagreements. Pagura passed all 180 controls. This does not
-validate generated-button persistence, every annotation variant or the newly
-rebuilt review branch. Native/WASI/client and save/reopen checks remain separate.
-No source-family comparison is promoted by these fixture results.
+[Hosted run 40330455362](https://github.com/jonasgrosch/pagura/actions/runs/40330455362)
+measured merge `85fb890913aa007e7610d03cbd558563b2b44a6c` from head
+`919f871689b8b8a959f5fd125913edc56c40d640`: 296 passing cells and
+964 pixel disagreements. Pagura passed all 180 controls. Combined report artifact
+`12653194463` has SHA-256
+`7e378deddbf2332a177b8ccb16182039b72730318b291ae5546a2b24b22c0bc3`.
+This does not validate every annotation variant; native/WASI/client and
+save/reopen checks remain separate. No source-family comparison is promoted.
+
+The current manifest adds 69 independent rich-text, cloudy-fill and selection
+controls. Their seven-engine observations are pending. Rich controls use embedded
+literal Type3 glyphs, so expected character geometry does not depend on an external
+font substitution. Curved cloud stroke/dash evidence remains a separate open gate.

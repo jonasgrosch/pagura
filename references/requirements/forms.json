@@ -67,7 +67,7 @@
         "forms/text-need-appearances",
         "forms/text-preserve-existing"
       ],
-      "gaps": "No saving. Composite font encoding, oblique Tm and updates containing inline images or multiple Tx sections fail explicitly. Existing Tx sections inside BT or crossing graphics scopes fail explicitly."
+      "gaps": "Persistence is covered by filled-form-save. Composite font encoding, oblique Tm and updates containing inline images or multiple Tx sections fail explicitly. Existing Tx sections inside BT or crossing graphics scopes fail explicitly."
     },
     {
       "id": "forms-appearance-style",
@@ -77,7 +77,7 @@
         "12.5.4; Table 168",
         "12.7.4.3"
       ],
-      "status": "implemented for standard rectangular borders and quarter-turn MK R; fresh rotation hosted validation pending",
+      "status": "implemented for standard rectangular borders and quarter-turn MK R",
       "tests": [
         "forms/text-background-border",
         "forms/text-quadding-0",
@@ -179,7 +179,7 @@
         "forms/render-shared-embedded-font",
         "pagura-render interpreter::forms::tests"
       ],
-      "gaps": "No saving or host protocol edits. Generation retains the supported font and layout capabilities of forms-appearance-update."
+      "gaps": "Persistence and host editing are covered by their dedicated requirements. Generation retains the supported font and layout capabilities of forms-appearance-update."
     },
     {
       "id": "forms-render-placement",

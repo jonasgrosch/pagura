@@ -10,7 +10,7 @@ use super::{Machine, Scope, Text};
 use crate::device::{Device, Marked, Needs};
 use crate::model::{GroupAttributes, GroupCause, ViewFit};
 use crate::repairs;
-use pagura_appearance::{Appearance, AppearanceStream, FilledWidgets, FontSource};
+use pagura_appearance::{Appearance, FilledWidgets, FontSource};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, Page};
 use pagura_raster::{Path, Point, Transform};
@@ -21,13 +21,6 @@ use std::sync::Arc;
 const NO_ZOOM: i64 = 8;
 /// `NoRotate`.
 const NO_ROTATE: i64 = 16;
-
-/// What an annotation draws.
-enum Drawn {
-    Stored(ObjectId),
-    Generated(AppearanceStream),
-    Nothing,
-}
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// The annotations of `page`, in order.
@@ -105,22 +98,25 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         }
         let rect = rectangle(document, d, b"Rect")?;
         let text_icon = subtype == b"Text";
-        let drawn = if let Some(appearance) = self.filled(filled, d, rect)? {
-            match appearance {
-                Appearance::Existing(id) => Drawn::Stored(id),
-                Appearance::Generated(stream) => Drawn::Generated(stream),
-                Appearance::Hidden => Drawn::Nothing,
-            }
-        } else if let Some(ap) = d.get(b"AP") {
-            let Some(id) = normal_appearance(document, d, ap)? else {
-                return Ok(());
-            };
-            Drawn::Stored(id)
-        } else {
-            let fonts = SessionFonts(&self.session.fonts);
-            match pagura_appearance::annotation_appearance_with_fonts(document, d, rect, &fonts)? {
-                Some(stream) => Drawn::Generated(stream),
-                None => return Ok(()),
+        let appearance = match self.filled(filled, d, rect)? {
+            Some(appearance) => Some(appearance),
+            None => pagura_appearance::stored_appearance(
+                document,
+                d,
+                pagura_appearance::AppearanceMode::Normal,
+                None,
+            )?,
+        };
+        let drawn = match appearance {
+            Some(appearance) => appearance,
+            None => {
+                let fonts = SessionFonts(&self.session.fonts);
+                match pagura_appearance::annotation_appearance_with_fonts(
+                    document, d, rect, &fonts,
+                )? {
+                    Some(stream) => Appearance::Generated(stream),
+                    None => return Ok(()),
+                }
             }
         };
         // Text annotations keep their icon's size and orientation.
@@ -130,13 +126,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             flags
         };
         self.annotation_view(rect, flags, |machine| match &drawn {
-            Drawn::Stored(id) => {
+            Appearance::Existing(id) => {
                 let object = document.object(*id)?;
                 machine
                     .appearance(FormBody::Stored(object), rect, resources, Text::Paint)
                     .map_err(|e| e.in_object(*id))
             }
-            Drawn::Generated(stream) => machine.appearance(
+            Appearance::Generated(stream) => machine.appearance(
                 FormBody::Generated {
                     dictionary: stream.dictionary(),
                     bytes: stream.content(),
@@ -145,7 +141,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 resources,
                 Text::Paint,
             ),
-            Drawn::Nothing => Ok(()),
+            Appearance::Hidden => Ok(()),
         })
     }
 
@@ -305,40 +301,6 @@ impl FontSource for SessionFonts<'_, '_> {
     fn provider(&self) -> Option<&dyn Provider> {
         self.0.provider()
     }
-}
-
-/// The normal appearance stream of an annotation (12.5.5): `N` itself, or
-/// its entry for the appearance state `AS`; `None` for an undefined state.
-fn normal_appearance(document: &Document, d: &Dictionary, ap: &Value) -> Result<Option<ObjectId>> {
-    let ap = document.resolve_dictionary(ap)?;
-    let normal = ap
-        .get(b"N")
-        .ok_or(Error::syntax("appearance dictionary has no N"))?;
-    let stream = if let Some(id) = normal.as_reference() {
-        document.object(id)?.is_stream()
-    } else {
-        false
-    };
-    let normal = if stream {
-        normal
-    } else {
-        let states = document.resolve_dictionary(normal)?;
-        let state = d
-            .get(b"AS")
-            .map(|v| document.resolve(v))
-            .transpose()?
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("annotation has no appearance state"))?;
-        // 12.5.5 permits displaying nothing for an undefined state.
-        let Some(normal) = states.get(state.as_bytes()) else {
-            return Ok(None);
-        };
-        normal
-    };
-    normal
-        .as_reference()
-        .map(Some)
-        .ok_or(Error::syntax("appearance must be a stream reference"))
 }
 
 /// A rectangle entry.
