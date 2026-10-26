@@ -72,7 +72,7 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
         RequestKind::AttachmentBytes => Request::Reading(reading::Request::AttachmentBytes {
             document: reader.field(Reader::u32)?,
             index: reader.field(Reader::u32)?,
-            key: reader.field(|reader| reader.code())?,
+            key: reader.field(Reader::code)?,
         }),
     };
     reader.finish()?;
