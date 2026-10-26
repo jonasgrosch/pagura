@@ -1710,6 +1710,8 @@
         "rich_annotations/right",
         "rich_annotations/margins",
         "rich_annotations/spacing",
+        "rich_annotations/unitless-spacing-72",
+        "rich_annotations/unitless-spacing-144",
         "rich_annotations/space-relative-spacing",
         "rich_annotations/negative-relative-spacing",
         "rich_annotations/space-relative-size-order",
@@ -1753,6 +1755,12 @@
         "rich_annotations/embedded-object",
         "rich_annotations/rtl",
         "rich_annotations/unsupported-layout",
+        "rich_annotations/tab-stop",
+        "rich_annotations/page-break-inside",
+        "rich_annotations/unitless-font-size",
+        "rich_annotations/relative-font-size",
+        "rich_annotations/unitless-rise",
+        "rich_annotations/relative-rise",
         "rich_annotations/relative-margin",
         "rich_annotations/relative-indent",
         "rich_annotations/unitless-leading",
@@ -1761,7 +1769,7 @@
         "rich_annotations/automatic-size",
         "rich_annotations/invalid-stream-utf16"
       ],
-      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Relative or nonzero unitless paragraph measurements and adjoining nonzero paragraph margins are explicitly refused until independently validated. Absolute paragraph measurements use pt/in/cm/mm; relative letter spacing resolves em and percent against the final font metrics, with percent based on the space advance. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
+      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Relative or nonzero unitless font-size, baseline-shift and paragraph measurements and adjoining nonzero paragraph margins are explicitly refused until independently validated. Absolute character/paragraph measurements use pt/in/cm/mm; unitless letter spacing uses inches, as specified by XFA chapter 2; relative letter spacing resolves em and percent against the final font metrics, with percent based on the space advance. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
     }
   ]
 }

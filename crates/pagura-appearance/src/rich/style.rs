@@ -61,7 +61,7 @@ impl Style {
             match property.trim() {
                 "font-family" => self.family = family(value)?,
                 "font-size" => {
-                    self.size = length(value, self.size)?;
+                    self.size = absolute_length(value)?;
                     if self.size <= 0.0 {
                         return Err(Error::syntax("rich text font size must be positive"));
                     }
@@ -82,25 +82,25 @@ impl Style {
                     self.rise = if value == "baseline" {
                         0.0
                     } else {
-                        length(value, self.size)?
+                        absolute_length(value)?
                     }
                 }
                 "line-height" => {
                     self.leading = if value == "normal" {
                         None
                     } else {
-                        Some(nonnegative(paragraph_length(value)?)?)
+                        Some(nonnegative(absolute_length(value)?)?)
                     }
                 }
                 "letter-spacing" => {
                     self.spacing = if value == "normal" {
                         Spacing::Absolute(0.0)
                     } else if value.ends_with('%') {
-                        Spacing::Space(length(value, 1.0)?)
+                        Spacing::Space(length(value)?)
                     } else if value.ends_with("em") {
-                        Spacing::Em(length(value, 1.0)?)
+                        Spacing::Em(length(value)?)
                     } else {
-                        Spacing::Absolute(length(value, self.size)?)
+                        Spacing::Absolute(length(value)?)
                     }
                 }
                 "text-decoration" => self.decoration = decoration(value)?,
@@ -113,18 +113,19 @@ impl Style {
                         _ => return Err(Error::syntax("invalid rich text whitespace mode")),
                     }
                 }
-                "margin-top" => self.margin[0] = paragraph_length(value)?,
-                "margin-right" => self.margin[1] = paragraph_length(value)?,
-                "margin-bottom" => self.margin[2] = paragraph_length(value)?,
-                "margin-left" => self.margin[3] = paragraph_length(value)?,
+                "margin-top" => self.margin[0] = absolute_length(value)?,
+                "margin-right" => self.margin[1] = absolute_length(value)?,
+                "margin-bottom" => self.margin[2] = absolute_length(value)?,
+                "margin-left" => self.margin[3] = absolute_length(value)?,
                 "margin" => self.margins(value)?,
-                "text-indent" => self.indent = paragraph_length(value)?,
+                "text-indent" => self.indent = absolute_length(value)?,
                 // These are valid XFA formatting properties whose effect cannot
                 // be approximated by dropping them. Unknown CSS is ignored as XFA
                 // requires; supported vocabulary with missing semantics is explicit.
-                "tab-interval" | "tab-stops" | "xfa-tab-stops" | "font-stretch" | "text-valign"
-                | "page-break-before" | "page-break-after" | "orphans" | "widows"
-                | "kerning-mode" | "xfa-font-vscale" | "xfa-font-hscale" => {
+                "tab-interval" | "tab-stop" | "tab-stops" | "xfa-tab-stops" | "font-stretch"
+                | "text-valign" | "page-break-before" | "page-break-after"
+                | "page-break-inside" | "orphans" | "widows" | "kerning-mode"
+                | "xfa-font-vscale" | "xfa-font-hscale" => {
                     return Err(super::unsupported(
                         "rich text layout property is unavailable",
                     ));
@@ -142,7 +143,7 @@ impl Style {
             let slot = values
                 .get_mut(count)
                 .ok_or(Error::syntax("too many rich text margins"))?;
-            *slot = paragraph_length(part)?;
+            *slot = absolute_length(part)?;
             count += 1;
         }
         self.margin = match count {
@@ -183,19 +184,19 @@ impl Style {
             let (size, leading) = token
                 .split_once('/')
                 .map_or((token, None), |(a, b)| (a, Some(b)));
-            self.size = length(size, self.size)?;
+            self.size = absolute_length(size)?;
             if self.size <= 0.0 {
                 return Err(Error::syntax("rich text font size must be positive"));
             }
             self.leading = leading
-                .map(|value| paragraph_length(value).and_then(nonnegative))
+                .map(|value| absolute_length(value).and_then(nonnegative))
                 .transpose()?;
             if rest.starts_with('/') {
                 let (leading, family) = rest[1..]
                     .trim_start()
                     .split_once(char::is_whitespace)
                     .ok_or(Error::syntax("incomplete rich text font shorthand"))?;
-                self.leading = Some(nonnegative(paragraph_length(leading)?)?);
+                self.leading = Some(nonnegative(absolute_length(leading)?)?);
                 rest = family.trim_start();
             }
             self.family = family(rest)?;
@@ -204,17 +205,17 @@ impl Style {
     }
 }
 
-fn paragraph_length(value: &str) -> Result<f64> {
+fn absolute_length(value: &str) -> Result<f64> {
     if !["pt", "in", "cm", "mm"]
         .iter()
         .any(|unit| value.ends_with(unit))
         && value.parse::<f64>().ok() != Some(0.0)
     {
         return Err(super::unsupported(
-            "relative or unitless paragraph measurements are unavailable",
+            "relative or unitless character/paragraph measurements are unavailable",
         ));
     }
-    length(value, 1.0)
+    length(value)
 }
 
 fn family(value: &str) -> Result<Name> {
@@ -272,20 +273,20 @@ fn percentage(value: &str) -> Result<f64> {
     Ok(number)
 }
 
-pub(super) fn length(value: &str, em: f64) -> Result<f64> {
+// XFA3.3 chapter2 measurements default to inches. Relative coefficients are
+// retained only by letter-spacing; other properties require explicit units.
+pub(super) fn length(value: &str) -> Result<f64> {
     let (number, factor) = [
         ("pt", 1.0),
         ("in", 72.0),
         ("cm", 72.0 / 2.54),
         ("mm", 72.0 / 25.4),
-        ("pc", 12.0),
-        ("px", 0.75),
-        ("em", em),
-        ("%", em / 100.0),
+        ("em", 1.0),
+        ("%", 0.01),
     ]
     .into_iter()
     .find_map(|(unit, factor)| value.strip_suffix(unit).map(|value| (value, factor)))
-    .unwrap_or((value, 1.0));
+    .unwrap_or((value, 72.0));
     let number = number
         .trim()
         .parse::<f64>()
