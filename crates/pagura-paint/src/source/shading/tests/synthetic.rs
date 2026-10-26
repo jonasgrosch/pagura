@@ -615,3 +615,74 @@ fn axial_span_timing() {
         }
     }
 }
+
+/// A column table holds only the columns of the region a mark paints in,
+/// and spans inside and outside it take the colours an unclipped table
+/// gives, bit for bit.
+#[test]
+fn aligned_tables_hold_the_painted_columns() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let wide = context(&target, &composite, &store, &limits);
+    let narrow = PaintContext {
+        region: pagura_raster::DeviceRect {
+            x0: 300,
+            y0: 0,
+            x1: 340,
+            y1: 64,
+        },
+        ..context(&target, &composite, &store, &limits)
+    };
+    let mut rng = Rng(0xc0_1e);
+    let mut tables = 0;
+    for case in 0..40 {
+        let mut parsed = shading(&mut rng);
+        parsed.kind = ShadingKind::Axial {
+            start: Point::new(rng.quarter(0.0, 200.0), 0.0),
+            end: Point::new(rng.quarter(400.0, 900.0), 0.0),
+            domain: [0.0, 1.0],
+            extend: [rng.below(2) == 0, rng.below(2) == 0],
+        };
+        parsed.bbox = None;
+        parsed.background = None;
+        let parts = parts(&parsed, false);
+        let source = |context: &PaintContext<'_>| {
+            let mut bytes = Meter::new(8 << 20, "shading test");
+            let mut functions = Meter::new(usize::MAX, "test functions");
+            ShadingSource::new(
+                &parts,
+                Transform::IDENTITY,
+                context,
+                Use::Operator,
+                (&mut bytes, &mut functions),
+            )
+            .unwrap()
+        };
+        let (all, some) = (source(&wide), source(&narrow));
+        let (Some(full), Some(clipped)) = (&all.aligned, &some.aligned) else {
+            continue;
+        };
+        if full.pixels() > 2 {
+            tables += 1;
+            assert!(
+                clipped.pixels() <= 2 + 40,
+                "case {case}: {} pixels",
+                clipped.pixels()
+            );
+        }
+        let (mut want, mut got) = (SpanColors::default(), SpanColors::default());
+        for (x, len) in [(0, 1000), (290, 60), (320, 5)] {
+            for precision in [Precision::Exact, Precision::Level] {
+                all.span(x, 7, len, precision, &mut want);
+                some.span(x, 7, len, precision, &mut got);
+                assert_eq!(
+                    want.colors.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    got.colors.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    "case {case} span {x}+{len}"
+                );
+                assert_eq!(want.alpha, got.alpha, "case {case} span {x}+{len}");
+            }
+        }
+    }
+    assert!(tables > 10, "{tables} tables");
+}
