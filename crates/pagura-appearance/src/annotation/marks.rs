@@ -64,6 +64,8 @@ pub(super) enum Subpath<'a> {
         width: f64,
         height: f64,
     },
+    /// An ellipse in `bounds`, using eight tangent cubic arcs.
+    Ellipse(Rect),
     /// An open polyline (`m`, then `l`).
     Polyline(&'a [(f64, f64)]),
 }
@@ -227,6 +229,7 @@ impl<'a> Marks<'a> {
                     self.numbers(&[x, y, width, height])?;
                     self.content.text("re\n")?;
                 }
+                Subpath::Ellipse(bounds) => self.ellipse(bounds)?,
                 Subpath::Polyline(points) => {
                     for (i, &(x, y)) in points.iter().enumerate() {
                         self.numbers(&[x, y])?;
@@ -236,6 +239,44 @@ impl<'a> Marks<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Eight 45-degree arcs, with control distance 4/3*tan(pi/16).
+    /// The unit-circle tangent construction is scaled independently on each
+    /// axis. This bounded approximation is a reader artwork policy, not a
+    /// claim that cubic Beziers represent an exact conic.
+    fn ellipse(&mut self, bounds: Rect) -> Result<()> {
+        use core::f64::consts::FRAC_1_SQRT_2 as Q;
+        const K: f64 = 0.265_216_489_839_544;
+        const POINTS: [(f64, f64); 9] = [
+            (1.0, 0.0),
+            (Q, Q),
+            (0.0, 1.0),
+            (-Q, Q),
+            (-1.0, 0.0),
+            (-Q, -Q),
+            (0.0, -1.0),
+            (Q, -Q),
+            (1.0, 0.0),
+        ];
+        let rx = bounds.width() * 0.5;
+        let ry = bounds.height() * 0.5;
+        let cx = bounds.x0() + rx;
+        let cy = bounds.y0() + ry;
+        self.numbers(&[bounds.x1(), cy])?;
+        self.content.text("m\n")?;
+        for ((x0, y0), (x1, y1)) in POINTS.iter().copied().zip(POINTS.iter().copied().skip(1)) {
+            self.numbers(&[
+                cx + rx * (x0 - K * y0),
+                cy + ry * (y0 + K * x0),
+                cx + rx * (x1 + K * y1),
+                cy + ry * (y1 - K * x1),
+                cx + rx * x1,
+                cy + ry * y1,
+            ])?;
+            self.content.text("c\n")?;
+        }
+        self.content.text("h\n")
     }
 
     /// Writes each value followed by a space.

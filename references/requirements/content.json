@@ -507,8 +507,8 @@
         "12.5.6.5",
         "12.5.6.8"
       ],
-      "rule": "Visible link and square borders remain inside Rect. BS overrides Border. Zero-width borders and absent interior colours are transparent. Seven note icons have geometric appearances selected by project device policy; exact-area coverage and channel rounding are project policies.",
-      "status": "link/square appearance generation and predefined note icons",
+      "rule": "Visible link, square and circle borders remain inside Rect. BS overrides Border. Zero-width borders and absent interior colours are transparent. Seven note icons have geometric appearances selected by project device policy; exact-area coverage and channel rounding are project policies.",
+      "status": "link/square/circle appearance generation and predefined note/file icons",
       "tests": [
         "content/annotation-icon-Comment",
         "content/annotation-icon-Key",
@@ -524,7 +524,7 @@
         "content/annotation-link-transparent-colour",
         "content/annotation-opacity-components"
       ],
-      "gaps": "rounded and relief borders, square BE/RD and other annotation appearance generation remain explicit"
+      "gaps": "Rounded, relief and cloudy borders and other annotation subtypes remain explicit. Circle/ellipse and Square/Circle RD controls are registered in content-circle-appearances."
     },
     {
       "id": "content-annotation-view",
@@ -808,7 +808,7 @@
         "12.5.6.15 Table 187"
       ],
       "rule": "Missing FileAttachment appearances use the Graph, PushPin, Paperclip or Tag symbol selected by Name. Absence or null selects PushPin; unknown names also select PushPin by reader policy. Distinct original geometric artwork, a yellow default background, black outlines and unknown-name fallback are project policies. C and independent CA/ca affect generated marks; stored appearances retain precedence. Geometry uses the annotation rectangle and explicit visibility/NoZoom/NoRotate flags. Painting neither resolves FS nor decodes or activates its payload.",
-      "status": "four generated file attachment icons implemented; hosted accuracy validation pending",
+      "status": "four generated file attachment icons implemented; hosted native/WASI/client/partial-tile/viewer accuracy checks passed at c42c6ad8a",
       "tests": [
         "pagura-appearance annotation::tests::file_attachment_default_null_unknown_and_indirect_names_are_consistent",
         "pagura-appearance annotation::tests::file_attachment_icons_have_bounded_content_and_validate_visual_entries",
@@ -822,6 +822,57 @@
         "file_attachment_icons/stored-ignores-style"
       ],
       "gaps": "Activation, hit testing, printing policy and other missing annotation subtype appearances remain separate work."
+    },
+    {
+      "id": "content-circle-appearances",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "12.5.4 Table 169",
+        "12.5.5",
+        "12.5.6.8 Table 180"
+      ],
+      "rule": "Absent Circle appearances draw an ellipse within Rect, with BS/Border styling, optional IC fill and independent CA/ca opacity. Square/Circle RD entries inset left, top, right and bottom before border positioning while retaining the original appearance BBox. RD values are finite, nonnegative and leave positive dimensions. Null RD/BE entries are absent; missing/null BE/S selects plain S. Eight tangent cubic arcs and a half-width border inset are bounded reader artwork policies, not exact conic claims. Stored appearances retain precedence.",
+      "status": "circle/ellipse appearances and square/circle rectangle differences implemented; hosted accuracy validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::rectangle_differences_inset_left_top_right_bottom_without_changing_placement",
+        "pagura-appearance annotation::tests::plain_and_absent_border_effects_preserve_circle_and_square_geometry",
+        "pagura-appearance annotation::tests::shape_differences_and_effects_reject_malformed_geometry",
+        "pagura-appearance annotation::tests::content_and_storage_budgets_bound_generation",
+        "circle_annotations/circle-outline-72",
+        "circle_annotations/circle-fill-72",
+        "circle_annotations/circle-stored-72",
+        "circle_annotations/circle-border-fill-72",
+        "circle_annotations/ellipse-fill-72",
+        "circle_annotations/ellipse-rotated-72",
+        "circle_annotations/circle-outline-144",
+        "circle_annotations/circle-fill-144",
+        "circle_annotations/circle-stored-144",
+        "circle_annotations/circle-border-fill-144",
+        "circle_annotations/ellipse-fill-144",
+        "circle_annotations/ellipse-rotated-144",
+        "circle_annotations/circle-opacity",
+        "circle_annotations/no-mark",
+        "circle_annotations/transparent-border",
+        "circle_annotations/circle-rd",
+        "circle_annotations/circle-null",
+        "circle_annotations/circle-empty-effect",
+        "circle_annotations/square-rd",
+        "circle_annotations/square-null",
+        "circle_annotations/square-empty-effect",
+        "circle_annotations/indirect-rd",
+        "circle_annotations/reversed-rectangle",
+        "circle_annotations/rd-type",
+        "circle_annotations/rd-short",
+        "circle_annotations/rd-negative",
+        "circle_annotations/rd-width",
+        "circle_annotations/rd-height",
+        "circle_annotations/rd-entry",
+        "circle_annotations/effect-type",
+        "circle_annotations/effect-style",
+        "circle_annotations/cloudy"
+      ],
+      "gaps": "Cloudy, rounded and relief border synthesis remains explicit. Independent unequal-axis stroke/dash coverage and other annotation subtypes remain open. Pixel expectations use closed-form conic intersection areas, independent of emitted cubic paths."
     }
   ]
 }

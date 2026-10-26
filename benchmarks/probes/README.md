@@ -120,7 +120,7 @@ Resource limits remain distinct and fail the measurement gate until scope/budget
 adjudication; an adapter output bound cannot establish engine capability.
 Competitor differences are evidence, so they stay visible without failing the
 measuring tool. Broken/unavailable adapters, engine installations and timeouts
-fail the workflow. The seven explicitly unimplemented case/engine cells stay
+fail the workflow. The four explicitly unimplemented text case/engine cells stay
 visible too. CI success therefore cannot establish engine correctness or release
 readiness. The added Pagura column must pass every selected independent oracle
 for its job to succeed; a measured Pagura disagreement remains in the report
@@ -227,7 +227,13 @@ objects and buffers for the duration of the operation. This uses the engine's
 name-tree traversal directly; no PDF traversal/parser is copied into the adapter.
 Filename selection preserves present UF (including an empty string), otherwise F.
 Count and decoded-payload limits, load rejections and adapter failures stay distinct.
-The revised adapter awaits hosted execution before adjudicating the earlier result.
+[Hosted run 40283918313](https://github.com/jonasgrosch/pagura/actions/runs/40283918313)
+at merge revision `2d10229dff5ac42059128ab8cf079622af5a7f52` records 143 passes
+and four text adapter gaps across all 147 cells. MuPDF passes all 21 cases,
+including the nested tree. This resolves the earlier observation as a binding-path
+limitation; it was not evidence of missing engine support. Pagura, PDFium,
+pdf.js and Poppler also pass all 21; hayro/CoreGraphics remain at 19 plus two
+text adapter gaps each.
 
 Compressed catalog and page payload controls pass for every engine. Broader
 attachment encodings, password/configuration combinations, current-head reruns

@@ -171,7 +171,7 @@ measured merge revision `c17d3b41a0ed0816b151a0a9380355ce75484be4`: 142 passing
 cells, four explicit text adapter gaps and one incorrect observation. Pagura,
 PDFium, pdf.js and Poppler pass all 21 cases. Hayro and CoreGraphics each pass
 19, with two text gaps apiece. MuPDF passes 20; its binding returns no catalog
-attachments for the nested name-tree control. The revised adapter now calls MuPDF's native name-tree and embedded-file APIs directly; its hosted result is pending. This remains a binding/API adjudication item, not a claim that the engine lacks that feature. All compressed
+attachments for the nested name-tree control. The revised adapter calls MuPDF's native name-tree and embedded-file APIs directly. [Run 40283918313](https://github.com/jonasgrosch/pagura/actions/runs/40283918313), at merge revision `2d10229dff5ac42059128ab8cf079622af5a7f52`, records 143 passes and four text adapter gaps: MuPDF now passes all 21 controls. This resolves the earlier disagreement as a binding-path limitation. All compressed
 catalog/page payload controls pass. Later source changes need their own validation.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
@@ -319,10 +319,24 @@ stored appearances built from filled regions instead of stroked polylines,
 72/144 dpi, rotation, explicit NoZoom/NoRotate, visibility, colors and opacity.
 Host checks also compare native/WASI/client and partial-tile pixels. Payload
 resolution, authentication and activation remain separate from drawing. Source
-checks pass; hosted execution of this rendering increment is pending.
+checks and hosted native/WASI/client/partial-tile/viewer pixel checks pass at
+`c42c6ad8a` in [run 40283824975](https://github.com/jonasgrosch/pagura/actions/runs/40283824975).
+The viewer harness compares these oracles at their declared device resolution,
+including fixed-size controls; existing tolerances are unchanged.
+
+**Circle/ellipse and rectangle insets implemented:** generated Circle appearances
+use eight bounded tangent cubic arcs with independent fill/stroke opacity.
+Square/Circle RD entries apply left/top/right/bottom insets before border
+positioning, preserving the original appearance BBox. Null/plain BE entries
+work; cloudy effects still refuse explicitly. Thirty-two authored controls
+include 23 closed-form conic/rectangle pixel oracles, stored appearances,
+72/144 dpi, unequal axes, rotation, transparent borders, opacity and indirect
+entries. Native/WASI/client, partial-tile and viewer checks use the same
+independent expectations. Hosted execution is pending; unequal-axis stroke/dash
+expectations and richer borders remain open.
 
 Complete missing normal appearances for FreeText, text markup, Ink, Line,
-Circle, Polygon/PolyLine, Stamp, Caret and other ledger subtypes;
+Polygon/PolyLine, Stamp, Caret and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.

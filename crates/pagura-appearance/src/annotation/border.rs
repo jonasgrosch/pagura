@@ -1,9 +1,9 @@
-//! Link and square borders (12.5.4, 12.5.6.5, 12.5.6.8).
+//! Link, square and circle borders (12.5.4, 12.5.6.5, 12.5.6.8).
 
 use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
 use crate::features;
 use crate::stream::AppearanceStream;
-use crate::values::numbers;
+use crate::values::{numbers, optional};
 use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use pagura_document::Document;
 
@@ -14,42 +14,47 @@ pub(super) enum Shape {
     Link,
     /// A square: an optional interior colour `IC` inside the border.
     Square,
+    /// A circle/ellipse with optional interior colour `IC`.
+    Circle,
 }
 
 /// The border inside `rect`, centred half a line width in, and for squares
-/// the interior it encloses.
+/// and circles the interior it encloses. Rectangle differences reduce the shape bounds
+/// before border inset; the appearance BBox stays the original annotation Rect.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
     shape: Shape,
 ) -> Result<Option<AppearanceStream>> {
-    if shape == Shape::Square && (annotation.contains_key(b"BE") || annotation.contains_key(b"RD"))
-    {
-        return Err(Error::unsupported(
-            features::ANNOTATION_APPEARANCE,
-            "square border effects and rectangle differences are not implemented",
-        ));
-    }
+    let bounds = if shape == Shape::Link {
+        rect
+    } else {
+        shape_bounds(document, annotation, rect)?
+    };
     let border = Border::read(document, annotation)?;
     let inset = (border.width * 0.5)
-        .min(rect.width() * 0.5)
-        .min(rect.height() * 0.5);
+        .min(bounds.width() * 0.5)
+        .min(bounds.height() * 0.5);
     let inner = Rect::from_corners(
-        rect.x0() + inset,
-        rect.y0() + inset,
-        rect.x1() - inset,
-        rect.y1() - inset,
+        bounds.x0() + inset,
+        bounds.y0() + inset,
+        bounds.x1() - inset,
+        bounds.y1() - inset,
     )
     .ok_or(Error::syntax("invalid border rectangle"))?;
     let mut marks = Marks::new(document, annotation);
-    let outline = Subpath::Rect {
-        x: inner.x0(),
-        y: inner.y0(),
-        width: inner.width(),
-        height: inner.height(),
+    let outline = if shape == Shape::Circle {
+        Subpath::Ellipse(inner)
+    } else {
+        Subpath::Rect {
+            x: inner.x0(),
+            y: inner.y0(),
+            width: inner.width(),
+            height: inner.height(),
+        }
     };
-    if shape == Shape::Square
+    if shape != Shape::Link
         && let Some(interior) = color(document, annotation, b"IC", None)?
     {
         marks.fill(&[outline], &interior)?;
@@ -70,6 +75,46 @@ pub(super) fn generate(
         marks.stroke(&[path], &color, pen)?;
     }
     marks.finish(rect)
+}
+
+/// Table 180 specifies RD in left, top, right, bottom order, unlike a Rect.
+fn shape_bounds(document: &Document, annotation: &Dictionary, rect: Rect) -> Result<Rect> {
+    if let Some(effect) = optional(document, annotation, b"BE")? {
+        let effect = effect
+            .as_dictionary()
+            .ok_or(Error::syntax("annotation BE must be a dictionary"))?;
+        if let Some(style) = optional(document, effect, b"S")? {
+            let style = style
+                .as_name()
+                .ok_or(Error::syntax("border effect S must be a name"))?;
+            if style != b"S" {
+                return Err(Error::unsupported(
+                    features::ANNOTATION_APPEARANCE,
+                    "cloudy or unrecognized annotation border effect",
+                ));
+            }
+        }
+    }
+    let Some(differences) = optional(document, annotation, b"RD")? else {
+        return Ok(rect);
+    };
+    let differences = numbers(document, differences)?;
+    let [left, top, right, bottom] = differences.as_slice() else {
+        return Err(Error::syntax("annotation RD must have four numbers"));
+    };
+    if differences.iter().any(|value| *value < 0.0)
+        || left + right >= rect.width()
+        || top + bottom >= rect.height()
+    {
+        return Err(Error::syntax("annotation RD leaves invalid shape bounds"));
+    }
+    Rect::from_corners(
+        rect.x0() + left,
+        rect.y0() + bottom,
+        rect.x1() - right,
+        rect.y1() - top,
+    )
+    .ok_or(Error::syntax("invalid annotation shape bounds"))
 }
 
 /// An annotation border: BS, else Border, else solid and 1 unit wide

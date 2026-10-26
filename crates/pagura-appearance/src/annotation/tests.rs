@@ -85,6 +85,87 @@ fn opaque_marks_need_no_graphics_state_but_keep_their_own_resources() {
 }
 
 #[test]
+fn rectangle_differences_inset_left_top_right_bottom_without_changing_placement() {
+    let area = rect(10.0, 20.0, 40.0, 60.0);
+    let stream = generate(
+        b"<< /Subtype /Square /RD [2 4 6 8] /BS << /W 0 >> /IC [1 0 0] >>",
+        area,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(stream.content()),
+        "1 0 0 rg\n12 28 22 28 re\nf\n"
+    );
+    assert_eq!(
+        stream
+            .dictionary()
+            .get(b"BBox")
+            .and_then(Value::as_array)
+            .and_then(Rect::from_array),
+        Some(area)
+    );
+    assert!(!stream.dictionary().contains_key(b"Matrix"));
+}
+
+#[test]
+fn plain_and_absent_border_effects_preserve_circle_and_square_geometry() {
+    let area = rect(4.0, 8.0, 28.0, 24.0);
+    for subtype in ["Circle", "Square"] {
+        let expected = generate(
+            format!("<< /Subtype /{subtype} /IC [1 0 0] >>").as_bytes(),
+            area,
+        )
+        .unwrap();
+        for extra in [
+            "/RD null /BE null",
+            "/RD [0 0 0 0] /BE << >>",
+            "/BE << /S null >>",
+            "/BE << /S /S /I /IgnoredWithoutCloudyEffect >>",
+        ] {
+            assert_eq!(
+                generate(
+                    format!("<< /Subtype /{subtype} /IC [1 0 0] {extra} >>").as_bytes(),
+                    area,
+                )
+                .unwrap(),
+                expected,
+                "{subtype} {extra}"
+            );
+        }
+    }
+}
+
+#[test]
+fn shape_differences_and_effects_reject_malformed_geometry() {
+    for subtype in ["Circle", "Square"] {
+        for extra in [
+            "/RD 42",
+            "/RD []",
+            "/RD [0 0 0]",
+            "/RD [0 0 0 0 0]",
+            "/RD [-1 0 0 0]",
+            "/RD [12 0 12 0]",
+            "/RD [0 8 0 8]",
+            "/RD [0 /Bad 0 0]",
+            "/BE 42",
+            "/BE << /S 42 >>",
+        ] {
+            assert_eq!(
+                generate(
+                    format!("<< /Subtype /{subtype} {extra} >>").as_bytes(),
+                    rect(4.0, 8.0, 28.0, 24.0),
+                )
+                .unwrap_err()
+                .kind,
+                ErrorKind::Syntax,
+                "{subtype} {extra}"
+            );
+        }
+    }
+}
+
+#[test]
 fn fill_opacity_falls_back_to_stroke_opacity_and_is_read_only_for_fills() {
     let stream = generate(
         b"<< /Subtype /Square /IC [0.5] /CA 0.25 >>",
@@ -149,7 +230,7 @@ fn nothing_is_generated_where_nothing_is_drawn() {
 fn unsupported_annotations_are_tagged() {
     let area = rect(0.0, 0.0, 8.0, 8.0);
     for text in [
-        b"<< /Subtype /Circle >>".as_slice(),
+        b"<< /Subtype /Stamp >>".as_slice(),
         b"<< /Subtype /Square /BE << /S /C >> >>",
         b"<< /Subtype /Link /Border [2 2 1] >>",
         b"<< /Subtype /Link /BS << /S /I >> >>",
@@ -182,13 +263,15 @@ fn content_and_storage_budgets_bound_generation() {
         },
     )
     .unwrap();
-    let error = annotation_appearance(
-        &document,
-        &dictionary(b"<< /Subtype /Text >>"),
-        rect(0.0, 0.0, 8.0, 8.0),
-    )
-    .unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
+    for subtype in [
+        b"<< /Subtype /Text >>".as_slice(),
+        b"<< /Subtype /Circle >>",
+    ] {
+        let error =
+            annotation_appearance(&document, &dictionary(subtype), rect(0.0, 0.0, 8.0, 8.0))
+                .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+    }
 }
 
 #[test]
@@ -218,6 +301,7 @@ fn rectangles_without_area_get_no_appearance_after_validation() {
     for text in [
         b"<< /Subtype /Link >>".as_slice(),
         b"<< /Subtype /Square /IC [1 0 0] >>",
+        b"<< /Subtype /Circle /IC [1 0 0] >>",
         b"<< /Subtype /Text >>",
         b"<< /Subtype /Widget /FT /Tx /MK << /BC [0] >> >>",
     ] {
@@ -231,6 +315,8 @@ fn rectangles_without_area_get_no_appearance_after_validation() {
     for text in [
         b"<< /Subtype /Link /BS << /W /Thick >> >>".as_slice(),
         b"<< /Subtype /Text /C [0 0] >>",
+        b"<< /Subtype /Circle /IC [0 0] >>",
+        b"<< /Subtype /Circle /BE << /S 42 >> >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",
     ] {
         let flat = generate(text, line).unwrap_err();
