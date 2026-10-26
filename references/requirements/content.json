@@ -1301,7 +1301,7 @@
         "markup_annotations/concave",
         "pagura-appearance annotation::tests::markup::empty_markup_quads_do_not_emit_device_hairlines_or_hide_later_geometry"
       ],
-      "gaps": "Exact artwork dimensions are reader policy. Broader malformed-quad compatibility and competitor comparison of this new subset still require evidence. Strict-open fixture metadata only describes opening; a separate unit check establishes Strict rendering refusal of alternate quad order."
+      "gaps": "Exact artwork dimensions are reader policy. Broader malformed-quad compatibility and competitor comparison of this new subset still require evidence. The CLI strict audit includes opening, page enumeration and rendering; alternate-order fixtures require repair and therefore set strict_valid to false. A separate unit check also establishes Strict rendering refusal."
     },
     {
       "id": "content-caret-appearances",

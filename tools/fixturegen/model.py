@@ -22,7 +22,7 @@ class Case:
     pages: int | None = 1
     feature: str | None = None           # Feature tag for UNSUPPORTED cases
     repairs: tuple[str, ...] = ()        # Repair tags expected in recovery mode
-    strict_valid: bool = True            # whether Recovery::Strict also opens it
+    strict_valid: bool = True            # whether open/page/render audit needs no repairs
     extra: dict = field(default_factory=dict)
     information: tuple[str, ...] = ()     # Informational tags in either mode
 
