@@ -242,6 +242,51 @@ fn curved_dash_cuts_follow_user_arclength_and_true_tangents() {
 }
 
 #[test]
+fn curved_dash_vertices_stay_behind_a_nearby_butt_cap() {
+    // q(t)=(8t,8t²), ending just after the first dyadic subdivision vertex
+    // at this 2x transform. The pixel x[0,1/2],y[1/4,3/4] is wholly between
+    // the two offsets; only the start and end cap planes intersect it.
+    // Integrating x_end(y)=8t-2t(y-8t²), then scaling the area by 4, gives
+    // 14t+32t³. For t=65/4096 this quantizes independently to 57/255.
+    let t: f64 = 65.0 / 4096.0;
+    let length = 4.0 * t * (1.0 + 4.0 * t * t).sqrt() + 2.0 * (2.0 * t).asinh();
+    let stroke = Stroke {
+        width: 2.0,
+        dash_array: vec![length, 1000.0],
+        ..Stroke::default()
+    };
+    let mut path = PathBuilder::new();
+    path.move_to(Point::default());
+    path.quad_to(Point::new(4.0, 0.0), Point::new(8.0, 8.0))
+        .unwrap();
+    let path = path.finish();
+    let transform = Transform::new(2.0, 0.0, 0.0, 2.0, 0.0, -0.5);
+    let limits = Limits::default();
+    assert_eq!(
+        crate::testing::stroke(
+            crate::testing::window(1, 1),
+            &path,
+            &stroke,
+            transform,
+            &limits
+        )
+        .unwrap(),
+        [57]
+    );
+    let (outline, pen) = stroke_outline(&path, transform, &stroke, &limits).unwrap();
+    assert_eq!(
+        crate::testing::fill(
+            crate::testing::window(1, 1),
+            (&outline, pen, crate::FillRule::NonZero),
+            &[],
+            &limits,
+        )
+        .unwrap(),
+        [57]
+    );
+}
+
+#[test]
 fn only_dashed_curves_retain_subdivision_controls() {
     let mut path = PathBuilder::new();
     path.move_to(Point::default());

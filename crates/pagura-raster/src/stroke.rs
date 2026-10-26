@@ -129,9 +129,22 @@ impl Run {
         }
     }
 
-    fn push(&mut self, point: Point, source: Option<Join>, bytes: &mut Meter) -> Result<()> {
+    fn push(
+        &mut self,
+        point: Point,
+        source: Option<Join>,
+        direction: Option<Point>,
+        bytes: &mut Meter,
+    ) -> Result<()> {
         bytes.reserve_capacity(&mut self.points, 1)?;
-        if let Some(mut join) = source {
+        // A subdivision vertex is smooth. Retain its source normal too: a
+        // chord-normal strip can protrude past a nearby curved dash cap.
+        if let Some(mut join) = source.or_else(|| {
+            direction.map(|direction| Join {
+                index: 0,
+                tangents: [direction; 2],
+            })
+        }) {
             bytes.reserve_capacity(&mut self.joins, 1)?;
             join.index = self.points.len();
             self.joins.push(join);
@@ -803,7 +816,7 @@ fn split_dashes(
         if distance == 0.0 {
             if index % 2 == 0 {
                 for (point, index) in [(a, index_in_path), (b, index_in_path + 1)] {
-                    run.push(point, source_join(joins, index), bytes)?;
+                    run.push(point, source_join(joins, index), None, bytes)?;
                 }
             }
             continue;
@@ -840,6 +853,7 @@ fn split_dashes(
                         (offset == 0.0)
                             .then(|| source_join(joins, index_in_path))
                             .flatten(),
+                        direction,
                         bytes,
                     )?;
                 }
@@ -851,6 +865,7 @@ fn split_dashes(
                     (end == distance)
                         .then(|| source_join(joins, index_in_path + 1))
                         .flatten(),
+                    direction,
                     bytes,
                 )?;
             }

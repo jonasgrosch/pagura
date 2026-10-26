@@ -197,7 +197,15 @@ The combined report was skipped; this is not a completed seven-engine result.
 
 The shared stroker now retains accepted source-curve controls only for dashed
 strokes, measures bounded user-space arclength, and evaluates the original curve
-and tangent at each cut. Acceptance of this correction remains pending. Rich
+and tangent at each cut. The follow-up [run 40354436956](https://github.com/jonasgrosch/pagura/actions/runs/40354436956),
+head `0c4ac72b177cb205c209bc9071a23e34375e4ef3`, passed 305/306 Pagura controls.
+Its Linux report artifact `12665528340` has SHA-256
+`2f10a15176e39f09da62422f90668a2c39b15fbad823712e1185f1fa9d92c97b`.
+The lone short circular dash at 144 dpi exposed a preceding chord-normal strip
+protruding beyond the final butt-cap plane. The shared run now retains smooth
+source tangents at dashed subdivision vertices; a noncircular quadratic pixel
+control and exact circular trapezoid check accompany this correction. Acceptance
+of the current head remains pending. Rich
 controls use embedded literal Type3 glyphs, so character expectations do not
 depend on external font substitution. Analytic curve normals, miter geometry and
 an exact circular-dash trapezoid establish stroke expectations; their pixel

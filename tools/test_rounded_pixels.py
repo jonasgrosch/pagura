@@ -49,5 +49,15 @@ class RoundedAreaTests(unittest.TestCase):
         self.assertAlmostEqual(polygon_coverage(pixel,1)[0],expected,delta=.000001)
         self.assertEqual(255-int(255*expected+.5),192)
 
+    def test_short_circular_dash_at_144_dpi_has_exact_trapezoid_coverage(self):
+        # Pixel 725 maps to [10.5,11]×[26,26.5], wholly in the annulus
+        # about (11,21). The on interval ends at source arclength 39.
+        theta=19/6-math.pi/2
+        expected=-10.5/math.tan(theta)
+        contours=stroke_contours(radii=(6.,6.),dash=(3,3))
+        pixel=[[(2*x-21,2*y-52) for x,y in contour] for contour in contours]
+        self.assertAlmostEqual(polygon_coverage(pixel,1)[0],expected,delta=.000001)
+        self.assertEqual(255-int(255*expected+.5),188)
+
 if __name__=='__main__':
     unittest.main()
