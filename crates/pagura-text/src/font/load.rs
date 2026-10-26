@@ -12,10 +12,11 @@ use crate::{
 };
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
 
-pub(super) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
+pub(super) fn load(document: &Document, font: &Dictionary) -> ReadResult<PdfFont> {
     load_with(document, font, None, Position::Unknown, false)
 }
 
@@ -28,7 +29,7 @@ pub(super) fn load_with(
     provider: Option<&dyn crate::Provider>,
     position: Position,
     rendering: bool,
-) -> Result<PdfFont> {
+) -> ReadResult<PdfFont> {
     let kind = kind(document, font)?;
     if kind == FontKind::Type3 {
         return type3(document, font);
@@ -124,15 +125,15 @@ pub(super) fn load_with(
 pub(super) fn descendant<'a>(
     document: &'a Document,
     font: &'a Dictionary,
-) -> Result<(&'a Dictionary, Option<ObjectId>)> {
+) -> ReadResult<(&'a Dictionary, Option<ObjectId>)> {
     let [value] = array(required(document, font, b"DescendantFonts")?)? else {
-        return Err(Error::syntax("Type0 requires one descendant font"));
+        return Err(Error::syntax("Type0 requires one descendant font").into());
     };
     let descendant = document.resolve_dictionary(value)?;
     if !descendant.is_name(b"Subtype", b"CIDFontType0")
         && !descendant.is_name(b"Subtype", b"CIDFontType2")
     {
-        return Err(Error::syntax("invalid CIDFont subtype"));
+        return Err(Error::syntax("invalid CIDFont subtype").into());
     }
     Ok((descendant, value.as_reference()))
 }
@@ -144,7 +145,7 @@ fn route(
     font: &Dictionary,
     descriptor: Descriptor<'_>,
     position: Position,
-) -> Result<Route> {
+) -> ReadResult<Route> {
     let symbolic = descriptor
         .normalized_flags(document, position)?
         .contains(FontFlags::SYMBOLIC);
@@ -157,7 +158,7 @@ fn route(
     )
 }
 
-fn kind(document: &Document, font: &Dictionary) -> Result<FontKind> {
+fn kind(document: &Document, font: &Dictionary) -> ReadResult<FontKind> {
     required(document, font, b"Subtype")?
         .as_name()
         .and_then(|name| FontKind::from_subtype(name.as_bytes()))
@@ -168,7 +169,7 @@ fn composite_mapping(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn crate::Provider>,
-) -> Result<Mapping> {
+) -> ReadResult<Mapping> {
     let encoding = font
         .get(b"Encoding")
         .ok_or_else(|| Error::syntax("Type0 missing Encoding"))?;
@@ -186,7 +187,7 @@ fn simple_mapping(
     kind: FontKind,
     route: Route,
     builtin: Option<&encoding::Encoding>,
-) -> Result<SimpleMapping> {
+) -> ReadResult<SimpleMapping> {
     if kind == FontKind::TrueType && route == Route::Raw {
         return SimpleMapping::new(std::array::from_fn(|_| None), &document.limits(), b"");
     }
@@ -212,7 +213,7 @@ fn simple_mapping(
     )
 }
 
-fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
+fn type3(document: &Document, font: &Dictionary) -> ReadResult<PdfFont> {
     let [a, b, c, d, e, f] = numbers(
         document,
         required(document, font, b"FontMatrix")?,
@@ -232,7 +233,9 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
             .as_reference()
             .ok_or_else(|| Error::syntax("CharProcs entry must be a stream reference"))?;
         if !document.object(id)?.is_stream() {
-            return Err(Error::syntax("CharProcs entry is not a stream").in_object(id));
+            return Err(Error::syntax("CharProcs entry is not a stream")
+                .in_object(id)
+                .into());
         }
         procedures.insert(name.clone(), id);
     }
@@ -244,7 +247,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         .as_dictionary()
         .ok_or_else(|| Error::syntax("Type3 Encoding must be a dictionary"))?;
     if !encoding_dict.contains_key(b"Differences") {
-        return Err(Error::syntax("Type3 Encoding missing Differences"));
+        return Err(Error::syntax("Type3 Encoding missing Differences").into());
     }
     let encoding = encoding::load(document, Some(encoding), std::array::from_fn(|_| None))?;
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
@@ -272,7 +275,7 @@ pub(super) fn cid_map(
     document: &Document,
     metrics_font: &Dictionary,
     id: Option<ObjectId>,
-) -> Result<Option<CidToGidMap>> {
+) -> ReadResult<Option<CidToGidMap>> {
     Ok(if metrics_font.is_name(b"Subtype", b"CIDFontType2") {
         match optional(document, metrics_font, b"CIDToGIDMap")? {
             None => {
@@ -296,7 +299,9 @@ pub(super) fn cid_map(
                     .map_err(|e| e.in_object(id))?;
                 // Check the decoded length before copying the data.
                 if bytes.len() > CidToGidMap::MAX_BYTES {
-                    return Err(Error::syntax("invalid CIDToGIDMap length").in_object(id));
+                    return Err(Error::syntax("invalid CIDToGIDMap length")
+                        .in_object(id)
+                        .into());
                 }
                 Some(
                     CidToGidMap::new(bytes.into_owned().into_boxed_slice())

@@ -101,14 +101,14 @@ pub(super) fn appearance<'a>(
     context: &mut Context<'a>,
     entry: Option<Entry<'a>>,
 ) -> ReadResult<Option<&'a [u8]>> {
-    Ok(entry
+    entry
         .map(|entry| {
             let (value, source) = context.resolve(entry.value, entry.source)?;
             value
                 .as_string()
                 .ok_or_else(|| source.fault(Error::syntax("form DA must be a string")))
         })
-        .transpose()?)
+        .transpose()
 }
 
 pub(super) fn quadding<'a>(

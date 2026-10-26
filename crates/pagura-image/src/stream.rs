@@ -1,31 +1,32 @@
 //! Narrow parameter recovery before image dispatch (7.3.8.1 Table 5, 7.4.1).
 use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Position, Result, Value};
+use pagura_document::source::{ReadFault, ReadResult};
 use pagura_document::{Document, ImageStream, IndirectObject};
 
 pub(crate) fn read(
     document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<ImageStream> {
-    let result = read_inner(document, image, diagnostics);
-    if result
-        .as_ref()
-        .is_err_and(|e| e.kind == ErrorKind::Syntax && e.repair.is_none())
-    {
-        return predictor_precision(document, image, diagnostics).unwrap_or(result);
+) -> ReadResult<ImageStream> {
+    match read_inner(document, image, diagnostics) {
+        Err(ReadFault::Invalid(error))
+            if error.kind == ErrorKind::Syntax && error.repair.is_none() =>
+        {
+            predictor_precision(document, image, diagnostics)?.ok_or(ReadFault::Invalid(error))
+        }
+        result => result,
     }
-    result
 }
 
 fn read_inner(
     document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<ImageStream> {
+) -> ReadResult<ImageStream> {
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image has no dictionary"))?;
-    let size = expected_size(document, dictionary);
+    let size = expected_size(document, dictionary)?;
     let Some(params) = dictionary.get(b"DecodeParms") else {
         return document.image_stream_sized(image, None, size);
     };
@@ -57,41 +58,50 @@ fn read_inner(
 
 /// The sample bytes an image of a device colour space declares, as an
 /// allocation hint for its decoded stream; 0 when they are not evident.
-fn expected_size(document: &Document, dictionary: &pagura_core::Dictionary) -> usize {
-    let value = |key: &[u8]| dictionary.get(key).and_then(|v| document.resolve(v).ok());
-    let integer = |key: &[u8]| {
-        value(key)
+fn expected_size(document: &Document, dictionary: &pagura_core::Dictionary) -> ReadResult<usize> {
+    let integer = |key: &[u8]| -> ReadResult<Option<usize>> {
+        Ok(document
+            .optional(dictionary, key)?
             .and_then(Value::as_integer)
-            .and_then(|n| usize::try_from(n).ok())
+            .and_then(|n| usize::try_from(n).ok()))
     };
-    let (Some(width), Some(height)) = (integer(b"Width"), integer(b"Height")) else {
-        return 0;
+    let (Some(width), Some(height)) = (integer(b"Width")?, integer(b"Height")?) else {
+        return Ok(0);
     };
-    let (components, bits) = if value(b"ImageMask").and_then(Value::as_bool) == Some(true) {
+    let (components, bits) = if document
+        .optional(dictionary, b"ImageMask")?
+        .and_then(Value::as_bool)
+        == Some(true)
+    {
         (1, 1)
     } else {
-        let components = match value(b"ColorSpace")
+        let components = match document
+            .optional(dictionary, b"ColorSpace")?
             .and_then(Value::as_name)
             .map(pagura_core::Name::as_bytes)
         {
             Some(b"DeviceGray" | b"G") => 1,
             Some(b"DeviceRGB" | b"RGB") => 3,
             Some(b"DeviceCMYK" | b"CMYK") => 4,
-            _ => return 0,
+            _ => return Ok(0),
         };
-        (components, integer(b"BitsPerComponent").unwrap_or(8))
+        (components, integer(b"BitsPerComponent")?.unwrap_or(8))
     };
-    width
+    Ok(width
         .saturating_mul(components)
         .saturating_mul(bits)
         .div_ceil(8)
-        .saturating_mul(height)
+        .saturating_mul(height))
 }
 
 /// Preserve array alignment and all dictionaries. A string spelling `null`
 /// has an unambiguous intended default; arbitrary wrong types are discarded
 /// only for JPXDecode, whose interpretation has no external parameters (7.4.9).
-fn repaired_params(document: &Document, names: &[Value], params: &Value) -> Result<Option<Value>> {
+fn repaired_params(
+    document: &Document,
+    names: &[Value],
+    params: &Value,
+) -> ReadResult<Option<Value>> {
     let entries = match params {
         Value::Array(entries) if entries.len() == names.len() => entries.as_slice(),
         Value::Null | Value::Array(_) => return Ok(None),
@@ -126,43 +136,59 @@ fn predictor_precision(
     document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Option<Result<ImageStream>> {
-    let dictionary = image.dictionary()?;
-    let bits = dictionary.get(b"BitsPerComponent")?.as_integer()?;
+) -> ReadResult<Option<ImageStream>> {
+    let Some(dictionary) = image.dictionary() else {
+        return Ok(None);
+    };
+    let Some(bits) = dictionary
+        .get(b"BitsPerComponent")
+        .and_then(Value::as_integer)
+    else {
+        return Ok(None);
+    };
     if !matches!(bits, 1 | 2 | 4 | 8 | 16) {
-        return None;
+        return Ok(None);
     }
-    let params = document
-        .resolve_dictionary(dictionary.get(b"DecodeParms")?)
-        .ok()?;
-    let predictor = pagura_codec::Predictor::from_params(Some(params)).ok()?;
+    let Some(parameters) = dictionary.get(b"DecodeParms") else {
+        return Ok(None);
+    };
+    let params = match document.resolve_dictionary(parameters) {
+        Ok(params) => params,
+        Err(ReadFault::Invalid(_)) => return Ok(None),
+        Err(unavailable) => return Err(unavailable),
+    };
+    let Ok(predictor) = pagura_codec::Predictor::from_params(Some(params)) else {
+        return Ok(None);
+    };
     if i64::from(predictor.bits_per_component) == bits
         || predictor.kind == pagura_codec::PredictorKind::None
     {
-        return None;
+        return Ok(None);
     }
     let mut params = params.clone();
     params.insert(
         pagura_core::Name::new(b"BitsPerComponent"),
         Value::Integer(bits),
     );
-    let stream = document
-        .image_stream_with_parameters(image, Some(&Value::Dictionary(params)))
-        .ok()?;
-    Some(
-        diagnostics
-            .repair(
-                Diagnostic::new(
-                    crate::tags::PREDICTOR_PRECISION,
-                    "predictor data decoded at image BitsPerComponent (7.4.4.3)",
-                )
-                .at(Position::Stream {
-                    object: image.id(),
-                    offset: 0,
-                }),
-            )
-            .map(|()| stream),
-    )
+    // A failed alternative preserves the original terminal failure. A pending
+    // dependency is not evidence against this alternative and must be retried.
+    let stream =
+        match document.image_stream_with_parameters(image, Some(&Value::Dictionary(params))) {
+            Ok(stream) => stream,
+            Err(ReadFault::Invalid(_)) => return Ok(None),
+            Err(unavailable) => return Err(unavailable),
+        };
+    diagnostics.repair(
+        Diagnostic::new(
+            crate::tags::PREDICTOR_PRECISION,
+            "predictor data decoded at image BitsPerComponent (7.4.4.3)",
+        )
+        .at(Position::Stream {
+            object: image.id(),
+            offset: 0,
+        }),
+    )?;
+    Ok(Some(stream))
 }
 
 #[cfg(test)]

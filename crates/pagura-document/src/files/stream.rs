@@ -16,10 +16,14 @@ pub(super) fn entries<'a>(
             continue;
         }
         if !matches!(key.as_bytes(), b"F" | b"UF" | b"DOS" | b"Mac" | b"Unix") {
-            return Err((source.error(Error::syntax("invalid EF filename key"))).into());
+            return Err(source
+                .error(Error::syntax("invalid EF filename key"))
+                .into());
         }
         if read::bytes(context, specification, key.as_bytes(), source)?.is_none() {
-            return Err((source.error(Error::syntax("EF entry has no matching filename"))).into());
+            return Err(source
+                .error(Error::syntax("EF entry has no matching filename"))
+                .into());
         }
         context.allocate::<EmbeddedFileEntry<'_>>(1, source)?;
         files.push(EmbeddedFileEntry {
@@ -44,16 +48,18 @@ pub(super) fn related<'a>(
             continue;
         }
         if context.present(embedded, key.as_bytes(), source)?.is_none() {
-            return Err((source.error(Error::syntax("RF key has no matching EF entry"))).into());
+            return Err(source
+                .error(Error::syntax("RF key has no matching EF entry"))
+                .into());
         }
         let pairs = value
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("RF entry requires an array")))?;
         let (pairs, remainder) = pairs.as_chunks::<2>();
         if !remainder.is_empty() {
-            return Err(
-                (source.error(Error::syntax("RF array requires name/stream pairs"))).into(),
-            );
+            return Err(source
+                .error(Error::syntax("RF array requires name/stream pairs"))
+                .into());
         }
         for [name, value] in pairs {
             context.step(0, source)?;
@@ -78,7 +84,9 @@ fn stream<'a>(
     source: Source,
 ) -> ReadResult<EmbeddedFile<'a>> {
     if !matches!(value, Value::Reference(_)) {
-        return Err((source.error(Error::syntax("embedded file must reference a stream"))).into());
+        return Err(source
+            .error(Error::syntax("embedded file must reference a stream"))
+            .into());
     }
     let (value, source) = context.resolve(value, source)?;
     let id = source

@@ -9,6 +9,7 @@ use crate::{
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Result};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 
 pub(crate) fn load(
@@ -17,7 +18,7 @@ pub(crate) fn load(
     id: Option<ObjectId>,
     mapping: Mapping,
     provider: &dyn Provider,
-) -> Result<PdfFont> {
+) -> ReadResult<PdfFont> {
     let Mapping::Composite { map, .. } = &mapping else {
         return Err(unavailable());
     };
@@ -25,15 +26,16 @@ pub(crate) fn load(
         return Err(Error::unsupported(
             features::CID_SUBSTITUTE_VERTICAL,
             "vertical CID substitute glyph forms are unavailable",
-        ));
+        )
+        .into());
     }
     let (registry, ordering) = cid_collection(document, descendant)?.ok_or_else(unavailable)?;
     if map.registry().is_some_and(|r| r != registry)
         || map.ordering().is_some_and(|o| o != ordering)
     {
-        return Err(Error::syntax(
-            "CIDFont and CMap character collections disagree (9.7.3)",
-        ));
+        return Err(
+            Error::syntax("CIDFont and CMap character collections disagree (9.7.3)").into(),
+        );
     }
     let program = provider
         .cid_font(registry, ordering)?

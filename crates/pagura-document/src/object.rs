@@ -189,10 +189,10 @@ fn parse(
         && parser.keyword(b"obj");
     if !header_matches {
         return Err(
-            (Error::syntax("cross-reference entry disagrees with object header")
+            Error::syntax("cross-reference entry disagrees with object header")
                 .at(Position::File(offset))
-                .in_object(id))
-            .into(),
+                .in_object(id)
+                .into(),
         );
     }
     let (value, direct) = parser
@@ -203,14 +203,16 @@ fn parse(
                     .get(b"Encrypt")
                     .is_some_and(|value| !value.is_null())
             {
-                return Err((Error::syntax(
+                return Err(Error::syntax(
                     "direct streams cannot be loaded before security initialization",
                 )
-                .in_object(id))
+                .in_object(id)
                 .into());
             }
             if !parser.keyword(b"stream") {
-                return Err((Error::syntax("missing direct stream keyword").in_object(id)).into());
+                return Err(Error::syntax("missing direct stream keyword")
+                    .in_object(id)
+                    .into());
             }
             stream_extent(
                 document,
@@ -256,10 +258,10 @@ fn parse(
         });
         if !catalog || stream.is_some() || !direct.is_empty() || !parser.keyword(b"endobj") {
             return Err(
-                (Error::syntax("zero-numbered root is not a complete plain Catalog")
+                Error::syntax("zero-numbered root is not a complete plain Catalog")
                     .at(Position::File(offset))
-                    .in_object(id))
-                .into(),
+                    .in_object(id)
+                    .into(),
             );
         }
         repairs.repair(

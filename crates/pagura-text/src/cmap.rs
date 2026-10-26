@@ -9,6 +9,7 @@ use crate::{
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, Limits, Meter, Name, ObjectId, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::sync::{Arc, LazyLock};
 
 mod block;
@@ -607,7 +608,7 @@ pub(crate) fn load(
     value: &Value,
     role: CMapRole,
     provider: Option<&dyn crate::Provider>,
-) -> Result<Arc<CMap>> {
+) -> ReadResult<Arc<CMap>> {
     load_inner(
         document,
         value,
@@ -625,7 +626,7 @@ fn load_inner(
     provider: Option<&dyn crate::Provider>,
     path: &mut Vec<ObjectId>,
     budget: &mut Budget,
-) -> Result<Arc<CMap>> {
+) -> ReadResult<Arc<CMap>> {
     if let Some(name) = document.resolve(value)?.as_name() {
         return predefined(name, role, provider);
     }
@@ -633,11 +634,11 @@ fn load_inner(
         .as_reference()
         .ok_or(Error::syntax("CMap must be a name or stream reference"))?;
     if path.contains(&id) {
-        return Err(Error::cycle("UseCMap cycle").in_object(id));
+        return Err(Error::cycle("UseCMap cycle").in_object(id).into());
     }
     let limits = document.limits();
     if path.len() >= limits.depth {
-        return Err(Error::limit("UseCMap depth exceeded").in_object(id));
+        return Err(Error::limit("UseCMap depth exceeded").in_object(id).into());
     }
     path.push(id);
     let object = document.object(id)?;
@@ -663,7 +664,9 @@ fn load_inner(
     {
         let declared = mode(document.resolve(value)?.as_integer())?;
         if map.mode_explicit && map.mode != declared {
-            return Err(Error::syntax("CMap WMode disagrees with stream dictionary").in_object(id));
+            return Err(Error::syntax("CMap WMode disagrees with stream dictionary")
+                .in_object(id)
+                .into());
         }
         map.mode = declared;
         map.mode_explicit = true;
@@ -681,14 +684,18 @@ fn load_inner(
             if (role == CMapRole::Encoding || resolved.as_name().is_some())
                 && parent_name != Some(name)
             {
-                return Err(Error::syntax("usecmap disagrees with UseCMap").in_object(id));
+                return Err(Error::syntax("usecmap disagrees with UseCMap")
+                    .in_object(id)
+                    .into());
             }
         }
         let shared = resolved.as_name().is_some();
         let parent = load_inner(document, parent, role, provider, path, budget)?;
         map.inherit(parent, shared);
     } else if map.use_name.is_some() {
-        return Err(Error::syntax("usecmap missing UseCMap dictionary entry").in_object(id));
+        return Err(Error::syntax("usecmap missing UseCMap dictionary entry")
+            .in_object(id)
+            .into());
     }
     map.validate(&mut budget.work)
         .map_err(|e| e.in_object(id))?;

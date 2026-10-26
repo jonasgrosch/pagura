@@ -1,6 +1,7 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
 use crate::{DecodedImage, Samples, dct, jbig2, parameters as p};
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, StreamData};
 
 /// Samples of unfiltered image data. Whole bytes of exactly the declared
@@ -29,7 +30,7 @@ pub(crate) fn jbig2_globals(
     document: &Document,
     dict: &Dictionary,
     params: Option<&Dictionary>,
-) -> Result<Option<StreamData>> {
+) -> ReadResult<Option<StreamData>> {
     // Preserve identity for stream-valued parameters using the original
     // dictionary; resolved filter parameters hold only object values.
     let original = dict

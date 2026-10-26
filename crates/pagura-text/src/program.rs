@@ -5,6 +5,7 @@ use crate::{
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
+use pagura_document::source::ReadResult;
 use pagura_font::{FontFormat, FontProgram};
 
 /// Loads the embedded program of `descriptor`. `metrics_font` is the simple
@@ -16,12 +17,11 @@ pub(crate) fn load(
     kind: FontKind,
     metrics_font: &Dictionary,
     rendering: bool,
-) -> Result<FontProgram> {
+) -> ReadResult<FontProgram> {
     let Some(key) = descriptor.program_key(document)? else {
-        return Err(Error::unsupported(
-            features::NON_EMBEDDED,
-            "font program is not embedded",
-        ));
+        return Err(
+            Error::unsupported(features::NON_EMBEDDED, "font program is not embedded").into(),
+        );
     };
     let id = descriptor
         .dictionary
@@ -38,7 +38,7 @@ fn load_stream(
     kind: FontKind,
     metrics_font: &Dictionary,
     rendering: bool,
-) -> Result<FontProgram> {
+) -> ReadResult<FontProgram> {
     let object = document.object(id)?;
     let dictionary = object
         .dictionary()
@@ -52,7 +52,7 @@ fn load_stream(
     let whole = prefix.is_none();
     let data = match prefix {
         Some(data) => pagura_document::StreamData::from(data),
-        None => document.stream_data_sized(object, declared_length(document, dictionary))?,
+        None => document.stream_data_sized(object, declared_length(document, dictionary)?)?,
     };
     let report = Report::new(document);
     // A prefix was checked against Length1 when it was decoded.
@@ -86,18 +86,16 @@ fn load_stream(
 
 /// The program length a font stream's `Length1` to `Length3` declare, as an
 /// allocation hint for decoding it (0 when absent or unreadable).
-fn declared_length(document: &Document, dictionary: &Dictionary) -> usize {
+fn declared_length(document: &Document, dictionary: &Dictionary) -> ReadResult<usize> {
     let mut total = 0_usize;
     for key in [b"Length1".as_slice(), b"Length2", b"Length3"] {
-        let length = optional(document, dictionary, key)
-            .ok()
-            .flatten()
+        let length = optional(document, dictionary, key)?
             .and_then(Value::as_integer)
             .and_then(|n| usize::try_from(n).ok())
             .unwrap_or(0);
         total = total.saturating_add(length);
     }
-    total.min(document.limits().decoded_bytes)
+    Ok(total.min(document.limits().decoded_bytes))
 }
 
 /// The tables that drawing glyphs from a TrueType program reads.
@@ -117,7 +115,7 @@ fn drawn_tables(
     document: &Document,
     object: &pagura_document::IndirectObject,
     dictionary: &Dictionary,
-) -> Result<Option<Vec<u8>>> {
+) -> ReadResult<Option<Vec<u8>>> {
     let Some(length) = optional(document, dictionary, b"Length1")?
         .and_then(Value::as_integer)
         .and_then(|n| usize::try_from(n).ok())
@@ -221,7 +219,7 @@ fn length_problem(
     key: &[u8],
     format: FontFormat,
     decoded: usize,
-) -> Result<Option<&'static str>> {
+) -> ReadResult<Option<&'static str>> {
     if key == b"FontFile2" {
         return Ok(match length(document, dictionary, b"Length1")? {
             None => Some("TrueType font stream has no valid Length1"),
@@ -254,7 +252,7 @@ fn length_problem(
         .then_some("CFF font stream has Type1 segment lengths"))
 }
 
-fn length(document: &Document, dict: &Dictionary, key: &[u8]) -> Result<Option<usize>> {
+fn length(document: &Document, dict: &Dictionary, key: &[u8]) -> ReadResult<Option<usize>> {
     Ok(optional(document, dict, key)?
         .and_then(Value::as_integer)
         .and_then(|v| usize::try_from(v).ok()))
@@ -266,7 +264,7 @@ fn format(
     key: &[u8],
     kind: FontKind,
     metrics_font: &Dictionary,
-) -> Result<FontFormat> {
+) -> ReadResult<FontFormat> {
     let type1 = matches!(kind, FontKind::Type1 | FontKind::MmType1);
     let cid0 = metrics_font.is_name(b"Subtype", b"CIDFontType0");
     let cid2 = metrics_font.is_name(b"Subtype", b"CIDFontType2");

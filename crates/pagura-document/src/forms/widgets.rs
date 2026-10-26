@@ -68,7 +68,9 @@ fn rectangle<'a>(
     let value = context.required(dictionary, b"Rect", source)?;
     let values = attributes::array(context, value, source)?;
     let [x0, y0, x1, y1] = values else {
-        return Err((source.error(Error::syntax("widget Rect requires four numbers"))).into());
+        return Err(source
+            .error(Error::syntax("widget Rect requires four numbers"))
+            .into());
     };
     let mut read = |v| {
         context

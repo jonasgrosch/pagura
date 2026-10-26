@@ -2,6 +2,7 @@
 use crate::MaskKind;
 use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// [`read`] for an image of `components` colour components whose
 /// precisions `bits` gives, before its samples are decoded.
@@ -10,14 +11,14 @@ pub(crate) fn read_for(
     dict: &Dictionary,
     components: u8,
     bits: &dyn Fn(usize) -> Option<u8>,
-) -> Result<MaskKind> {
+) -> ReadResult<MaskKind> {
     if let Some(value) = dict.get(b"SMask").filter(|v| !v.is_null()) {
         let id = value
             .as_reference()
             .ok_or(Error::syntax("SMask must reference an image stream"))?;
         let object = document.object(id)?;
         if !object.is_stream() {
-            return Err(Error::syntax("SMask is not a stream"));
+            return Err(Error::syntax("SMask is not a stream").into());
         }
         let mask = object
             .dictionary()
@@ -31,7 +32,7 @@ pub(crate) fn read_for(
             || mask.contains_key(b"Mask")
             || mask.contains_key(b"SMask")
         {
-            return Err(Error::syntax("invalid soft mask image dictionary"));
+            return Err(Error::syntax("invalid soft mask image dictionary").into());
         }
         let space = mask
             .get(b"ColorSpace")
@@ -41,7 +42,7 @@ pub(crate) fn read_for(
             .and_then(Value::as_name)
             .is_none_or(|n| n != b"DeviceGray")
         {
-            return Err(Error::syntax("soft mask must use DeviceGray"));
+            return Err(Error::syntax("soft mask must use DeviceGray").into());
         }
         return Ok(MaskKind::Soft(id));
     } else if let Some(value) = dict.get(b"Mask").filter(|v| !v.is_null()) {
@@ -62,7 +63,7 @@ pub(crate) fn read_for(
                 .and_then(Value::as_bool)
                 .unwrap_or(false)
             {
-                return Err(Error::syntax("explicit mask is not a stencil image"));
+                return Err(Error::syntax("explicit mask is not a stencil image").into());
             }
             return Ok(MaskKind::Stencil(id));
         }
@@ -71,7 +72,7 @@ pub(crate) fn read_for(
             .as_array()
             .ok_or(Error::syntax("invalid image Mask"))?;
         if ranges.len() != usize::from(components) * 2 {
-            return Err(Error::syntax("invalid colour key length"));
+            return Err(Error::syntax("invalid colour key length").into());
         }
         let mut keys = Vec::with_capacity(usize::from(components));
         for (component, pair) in ranges.as_chunks::<2>().0.iter().enumerate() {
@@ -90,7 +91,7 @@ pub(crate) fn read_for(
             };
             let (low, high) = (sample(&pair[0])?, sample(&pair[1])?);
             if low > high {
-                return Err(Error::syntax("reversed colour key range"));
+                return Err(Error::syntax("reversed colour key range").into());
             }
             keys.push((low, high));
         }

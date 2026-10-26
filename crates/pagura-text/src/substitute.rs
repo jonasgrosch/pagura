@@ -12,6 +12,7 @@ use crate::{
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Position, Result};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::sync::Arc;
 
 pub(crate) mod cid;
@@ -35,7 +36,7 @@ pub(crate) fn load(
     kind: FontKind,
     provider: &dyn Provider,
     position: Position,
-) -> Result<PdfFont> {
+) -> ReadResult<PdfFont> {
     if !matches!(kind, FontKind::Type1 | FontKind::TrueType) {
         return Err(unavailable());
     }
@@ -144,7 +145,7 @@ fn closest(
     document: &Document,
     descriptor: Descriptor<'_>,
     flags: FontFlags,
-) -> Result<Standard14> {
+) -> ReadResult<Standard14> {
     if flags.contains(FontFlags::SYMBOLIC) {
         return Err(unavailable());
     }
@@ -162,7 +163,7 @@ fn closest(
     Ok(Family::from_flags(flags).face(style))
 }
 
-fn weight(document: &Document, descriptor: Descriptor<'_>) -> Result<f64> {
+fn weight(document: &Document, descriptor: Descriptor<'_>) -> ReadResult<f64> {
     let Some(value) = optional(document, descriptor.dictionary, b"FontWeight")? else {
         return Ok(NORMAL_WEIGHT);
     };

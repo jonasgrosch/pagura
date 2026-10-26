@@ -35,10 +35,12 @@ pub(crate) fn read<'a>(document: &'a Document, page: &Page) -> ReadResult<Vec<&'
                 result
             })
             .collect(),
-        Value::Reference(_) => {
-            Err((Error::limit("Contents reference chain too long").in_object(owner.id())).into())
-        }
-        _ => Err((Error::syntax("Contents must be a stream or array").in_object(page.id())).into()),
+        Value::Reference(_) => Err(Error::limit("Contents reference chain too long")
+            .in_object(owner.id())
+            .into()),
+        _ => Err(Error::syntax("Contents must be a stream or array")
+            .in_object(page.id())
+            .into()),
     }
 }
 
@@ -55,11 +57,15 @@ fn one<'a>(
                 return Ok(object);
             }
             let Some(next) = object.value().as_reference() else {
-                return Err((Error::syntax("Contents entry is not a stream").in_object(id)).into());
+                return Err(Error::syntax("Contents entry is not a stream")
+                    .in_object(id)
+                    .into());
             };
             id = next;
         }
-        return Err((Error::limit("Contents reference chain too long").in_object(id)).into());
+        return Err(Error::limit("Contents reference chain too long")
+            .in_object(id)
+            .into());
     }
     Ok(owner
         .direct_stream(path)

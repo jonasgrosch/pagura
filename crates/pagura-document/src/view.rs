@@ -168,9 +168,9 @@ impl<'a> Context<'a> {
             self.step(depth, source)?;
             self.index_entry(source)?;
             if !references.insert(*id) {
-                return Err(
-                    (source.error(Error::cycle("cyclic navigation reference chain"))).into(),
-                );
+                return Err(source
+                    .error(Error::cycle("cyclic navigation reference chain"))
+                    .into());
             }
             if !self.document.slots.contains_key(id) {
                 return Ok((&NULL, source));
@@ -185,7 +185,9 @@ impl<'a> Context<'a> {
             };
             value = object.value();
         }
-        Err((source.error(Error::limit("navigation reference depth exceeded"))).into())
+        Err(source
+            .error(Error::limit("navigation reference depth exceeded"))
+            .into())
     }
 
     pub(crate) fn dictionary(
@@ -242,7 +244,9 @@ impl<'a> Context<'a> {
                     .is_none_or(|name| name.as_bytes() != expected)
             })
         {
-            return Err((source.error(Error::syntax("invalid navigation dictionary Type"))).into());
+            return Err(source
+                .error(Error::syntax("invalid navigation dictionary Type"))
+                .into());
         }
         Ok(())
     }

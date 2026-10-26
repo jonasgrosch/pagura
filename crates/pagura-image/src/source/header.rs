@@ -7,6 +7,7 @@ use crate::jpx_image::Jpx;
 use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameters as p, stream};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, IndirectObject, StreamData};
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -80,7 +81,7 @@ pub(crate) fn xobject(
     document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<(Header, StreamData)> {
+) -> ReadResult<(Header, StreamData)> {
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image is not a dictionary"))?;
@@ -91,7 +92,7 @@ pub(crate) fn xobject(
         .and_then(Value::as_name)
         .is_none_or(|n| n != b"Image")
     {
-        return Err(Error::syntax("image XObject requires Subtype Image"));
+        return Err(Error::syntax("image XObject requires Subtype Image").into());
     }
     if let Some(kind) = dictionary
         .get(b"Type")
@@ -130,7 +131,7 @@ pub(crate) fn inline<'a>(
     dictionary: &Dictionary,
     data: &'a [u8],
     diagnostics: &mut Diagnostics,
-) -> Result<(Header, Cow<'a, [u8]>)> {
+) -> ReadResult<(Header, Cow<'a, [u8]>)> {
     let mut dict = inline::expanded(dictionary)?;
     if p::stencil_space(document, &dict, diagnostics)? {
         dict.remove(b"ColorSpace");
@@ -165,7 +166,7 @@ pub(crate) fn inline<'a>(
                 }
         )
     }) {
-        return Err(Error::syntax("filter is forbidden in inline images"));
+        return Err(Error::syntax("filter is forbidden in inline images").into());
     }
     let codec = chain.split_image();
     let data = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
@@ -182,7 +183,7 @@ fn read(
     data: &[u8],
     codec: Option<(ImageCodec, Option<Dictionary>)>,
     original: Option<&Dictionary>,
-) -> Result<Header> {
+) -> ReadResult<Header> {
     let limits = document.limits();
     let jpx = matches!(codec, Some((ImageCodec::Jpx, _)));
     let (width, height) = p::dimensions(dict)?;
@@ -196,7 +197,7 @@ fn read(
     } else if jpx {
         (None, 0)
     } else {
-        return Err(Error::syntax("missing image ColorSpace"));
+        return Err(Error::syntax("missing image ColorSpace").into());
     };
     let bits = if jpx {
         1
@@ -244,7 +245,7 @@ fn codec_of(
     codec: Option<(ImageCodec, Option<Dictionary>)>,
     original: Option<&Dictionary>,
     header: &mut Header,
-) -> Result<Codec> {
+) -> ReadResult<Codec> {
     let one_bit = header.declared_bits == 1 && header.declared_components == 1;
     Ok(match codec {
         None => Codec::None,
@@ -256,13 +257,13 @@ fn codec_of(
         }
         Some((ImageCodec::CcittFax, params)) => {
             if !one_bit {
-                return Err(Error::syntax("CCITT requires one-bit components"));
+                return Err(Error::syntax("CCITT requires one-bit components").into());
             }
             Codec::Ccitt(params)
         }
         Some((ImageCodec::Jbig2, params)) => {
             if !one_bit {
-                return Err(Error::syntax("JBIG2 requires one-bit components"));
+                return Err(Error::syntax("JBIG2 requires one-bit components").into());
             }
             let globals = match original {
                 Some(original) => dispatch::jbig2_globals(document, original, params.as_ref())?
@@ -299,7 +300,7 @@ fn codec_of(
 /// The checks and entries of finishing a decoded image (Decode,
 /// Interpolate, stencil constraints and masks), the Matte of a soft mask
 /// and the rendering intent.
-fn finish(document: &Document, dict: &Dictionary, header: &mut Header) -> Result<()> {
+fn finish(document: &Document, dict: &Dictionary, header: &mut Header) -> ReadResult<()> {
     let removed = matches!(header.codec, Codec::Jpx(_))
         && dict.get(b"ColorSpace").is_none_or(Value::is_null)
         && !header.stencil();
@@ -314,12 +315,12 @@ fn finish(document: &Document, dict: &Dictionary, header: &mut Header) -> Result
             || dict.get(b"Mask").is_some_and(|v| !v.is_null())
             || dict.get(b"SMask").is_some_and(|v| !v.is_null())
         {
-            return Err(Error::syntax("invalid stencil image dictionary"));
+            return Err(Error::syntax("invalid stencil image dictionary").into());
         }
         let inverted = match header.decode.as_deref() {
             None | Some([0.0, 1.0]) => false,
             Some([1.0, 0.0]) => true,
-            _ => return Err(Error::syntax("invalid stencil Decode")),
+            _ => return Err(Error::syntax("invalid stencil Decode").into()),
         };
         header.kind = ImageKind::Stencil { inverted };
         return Ok(());
@@ -344,13 +345,13 @@ fn finish(document: &Document, dict: &Dictionary, header: &mut Header) -> Result
     Ok(())
 }
 
-fn decode_array(document: &Document, value: &Value, components: u8) -> Result<Vec<f64>> {
+fn decode_array(document: &Document, value: &Value, components: u8) -> ReadResult<Vec<f64>> {
     let decode = document
         .resolve(value)?
         .as_array()
         .ok_or(Error::syntax("Decode must be an array"))?;
     if decode.len() != usize::from(components) * 2 {
-        return Err(Error::syntax("invalid Decode length"));
+        return Err(Error::syntax("invalid Decode length").into());
     }
     decode
         .iter()
@@ -366,7 +367,7 @@ fn decode_array(document: &Document, value: &Value, components: u8) -> Result<Ve
 
 /// The `Matte` of the soft-mask image `object` (11.6.5.3): numbers, whose
 /// count and the mask's dimensions the caller checks against the image.
-fn matte(document: &Document, object: pagura_core::ObjectId) -> Result<Option<Vec<f64>>> {
+fn matte(document: &Document, object: pagura_core::ObjectId) -> ReadResult<Option<Vec<f64>>> {
     let Some(value) = document
         .object(object)?
         .dictionary()
@@ -385,13 +386,13 @@ fn matte(document: &Document, object: pagura_core::ObjectId) -> Result<Option<Ve
                 .as_number()
                 .ok_or(Error::syntax("invalid Matte component"))
         })
-        .collect::<Result<Vec<_>>>()
+        .collect::<ReadResult<Vec<_>>>()
         .map(Some)
 }
 
 /// The image's own `Intent` entry, resolved; a null entry is absent
 /// (7.3.9). Decoding does not interpret it, so it is not validated here.
-fn intent(document: &Document, dict: &Dictionary) -> Result<Option<Value>> {
+fn intent(document: &Document, dict: &Dictionary) -> ReadResult<Option<Value>> {
     Ok(dict
         .get(b"Intent")
         .map(|value| document.resolve(value))

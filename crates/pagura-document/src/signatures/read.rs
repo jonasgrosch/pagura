@@ -53,10 +53,11 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> ReadResult<Signa
                 .allocate::<u8>(field.qualified_name.len(), source)?;
             let parsed = (|| {
                 if widget_counts[index] > 1 {
-                    return Err((source.error(Error::syntax(
-                        "signature field cannot have multiple widgets",
-                    )))
-                    .into());
+                    return Err(source
+                        .error(Error::syntax(
+                            "signature field cannot have multiple widgets",
+                        ))
+                        .into());
                 }
                 let lock = reader
                     .ctx
@@ -143,7 +144,7 @@ fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> 
             break;
         }
     }
-    Err((Error::syntax("signature field lacks a source value")).into())
+    Err(Error::syntax("signature field lacks a source value").into())
 }
 
 impl<'a> Reader<'a> {
@@ -180,9 +181,9 @@ impl<'a> Reader<'a> {
         if transforms::name(d, b"Type", source)?
             .is_some_and(|n| !matches!(n.as_bytes(), b"Sig" | b"DocTimeStamp"))
         {
-            return Err((source
-                .error(Error::syntax("signature Type must be Sig or DocTimeStamp")))
-            .into());
+            return Err(source
+                .error(Error::syntax("signature Type must be Sig or DocTimeStamp"))
+                .into());
         }
         let filter = transforms::name(d, b"Filter", source)?
             .ok_or_else(|| source.error(Error::syntax("signature requires Filter")))?;

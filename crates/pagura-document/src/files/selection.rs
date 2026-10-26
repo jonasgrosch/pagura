@@ -90,7 +90,7 @@ impl Document {
                         })?;
                         self.object_associated_files(dictionary)?
                     }
-                    _ => return Err((Error::invalid_argument("unsupported file scope")).into()),
+                    _ => return Err(Error::invalid_argument("unsupported file scope").into()),
                 };
                 records(
                     self,

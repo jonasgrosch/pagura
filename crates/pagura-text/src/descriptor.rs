@@ -2,6 +2,7 @@
 use crate::{objects::optional, repairs, report::Report};
 use pagura_core::{Diagnostic, Dictionary, ObjectId, Position, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 /// The keys of an embedded font program, in lookup order (Table 124).
 const PROGRAM_KEYS: [&[u8]; 3] = [b"FontFile", b"FontFile2", b"FontFile3"];
@@ -59,7 +60,7 @@ pub(crate) struct Descriptor<'a> {
 impl<'a> Descriptor<'a> {
     /// The `/FontDescriptor` of a simple font or CIDFont. A null value or a
     /// reference to a missing object is absent (7.3.9, 7.3.10).
-    pub(crate) fn of(document: &'a Document, font: &'a Dictionary) -> Result<Option<Self>> {
+    pub(crate) fn of(document: &'a Document, font: &'a Dictionary) -> ReadResult<Option<Self>> {
         let Some(value) = optional(document, font, b"FontDescriptor")? else {
             return Ok(None);
         };
@@ -70,7 +71,7 @@ impl<'a> Descriptor<'a> {
     }
 
     /// `/Flags`, when it is an integer that fits the 32-bit field.
-    pub(crate) fn flags(&self, document: &Document) -> Result<Option<FontFlags>> {
+    pub(crate) fn flags(&self, document: &Document) -> ReadResult<Option<FontFlags>> {
         Ok(optional(document, self.dictionary, b"Flags")?
             .and_then(Value::as_integer)
             .and_then(|value| u32::try_from(value).ok())
@@ -86,7 +87,7 @@ impl<'a> Descriptor<'a> {
         &self,
         document: &Document,
         position: Position,
-    ) -> Result<FontFlags> {
+    ) -> ReadResult<FontFlags> {
         let flags = self.flags(document)?;
         if let Some(flags) = flags.filter(|flags| flags.is_consistent()) {
             return Ok(flags);
@@ -105,7 +106,7 @@ impl<'a> Descriptor<'a> {
     /// The key of the embedded font program, if any. A key whose value is
     /// null or refers to a missing object embeds nothing, so a provider
     /// substitute can still apply.
-    pub(crate) fn program_key(&self, document: &Document) -> Result<Option<&'static [u8]>> {
+    pub(crate) fn program_key(&self, document: &Document) -> ReadResult<Option<&'static [u8]>> {
         for key in PROGRAM_KEYS {
             if optional(document, self.dictionary, key)?.is_some() {
                 return Ok(Some(key));

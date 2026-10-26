@@ -136,7 +136,9 @@ fn dash<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> Read
     if dash.iter().any(|&length| length < 0.0)
         || (!dash.is_empty() && dash.iter().all(|&length| length == 0.0))
     {
-        return Err((source.error(Error::syntax("invalid annotation dash pattern"))).into());
+        return Err(source
+            .error(Error::syntax("invalid annotation dash pattern"))
+            .into());
     }
     Ok(dash)
 }
@@ -178,9 +180,9 @@ fn border<'a>(
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("Border must be an array")))?;
         let ([horizontal, vertical, width] | [horizontal, vertical, width, _]) = values else {
-            return Err(
-                (source.error(Error::syntax("Border requires three or four entries"))).into(),
-            );
+            return Err(source
+                .error(Error::syntax("Border requires three or four entries"))
+                .into());
         };
         for (target, value) in [
             (&mut border.horizontal_radius, horizontal),
@@ -263,7 +265,9 @@ pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> ReadResult<Vec
             source,
         )?;
         let &[x0, y0, x1, y1] = values.as_slice() else {
-            return Err((source.error(Error::syntax("link Rect requires four numbers"))).into());
+            return Err(source
+                .error(Error::syntax("link Rect requires four numbers"))
+                .into());
         };
         let rectangle = Rect::from_corners(x0, y0, x1, y1)
             .ok_or_else(|| source.error(Error::syntax("invalid link rectangle")))?;

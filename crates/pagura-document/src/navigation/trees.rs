@@ -270,10 +270,11 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                         .map(|e| (e.value, e.source)));
                 }
                 _ => {
-                    return Err((source.error(Error::syntax(
-                        "tree node requires exactly one of Kids and entries",
-                    )))
-                    .into());
+                    return Err(source
+                        .error(Error::syntax(
+                            "tree node requires exactly one of Kids and entries",
+                        ))
+                        .into());
                 }
             }
         }
@@ -293,7 +294,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("tree entries must be an array")))?;
         if values.len() % 2 != 0 {
-            return Err((source.error(Error::syntax("tree has an unmatched key"))).into());
+            return Err(source
+                .error(Error::syntax("tree has an unmatched key"))
+                .into());
         }
         context.allocate::<Entry<'a, K>>(values.len() / 2, source)?;
         let entries: Vec<_> = values
@@ -378,9 +381,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 )?;
             }
             if pairs.is_none() && kids.is_none() {
-                return Err(
-                    (source.error(Error::syntax("tree node requires Kids or entries"))).into(),
-                );
+                return Err(source
+                    .error(Error::syntax("tree node requires Kids or entries"))
+                    .into());
             }
             if let Some(pairs) = pairs {
                 let pairs = Self::pairs(context, pairs, source)?;

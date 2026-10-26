@@ -8,6 +8,7 @@ use crate::{
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Meter, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use std::collections::BTreeMap;
 
 /// Glyph-space units per text-space unit for every font type except Type 3
@@ -71,7 +72,7 @@ impl Metrics {
         font: &Dictionary,
         descriptor: Option<&Dictionary>,
         scale: f64,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         let missing =
             descriptor.map_or(Ok(0.0), |d| number(document, d, b"MissingWidth", 0.0))? * scale;
         let value = optional(document, font, b"Widths")?
@@ -109,11 +110,11 @@ impl Metrics {
     }
 
     /// `/DW`, `/W`, `/DW2` and `/W2` of a CIDFont (9.7.4.3).
-    pub(crate) fn composite(document: &Document, font: &Dictionary) -> Result<Self> {
+    pub(crate) fn composite(document: &Document, font: &Dictionary) -> ReadResult<Self> {
         let missing = number(document, font, b"DW", 1000.0)? * GLYPH_SPACE_UNITS;
         let default_vertical = if let Some(value) = optional(document, font, b"DW2")? {
             let [origin, advance] = array(value)? else {
-                return Err(Error::syntax("DW2 must contain two numbers"));
+                return Err(Error::syntax("DW2 must contain two numbers").into());
             };
             [
                 scaled(document, origin, GLYPH_SPACE_UNITS)?,
@@ -291,8 +292,8 @@ fn read_runs<T: Copy>(
     entries: &[Value],
     stride: usize,
     budget: &mut Budget,
-    parse: impl Fn(&[Value]) -> Result<T>,
-) -> Result<Runs<T>> {
+    parse: impl Fn(&[Value]) -> ReadResult<T>,
+) -> ReadResult<Runs<T>> {
     let mut runs = Runs::default();
     let mut entries = entries.iter();
     while let Some(value) = entries.next() {
@@ -304,7 +305,7 @@ fn read_runs<T: Copy>(
         )?;
         if let Some(values) = value.as_array() {
             if values.len() % stride != 0 {
-                return Err(Error::syntax("incomplete vertical metric triple"));
+                return Err(Error::syntax("incomplete vertical metric triple").into());
             }
             let count = values.len() / stride;
             let Some(last) = count
@@ -319,21 +320,21 @@ fn read_runs<T: Copy>(
             let parsed = values
                 .chunks_exact(stride)
                 .map(&parse)
-                .collect::<Result<Box<[T]>>>()?;
+                .collect::<ReadResult<Box<[T]>>>()?;
             runs.insert(first, last, &RunValues::Each(parsed), budget)?;
         } else {
             let last = cid(document, value)?;
             if last < first {
-                return Err(Error::syntax("reversed CID metric range"));
+                return Err(Error::syntax("reversed CID metric range").into());
             }
             let group: Vec<&Value> = entries.by_ref().take(stride).collect();
             if group.len() != stride {
-                return Err(Error::syntax("truncated CID metric range"));
+                return Err(Error::syntax("truncated CID metric range").into());
             }
             let group: Vec<Value> = group
                 .into_iter()
                 .map(|value| document.resolve(value).cloned())
-                .collect::<Result<_>>()?;
+                .collect::<ReadResult<_>>()?;
             budget.work.charge(stride)?;
             runs.insert(first, last, &RunValues::Constant(parse(&group)?), budget)?;
         }
@@ -341,7 +342,7 @@ fn read_runs<T: Copy>(
     Ok(runs)
 }
 
-fn cid(document: &Document, value: &Value) -> Result<Cid> {
+fn cid(document: &Document, value: &Value) -> ReadResult<Cid> {
     document
         .resolve(value)?
         .as_integer()
@@ -349,14 +350,14 @@ fn cid(document: &Document, value: &Value) -> Result<Cid> {
         .ok_or(Error::syntax("CID outside 16-bit range"))
 }
 
-fn scaled(document: &Document, value: &Value, scale: f64) -> Result<f64> {
+fn scaled(document: &Document, value: &Value, scale: f64) -> ReadResult<f64> {
     let width = document
         .resolve(value)?
         .as_number()
         .ok_or(Error::syntax("font metric is not a finite number"))?
         * scale;
     if !width.is_finite() {
-        return Err(Error::syntax("font metric overflow"));
+        return Err(Error::syntax("font metric overflow").into());
     }
     Ok(width)
 }

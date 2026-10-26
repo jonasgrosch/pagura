@@ -101,11 +101,10 @@ fn detect(document: &Document, key: &FileKey) -> ReadResult<Option<ObjectId>> {
                     &mut diagnostics,
                 )?;
                 if contents.retained_bytes() > document.limits().document_bytes {
-                    return Err((Error::limit(
-                        "key recovery object stream exceeds retained budget",
-                    )
-                    .in_object(id))
-                    .into());
+                    return Err(
+                        Error::limit("key recovery object stream exceeds retained budget")
+                            .in_object(id),
+                    );
                 }
                 let indexes: std::collections::BTreeMap<_, _> = contents.identities().collect();
                 let mut witness = false;

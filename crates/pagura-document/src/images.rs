@@ -108,7 +108,9 @@ impl Document {
             return Ok(None);
         };
         if value.as_reference().is_none() {
-            return Err((source.error(Error::syntax("Thumb must reference a stream"))).into());
+            return Err(source
+                .error(Error::syntax("Thumb must reference a stream"))
+                .into());
         }
         let (_, location) = context.resolve(value, source)?;
         let id = location
@@ -195,7 +197,9 @@ fn asset<'a>(
             .and_then(Value::as_name)
             .is_none_or(|name| name != b"Image")
     {
-        return Err((source.error(Error::syntax("image asset Subtype must be Image"))).into());
+        return Err(source
+            .error(Error::syntax("image asset Subtype must be Image"))
+            .into());
     }
     let mut dimension = |key| -> ReadResult<u32> {
         Ok(context

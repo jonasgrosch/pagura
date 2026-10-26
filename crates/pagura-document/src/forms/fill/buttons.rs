@@ -70,7 +70,7 @@ pub(super) fn validate(
         let on = selected.is_some_and(|(chosen, _)| chosen == ordinal)
             || (selection == Selection::Unison
                 && selected.is_some()
-                && supports(filler, widget, ordinal, exports, &name)?);
+                && supports(filler, widget, ordinal, exports, &name));
         let state = if on { name.clone() } else { Name::new(b"Off") };
         budget.charge(state.len())?;
         states.push(WidgetState {
@@ -117,8 +117,7 @@ fn on_state(
     requested: Option<&Name>,
 ) -> Result<Name> {
     if let Some(requested) = requested {
-        if requested.as_bytes() != b"Off" && supports(filler, widget, ordinal, exports, requested)?
-        {
+        if requested.as_bytes() != b"Off" && supports(filler, widget, ordinal, exports, requested) {
             return Ok(requested.clone());
         }
         return Err(Error::invalid_argument(
@@ -141,9 +140,9 @@ fn supports(
     ordinal: usize,
     exports: &[String],
     state: &Name,
-) -> Result<bool> {
-    Ok(widget.on_states.contains(&state)
-        || (!widget.has_appearance && fallback(filler, widget, ordinal, exports) == *state))
+) -> bool {
+    widget.on_states.contains(&state)
+        || (!widget.has_appearance && fallback(filler, widget, ordinal, exports) == *state)
 }
 
 /// The chosen widget's ordinal and requested state, or `None` for Off.
@@ -175,7 +174,7 @@ fn select<'a>(
     for (ordinal, &(_, widget)) in widgets.iter().enumerate() {
         let matches = match input {
             ButtonValue::Export(export) => exports.get(ordinal).is_some_and(|e| e == export),
-            ButtonValue::State(name) => supports(filler, widget, ordinal, exports, name)?,
+            ButtonValue::State(name) => supports(filler, widget, ordinal, exports, name),
             _ => false,
         };
         if !matches {

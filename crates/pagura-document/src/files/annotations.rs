@@ -67,16 +67,18 @@ impl Page {
         for (index, value) in values.iter().enumerate() {
             context.step(0, source)?;
             if !matches!(value, Value::Reference(_)) {
-                return Err((source.error(Error::syntax("annotation must be indirect"))).into());
+                return Err(source
+                    .error(Error::syntax("annotation must be indirect"))
+                    .into());
             }
             let (dictionary, source) = context.dictionary(value, source)?;
             let object = source
                 .object
                 .ok_or_else(|| source.error(Error::syntax("annotation identity is absent")))?;
             if document.object(object)?.is_stream() {
-                return Err(
-                    (source.error(Error::syntax("annotation must not be a stream"))).into(),
-                );
+                return Err(source
+                    .error(Error::syntax("annotation must not be a stream"))
+                    .into());
             }
             let subtype = read::name(&mut context, dictionary, b"Subtype", source)?
                 .ok_or_else(|| source.error(Error::syntax("annotation Subtype is absent")))?;
@@ -113,7 +115,9 @@ fn rectangle<'a>(
         .as_array()
         .ok_or_else(|| source.error(Error::syntax("annotation Rect must be an array")))?;
     let [x0, y0, x1, y1] = values else {
-        return Err((source.error(Error::syntax("annotation Rect requires four numbers"))).into());
+        return Err(source
+            .error(Error::syntax("annotation Rect requires four numbers"))
+            .into());
     };
     let mut coordinate = |value| {
         context

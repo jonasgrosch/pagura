@@ -34,7 +34,9 @@ pub(crate) fn raw(document: &Document, object: &IndirectObject) -> ReadResult<By
         .stream_range()
         .ok_or_else(|| Error::syntax("object is not a stream").in_object(object.id()))?;
     if range.end > document.bytes.len() {
-        return Err((Error::syntax("stream lies outside the file").in_object(object.id())).into());
+        return Err(Error::syntax("stream lies outside the file")
+            .in_object(object.id())
+            .into());
     }
     Ok(document.bytes.lease(ByteRange::new(
         usize_to_u64(range.start),
@@ -159,11 +161,11 @@ impl Document {
             .dictionary()
             .ok_or_else(|| Error::syntax("stream has no dictionary").in_object(id))?;
         if dictionary.contains_key(b"F") {
-            return Err((Error::unsupported(
+            return Err(Error::unsupported(
                 features::EXTERNAL_STREAM,
                 "external stream data is not supported",
             )
-            .in_object(id))
+            .in_object(id)
             .into());
         }
         let filter = dictionary
@@ -195,7 +197,8 @@ fn decrypt(
         .any(|filter| matches!(filter, Filter::Crypt(_)))
     {
         return Err(
-            (Error::syntax("Crypt must be the first and only Crypt filter").in_object(object.id()))
+            Error::syntax("Crypt must be the first and only Crypt filter")
+                .in_object(object.id())
                 .into(),
         );
     }
@@ -205,9 +208,9 @@ fn decrypt(
             .is_some_and(|name| name.as_bytes() != b"Identity")
         {
             return Err(
-                (Error::syntax("Crypt filter requires an encryption dictionary")
-                    .in_object(object.id()))
-                .into(),
+                Error::syntax("Crypt filter requires an encryption dictionary")
+                    .in_object(object.id())
+                    .into(),
             );
         }
         return Ok(raw.into());
@@ -217,9 +220,9 @@ fn decrypt(
         .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
     if dictionary.is_name(b"Type", b"XRef") && !object.is_direct() {
         if explicit.is_some() {
-            return Err(
-                (Error::syntax("xref streams cannot be encrypted").in_object(object.id())).into(),
-            );
+            return Err(Error::syntax("xref streams cannot be encrypted")
+                .in_object(object.id())
+                .into());
         }
         return Ok(raw.into());
     }

@@ -151,12 +151,12 @@ pub(crate) fn read(document: &Document) -> ReadResult<(Vec<Page>, Reservation<'_
             .as_slice()
             .iter()
             .any(|item| item.repair() == Some(repairs::PAGE_CYCLE));
-        return Err((if cyclic {
+        return Err(if cyclic {
             Error::cycle("cyclic page tree contains no usable leaves")
         } else {
             Error::syntax("damaged page tree contains no usable leaves")
         }
-        .in_object(root))
+        .in_object(root)
         .into());
     }
     document.report(walk.diagnostics.take());
@@ -250,7 +250,9 @@ impl<'a> Walk<'a> {
         source_path: &[PathComponent],
     ) -> ReadResult<()> {
         if depth > self.document.limits().depth {
-            return Err((Error::limit("page tree depth budget exceeded").in_object(id)).into());
+            return Err(Error::limit("page tree depth budget exceeded")
+                .in_object(id)
+                .into());
         }
         self.work.charge(1).map_err(|error| error.in_object(id))?;
         if dictionary
@@ -275,7 +277,9 @@ impl<'a> Walk<'a> {
             NodeKind::Branch => self.intermediate(id, dictionary, inherited, depth, source_path),
             NodeKind::Leaf => {
                 if self.pages.len() >= self.document.limits().pages {
-                    return Err((Error::limit("page count budget exceeded").in_object(id)).into());
+                    return Err(Error::limit("page count budget exceeded")
+                        .in_object(id)
+                        .into());
                 }
                 let page = self.leaf(id, dictionary, inherited, source_path)?;
                 self.pages.push(page);
@@ -311,9 +315,9 @@ impl<'a> Walk<'a> {
             return Ok(NodeKind::Leaf);
         }
         if dictionary.contains_key(b"Type") {
-            return Err(
-                (Error::syntax("page tree node Type must be Pages or Page").in_object(id)).into(),
-            );
+            return Err(Error::syntax("page tree node Type must be Pages or Page")
+                .in_object(id)
+                .into());
         }
         // Leaf evidence comes from the node itself: an inherited MediaBox
         // would make every untyped, childless node look like a page.
@@ -327,9 +331,9 @@ impl<'a> Walk<'a> {
         } else if leaf {
             NodeKind::Leaf
         } else {
-            return Err(
-                (Error::syntax("page tree node has no identifiable Type").in_object(id)).into(),
-            );
+            return Err(Error::syntax("page tree node has no identifiable Type")
+                .in_object(id)
+                .into());
         };
         self.diagnostics.repair(
             Diagnostic::new(
@@ -440,16 +444,16 @@ impl<'a> Walk<'a> {
         source_path: &[PathComponent],
     ) -> ReadResult<()> {
         if !source_path.is_empty() {
-            return Err((Error::syntax("direct Pages dictionary has no usable Kids")
-                .in_object(id))
-            .into());
+            return Err(Error::syntax("direct Pages dictionary has no usable Kids")
+                .in_object(id)
+                .into());
         }
         let kids = self.backlinks(id)?.to_vec();
         if kids.is_empty() {
             return Err(
-                (Error::syntax("Pages node has no Kids or explicit Parent backlinks")
-                    .in_object(id))
-                .into(),
+                Error::syntax("Pages node has no Kids or explicit Parent backlinks")
+                    .in_object(id)
+                    .into(),
             );
         }
         self.diagnostics.repair(
@@ -484,7 +488,9 @@ impl<'a> Walk<'a> {
             kids = Some(self.document.object(*reference)?.value());
         }
         if kids.is_some_and(|value| matches!(value, Value::Reference(_))) {
-            return Err((Error::limit("Kids reference chain too long").in_object(id)).into());
+            return Err(Error::limit("Kids reference chain too long")
+                .in_object(id)
+                .into());
         }
         Ok((kids, owner))
     }
@@ -539,9 +545,9 @@ impl<'a> Walk<'a> {
             Some(Value::Dictionary(resources)) => Some(resources),
             None | Some(Value::Null) => None,
             _ => {
-                return Err(
-                    (Error::syntax("Resources must be a dictionary").in_object(page)).into(),
-                );
+                return Err(Error::syntax("Resources must be a dictionary")
+                    .in_object(page)
+                    .into());
             }
         };
         let resources =
@@ -581,9 +587,9 @@ impl<'a> Walk<'a> {
                     .number(value)
                     .map_err(|error| error.in_object(id))?;
                 if unit <= 0.0 {
-                    return Err((Error::syntax("UserUnit must be a positive number")
-                        .in_object(id))
-                    .into());
+                    return Err(Error::syntax("UserUnit must be a positive number")
+                        .in_object(id)
+                        .into());
                 }
                 unit
             }

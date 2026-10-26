@@ -1,13 +1,14 @@
 //! Dictionary/filter consistency (8.9.5.1 Table 87 and 8.9.7 Table 92).
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Position, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 pub(crate) fn validate(
     document: &Document,
     dict: &Dictionary,
     inline: bool,
     diagnostics: &mut Diagnostics,
-) -> Result<()> {
+) -> ReadResult<()> {
     let filter = dict
         .get(b"Filter")
         .map(|v| document.resolve(v))
@@ -49,9 +50,7 @@ pub(crate) fn validate(
         .is_some_and(|n| matches!(n.as_bytes(), b"RunLengthDecode" | b"RL"))
         && super::parameters::integer(dict, b"BitsPerComponent", 0)? != 8
     {
-        return Err(Error::syntax(
-            "RunLength images require eight-bit components",
-        ));
+        return Err(Error::syntax("RunLength images require eight-bit components").into());
     }
     Ok(())
 }

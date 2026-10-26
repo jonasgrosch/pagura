@@ -95,7 +95,7 @@ impl Document {
     /// interpreting labels and enforcing string/result budgets.
     pub fn page_label(&self, index: usize) -> ReadResult<String> {
         if index >= self.page_count()? {
-            return Err((Error::invalid_argument("page label index outside document")).into());
+            return Err(Error::invalid_argument("page label index outside document").into());
         }
         Ok(self.page_labels()?.label(index)?)
     }

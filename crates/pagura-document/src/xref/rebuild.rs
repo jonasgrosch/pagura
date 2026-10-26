@@ -390,10 +390,10 @@ pub(crate) fn object_streams(
         let physical = plan.physical_offset(document, id)?;
         for (number, index) in contents.identities() {
             if number == id.number || encrypt.is_some_and(|encrypt| encrypt.number == number) {
-                return Err((Error::syntax(
+                return Err(Error::syntax(
                     "object stream cannot contain itself or the encryption dictionary",
                 )
-                .in_object(id))
+                .in_object(id)
                 .into());
             }
             let old = plan.slot(document, number);

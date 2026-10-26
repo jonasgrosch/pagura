@@ -91,9 +91,9 @@ pub(super) fn specification<'a>(
     if let Some(id) = result.object
         && context.document.object(id)?.is_stream()
     {
-        return Err(
-            (source.error(Error::syntax("file specification must not be a stream"))).into(),
-        );
+        return Err(source
+            .error(Error::syntax("file specification must not be a stream"))
+            .into());
     }
     let dictionary = value.as_dictionary().ok_or_else(|| {
         source.error(Error::syntax(
@@ -113,10 +113,11 @@ pub(super) fn specification<'a>(
         && result.names.mac.is_none()
         && result.names.unix.is_none()
     {
-        return Err((source.error(Error::syntax(
-            "file specification requires F or a legacy path",
-        )))
-        .into());
+        return Err(source
+            .error(Error::syntax(
+                "file specification requires F or a legacy path",
+            ))
+            .into());
     }
     result.file_system = name(context, dictionary, b"FS", source)?;
     result.description = text(context, dictionary, b"Desc", source)?;
@@ -124,7 +125,9 @@ pub(super) fn specification<'a>(
         None => false,
         Some((Value::Boolean(flag), _)) => *flag,
         Some((_, source)) => {
-            return Err((source.error(Error::syntax("file volatility must be boolean"))).into());
+            return Err(source
+                .error(Error::syntax("file volatility must be boolean"))
+                .into());
         }
     };
     result.identifiers = identifiers(context, dictionary, source)?;
@@ -138,16 +141,18 @@ pub(super) fn specification<'a>(
         || context.present(dictionary, b"EP", source)?.is_some())
         && name(context, dictionary, b"Type", source)?.is_none()
     {
-        return Err((source.error(Error::syntax(
-            "embedded file specification requires Type Filespec",
-        )))
-        .into());
+        return Err(source
+            .error(Error::syntax(
+                "embedded file specification requires Type Filespec",
+            ))
+            .into());
     }
     if (embedded.is_some() || related.is_some()) && !indirect {
-        return Err((source.error(Error::syntax(
-            "embedded file specification must be indirect",
-        )))
-        .into());
+        return Err(source
+            .error(Error::syntax(
+                "embedded file specification must be indirect",
+            ))
+            .into());
     }
     if let Some(embedded) = embedded {
         let (embedded, location) = context.dictionary(embedded, source)?;
@@ -157,7 +162,9 @@ pub(super) fn specification<'a>(
             result.related = stream::related(context, embedded, related, location)?;
         }
     } else if related.is_some() {
-        return Err((source.error(Error::syntax("related files require EF"))).into());
+        return Err(source
+            .error(Error::syntax("related files require EF"))
+            .into());
     }
     Ok(result)
 }
@@ -171,7 +178,9 @@ fn identifiers<'a>(
         return Ok(None);
     };
     let Some([first, second]) = value.as_array() else {
-        return Err((source.error(Error::syntax("file ID requires two strings"))).into());
+        return Err(source
+            .error(Error::syntax("file ID requires two strings"))
+            .into());
     };
     let (first, first_source) = context.resolve(first, source)?;
     let (second, second_source) = context.resolve(second, source)?;

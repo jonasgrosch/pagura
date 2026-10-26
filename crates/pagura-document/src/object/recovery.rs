@@ -72,10 +72,10 @@ pub(crate) fn end<M: ParseMode>(
             .in_object(id),
         )?);
     }
-    Err((Error::syntax("missing endobj")
+    Err(Error::syntax("missing endobj")
         .at(parser.position())
-        .in_object(id))
-    .into())
+        .in_object(id)
+        .into())
 }
 
 /// Recognize a positive indirect-object identity at a token boundary (7.3.10).
@@ -115,10 +115,10 @@ pub(super) fn stream_extent(
             .get(start..end)
             .is_some_and(|data| data.windows(ENDOBJ.len()).any(|part| part == ENDOBJ))
         {
-            return Err((Error::syntax("stream Length crosses an object boundary")
+            return Err(Error::syntax("stream Length crosses an object boundary")
                 .at(parser.position())
-                .in_object(id))
-            .into());
+                .in_object(id)
+                .into());
         }
     }
     let (marker, actual) = terminator(document, id, start, context)?;
@@ -132,7 +132,7 @@ pub(super) fn stream_extent(
     )?;
     parser.seek(marker)?;
     if !parser.keyword(ENDSTREAM) {
-        return Err((Error::syntax("missing endstream").in_object(id)).into());
+        return Err(Error::syntax("missing endstream").in_object(id).into());
     }
     Ok(start..actual)
 }
@@ -158,14 +158,14 @@ fn stream_length(
             Value::Integer(length) => break *length,
             Value::Reference(reference) => {
                 if visited.contains(reference) {
-                    return Err((Error::cycle("indirect stream Length cycle")
-                        .in_object(*reference))
-                    .into());
+                    return Err(Error::cycle("indirect stream Length cycle")
+                        .in_object(*reference)
+                        .into());
                 }
                 if visited.len() >= document.limits().depth {
-                    return Err((Error::limit("indirect stream Length depth exceeded")
-                        .in_object(*reference))
-                    .into());
+                    return Err(Error::limit("indirect stream Length depth exceeded")
+                        .in_object(*reference)
+                        .into());
                 }
                 if object_stream
                     && document
@@ -173,9 +173,9 @@ fn stream_length(
                         .get(reference)
                         .is_some_and(|slot| matches!(slot.location, Location::Compressed { .. }))
                 {
-                    return Err((Error::syntax("object stream Length cannot be compressed")
-                        .in_object(id))
-                    .into());
+                    return Err(Error::syntax("object stream Length cannot be compressed")
+                        .in_object(id)
+                        .into());
                 }
                 visited.push(*reference);
                 value = match document.object_inner(*reference, path) {
@@ -199,7 +199,9 @@ fn stream_length(
         return Ok(None);
     };
     if length > document.limits().stream_bytes {
-        return Err((Error::limit("stream size budget exceeded").in_object(id)).into());
+        return Err(Error::limit("stream size budget exceeded")
+            .in_object(id)
+            .into());
     }
     Ok(Some(length))
 }

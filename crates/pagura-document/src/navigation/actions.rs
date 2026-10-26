@@ -102,7 +102,9 @@ fn boolean<'a>(
     match context.entry(dictionary, key, source)? {
         None => Ok(None),
         Some(Value::Boolean(flag)) => Ok(Some(*flag)),
-        Some(_) => Err((source.error(Error::syntax("action flag must be boolean"))).into()),
+        Some(_) => Err(source
+            .error(Error::syntax("action flag must be boolean"))
+            .into()),
     }
 }
 
@@ -111,7 +113,9 @@ fn file<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> Read
     if matches!(v, Value::String(_) | Value::Dictionary(_)) {
         Ok(v)
     } else {
-        Err((source.error(Error::syntax("invalid action file specification"))).into())
+        Err(source
+            .error(Error::syntax("invalid action file specification"))
+            .into())
     }
 }
 
@@ -201,9 +205,9 @@ fn kind<'a>(
                 })?;
                 let object = context.document.object(id)?;
                 if object.stream_range().is_none() || identity(object.value()) != identity(script) {
-                    return Err(
-                        (source.error(Error::syntax("script must be a string or stream"))).into(),
-                    );
+                    return Err(source
+                        .error(Error::syntax("script must be a string or stream"))
+                        .into());
                 }
                 Script::Stream(object)
             };
@@ -316,10 +320,11 @@ fn parse_launch<'a>(
             platform |= context.present(dictionary, key, source)?.is_some();
         }
         if !platform {
-            return Err((source.error(Error::syntax(
-                "Launch requires a file or platform parameters",
-            )))
-            .into());
+            return Err(source
+                .error(Error::syntax(
+                    "Launch requires a file or platform parameters",
+                ))
+                .into());
         }
     }
     Ok(ActionKind::Launch {

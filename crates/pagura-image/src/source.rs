@@ -12,6 +12,7 @@ use header::{Codec, Header};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Recovery, Result, Value,
 };
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, IndirectObject, StreamData};
 use std::sync::Arc;
 
@@ -214,18 +215,19 @@ impl ImageSource {
     /// Returns `Syntax` for a malformed dictionary, `Unsupported` for
     /// unsupported codecs or features, and a `Limit` error for an image
     /// beyond `document.limits()`.
-    pub fn from_xobject(document: &Document, image: &IndirectObject) -> Result<Self> {
+    pub fn from_xobject(document: &Document, image: &IndirectObject) -> ReadResult<Self> {
         let mut diagnostics = Diagnostics::new(document.recovery());
         let origin = image.source().position();
         let id = image.id();
         let result = header::xobject(document, image, &mut diagnostics);
+        let (header, data) =
+            result.map_err(|fault| fault.map_error(|error| place_error(error, id, origin)))?;
         document.report(
             diagnostics
                 .take()
                 .into_iter()
                 .map(|diagnostic| place_diagnostic(diagnostic, id, origin)),
         );
-        let (header, data) = result.map_err(|error| place_error(error, id, origin))?;
         Ok(Self {
             id: ImageId::Object(id),
             origin: Some(origin),
@@ -248,11 +250,11 @@ impl ImageSource {
         dictionary: &Dictionary,
         data: &[u8],
         id: ImageId,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         let mut diagnostics = Diagnostics::new(document.recovery());
         let result = header::inline(document, resources, dictionary, data, &mut diagnostics);
-        document.report(diagnostics.take());
         let (header, data) = result.map_err(|error| error.at(Position::Buffer(0)))?;
+        document.report(diagnostics.take());
         Ok(Self {
             id,
             origin: None,

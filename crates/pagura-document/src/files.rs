@@ -139,9 +139,9 @@ fn associated<'a>(
         context.step(0, source)?;
         let specification = read::specification(context, value, source)?;
         if specification.source.as_dictionary().is_none() {
-            return Err(
-                (source.error(Error::syntax("associated file requires a dictionary"))).into(),
-            );
+            return Err(source
+                .error(Error::syntax("associated file requires a dictionary"))
+                .into());
         }
         files.push(specification);
     }

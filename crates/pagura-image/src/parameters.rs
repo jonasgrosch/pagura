@@ -2,12 +2,13 @@
 use crate::Samples;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 pub(crate) fn resolved_dictionary(
     document: &Document,
     dict: &Dictionary,
     diagnostics: &mut Diagnostics,
-) -> Result<Dictionary> {
+) -> ReadResult<Dictionary> {
     let stencil = stencil_space(document, dict, diagnostics)?;
     let filter = dict
         .get(b"Filter")
@@ -51,18 +52,14 @@ pub(crate) fn stencil_space(
     document: &Document,
     dict: &Dictionary,
     diagnostics: &mut Diagnostics,
-) -> Result<bool> {
+) -> ReadResult<bool> {
     let stencil = dict
         .get(b"ImageMask")
         .map(|v| document.resolve(v))
         .transpose()?
         .and_then(Value::as_bool)
         == Some(true);
-    if stencil
-        && dict
-            .get(b"ColorSpace")
-            .is_some_and(|v| !document.resolve(v).is_ok_and(Value::is_null))
-    {
+    if stencil && document.optional(dict, b"ColorSpace")?.is_some() {
         diagnostics.repair(
             Diagnostic::new(
                 crate::tags::STENCIL_COLOR_SPACE,
@@ -159,7 +156,7 @@ pub(crate) fn components(space: &Value) -> Result<u8> {
     }
 }
 
-pub(crate) fn resolve_space(document: &Document, space: &Value) -> Result<(Value, u8)> {
+pub(crate) fn resolve_space(document: &Document, space: &Value) -> ReadResult<(Value, u8)> {
     let space = document.resolve(space)?;
     if let Some(array) = space.as_array() {
         let family = array

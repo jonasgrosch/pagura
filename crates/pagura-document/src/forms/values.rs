@@ -101,9 +101,9 @@ fn options<'a>(
             let (v, source) = context.resolve(v, entry.source)?;
             let (export, display) = if let Value::Array(pair) = v {
                 let [export, display] = pair.as_slice() else {
-                    return Err((source
-                        .error(Error::syntax("choice option pair requires two strings")))
-                    .into());
+                    return Err(source
+                        .error(Error::syntax("choice option pair requires two strings"))
+                        .into());
                 };
                 (
                     attributes::string(context, export, source)?,
@@ -167,7 +167,9 @@ fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> ReadR
         })?;
     let bytes = context.document.stream_data(object)?;
     if bytes.len() > context.document.limits().string_bytes {
-        return Err((source.error(Error::limit("form text stream exceeds string budget"))).into());
+        return Err(source
+            .error(Error::limit("form text stream exceeds string budget"))
+            .into());
     }
     context.allocate::<u8>(bytes.len(), source)?;
     Ok(context.text(&bytes, source)?)
@@ -177,7 +179,7 @@ pub(super) fn field_type<'a>(
     context: &mut Context<'a>,
     effective: &Inherited<'a>,
 ) -> ReadResult<Option<&'a Name>> {
-    Ok(effective
+    effective
         .get(Key::Ft)
         .map(|e| {
             let (value, source) = context.resolve(e.value, e.source)?;
@@ -185,5 +187,5 @@ pub(super) fn field_type<'a>(
                 .as_name()
                 .ok_or_else(|| source.fault(Error::syntax("form FT must be a name")))
         })
-        .transpose()?)
+        .transpose()
 }

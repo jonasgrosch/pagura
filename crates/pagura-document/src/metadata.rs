@@ -108,7 +108,11 @@ impl Document {
                 Some(b"True") => Trapped::True,
                 Some(b"False") => Trapped::False,
                 Some(b"Unknown") => Trapped::Unknown,
-                _ => return Err((source.error(Error::syntax("invalid Info Trapped name"))).into()),
+                _ => {
+                    return Err(source
+                        .error(Error::syntax("invalid Info Trapped name"))
+                        .into());
+                }
             },
         };
         Ok(Some(DocumentInfo {
@@ -215,9 +219,9 @@ fn metadata<'a>(
                     .is_some_and(|name| name.as_bytes() == expected)
             })
         {
-            return Err(
-                (location.error(Error::syntax("invalid metadata stream Type or Subtype"))).into(),
-            );
+            return Err(location
+                .error(Error::syntax("invalid metadata stream Type or Subtype"))
+                .into());
         }
     }
     context.allocate::<MetadataStream<'_>>(1, location)?;

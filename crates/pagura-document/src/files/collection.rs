@@ -155,7 +155,11 @@ impl Document {
                 context.dictionary(navigator, source)?;
                 CollectionView::Navigator
             }
-            _ => return Err((source.error(Error::syntax("invalid collection View"))).into()),
+            _ => {
+                return Err(source
+                    .error(Error::syntax("invalid collection View"))
+                    .into());
+            }
         };
         // Table 153 explicitly treats a non-string D as absent.
         let initial_file = context
@@ -204,9 +208,9 @@ fn schema<'a>(
             Some(b"Size") => CollectionFieldKind::Size,
             Some(b"CompressedSize") => CollectionFieldKind::CompressedSize,
             _ => {
-                return Err(
-                    (source.error(Error::syntax("invalid collection field Subtype"))).into(),
-                );
+                return Err(source
+                    .error(Error::syntax("invalid collection field Subtype"))
+                    .into());
             }
         };
         let name = read::text(context, dictionary, b"N", source)?
@@ -263,17 +267,18 @@ fn sort<'a>(
         Value::Array(values) => values.as_slice(),
         Value::Name(_) => std::slice::from_ref(keys),
         _ => {
-            return Err(
-                (source.error(Error::syntax("collection sort requires name or array"))).into(),
-            );
+            return Err(source
+                .error(Error::syntax("collection sort requires name or array"))
+                .into());
         }
     };
     let directions = context.entry(dictionary, b"A", source)?;
     if directions.is_some_and(|value| !matches!(value, Value::Boolean(_) | Value::Array(_))) {
-        return Err((source.error(Error::syntax(
-            "collection sort direction must be boolean or array",
-        )))
-        .into());
+        return Err(source
+            .error(Error::syntax(
+                "collection sort direction must be boolean or array",
+            ))
+            .into());
     }
     context.allocate::<CollectionSort<'_>>(keys.len(), source)?;
     let mut result = Vec::new();
@@ -294,9 +299,9 @@ fn sort<'a>(
             None | Some((Value::Null, _)) => true,
             Some((Value::Boolean(value), _)) => *value,
             _ => {
-                return Err((source
-                    .error(Error::syntax("collection sort direction must be boolean")))
-                .into());
+                return Err(source
+                    .error(Error::syntax("collection sort direction must be boolean"))
+                    .into());
             }
         };
         result.push(CollectionSort { key, ascending });
@@ -337,10 +342,11 @@ pub(super) fn items<'a>(
             Some(Value::Integer(value)) => Some(CollectionValue::Integer(*value)),
             Some(Value::Real(value)) if value.is_finite() => Some(CollectionValue::Real(*value)),
             _ => {
-                return Err((source.error(Error::syntax(
-                    "collection item requires text, date or finite number",
-                )))
-                .into());
+                return Err(source
+                    .error(Error::syntax(
+                        "collection item requires text, date or finite number",
+                    ))
+                    .into());
             }
         };
         result.push(CollectionItem { key, value, prefix });

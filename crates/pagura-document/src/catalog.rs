@@ -53,7 +53,7 @@ pub(crate) fn validate(document: &Document) -> ReadResult<()> {
         return Ok(());
     }
     if !candidate(document, dictionary)? {
-        return Err((Error::syntax("document Root is not a Catalog")).into());
+        return Err(Error::syntax("document Root is not a Catalog").into());
     }
     let mut diagnostic = if dictionary.contains_key(b"Type") {
         Diagnostic::new(

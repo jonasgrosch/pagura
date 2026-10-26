@@ -2,6 +2,7 @@
 use crate::{GlyphText, repairs, report::Report, tables};
 use pagura_core::{Diagnostic, Dictionary, Error, Limits, Meter, Name, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 pub(crate) type Encoding = [Option<Name>; 256];
 
@@ -52,7 +53,7 @@ impl SimpleMapping {
     }
 }
 
-pub(crate) fn font_name<'a>(document: &'a Document, font: &'a Dictionary) -> Result<&'a [u8]> {
+pub(crate) fn font_name<'a>(document: &'a Document, font: &'a Dictionary) -> ReadResult<&'a [u8]> {
     Ok(crate::objects::optional(document, font, b"BaseFont")?
         .and_then(Value::as_name)
         .map_or(b"", Name::as_bytes))
@@ -146,7 +147,7 @@ pub(crate) fn load(
     document: &Document,
     value: Option<&Value>,
     default: Encoding,
-) -> Result<Encoding> {
+) -> ReadResult<Encoding> {
     let Some(value) = value else {
         return Ok(default);
     };
@@ -185,7 +186,7 @@ pub(crate) fn load(
                 *slot = Some(name.clone());
                 code = code.map(|code| code + 1);
             } else {
-                return Err(Error::syntax("invalid Differences element"));
+                return Err(Error::syntax("invalid Differences element").into());
             }
         }
     }

@@ -155,9 +155,9 @@ fn appearance<'a>(
         for (out, value) in color.iter_mut().zip(values) {
             *out = number(context.resolve(value, source)?.0, source)?;
             if !(0.0..=1.0).contains(out) {
-                return Err(
-                    (source.error(Error::syntax("outline color outside unit range"))).into(),
-                );
+                return Err(source
+                    .error(Error::syntax("outline color outside unit range"))
+                    .into());
             }
         }
     }
@@ -170,7 +170,9 @@ fn appearance<'a>(
         .transpose()?
         .unwrap_or(0);
     if flags & !FLAGS != 0 {
-        return Err((source.error(Error::syntax("reserved outline style flags"))).into());
+        return Err(source
+            .error(Error::syntax("reserved outline style flags"))
+            .into());
     }
     Ok((color, flags))
 }

@@ -69,10 +69,10 @@ fn handler(
         } else {
             features::UNKNOWN_SECURITY
         };
-        return Err((Error::unsupported(
+        return Err(Error::unsupported(
             feature,
             "non-Standard security handler is not implemented",
-        ))
+        )
         .into());
     }
     let mut policy = Policy::new(document, id)?;
@@ -356,7 +356,7 @@ fn methods<'a>(
                     Some(b"DocOpen" | b"EFOpen")
                 )
             {
-                return Err((Error::syntax("invalid crypt filter AuthEvent")).into());
+                return Err(Error::syntax("invalid crypt filter AuthEvent").into());
             }
             filters.insert(
                 name.as_bytes().to_vec(),
@@ -373,7 +373,7 @@ fn methods<'a>(
         match dictionary.get(key) {
             None => Ok(default),
             Some(Value::Name(name)) => lookup(&filters, name.as_bytes(), key == b"EFF"),
-            _ => Err((Error::syntax("default crypt filter must be a name")).into()),
+            _ => Err(Error::syntax("default crypt filter must be a name")),
         }
     };
     let strings = select(b"StrF", CryptMethod::Identity)?;
@@ -485,7 +485,7 @@ impl Security {
         let embedded = usage == crate::stream::Usage::EmbeddedFile
             || dictionary.is_name(b"Type", b"EmbeddedFile");
         if !matches!(explicit, crate::stream::CryptSelection::Default) && !self.crypt_filters {
-            return Err((Error::syntax("Crypt filters require encryption version 4 or 5")).into());
+            return Err(Error::syntax("Crypt filters require encryption version 4 or 5").into());
         }
         if !self.encrypt_metadata
             && !object.is_direct()
@@ -515,10 +515,9 @@ impl Security {
             crate::stream::CryptSelection::Default => self.streams,
         };
         if self.key.is_none() && authorization {
-            return Err((Error::password(
-                "embedded file access requires an authenticated password",
-            ))
-            .into());
+            return Err(
+                Error::password("embedded file access requires an authenticated password").into(),
+            );
         }
         Ok(method)
     }
@@ -628,7 +627,7 @@ impl Document {
     pub fn reauthenticate(&self, password: &[u8]) -> ReadResult<Self> {
         self.bytes.check()?;
         if password.len() > self.limits.string_bytes {
-            return Err((Error::limit("password byte budget exceeded")).into());
+            return Err(Error::limit("password byte budget exceeded").into());
         }
         let options = crate::OpenOptions {
             limits: self.limits,
@@ -641,9 +640,7 @@ impl Document {
             .as_ref()
             .is_some_and(|security| !security.authenticated())
         {
-            return Err(
-                (Error::password("password did not authorize embedded file access")).into(),
-            );
+            return Err(Error::password("password did not authorize embedded file access").into());
         }
         Ok(authenticated)
     }

@@ -9,6 +9,7 @@ use crate::{
 };
 use pagura_core::{Dictionary, Error, Position, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::{ReadFault, ReadResult};
 use std::sync::Arc;
 
 /// The Unicode of a font's character codes (9.10.2): its `ToUnicode` CMap,
@@ -62,7 +63,7 @@ pub(super) fn load(
     document: &Document,
     dictionary: &Dictionary,
     provider: Option<&dyn crate::Provider>,
-) -> Result<FontUnicode> {
+) -> ReadResult<FontUnicode> {
     let to_unicode = to_unicode(document, dictionary, &font.mapping)?;
     let collection = match &font.source {
         Source::CidSubstitute { unicode, .. } => Some(Arc::clone(unicode)),
@@ -79,16 +80,17 @@ fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
-) -> Result<Option<Arc<CMap>>> {
+) -> ReadResult<Option<Arc<CMap>>> {
     let Some(value) = font.get(b"ToUnicode") else {
         return Ok(None);
     };
     match to_unicode_map(document, value, mapping) {
         Ok(map) => Ok(map),
-        Err(error) => {
+        Err(ReadFault::Invalid(error)) => {
             crate::report::Report::new(document).discarded(error, value.as_reference())?;
             Ok(None)
         }
+        Err(unavailable) => Err(unavailable),
     }
 }
 
@@ -98,12 +100,14 @@ pub(crate) fn to_unicode_map(
     document: &Document,
     value: &Value,
     mapping: &Mapping,
-) -> Result<Option<Arc<CMap>>> {
-    to_unicode_inner(document, value, mapping).map_err(|mut error| {
-        error
-            .repair
-            .get_or_insert(crate::repairs::TOUNICODE_INVALID);
-        error
+) -> ReadResult<Option<Arc<CMap>>> {
+    to_unicode_inner(document, value, mapping).map_err(|fault| {
+        fault.map_error(|mut error| {
+            error
+                .repair
+                .get_or_insert(crate::repairs::TOUNICODE_INVALID);
+            error
+        })
     })
 }
 
@@ -111,7 +115,7 @@ fn to_unicode_inner(
     document: &Document,
     value: &Value,
     mapping: &Mapping,
-) -> Result<Option<Arc<CMap>>> {
+) -> ReadResult<Option<Arc<CMap>>> {
     // Null dictionary values are absent, including indirect or undefined ones
     // (7.3.9-7.3.10). They require no repair in either recovery mode.
     if document.resolve(value)?.is_null() {
@@ -144,7 +148,7 @@ fn collection_unicode(
     font: &Dictionary,
     mapping: &Mapping,
     provider: Option<&dyn crate::Provider>,
-) -> Result<Option<Arc<CidToUnicode>>> {
+) -> ReadResult<Option<Arc<CidToUnicode>>> {
     let (Mapping::Composite { .. }, Some(provider)) = (mapping, provider) else {
         return Ok(None);
     };
@@ -158,7 +162,7 @@ fn collection<'a>(
     document: &'a Document,
     font: &'a Dictionary,
     mapping: &'a Mapping,
-) -> Result<Option<(&'a [u8], &'a [u8])>> {
+) -> ReadResult<Option<(&'a [u8], &'a [u8])>> {
     if let Mapping::Composite { map, .. } = mapping
         && let Some(collection) = map.collection()
     {
@@ -170,7 +174,7 @@ fn collection<'a>(
 pub(crate) fn cid_collection<'a>(
     document: &'a Document,
     font: &'a Dictionary,
-) -> Result<Option<(&'a [u8], &'a [u8])>> {
+) -> ReadResult<Option<(&'a [u8], &'a [u8])>> {
     let Some(info) = optional(document, font, b"CIDSystemInfo")? else {
         return Ok(None);
     };

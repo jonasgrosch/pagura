@@ -130,7 +130,9 @@ fn view<'a>(
     source: Source,
 ) -> ReadResult<DestinationView> {
     if values.is_empty() || values.len() > 5 {
-        return Err((source.error(Error::syntax("incorrect destination operand count"))).into());
+        return Err(source
+            .error(Error::syntax("incorrect destination operand count"))
+            .into());
     }
     context.allocate::<&Value>(values.len(), source)?;
     let values = values
@@ -141,15 +143,17 @@ fn view<'a>(
         .split_first()
         .and_then(|(name, operands)| Some((name.as_name()?, operands)))
     else {
-        return Err((source.error(Error::syntax("destination requires a view name"))).into());
+        return Err(source
+            .error(Error::syntax("destination requires a view name"))
+            .into());
     };
     Ok(match (name.as_bytes(), operands) {
         (b"XYZ", [left, top, zoom]) => {
             let zoom = optional(zoom, source)?.filter(|v| *v != 0.0);
             if zoom.is_some_and(|v| v < 0.0) {
-                return Err(
-                    (source.error(Error::syntax("destination zoom must be nonnegative"))).into(),
-                );
+                return Err(source
+                    .error(Error::syntax("destination zoom must be nonnegative"))
+                    .into());
             }
             DestinationView::Xyz {
                 left: optional(left, source)?,
@@ -173,10 +177,11 @@ fn view<'a>(
         (b"FitBH", [top]) => DestinationView::FitBh(optional(top, source)?),
         (b"FitBV", [left]) => DestinationView::FitBv(optional(left, source)?),
         _ => {
-            return Err((source.error(Error::syntax(
-                "unknown destination view or incorrect operand count",
-            )))
-            .into());
+            return Err(source
+                .error(Error::syntax(
+                    "unknown destination view or incorrect operand count",
+                ))
+                .into());
         }
     })
 }
@@ -196,7 +201,9 @@ pub(super) fn resolve<'a>(
         (value, source) = context.resolve(value, source)?;
         context.index_entry(source)?;
         if !visited.insert(identity(value)) {
-            return Err((source.error(Error::cycle("cyclic named destination"))).into());
+            return Err(source
+                .error(Error::cycle("cyclic named destination"))
+                .into());
         }
         match value {
             Value::Dictionary(dictionary) => {
@@ -224,9 +231,9 @@ pub(super) fn resolve<'a>(
                     )?;
                     page
                 } else {
-                    return Err((source
-                        .error(Error::syntax("local destination requires a page reference")))
-                    .into());
+                    return Err(source
+                        .error(Error::syntax("local destination requires a page reference"))
+                        .into());
                 };
                 return Ok(Destination {
                     page,
@@ -242,7 +249,9 @@ pub(super) fn resolve<'a>(
             }
         }
     }
-    Err((source.error(Error::limit("destination resolution depth exceeded"))).into())
+    Err(source
+        .error(Error::limit("destination resolution depth exceeded"))
+        .into())
 }
 
 fn find<'a>(
@@ -306,9 +315,9 @@ pub(super) fn remote<'a>(
         .split_first()
         .and_then(|(page, operands)| Some((usize::try_from(page.as_integer()?).ok()?, operands)))
     else {
-        return Err(
-            (source.error(Error::syntax("remote destination page must be nonnegative"))).into(),
-        );
+        return Err(source
+            .error(Error::syntax("remote destination page must be nonnegative"))
+            .into());
     };
     Ok(RemoteDestination::Explicit {
         page,

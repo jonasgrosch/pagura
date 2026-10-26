@@ -33,11 +33,9 @@ pub(super) fn read(ctx: &mut Context<'_>) -> ReadResult<Vec<Option<Boundary>>> {
                     Ok(Some(boundary))
                 }
                 Err(ReadFault::Invalid(error)) if error.kind == pagura_core::ErrorKind::Limit => {
-                    Err((source.fault(error)).into())
+                    Err(source.fault(error))
                 }
-                Err(ReadFault::Unavailable(missing)) => {
-                    return Err(ReadFault::Unavailable(missing));
-                }
+                Err(unavailable @ ReadFault::Unavailable(_)) => Err(unavailable),
                 Err(ReadFault::Invalid(_)) => Ok(None),
             }
         })

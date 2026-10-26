@@ -160,7 +160,8 @@ fn literal_hashes(
     let expected = hash_length(params);
     if expected > document.limits().string_bytes {
         return Err(
-            (Error::limit("recovered security hash exceeds the string budget").in_object(id))
+            Error::limit("recovered security hash exceeds the string budget")
+                .in_object(id)
                 .into(),
         );
     }

@@ -19,7 +19,9 @@ pub(super) fn contents_span(
     parser.unsigned()?;
     parser.unsigned()?;
     if !parser.keyword(b"obj") {
-        return Err((source.error(Error::syntax("signature source lacks object header"))).into());
+        return Err(source
+            .error(Error::syntax("signature source lacks object header"))
+            .into());
     }
     parser.skip_whitespace();
     let start = parser.offset();
@@ -28,7 +30,9 @@ pub(super) fn contents_span(
     // compared with the original encrypted bytes.
     parser.parse()?;
     if !parser.keyword(b"endobj") {
-        return Err((source.error(Error::syntax("signature source lacks endobj"))).into());
+        return Err(source
+            .error(Error::syntax("signature source lacks endobj"))
+            .into());
     }
     parser.seek(start)?;
     let Some(path) = dictionary_path(ctx, root, target, source)? else {

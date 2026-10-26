@@ -57,7 +57,8 @@ pub(crate) fn parse(
         .is_some_and(|value| !matches!(value, Value::Reference(_)))
     {
         return Err(
-            (Error::syntax("ObjStm Extends must be an indirect reference").in_object(stream_id))
+            Error::syntax("ObjStm Extends must be an indirect reference")
+                .in_object(stream_id)
                 .into(),
         );
     }
@@ -121,10 +122,10 @@ pub(crate) fn parse(
     let value = parser.parse().map_err(|error| error.in_object(id))?;
     if !parser.at_end() {
         return Err(
-            (Error::syntax("compressed object has trailing tokens or a nested stream")
+            Error::syntax("compressed object has trailing tokens or a nested stream")
                 .at(parser.position())
-                .in_object(id))
-            .into(),
+                .in_object(id)
+                .into(),
         );
     }
     let diagnostics = parser
@@ -162,16 +163,16 @@ fn physical<'a>(
             index: 0,
         };
         if slot.location == self_entry {
-            return Err((Error::syntax(
+            return Err(Error::syntax(
                 "object-stream self entry requires its physical stream definition",
             )
             .in_object(stream_id)
-            .with_repair(repairs::OBJECT_STREAM_SELF_ENTRY))
+            .with_repair(repairs::OBJECT_STREAM_SELF_ENTRY)
             .into());
         }
-        return Err(
-            (Error::syntax("object streams cannot be compressed").in_object(stream_id)).into(),
-        );
+        return Err(Error::syntax("object streams cannot be compressed")
+            .in_object(stream_id)
+            .into());
     }
     document.object_inner(stream_id, path)
 }

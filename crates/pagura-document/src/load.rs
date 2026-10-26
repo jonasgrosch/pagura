@@ -19,10 +19,12 @@ impl Document {
     ) -> ReadResult<&IndirectObject> {
         self.bytes.check()?;
         if path.contains(&id) {
-            return Err((Error::cycle("object loading cycle").in_object(id)).into());
+            return Err(Error::cycle("object loading cycle").in_object(id).into());
         }
         if path.len() >= self.limits.depth {
-            return Err((Error::limit("object loading depth exceeded").in_object(id)).into());
+            return Err(Error::limit("object loading depth exceeded")
+                .in_object(id)
+                .into());
         }
         let slot = self.slots.get(&id).ok_or_else(|| {
             Error::missing_object("object is not in use or its generation differs").in_object(id)
@@ -37,7 +39,7 @@ impl Document {
             Location::Compressed { stream, index } => {
                 object::stream::parse(self, id, stream, index, path)
             }
-            Location::Free => Err((Error::missing_object("object is free")).into()),
+            Location::Free => Err(Error::missing_object("object is free").into()),
         };
         path.pop();
         let loaded = parsed
@@ -86,7 +88,9 @@ impl Document {
             current = self.object_inner(*id, path)?.value();
             origin = Some(*id);
         }
-        Err((Error::limit("reference chain too long").in_object_opt(origin)).into())
+        Err(Error::limit("reference chain too long")
+            .in_object_opt(origin)
+            .into())
     }
 
     /// Resolves `value` and the elements and entries one level below it,

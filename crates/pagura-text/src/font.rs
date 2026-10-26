@@ -9,6 +9,7 @@ use crate::{
 };
 use pagura_core::{Dictionary, Error, Limits, Meter, Name, ObjectId, Position, Result};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_font::FontProgram;
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
@@ -159,7 +160,7 @@ impl PdfFont {
     /// Returns an error for malformed dictionaries in Strict mode, `Unsupported`
     /// (for example [`features::NON_EMBEDDED`]) for fonts that cannot be
     /// drawn yet, and errors from loading the font program.
-    pub fn load(document: &Document, font: &Dictionary) -> Result<Self> {
+    pub fn load(document: &Document, font: &Dictionary) -> ReadResult<Self> {
         load::load(document, font)
     }
 
@@ -174,7 +175,7 @@ impl PdfFont {
         document: &Document,
         font: &Dictionary,
         provider: Option<&dyn Provider>,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         load::load_with(document, font, provider, Position::Unknown, false)
     }
 
@@ -188,7 +189,7 @@ impl PdfFont {
         font: &Dictionary,
         provider: Option<&dyn Provider>,
         position: Position,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         load::load_with(document, font, provider, position, false)
     }
 
@@ -209,7 +210,7 @@ impl PdfFont {
         font: &Dictionary,
         provider: Option<&dyn Provider>,
         position: Position,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         load::load_with(document, font, provider, position, true)
     }
 
@@ -267,7 +268,7 @@ impl PdfFont {
         document: &Document,
         font: &Dictionary,
         provider: Option<&dyn Provider>,
-    ) -> Result<FontUnicode> {
+    ) -> ReadResult<FontUnicode> {
         unicode::load(self, document, font, provider)
     }
 
