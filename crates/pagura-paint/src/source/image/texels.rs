@@ -1516,7 +1516,8 @@ impl Texels for MemoTexels<'_> {
         let mut memo = self.memo.borrow_mut();
         let components = memo.layout.key.components;
         let key = self.samples.get(index);
-        let values = memo.get(key, |texel| self.convert(index, components, texel));
+        let held = memo.layout.held;
+        let values = memo.get(key, held, |texel| self.convert(index, components, texel));
         for (sum, value) in sum.iter_mut().zip(values) {
             *sum += value * weight;
         }

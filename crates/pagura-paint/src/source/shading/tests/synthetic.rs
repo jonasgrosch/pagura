@@ -679,7 +679,7 @@ fn aligned_tables_hold_the_painted_columns() {
     let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
     let wide = context(&target, &composite, &store, &limits);
     let narrow = PaintContext {
-        region: pagura_raster::DeviceRect {
+        region: DeviceRect {
             x0: 300,
             y0: 0,
             x1: 340,
