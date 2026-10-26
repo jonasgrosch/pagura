@@ -19,7 +19,11 @@
 //! [`LEAST`]; there its middle order is kept, and that area, once per chain
 //! and once more, is added to an area allowance. Crossing chains stop near
 //! 2^-20 pixel high, straight sides that coincide up to rounding after a
-//! few halvings.
+//! few halvings. Two chains of one piece each whose directions part them
+//! differ monotonically in x: where the difference is positive at both
+//! ends they are apart, and otherwise the heights around their crossing or
+//! touch are bisected by its sign down to such a leaf, without halving the
+//! slab.
 //!
 //! A kept curve covers exact heights: the kernel takes a restricted piece's
 //! ends from the same roots and measured residuals as a row boundary. A
@@ -116,6 +120,9 @@ struct Chains<'a> {
     margin: f64,
     work: Work,
     kept: Vec<Kept>,
+    /// Each run's last entry in `kept`, which a range kept next below it
+    /// on the same side extends.
+    last: Vec<usize>,
     allowance: f64,
     /// The least and greatest winding between chains.
     windings: [i32; 2],
@@ -139,6 +146,9 @@ fn sweep(
     bytes.reserve(&mut order, runs.len())?;
     order.extend(0..runs.len());
     order.sort_unstable_by(|&a, &b| top(&runs[a]).total_cmp(&top(&runs[b])));
+    let mut last = Vec::new();
+    bytes.reserve(&mut last, runs.len())?;
+    last.resize(runs.len(), usize::MAX);
     let mut chains = Chains {
         downs: &downs,
         runs: &runs,
@@ -151,6 +161,7 @@ fn sweep(
             cap: spline.pieces.len().saturating_mul(64).saturating_add(4096),
         },
         kept: Vec::new(),
+        last,
         allowance: 0.0,
         windings: [0; 2],
     };
@@ -189,7 +200,7 @@ fn sweep(
         }
     }
     let Chains {
-        mut kept,
+        kept,
         allowance,
         windings: [least, most],
         mut work,
@@ -200,7 +211,7 @@ fn sweep(
     }
     let sign = if follow && least < 0 { -1 } else { 1 };
     let Some(mut covered) = emit(
-        &mut kept,
+        &kept,
         (&downs, &runs, curves),
         (allowance, sign, &mut work),
         bytes,
@@ -299,6 +310,13 @@ impl Chains<'_> {
                 let chains = f64::from(u32::try_from(group.len() + 1).unwrap_or(u32::MAX));
                 let area = (hi - lo) * self.spread(group, (left, right), hi);
                 self.allowance = outward(self.allowance + area * chains);
+            } else if let [p, q] = group
+                && let trend @ (1 | -1) = self.trend(p, q, (lo, hi))
+            {
+                let Some(right) = self.cross(group, trend, (lo, hi), winding, bytes)? else {
+                    return Ok(None);
+                };
+                winding = right;
             } else {
                 for half in [(lo, mid), (mid, hi)] {
                     match self.settle(group, half, winding, bytes)? {
@@ -344,9 +362,18 @@ impl Chains<'_> {
     fn apart(&mut self, group: &[Strand], (lo, hi): (f64, f64)) -> Option<bool> {
         for w in group.windows(2) {
             let (l, r) = (&w[0], &w[1]);
+            let ends = [
+                self.sign(r.ends[0] - l.ends[0]),
+                self.sign(r.ends[1] - l.ends[1]),
+            ];
             // Ends in the other order cross for certain.
-            if r.ends[0] - l.ends[0] < -self.margin || r.ends[1] - l.ends[1] < -self.margin {
+            if ends.contains(&-1) {
                 return Some(false);
+            }
+            // A monotone difference that is positive at both ends is
+            // positive between them.
+            if ends == [1, 1] && self.trend(l, r, (lo, hi)) != 0 {
+                continue;
             }
             let left = (l.piece, self.runs[l.run].end);
             let right = (r.piece, self.runs[r.run].end);
@@ -361,6 +388,140 @@ impl Chains<'_> {
             }
         }
         Some(true)
+    }
+
+    /// Whether x on `r` minus x on `l` rises (+1) or falls (-1) over
+    /// `lo..hi`, where each is one piece over the slab and their directions
+    /// part them; 0 otherwise.
+    fn trend(&self, l: &Strand, r: &Strand, (lo, hi): (f64, f64)) -> i32 {
+        let (Some(left), Some(right)) =
+            (self.directions(l, (lo, hi)), self.directions(r, (lo, hi)))
+        else {
+            return 0;
+        };
+        if left_of(left, right, self.margin) {
+            1
+        } else if left_of(right, left, self.margin) {
+            -1
+        } else {
+            0
+        }
+    }
+
+    /// The directions bounding those `s` runs in over `lo..hi`, downward,
+    /// where one piece spans the slab: a line's own, a curve's derivatives
+    /// at parameters just outside the slab's.
+    fn directions(&self, s: &Strand, (lo, hi): (f64, f64)) -> Option<[Point; 2]> {
+        let piece = &self.downs[s.piece];
+        if piece.b.y < hi {
+            return None;
+        }
+        Some(match piece.curve {
+            None => [Point::new(piece.b.x - piece.a.x, piece.b.y - piece.a.y); 2],
+            Some(c) => {
+                let curve = &self.curves[c];
+                curve.parameters(lo, hi).map(|t| curve.tangent(t))
+            }
+        })
+    }
+
+    /// The sign of a difference of two evaluated x where it is certain, or
+    /// 0.
+    fn sign(&self, difference: f64) -> i32 {
+        if difference > self.margin {
+            1
+        } else if difference < -self.margin {
+            -1
+        } else {
+            0
+        }
+    }
+
+    /// Settles the two chains of `group`, whose difference (x on the
+    /// second minus x on the first) moves as `trend`, over `lo..hi`, given
+    /// the winding left of them, and returns the winding right of them;
+    /// `None` past the work bound. The heights where its sign is not
+    /// certain, around a crossing or a touch, are bisected by that sign
+    /// until they are a leaf: above them the chains keep one order, below
+    /// them the other, and the leaf joins either. Where the sign at a
+    /// bisection is not certain either, what is left is halved.
+    fn cross(
+        &mut self,
+        group: &mut [Strand],
+        trend: i32,
+        (lo, hi): (f64, f64),
+        winding: i32,
+        bytes: &mut Meter,
+    ) -> Result<Option<i32>> {
+        let (p, q) = (group[0], group[1]);
+        let x = |s: &Strand, y: f64| self.downs[s.piece].x(self.curves, y).0;
+        // The difference at the bracket's ends, between which it stays.
+        let mut at = [q.ends[0] - p.ends[0], q.ends[1] - p.ends[1]];
+        let (mut a, mut b) = (lo, hi);
+        let settled = loop {
+            let width = greater(at[0].abs(), at[1].abs()) + 2.0 * self.margin;
+            let m = a.midpoint(b);
+            if (b - a) * width <= LEAST || !(a < m && m < b) {
+                let area = (b - a) * width;
+                self.allowance = outward(self.allowance + area * 3.0);
+                break true;
+            }
+            if self.work.add(1).is_none() {
+                return Ok(None);
+            }
+            let difference = x(&q, m) - x(&p, m);
+            let sign = self.sign(difference);
+            if sign == -trend {
+                (a, at[0]) = (m, difference);
+            } else if sign == trend {
+                (b, at[1]) = (m, difference);
+            } else {
+                break false;
+            }
+        };
+        let order = |sign: i32| if sign > 0 { [&p, &q] } else { [&q, &p] };
+        // A settled leaf joins the part above it, or the part below where
+        // none is above.
+        let (above, below) = if !settled {
+            (a, b)
+        } else if lo < a {
+            (b, b)
+        } else {
+            (lo, lo)
+        };
+        if lo < above {
+            self.keep_pair(order(-trend), winding, (lo, above), bytes)?;
+        }
+        let turn = self.turn(&p) + self.turn(&q);
+        if !settled {
+            let m = a.midpoint(b);
+            for half in [(a, m), (m, b)] {
+                match self.settle(group, half, winding, bytes)? {
+                    Some(w) if w == winding + turn => {}
+                    _ => return Ok(None),
+                }
+            }
+        }
+        if below < hi {
+            self.keep_pair(order(trend), winding, (below, hi), bytes)?;
+        }
+        Ok(Some(winding + turn))
+    }
+
+    /// Keeps two chains apart over `lo..hi`, left to right, given the
+    /// winding left of them.
+    fn keep_pair(
+        &mut self,
+        pair: [&Strand; 2],
+        winding: i32,
+        heights: (f64, f64),
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let mut right = winding;
+        for s in pair {
+            right = self.keep(s, right, heights, bytes)?;
+        }
+        Ok(())
     }
 
     /// Whether every chain of `group` traces the same path over `lo..hi`:
@@ -434,7 +595,9 @@ impl Chains<'_> {
         *most = (*most).max(winding);
     }
 
-    /// Keeps `s` over `lo..hi` as the covered set's left or right side.
+    /// Keeps `s` over `lo..hi` as the covered set's left or right side. A
+    /// run's ranges are kept top to bottom, so one that continues its last
+    /// on the same side extends it.
     fn keep_as(
         &mut self,
         s: &Strand,
@@ -442,6 +605,14 @@ impl Chains<'_> {
         (lo, hi): (f64, f64),
         bytes: &mut Meter,
     ) -> Result<()> {
+        if let Some(last) = self.kept.get_mut(self.last[s.run])
+            && last.left == left
+            && last.hi == lo
+        {
+            last.hi = hi;
+            return Ok(());
+        }
+        self.last[s.run] = self.kept.len();
         bytes.reserve_capacity(&mut self.kept, 1)?;
         self.kept.push(Kept {
             run: s.run,
@@ -454,31 +625,19 @@ impl Chains<'_> {
     }
 }
 
-/// The pieces of the kept runs, each kept height range merged with the next
-/// one of its run where they meet on the same side; `None` past the work
-/// bound. Each range visits only the pieces from the one containing its top
-/// to the one containing its bottom. Left sides run downward and right
-/// sides upward for `sign` +1, and the other way for -1.
+/// The pieces of the kept runs over their kept height ranges; `None` past
+/// the work bound. Each range visits only the pieces from the one
+/// containing its top to the one containing its bottom. Left sides run
+/// downward and right sides upward for `sign` +1, and the other way for -1.
 fn emit(
-    kept: &mut [Kept],
+    kept: &[Kept],
     (downs, runs, curves): (&[Down], &[Run], &[Mono]),
     (mut allowance, sign, work): (f64, i32, &mut Work),
     bytes: &mut Meter,
 ) -> Result<Option<Covered>> {
-    kept.sort_unstable_by(|a, b| a.run.cmp(&b.run).then(a.lo.total_cmp(&b.lo)));
-    let mut merged: Vec<Kept> = Vec::new();
-    bytes.reserve(&mut merged, kept.len())?;
-    for &k in kept.iter() {
-        match merged.last_mut() {
-            Some(last) if last.run == k.run && last.left == k.left && last.hi == k.lo => {
-                last.hi = k.hi;
-            }
-            _ => merged.push(k),
-        }
-    }
     let mut lines = Vec::new();
     let mut monos = Vec::new();
-    for k in &merged {
+    for k in kept {
         let down = k.left == (sign > 0);
         let pieces = downs[k.piece..runs[k.run].end]
             .iter()
@@ -528,6 +687,19 @@ fn emit(
         sign,
         overlapping: false,
     }))
+}
+
+/// Whether every direction between the two of `left` lies strictly left of
+/// every direction between the two of `right`, all pointing downward or
+/// level, by their cross products beyond their rounding.
+fn left_of(left: [Point; 2], right: [Point; 2], margin: f64) -> bool {
+    left.iter().all(|u| {
+        right.iter().all(|w| {
+            let cross = u.x * w.y - w.x * u.y;
+            let scale = (u.x.abs() + u.y.abs()) * (w.x.abs() + w.y.abs());
+            cross < -margin * scale
+        })
+    })
 }
 
 fn outward(value: f64) -> f64 {
