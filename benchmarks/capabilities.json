@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "43879047a874007dc4a082863a7e658d67f4b19f",
+  "audited_revision": "5cc72976d92d770a69cb5ec72edce6d05a996be4",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -46,9 +46,15 @@
     "crates/pagura-cli/tests/attachment_checks.rs": "0720ab09a624b0d39f1759625ad9ace9093a3dcf5d889f98f1aad0501938c498",
     "crates/pagura-cli/tests/cli.rs": "6151628c346fbdc4ff918bdc3651edf126f19954c7de55728956691e279c3aa0",
     "crates/pagura-cli/tests/document_services_extended.rs": "74862426c999b82f37201952af8d326a405cfa3a4746c7dbad83cfa47bce5a16",
-    "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
+    "crates/pagura-codec/src/encoding.rs": "6b612d3d9f34ce9b507e1656a0831537fdef51cd018b6203bab52785fcfd8fb1",
+    "crates/pagura-codec/src/flate/encode.rs": "afb388f08a776297bbdff62c578ade89f286dffef685420f6f5034500977f4b1",
+    "crates/pagura-codec/src/flate/encode/tests.rs": "f3edfcad3defb6caa393113d3b56984e38ddc3e902b7722d7fddfb9e8cce0bf9",
+    "crates/pagura-codec/src/flate/huffman.rs": "04b07f90955bb5262cc7dc07f191164c7bec4b9e827a1cbcc8ffc61b15e28fe5",
+    "crates/pagura-codec/src/flate/matcher.rs": "074c1afca8fff9ba267da4958af758448c29522245e6677a1176155412e9c5ed",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
-    "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
+    "crates/pagura-codec/src/png.rs": "3b71d8c8eaaa26c7dff527293a2b3565aec4d0e5b9ed68e7afbb67030d12aff8",
+    "crates/pagura-codec/src/png/stream.rs": "8c1b81f2202b0f9220ac558373373ec0be10f5522fc61a67f2abfb0b53715d95",
+    "crates/pagura-codec/tests/streaming.rs": "95c1e8d531fd3fd8c1cbdb037af9e7f477d08c256a4c9880a5fe35bcffd7937f",
     "crates/pagura-color/src/cie.rs": "deb733e6356ec3820d84d6035d1255daa51a9c5ee2f458ee31f803227fc73e27",
     "crates/pagura-color/src/convert/plan.rs": "19b932e2abc2cc8f46811c7192fcc674d85dab87de25f6f6b66a4ee48060f1fc",
     "crates/pagura-color/src/features.rs": "d41d21ac1bb7622de6e5fb3a6955d06bfd31ab84af27ac891efc0ac04adb6bd3",
@@ -178,7 +184,7 @@
     "crates/pagura-paint/src/prepare/planner/marks.rs": "82d0c145bff197fde1fc3b8344ba4a301c61a876244671b446dc088a11c6681d",
     "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "f6b278bbc04311797014de9cbc92c556f8f37dc512bead734b78bb47b944253e",
     "crates/pagura-paint/src/prepare/planner/patterns.rs": "1e37d4341ee851c552b43510a9d97280ca62d2086f14659a6b1d680c2f4f95aa",
-    "crates/pagura-paint/src/prepare/session.rs": "e9771602b531479a2a2fa86f2cc113ecca7ce3c0db8d6ebdf5d818c083246a5e",
+    "crates/pagura-paint/src/prepare/session.rs": "42a70bc5be52d94dd65346e0ce077ca0ff478147acfbff712939ca0c7521979a",
     "crates/pagura-paint/src/prepare/storage.rs": "9bd79bb6706725419f663b2f76db00d3561f3deb021c27b2b2489a1c921fd54d",
     "crates/pagura-paint/src/prepare/tests/formats.rs": "66cc22c9ae8219158c8b5b372abab98806e0a7dde0c92e56367c2b67840ef66d",
     "crates/pagura-paint/src/prepare/tests/session.rs": "3b9fe4722c4cebb0db15719ccbffbbc3db12d8ed615d76a350c86adcbaa4bd52",
@@ -209,7 +215,7 @@
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
     "crates/pagura/src/lib.rs": "9fc9606e89575e7c4eddef4002d1a05a0b3f3c931d5ffb9f9b4cfa7c09c6496d",
-    "crates/pagura/src/png.rs": "68a9faf63cc1bb48d720d690ac4e43541ec3a466cf3eb009659498a9ee087a2c",
+    "crates/pagura/src/png.rs": "d834c84ccf19c9af3f2ea0bda81aef6157bc6715173f358b2842691da6a2b81d",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e2e02c9095b5fb66e6411f4ada0bdbe524bfb574049ce60997889f3f89f8b577",
@@ -248,7 +254,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "edd3f0d4c3b0612e707ffcead0bf4c97c04599900ae9b38f5fc40a7e0b406043",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/sources.json": "dff7d56efcc79caad49056f51aff1ab24a2c6b73b6264b7e7a433ac5d416f320",
+    "references/requirements/sources.json": "d2659012ecfcd681ae9a95f2348203fabc6380f0a371b2a6a07cc9f4489dd66a",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
@@ -1280,8 +1286,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default. Protocol 1.9 exports bounded complete PNG pages through the shared render store. The viewer selects page/DPI/background and includes click-time form values via a disposable saved snapshot, with explicit fixed-name downloads and stale-result suppression.",
-      "remaining": "Incremental PNG/DEFLATE, persistent output jobs, active-request cancellation/backpressure and ancillary color/profile metadata. Output uses PDF orientation, without viewer-only rotation. Hosted runtime and real-browser integration checks for the new host/viewer path remain pending; whole-buffer output does not establish streaming or broader format parity.",
+      "implemented": "Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default. Protocol 1.9 exports bounded complete PNG pages through the shared render store. The viewer selects page/DPI/background and includes click-time form values via a disposable saved snapshot, with explicit fixed-name downloads and stale-result suppression. The library incremental encoder accepts bounded pixel prefixes, emits one canonical zlib stream through leased PNG chunks, and retains fixed row/history/token/Huffman storage; complete-buffer APIs collect the same implementation.",
+      "remaining": "Hosted incremental codec validation, rendered-band streaming bridge and protocol/native/browser transport integration remain group 11 work. PNG carries no explicit sRGB/ICC metadata; full interpreted image extraction remains separate.",
       "sources": [
         "crates/pagura-codec/src/png.rs",
         "crates/pagura-codec/src/flate/encode.rs",
@@ -1300,21 +1306,28 @@
         "web/client.mjs",
         "web/document_services.mjs",
         "web/index.html",
-        "web/style.css"
+        "web/style.css",
+        "crates/pagura-codec/src/png/stream.rs",
+        "crates/pagura-codec/src/encoding.rs",
+        "crates/pagura-codec/src/flate/huffman.rs",
+        "crates/pagura-codec/src/flate/matcher.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/png.rs",
         "crates/pagura-cli/src/args/tests.rs",
         "tools/test_png_export.py",
         "crates/pagura-host/tests/png.rs",
-        "tools/png_export_test.mjs"
+        "tools/png_export_test.mjs",
+        "crates/pagura-codec/tests/streaming.rs",
+        "crates/pagura-codec/src/flate/encode/tests.rs"
       ],
       "requirements": [
         "encode-flate",
         "encode-png",
         "filter-flate",
         "png-export",
-        "host-png-export"
+        "host-png-export",
+        "incremental-encoding-lifecycle"
       ],
       "fixtures": [
         "classic/blank",
