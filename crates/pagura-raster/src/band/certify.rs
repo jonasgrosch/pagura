@@ -12,8 +12,13 @@
 //! identical vertices may touch, and only at a slab's ends. Any doubt leaves
 //! the shape uncertified, and its cells are analysed one by one.
 //!
-//! The sweep's steps are capped at 32 per vertex plus 1024, so certifying
-//! costs time linear in the vertices beyond the sorts.
+//! A doubtful slab across row boundaries is checked again row by row, as
+//! slabs of their own, so that only the rows holding the doubt need their
+//! cells analysed.
+//!
+//! The sweep's steps are capped at 32 per vertex plus 1024, and the rows'
+//! checks as many again, so certifying costs time linear in the vertices
+//! beyond the sorts.
 
 use super::curve::{Mono, Piece, Spline};
 use super::edges::Polygon;
@@ -108,10 +113,9 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
         split(contour, &mut points, &mut chains, bytes)?;
     }
     let magnitude = magnitude[0].max(magnitude[1]);
-    let mut work = Work {
-        done: 0,
-        cap: polygon.vertices().saturating_mul(32).saturating_add(1024),
-    };
+    let cap = polygon.vertices().saturating_mul(32).saturating_add(1024);
+    let mut work = Work { done: 0, cap };
+    let mut refine = Work { done: 0, cap };
     // Interpolation errs by at most 11 units of roundoff of the largest
     // coordinate, so a difference of two such values by 22; keep 2^8 of them.
     let margins = Margins {
@@ -123,7 +127,7 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
         &points,
         &mut chains,
         margins,
-        &mut work,
+        (&mut work, &mut refine),
         &mut failing,
         bytes,
     )?
@@ -162,7 +166,7 @@ fn sweep(
     points: &[Point],
     chains: &mut [Chain],
     margins: Margins,
-    work: &mut Work,
+    (work, refine): (&mut Work, &mut Work),
     failing: &mut Vec<[f64; 2]>,
     bytes: &mut Meter,
 ) -> Result<Option<bool>> {
@@ -195,70 +199,115 @@ fn sweep(
         if active.is_empty() {
             continue;
         }
-        if work.add(active.len()).is_none() {
+        if place(points, &mut active, (lo, hi), work).is_none() {
             return Ok(None);
         }
-        let mid = lo.midpoint(hi);
-        for a in &mut active {
-            // A step per segment passed, counted once the chain is walked.
-            let passed = a.segment;
-            while points[a.segment + 1].y <= lo {
-                a.segment += 1;
-            }
-            let mut segment = a.segment;
-            let start = at(points, segment, lo).0;
-            let mut range = [start, start];
-            let mut walk = |to: f64| {
-                while points[segment + 1].y < to {
-                    segment += 1;
-                    range = [
-                        lesser(range[0], points[segment].x),
-                        greater(range[1], points[segment].x),
-                    ];
-                }
-                segment
-            };
-            a.x = at(points, walk(mid), mid).0;
-            let end = at(points, walk(hi), hi).0;
-            if work.add(segment - passed).is_none() {
-                return Ok(None);
-            }
-            a.range = [lesser(range[0], end), greater(range[1], end)];
-        }
-        active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
         let first = *sign.get_or_insert(active.first().is_some_and(|a| a.chain.up));
-        // Each slab stands alone: its order, directions and separation
-        // decide its own winding, whatever another slab holds.
-        let ordered = active.len().is_multiple_of(2)
-            && active
-                .iter()
-                .enumerate()
-                .all(|(k, a)| a.chain.up == (first ^ (k % 2 == 1)));
-        let separated = ordered
-            && active.windows(2).all(|w| {
-                w[0].range[1] + margins.rounding < w[1].range[0]
-                    || apart(
-                        points,
-                        (w[0].segment, w[1].segment),
-                        (lo, hi),
-                        margins,
-                        work,
-                    )
-            });
+        let held = holds(points, &active, (lo, hi), first, margins, work);
         if work.add(0).is_none() {
             return Ok(None);
         }
-        if !separated {
-            match failing.last_mut() {
-                Some(last) if last[1] >= lo => last[1] = hi,
-                _ => {
-                    bytes.reserve_capacity(failing, 1)?;
-                    failing.push([lo, hi]);
+        if held {
+            continue;
+        }
+        // A doubtful slab across row boundaries may leave some of its rows
+        // certain: each row's part is a slab of its own, checked on a budget
+        // of its own. Parts past that budget stay in doubt.
+        let rows = lo.floor() + 1.0 < hi;
+        let mut from = lo;
+        while from < hi {
+            let to = if rows {
+                (from.floor() + 1.0).min(hi)
+            } else {
+                hi
+            };
+            let held = rows
+                && place(points, &mut active, (from, to), refine).is_some()
+                && holds(points, &active, (from, to), first, margins, refine)
+                && refine.add(0).is_some();
+            if !held {
+                let to = if refine.add(0).is_some() { to } else { hi };
+                match failing.last_mut() {
+                    Some(last) if last[1] >= from => last[1] = to,
+                    _ => {
+                        bytes.reserve_capacity(failing, 1)?;
+                        failing.push([from, to]);
+                    }
                 }
             }
+            from = to;
         }
     }
     Ok(Some(sign.unwrap_or(true)))
+}
+
+/// Places the active chains on the slab (lo, hi): from the segments holding
+/// `lo`, each chain's x at the middle and its x range over the slab, in
+/// order of those x. Counts its steps on `work`; `None` past the cap.
+fn place(
+    points: &[Point],
+    active: &mut [Active],
+    (lo, hi): (f64, f64),
+    work: &mut Work,
+) -> Option<()> {
+    work.add(active.len())?;
+    let mid = lo.midpoint(hi);
+    for a in active.iter_mut() {
+        // A step per segment passed, counted once the chain is walked.
+        let passed = a.segment;
+        while points[a.segment + 1].y <= lo {
+            a.segment += 1;
+        }
+        let mut segment = a.segment;
+        let start = at(points, segment, lo).0;
+        let mut range = [start, start];
+        let mut walk = |to: f64| {
+            while points[segment + 1].y < to {
+                segment += 1;
+                range = [
+                    lesser(range[0], points[segment].x),
+                    greater(range[1], points[segment].x),
+                ];
+            }
+            segment
+        };
+        a.x = at(points, walk(mid), mid).0;
+        let end = at(points, walk(hi), hi).0;
+        work.add(segment - passed)?;
+        a.range = [lesser(range[0], end), greater(range[1], end)];
+    }
+    active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+    Some(())
+}
+
+/// Whether the placed chains hold winding 0 or the common sign on the slab
+/// (lo, hi): directions alternating from the left starting with `first`,
+/// and neighbours apart. Each slab stands alone: its order, directions and
+/// separation decide its own winding, whatever another slab holds.
+fn holds(
+    points: &[Point],
+    active: &[Active],
+    (lo, hi): (f64, f64),
+    first: bool,
+    margins: Margins,
+    work: &mut Work,
+) -> bool {
+    let ordered = active.len().is_multiple_of(2)
+        && active
+            .iter()
+            .enumerate()
+            .all(|(k, a)| a.chain.up == (first ^ (k % 2 == 1)));
+    ordered
+        && active.windows(2).all(|w| {
+            w[0].range[1] + margins.rounding < w[1].range[0]
+                || apart(
+                    points,
+                    (w[0].segment, w[1].segment),
+                    (lo, hi),
+                    margins,
+                    work,
+                )
+        })
 }
 
 // Appends the strictly y-monotone chains of one closed contour, each in
@@ -843,6 +892,22 @@ mod tests {
         let b = [(1.001, 0.0), (2.0, 0.0), (2.0, 4.0), (1.001, 4.0)];
         assert!(certifies(&polygon(&[&a, &b]), 0.0));
         assert!(!certifies(&polygon(&[&a, &b]), 1.0 / 128.0));
+    }
+
+    #[test]
+    fn a_doubtful_slab_keeps_only_the_rows_of_its_overlap() {
+        // Both contours span one slab from 0 to 10. The parallelogram's left
+        // side meets the rectangle's right side at y = 5.5 and runs inside
+        // it from there: rows 0 to 4 hold winding 0 or the common sign.
+        let rectangle = [(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)];
+        let slanted = [(6.1, 0.0), (8.0, 0.0), (6.0, 10.0), (4.1, 10.0)];
+        let slabs = uncertified(
+            &polygon(&[&rectangle, &slanted]),
+            0.0,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
+        assert_eq!(slabs, Some(vec![[5.0, 10.0]]));
     }
 
     #[test]
