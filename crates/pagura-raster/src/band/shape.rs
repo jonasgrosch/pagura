@@ -104,6 +104,11 @@ impl Resolved {
         self.lines.len()
     }
 
+    /// The sides of every resolved row.
+    pub(crate) fn sides(&self) -> &[Line] {
+        &self.lines
+    }
+
     fn retained_bytes(&self) -> usize {
         (self.rows.capacity() * size_of::<(u32, u32)>())
             .saturating_add(self.lines.capacity() * size_of::<Line>())
@@ -269,6 +274,20 @@ impl Shape {
         adjustment: Adjustment,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
+        let (polygon, tiling, mut bytes) =
+            Self::stroke_pieces(path, stroke, (pen, transform), adjustment, options)?;
+        Self::stroke_finish(polygon, tiling, options, &mut bytes)
+    }
+
+    /// The device polygon of a stroke's pieces, how far they tile, and the
+    /// byte meter their preparation goes on with.
+    pub(crate) fn stroke_pieces(
+        path: &Path,
+        stroke: &Stroke,
+        (pen, transform): (Transform, Transform),
+        adjustment: Adjustment,
+        options: &Prep<'_>,
+    ) -> Result<(Polygon, Tiling, Meter)> {
         let limits = options.limits;
         if path.segments().len() > limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
@@ -301,6 +320,17 @@ impl Shape {
         let released = path.retained_bytes();
         drop(path);
         bytes.refund(released);
+        Ok((polygon, tiling, bytes))
+    }
+
+    /// The shape of a stroke's pieces, with the rows their windings leave in
+    /// doubt resolved.
+    pub(crate) fn stroke_finish(
+        polygon: Polygon,
+        tiling: Tiling,
+        options: &Prep<'_>,
+        bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
             // Only the slabs where the outline may overlap itself need the
@@ -308,14 +338,7 @@ impl Shape {
             Tiling::Unproven => Winding::Check(0.0),
             Tiling::Components => Winding::Unknown,
         };
-        Self::polygon(
-            polygon,
-            FillRule::NonZero,
-            winding,
-            options,
-            &mut bytes,
-            None,
-        )
+        Self::polygon(polygon, FillRule::NonZero, winding, options, bytes, None)
     }
 
     /// One glyph placement outside any clip: `edges` translated to the
@@ -723,7 +746,7 @@ impl Shape {
         }))
     }
 
-    fn edges(
+    pub(crate) fn edges(
         (lines, curves): (Vec<Line>, Vec<Mono>),
         rule: FillRule,
         (bounds, scan, resolved): (DeviceRect, (usize, usize), Resolved),
