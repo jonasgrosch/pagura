@@ -289,21 +289,28 @@ impl<'a, M: ParseMode> Parser<'a, M> {
     /// Returns a syntax error if the next token is not a regular run.
     pub fn word(&mut self) -> ModeResult<M, &'a [u8]> {
         self.skip_whitespace();
-        let start = self.position;
-        while self.current().is_some_and(is_regular) {
-            self.position += 1;
-        }
+        let token = self.regular_word();
         if self.current().is_none() {
             self.window_boundary();
         }
-        if start == self.position {
+        if token.is_empty() {
             return Err(if self.current().is_none() {
                 self.end_error("expected token")
             } else {
                 self.error("expected token")
             });
         }
-        Ok(&self.data[start..self.position])
+        Ok(token)
+    }
+
+    /// Shared lexical scan without classifying a boundary. Speculative
+    /// reference lookahead marks it only if the candidate can still match.
+    fn regular_word(&mut self) -> &'a [u8] {
+        let start = self.position;
+        while self.current().is_some_and(is_regular) {
+            self.position += 1;
+        }
+        &self.data[start..self.position]
     }
 
     /// Consumes `word` if it is the next complete token.
@@ -688,6 +695,9 @@ impl<'a, M: ParseMode> Parser<'a, M> {
         let at = self.position();
         self.position += 2;
         self.skip_whitespace();
+        if self.current().is_none() {
+            return Err(self.end_error("dictionary key must be a name"));
+        }
         if self.current() != Some(b'/') {
             return Err(self.error("dictionary key must be a name"));
         }
@@ -760,6 +770,9 @@ impl<'a, M: ParseMode> Parser<'a, M> {
         let token = tail.get(..length).unwrap_or_default();
         if length == tail.len() {
             self.window_boundary();
+            if self.mode.extendable() && token.first().is_some_and(u8::is_ascii_alphabetic) {
+                return Err(self.end_error("incomplete dictionary key"));
+            }
         }
         if !token.first().is_some_and(u8::is_ascii_alphabetic)
             || matches!(
@@ -787,7 +800,7 @@ impl<'a, M: ParseMode> Parser<'a, M> {
         let before = self.offset();
         if depth > 0
             && let Some(context) = streams
-            && self.keyword(b"stream")
+            && self.keyword_with_boundary(b"stream")?
         {
             self.seek(before)?;
             self.diagnostics.repair(
@@ -878,7 +891,7 @@ impl<'a, M: ParseMode> Parser<'a, M> {
                 Err(_) => return Err(self.error("integer out of range")),
             }
         };
-        if !signed && let Some((reference, generation_zeroes)) = self.reference_tail(integer) {
+        if !signed && let Some((reference, generation_zeroes)) = self.reference_tail(integer)? {
             if generation_zeroes || (token.len() > 1 && token.first() == Some(&b'0')) {
                 self.diagnostics.repair(
                     Diagnostic::new(
@@ -902,29 +915,37 @@ impl<'a, M: ParseMode> Parser<'a, M> {
 
     /// Tries to read `G R` after an object number; restores the position
     /// if the following tokens do not form a reference.
-    fn reference_tail(&mut self, number: i64) -> Option<(ObjectId, bool)> {
-        let number = u32::try_from(number).ok()?;
+    fn reference_tail(&mut self, number: i64) -> ModeResult<M, Option<(ObjectId, bool)>> {
+        let Ok(number) = u32::try_from(number) else {
+            return Ok(None);
+        };
         let saved = self.position;
         self.skip_whitespace();
+        if self.current().is_none() && self.mode.extendable() {
+            return Err(self.end_error("incomplete reference tail"));
+        }
         let start = self.position;
-        // Most integer operands are not references. Establish the trailing R
-        // before validating/converting the speculative generation token.
+        // Only a viable generation can make this a reference. Scanning an
+        // irreparable candidate must not leave a speculative boundary mark.
         let token = self
             .current()
             .filter(u8::is_ascii_digit)
-            .and_then(|_| self.word().ok());
+            .map(|_| self.regular_word());
         if let Some(token) = token
-            && self.keyword(b"R")
+            // Complete inputs keep the existing cheap R check before numeric
+            // conversion. Only an open window needs candidate viability first.
+            && (self.mode.extendable() || self.keyword(b"R"))
             && token.iter().all(u8::is_ascii_digit)
             && let Some(generation) = std::str::from_utf8(token)
                 .ok()
                 .and_then(|text| text.parse::<u16>().ok())
+            && (!self.mode.extendable() || self.keyword_with_boundary(b"R")?)
         {
             let zeroes = token.len() > 1 && self.data.get(start) == Some(&b'0');
-            return Some((ObjectId::new(number, generation), zeroes));
+            return Ok(Some((ObjectId::new(number, generation), zeroes)));
         }
         self.position = saved;
-        None
+        Ok(None)
     }
 }
 

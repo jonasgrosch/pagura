@@ -346,3 +346,229 @@ fn declared_byte_extents_separate_window_extension_from_real_truncation() {
     };
     assert!(parsed.value);
 }
+
+#[test]
+fn incomplete_reference_lookahead_never_becomes_an_invalid_dictionary_key() {
+    let bytes = b"<< /Root 1 0 R >>";
+    for split in 0..bytes.len() {
+        assert!(
+            matches!(
+                parse(&bytes[..split], InputEnd::Extendable, Recovery::Strict).unwrap(),
+                WindowRead::Incomplete { .. }
+            ),
+            "split {split}"
+        );
+    }
+    let WindowRead::Complete(parsed) =
+        parse(bytes, InputEnd::Extendable, Recovery::Strict).unwrap()
+    else {
+        panic!("complete reference dictionary")
+    };
+    assert_eq!(
+        parsed.value.as_dictionary().unwrap().get(b"Root"),
+        Some(&Value::Reference(ObjectId::new(1, 0)))
+    );
+}
+
+#[test]
+fn reference_repairs_wait_until_the_r_keyword_boundary_is_known() {
+    for (bytes, repair) in [
+        (&b"01 0 R"[..], pagura_core::repairs::LEADING_ZERO_REFERENCE),
+        (&b"1 00 R"[..], pagura_core::repairs::LEADING_ZERO_REFERENCE),
+        (&b"0 0 R"[..], pagura_core::repairs::ZERO_REFERENCE),
+    ] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            assert!(matches!(
+                parse(bytes, InputEnd::Extendable, recovery).unwrap(),
+                WindowRead::Incomplete { .. }
+            ));
+        }
+        let mut delimited = bytes.to_vec();
+        delimited.push(b']');
+        for (input, end) in [
+            (bytes, InputEnd::Complete),
+            (delimited.as_slice(), InputEnd::Extendable),
+        ] {
+            assert_eq!(
+                parse(input, end, Recovery::Strict).unwrap_err().repair,
+                Some(repair)
+            );
+            let WindowRead::Complete(parsed) = parse(input, end, Recovery::Repair).unwrap() else {
+                panic!("confirmed reference repair")
+            };
+            assert_eq!(parsed.diagnostics.len(), 1);
+            assert_eq!(parsed.diagnostics[0].repair(), Some(repair));
+        }
+    }
+}
+
+#[test]
+fn impossible_generations_do_not_wait_and_adjacent_integers_remain_distinct() {
+    for bytes in [&b"1 65536"[..], b"1 12x", b"1 18446744073709551616"] {
+        let WindowRead::Complete(parsed) =
+            parse(bytes, InputEnd::Extendable, Recovery::Strict).unwrap()
+        else {
+            panic!("candidate cannot become a reference")
+        };
+        assert_eq!(parsed.value, Value::Integer(1));
+        assert_eq!(parsed.offset, 1);
+    }
+    for bytes in [&b"<< /Root 1 65536"[..], b"<< /Root 1 12x"] {
+        assert_eq!(
+            parse(bytes, InputEnd::Extendable, Recovery::Strict)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
+    }
+    let WindowRead::Complete(parsed) = parse(b"1 0", InputEnd::Complete, Recovery::Strict).unwrap()
+    else {
+        panic!("EOF settles ordinary integer lookahead")
+    };
+    assert_eq!(parsed.value, Value::Integer(1));
+    assert_eq!(parsed.offset, 1);
+    assert!(matches!(
+        parse(b"1 0", InputEnd::Extendable, Recovery::Strict).unwrap(),
+        WindowRead::Incomplete { .. }
+    ));
+
+    let bytes = b"[1 2 65536 0.5]";
+    for split in 0..bytes.len() {
+        assert!(
+            matches!(
+                parse(&bytes[..split], InputEnd::Extendable, Recovery::Strict).unwrap(),
+                WindowRead::Incomplete { .. }
+            ),
+            "split {split}"
+        );
+    }
+    let WindowRead::Complete(parsed) =
+        parse(bytes, InputEnd::Extendable, Recovery::Strict).unwrap()
+    else {
+        panic!("complete ordinary operands")
+    };
+    assert_eq!(
+        parsed.value,
+        Value::Array(vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(65536),
+            Value::Real(0.5)
+        ])
+    );
+}
+
+#[test]
+fn dictionary_repairs_wait_for_a_decided_key_or_opener() {
+    for bytes in [&b"<< <<"[..], b"<< << ", b"<< tru", b"<< true"] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            assert!(matches!(
+                parse(bytes, InputEnd::Extendable, recovery).unwrap(),
+                WindowRead::Incomplete { .. }
+            ));
+            assert_eq!(
+                parse(bytes, InputEnd::Complete, recovery).unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+        }
+    }
+    for (bytes, repair) in [
+        (
+            &b"<< << /A 1 >>"[..],
+            pagura_core::repairs::DICTIONARY_OPENER,
+        ),
+        (&b"<< trueX 1 >>"[..], pagura_core::repairs::KEY_SOLIDUS),
+    ] {
+        assert_eq!(
+            parse(bytes, InputEnd::Extendable, Recovery::Strict)
+                .unwrap_err()
+                .repair,
+            Some(repair)
+        );
+        let WindowRead::Complete(parsed) =
+            parse(bytes, InputEnd::Extendable, Recovery::Repair).unwrap()
+        else {
+            panic!("confirmed dictionary repair")
+        };
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].repair(), Some(repair));
+    }
+    for bytes in [&b"<< << @"[..], b"<< 1"] {
+        assert_eq!(
+            parse(bytes, InputEnd::Extendable, Recovery::Repair)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
+    }
+}
+
+#[test]
+fn optional_direct_stream_lookahead_waits_before_calling_or_refusing_the_handler() {
+    let prefix = b"<< /S << /Length 0 >> ";
+    let keyword = b"stream";
+    for split in 0..=keyword.len() {
+        let mut bytes = prefix.to_vec();
+        bytes.extend_from_slice(&keyword[..split]);
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let result = Parser::new(&bytes, Origin::Buffer, Limits::default())
+                .with_recovery(recovery)
+                .read_window(InputEnd::Extendable, |parser| {
+                    parser.parse_with_streams(&mut |_, _| panic!("handler before keyword boundary"))
+                })
+                .unwrap();
+            assert!(matches!(result, WindowRead::Incomplete { .. }));
+        }
+    }
+    let mut complete_keyword = prefix.to_vec();
+    complete_keyword.extend_from_slice(keyword);
+    let error = Parser::new(&complete_keyword, Origin::Buffer, Limits::default())
+        .read_window(InputEnd::Complete, |parser| {
+            parser.parse_with_streams(&mut |_, _| panic!("strict refusal before handler"))
+        })
+        .unwrap_err();
+    assert_eq!(error.repair, Some(pagura_core::repairs::DIRECT_STREAM));
+
+    let WindowRead::Complete(ordinary) = Parser::new(
+        b"<< /S << /Length 0 >> /A 1 >>",
+        Origin::Buffer,
+        Limits::default(),
+    )
+    .read_window(InputEnd::Extendable, |parser| {
+        parser.parse_with_streams(&mut |_, _| panic!("ordinary dictionary is not a stream"))
+    })
+    .unwrap() else {
+        panic!("known non-stream continuation")
+    };
+    assert_eq!(ordinary.value.1, []);
+    assert_eq!(ordinary.diagnostics, []);
+
+    let bytes = b"<< /S << /Length 0 >> stream\nendstream >>";
+    let error = Parser::new(bytes, Origin::Buffer, Limits::default())
+        .read_window(InputEnd::Extendable, |parser| {
+            parser.parse_with_streams(&mut |_, _| panic!("strict refusal before handler"))
+        })
+        .unwrap_err();
+    assert_eq!(error.repair, Some(pagura_core::repairs::DIRECT_STREAM));
+    let WindowRead::Complete(parsed) = Parser::new(bytes, Origin::Buffer, Limits::default())
+        .with_recovery(Recovery::Repair)
+        .read_window(InputEnd::Extendable, |parser| {
+            parser.parse_with_streams(&mut |parser, _| {
+                assert!(parser.keyword_with_boundary(b"stream")?);
+                let start = parser.offset() + 1;
+                parser.seek(start)?;
+                assert!(parser.keyword_with_boundary(b"endstream")?);
+                Ok(Some(start..start))
+            })
+        })
+        .unwrap()
+    else {
+        panic!("complete direct-stream repair")
+    };
+    assert_eq!(parsed.value.1.len(), 1);
+    assert_eq!(parsed.diagnostics.len(), 1);
+    assert_eq!(
+        parsed.diagnostics[0].repair(),
+        Some(pagura_core::repairs::DIRECT_STREAM)
+    );
+}
