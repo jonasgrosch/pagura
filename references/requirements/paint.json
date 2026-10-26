@@ -225,7 +225,7 @@
         "paint/image-depth-8",
         "paint/image-depth-16"
       ],
-      "gaps": "Embedded JPX ICC and unsupported enumerated colour descriptions fail with xobject.jpx-color.",
+      "gaps": "Higher-precision sYCC, Lab-input embedded ICC and unsupported enumerated JPX colour descriptions remain explicit boundaries; see paint-jpx-icc and paint-jpx-sycc.",
       "review": [
         {
           "locator": "8.9.3; 8.9.5.2; Table 88",
@@ -662,6 +662,96 @@
         "pagura-cli cli::scan_separates_information_from_repairs"
       ],
       "gaps": "Diagnostic classification follows ADR 0003/0009; the polygon oracle follows the locked substitute and explicit PDF metrics."
+    },
+    {
+      "id": "paint-jpx-icc",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "Table 87",
+        "8.6.5.5",
+        "11.6.5.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "paint/image-jpx-icc-explicit",
+        "paint_jpx/gray-linear",
+        "paint_jpx/rgb-linear",
+        "paint_jpx/pdf-override",
+        "paint_jpx/ignores-pdf-decode-default",
+        "paint_jpx/future-profile-fallback",
+        "paint_jpx/straight-alpha",
+        "paint_jpx/premultiplied-alpha",
+        "paint_jpx/truncated-profile",
+        "paint_jpx/profile-channel-mismatch",
+        "pagura-interpret resources::colorspace::tests::embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets"
+      ],
+      "review": [
+        {
+          "locator": "7.4.9; Table 87; T.800 I.5.3.3; ICC.1:2010 7.2\u20137.4 and 8.2",
+          "rule": "Use the embedded profile when PDF ColorSpace is absent; ignore Decode in that case. Explicit PDF colour takes precedence. The existing ICC parser and forward converters handle profile syntax, budgets and colourimetry.",
+          "verdict": "Primary clauses reviewed; independent linear-profile pixel oracles authored; hosted execution pending."
+        }
+      ],
+      "gaps": "Lab-input profiles, ranking multiple JPX colour specifications and fallback after an unsupported selected transform remain open. sYCC has separate requirements. Full interaction/platform and competitor gates remain G01/R02 work."
+    },
+    {
+      "id": "paint-jpx-sycc",
+      "reference": "iec-sycc-amendment-preview",
+      "clauses": [
+        "F.4",
+        "F.15",
+        "F.16",
+        "F.17"
+      ],
+      "status": "partial",
+      "tests": [
+        "paint_jpx/sycc-neutral",
+        "paint_jpx/sycc-chroma",
+        "paint_jpx/sycc-gamut",
+        "paint_jpx/sycc-pdf-override",
+        "paint_jpx/sycc-ignores-decode-default",
+        "paint_jpx/sycc-straight-alpha",
+        "paint_jpx/sycc-premultiplied-alpha",
+        "paint_jpx/sycc-16bit-boundary",
+        "pagura-color tests/sycc.rs eight_bit_sycc_preserves_neutrals_and_decodes_chroma",
+        "paint_jpx/sycc-signed-invalid"
+      ],
+      "review": [
+        {
+          "locator": "IEC 61966-2-1:1999/AMD1:2003 F.4, equations F.15-F.17; T.800 I.5.3.3; ISO 32000-2 7.4.9 / Table 87",
+          "rule": "For eight-bit unsigned sYCC, centre chroma on code 128 and convert to encoded sRGB using the Annex F inverse matrix. Clip to the destination gamut. Explicit PDF colour takes precedence; otherwise ignore Decode and device default replacements. Unassociate embedded premultiplied channels before colour conversion.",
+          "verdict": "Primary equations checked in the publisher preview; independent rational pixel oracles and known byte examples authored. Hosted execution pending."
+        }
+      ],
+      "gaps": "Other precisions and mixed-precision sYCC remain Unsupported(xobject.jpx-color). Broader masks, groups, interpolation, platform and competitor acceptance remain G01/R02 work."
+    },
+    {
+      "id": "paint-jpx-indexed-alpha",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.6.6.3",
+        "11.6.5.2",
+        "Table 87"
+      ],
+      "status": "partial",
+      "tests": [
+        "paint_jpx/indexed-alpha-0-last",
+        "paint_jpx/indexed-alpha-0-first",
+        "paint_jpx/indexed-alpha-1-last",
+        "paint_jpx/indexed-alpha-1-first",
+        "paint_jpx/indexed-alpha-2-last",
+        "paint_jpx/indexed-alpha-2-first"
+      ],
+      "review": [
+        {
+          "locator": "ISO 32000-2 7.4.9, Table 87, 11.6.4.3; T.800 I.5.3.6",
+          "rule": "For an explicit PDF Indexed colour space without a container palette, retain the raw index and separate opacity channels. Channel definitions determine their order. Apply the PDF lookup before unassociating premultiplied base colours; embedded opacity overrides Mask.",
+          "verdict": "Primary clauses reviewed; independent alpha 0/partial/1 pixel oracles authored for first/last opacity channels and SMaskInData 0/1/2. Hosted execution pending."
+        }
+      ],
+      "gaps": "Combining an explicit PDF Indexed space with opacity defined after a JPX container palette still requires channel mapping and remains Unsupported(image.JPX-sample-layout). Broader interaction/platform and competitor evidence remains R02/G01 work."
     }
   ]
 }

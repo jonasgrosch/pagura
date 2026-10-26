@@ -17,9 +17,11 @@ impl ColorSpace {
         loop {
             total = total.saturating_add(size_of::<Self>());
             let (payload, next) = match current {
-                Self::DeviceGray | Self::DeviceRgb | Self::DeviceCmyk | Self::Pattern(None) => {
-                    (0, None)
-                }
+                Self::DeviceGray
+                | Self::DeviceRgb
+                | Self::DeviceCmyk
+                | Self::Sycc
+                | Self::Pattern(None) => (0, None),
                 Self::Calibrated(space) => (ARC.saturating_add(size_of_val(space.as_ref())), None),
                 Self::Icc(space) => (
                     [

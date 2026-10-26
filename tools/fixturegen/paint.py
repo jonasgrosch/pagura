@@ -392,8 +392,9 @@ def extra_cases():
     for content,name in [(b"BI","image-inline-unfinished"),(b"ID","image-inline-id-outside"),(b"EI","image-inline-ei-outside"),(b"BI /W 1 /W 2 ID \0 EI","image-inline-duplicate"),(b"BI /W 1 /H 1 /BPC 8 /CS /G ID \0","image-inline-missing-ei")]:
         yield Case(name,page(content),OPEN,("paint-inline",),name.replace("-"," "),extra={"render_error":"syntax"})
 
+    yield image_case("image-jpx-icc-explicit",jpx.jp2(jpx.codestream([[0]],1,1),1,1,1,method=2),
+                     b"/Filter /JPXDecode",[0],1,1,requirement="paint-jpx-icc")
     for name,data,dictionary,fill,tag in [
-        ("image-jpx-icc-explicit",jpx.jp2(jpx.codestream([[0]],1,1),1,1,1,method=2),b"/Filter /JPXDecode",b"","xobject.jpx-color"),
         ("image-stencil-pattern-explicit",b"\0",b"/ImageMask true /BitsPerComponent 1",b"/Pattern cs ","pattern.image-mask"),
     ]:
         image=stream(data,b"/Subtype /Image /Width 1 /Height 1 "+dictionary)
