@@ -5,6 +5,161 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "paint_jpx/sycc-neutral",
+      "kind": "pdf",
+      "description": "sycc neutral",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-neutral.pdf",
+      "sha256": "daaec4e192f19c384a3356c64628aa4b27dd70de266301c59cd7f49cc5b92a72",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-neutral.ppm",
+      "oracle_sha256": "5f63cad1a1bb5db9d23c1fd31c07f91cfc6bf0a3bf7533dcd3eb10a068ddd884",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/sycc-chroma",
+      "kind": "pdf",
+      "description": "sycc chroma",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-chroma.pdf",
+      "sha256": "b2112f15a9524bb77e0946e821b2e8979d18f4c6c4bd52f9df7d3a625b1ed6fd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-chroma.ppm",
+      "oracle_sha256": "79a3f4291e21a891fd7d249dc58739273066a4d36ff5c4c98921e8f59b64322c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/sycc-gamut",
+      "kind": "pdf",
+      "description": "sycc gamut",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-gamut.pdf",
+      "sha256": "ac3d663a5997399fd4087d95448d21727cbde2d2df649691fe6904a2081afe5d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-gamut.ppm",
+      "oracle_sha256": "ccf4bbb8694d63e1b908f91a61ba6899287a616e61531cca2b632f14fedc7b57",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/sycc-pdf-override",
+      "kind": "pdf",
+      "description": "sycc pdf override",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-pdf-override.pdf",
+      "sha256": "f89453d133c1f96c5213d3855f19d21d298c8e0a2037a4ed92ccaaef7c76c36a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-pdf-override.ppm",
+      "oracle_sha256": "3b87a317c77b814c6bbd558c7de0300d6153d8c7d8e448ad357b8f627899dc50",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/sycc-ignores-decode-default",
+      "kind": "pdf",
+      "description": "sycc ignores decode default",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-ignores-decode-default.pdf",
+      "sha256": "6d8fed4354137bbdc85e8c206efe7e84c876dd3617bf234a8c17bf7d98b7ea1d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-ignores-decode-default.ppm",
+      "oracle_sha256": "79a3f4291e21a891fd7d249dc58739273066a4d36ff5c4c98921e8f59b64322c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/sycc-straight-alpha",
+      "kind": "pdf",
+      "description": "sycc straight alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-straight-alpha.pdf",
+      "sha256": "4ad010a1fc05f4e2a79ce05261dbf01d5cfee85ad0538b0c99f4f29bd49f5f79",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-straight-alpha.ppm",
+      "oracle_sha256": "668d6f94f3d214520ad7c620413eeaf11f2ee7708b8af06281621fd7787be6d7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/sycc-premultiplied-alpha",
+      "kind": "pdf",
+      "description": "sycc premultiplied alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-premultiplied-alpha.pdf",
+      "sha256": "a685ad5db91adcc1a597d820268aa54e745d7afdd9dc1d1ef1e8a0fe3a0ca4d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/sycc-premultiplied-alpha.ppm",
+      "oracle_sha256": "36d635b3228ae4137794bf8e688017a9bafca8e7ffaaef9545a8a74c08fb7617",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/sycc-16bit-boundary",
+      "kind": "pdf",
+      "description": "Higher precision sYCC remains explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-16bit-boundary.pdf",
+      "sha256": "394df5010f4678e80b075224cc701d9273440ee09dc12740a18622a1126c4582",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "xobject.jpx-color"
+    },
+    {
       "id": "paint_jpx/gray-linear",
       "kind": "pdf",
       "description": "gray linear",

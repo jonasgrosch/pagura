@@ -225,7 +225,7 @@
         "paint/image-depth-8",
         "paint/image-depth-16"
       ],
-      "gaps": "Embedded JPX ICC and unsupported enumerated colour descriptions fail with xobject.jpx-color.",
+      "gaps": "Higher-precision sYCC, Lab-input embedded ICC and unsupported enumerated JPX colour descriptions remain explicit boundaries; see paint-jpx-icc and paint-jpx-sycc.",
       "review": [
         {
           "locator": "8.9.3; 8.9.5.2; Table 88",
@@ -693,7 +693,37 @@
           "verdict": "Primary clauses reviewed; independent linear-profile pixel oracles authored; hosted execution pending."
         }
       ],
-      "gaps": "sYCC, Lab-input profiles, ranking multiple JPX colour specifications and fallback after an unsupported selected transform remain open. Full interaction/platform and competitor gates remain G01/R02 work."
+      "gaps": "Lab-input profiles, ranking multiple JPX colour specifications and fallback after an unsupported selected transform remain open. sYCC has separate requirements. Full interaction/platform and competitor gates remain G01/R02 work."
+    },
+    {
+      "id": "paint-jpx-sycc",
+      "reference": "iec-sycc-amendment-preview",
+      "clauses": [
+        "F.4",
+        "F.15",
+        "F.16",
+        "F.17"
+      ],
+      "status": "partial",
+      "tests": [
+        "paint_jpx/sycc-neutral",
+        "paint_jpx/sycc-chroma",
+        "paint_jpx/sycc-gamut",
+        "paint_jpx/sycc-pdf-override",
+        "paint_jpx/sycc-ignores-decode-default",
+        "paint_jpx/sycc-straight-alpha",
+        "paint_jpx/sycc-premultiplied-alpha",
+        "paint_jpx/sycc-16bit-boundary",
+        "pagura-color tests/sycc.rs eight_bit_sycc_preserves_neutrals_and_decodes_chroma"
+      ],
+      "review": [
+        {
+          "locator": "IEC 61966-2-1:1999/AMD1:2003 F.4, equations F.15-F.17; T.800 I.5.3.3; ISO 32000-2 7.4.9 / Table 87",
+          "rule": "For eight-bit unsigned sYCC, centre chroma on code 128 and convert to encoded sRGB using the Annex F inverse matrix. Clip to the destination gamut. Explicit PDF colour takes precedence; otherwise ignore Decode and device default replacements. Unassociate embedded premultiplied channels before colour conversion.",
+          "verdict": "Primary equations checked in the publisher preview; independent rational pixel oracles and known byte examples authored. Hosted execution pending."
+        }
+      ],
+      "gaps": "Other precisions and mixed-precision sYCC remain Unsupported(xobject.jpx-color). Broader masks, groups, interpolation, platform and competitor acceptance remain G01/R02 work."
     }
   ]
 }

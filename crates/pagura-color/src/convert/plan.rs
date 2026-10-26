@@ -84,6 +84,7 @@ enum Source {
     Gray,
     Rgb,
     Cmyk,
+    Sycc,
     /// Separation `None` and all-`None` DeviceN: `1 − tint`.
     Inverse,
     Calibrated(Arc<Calibrated>),
@@ -481,6 +482,7 @@ impl Chain {
                 return Ok(Self { steps, terminal });
             }
             let terminal = match space {
+                ColorSpace::Sycc => rgb(Source::Sycc),
                 ColorSpace::Calibrated(space) => rgb(Source::Calibrated(Arc::clone(space))),
                 ColorSpace::Icc(icc) => {
                     let range = icc_range(icc.range)?;
@@ -720,7 +722,7 @@ impl Source {
                 let clipped = clip_icc(slice, range);
                 Some(profile.linear_total(clipped.get(..*count).unwrap_or(&[]), *intent))
             }
-            Self::Gray | Self::Rgb | Self::Cmyk | Self::Inverse => None,
+            Self::Gray | Self::Rgb | Self::Cmyk | Self::Sycc | Self::Inverse => None,
         }
     }
 
@@ -730,6 +732,21 @@ impl Source {
         match self {
             Self::Gray => [n(0); 3],
             Self::Rgb => [n(0), n(1), n(2)],
+            Self::Sycc => {
+                // IEC 61966-2-1 Amendment 1, F.15/F.16: eight-bit sYCC
+                // code values -> encoded sRGB. Gamut clipping is the same
+                // output policy used by the other source colour models;
+                // rounding waits until the final renderer quantization.
+                let y = n(0);
+                let cb = n(1) - 128.0 / 255.0;
+                let cr = n(2) - 128.0 / 255.0;
+                [
+                    y + 1.4020 * cr,
+                    y - 0.3441 * cb - 0.7141 * cr,
+                    y + 1.7720 * cb,
+                ]
+                .map(|value| value.clamp(0.0, 1.0))
+            }
             Self::Cmyk => {
                 let k = n(3);
                 [

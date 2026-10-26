@@ -98,6 +98,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     .embedded_icc(id, data, source.components())
                     .map(Some)
             }
+            ImageKind::EmbeddedColor {
+                color: JpxColor::Enumerated(18),
+            } if (0..3).all(|index| source.component_bits(index) == Some(8)) => {
+                Ok(Some(Arc::new(ColorSpace::Sycc)))
+            }
             ImageKind::EmbeddedColor { color } => {
                 let name: &[u8] = match (color, source.components()) {
                     (JpxColor::Enumerated(16), 3) => b"DeviceRGB",
