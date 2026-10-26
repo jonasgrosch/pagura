@@ -220,7 +220,8 @@ impl ShadingSource {
         };
         source.constant = source.constant_colors(bytes, functions)?;
         source.covers = source.always_covers();
-        source.aligned = aligned::Aligned::new(&source, bytes, functions)?.map(Box::new);
+        let columns = (context.region.x0, context.region.x1);
+        source.aligned = aligned::Aligned::new(&source, columns, bytes, functions)?.map(Box::new);
         Ok(source)
     }
 

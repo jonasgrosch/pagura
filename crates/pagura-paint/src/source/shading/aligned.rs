@@ -56,8 +56,11 @@ struct Table {
 }
 
 impl Aligned {
+    /// The aligned evaluation of `source`, for marks painted in device
+    /// `columns` (first, one past the last) only.
     pub(super) fn new(
         source: &ShadingSource,
+        columns: (u32, u32),
         bytes: &mut Meter,
         functions: &mut Meter,
     ) -> Result<Option<Self>> {
@@ -98,7 +101,7 @@ impl Aligned {
             table: None,
         };
         if direction == Direction::Columns {
-            aligned.table = Table::new(source, axial, bytes, functions)?;
+            aligned.table = Table::new(source, axial, columns, bytes, functions)?;
         }
         Ok(Some(aligned))
     }
@@ -229,7 +232,9 @@ fn classify(source: &ShadingSource, axial: &Axial, (x, y): (u32, u32)) -> Class 
 }
 
 impl Table {
-    /// The pixels of the columns between the axis ends, evaluated on row 0.
+    /// The pixels of the columns between the axis ends that `columns`
+    /// holds, evaluated on row 0. Pixels of other columns are classified
+    /// and evaluated one by one, as are the columns past the axis ends.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -238,16 +243,20 @@ impl Table {
     fn new(
         source: &ShadingSource,
         axial: &Axial,
+        (from, to): (u32, u32),
         bytes: &mut Meter,
         functions: &mut Meter,
     ) -> Result<Option<Self>> {
         let t = source.transform();
         let end = Point::new(axial.start.x + axial.delta.x, axial.start.y + axial.delta.y);
         let (a, b) = (t.apply(axial.start).x, t.apply(end).x);
-        let first = (a.min(b).floor() - 2.0).clamp(0.0, f64::from(u32::MAX));
-        let last = (a.max(b).ceil() + 2.0).clamp(0.0, f64::from(u32::MAX));
+        let first = (a.min(b).floor() - 2.0).clamp(f64::from(from), f64::from(u32::MAX));
+        let last = (a.max(b).ceil() + 2.0).clamp(0.0, f64::from(to.saturating_sub(1)));
+        if !(first.is_finite() && last.is_finite() && first <= last) {
+            return Ok(None);
+        }
         let count = (last - first) as usize + 1;
-        if !(first.is_finite() && last.is_finite()) || count > MAX_COLUMNS {
+        if count > MAX_COLUMNS {
             return Ok(None);
         }
         let first = first as u32;
