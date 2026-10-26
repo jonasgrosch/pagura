@@ -852,10 +852,11 @@ impl<'a> Grid<'a> {
 /// Samples `x0..x1` of a packed row in `out`, each as `code` gives it from
 /// its code; a sample past the row's bytes has code 0.
 fn unpack<T>(row: &[u8], (x0, x1): (usize, usize), out: &mut [T], code: impl Fn(u8) -> T) {
-    let head = x0.next_multiple_of(8).min(x1);
+    // Clamp the alignment distance before adding it at the address limit.
+    let head = x0 + (x0.wrapping_neg() & 7).min(x1 - x0);
     let whole = (x1 - head) / 8;
     let (start, middle) = out.split_at_mut(head - x0);
-    for (x, out) in (x0..).zip(start) {
+    for (x, out) in (x0..head).zip(start) {
         *out = code(bit(row, x));
     }
     let (middle, tail) = middle.split_at_mut(whole * 8);
@@ -865,7 +866,7 @@ fn unpack<T>(row: &[u8], (x0, x1): (usize, usize), out: &mut [T], code: impl Fn(
         *out = UNPACKED[usize::from(byte)].to_ne_bytes().map(&code);
     }
     missing.fill_with(|| code(0));
-    for (x, out) in (head + whole * 8..).zip(tail) {
+    for (x, out) in (head + whole * 8..x1).zip(tail) {
         *out = code(bit(row, x));
     }
 }
@@ -894,4 +895,21 @@ const fn unpacked() -> [u64; 256] {
 /// Sample `x` of a packed row.
 fn bit(row: &[u8], x: usize) -> u8 {
     row.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1)
+}
+
+#[cfg(test)]
+mod unpack_tests {
+    use super::unpack;
+
+    #[test]
+    fn short_packed_spans_at_the_address_limit_do_not_overflow() {
+        for distance in 0..24 {
+            let x0 = usize::MAX - distance;
+            for len in 0..=distance {
+                let mut out = vec![[9, 9]; len];
+                unpack(&[], (x0, x0 + len), &mut out, |code| [code, 1 - code]);
+                assert_eq!(out, vec![[0, 1]; len]);
+            }
+        }
+    }
 }
