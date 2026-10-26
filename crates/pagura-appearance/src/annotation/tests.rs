@@ -243,3 +243,74 @@ fn rectangles_without_area_get_no_appearance_after_validation() {
         );
     }
 }
+
+#[test]
+fn file_attachment_default_null_unknown_and_indirect_names_are_consistent() {
+    let area = rect(8.0, 8.0, 24.0, 24.0);
+    let expected = generate(b"<< /Subtype /FileAttachment /Name /PushPin >>", area).unwrap();
+    for value in [
+        b"<< /Subtype /FileAttachment >>".as_slice(),
+        b"<< /Subtype /FileAttachment /Name null >>",
+        b"<< /Subtype /FileAttachment /Name /Unrecognized >>",
+        b"<< /Subtype /FileAttachment /FS 999 0 R >>",
+    ] {
+        assert_eq!(generate(value, area).unwrap(), expected);
+    }
+    let document = Document::open(
+        fixture("file_annotations", "indirect-array-and-geometry.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let dictionary = dictionary(b"<< /Subtype /FileAttachment /Name 12 0 R >>");
+    let generated = annotation_appearance(&document, &dictionary, area).unwrap();
+    assert_eq!(
+        generated,
+        generate(b"<< /Subtype /FileAttachment /Name /Graph >>", area).unwrap()
+    );
+}
+
+#[test]
+fn file_attachment_icons_have_bounded_content_and_validate_visual_entries() {
+    let area = rect(8.0, 8.0, 24.0, 24.0);
+    for name in [b"Graph".as_slice(), b"PushPin", b"Paperclip", b"Tag"] {
+        let mut annotation = Dictionary::new();
+        annotation.insert(
+            pagura_core::Name::new(b"Subtype"),
+            Value::name(b"FileAttachment"),
+        );
+        annotation.insert(pagura_core::Name::new(b"Name"), Value::name(name));
+        let document = Document::open(
+            fixture("forms", "text-quadding-0.pdf"),
+            &OpenOptions {
+                limits: Limits {
+                    stream_bytes: 16,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            annotation_appearance(&document, &annotation, area)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+    }
+    for text in [
+        b"<< /Subtype /FileAttachment /Name (Graph) >>".as_slice(),
+        b"<< /Subtype /FileAttachment /Name 42 >>",
+        b"<< /Subtype /FileAttachment /C [0 0] >>",
+        b"<< /Subtype /FileAttachment /CA /Opaque >>",
+    ] {
+        assert_eq!(generate(text, area).unwrap_err().kind, ErrorKind::Syntax);
+        assert_eq!(
+            generate(text, rect(8.0, 8.0, 8.0, 24.0)).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+    }
+    assert_eq!(
+        generate(b"<< /Subtype /FileAttachment >>", rect(8.0, 8.0, 8.0, 24.0)).unwrap(),
+        None
+    );
+}

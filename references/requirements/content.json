@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "content",
-  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic/mesh shadings, shading and tiling patterns in 8.7, annotation appearances, generated link/square/note shapes and view flags in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC source admission, Gray/RGB matrix/TRC and forward mft1/mft2/mAB processing are checked against locally supplied ICC.1:2010 (v4.3); legacy v2 transform encodings are covered, but v2-specific metadata rules await a primary v2 text.",
+  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic/mesh shadings, shading and tiling patterns in 8.7, annotation appearances, generated link/square/note/file-attachment shapes and view flags in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC source admission, Gray/RGB matrix/TRC and forward mft1/mft2/mAB processing are checked against locally supplied ICC.1:2010 (v4.3); legacy v2 transform encodings are covered, but v2-specific metadata rules await a primary v2 text.",
   "requirements": [
     {
       "id": "content-vector-pipeline",
@@ -796,6 +796,32 @@
       ],
       "gaps": "Short Indexed palettes remain errors. For unregistered groups the initial ON state applies even under membership negation; readers disagree. Missing required optional-content entries disable optional-content evaluation.",
       "rule": "Strict mode rejects each repair with its stable content tag; repair mode reports it before continuing. Numeric SC/sc may select a matching non-pattern special or ICC colour, undefined paths paint nothing and discard pending clips, clipping is deferred past further construction, and excess palette bytes are ignored. Missing required OCProperties is reported when optional content is used and disables evaluation as 8.11.4.2 requires; missing required registry or configuration is repaired by disabling it, and valid unregistered OCGs retain initial ON state."
+    },
+    {
+      "id": "content-file-attachment-icons",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "12.5.3",
+        "12.5.4",
+        "12.5.5",
+        "12.5.6.15 Table 187"
+      ],
+      "rule": "Missing FileAttachment appearances use the Graph, PushPin, Paperclip or Tag symbol selected by Name. Absence or null selects PushPin; unknown names also select PushPin by reader policy. Distinct original geometric artwork, a yellow default background, black outlines and unknown-name fallback are project policies. C and independent CA/ca affect generated marks; stored appearances retain precedence. Geometry uses the annotation rectangle and explicit visibility/NoZoom/NoRotate flags. Painting neither resolves FS nor decodes or activates its payload.",
+      "status": "four generated file attachment icons implemented; hosted accuracy validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::file_attachment_default_null_unknown_and_indirect_names_are_consistent",
+        "pagura-appearance annotation::tests::file_attachment_icons_have_bounded_content_and_validate_visual_entries",
+        "file_attachment_icons/default",
+        "file_attachment_icons/graph-72-0-generated",
+        "file_attachment_icons/paperclip-72-0-generated",
+        "file_attachment_icons/pushpin-72-0-generated",
+        "file_attachment_icons/tag-72-0-generated",
+        "file_attachment_icons/graph-view-24-generated",
+        "file_attachment_icons/separate-opacity",
+        "file_attachment_icons/stored-ignores-style"
+      ],
+      "gaps": "Activation, hit testing, printing policy and other missing annotation subtype appearances remain separate work."
     }
   ]
 }

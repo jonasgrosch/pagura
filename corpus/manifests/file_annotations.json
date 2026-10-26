@@ -8,7 +8,7 @@
       "id": "file_annotations/populated",
       "kind": "pdf",
       "description": "populated",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -16,14 +16,13 @@
       "sha256": "4d881af1fdc7f72f585e6a1a16307a143d846ec12957e8ff204b31bbe07a4cd2",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/page-only",
       "kind": "pdf",
       "description": "page only",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -31,14 +30,13 @@
       "sha256": "28440ea319e9461fae4451222350af8991acbf1a7d5bcc01e691a98101bc8417",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/many",
       "kind": "pdf",
       "description": "many",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -46,8 +44,7 @@
       "sha256": "f5bdc523f05ff2f1c63d1c9de139bb6b1599b1e0e2cde2fe72f644fc02efe144",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/listing-limit",
@@ -125,7 +122,7 @@
       "id": "file_annotations/indirect-array-and-geometry",
       "kind": "pdf",
       "description": "indirect array and geometry",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -133,14 +130,13 @@
       "sha256": "744e1849bfb696837f58d1defbb940006fef4d098441e1ccbe2328967c2ad3b7",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/external",
       "kind": "pdf",
       "description": "external",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -148,14 +144,13 @@
       "sha256": "c0d5d41876196e61e9fb59050a92a1399ccce53b97c1ef34eb24762f0ad78b60",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/direct-external-spec",
       "kind": "pdf",
       "description": "direct external spec",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -163,14 +158,13 @@
       "sha256": "dc34d1eecc672c9758854301fb9afa867321d5474ba9ab1af69aca63b608311a",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/null-optional",
       "kind": "pdf",
       "description": "null optional",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -178,14 +172,13 @@
       "sha256": "9ebdc5605ea093cb4e1df36e6296a68cbfe6da130534171e3e5b64564283c52c",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/no-type",
       "kind": "pdf",
       "description": "no type",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -193,14 +186,13 @@
       "sha256": "306e9d99cf283f3c38ad55238d9347e25ee958dfb247f28bb8cfeca12548c36a",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/absent-payload-type",
       "kind": "pdf",
       "description": "absent payload type",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -208,14 +200,13 @@
       "sha256": "6625f1a668924c58ee57550614b5be2f2ab6f103e9a1cf3623fd727603b6f1bf",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/flate",
       "kind": "pdf",
       "description": "flate",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -223,8 +214,7 @@
       "sha256": "5141d7d559badfc9cf79c1d6e6a3183d514d2fb3e82da65c621d5012fe892862",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/wrong-array",
@@ -245,7 +235,7 @@
       "id": "file_annotations/direct-annotation",
       "kind": "pdf",
       "description": "direct annotation",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -253,8 +243,7 @@
       "sha256": "529cbc17336772e9b7adccaf8a245996a22306feb59af41e16a5f2d8055a1356",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/null-member",
@@ -305,7 +294,7 @@
       "id": "file_annotations/stream-annotation",
       "kind": "pdf",
       "description": "stream annotation",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -313,8 +302,7 @@
       "sha256": "0b67b29745bdeae13caa0ee52ee35dfb2ddbcab993a0ec9ae2b09b7067480e6f",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/missing-subtype",
@@ -350,7 +338,7 @@
       "id": "file_annotations/wrong-type",
       "kind": "pdf",
       "description": "wrong type",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -358,14 +346,13 @@
       "sha256": "fbcbddaf86c357ca29aaebe598063c1bac1003b86cbea84bb056ad68922e48ec",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/missing-file",
       "kind": "pdf",
       "description": "missing file",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -373,14 +360,13 @@
       "sha256": "3bdc07f48acf7b4315a637dcdd0dce09c21bf31e84b61399ebcca5891f933444",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/null-file",
       "kind": "pdf",
       "description": "null file",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -388,14 +374,13 @@
       "sha256": "7485d875ad6583aff0d359c1b1298ef121fed553819f60a6c9038eb64d472088",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/wrong-file",
       "kind": "pdf",
       "description": "wrong file",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -403,8 +388,7 @@
       "sha256": "980785160342a6bf362bc60e7c4bc389ffab1a25327744a2e7544a719ef522c1",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/missing-rectangle",
@@ -470,7 +454,7 @@
       "id": "file_annotations/wrong-contents",
       "kind": "pdf",
       "description": "wrong contents",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -478,14 +462,13 @@
       "sha256": "bfd1dd32c31b0cec5ce3eee886f3d2ddbe15b5f1ee22373aeacd1c09be913d5a",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/wrong-icon",
       "kind": "pdf",
       "description": "wrong icon",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -494,13 +477,13 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "render_error": "syntax"
     },
     {
       "id": "file_annotations/invalid-unicode",
       "kind": "pdf",
       "description": "invalid unicode",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -508,14 +491,13 @@
       "sha256": "b7608c67a6b1563baf64267b1a69e59c6bcb815b340af2e7f5a07e9dcd9e0f4f",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/late-failure",
       "kind": "pdf",
       "description": "late failure",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations"
       ],
@@ -523,14 +505,13 @@
       "sha256": "4241071076bab66a3adf148f76a4d1a43ca117ab68780357002de882f59356e1",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "file_annotations/encrypted-no-type",
       "kind": "pdf",
       "description": "Annotation payload authentication remains lazy",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations",
         "security-authorization-events"
@@ -541,14 +522,13 @@
       "strict_valid": false,
       "repairs": [
         "security.crypt-filter-event"
-      ],
-      "feature": "annotation.appearance"
+      ]
     },
     {
       "id": "file_annotations/encrypted-identity",
       "kind": "pdf",
       "description": "Annotation payload authentication remains lazy",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "document-file-annotations",
         "security-authorization-events"
@@ -559,8 +539,7 @@
       "strict_valid": false,
       "repairs": [
         "security.crypt-filter-event"
-      ],
-      "feature": "annotation.appearance"
+      ]
     },
     {
       "id": "file_annotations/render-null",

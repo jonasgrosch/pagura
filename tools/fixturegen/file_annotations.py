@@ -2,13 +2,13 @@
 
 Catalog names and page associations are independent discovery routes. Malformed
 views stay lazy: the pages can open before requesting them. Rendering is a
-separate operation: malformed annotation geometry must fail, and absent
-FileAttachment appearances still reach the registered V01 generation gap.
+separate operation: malformed visual entries must fail, while absent
+FileAttachment appearances now use independently checked generated icons.
 """
 import zlib
 
 from .files import PAYLOAD, attachment_encryption, source, text
-from .model import Case, OPEN, RENDER, UNSUPPORTED
+from .model import Case, OPEN, RENDER
 from .pdf import opaque_rectangles, stream
 
 AREA = 'file_annotations'
@@ -17,14 +17,12 @@ BASE = b' /Type /Annot /Subtype /FileAttachment /Rect [9 12 1 2] /FS 5 0 R '
 
 
 def cases():
-    def case(name, annotation=b'<<' + BASE + b'>>', *, annots=b'[8 0 R]', extra=(), render_error: str | None = 'unsupported', **options):
-        # These are typed-view controls, not a claim of icon synthesis. Require
-        # its exact feature tag; malformed renderer inputs require their own
-        # error kind, while the public view tests assert their distinct results.
+    def case(name, annotation=b'<<' + BASE + b'>>', *, annots=b'[8 0 R]', extra=(), render_error: str | None = None, **options):
+        # Discovery and painting validate separate data. Painting uses visual
+        # fields without resolving FS or decoding/authenticating its payload.
         return Case(name, source(page=b'/Annots ' + annots, extra=(annotation, *extra), **options),
-                    UNSUPPORTED if render_error == 'unsupported' else OPEN, (REQUIREMENT,), name.replace('-', ' '),
-                    feature='annotation.appearance' if render_error == 'unsupported' else None,
-                    extra={'render_error': render_error} if render_error and render_error != 'unsupported' else {})
+                    OPEN, (REQUIREMENT,), name.replace('-', ' '),
+                    extra={'render_error': render_error} if render_error else {})
 
     yield case('populated', b'<<' + BASE + b'/Contents ' + text('Annotation Ω') + b'/Name /Paperclip /Custom (kept) >>')
     yield case('page-only', names=b'')
@@ -66,13 +64,13 @@ def cases():
         ('wrong-icon', BASE + b'/Name (Paperclip)'),
         ('invalid-unicode', BASE + b'/Contents <feff004100>'),
     ]:
-        error = 'syntax' if name in {'missing-subtype', 'wrong-subtype', 'missing-rectangle', 'wrong-rectangle', 'short-rectangle', 'wrong-coordinate'} else 'unsupported'
+        error = 'syntax' if name in {'missing-subtype', 'wrong-subtype', 'missing-rectangle', 'wrong-rectangle', 'short-rectangle', 'wrong-coordinate', 'wrong-icon'} else None
         yield case(name, b'<<' + body + b'>>', render_error=error)
     yield case('late-failure', annots=b'[8 0 R 9 0 R]', extra=(b'<< /Subtype /FileAttachment /Rect [1 2 9 12] >>',))
     for name, options in [('encrypted-no-type', {'omit_type': True}), ('encrypted-identity', {'identity': True})]:
-        yield Case(name, attachment_encryption(annotation=True, **options), UNSUPPORTED,
+        yield Case(name, attachment_encryption(annotation=True, **options), OPEN,
                    (REQUIREMENT, 'security-authorization-events'), 'Annotation payload authentication remains lazy',
-                   strict_valid=False, repairs=('security.crypt-filter-event',), feature='annotation.appearance')
+                   strict_valid=False, repairs=('security.crypt-filter-event',))
 
     # Independent rendering controls for valid null and indirect page entries.
     for name, page, objects, rectangles in [

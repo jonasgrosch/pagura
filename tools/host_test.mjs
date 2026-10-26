@@ -146,6 +146,8 @@ async function main() {
   const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/classic.json'), 'utf8'));
   const recovery = JSON.parse(await readFile(join(root, 'corpus/manifests/recovery.json'), 'utf8'));
   manifest.cases.push(...recovery.cases.filter((entry) => entry.id.startsWith('recovery/type3-empty-bounds-')));
+  const attachmentIcons = JSON.parse(await readFile(join(root, 'corpus/manifests/file_attachment_icons.json'), 'utf8'));
+  manifest.cases.push(...attachmentIcons.cases);
   const scratch = await mkdtemp(join(tmpdir(), 'pagura-host-'));
   const files = [];
   const wasiRun = async (input, name) => {
@@ -183,11 +185,12 @@ async function main() {
     let tested = 0;
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
       const pdf = new Uint8Array(await readFile(join(root, entry.path)));
+      const scale = (entry.dpi ?? 72) / 72;
       const tile = { x: 0, y: 0, width: entry.width, height: entry.height };
       const input = Buffer.concat([
         encodeRequest(1, 1), encodeRequest(2, 2, { bytes: pdf, password: new Uint8Array(), recovery: 1 }),
         encodeRequest(3, 3, { document: 1, page: 0 }),
-        encodeRequest(4, 4, { document: 1, page: 0, scale: 1, ...tile }),
+        encodeRequest(4, 4, { document: 1, page: 0, scale, ...tile }),
         encodeRequest(5, 5, { document: 1 }), encodeRequest(6, 6, { document: 1 }),
       ]);
       const nativeRun = spawnSync(native, [], { input, maxBuffer: 128 * 1024 * 1024, timeout: 30000 });
@@ -201,8 +204,8 @@ async function main() {
       checkPixels(frames[3].value, rgb, entry.tolerance ?? 0);
       const opened = await client.open(pdf);
       const info = await client.pageInfo(opened.document, 0);
-      assert.equal(info.width, entry.width); assert.equal(info.height, entry.height);
-      const browserTile = await client.renderTile(opened.document, 0, 1, tile);
+      assert.equal(info.width * scale, entry.width); assert.equal(info.height * scale, entry.height);
+      const browserTile = await client.renderTile(opened.document, 0, scale, tile);
       bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
       const diagnostics = await client.diagnostics(opened.document);
       assert.deepEqual(diagnostics, frames[4].value);
@@ -216,7 +219,7 @@ async function main() {
         { x: 0, y: 0, width: Math.min(31, entry.width), height: entry.height },
         { x: entry.width - 1, y: entry.height - 1, width: 1, height: 1 },
       ]) {
-        const rendered = await client.renderTile(opened.document, 0, 1, partial);
+        const rendered = await client.renderTile(opened.document, 0, scale, partial);
         for (let y = 0; y < partial.height; y++) {
           const expectedStart = ((partial.y + y) * entry.width + partial.x) * 4;
           bytesEqual(rendered.rgba.subarray(y * partial.width * 4, (y + 1) * partial.width * 4),
@@ -324,7 +327,7 @@ async function main() {
       await testDiagnosticKinds(bundled, root, join(root, 'target/host-bundled/release/pagura-host'), wasiRun);
     } finally { bundled.destroy(); }
     await testViewer(TestWorker, root, manifest, null, true);
-    console.log(`Host checks passed: ${tested} classic render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles; v1.4 diagnostic kinds and separate viewer counts.`);
+    console.log(`Host checks passed: ${tested} independent render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles; v1.4 diagnostic kinds and separate viewer counts.`);
   } finally {
     client?.destroy();
     await Promise.all(files.map((file) => file.close())); await rm(scratch, { recursive: true, force: true });

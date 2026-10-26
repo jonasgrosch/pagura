@@ -1,5 +1,5 @@
 //! Appearances of annotations that have no appearance stream (12.5.5):
-//! link and square borders, note icons and empty widgets (12.5.6).
+//! link and square borders, note/file icons and empty widgets (12.5.6).
 
 mod border;
 mod icon;
@@ -21,7 +21,7 @@ use pagura_document::Document;
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
 /// resources; its Resources hold nothing else, so page resources such as
 /// default colour spaces do not apply. Reader policy draws Link and Square
-/// borders, the seven Text icons, and the MK background and border of empty
+/// borders, seven Text icons, four FileAttachment icons, and the MK background and border of empty
 /// text and signature widgets.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
@@ -55,6 +55,7 @@ pub fn annotation_appearance(
         b"Link" => border::generate(document, annotation, rect, border::Shape::Link)?,
         b"Square" => border::generate(document, annotation, rect, border::Shape::Square)?,
         b"Text" => icon::generate(document, annotation, rect)?,
+        b"FileAttachment" => icon::file_attachment(document, annotation, rect)?,
         b"Widget" => widget::generate(document, annotation, rect)?,
         _ => {
             return Err(Error::unsupported(
