@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Document services preserve lazy reads, explicit selection and old protocols.
 
-use pagura::{ErrorKind, Limits};
+use pagura::{ErrorKind, Limits, Recovery};
 use pagura_host::protocol::{self, Version};
 use pagura_host::{Session, SessionConfig, SessionLimits};
 use pagura_testkit::{fixture, frame, split_frames};
@@ -9,8 +9,17 @@ use pagura_testkit::{fixture, frame, split_frames};
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn source(area: &str, name: &str, password: &[u8]) -> Result<Vec<u8>> {
+    source_with_recovery(area, name, password, Recovery::Strict)
+}
+
+fn source_with_recovery(
+    area: &str,
+    name: &str,
+    password: &[u8],
+    recovery: Recovery,
+) -> Result<Vec<u8>> {
     let pdf = fixture(area, name);
-    let mut payload = vec![0];
+    let mut payload = vec![u8::from(recovery == Recovery::Repair)];
     payload.extend(u32::try_from(password.len())?.to_le_bytes());
     payload.extend(password);
     payload.extend(u32::try_from(pdf.len())?.to_le_bytes());
@@ -148,6 +157,15 @@ fn payloads_are_exact_and_failed_selection_keeps_the_session_alive() -> Result<(
 
 #[test]
 fn attachment_authorization_is_lazy_and_explicit_identity_stays_public() -> Result<()> {
+    // These independently authored EFOpen-only Standard-handler fixtures are
+    // explicitly marked strict_valid=false in the manifest. Check the strict
+    // refusal before exercising their reported-extension authorization path.
+    let mut strict = hello(Version::V1_8);
+    strict.extend(source("files", "encrypted-no-type.pdf", b"")?);
+    let bodies = serve(Session::default(), &strict)?;
+    assert_eq!((bodies[1][0], bodies[1][5]), (255, 1));
+    let repair = b"security.crypt-filter-event";
+    assert!(bodies[1].windows(repair.len()).any(|bytes| bytes == repair));
     for password in [b"".as_slice(), b"wrong", b"attachment", b"owner"] {
         for name in [
             "encrypted-no-type.pdf",
@@ -155,10 +173,16 @@ fn attachment_authorization_is_lazy_and_explicit_identity_stays_public() -> Resu
             "encrypted-identity-no-type.pdf",
         ] {
             let mut input = hello(Version::V1_8);
-            input.extend(source("files", name, password)?);
+            input.extend(source_with_recovery(
+                "files",
+                name,
+                password,
+                Recovery::Repair,
+            )?);
             input.extend(frame(23, 3, &[1, 0, 0, 0]));
             input.extend(frame(25, 4, &[1, 0, 0, 0, 0, 0, 0, 0, 0]));
             input.extend(frame(3, 5, &[1, 0, 0, 0, 0, 0, 0, 0]));
+            input.extend(frame(17, 6, &[1, 0, 0, 0]));
             let bodies = serve(Session::default(), &input)?;
             assert_eq!(bodies[2][0], 151, "listing never decrypts payloads");
             if password == b"attachment"
@@ -170,6 +194,8 @@ fn attachment_authorization_is_lazy_and_explicit_identity_stays_public() -> Resu
                 assert_eq!((bodies[3][0], bodies[3][5]), (255, 6));
             }
             assert_eq!(bodies[4][0], 131);
+            assert_eq!(bodies[5][0], 145);
+            assert!(bodies[5].windows(repair.len()).any(|bytes| bytes == repair));
         }
     }
     Ok(())
