@@ -2,6 +2,37 @@ use super::*;
 use pagura_core::{Name, Recovery};
 
 #[test]
+fn empty_markup_quads_do_not_emit_device_hairlines_or_hide_later_geometry() {
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    for subtype in ["Highlight", "Underline", "StrikeOut", "Squiggly"] {
+        let make = |quads: &str| {
+            dictionary(format!("<< /Subtype /{subtype} /QuadPoints [{quads}] >>").as_bytes())
+        };
+        let document = document();
+        let normal = "4 8 28 8 28 20 4 20";
+        let expected = annotation_appearance(&document, &make(normal), area).unwrap();
+        for empty in ["4 8 28 8 28 8 4 8", "4 4 4 4 4 4 4 4", "4 4 8 8 8 8 4 4"] {
+            assert!(
+                annotation_appearance(&document, &make(empty), area)
+                    .unwrap()
+                    .is_none()
+            );
+            assert_eq!(
+                annotation_appearance(&document, &make(&format!("{empty} {normal}")), area)
+                    .unwrap(),
+                expected
+            );
+        }
+        assert_eq!(
+            annotation_appearance(&document, &make("4 8 28 8 28 8 4 /Bad"), area)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
+    }
+}
+
+#[test]
 fn alternate_markup_quad_order_is_reported_and_strict_mode_refuses_it() {
     for subtype in ["Highlight", "Underline", "StrikeOut", "Squiggly"] {
         let area = rect(0.0, 0.0, 32.0, 32.0);

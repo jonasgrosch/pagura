@@ -5,6 +5,7 @@
 //! band. Squiggly is a 1/24-height ribbon with peaks 1/12 apart vertically
 //! and horizontal steps no longer than 1/6 of the quad height. All regions
 //! share one nonzero fill, so overlapping quads do not apply opacity twice.
+//! Validated zero-area quads emit no marks instead of device hairlines.
 
 mod quads;
 
@@ -35,6 +36,9 @@ pub(super) fn generate(
     let mut work = Meter::new(limits.operations, "markup path work budget exceeded");
     let mut commands = Vec::new();
     for quad in &quads {
+        if !quad.has_area() {
+            continue;
+        }
         let count = if style == Style::Squiggly {
             steps(quad, &limits)?
         } else {
@@ -55,7 +59,9 @@ pub(super) fn generate(
         Color::black()
     };
     let mut marks = Marks::new(document, annotation);
-    if let Some(color) = color(document, annotation, b"C", Some(default))? {
+    if let Some(color) = color(document, annotation, b"C", Some(default))?
+        && !commands.is_empty()
+    {
         if style == Style::Highlight {
             marks.multiply()?;
         }
