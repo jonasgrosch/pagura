@@ -24,7 +24,7 @@ use pagura_core::Meter;
 use std::sync::Arc;
 
 /// The most channels a ramp converts into.
-const MAX_RAMP_CHANNELS: usize = 4;
+pub const MAX_RAMP_CHANNELS: usize = 4;
 
 /// The widest radius an encoded channel's cubic may have; a wider one
 /// leaves more samples undecided than bounding the power per sample.
