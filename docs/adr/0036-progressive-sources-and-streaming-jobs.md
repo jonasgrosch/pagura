@@ -92,6 +92,14 @@ them once on completion; successful dependencies survive an outer retry. Global
 validation failures do not replace successful dependency values from a requested
 operation. Every retry is charged to the same loading-work allowance.
 
+Semantic diagnostic attempts use the existing bounded document log's identity
+and suppression rules. The attempt publishes on success or terminal rejection,
+preserving reports already emitted for a completed failure under the old API.
+An unavailable dependency discards only provisional reports; it cannot undo
+completed object/stream/cache dependencies. Nested callers share a borrowed
+attempt reporter rather than installing a thread-local sink or rolling back
+another operation's document diagnostics.
+
 ### 3. Load requested dependencies and declare validation scope
 
 Ordinary PDFs bootstrap from the header/tail, resolve the newest authoritative

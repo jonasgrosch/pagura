@@ -35,6 +35,7 @@ mod stream;
 mod view;
 mod xref;
 
+pub use diagnostics::DiagnosticBatch;
 pub use object::{IndirectObject, ObjectSource};
 pub use opening::{OpenJob, Opening};
 pub use options::OpenOptions;
