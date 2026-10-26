@@ -683,6 +683,166 @@
       "width": 64,
       "height": 64,
       "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-control-simple",
+      "kind": "pdf",
+      "description": "cff2 dict control simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-control-simple.pdf",
+      "sha256": "181ddb3d04cd5bfc2e594943d6adef7ad8680357b9297a7567424fac48f3299d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-control-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-control-cid",
+      "kind": "pdf",
+      "description": "cff2 dict control cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-control-cid.pdf",
+      "sha256": "70dd8eacb7d081f1c20f1ea8d2a4737507f1a330ed60d8342cba453c76366ef1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-control-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-top-simple",
+      "kind": "pdf",
+      "description": "cff2 dict top simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-top-simple.pdf",
+      "sha256": "79a3913f2e191d475b44e0ed2b7bd32825a5114ebaa70b5836aeaefb7a173bf4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-top-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-top-cid",
+      "kind": "pdf",
+      "description": "cff2 dict top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-top-cid.pdf",
+      "sha256": "3351fc8f46da0ce0d4872a80da9bcded7bb6b74afab1291d64ea82b2dd975058",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-top-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-font-simple",
+      "kind": "pdf",
+      "description": "cff2 dict font simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-font-simple.pdf",
+      "sha256": "33e28170ae77462b53b310e084020f2b65b06f1eb9cef0861c2a4479230c02c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-font-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-font-cid",
+      "kind": "pdf",
+      "description": "cff2 dict font cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-font-cid.pdf",
+      "sha256": "c3a2ec5882d00994ffd7bed0c19f5cd7c576d0c9188c2a8d02655394b9e4afdb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-font-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-private-simple",
+      "kind": "pdf",
+      "description": "cff2 dict private simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-private-simple.pdf",
+      "sha256": "3cdee86d061fd2d61b90153aad493aa1e7ee220a862718b52ab748ed11c2c48e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-private-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-private-cid",
+      "kind": "pdf",
+      "description": "cff2 dict private cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-private-cid.pdf",
+      "sha256": "490b85f3f99eef7ce2242ed8a4939312e3052bfed74c6899b1bed9f61ca05120",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-private-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
     }
   ]
 }

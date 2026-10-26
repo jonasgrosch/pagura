@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct. Legacy post4 cmap admission and format8 numeric-code groups have paired controls. Supplementary numeric codes are isolated from literal-byte fallback; no UTF-16 stream-decoding or family-conformance claim. CFF2 FontDICT probes use current context-specific ignored-operator semantics; preserved legacy and omitted-Top observations remain explicitly separate. Type 1 sbw controls retain complete glyph metrics while checking PDF-owned advances in ordinary and rotated text.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct. Legacy post4 cmap admission and format8 numeric-code groups have paired controls. Supplementary numeric codes are isolated from literal-byte fallback; no UTF-16 stream-decoding or family-conformance claim. CFF2 FontDICT probes use current context-specific ignored-operator semantics; preserved legacy and omitted-Top observations remain explicitly separate. Type 1 sbw controls retain complete glyph metrics while checking PDF-owned advances in ordinary and rotated text. Top, Font and Private CFF2 DICT namespaces have paired unknown-operator controls; known-operator validation is a separate remaining boundary.",
   "cases": [
     {
       "id": "control.blank",
@@ -519,6 +519,110 @@
         "width": 64,
         "height": 64,
         "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-control-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-control-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-control-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-control-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-top-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-top-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-top-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-top-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-font-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-font-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-font-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-font-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-private-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-private-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-private-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-private-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
         "tolerance": 0
       }
     }

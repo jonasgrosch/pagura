@@ -387,7 +387,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7. Current CFF2 FontDICT unknown operators are ignored through the existing DICT parser; all 34 integrated rendering controls pass at 95249301d, with full functional validation still pending. Type 1 sbw retains both advance components for composite validation while the horizontal advance API and PDF dictionary metrics keep their contracts; independent native/PDF controls await hosted acceptance.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7. Current CFF2 FontDICT unknown operators are ignored through the existing DICT parser; all 34 integrated rendering controls pass at 95249301d, with full functional checks passing on Ubuntu, macOS and Windows. Type 1 sbw retains both advance components for composite validation while the horizontal advance API and PDF dictionary metrics keep their contracts; independent native/PDF controls await hosted acceptance. CFF2 Top and Private DICTs now share the context-specific unknown-operator discard path; eight additional PDF controls await hosted acceptance.",
       "remaining": "Remaining formats, legacy CFF2 matrix interpretation, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
@@ -493,7 +493,19 @@
         "font_formats/type1-advance-up-normal",
         "font_formats/type1-advance-up-rotated",
         "font_formats/type1-advance-down-normal",
-        "font_formats/type1-advance-down-rotated"
+        "font_formats/type1-advance-down-rotated",
+        "font/cff2-dict-control",
+        "font/cff2-dict-top",
+        "font/cff2-dict-font",
+        "font/cff2-dict-private",
+        "font_formats/cff2-dict-control-simple",
+        "font_formats/cff2-dict-control-cid",
+        "font_formats/cff2-dict-top-simple",
+        "font_formats/cff2-dict-top-cid",
+        "font_formats/cff2-dict-font-simple",
+        "font_formats/cff2-dict-font-cid",
+        "font_formats/cff2-dict-private-simple",
+        "font_formats/cff2-dict-private-cid"
       ],
       "comparisons": {
         "pdfium": "unprobed",

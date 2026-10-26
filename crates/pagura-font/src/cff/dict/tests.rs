@@ -167,3 +167,100 @@ fn font_dict_context_does_not_change_top_or_cff1_matrices() {
     );
     assert_eq!(diagnostics.take(), []); // Normative ignoring is not a repair.
 }
+
+#[test]
+fn cff2_namespaces_ignore_repeated_foreign_operators_without_retaining_entries() {
+    // All three operators are known elsewhere: SyntheticBase in CFF1,
+    // CharStrings in TopDICT, and defaultWidthX in CFF1 Private DICT.
+    for (kind, unknown, known, expected) in [
+        (
+            Kind::Cff2Top,
+            &[12, 20][..],
+            &[17][..],
+            Operator::CHAR_STRINGS,
+        ),
+        (Kind::Cff2Font, &[17][..], &[18][..], Operator::PRIVATE),
+        (
+            Kind::Cff2Private(&[]),
+            &[20][..],
+            &[19][..],
+            Operator::SUBRS,
+        ),
+    ] {
+        let mut data = vec![140];
+        data.extend(unknown);
+        data.extend([140, 141]);
+        data.extend(unknown);
+        data.extend([142, 12, 255]);
+        let ignored_len = data.len();
+        data.push(139);
+        if expected == Operator::PRIVATE {
+            data.push(139);
+        }
+        data.extend(known);
+        let limits = Limits {
+            font_entries: 1,
+            ..Limits::default()
+        };
+        let dict = parse(&data, kind, &limits).unwrap();
+        assert_eq!(dict.entries.len(), 1);
+        assert!(dict.has(expected));
+        let values: &[f64] = if expected == Operator::PRIVATE {
+            &[0.0, 0.0]
+        } else {
+            &[0.0]
+        };
+        assert_eq!(dict.values(expected), Some(values));
+        let no_entries = Limits {
+            font_entries: 0,
+            ..limits
+        };
+        parse(&data[..ignored_len], kind, &no_entries).unwrap();
+        assert_eq!(
+            parse(&data, kind, &no_entries).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+    }
+}
+
+#[test]
+fn all_cff2_dicts_keep_number_stack_work_and_known_duplicate_checks() {
+    for kind in [Kind::Cff2Top, Kind::Cff2Font, Kind::Cff2Private(&[])] {
+        let mut data = vec![139; 513];
+        data.extend([12, 255]);
+        let limits = Limits {
+            font_work: 514,
+            font_entries: 0,
+            ..Limits::default()
+        };
+        parse(&data, kind, &limits).unwrap();
+        let short = Limits {
+            font_work: 513,
+            ..limits
+        };
+        assert_eq!(
+            parse(&data, kind, &short).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        data.insert(0, 139);
+        assert_eq!(
+            parse(&data, kind, &Limits::default()).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+        for malformed in [&[12][..], &[31, 12, 255][..], &[30, 0xd0, 12, 255][..]] {
+            assert_eq!(
+                parse(malformed, kind, &Limits::default()).unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+        }
+    }
+    for (kind, data) in [
+        (Kind::Cff2Top, &[139, 17, 139, 17][..]),
+        (Kind::Cff2Private(&[]), &[139, 19, 139, 19][..]),
+    ] {
+        assert_eq!(
+            parse(data, kind, &Limits::default()).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+    }
+}

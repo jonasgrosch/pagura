@@ -182,6 +182,11 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         glyphs[1] = operands(0,0)+b"\x15"+number(-107)+b"\x1d"+end
     charstrings = index(glyphs, cff2)
     private_extra = operands(-210,10)+b"\x07"+operands(-10,10)+b"\x06" if variant == "blue-order" else b""
+    # CFF2 clears operands of operators unknown in the current DICT, even
+    # when they are repeated or meaningful in a different CFF namespace.
+    ignored = {"dict-top":b"\x0c\x14", "dict-font":b"\x11", "dict-private":b"\x14"}.get(variant) if variant is not None else None
+    unknown = operands(1)+ignored+operands(1,2)+ignored+operands(3)+b"\x0c\xff" if ignored else b""
+    if variant == "dict-private": private_extra = unknown
     if variant in ("private-blend","private-blend-override"):
         # Dataset 1 has one active region. Blend 10 + 20*1 = 30,
         # leaving the leading BlueValues operand 5 untouched.
@@ -207,6 +212,7 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
     fdselect = b"\x03"+u16(1)+u16(0)+b"\x00"+u16(5)
     def top(chars, chars_set, encoding, private_at, fdarray_at, fdselect_at, vstore_at=0):
         result = operands(393,394,0)+b"\x0c\x1e" if cid and conforming else b""
+        if variant == "dict-top": result += unknown
         if top_matrix is not None:
             result += top_matrix+b"\x0c\x07"
         result += offset(chars)+b"\x11"
@@ -245,6 +251,7 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         if hostile == "fd-sentinel": fdselect = fdselect[:-4]+u32(4)
         if hostile == "fd-order": fdselect = fdselect[:11]+u32(0)+fdselect[15:]
     fonts = [offset(private_size)+offset(private_at)+b"\x12"]
+    if variant == "dict-font": fonts[0] = unknown+fonts[0]
     if variant in ("fd-array","fd4","fd4-wide","fd-matrix"):
         matrix = b"" if cff2 and variant != "fd-matrix" else (operands(2,0,0,2,0,0) if fd_matrix is None else fd_matrix)+b"\x0c\x07"
         fonts.append(offset(6 if cff2 else 18)+offset(private_at+first_private_len)+b"\x12"+matrix)
@@ -536,6 +543,9 @@ def cases():
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
     yield from type1_advance_cases()
+    for label,variant in [('control',None),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
+        yield vector('cff2-dict-'+label,truetype(cff=cff_font(conforming=True,cff2=True,variant=variant),cff2=True),
+                     'count 5\nadvance 1 600\noutline 1\n'+RECT,'font-cff','opentype')
 
 
 def metadata_font(charset_kind=0, encoding_kind=0, charset_format=0):

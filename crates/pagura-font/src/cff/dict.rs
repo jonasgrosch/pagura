@@ -1,4 +1,4 @@
-//! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
+//! CFF DICT evaluation (TN 5176 section 4), with current OpenType CFF2 namespaces.
 use crate::budget::Work;
 use crate::charstring::{Operands, integer, shared_number};
 use crate::read::syntax;
@@ -49,6 +49,45 @@ pub(super) enum Kind<'a> {
     Cff2Private(&'a [Vec<f64>]),
 }
 
+impl Kind<'_> {
+    /// CFF2's operator namespaces are specific to each DICT type. An operator
+    /// defined only in another namespace is still unknown here (OpenType CFF2,
+    /// Stack-based decoding and the three DICT operator summary tables).
+    const fn recognizes(self, op: Operator) -> bool {
+        match self {
+            Self::Cff => true,
+            Self::Cff2Top => matches!(
+                op,
+                Operator::CHAR_STRINGS
+                    | Operator::VSTORE
+                    | Operator::FD_ARRAY
+                    | Operator::FD_SELECT
+                    | Operator::FONT_MATRIX
+            ),
+            Self::Cff2Font => matches!(op, Operator::PRIVATE),
+            Self::Cff2Private(_) => matches!(
+                op,
+                Operator::SUBRS
+                    | Operator::VSINDEX
+                    | Operator::BLEND
+                    | Operator::BLUE_VALUES
+                    | Operator::OTHER_BLUES
+                    | Operator::FAMILY_BLUES
+                    | Operator::FAMILY_OTHER_BLUES
+                    | Operator::BLUE_SCALE
+                    | Operator::BLUE_SHIFT
+                    | Operator::BLUE_FUZZ
+                    | Operator::STD_HW
+                    | Operator::STD_VW
+                    | Operator::STEM_SNAP_H
+                    | Operator::STEM_SNAP_V
+                    | Operator::LANGUAGE_GROUP
+                    | Operator::EXPANSION_FACTOR
+            ),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(super) struct Dict {
     entries: BTreeMap<Operator, Entry>,
@@ -95,11 +134,9 @@ impl Dict {
             } else {
                 Operator::one_byte(byte)
             };
-            // OpenType CFF2, Stack-based decoding and FontDICT: unknown
-            // operators are context-specific and discard their operands.
-            // In particular, the deprecated Font DICT FontMatrix has no
-            // effect. Clear before retaining entries or validating arity.
-            if matches!(kind, Kind::Cff2Font) && op != Operator::PRIVATE {
+            // Ignore unknown CFF2 operators before retaining entries or
+            // validating arity. Numbers and the stack were already bounded.
+            if !kind.recognizes(op) {
                 stack.clear();
                 continue;
             }

@@ -274,7 +274,7 @@ All prior controls and tolerances are preserved. The corresponding
 passes on Ubuntu, macOS and Windows.
 
 
-## CFF2 Font DICT operator scope
+## CFF2 DICT operator scope
 
 [Diagnostic run 40397598168](https://github.com/jonasgrosch/pagura/actions/runs/40397598168)
 at `fdfc47c1e` retains 12 cases. Pagura passes eight controls and refuses four
@@ -306,6 +306,16 @@ and report SHA-256
 `ea7a6a90c330062312b7aa3da5f1a6987b4e26098dcca590df6a033d30982369`.
 The native `cff2-font-dict-matrix` expectation changes from the historical refusal
 to its independently authored untransformed outline, with identical font bytes.
+
+The same current-spec discard rule also applies to the distinct Top and Private
+DICT namespaces. One predicate in the existing parser now covers all three,
+before entry allocation and duplicate-key validation. Repeated foreign keys
+therefore cannot trigger CFF1 synthetic-font or width behavior. Four additional
+native fonts and eight simple/CID PDF controls preserve a literal 100-by-200
+outline; at 50 points their expected rectangle is 5 by 10 pixels. They bring
+the integrated set to 48. All previous font bytes, records and pixel expectations
+are unchanged. These new controls await hosted acceptance. Required CFF2
+structures and complete known-operator validation remain explicit review gaps.
 
 ## Type 1 advance vectors
 

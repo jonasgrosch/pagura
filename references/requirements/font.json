@@ -82,7 +82,7 @@
         "9.7.4.2",
         "9.9.1"
       ],
-      "status": "Primary-reviewed CFF1 and Type 2: header, INDEX, DICT domains/defaults, SIDs, encodings, charsets, FDSelect 0/3, CID lookup and all Type 2 operators; CFF2 FontDICT unknown-operator handling follows current OpenType; other CFF2 obligations still need primary review.",
+      "status": "Primary-reviewed CFF1 and Type 2: header, INDEX, DICT domains/defaults, SIDs, encodings, charsets, FDSelect 0/3, CID lookup and all Type 2 operators; CFF2 Top/Font/Private DICT unknown-operator handling follows current OpenType; other CFF2 obligations still need primary review.",
       "tests": [
         "font/cff",
         "font/cff-cid",
@@ -206,9 +206,21 @@
         "font_formats/cff2-fd-matrix-explicit-top-cid",
         "font_formats/cff2-fd-small-matrix-cid",
         "font_formats/cff-matrix-rectangle-1",
-        "font_formats/cff-matrix-rectangle-2"
+        "font_formats/cff-matrix-rectangle-2",
+        "font/cff2-dict-control",
+        "font/cff2-dict-top",
+        "font/cff2-dict-font",
+        "font/cff2-dict-private",
+        "font_formats/cff2-dict-control-simple",
+        "font_formats/cff2-dict-control-cid",
+        "font_formats/cff2-dict-top-simple",
+        "font_formats/cff2-dict-top-cid",
+        "font_formats/cff2-dict-font-simple",
+        "font_formats/cff2-dict-font-cid",
+        "font_formats/cff2-dict-private-simple",
+        "font_formats/cff2-dict-private-cid"
       ],
-      "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Legacy CFF2 Font DICT matrix interpretation remains an unresolved compatibility choice. Nondefault variations, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
+      "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Legacy CFF2 Font DICT matrix interpretation remains an unresolved compatibility choice. Nondefault variations, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported. CFF2 mandatory FDArray/Private presence, empty-Private offsets and complete known-operator validation remain unverified.",
       "tables": [
         "124",
         "125"
@@ -221,9 +233,9 @@
         "expectations": "Single-font, nonidentity CID, minimal OpenType and missing-cmap cases agree with ISO; INDEX/DICT/charstring binary encodings and CFF2 are not verified by ISO.",
         "outside": "Integrated pagura-text::program checks subtype compatibility and forbidden CFF Length entries. To strengthen CID structural rejection without breaking shared vectors, update tools/fixturegen/text.py callers of cff_font to conforming=True and regenerate its font-binding PDFs/manifests.",
         "pending": [
-          "OpenType / ISO/IEC 14496-22: CFF2 header/INDEX/DICT, FDSelect 4, variation stores, Private/charstring blends and full DICT context rules"
+          "OpenType / ISO/IEC 14496-22: CFF2 header/INDEX, required structures and known DICT operands, FDSelect 4, variation stores and Private/charstring blends"
         ],
-        "external_status": "TN 5176/5177 and applicable TN 5014 reviewed; current CFF2 FontDICT operator scope reviewed below; other CFF2 primary review remains pending",
+        "external_status": "TN 5176/5177 and applicable TN 5014 reviewed; current CFF2 Top/Font/Private DICT namespaces reviewed; other CFF2 primary review remains pending",
         "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. The historical Font DICT matrix disagreement led to an explicit refusal; current primary review below supersedes that refusal without rewriting its recorded observations. These secondary comparisons are not primary-text verification. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions.",
         "choices": "Unhinted API retains flex curves, skips hint placement and ignores allowed embedded PostScript. Type 2 random uses a per-glyph 32-bit LCG seeded from folded initialRandomSeed bits, returning (state+1)/2^32; the texts specify seed and range but not the algorithm. Uninitialized transient reads use zero (undefined by TN 5177), invalid index ranges and nonfinite arithmetic fail, zero-element roll is a no-op. CFF2 default-instance interpretation retains its earlier secondary evidence and pending primary review. FontDICT unknown-operator handling follows the current primary rule below; legacy matrix application remains separate."
       },
@@ -998,6 +1010,16 @@
         "artifacts": "Linux report artifact12687168595 ZIP SHA256 763a9df7cff0b36950ebcb6ee43a15efbc987f0d0f94c25c97131b6649c8f8c0; report SHA256 ea7a6a90c330062312b7aa3da5f1a6987b4e26098dcca590df6a033d30982369. Pixel artifact12686938657 ZIP SHA256 b3844355c64d922806e3f7fbfc6dad4bee198f3410276b1bbeb164303f6c10d6. The historical run and all its hypotheses remain unchanged.",
         "scope": "Current and historical CFF2 share a version2 header, so automatic selection cannot satisfy both interpretations of the same bytes. A legacy policy remains open; this implementation does not claim legacy matrix parity. Other TopDICT/PrivateDICT operator-validation obligations are outside this change. All 34 integrated rendering controls pass in run40403532318 at95249301d; full functional validation is still pending on macOS/Windows after Ubuntu passed.",
         "acceptance": "Run40403532318 measures merge2f89cbc28efafa544ce6c0a50ea2552886b724b4: 34/34 Pagura observations, 238 total cells. Combined artifact12690375705 ZIP SHA256 a1b179444cdc51d405f656c682c70fbfc00825e7fa136325cd62ceafc5c0f826; report SHA256 760e50b5a5d106b05f5e72d884f0744464c69641b3cb1051a62087128b5a86a5. This is scoped render acceptance, not full CFF2 conformance or legacy matrix parity."
+      },
+      "cff2_dict_context_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#stack-based-cff2-decoding",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#topdict-operator-summary",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#privatedict-operator-summary"
+        ],
+        "rule": "Unrecognized operators in each CFF2 DICT namespace discard their operands. TopDICT recognizes five keys, FontDICT recognizes Private only, and PrivateDICT recognizes its sixteen hint/subroutine/variation operators. CFF1 widths, random seed, ForceBold and synthetic-font keys are not CFF2 keys.",
+        "implementation": "One context predicate in the existing parser controls the existing discard path before entry allocation, duplicate and arity processing. Numeric syntax, work and stack limits still apply. CFF1 recognition and known CFF2 matrix/blend handling are unchanged.",
+        "expectations": "Four independent native fonts and eight paired simple/CID PDF controls retain 100x200 outlines and PDF-owned widths. Unit controls cover foreign and reserved operators, duplicate known keys, 513/514 stacks and exact work/entry bounds. All prior font fixture bytes, records and rendering oracles are retained. Hosted acceptance pending."
       }
     },
     {

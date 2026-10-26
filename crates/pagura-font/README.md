@@ -96,7 +96,8 @@ Implemented formats:
   evaluated at normalized default coordinates using the variation store;
   Private DICT blends and their inherited variation index. A charstring can
   override that index. Private DICT parsing preserves pre-blend operands and
-  evaluates blends before consuming their enclosing DICT operator.
+  evaluates blends before consuming their enclosing DICT operator. Top, Font
+  and Private DICTs discard unknown operators in their respective namespaces.
 - Type 1: binary/hex eexec, PFB segment framing, encrypted or `lenIV -1`
   charstrings, static dictionaries and encodings, local subroutines, flex,
   mandatory argument fallback for unrecognized OtherSubrs, hint replacement, and StandardEncoding seac. Hint replacement consumes its
@@ -152,8 +153,12 @@ is a separate unresolved compatibility choice: the unchanged version-2 header
 does not identify which interpretation a producer intended. The nine preserved
 diagnostic PDFs pass with all 34 integrated rendering controls at `95249301d`
 in [hosted run 40403532318](https://github.com/jonasgrosch/pagura/actions/runs/40403532318).
-Native stack/entry/work controls pass Ubuntu functional checks; macOS/Windows
-acceptance is pending. Format 14 UVS records do not change this API's single-code PDF
+Native stack/entry/work controls pass full Ubuntu/macOS/Windows checks in
+[run 40403532292](https://github.com/jonasgrosch/pagura/actions/runs/40403532292).
+The same discard path now covers Top and Private DICT namespaces; four native
+and eight PDF controls await hosted acceptance. Required CFF2 structures and
+complete known-operator validation remain review gaps. Format 14 UVS records
+do not change this API's single-code PDF
 selection: 9.6.5.4 maps one code through a named base subtable, and 9.7.4.2
 selects CIDs/GIDs. A fixture includes a nondefault UVS mapping and confirms
 that it does not replace the base glyph.

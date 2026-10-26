@@ -178,3 +178,10 @@ def cases():
     yield from cmap_cases()
     yield from cff_matrix_cases()
     yield from type1_advance_cases()
+    for label,variant in [('control',None),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
+        program = truetype(cff=cff_font(conforming=True,cff2=True,variant=variant),cff2=True)
+        for cid in (False,True):
+            text = b'<0001>' if cid else b'(A)'
+            yield case(f'cff2-dict-{label}-'+('cid' if cid else 'simple'),
+                       b'BT /F 50 Tf 1 0 0 1 4 4 Tm '+text+b' Tj ET',cff_objects(program,cid),FONT,
+                       [((4,4,5,10),BLACK)],requirement='font-cff',size=64)

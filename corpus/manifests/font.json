@@ -7377,6 +7377,82 @@
         }
       },
       "format": "type1"
+    },
+    {
+      "id": "font/cff2-dict-control",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-control.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-control.font",
+          "sha256": "f2fd778e92e799beeb089673bf2d5d104961f6306069a106f26fecb17a056183"
+        }
+      },
+      "format": "opentype"
+    },
+    {
+      "id": "font/cff2-dict-top",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-top.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-top.font",
+          "sha256": "989d7f15a79753fd720ec73a94c74cb095f5e5f53765db1fb0b394bfcf84b307"
+        }
+      },
+      "format": "opentype"
+    },
+    {
+      "id": "font/cff2-dict-font",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-font.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-font.font",
+          "sha256": "4becc0ec6474a9e67478aa012c463a2ae71734de02de0b02cde299b474df1276"
+        }
+      },
+      "format": "opentype"
+    },
+    {
+      "id": "font/cff2-dict-private",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-private.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-private.font",
+          "sha256": "9013818a57d2c5bfd2068dd8595816ca583bb3cd02f99a62306cfe7788c9ba89"
+        }
+      },
+      "format": "opentype"
     }
   ]
 }
