@@ -21,7 +21,28 @@
         "files/encrypted-explicit-no-type",
         "files/encrypted-identity-no-type"
       ],
-      "gaps": "Annotation attachment discovery, collection and encrypted-payload models, MIME/date/associated-file conformance validation, checksum verification, streaming extraction, authoring and CLI/host/viewer integration remain open. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
+      "gaps": "Annotation attachment discovery, collection and encrypted-payload models, MIME/date/associated-file conformance validation, streaming extraction, authoring and CLI/host/viewer integration remain open. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
+    },
+    {
+      "id": "document-file-parameter-checks",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.11.4.1; Table 45"
+      ],
+      "status": "explicit bounded library/facade and CLI Size/CheckSum comparison; hosted validation pending",
+      "tests": [
+        "pagura-document/tests/file_checks.rs",
+        "pagura-cli/tests/attachment_checks.rs",
+        "files/check-flate",
+        "files/check-size-mismatch",
+        "files/check-checksum-mismatch",
+        "files/check-both-mismatch",
+        "files/check-size-only",
+        "files/check-checksum-only",
+        "files/check-empty-params"
+      ],
+      "gaps": "Whole-buffer payload decoding; host/viewer check controls, date/MIME/profile/content validation and authenticity assessment are outside this operation.",
+      "rule": "Compare declared Size with the actual uncompressed length and declared CheckSum with MD5 over fully decoded and decrypted embedded bytes. An absent declaration is not a match. Mismatches remain observations and never modify the source. Password/filter/limit failures cannot become successful checks. The CLI emits complete schema-1 check JSON before returning exit 1 for a mismatch."
     }
   ]
 }

@@ -3,14 +3,17 @@
 //! Paths, URLs, MIME names and relationships are source data, never instructions
 //! to open a file, connect to a server or execute content. Payload decoding is
 //! lazy and applies the document's filters, crypt filters and budgets. Declared
-//! sizes, dates and checksums are preserved, not asserted to be accurate.
+//! sizes, dates and checksums are preserved. Explicit [`EmbeddedFile::check_parameters`]
+//! compares Size and CheckSum with decoded bytes; dates remain unvalidated.
 //! Collection schemas, encrypted-payload semantics and MIME/date validation are
 //! outside these views; their source entries remain available to callers.
 
+mod checks;
 mod model;
 mod read;
 mod stream;
 
+pub use checks::{FileParameterChecks, ParameterCheck};
 pub use model::{
     EmbeddedFile, EmbeddedFileEntry, FileName, FileNames, FileParameters, FileSpecification,
     NamedFile, RelatedFile, Relationship,

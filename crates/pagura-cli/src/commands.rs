@@ -55,6 +55,9 @@ pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure
         } => {
             document_services::extract_attachment(source, *index, key, output)?;
         }
+        Command::CheckAttachment { source, index, key } => {
+            document_services::check_attachment(source, *index, key, out)?;
+        }
         Command::Text { source, page } => text(source, *page, out)?,
         Command::Find { source, query } => find(source, query, out)?,
         Command::Convert(conversion) => convert(conversion, out)?,

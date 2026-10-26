@@ -83,6 +83,18 @@ def cases():
     yield case('flate', file_stream=stream(zlib.compress(PAYLOAD), b'/Type /EmbeddedFile /Filter /FlateDecode'))
     yield case('empty-payload', payload=b'')
     yield case('stream-type-absent', file_stream=stream(PAYLOAD))
+    checksum = hashlib.md5(PAYLOAD).hexdigest().encode()
+    for name, params in [
+        ('check-flate', b'/Size 18 /CheckSum <' + checksum + b'>'),
+        ('check-size-mismatch', b'/Size 19 /CheckSum <' + checksum + b'>'),
+        ('check-checksum-mismatch', b'/Size 18 /CheckSum <00000000000000000000000000000000>'),
+        ('check-both-mismatch', b'/Size 0 /CheckSum <00000000000000000000000000000000>'),
+        ('check-size-only', b'/Size 18'),
+        ('check-checksum-only', b'/CheckSum <' + checksum + b'>'),
+        ('check-empty-params', b''),
+    ]:
+        data = source(file_stream=stream(zlib.compress(PAYLOAD), b'/Filter /FlateDecode /Params << ' + params + b' >>'))
+        yield Case(name, data, OPEN, (REQUIREMENT, 'document-file-parameter-checks'), name.replace('-', ' '))
     yield case('large-size-declaration', file_stream=stream(PAYLOAD, b'/Params << /Size 9007199254740993 >>'))
     yield case('external-url', spec=b'<< /F (https://example.invalid/never-fetch) /FS /URL /AFRelationship /Vendor_Relation >>', catalog=b'/AF [5 0 R]')
     yield case('simple-string', spec=b'<2f726177ff2f66696c65>')

@@ -1,4 +1,4 @@
-//! MD5 (RFC 1321), used only by legacy PDF encryption and ICC profile IDs.
+//! MD5 (RFC 1321), used by legacy PDF encryption, ICC profile IDs and PDF file checksums.
 
 // RFC 1321 3.4: floor(2^32 * abs(sin(i))), i=1..64.
 const K: [u32; 64] = [
@@ -76,7 +76,7 @@ const S: [u32; 64] = [
 
 hasher! {
     /// Streaming MD5 (RFC 1321). MD5 is broken; it serves only legacy PDF
-    /// encryption and ICC profile identifiers.
+    /// encryption, ICC profile identifiers and non-security file checksums.
     Md5 {
         state: [u32; 4] = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476],
         block: 64,

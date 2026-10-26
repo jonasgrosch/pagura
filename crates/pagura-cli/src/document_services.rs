@@ -1,7 +1,7 @@
 //! CLI access to inert document services through the public facade.
 
 use crate::{args::Source, failure::Failure, input::write_new, json};
-use pagura::files::{FileSpecification, Relationship};
+use pagura::files::{EmbeddedFile, FileSpecification, NamedFile, ParameterCheck, Relationship};
 use pagura::metadata::{DocumentInfo, Trapped};
 use pagura::{Name, ObjectId};
 use std::io::{self, Write};
@@ -184,16 +184,65 @@ pub(crate) fn extract_attachment(
 ) -> Result<(), Failure> {
     let document = source.open()?;
     let files = document.embedded_files()?;
+    let bytes = attachment(&files, index, key)?.data()?;
+    write_new(output, &bytes)?;
+    Ok(())
+}
+
+fn attachment<'a, 'document>(
+    files: &'a [NamedFile<'document>],
+    index: usize,
+    key: &str,
+) -> Result<&'a EmbeddedFile<'document>, Failure> {
     let file = files.get(index).ok_or_else(|| {
         Failure::Request("attachment INDEX is outside the catalog listing".into())
     })?;
-    let payload = file
-        .specification
+    file.specification
         .embedded
         .iter()
         .find(|entry| entry.key.as_bytes() == key.as_bytes())
-        .ok_or_else(|| Failure::Request("attachment has no EF payload with this KEY".into()))?;
-    let bytes = payload.file.data()?;
-    write_new(output, &bytes)?;
+        .map(|entry| &entry.file)
+        .ok_or_else(|| Failure::Request("attachment has no EF payload with this KEY".into()))
+}
+
+pub(crate) fn check_attachment(
+    source: &Source,
+    index: usize,
+    key: &str,
+    out: &mut impl Write,
+) -> Result<(), Failure> {
+    let document = source.open()?;
+    let files = document.embedded_files()?;
+    let payload = attachment(&files, index, key)?;
+    let checked = payload.check_parameters()?;
+    let size = check_name(checked.size)?;
+    let checksum = check_name(checked.checksum)?;
+    write!(out, "{{\"schema\":1,\"index\":{index},\"key\":")?;
+    json::string(out, key)?;
+    out.write_all(b",\"object\":")?;
+    object(out, Some(payload.object()))?;
+    write!(
+        out,
+        ",\"decoded_size\":{},\"size\":\"{size}\",\"checksum\":\"{checksum}\",",
+        checked.decoded_size
+    )?;
+    json::diagnostics(out, &document)?;
+    writeln!(out, "}}")?;
+    if checked.size == ParameterCheck::Mismatch || checked.checksum == ParameterCheck::Mismatch {
+        return Err(Failure::Request(
+            "attachment declarations do not match decoded payload".into(),
+        ));
+    }
     Ok(())
+}
+
+fn check_name(value: ParameterCheck) -> Result<&'static str, Failure> {
+    match value {
+        ParameterCheck::NotDeclared => Ok("not-declared"),
+        ParameterCheck::Matches => Ok("match"),
+        ParameterCheck::Mismatch => Ok("mismatch"),
+        _ => Err(Failure::Request(
+            "unsupported attachment check result".into(),
+        )),
+    }
 }

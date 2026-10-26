@@ -15,6 +15,7 @@ usage: pagura inspect [--strict] [--password TEXT] INPUT
        pagura attachments [--strict] [--password TEXT] INPUT
        pagura extract-metadata [--strict] [--password TEXT] INPUT OUTPUT
        pagura extract-attachment [--strict] [--password TEXT] INPUT INDEX KEY OUTPUT
+       pagura check-attachment [--strict] [--password TEXT] INPUT INDEX KEY
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
        pagura render [--strict] [--password TEXT] [--overprint MODE] [--timings]
@@ -43,6 +44,9 @@ commands:
   extract-attachment
               decode EF payload KEY (F, UF, DOS, Mac or Unix) from catalog
               EmbeddedFiles INDEX (starting at 0) to the explicit OUTPUT path
+  check-attachment
+              compare decoded EF payload size and MD5 with its declarations;
+              print JSON and exit 1 on mismatch, 0 on match or missing declarations
   text        print the text of every page, or of PAGE, separated by form feeds
   find        print one JSON line per match: page, character range and quads
               in default user space
@@ -113,6 +117,12 @@ pub(crate) enum Command {
         index: usize,
         key: String,
         output: PathBuf,
+    },
+    /// Compare selected attachment size/checksum declarations with decoded bytes.
+    CheckAttachment {
+        source: Source,
+        index: usize,
+        key: String,
     },
     /// Print the text of every page, or of one zero-based page.
     Text { source: Source, page: Option<usize> },
@@ -494,7 +504,7 @@ fn document_command(
 ) -> Result<Option<Command>, UsageError> {
     if !matches!(
         name,
-        "metadata" | "attachments" | "extract-metadata" | "extract-attachment"
+        "metadata" | "attachments" | "extract-metadata" | "extract-attachment" | "check-attachment"
     ) {
         return Ok(None);
     }
@@ -505,6 +515,11 @@ fn document_command(
         ("extract-metadata", [input, output]) => Command::ExtractMetadata {
             source: options.chosen_source(input),
             output: PathBuf::from(output),
+        },
+        ("check-attachment", [input, index, key]) => Command::CheckAttachment {
+            source: options.chosen_source(input),
+            index: number(index, "INDEX")?,
+            key: text(key, "KEY")?.to_owned(),
         },
         ("extract-attachment", [input, index, key, output]) => Command::ExtractAttachment {
             source: options.chosen_source(input),

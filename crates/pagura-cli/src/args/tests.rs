@@ -112,11 +112,20 @@ fn document_services_share_source_options_and_require_explicit_output_selection(
             output: PathBuf::from("data.bin")
         })
     );
+    assert_eq!(
+        run(&["check-attachment", "--strict", "a.pdf", "0", "F"]),
+        Ok(Command::CheckAttachment {
+            source: source("a.pdf", b"", Recovery::Strict),
+            index: 0,
+            key: "F".into()
+        })
+    );
     for name in [
         "metadata",
         "attachments",
         "extract-metadata",
         "extract-attachment",
+        "check-attachment",
     ] {
         assert_eq!(
             run(&[name]),
