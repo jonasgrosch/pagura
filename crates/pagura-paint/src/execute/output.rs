@@ -55,52 +55,47 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
     let band = out.get_mut(start..).unwrap_or_default();
     for (band_row, row) in band.chunks_exact_mut(width * 4).enumerate() {
         let row = row.as_chunks_mut::<4>().0;
-        // Columns no store reached still hold the background.
-        let (lo, hi) = ws
-            .extents
-            .take(band_row)
-            .map_or((0, 0), |(lo, hi)| (lo.min(width), hi.min(width)));
-        let (head, rest) = row.split_at_mut(lo);
-        let (row, tail) = rest.split_at_mut(hi - lo);
-        if !uniform {
-            head.fill(output.background);
-            tail.fill(output.background);
-        }
-        let first = band_row * width + lo;
-        let end = first + row.len();
-        match &ws.page {
-            PageBuffer::N16(words) => {
-                if let Some(words) = words.get(first..end) {
-                    crate::kernel::n16_bytes(row, words);
+        ws.page
+            .drain_row(band_row, width, output, |pixels, (lo, hi)| {
+                let (head, rest) = row.split_at_mut(lo);
+                let (row, tail) = rest.split_at_mut(hi - lo);
+                if !uniform {
+                    head.fill(output.background);
+                    tail.fill(output.background);
                 }
-            }
-            PageBuffer::F32(levels) => {
-                if let Some(levels) = levels.get(first..end) {
-                    crate::kernel::f32_bytes(row, levels);
-                }
-            }
-            PageBuffer::F64(values) => {
-                let stride = output.layout.stride();
-                let pixels = values.get(first * stride..).unwrap_or_default();
-                let pixels = pixels.chunks_exact(stride);
-                let selection = ws.selection.get(first..).unwrap_or_default();
-                let plain = output.spots.is_empty() && output.transfers.is_empty();
-                match output.layout.channels() {
-                    1 if plain => self::plain::<1>(output, row, pixels),
-                    3 if plain => self::plain::<3>(output, row, pixels),
-                    4 if plain => self::plain::<4>(output, row, pixels),
-                    _ => {
-                        for (k, (out, pixel)) in row.iter_mut().zip(pixels).enumerate() {
-                            let select = selection.get(k).copied().unwrap_or(0);
-                            *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
+                let first = band_row * width + lo;
+                let end = first + row.len();
+                match pixels {
+                    PageBuffer::N16(words) => {
+                        if let Some(words) = words.get(first..end) {
+                            crate::kernel::n16_bytes(row, words);
+                        }
+                    }
+                    PageBuffer::F32(levels) => {
+                        if let Some(levels) = levels.get(first..end) {
+                            crate::kernel::f32_bytes(row, levels);
+                        }
+                    }
+                    PageBuffer::F64(values) => {
+                        let stride = output.layout.stride();
+                        let pixels = values.get(first * stride..).unwrap_or_default();
+                        let pixels = pixels.chunks_exact(stride);
+                        let selection = ws.selection.get(first..).unwrap_or_default();
+                        let plain = output.spots.is_empty() && output.transfers.is_empty();
+                        match output.layout.channels() {
+                            1 if plain => self::plain::<1>(output, row, pixels),
+                            3 if plain => self::plain::<3>(output, row, pixels),
+                            4 if plain => self::plain::<4>(output, row, pixels),
+                            _ => {
+                                for (k, (out, pixel)) in row.iter_mut().zip(pixels).enumerate() {
+                                    let select = selection.get(k).copied().unwrap_or(0);
+                                    *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
-        // Restored while in cache, for the next band.
-        ws.page
-            .restore(first..end, output.background, output.layout);
+            });
         ws.usage.work = ws.usage.work.saturating_add(width);
     }
 }

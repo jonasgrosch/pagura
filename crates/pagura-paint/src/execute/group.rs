@@ -99,7 +99,7 @@ impl Executor<'_> {
             Buffer::Wide(offset) => {
                 let (below, above) = ws.wide.split_at_mut(offset);
                 let read = Read {
-                    page: &ws.page,
+                    page: ws.page.pixels(),
                     wide: below,
                     levels: &ws.levels,
                 };
@@ -190,7 +190,6 @@ impl Executor<'_> {
         store(
             &mut Target {
                 page: &mut ws.page,
-                extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
                 starts: &mut ws.starts,
@@ -321,14 +320,14 @@ fn sources(
             let bases = match child.initial {
                 Backdrop::Transparent => None,
                 backdrop => {
-                    if let Some(pixels) = backdrop.pixels(page, below, (x, y), from, len) {
+                    if let Some(pixels) = backdrop.pixels(page.pixels(), below, (x, y), from, len) {
                         Some(pixels)
                     } else {
                         let Some(out) = initial.get_mut(..len * stride) else {
                             return 0;
                         };
                         let read = Read {
-                            page,
+                            page: page.pixels(),
                             wide: below,
                             levels,
                         };
