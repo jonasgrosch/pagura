@@ -35,6 +35,10 @@ results. The scan is lexical; the manual review followed symbol uses, aliases
 and decoder dispatch. New dynamic tags or APIs reopen the inventory.
 No competitor download, engine invocation or product behavior change occurs.
 
+G01's first [document-service probes](probes/README.md) exercise the pinned
+PDFium/MuPDF APIs on independent synthetic controls in hosted CI. Results remain
+fixture-scoped; the remaining baseline adapters stay explicit and unprobed.
+
 ## Offline checks and explicit competitor setup
 
 ```sh

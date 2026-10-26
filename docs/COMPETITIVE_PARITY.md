@@ -152,6 +152,12 @@ cannot establish alone. A later discovery reopens the ledger and relevant gate.
 
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
+**Started:** the [document-service probe slice](../benchmarks/probes/README.md)
+adds nine independent populated/empty/rejection controls for PDFium and MuPDF,
+54 explicit case/engine cells, identity/source/fixture hashes, and hosted CI.
+The other four adapters and the wider operation matrix remain open. These
+fixture results do not promote any G00 family cell or establish Pagura parity.
+
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
 Use browser integration tests for browser-only behaviour, and capable optional

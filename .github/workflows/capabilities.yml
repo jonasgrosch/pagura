@@ -1,0 +1,68 @@
+name: capability-probes
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/capabilities.yml'
+      - 'tools/capabilit*.py'
+      - 'tools/test_capabilit*.py'
+      - 'tools/benchkit/engines.py'
+      - 'tools/competitors.py'
+      - 'benchmarks/capabilities.json'
+      - 'benchmarks/probes/**'
+      - 'benchmarks/adapters/capability_python.py'
+      - 'references/requirements/**'
+      - 'uv.lock'
+      - 'pyproject.toml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: capability-probes-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  inventory:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: 0.13.1
+      - run: uv sync --locked --only-group lint
+      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/test_capabilities.py tools/test_capability_probes.py benchmarks/adapters/capability_python.py
+      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/test_capabilities.py tools/test_capability_probes.py benchmarks/adapters/capability_python.py
+      - run: python tools/capabilities.py --check
+      - run: python tools/capability_probes.py check
+      - run: python -m unittest discover -s tools -p "test_capabilit*.py" -v
+  document-services:
+    # Hosted only (ADR 0031). Competitor packages never enter the checkout.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
+      UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/pagura-competitors/venv
+      UV_PYTHON_DOWNLOADS: never
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: 0.13.1
+      - name: Install locked external Python bindings
+        run: uv sync --locked --only-group bench
+      - name: Probe synthetic document services
+        run: python tools/capability_probes.py run --output "$RUNNER_TEMP/capability-report.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: capability-document-services
+          path: ${{ runner.temp }}/capability-report.json
+          if-no-files-found: error

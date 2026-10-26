@@ -28,6 +28,7 @@ FEATURE_MATRIX = [
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
     ([sys.executable, "tools/capabilities.py", "--check"], {}),
+    ([sys.executable, "tools/capability_probes.py", "check"], {}),
     # Cached CAVP, ACVP and Wycheproof suites for pagura-crypto; a no-op without the cache.
     ([sys.executable, "tools/signature_vectors.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
