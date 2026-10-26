@@ -194,7 +194,7 @@ impl Layout {
         let y = if configuration.multiline {
             area.y1()
         } else {
-            area.y0() + (area.height() + self.height) / 2.0
+            area.y0() + area.height().midpoint(self.height)
         };
         self.write(out, (x, y), (1.0, 0.0))
     }
