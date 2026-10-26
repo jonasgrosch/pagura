@@ -172,7 +172,7 @@ fn font_cmap_reports_are_provisional_while_completed_font_reports_survive() {
         pagura_text::repairs::ENCODING_NAME,
         "unknown simple-font encoding name; using the font's default encoding (Table 112)",
     );
-    assert_eq!(document.diagnostics(), [completed.clone()]);
+    assert_eq!(document.diagnostics(), std::slice::from_ref(&completed));
     source.supply(ID, 4000, &stream(5, "/UseCMap 6 0 R", b"1 begincodespacerange <00> <FF> endcodespacerange\n2 beginbfchar <41> <0044> <42> <D800> endbfchar\n")).unwrap();
     let cmap_object = document.object(ObjectId::new(5, 0)).unwrap();
     for _ in 0..3 {
@@ -180,7 +180,7 @@ fn font_cmap_reports_are_provisional_while_completed_font_reports_survive() {
             panic!("parent CMap wait")
         };
         assert_eq!(missing.ranges(), &[ByteRange::new(6000, 6256).unwrap()]);
-        assert_eq!(document.diagnostics(), [completed.clone()]);
+        assert_eq!(document.diagnostics(), std::slice::from_ref(&completed));
         assert!(std::ptr::eq(
             cmap_object,
             document.object(ObjectId::new(5, 0)).unwrap()
