@@ -1,0 +1,27 @@
+{
+  "schema": 2,
+  "area": "files",
+  "scope": "File specifications and embedded/associated file views, reviewed against the locally supplied ISO 32000-2:2020 EC3 text. File path strings retain bytes; only UF, Desc and date strings use the shared PDF text-string decoder. AF is an association view, not a profile validator or a content activation request.",
+  "requirements": [
+    {
+      "id": "document-file-views",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.11.1-7.11.4; Tables 43-45",
+        "7.7.4; 7.9.6",
+        "14.13.1-14.13.4",
+        "7.6.6; Tables 20, 25"
+      ],
+      "status": "implemented for inert library views and bounded payload reads",
+      "tests": [
+        "pagura-document/tests/files.rs",
+        "files/populated",
+        "files/related",
+        "files/encrypted-no-type",
+        "files/encrypted-explicit-no-type",
+        "files/encrypted-identity-no-type"
+      ],
+      "gaps": "Annotation attachment discovery, collection and encrypted-payload models, MIME/date/associated-file conformance validation, checksum verification, streaming extraction, authoring and CLI/host/viewer integration remain open. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
+    }
+  ]
+}

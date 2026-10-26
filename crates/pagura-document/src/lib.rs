@@ -14,6 +14,7 @@ mod builder;
 mod catalog;
 mod diagnostics;
 pub mod features;
+pub mod files;
 pub mod forms;
 mod history;
 mod load;

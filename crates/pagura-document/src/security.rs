@@ -470,10 +470,13 @@ impl Security {
         document: &Document,
         object: &IndirectObject,
         explicit: crate::stream::CryptSelection,
+        usage: crate::stream::Usage,
     ) -> Result<CryptMethod> {
         let dictionary = object
             .dictionary()
             .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
+        let embedded = usage == crate::stream::Usage::EmbeddedFile
+            || dictionary.is_name(b"Type", b"EmbeddedFile");
         if !matches!(explicit, crate::stream::CryptSelection::Default) && !self.crypt_filters {
             return Err(Error::syntax(
                 "Crypt filters require encryption version 4 or 5",
@@ -495,23 +498,15 @@ impl Security {
                 .filters
                 .get(name.as_bytes())
                 .is_some_and(|filter| filter.embedded_only),
-            crate::stream::CryptSelection::Default => {
-                dictionary.is_name(b"Type", b"EmbeddedFile") && self.embedded_authorization
-            }
+            crate::stream::CryptSelection::Default => embedded && self.embedded_authorization,
             crate::stream::CryptSelection::Identity => false,
         };
         let method = match explicit {
-            crate::stream::CryptSelection::Named(name) => lookup(
-                &self.filters,
-                name.as_bytes(),
-                dictionary.is_name(b"Type", b"EmbeddedFile"),
-            )?,
-            crate::stream::CryptSelection::Identity => CryptMethod::Identity,
-            crate::stream::CryptSelection::Default
-                if dictionary.is_name(b"Type", b"EmbeddedFile") =>
-            {
-                self.embedded
+            crate::stream::CryptSelection::Named(name) => {
+                lookup(&self.filters, name.as_bytes(), embedded)?
             }
+            crate::stream::CryptSelection::Identity => CryptMethod::Identity,
+            crate::stream::CryptSelection::Default if embedded => self.embedded,
             crate::stream::CryptSelection::Default => self.streams,
         };
         if self.key.is_none() && authorization {
