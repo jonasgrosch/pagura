@@ -48,12 +48,13 @@ pub(super) fn related<'a>(
         let pairs = value
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("RF entry requires an array")))?;
-        if !pairs.len().is_multiple_of(2) {
+        let (pairs, remainder) = pairs.as_chunks::<2>();
+        if !remainder.is_empty() {
             return Err(source.error(Error::syntax("RF array requires name/stream pairs")));
         }
-        for pair in pairs.chunks_exact(2) {
+        for [name, value] in pairs {
             context.step(0, source)?;
-            let (name, location) = context.resolve(&pair[0], source)?;
+            let (name, location) = context.resolve(name, source)?;
             let name = name.as_string().ok_or_else(|| {
                 location.error(Error::syntax("related filename must be a string"))
             })?;
@@ -61,7 +62,7 @@ pub(super) fn related<'a>(
             files.push(RelatedFile {
                 key,
                 name,
-                file: stream(context, &pair[1], source)?,
+                file: stream(context, value, source)?,
             });
         }
     }

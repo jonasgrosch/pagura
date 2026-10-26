@@ -85,10 +85,10 @@ pub(super) fn specification<'a>(
         result.names.file = Some(bytes);
         return Ok(result);
     }
-    if let Some(id) = result.object {
-        if context.document.object(id)?.is_stream() {
-            return Err(source.error(Error::syntax("file specification must not be a stream")));
-        }
+    if let Some(id) = result.object
+        && context.document.object(id)?.is_stream()
+    {
+        return Err(source.error(Error::syntax("file specification must not be a stream")));
     }
     let dictionary = value.as_dictionary().ok_or_else(|| {
         source.error(Error::syntax(
