@@ -197,7 +197,13 @@ bounds. New annotation enumeration is capped at 1,024 entries (128 for CoreGraph
 with decoded payload checks of 64 MiB (64 KiB for CoreGraphics). These post-decode
 checks do not promise bounded allocation inside competitor APIs; the harness has
 a separate process deadline. Resource refusals never establish feature support.
-Hosted execution of the new cases is pending; broader attachment encodings,
+[Hosted run 40276014297](https://github.com/jonasgrosch/pagura/actions/runs/40276014297)
+at merge revision `29236241a454a6749340638a14095a363128ccad` records 111 passes
+and 15 explicit adapter gaps across 126 cells: Pagura, PDFium, MuPDF, pdf.js and
+Poppler each pass all 18 cases, CoreGraphics 16 and hayro five. The missing paths
+are thirteen hayro attachment/text cells and two CoreGraphics text cells. There
+are no incorrect observations in this run. Later renderer changes require new
+current-head evidence; broader attachment encodings,
 password/configuration combinations and performance remain separate work.
 
 ## Initial rendering observations

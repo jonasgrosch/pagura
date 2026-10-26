@@ -116,14 +116,14 @@ integration. Milestone numbers are outcomes, not completion claims.
   and explicit-file metadata/attachment extraction are available. Protocol 1.8 and
   viewer controls add bounded catalog reads and explicit byte downloads; hosted
   Linux/macOS/Windows checks passed. Library/CLI and protocol 1.10/viewer size and checksum checks now
-  distinguish absent declarations, matches and mismatches; their hosted checks
-  are pending. Library page attachment-annotation discovery now has source identity,
+  distinguish absent declarations, matches and mismatches; hosted checks pass. Library page attachment-annotation discovery now has source identity,
   geometry and lazy file handles. CLI --page listing/extraction/checks use original
-  Annots indexes; their hosted checks are pending. Annotation host/viewer selection, AF/RF host selection, streaming,
+  Annots indexes. Protocol 1.11/client APIs add exact page listing, byte reads and
+  checks; annotation runtime checks are pending. Viewer selection, AF/RF host selection, streaming,
   attachment writes, metadata validation/writes, portfolios
   and remaining export APIs remain D02 work; whole-buffer PNG is connected to the
   facade, CLI, protocol 1.9 and an explicit viewer download with disposable form
-  snapshots. Hosted runtime and real-browser checks remain pending. Streaming PNG,
+  snapshots. Hosted PNG runtime checks pass; real-browser interaction remains pending. Streaming PNG,
   active-request cancellation/backpressure and profile metadata remain open. Public-key security and
   encrypted history belong to D03; version/profile validation belongs to C01.
   Recognizing a version or PDF/X declaration does not establish conformance.

@@ -167,8 +167,13 @@ are pending; every Pagura cell must meet its independent expectation. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
 The annotation increment adds first-page FileAttachment byte/name probes,
 separate from catalog attachments, with mixed slots, duplicate occurrences,
-shared/page-only specifications and second-page scope controls. Hosted
-observations for these new cases are pending.
+shared/page-only specifications and second-page scope controls.
+[Run 40276014297](https://github.com/jonasgrosch/pagura/actions/runs/40276014297)
+measured merge revision `29236241a454a6749340638a14095a363128ccad`: all eighteen
+Pagura, PDFium, MuPDF, pdf.js and Poppler cases pass. CoreGraphics passes sixteen
+covered operations; hayro passes five. Fifteen explicit adapter gaps remain
+(thirteen hayro attachment/text cells and two CoreGraphics text cells). These
+observations precede the later annotation-render fixes and need a current-head rerun.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
 The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
@@ -480,14 +485,15 @@ The operation does not modify the source or create a payload file. Protocol 1.10
 and explicit viewer Check controls now expose the same observations with exact
 BigInt sizes. Tests cover old versions, canonical messages, response/decode caps,
 selection/authentication, native/WASI/client parity and stale dialog callbacks.
-These host/viewer checks are pending hosted validation. Streaming and
+These host/viewer checks pass at `64d6462b6` in
+[run 40274019224](https://github.com/jonasgrosch/pagura/actions/runs/40274019224). Streaming and
 semantic/date/MIME/profile validation remain open.
 
 **Attachment annotation views:** `Page::attachment_annotations` discovers page
 FileAttachment entries separately from catalog EmbeddedFiles and AF views. It
 preserves original indexes, resolved annotation/FS/payload identities, normalized
 geometry, Contents text and declared/default icon names. FS/Desc does not replace
-annotation Contents. Thirty-nine independent fixtures cover page-only attachments,
+annotation Contents. Forty independent fixtures cover page-only attachments,
 reference/geometry indirection, external files, duplicates, malformed/late failures,
 reported Unicode repair, budgets, compressed and encrypted payloads. Discovery
 keeps payload decoding and authorization lazy; no file is activated. Independent
@@ -499,8 +505,12 @@ source checks pass, while hosted runtime checks are pending. CLI attachment
 commands now accept `--page PAGE` with distinct annotation JSON and exact original
 Annots index/EF selection for extraction and checks. Tests cover selection without
 catalog fallback, caller-chosen new files, password failures and no partial JSON.
-These CLI checks await hosted validation. Host/viewer annotation selection and
-icon appearance/activation remain separate work.
+These CLI checks await hosted validation. Protocol 1.11 and client APIs now
+list page attachments and retrieve/check an exact Annots slot and EF key, using
+the shared file record and decode/check helpers. Tests cover version gates,
+original slots, independent count/response/decode limits, authentication and
+native/WASI/client equivalence; hosted validation is pending. Viewer selection,
+icon appearance/activation and AF/RF selection remain separate work.
 
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
 existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are
