@@ -166,6 +166,8 @@ impl Plan {
         if let Paint::Colors(paint) = &mut paint
             && let Strategy::Memo(layout) = &mut paint.1
         {
+            // The memo holds at most a key per texel read.
+            layout.bound(pixels.saturating_mul(geometry.cost()));
             let opaque = layout.opaque();
             let mask = mask.map(|mask| &mask.image.image);
             if let Some(indexed) = layout.fit(image, mask, work, bytes)? {
