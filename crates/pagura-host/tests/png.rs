@@ -126,7 +126,7 @@ fn png_surface_stream_and_frame_budgets_remain_independent() -> Result<()> {
         let mut input = source(Version::V1_9)?;
         input.extend(frame(26, 3, &payload(1, 0, 1.0, 0)));
         input.extend(frame(3, 4, &[1, 0, 0, 0, 0, 0, 0, 0]));
-        let bodies = serve(Session::new(limits), &input)?;
+        let bodies = serve(Session::new(limits.into()), &input)?;
         assert_eq!(bodies[1][0], 130, "budget control must open its input");
         assert_eq!((bodies[2][0], bodies[2][5]), (255, 2));
         assert_eq!(bodies[3][0], 131, "budget refusal retains the document");
