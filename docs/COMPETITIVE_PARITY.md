@@ -202,8 +202,9 @@ does not complete R02 or its platform/interaction acceptance gate.
 `7040b91024dd10282b4e7d5e51b2e1942ff0b6c4` additionally preserves direct
 index/opacity channels for explicit PDF Indexed spaces without a container
 palette, with first/last alpha and SMaskInData 0/1/2 fixtures. It rejects signed
-sYCC channels before signedness is discarded and fixes the new test target’s
-required unsafe prohibition. Hosted verification remains pending.
+sYCC channels before signedness is discarded. The source inventory also includes
+`847fb26f0616e8b70bec76883880c78cbc47915d`, which updates the diagnostic formatter
+for the new colour model. Hosted verification remains pending.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
    respect explicit PDF colour spaces and expose all relevant colour candidates.

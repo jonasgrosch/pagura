@@ -6,7 +6,7 @@ PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
 Work spans M1–M7; none of those milestones is declared complete by this page.
 
 This inventory was reconciled against `render/one-pass` at
-`7040b91024dd10282b4e7d5e51b2e1942ff0b6c4`, the embedded-colour follow-up to the fetched
+`847fb26f0616e8b70bec76883880c78cbc47915d`, the embedded-colour follow-up to the fetched
 one-pass head `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a` (PR #118).
 It describes that branch, including refactoring not yet merged into `main`.
 **Implemented** below means an implementation and associated tests exist, within the stated
