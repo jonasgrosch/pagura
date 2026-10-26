@@ -655,6 +655,101 @@
         }
       },
       "error": "limit"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-linear-icc",
+      "kind": "pdf",
+      "description": "reference split linear icc",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc.pdf",
+      "sha256": "d840dcc35e66fbaba4233cdaee34141d90ec2e59892f331af9e4020197aa4084",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc.ppm",
+      "oracle_sha256": "d14f9798317f3f5c744f8dcdaf33ab87b064fda7ba88a79930dcdcc6577e3398",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-split-linear-icc",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Colour-sensitive reference control; implicit RGB gives different pixels"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-linear-icc-codec-control",
+      "kind": "pdf",
+      "description": "reference split linear icc codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc-codec-control.pdf",
+      "sha256": "4780c05b09a7345f5da8cb80473105db13972edc5ec8d606a33d5b01bdd7544c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc-codec-control.ppm",
+      "oracle_sha256": "d14f9798317f3f5c744f8dcdaf33ab87b064fda7ba88a79930dcdcc6577e3398",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-split-linear-icc",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Colour-sensitive reference control; implicit RGB gives different pixels"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-linear-icc-brand-control",
+      "kind": "pdf",
+      "description": "reference split linear icc brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc-brand-control.pdf",
+      "sha256": "6288a83e24fe8adc7892a1bfad031c332193efe6c928b1b5603ef600480de2ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc-brand-control.ppm",
+      "oracle_sha256": "d14f9798317f3f5c744f8dcdaf33ab87b064fda7ba88a79930dcdcc6577e3398",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-split-linear-icc",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Colour-sensitive reference control; implicit RGB gives different pixels"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-linear-icc-rgb-control",
+      "kind": "pdf",
+      "description": "reference split linear icc rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc-rgb-control.pdf",
+      "sha256": "320a60eb3625f2ca9dcb82b76ffb84c27c4fc3f2c20c7f8986ea69f945f0d167",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-linear-icc-rgb-control.ppm",
+      "oracle_sha256": "d14f9798317f3f5c744f8dcdaf33ab87b064fda7ba88a79930dcdcc6577e3398",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/reference-split-linear-icc",
+      "role": "rgb-control",
+      "evidence_scope": "Colour-sensitive reference control; implicit RGB gives different pixels"
     }
   ]
 }

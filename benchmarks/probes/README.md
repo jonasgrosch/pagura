@@ -723,3 +723,16 @@ all four roles together; an adapter error is not automatically Unsupported.
 This diagnostic does not cover external providers, out-of-order data, recursive
 references, binary-filter offsets, or family-wide support. Its reduced manifest
 must never replace the retained PR's full image controls.
+
+The original sRGB `cgrp` subject is intentionally interpreted only as a
+file-level output observation: an implicit RGB guess gives identical pixels.
+The follow-up `reference-split-linear-icc` group distinguishes that case using
+one restricted matrix/TRC ICC record. The existing independent profile builder
+and scalar IEC sRGB transfer give pixels `(0,137,255)`, `(255,188,0)`,
+`(137,225,99)`, `(188,99,225)`, rather than the stored RGB values. Subject,
+ordinary JP2 and flat-jpxb roles have identical profile/codestream bytes; the
+JP2 reserved colour fields remain zero and JPX APPROX is one. The reference
+splits the child-box length field and has no physical contiguous target header.
+All original 26 render rows and 28 fixture records remain byte-identical; the
+extended private manifest contains 30 PDF cases. This additional control awaits
+hosted evidence and does not change any product behavior or tolerance.

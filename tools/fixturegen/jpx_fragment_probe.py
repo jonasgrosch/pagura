@@ -8,8 +8,10 @@ precede the selected codestream. No external file or network access is used.
 import struct
 from dataclasses import replace
 
-from . import jpx, jpx_layout_probe as layout
+from . import content as colour, jpx, jpx_layout_probe as layout
 from .model import Vector
+from .paint_jpx import srgb
+from .paint_jpx_integration import colr
 
 AREA = 'jpx_fragment_probe'
 REQUIREMENT = 'jpx-pdf-contract'
@@ -126,3 +128,16 @@ def cases():
     yield Vector('fragment-offset-overflow', {'.jpx': data, '.error': b'limit\n'}, (REQUIREMENT,),
                  'CONTRIBUTING offset policy: address-space narrowing or OFF+LEN overflow is Limit',
                  extra={'error': 'limit'})
+    # A plain sRGB reference can also pass if a reader guesses DeviceRGB.
+    # The existing restricted matrix/TRC profile instead interprets the stored
+    # samples as linear RGB; the scalar sRGB transfer supplies the oracle.
+    profile = colour.icc_profile(3, curve=colour.icc_curve('identity', ()))
+    specification = colr(2, profile)
+    data = referenced(raw, b'cgrp', [specification[:3], specification[3:]])
+    pixels = [tuple(srgb(value) for value in pixel) for pixel in layout.RGB]
+    assert pixels == [(0, 137, 255), (255, 188, 0), (137, 225, 99), (188, 99, 225)]
+    name = 'reference-split-linear-icc'
+    for value in layout.paired(name, raw, header, b'', b'', pixels, subject_data=data,
+                                color_box=lambda approximation: colr(2, profile, approximation=approximation)):
+        yield replace(value, extra={**value.extra, 'control_group': f'{AREA}/{name}',
+                                    'evidence_scope': 'Colour-sensitive reference control; implicit RGB gives different pixels'})

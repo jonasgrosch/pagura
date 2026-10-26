@@ -1519,7 +1519,11 @@
         "jpx_fragment_probe/fragment-offset-outside",
         "jpx_fragment_probe/fragment-extent-outside",
         "jpx_fragment_probe/fragment-count-truncated",
-        "jpx_fragment_probe/fragment-offset-overflow"
+        "jpx_fragment_probe/fragment-offset-overflow",
+        "jpx_fragment_probe/reference-split-linear-icc",
+        "jpx_fragment_probe/reference-split-linear-icc-codec-control",
+        "jpx_fragment_probe/reference-split-linear-icc-brand-control",
+        "jpx_fragment_probe/reference-split-linear-icc-rgb-control"
       ],
       "comparisons": {
         "pdfium": "unprobed",

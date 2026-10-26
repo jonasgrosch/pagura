@@ -52,13 +52,13 @@ def jp2(raw, header):
             + jpx.box(b'jp2h', header) + jpx.box(b'jp2c', raw))
 
 
-def paired(name, raw, header, extra, flat_extra, colors, *, components=3, features=(), paint_mode=0, subject_data=None):
+def paired(name, raw, header, extra, flat_extra, colors, *, components=3, features=(), paint_mode=0, subject_data=None, color_box=color):
     options = {'matrix': (4, 0, 0, 1, 2, 2), 'requirement': REQUIREMENT}
     dictionary = b'/Filter /JPXDecode /SMaskInData %d' % paint_mode
     variants = [
         ('', 'subject', container(raw, header, extra, features) if subject_data is None else subject_data),
-        ('-codec-control', 'codec-control', jp2(raw, dimensions(components) + color(0) + flat_extra)),
-        ('-brand-control', 'brand-control', container(raw, dimensions(components) + color() + flat_extra,
+        ('-codec-control', 'codec-control', jp2(raw, dimensions(components) + color_box(0) + flat_extra)),
+        ('-brand-control', 'brand-control', container(raw, dimensions(components) + color_box(1) + flat_extra,
                                                     features=features)),
     ]
     for suffix, role, data in variants:

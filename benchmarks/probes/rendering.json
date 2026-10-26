@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Private R02/R03 diagnostic: six ordered in-file JPX fragment/reference subjects, each with unchanged-codestream JP2, flat-jpxb and RGB controls, plus blank/rectangle. Product remains identical to 20011ead5. T.801 M.9.2.5/.6/.7 and M.11.3/.3.1/.4/.9, corrected Cor.4 reader requirements. No external data providers, engine-derived expectations, timing or family support claims. Three malformed vectors and one arithmetic/address-space Limit boundary are outside the rendering denominator. The retained PR full manifest must not be replaced by this reduced diagnostic.",
+  "scope": "Private R02/R03 diagnostic: six ordered in-file JPX fragment/reference subjects, each with unchanged-codestream JP2, flat-jpxb and RGB controls, plus blank/rectangle. Product remains identical to 20011ead5. T.801 M.9.2.5/.6/.7 and M.11.3/.3.1/.4/.9, corrected Cor.4 reader requirements. No external data providers, engine-derived expectations, timing or family support claims. Three malformed vectors and one arithmetic/address-space Limit boundary are outside the rendering denominator. The retained PR full manifest must not be replaced by this reduced diagnostic. Four appended restricted-linear-ICC reference/control rows distinguish actual colour metadata use from implicit DeviceRGB; original 26 rows are unchanged.",
   "cases": [
     {
       "id": "control.blank",
@@ -337,6 +337,58 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_fragment_probe.reference-split-linear-icc-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_fragment_probe/reference-split-linear-icc-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "68b9849e9cb1349030ca6df4d0114b47ca90d016f8e1a0b43f28853a5eff6a6b",
         "tolerance": 0
       }
     }
