@@ -689,14 +689,12 @@ fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>
         work: &mut work,
         bytes: &mut bytes,
     };
+    let runs: Vec<(f64, f64, Run)> = proven
+        .iter()
+        .map(|&(left, right)| (left, right, Run::Proven))
+        .collect();
     Resolver::default()
-        .row_proven(
-            pieces,
-            &[FillRule::NonZero],
-            top,
-            proven,
-            (&mut out, meters),
-        )
+        .row_proven(pieces, &[FillRule::NonZero], top, &runs, (&mut out, meters))
         .unwrap();
     (out, work.used())
 }

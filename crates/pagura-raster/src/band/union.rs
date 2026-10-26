@@ -123,6 +123,17 @@ fn sort_work(count: usize) -> usize {
 /// about what the proof costs.
 pub(crate) const PROVEN_PIECES: usize = PLAIN_PIECES;
 
+/// A column range of a row the resolver need not sweep.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Run {
+    /// Every cell of the range is covered (a stroke's spine).
+    Proven,
+    /// The pieces in the range are the covered set's sides: off them the
+    /// winding is 0 or this sign, and none cross or touch there but at
+    /// shared vertices.
+    Certified(i32),
+}
+
 /// The most proven column ranges a row of `pieces` pieces passes over:
 /// each adds a cut on either side, which the reuse of repeated strokes
 /// bounds.
@@ -269,9 +280,16 @@ impl Resolver {
         pieces: &[Piece],
         rules: &[FillRule],
         top: f64,
-        proven: &[(f64, f64)],
+        runs: &[(f64, f64, Run)],
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
+        // STUB (R1 replaces this): certified runs are swept as before.
+        let proven: Vec<(f64, f64)> = runs
+            .iter()
+            .filter(|run| run.2 == Run::Proven)
+            .map(|&(left, right, _)| (left, right))
+            .collect();
+        let proven = proven.as_slice();
         let Meters { work, bytes } = meters;
         u32::try_from(pieces.len()).map_err(|_| Error::limit("row resolver pieces exceed u32"))?;
         self.carry.clear();
