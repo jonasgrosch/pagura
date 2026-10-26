@@ -90,9 +90,7 @@ impl Piece<'_> {
     #[inline]
     pub fn evaluate(&self, x: f64, output: &mut [f64]) {
         for (out, term) in output.iter_mut().zip(self.terms) {
-            let [k0, k1, k2, k3] = term.k;
-            let t = x - term.centre;
-            *out = k0 + t * (k1 + t * (k2 + t * k3));
+            *out = horner(term.k, x - term.centre);
         }
     }
 }
@@ -100,14 +98,18 @@ impl Piece<'_> {
 /// One channel on one piece: within `radius` of the cubic `k₀ + k₁·τ +
 /// k₂·τ² + k₃·τ³` in `τ = x − centre`, evaluated by Horner's rule (a line
 /// `a + b·x` has `k = [a, b, 0, 0]` and centre 0, which evaluates as
-/// `a + b·x`); exactly `k₀` where `radius` is zero; or for an sRGB channel
-/// whose power is bounded per sample, the linear value within `radius` of
-/// the line and its power's bounds wide by `margin`.
+/// `a + b·x`); exactly `k₀` where `radius` is zero. An sRGB channel whose
+/// power is bounded per sample (`margin` not zero) certifies the linear
+/// value `line` and its power's bounds wide by `margin`; its cubic, too
+/// wide to certify, still approximates rows ([`Ramp::piece`]), or its
+/// radius is infinite where there is none.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Term {
     k: [f64; 4],
     centre: f64,
     radius: f64,
+    /// `[a, b]` of the line `a + b·x` whose power is bounded per sample.
+    line: [f64; 2],
     /// Zero but for a power bounded per sample.
     margin: f64,
 }
@@ -301,15 +303,13 @@ impl Ramp {
             return false;
         };
         for (out, term) in output.iter_mut().zip(terms) {
-            let [k0, k1, k2, k3] = term.k;
             if term.radius == 0.0 {
                 // The value itself, a zero's sign included.
-                *out = k0;
+                *out = term.k[0];
                 continue;
             }
-            let t = x - term.centre;
-            let v = k0 + t * (k1 + t * (k2 + t * k3));
             *out = if term.margin == 0.0 {
+                let v = horner(term.k, x - term.centre);
                 // Rounding tells the zeros apart, so a zero must not be
                 // among the values.
                 let (low, high) = (v - term.radius, v + term.radius);
@@ -318,6 +318,7 @@ impl Ramp {
                 }
                 v
             } else {
+                let v = horner([term.line[0], term.line[1], 0.0, 0.0], x - 0.0);
                 match cie::power_bounds(v, term.margin) {
                     Some([low, high]) if round(low) == round(high) => low,
                     _ => return false,
@@ -329,8 +330,9 @@ impl Ramp {
 
     /// The piece that approximates the stage at every input within
     /// `error` of `x` ([`Piece`]), or `None` where no piece holds all those
-    /// inputs, its polynomials are too steep for `error`, or a channel
-    /// bounds its power per sample. `hint` is a piece to start from: inputs
+    /// inputs, its polynomials are too steep for `error` or too far from
+    /// the exact values (a power bounded per sample whose cubic is too
+    /// wide, or that has none). `hint` is a piece to start from: inputs
     /// along a line take neighbouring pieces.
     ///
     /// Every input within `error` of an input the piece holds lies in the
@@ -391,6 +393,7 @@ impl Ramp {
             k: [0.0; 4],
             centre: 0.0,
             radius: 0.0,
+            line: [0.0; 2],
             margin: 0.0,
         }; MAX_RAMP_CHANNELS];
         for (term, &channel) in terms.iter_mut().zip(out) {
@@ -413,13 +416,9 @@ impl Term {
     /// A bound on the input error below which `2R + S·error` stays within
     /// [`APPROXIMATE`] on the piece `low..=high`, with `S` a bound of the
     /// polynomial's slope there (`|k₁| + 2|k₂|h + 3|k₃|h²`, `h` the largest
-    /// distance from the centre): zero for a power bounded per sample (its
-    /// terms hold the linear value, not the colour), unbounded for an exact
-    /// value.
+    /// distance from the centre): unbounded for an exact value, zero for a
+    /// power bounded per sample without a cubic (its radius is infinite).
     fn reach(&self, [low, high]: [f64; 2]) -> f64 {
-        if self.margin != 0.0 {
-            return 0.0;
-        }
         if self.radius == 0.0 {
             return f64::INFINITY;
         }
@@ -462,6 +461,7 @@ impl Term {
                 k: [value, 0.0, 0.0, 0.0],
                 centre: 0.0,
                 radius: 0.0,
+                line: [0.0; 2],
                 margin: 0.0,
             });
         }
@@ -477,26 +477,28 @@ impl Term {
         if !radius.is_finite() {
             return None;
         }
-        let line = Self {
-            k: [a, b, 0.0, 0.0],
-            centre: 0.0,
-            radius,
-            margin: 0.0,
-        };
         if !encoded {
-            return Some(line);
+            return Some(Self {
+                k: [a, b, 0.0, 0.0],
+                centre: 0.0,
+                radius,
+                line: [0.0; 2],
+                margin: 0.0,
+            });
         }
         // Every linear value is at least `low`, so every sample's `v` at
         // least `low − radius`; `|w^(5/12) / v^(5/12) − 1| ≤ (5/12) · radius /
         // (v − radius)` for a value `w` within `radius` of `v`.
         let room = form.low() - 2.0 * radius;
-        if let Some((k, centre, radius)) = cie::power_cubic([a, b], radius, room, [low, high])
+        let cubic = cie::power_cubic([a, b], radius, room, [low, high]);
+        if let Some((k, centre, radius)) = cubic
             && radius <= CUBIC_RADIUS
         {
             return Some(Self {
                 k,
                 centre,
                 radius,
+                line: [0.0; 2],
                 margin: 0.0,
             });
         }
@@ -504,11 +506,23 @@ impl Term {
         if !(room > 0.0 && spread <= 1.0 / (1_u64 << 10) as f64) {
             return None;
         }
+        // The cubic encloses the power as it does where it certifies, only
+        // too widely to tell levels apart; rows may still approximate by it.
+        let (k, centre, radius) = cubic.unwrap_or(([a, b, 0.0, 0.0], 0.0, f64::INFINITY));
         Some(Self {
+            k,
+            centre,
+            radius,
+            line: [a, b],
             margin: grow((cie::MARGIN + spread) * (1.0 + 1.0 / (1_u64 << 40) as f64)),
-            ..line
         })
     }
+}
+
+/// `k₀ + τ·(k₁ + τ·(k₂ + τ·k₃))`, as every term evaluates.
+#[inline]
+fn horner([k0, k1, k2, k3]: [f64; 4], t: f64) -> f64 {
+    k0 + t * (k1 + t * (k2 + t * k3))
 }
 
 /// Shrinks `values` to its length, charging the replacement to `bytes`
