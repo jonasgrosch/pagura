@@ -120,6 +120,23 @@ def cff_matrix_cases():
     yield case('cff1-fd-matrix-cid-control', b'BT /F 50 Tf 1 0 0 1 4 4 Tm <0011> Tj ET',
                cff_objects(program, True), FONT, [((4, 4, 10, 20), BLACK)],
                requirement='font-cff', size=64)
+    # Keep the original omission/composition observations above unchanged.
+    # BCD .001/.002 matrices distinguish explicit Top DICT composition from
+    # interpreting a Font DICT matrix as an absolute scale when Top omits it.
+    top = b'\x1e\xa0\x01\xff\x8b\x8b\x1e\xa0\x01\xff\x8b\x8b'
+    small = b'\x1e\xa0\x02\xff\x8b\x8b\x1e\xa0\x02\xff\x8b\x8b'
+    variants = [
+        ('cff1-fd-matrix-explicit-top-cid', False, 'fd-array', top, None),
+        ('cff2-fd-matrix-explicit-top-cid', True, 'fd-matrix', top, None),
+        ('cff2-fd-small-matrix-cid', True, 'fd-matrix', None, small),
+    ]
+    for name, cff2, variant, top_matrix, fd_matrix in variants:
+        program = truetype(cff=cff_font(conforming=True, cid=not cff2, cff2=cff2, variant=variant,
+                                       top_matrix=top_matrix, fd_matrix=fd_matrix), cff2=cff2)
+        text = b'<0001>' if cff2 else b'<0011>'
+        yield case(name, b'BT /F 50 Tf 1 0 0 1 4 4 Tm ' + text + b' Tj ET',
+                   cff_objects(program, True), FONT, [((4, 4, 10, 20), BLACK)],
+                   requirement='font-cff', size=64)
     for scale in (1, 2):
         width, height = 10*scale, 20*scale
         yield case(f'cff-matrix-rectangle-{scale}', b'0 g 4 4 %d %d re f' % (width, height),

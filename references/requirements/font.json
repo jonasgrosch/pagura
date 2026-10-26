@@ -204,7 +204,10 @@
         "font_formats/cff2-fd-matrix-cid",
         "font_formats/cff1-fd-matrix-cid-control",
         "font_formats/cff-matrix-rectangle-1",
-        "font_formats/cff-matrix-rectangle-2"
+        "font_formats/cff-matrix-rectangle-2",
+        "font_formats/cff1-fd-matrix-explicit-top-cid",
+        "font_formats/cff2-fd-matrix-explicit-top-cid",
+        "font_formats/cff2-fd-small-matrix-cid"
       ],
       "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Nondefault variations, CFF2 Font DICT matrices, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
       "tables": [
@@ -989,7 +992,8 @@
           "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2"
         ],
         "scope": "OpenType1.8 Table13 lists Font DICT FontMatrix; 1.8.2 section10 deprecates it; current FontDICT has only Private and general decoding ignores unknown operators while clearing their stack. These do not prove that every legacy font intended the current interpretation. Existing product refusal and native vector are unchanged pending paired baseline observations.",
-        "expectations": "Two same-program simple/CID PDF routes compare the original matrix2 font bytes with the existing no-matrix variant. At 50pt the raw200x400 glyph is10x20 pixels; applying the legacy matrix would produce20x40. Both ordinary rectangles have independent pixel oracles. A CFF1 CID17 control preserves required per-FD matrix application. The retained matrix native font bytes and historical Unsupported expectation are unchanged."
+        "expectations": "Two same-program simple/CID PDF routes compare the original matrix2 font bytes with the existing no-matrix variant. At 50pt the raw200x400 glyph is10x20 pixels; applying the legacy matrix would produce20x40. Both ordinary rectangles have independent pixel oracles. A CFF1 CID17 control preserves required per-FD matrix application. The retained matrix native font bytes and historical Unsupported expectation are unchanged.",
+        "observations": "Hosted run40396599883 at046e06350: Pagura passes the two no-matrix CFF2 routes and CFF1 control, but the original two CFF2 matrix subjects are adapter-error. Hayro passes the CID no-matrix control but its matrix output is neither the unchanged nor doubled rectangle. All other baseline CFF2 font controls fail, preventing a matrix-specific conclusion. MuPDF/pdfjs fill a clipped page rectangle for the CFF1 control, so its omitted-Top matrix-composition assumption also needs adjudication; three new controls distinguish explicit Top .001 and small FD .002. No file or old oracle is changed. Linux report SHA256 a83334a523565cadae2efe0e90f5ce047f126293657724d0bac23b0abff16213, ZIP912b8860ef317dc94ca6adef80fb836458e381496e281fe4ad6a09495ed52295; macOS report81033fc524c0a0fabcdea8c2740b8962c7d29cd1db37050f2b74e821b006400d. A broad web search incidentally returned implementation snippets; those were not opened or used as normative/implementation evidence. This diagnostic and the source interpretation rely on primary specifications and independently authored inputs."
       }
     },
     {

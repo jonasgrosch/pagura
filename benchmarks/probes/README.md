@@ -282,3 +282,14 @@ requires its per-FD matrix, so any later correction must not generalize ignoring
 matrices to CFF1. These are scoped compatibility observations; rendering a font
 is not certification of all OpenType tables or embedding variants. Hosted
 measurements are pending.
+
+The first diagnostic run, [40396599883](https://github.com/jonasgrosch/pagura/actions/runs/40396599883),
+passes all seven Pagura controls while the two legacy matrix subjects retain
+`adapter-error`. Hayro passes the CID no-matrix control but renders the matrix
+subject as a different small shape, not either proposed rectangle. Other
+baselines fail paired CFF2 font controls. The CFF1 omitted-Top composition
+assumption also disagrees across readers; it is not a settled cross-reader
+acceptance control. Three additional files now distinguish explicit Top .001
+from omission, and a small .002 Font DICT matrix from scale2. All original
+bytes and nine expectations remain unchanged. The twelve-case follow-up has
+no product changes and no new conformance claim.

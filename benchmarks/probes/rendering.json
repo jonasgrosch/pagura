@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Diagnostic CFF2 Font DICT matrix observations. Legacy OpenType1.8 defined this key, 1.8.2 deprecated it; current CFF2 ignores unknown Font DICT operators. Matrix subjects use the explicitly stated ignore hypothesis and paired same-glyph no-matrix controls; an independent doubled rectangle distinguishes application. CFF1 matrix, ordinary rectangles and blank controls remain separate. No product change or general OpenType/PDF conformance verdict.",
+  "scope": "Diagnostic CFF2 Font DICT matrix observations. Legacy OpenType1.8 defined this key, 1.8.2 deprecated it; current CFF2 ignores unknown Font DICT operators. Matrix subjects use the explicitly stated ignore hypothesis and paired same-glyph no-matrix controls; an independent doubled rectangle distinguishes application. CFF1 matrix, ordinary rectangles and blank controls remain separate. No product change or general OpenType/PDF conformance verdict. Original CFF1 omitted-Top-matrix composition also disagrees across engines; three new explicit-Top/small-FD controls isolate that unresolved interpretation. No historical oracle is changed.",
   "cases": [
     {
       "id": "control.blank",
@@ -116,6 +116,45 @@
         "width": 64,
         "height": 64,
         "rgb_sha256": "6aab699d911c5d7b43f8b9438d59c7e58e6ddec3ff1f062b4504d0b7e7788986",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff1-fd-matrix-explicit-top-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff1-fd-matrix-explicit-top-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-matrix-explicit-top-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-matrix-explicit-top-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-small-matrix-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-small-matrix-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
         "tolerance": 0
       }
     }

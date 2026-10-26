@@ -485,6 +485,66 @@
       "tolerance": 0
     },
     {
+      "id": "font_formats/cff1-fd-matrix-explicit-top-cid",
+      "kind": "pdf",
+      "description": "cff1 fd matrix explicit top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff1-fd-matrix-explicit-top-cid.pdf",
+      "sha256": "2f226e0d4b9a9576e57973d2ebac7abf8064f02161c92cced3507566c9cf1a0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff1-fd-matrix-explicit-top-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-explicit-top-cid",
+      "kind": "pdf",
+      "description": "cff2 fd matrix explicit top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-explicit-top-cid.pdf",
+      "sha256": "7ca43830efafd7093608557adc4e5b8f1ff6c7cdfefac88dc7f85d0d785db36b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-explicit-top-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-small-matrix-cid",
+      "kind": "pdf",
+      "description": "cff2 fd small matrix cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-small-matrix-cid.pdf",
+      "sha256": "e16f59b33c891f8e31158445eef6550c8ceffb149e3766654f82782716279dd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-small-matrix-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
       "id": "font_formats/cff-matrix-rectangle-1",
       "kind": "pdf",
       "description": "cff matrix rectangle 1",
