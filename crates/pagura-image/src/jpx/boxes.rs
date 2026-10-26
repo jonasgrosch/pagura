@@ -490,7 +490,7 @@ impl Header {
         if options.ignore_color || (selection == ColorSelection::First && !self.colors.is_empty()) {
             fields.take(fields.remaining())?;
         } else {
-            let choice = parse_color(&mut fields, budget, selection, ranked)?;
+            let choice = parse_color(fields, budget, selection, ranked)?;
             budget.push(&mut self.colors, choice)?;
         }
         Ok(())
