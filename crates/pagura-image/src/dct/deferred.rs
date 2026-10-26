@@ -86,7 +86,7 @@ pub(crate) fn decode_deferred(
 
 /// Whether a frame's colour interpretation and geometry suit native planes.
 fn qualifies(frame: &Frame, adobe: Option<u8>, color_transform: Option<i64>) -> bool {
-    if !frame.baseline || frame.precision != 8 {
+    if !frame.process.is_baseline() || frame.precision != 8 {
         return false;
     }
     match frame.components.as_slice() {

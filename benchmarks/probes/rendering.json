@@ -2993,10 +2993,10 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-gray",
+      "id": "image.jpeg-lossless-huffman-half-predictor",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-gray",
+      "fixture": "image/jpeg-lossless-huffman-half-predictor",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
@@ -3006,10 +3006,10 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-gray-rgb-control",
+      "id": "image.jpeg-lossless-huffman-half-predictor-rgb-control",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-gray-rgb-control",
+      "fixture": "image/jpeg-lossless-huffman-half-predictor-rgb-control",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
@@ -3019,36 +3019,10 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-restart",
+      "id": "image.jpeg-lossless-huffman-rgb-planar",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-restart",
-      "oracle": "rgb8",
-      "expected": {
-        "width": 32,
-        "height": 32,
-        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
-        "tolerance": 0
-      }
-    },
-    {
-      "id": "image.jpeg-lossless-arithmetic-restart-rgb-control",
-      "capability": "images.codecs",
-      "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-restart-rgb-control",
-      "oracle": "rgb8",
-      "expected": {
-        "width": 32,
-        "height": 32,
-        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
-        "tolerance": 0
-      }
-    },
-    {
-      "id": "image.jpeg-lossless-arithmetic-rgb",
-      "capability": "images.codecs",
-      "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-rgb",
+      "fixture": "image/jpeg-lossless-huffman-rgb-planar",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
@@ -3058,10 +3032,10 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-rgb-rgb-control",
+      "id": "image.jpeg-lossless-huffman-rgb-planar-rgb-control",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-rgb-rgb-control",
+      "fixture": "image/jpeg-lossless-huffman-rgb-planar-rgb-control",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
@@ -3071,10 +3045,88 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-16bit",
+      "id": "image.jpeg-lossless-huffman-rgb-subsampled",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-16bit",
+      "fixture": "image/jpeg-lossless-huffman-rgb-subsampled",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7a670a49d1ece48eeeaca669fbb3140c685b2d752a76accfeb24de3b77b17ae5",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-rgb-subsampled-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-rgb-subsampled-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7a670a49d1ece48eeeaca669fbb3140c685b2d752a76accfeb24de3b77b17ae5",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-rgb-fractional",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-rgb-fractional",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "674dde323479b59bf0867715da928420318ff3a8a54a892fd1a85454fc439ec4",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-rgb-fractional-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-rgb-fractional-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "674dde323479b59bf0867715da928420318ff3a8a54a892fd1a85454fc439ec4",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-2bit-point",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-2bit-point",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c3eeb4fddf4f5ef284e35516bd32d8c709becb24d40554a4bf08b80c072595b7",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-2bit-point-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-2bit-point-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c3eeb4fddf4f5ef284e35516bd32d8c709becb24d40554a4bf08b80c072595b7",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-12bit",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-12bit",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
@@ -3084,10 +3136,10 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-16bit-rgb-control",
+      "id": "image.jpeg-lossless-huffman-12bit-rgb-control",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-16bit-rgb-control",
+      "fixture": "image/jpeg-lossless-huffman-12bit-rgb-control",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
@@ -3097,28 +3149,28 @@
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-16bit-point",
+      "id": "image.jpeg-lossless-huffman-ycbcr",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-16bit-point",
+      "fixture": "image/jpeg-lossless-huffman-ycbcr",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
         "height": 32,
-        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "rgb_sha256": "37b506203cf3963c321ea31bd4ec4a33c37d6d6e833cfc703cedbf9b3b9a766b",
         "tolerance": 0
       }
     },
     {
-      "id": "image.jpeg-lossless-arithmetic-16bit-point-rgb-control",
+      "id": "image.jpeg-lossless-huffman-ycbcr-rgb-control",
       "capability": "images.codecs",
       "operation": "render",
-      "fixture": "image/jpeg-lossless-arithmetic-16bit-point-rgb-control",
+      "fixture": "image/jpeg-lossless-huffman-ycbcr-rgb-control",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
         "height": 32,
-        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "rgb_sha256": "37b506203cf3963c321ea31bd4ec4a33c37d6d6e833cfc703cedbf9b3b9a766b",
         "tolerance": 0
       }
     }

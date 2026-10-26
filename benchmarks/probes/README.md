@@ -180,7 +180,7 @@ sampling, matching ordinary RGB/soft-mask images, ranked profile choices,
 physical Lab input, palette-backed PDF Indexed opacity, masks/groups/interpolation
 and resource-aware inline framing. Signed restricted Gray/RGB TRC controls add full-precision negative clipping,
 matched unsigned and RGB pairs, mixed signed palette channels and profile
-fallback. The 220-case inventory therefore has 1,540
+fallback. This 220-case R02 subset therefore has 1,540
 observations across Pagura and six baselines. These are scoped controls, not
 family support verdicts; full functional native/WASI checks and comparative
 results for this source revision are pending hosted execution.
@@ -232,3 +232,47 @@ separately unassociates stored samples before Decode/range mapping; the fixed
 No tolerance was relaxed. Precision above sixteen bits, broader Part 2 models
 and layering remain R03. Native/WASI/browser and current implementation acceptance
 remain tied to hosted results for the published source revision (ADR 0031).
+
+## R03 lossless JPEG compatibility controls
+
+The image inventory adds twelve Huffman lossless JPEG subjects and twelve
+matching ordinary RGB controls, for 244 render cases and 1,708 observations.
+They cover Gray/RGB, predictors, whole-row restarts, separate scans, cropped and
+fractional component sampling, point transforms, colour conversion and native
+precision. The 66 codec vectors include every precision from two to sixteen
+bits, all seven predictors, four Huffman tables, CMYK/YCCK, malformed fields and
+explicit arithmetic/hierarchical boundaries. Three literal bitstreams separately
+pin category 16, negative half-difference rounding and overflowing predictions.
+Public ImageSource and exact memory/work limits are checked in the image tests;
+the existing host suite exercises the render subjects through native, WASI,
+session-client and partial-tile paths. Hosted acceptance of this batch is pending.
+
+Lossless JPEG is a compatibility extension beyond PDF 7.4.8's required
+baseline/progressive byte processes. The [image requirements](../../references/requirements/image.json)
+record T.81 H's native sample rules and the explicit full-range byte
+normalization policy. Neither a measured renderer nor the product supplies
+expected pixels. The implementation reuses the frame parser, Huffman reader,
+scan loop and colour output; arithmetic lossless and hierarchical processes
+remain Unsupported.
+
+The pre-implementation diagnostic at `ac2c7d5b9d01be4556b20c2e2f2dcea086b8231d`,
+[run 40347171720](https://github.com/jonasgrosch/pagura/actions/runs/40347171720),
+contains ten lossless subjects and ten matched RGB controls. Pagura passed its
+230 controls and refused all ten subjects, so this failed run is diagnostic
+evidence. Linux render-report artifact `12663225028` has SHA-256
+`0833a0cc4a35ca06f103b83051df388471d51b0d1f04fc53986aae884fb46340`;
+macOS artifact `12661079405` has SHA-256
+`d50b1fa9b5e8b80b1f891dfbf0522df4d89c055062324e380734e0c2b4b996a4`.
+
+| Pinned baseline | Subject observations | Paired controls |
+| --- | --- | --- |
+| PDFium 156.0.8076.0 | All three 8-bit Huffman subjects pass. Two 16-bit Huffman and five arithmetic subjects differ from their oracles. | All ten pass. |
+| MuPDF 1.28.5, PDF.js 6.4.299, hayro 0.8.0, Quartz on macOS 26.6.2 | All ten subjects differ from their oracles. | All ten pass. |
+| Poppler 24.02.0 | Subjects remain unadjudicated. | All ten differ from their oracles. |
+
+The exact diagnostic inputs and reports remain bound to that preserved source
+revision. Arithmetic render probes are not implementation acceptance cases;
+the current codec vectors retain their explicit Unsupported boundary. The
+original Huffman expected pixels and tolerance zero remain unchanged. These
+observations justify the 8-bit compatibility work; they do not establish a
+general lossless, arithmetic or high-precision baseline-support verdict.

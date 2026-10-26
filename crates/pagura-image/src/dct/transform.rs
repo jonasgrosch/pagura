@@ -99,6 +99,12 @@ fn sample(value: f64) -> u8 {
     round_u8(value)
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Conversion {
+    None,
+    Ycbcr,
+}
+
 pub(super) trait Sample: Copy + Default {
     fn from_idct(value: f64) -> Self;
     /// The samples of a sequential component, reconstructed during its scan.
@@ -106,7 +112,12 @@ pub(super) trait Sample: Copy + Default {
     fn fused(_frame: &Frame, _planes: &[Vec<Self>], _samples: &mut [Self]) -> bool {
         false
     }
-    fn finish(samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8>;
+    fn finish(
+        samples: Vec<Self>,
+        components: usize,
+        precision: u8,
+        conversion: Conversion,
+    ) -> Vec<u8>;
 }
 
 impl Sample for u8 {
@@ -123,8 +134,13 @@ impl Sample for u8 {
         }
     }
 
-    fn finish(mut samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
-        if convert && components >= 3 {
+    fn finish(
+        mut samples: Vec<Self>,
+        components: usize,
+        _precision: u8,
+        conversion: Conversion,
+    ) -> Vec<u8> {
+        if conversion == Conversion::Ycbcr && components >= 3 {
             for pixel in samples.chunks_exact_mut(components) {
                 let rgb = Rgb::new(pixel[1], pixel[2]).pixel(pixel[0]);
                 for (out, value) in pixel[..3].iter_mut().zip(rgb) {
@@ -151,38 +167,45 @@ impl Sample for u16 {
         }
     }
 
-    fn finish(samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
+    fn finish(
+        samples: Vec<Self>,
+        components: usize,
+        precision: u8,
+        conversion: Conversion,
+    ) -> Vec<u8> {
+        let maximum = (1u32 << precision) - 1;
+        let center = f64::from(1u32 << (precision - 1));
         let mut bytes = Vec::with_capacity(samples.len());
         for pixel in samples.chunks_exact(components) {
-            if convert && components >= 3 {
+            if conversion == Conversion::Ycbcr && components >= 3 {
                 let rgb = ycbcr(
                     f64::from(pixel[0]),
-                    f64::from(pixel[1]) - 2048.0,
-                    f64::from(pixel[2]) - 2048.0,
+                    f64::from(pixel[1]) - center,
+                    f64::from(pixel[2]) - center,
                 );
                 for value in rgb {
-                    let native = value.clamp(0.0, 4095.0);
+                    let native = value.clamp(0.0, f64::from(maximum));
                     let native = if components == 4 {
-                        4095.0 - native
+                        f64::from(maximum) - native
                     } else {
                         native
                     };
                     // Keep fractional colour results until the final byte rounding.
-                    bytes.push(sample(native * 255.0 / 4095.0));
+                    bytes.push(sample(native * 255.0 / f64::from(maximum)));
                 }
-                bytes.extend(pixel[3..].iter().map(|&v| reduce(v)));
+                bytes.extend(pixel[3..].iter().map(|&v| reduce(v, maximum)));
             } else {
-                bytes.extend(pixel.iter().map(|&v| reduce(v)));
+                bytes.extend(pixel.iter().map(|&v| reduce(v, maximum)));
             }
         }
         bytes
     }
 }
 
-/// PDF 7.4.8 specifies bytes, but not twelve-bit normalization. Preserve
+/// PDF 7.4.8 specifies bytes, but not native-precision normalization. Preserve
 /// endpoints and round once; the odd denominator precludes half-level ties.
-fn reduce(value: u16) -> u8 {
-    u8::try_from((u32::from(value) * 255 + 2047) / 4095).unwrap_or(255)
+fn reduce(value: u16, maximum: u32) -> u8 {
+    u8::try_from((u32::from(value) * 255 + maximum / 2) / maximum).unwrap_or(255)
 }
 
 fn ycbcr(y: f64, cb: f64, cr: f64) -> [f64; 3] {
@@ -199,7 +222,7 @@ pub(super) fn output(
     transform: Option<i64>,
     limits: &Limits,
 ) -> Result<DctImage> {
-    if frame.precision == 8 {
+    if frame.precision == 8 && !frame.process.is_lossless() {
         output_native::<u8>(frame, adobe, transform, limits)
     } else {
         output_native::<u16>(frame, adobe, transform, limits)
@@ -250,11 +273,11 @@ fn output_native<T: Sample>(
     let idct = Idct::new();
     let mut planes = Vec::with_capacity(usize::from(n));
     for c in &mut frame.components {
-        if c.approximation[0] < 0 || (!frame.progressive && c.approximation.iter().any(|&v| v < 0))
+        if c.approximation[0] < 0
+            || (!frame.process.is_progressive() && c.approximation.iter().any(|&v| v < 0))
         {
             return Err(Error::syntax("JPEG component has no complete scan"));
         }
-        let quant = c.quant.ok_or(Error::syntax("missing JPEG quantizer"))?;
         if let Some(plane) = T::plane(&mut c.storage) {
             planes.push(std::mem::take(plane));
             continue;
@@ -262,6 +285,7 @@ fn output_native<T: Sample>(
         let Storage::Coefficients(blocks) = &c.storage else {
             return Err(Error::syntax("JPEG component precision mismatch"));
         };
+        let quant = c.quant.ok_or(Error::syntax("missing JPEG quantizer"))?;
         let mut plane = vec![T::default(); c.stride * c.rows * 64];
         for (index, coefficients) in blocks.iter().enumerate() {
             reconstruct(
@@ -295,12 +319,12 @@ fn output_native<T: Sample>(
             width,
             height,
             components: n,
-            samples: T::finish(samples, usize::from(n), false),
+            samples: T::finish(samples, usize::from(n), frame.precision, Conversion::None),
         });
     }
     let components = usize::from(n);
     for (i, c) in frame.components.iter().enumerate() {
-        let pitch = c.stride * 8;
+        let pitch = c.stride * frame.process.unit();
         for (y, row) in samples
             .chunks_exact_mut(width as usize * components)
             .enumerate()
@@ -314,7 +338,16 @@ fn output_native<T: Sample>(
         width,
         height,
         components: n,
-        samples: T::finish(samples, components, convert),
+        samples: T::finish(
+            samples,
+            components,
+            frame.precision,
+            if convert {
+                Conversion::Ycbcr
+            } else {
+                Conversion::None
+            },
+        ),
     })
 }
 
@@ -467,7 +500,7 @@ mod tests {
         for native in 0..=4095u16 {
             assert_eq!(u16::from_idct(f64::from(native) - 2048.0), native);
             let exact = f64::from(native) * 255.0 / 4095.0;
-            assert!((f64::from(super::reduce(native)) - exact).abs() < 0.5);
+            assert!((f64::from(super::reduce(native, 4095)) - exact).abs() < 0.5);
         }
         assert_eq!(u16::from_idct(-3000.0), 0);
         assert_eq!(u16::from_idct(3000.0), 4095);
@@ -493,7 +526,12 @@ mod tests {
                         *out = if components == 4 { 255 - byte } else { byte };
                     }
                     assert_eq!(
-                        u8::finish(pixel[..components].to_vec(), components, true),
+                        u8::finish(
+                            pixel[..components].to_vec(),
+                            components,
+                            8,
+                            super::Conversion::Ycbcr
+                        ),
                         expected
                     );
                 }
@@ -522,7 +560,12 @@ mod tests {
             ];
             let denominator = 4095 * 1_000_000i64;
             for components in [3, 4] {
-                let bytes = u16::finish(pixel[..components].to_vec(), components, true);
+                let bytes = u16::finish(
+                    pixel[..components].to_vec(),
+                    components,
+                    12,
+                    super::Conversion::Ycbcr,
+                );
                 for (&actual, exact) in bytes.iter().zip(rgb) {
                     let exact = exact.clamp(0, denominator);
                     let exact = if components == 4 {
@@ -537,7 +580,7 @@ mod tests {
                     );
                 }
                 if components == 4 {
-                    assert_eq!(bytes[3], super::reduce(pixel[3]));
+                    assert_eq!(bytes[3], super::reduce(pixel[3], 4095));
                 }
             }
         }

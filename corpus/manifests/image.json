@@ -1571,6 +1571,1458 @@
       "tolerance": 1
     },
     {
+      "id": "image/jpeg-lossless-vector-precision-2",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 2",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-2.in",
+          "sha256": "0a54504c44f31b1af26e4f08f940490beb267faafe160d817566be45b9e244ba"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-2.out",
+          "sha256": "6197d5961742d8d7c7ec0dbc93358ce1efdc7b5b54a4691b374c103a3f775b67"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-2.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-3",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 3",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-3.in",
+          "sha256": "ba8e27c833d883b83c825fb7a33c2b31517c74101f1af324fe3b1bc659b10709"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-3.out",
+          "sha256": "84d268e1e545338840fafd2e3d7684786002d247746f99b1eba946a7ecf3ade1"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-3.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-4",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 4",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-4.in",
+          "sha256": "7fe96d110fa49bba193b13b8ef53f5cdd60df05c5313df4d9599278429375c9d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-4.out",
+          "sha256": "3457446fe1654a6b05d3c1cad84ff2041f9a9d288e3d65b36ddda041c8986936"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-4.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-5",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 5",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-5.in",
+          "sha256": "3ed559bda291c4a40adafa198bc60174d441eb104c8949a504d643b45ce4dad9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-5.out",
+          "sha256": "da65dd5cd57fb441c3c76d5a4494722b5232328db4e9ca566a186a233ae8587e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-5.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-6",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 6",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-6.in",
+          "sha256": "c713c303e8f6c98b166fb8c95ffc21499a12040cb50a6beba6495b8a95ce8a4d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-6.out",
+          "sha256": "68062515163f5916e834b453a768c0c471246b915b0d88b18d32bbed32c50015"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-6.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-7",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 7",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-7.in",
+          "sha256": "c623f972dc2e58e2e24ade491fe582678654c7799782b6b14b0fa6e5563a3117"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-7.out",
+          "sha256": "074c92b6e421ae3948d3321ef213cd1b0bdaf917c76bd9950dc4b7335f750d67"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-7.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-8.in",
+          "sha256": "50b9a078b7b95a7918ecc250dfe529f77c3818942d8b6af3ab1cd9969b422414"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-9",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 9",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-9.in",
+          "sha256": "0950436eb86a91ca4e5100244e367840ba069dc217f58d5d558bb11972eb9a0c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-9.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-9.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-10",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 10",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-10.in",
+          "sha256": "0278e2ca0526b3fa741e558fbdb36c797848a7ffd36b62418efabcb6f1a80439"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-10.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-10.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-11",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 11",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-11.in",
+          "sha256": "4b8da006689fcd54d1bca3e2d591be7687228bcc1d2952ad173093f2cf336921"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-11.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-11.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-12",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 12",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-12.in",
+          "sha256": "8d09a0c009e2b36d584d0218d38310e640d54e9d530b76b2c027edcc86fec968"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-12.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-12.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-13",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 13",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-13.in",
+          "sha256": "a4494f2c894e63889536f86e5deaeed66d34da9d200e0ba589612df922337b4b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-13.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-13.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-14",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 14",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-14.in",
+          "sha256": "97cc22f997e05d3f5b6f39e2302b3ba458e9f3ec053bd5e6d062281ac7f39534"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-14.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-14.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-15",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 15",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-15.in",
+          "sha256": "ae98ba7293c5373b695c5ca4da099fbc465fb407380284d17eb0c306a8157673"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-15.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-15.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-precision-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector precision 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-16.in",
+          "sha256": "c813f38affb54a2103b5702f58a8e1d1a058500d731c9200b7b613e0398ad495"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-precision-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-1-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 1 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-8.in",
+          "sha256": "38c4d4321c3acc91ec0655e7d064659b41a7ba85bafab401e45ecc31b26ceabf"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-2-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 2 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-8.in",
+          "sha256": "50b9a078b7b95a7918ecc250dfe529f77c3818942d8b6af3ab1cd9969b422414"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-3-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 3 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-8.in",
+          "sha256": "103d1bcbd321c420185d93d8dd168dbb74b5093c0c78f2c9581eeebe23dbc65d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-4-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 4 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-8.in",
+          "sha256": "02ab940a4d48af7e9a37bcd722723375260d4b5b98c54775fa23f420319dfe63"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-5-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 5 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-8.in",
+          "sha256": "8498e127b7a27cae7787607a5a5037b7f40dd97c833d347596f1d25d5234fcac"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-6-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 6 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-8.in",
+          "sha256": "4c95c78b1ad0c763ee5fef99ad7db772c128e2dd8e04ccf437b82d4c228fa7f0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-7-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 7 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-8.in",
+          "sha256": "7e30faf9676a7efe1700393a8bed859410ffaf6afeef6a2fb98c88c013a8955c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-8.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-1-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 1 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-16.in",
+          "sha256": "18f57f9ee56e4bb8e8cf0a944e3bccb0c66b21707272b65e14a218b446169856"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-1-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-2-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 2 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-16.in",
+          "sha256": "f17071244c53beb50e44f4253eb439a4b8b84b3d025360bf901c9224209194f0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-2-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-3-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 3 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-16.in",
+          "sha256": "c813f38affb54a2103b5702f58a8e1d1a058500d731c9200b7b613e0398ad495"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-3-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-4-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 4 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-16.in",
+          "sha256": "d882f444530b5a77b0c7e1ec0454648044901556f7010574254ba2732792366b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-4-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-5-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 5 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-16.in",
+          "sha256": "b1d8beb82dec106306239f435bad3b3f00bb2ddd7570f01196997c90623457e0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-5-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-6-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 6 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-16.in",
+          "sha256": "d1d70b2cc58902188de662d6fc48f06e0f4e70febd666b57f4384c69546ac4d1"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-6-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-predictor-7-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector predictor 7 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-16.in",
+          "sha256": "31e09734195261a35547d4df26e25188ff28cff2ab0ebf21ffc0857c9061c377"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-16.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-predictor-7-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-point-2",
+      "kind": "vector",
+      "description": "jpeg lossless vector point 2",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-2.in",
+          "sha256": "86c745c5e0959c534d0e3a449274165a5a11e93393efb7329c753a6da054cf2d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-2.out",
+          "sha256": "85e6d7ee5c5fcc3aaf84054c4f749d3dbff3ae9f663e96def5073fc330c0e09f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-2.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-point-8",
+      "kind": "vector",
+      "description": "jpeg lossless vector point 8",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-8.in",
+          "sha256": "d33fc7b05eefbea28a63e8aab0351bc5c4bee4b3461889d785e72f4064478891"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-8.out",
+          "sha256": "0ce8503e1e1f56236165bed574f1cae241fd4715b5bf95b68bb8e4e78257f500"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-8.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-point-16",
+      "kind": "vector",
+      "description": "jpeg lossless vector point 16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-16.in",
+          "sha256": "671cc284bd4ac3cf6d32a21722486a05b6231546a96ef20d47aaa1987b2c9484"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-16.out",
+          "sha256": "0ce8503e1e1f56236165bed574f1cae241fd4715b5bf95b68bb8e4e78257f500"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-point-16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-restart",
+      "kind": "vector",
+      "description": "jpeg lossless vector restart",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-restart.in",
+          "sha256": "7115b21ecb7d2f4340ce73e664cc4f6adffc805b75596f0c34cfacf7f9377130"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-restart.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-restart.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-rgb-planar",
+      "kind": "vector",
+      "description": "jpeg lossless vector rgb planar",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-rgb-planar.in",
+          "sha256": "acb0d29a7041877f040d30be24b32456065ae8cbc8a40591838609bd08ee031d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-rgb-planar.out",
+          "sha256": "42d5a797892d81bde5789008de06e27d0d564aa6a4671fb98a5fca475c0596e4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-rgb-planar.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-cmyk-planar",
+      "kind": "vector",
+      "description": "jpeg lossless vector cmyk planar",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-cmyk-planar.in",
+          "sha256": "2f38004fa303fb3821d9f2d230defe91c7e7509b939b1cad217fdfef01a84def"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-cmyk-planar.out",
+          "sha256": "cd83c9765efb57bb137be1c7290c778e7d7a7de9bc2aa46d5bfc91da83281c4b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-cmyk-planar.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-subsampled",
+      "kind": "vector",
+      "description": "jpeg lossless vector subsampled",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled.in",
+          "sha256": "b91cdd4175bd31aff6a4961ff03867a62aa785c32699dc95818001b02f6296cb"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled.out",
+          "sha256": "3e705a05dd585b08f11da4e40c5151cbaf920095279709ec18442ded3101fe0c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-fractional",
+      "kind": "vector",
+      "description": "jpeg lossless vector fractional",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-fractional.in",
+          "sha256": "294a396c13464fa2047d668cde9499687a78d00a7c187cad6e4c1faaca95896d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-fractional.out",
+          "sha256": "c76886c3283f379ee9e1738ee1f5862671c88b1e8bda201338d385cf5d32a5f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-fractional.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-subsampled-planar",
+      "kind": "vector",
+      "description": "jpeg lossless vector subsampled planar",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled-planar.in",
+          "sha256": "6ffe7dcbc1dc38f6676671917d2744509167f95dfea5aa18ecd9897e4a6d29ef"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled-planar.out",
+          "sha256": "3e705a05dd585b08f11da4e40c5151cbaf920095279709ec18442ded3101fe0c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-subsampled-planar.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-ycbcr",
+      "kind": "vector",
+      "description": "jpeg lossless vector ycbcr",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycbcr.in",
+          "sha256": "d3a30f72eb86584658df0937c9a2d522276ab4514ea348d9e692b0bbae8ae1bf"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycbcr.out",
+          "sha256": "4306ad51bf234423675b96c6f9c381343d143f5e3dd5af0b1d64d94a2f61b303"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycbcr.params",
+          "sha256": "86d3eb4bc2e4667613d292a7365261908a1641dde656229184f6f35543d72037"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-ycck",
+      "kind": "vector",
+      "description": "jpeg lossless vector ycck",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycck.in",
+          "sha256": "93d5445ddc512b8baf849f02fcd8ce1eb4d5cb06ad1fcfe98f1c75f71ac33fe8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycck.out",
+          "sha256": "36fd54875821a022c835c989673877273148b14aabbd35959d68622b50cc0f3d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-ycck.params",
+          "sha256": "86d3eb4bc2e4667613d292a7365261908a1641dde656229184f6f35543d72037"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-adobe-rgb",
+      "kind": "vector",
+      "description": "jpeg lossless vector adobe rgb",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-rgb.in",
+          "sha256": "495eed8bb04d10c71a824ef8c53483f280063c77d72fb7187f062d8354508316"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-rgb.out",
+          "sha256": "42d5a797892d81bde5789008de06e27d0d564aa6a4671fb98a5fca475c0596e4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-rgb.params",
+          "sha256": "86d3eb4bc2e4667613d292a7365261908a1641dde656229184f6f35543d72037"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-adobe-ycbcr",
+      "kind": "vector",
+      "description": "jpeg lossless vector adobe ycbcr",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-ycbcr.in",
+          "sha256": "4e6bc97fa5ce646a7dfae99636e5284e589591f371efd009a452d2da58a25f16"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-ycbcr.out",
+          "sha256": "4306ad51bf234423675b96c6f9c381343d143f5e3dd5af0b1d64d94a2f61b303"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-adobe-ycbcr.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-vector-16bit-ycck",
+      "kind": "vector",
+      "description": "jpeg lossless vector 16bit ycck",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-16bit-ycck.in",
+          "sha256": "066a4b5c261127d25e2fcdaa263afbf9c5615ee7cc306aee1a5f5ecc25fd298b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-16bit-ycck.out",
+          "sha256": "2f14e29556216c3a3aff1718f087ab2a63bacd344baf8001e7f064fc53da1232"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-vector-16bit-ycck.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-known-category16",
+      "kind": "vector",
+      "description": "jpeg lossless known category16",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-known-category16.in",
+          "sha256": "5d28c6a127aa31b19dbd587942299b94118a852f81819e92a286e00788fe9018"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-known-category16.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-known-category16.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-known-negative-half",
+      "kind": "vector",
+      "description": "jpeg lossless known negative half",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-known-negative-half.in",
+          "sha256": "ffa12d4a6f1cf5ed9e3fcdbeb19a9909bbe5dad7bac5844d34095c62e77c6199"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-known-negative-half.out",
+          "sha256": "e49e1ca907ec63f6fa8b0c23c32c81dfde83a5eb8bfe88a2ae509d872c5dfe1c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-known-negative-half.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-known-overflow",
+      "kind": "vector",
+      "description": "jpeg lossless known overflow",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-known-overflow.in",
+          "sha256": "ae829d9063f294c620432b8672e49512b74bfcbfefed1b186a5f99ba66226a83"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-known-overflow.out",
+          "sha256": "34aaa746c25a0f105c4316bbb1f009aa359f49582656ee97d73c58132d563423"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-known-overflow.params",
+          "sha256": "dd669fa82e89b09b16ea7e17fc427e9d1fe6063862d327a6a21a7e1a8c8df678"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-precision-low",
+      "kind": "vector",
+      "description": "jpeg lossless bad precision low",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-low.in",
+          "sha256": "ce6da27d4d62e880a520feb02780a79fbffd0bb7eec5a22a4636239007394b81"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-low.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-low.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-precision-high",
+      "kind": "vector",
+      "description": "jpeg lossless bad precision high",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-high.in",
+          "sha256": "63747a7db31e8be6cafa0d8e586cfa4dcb0d59a6286fd1cbb85f9fb7bcb1749a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-high.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-precision-high.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-quantizer",
+      "kind": "vector",
+      "description": "jpeg lossless bad quantizer",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-quantizer.in",
+          "sha256": "e0862aa93b962630c042222d135ce42ae61c5efa346b486af1a5e8b8d6a90dfd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-quantizer.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-quantizer.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-predictor-zero",
+      "kind": "vector",
+      "description": "jpeg lossless bad predictor zero",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-zero.in",
+          "sha256": "a8166f8529d2ce93c5d4dbd9aa32917b383e693724b14eed4e98d56e5285bd2f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-zero.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-zero.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-predictor-eight",
+      "kind": "vector",
+      "description": "jpeg lossless bad predictor eight",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-eight.in",
+          "sha256": "7574095f42d3cef9238c475fb68c0bc59a2db7edea27facfedcf2902708eb6cc"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-eight.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-predictor-eight.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-spectral-end",
+      "kind": "vector",
+      "description": "jpeg lossless bad spectral end",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-spectral-end.in",
+          "sha256": "a64caf6dba0800abd3f0014a45334094df3bb03e2212f3e2ef1c0d973de0c559"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-spectral-end.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-spectral-end.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-approximation-high",
+      "kind": "vector",
+      "description": "jpeg lossless bad approximation high",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-approximation-high.in",
+          "sha256": "af951247ddeec47fb34becfdf31f3f604fecea1f15efd038e4f93686312a1e5b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-approximation-high.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-approximation-high.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-point-range",
+      "kind": "vector",
+      "description": "jpeg lossless bad point range",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-point-range.in",
+          "sha256": "817fc8e464f45715a259d7d2861240acd94da2286a22cca4cc10782cd302a5c8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-point-range.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-point-range.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-ac-selector",
+      "kind": "vector",
+      "description": "jpeg lossless bad ac selector",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-ac-selector.in",
+          "sha256": "ca89e6bab784d2e17d0751d34d20f2de8f005cd3776dbe0f595101329eb35f28"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-ac-selector.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-ac-selector.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-missing-table",
+      "kind": "vector",
+      "description": "jpeg lossless bad missing table",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-table.in",
+          "sha256": "ef8767561000c3fea9f64bd5564f2cf3d1f33536f11edad993783e2a01dca64b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-table.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-table.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-category",
+      "kind": "vector",
+      "description": "jpeg lossless bad category",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-category.in",
+          "sha256": "1691cec80dbe78554ebf49ba234eb4cc1ea29092890e2358e39523a7992c108d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-category.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-category.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-sample-range",
+      "kind": "vector",
+      "description": "jpeg lossless bad sample range",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-sample-range.in",
+          "sha256": "c629c20547a94159a2e448348102ab37d85a74566f61468707d23bf933e710e6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-sample-range.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-sample-range.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-missing-scan",
+      "kind": "vector",
+      "description": "jpeg lossless bad missing scan",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-scan.in",
+          "sha256": "92d34dec85cb8ce1920739f202a98f244b84f794d18bf28b64087b24eb6fe50a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-missing-huffman",
+      "kind": "vector",
+      "description": "jpeg lossless bad missing huffman",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-huffman.in",
+          "sha256": "8125c258feaae9b017e62c8d755ec536f2defdf1b2a1828141820a517e6b554a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-huffman.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-missing-huffman.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-duplicate-scan",
+      "kind": "vector",
+      "description": "jpeg lossless bad duplicate scan",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-duplicate-scan.in",
+          "sha256": "23bd9ee48cc06f24e593a323443f2e52ff7a71907481859d841aea3b8c80a3a4"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-duplicate-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-duplicate-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-truncated-entropy",
+      "kind": "vector",
+      "description": "jpeg lossless bad truncated entropy",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-truncated-entropy.in",
+          "sha256": "2f85af68c806e003f0c3317105c56d9c950be4b43cb989fe02ab12a672714935"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-truncated-entropy.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-truncated-entropy.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-restart-row",
+      "kind": "vector",
+      "description": "jpeg lossless bad restart row",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-row.in",
+          "sha256": "9f4c0d20d976c0d393d96be2178c5336c48ec6e400ffa701ef7a3b5f8878899d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-row.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-row.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-bad-restart-sequence",
+      "kind": "vector",
+      "description": "jpeg lossless bad restart sequence",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-sequence.in",
+          "sha256": "8f966406d5dbf4d7be215c343c475b4989dda98de10575f6c5322183e11dac74"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-sequence.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-bad-restart-sequence.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-boundary",
+      "kind": "vector",
+      "description": "jpeg lossless arithmetic boundary",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-arithmetic-boundary.in",
+          "sha256": "5bfc466a18d8d04b326f1f9230c637e82b02d9e394986028560ad22eacbc3ac5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-arithmetic-boundary.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-arithmetic-boundary.params",
+          "sha256": "e38d6053e062ad10ef612fdfc040fc59383600d61a64515fa04414d73b6465bb"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-lossless-hierarchical-boundary",
+      "kind": "vector",
+      "description": "jpeg lossless hierarchical boundary",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-lossless-hierarchical-boundary.in",
+          "sha256": "44d58752667da157168c2acddbc6b211edbfa4a0da9870060d237bcb7cd09d08"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-lossless-hierarchical-boundary.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-lossless-hierarchical-boundary.params",
+          "sha256": "f53eb3963bf42fcef665cbe06dc64445cc88ce9bcabb08ac7dfedaf363426fdc"
+        }
+      }
+    },
+    {
       "id": "image/jpeg-lossless-huffman-gray",
       "kind": "pdf",
       "description": "jpeg lossless huffman gray",
@@ -1776,19 +3228,19 @@
       "control_of": "image/jpeg-lossless-huffman-16bit-point"
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-gray",
+      "id": "image/jpeg-lossless-huffman-half-predictor",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic gray",
+      "description": "jpeg lossless huffman half predictor",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-gray.pdf",
-      "sha256": "fdba15120df0f159e0d3519a841b40894385a528a3a53179cadd0aacc9e4609e",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-half-predictor.pdf",
+      "sha256": "060e7acad3405333c7088a9154ae0924abb59dcd9e296654ed525bea531d9f42",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-gray.ppm",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-half-predictor.ppm",
       "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
       "dpi": 72,
       "width": 32,
@@ -1796,81 +3248,40 @@
       "tolerance": 0
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-gray-rgb-control",
+      "id": "image/jpeg-lossless-huffman-half-predictor-rgb-control",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic gray rgb control",
+      "description": "jpeg lossless huffman half predictor rgb control",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-gray-rgb-control.pdf",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-half-predictor-rgb-control.pdf",
       "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-gray-rgb-control.ppm",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-half-predictor-rgb-control.ppm",
       "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
       "dpi": 72,
       "width": 32,
       "height": 32,
       "tolerance": 0,
-      "control_of": "image/jpeg-lossless-arithmetic-gray"
+      "control_of": "image/jpeg-lossless-huffman-half-predictor"
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-restart",
+      "id": "image/jpeg-lossless-huffman-rgb-planar",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic restart",
+      "description": "jpeg lossless huffman rgb planar",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-restart.pdf",
-      "sha256": "b84fcfe12f0fd8c8d54df47218f43c8b880e6ac9099d9b13cd71bbaa1dd7f29b",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar.pdf",
+      "sha256": "53ff8c533caf2d3b8ceae56f53d0cd0e92c665d0951a48a589983d74e0dfd750",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-restart.ppm",
-      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
-      "dpi": 72,
-      "width": 32,
-      "height": 32,
-      "tolerance": 0
-    },
-    {
-      "id": "image/jpeg-lossless-arithmetic-restart-rgb-control",
-      "kind": "pdf",
-      "description": "jpeg lossless arithmetic restart rgb control",
-      "expected": "render",
-      "requirements": [
-        "image-jpeg-lossless"
-      ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-restart-rgb-control.pdf",
-      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-restart-rgb-control.ppm",
-      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
-      "dpi": 72,
-      "width": 32,
-      "height": 32,
-      "tolerance": 0,
-      "control_of": "image/jpeg-lossless-arithmetic-restart"
-    },
-    {
-      "id": "image/jpeg-lossless-arithmetic-rgb",
-      "kind": "pdf",
-      "description": "jpeg lossless arithmetic rgb",
-      "expected": "render",
-      "requirements": [
-        "image-jpeg-lossless"
-      ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-rgb.pdf",
-      "sha256": "d440511e59a469b7c1d4d6a2502e3508e5954093018002867c8e35ccf791e80d",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-rgb.ppm",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar.ppm",
       "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
       "dpi": 72,
       "width": 32,
@@ -1878,40 +3289,163 @@
       "tolerance": 0
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-rgb-rgb-control",
+      "id": "image/jpeg-lossless-huffman-rgb-planar-rgb-control",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic rgb rgb control",
+      "description": "jpeg lossless huffman rgb planar rgb control",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-rgb-rgb-control.pdf",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar-rgb-control.pdf",
       "sha256": "dd2e75a2b8abc079178a25362e74618af989a8d11155900d683ae567dc30758b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-rgb-rgb-control.ppm",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-planar-rgb-control.ppm",
       "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
       "dpi": 72,
       "width": 32,
       "height": 32,
       "tolerance": 0,
-      "control_of": "image/jpeg-lossless-arithmetic-rgb"
+      "control_of": "image/jpeg-lossless-huffman-rgb-planar"
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-16bit",
+      "id": "image/jpeg-lossless-huffman-rgb-subsampled",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic 16bit",
+      "description": "jpeg lossless huffman rgb subsampled",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit.pdf",
-      "sha256": "43742b71d0aebbac379493e44b4c8a01e5b81ae1cf3a3ddfcc021983f81b3274",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled.pdf",
+      "sha256": "6ed6618435e6b487531c3707e46051b3d3ee331d7679b11d9eaed1eb3a25f089",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit.ppm",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled.ppm",
+      "oracle_sha256": "7b1528cc163a71cfc91949f32e1f45f14f91bcebf2ca29a7a7cffce6eb44a61c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-subsampled-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb subsampled rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled-rgb-control.pdf",
+      "sha256": "a5b180b783d14e9b29a0f65622a1897afdfefa2d36203cdd39f8e2a018e251a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-subsampled-rgb-control.ppm",
+      "oracle_sha256": "7b1528cc163a71cfc91949f32e1f45f14f91bcebf2ca29a7a7cffce6eb44a61c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb-subsampled"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-fractional",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb fractional",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional.pdf",
+      "sha256": "81cc8eb4c320211fe6a8b1d426a3d5b3dbd4f3fd08f85a29121397b0efed3225",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional.ppm",
+      "oracle_sha256": "9a1c1aedbebb80756b2d91837259db32ced217f93c5264a15e48e6b288124c9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-fractional-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb fractional rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional-rgb-control.pdf",
+      "sha256": "86b3d973ce30cd25dd88fbdfad8a3550858aaccc4562f7c707069be0cbd05cd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-fractional-rgb-control.ppm",
+      "oracle_sha256": "9a1c1aedbebb80756b2d91837259db32ced217f93c5264a15e48e6b288124c9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb-fractional"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-2bit-point",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 2bit point",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-2bit-point.pdf",
+      "sha256": "0bf66f465eb66720514c3df4f6d5f7e1002facc409c075710927868d3b5ee6f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-2bit-point.ppm",
+      "oracle_sha256": "4370065ed58397761fefc482f6fddbdfe41457bafffa75c6976d4210faa622e2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-2bit-point-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 2bit point rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-2bit-point-rgb-control.pdf",
+      "sha256": "139f0d6ffb967d428a9ebeb2e4fb6fc00e3e788dd7a00e540e115dd709ab4ac8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-2bit-point-rgb-control.ppm",
+      "oracle_sha256": "4370065ed58397761fefc482f6fddbdfe41457bafffa75c6976d4210faa622e2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-2bit-point"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-12bit",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 12bit",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-12bit.pdf",
+      "sha256": "e1fe529958f2e5e89391ff77418696c89c1f98819b3dd0e5e9df02eabb60bcb0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-12bit.ppm",
       "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
       "dpi": 72,
       "width": 32,
@@ -1919,66 +3453,66 @@
       "tolerance": 0
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-16bit-rgb-control",
+      "id": "image/jpeg-lossless-huffman-12bit-rgb-control",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic 16bit rgb control",
+      "description": "jpeg lossless huffman 12bit rgb control",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-rgb-control.pdf",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-12bit-rgb-control.pdf",
       "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-rgb-control.ppm",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-12bit-rgb-control.ppm",
       "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
       "dpi": 72,
       "width": 32,
       "height": 32,
       "tolerance": 0,
-      "control_of": "image/jpeg-lossless-arithmetic-16bit"
+      "control_of": "image/jpeg-lossless-huffman-12bit"
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-16bit-point",
+      "id": "image/jpeg-lossless-huffman-ycbcr",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic 16bit point",
+      "description": "jpeg lossless huffman ycbcr",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point.pdf",
-      "sha256": "644cc44a2cfbaa0378887a27507a178ba668f1047e1e4f20164548b07e12368f",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-ycbcr.pdf",
+      "sha256": "bdbeb5208afb5e4a955f892282f3db717389470a6b3219cdd06782b316a7c3ce",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point.ppm",
-      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-ycbcr.ppm",
+      "oracle_sha256": "d4eb3e06e84519a913c719dba1cd1d4839cfccb4b84ab0bd11003feda7bacc5d",
       "dpi": 72,
       "width": 32,
       "height": 32,
       "tolerance": 0
     },
     {
-      "id": "image/jpeg-lossless-arithmetic-16bit-point-rgb-control",
+      "id": "image/jpeg-lossless-huffman-ycbcr-rgb-control",
       "kind": "pdf",
-      "description": "jpeg lossless arithmetic 16bit point rgb control",
+      "description": "jpeg lossless huffman ycbcr rgb control",
       "expected": "render",
       "requirements": [
         "image-jpeg-lossless"
       ],
-      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point-rgb-control.pdf",
-      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "path": "corpus/generated/image/jpeg-lossless-huffman-ycbcr-rgb-control.pdf",
+      "sha256": "7731f09152923773126bdfbea298eb9ad010bf26bc1f7d9b3a7b9df0bfe5ef68",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point-rgb-control.ppm",
-      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-ycbcr-rgb-control.ppm",
+      "oracle_sha256": "d4eb3e06e84519a913c719dba1cd1d4839cfccb4b84ab0bd11003feda7bacc5d",
       "dpi": 72,
       "width": 32,
       "height": 32,
       "tolerance": 0,
-      "control_of": "image/jpeg-lossless-arithmetic-16bit-point"
+      "control_of": "image/jpeg-lossless-huffman-ycbcr"
     },
     {
       "id": "image/samples-1-1-raw",

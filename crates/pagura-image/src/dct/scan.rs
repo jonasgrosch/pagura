@@ -1,11 +1,117 @@
-//! T.81 F.2 and G.1/G.2 entropy scans, including successive approximation.
+//! T.81 F.2, G.1/G.2 and H entropy scans.
 use super::{
     Decoder,
     entropy::{Bits, Huffman},
-    frame::Storage,
+    frame::{Component, Process, Storage},
     transform::{Idct, Sparse, reconstruct},
 };
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
+
+/// T.81 Table H.1 non-differential prediction selections.
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum Predictor {
+    Left = 1,
+    Above = 2,
+    Corner = 3,
+    Gradient = 4,
+    LeftHalf = 5,
+    AboveHalf = 6,
+    Average = 7,
+}
+
+impl TryFrom<usize> for Predictor {
+    type Error = Error;
+
+    fn try_from(value: usize) -> Result<Self> {
+        match value {
+            1 => Ok(Self::Left),
+            2 => Ok(Self::Above),
+            3 => Ok(Self::Corner),
+            4 => Ok(Self::Gradient),
+            5 => Ok(Self::LeftHalf),
+            6 => Ok(Self::AboveHalf),
+            7 => Ok(Self::Average),
+            _ => Err(Error::syntax("invalid lossless JPEG predictor")),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SamplePosition {
+    row: usize,
+    column: usize,
+    first_row: usize,
+    precision: u8,
+}
+
+/// Reconstructs a sample from a modulo-65536 difference (H.1.2.1/H.2).
+/// The plane holds restored native samples, so neighbours are shifted back
+/// to the prediction domain before applying the selected integer formula.
+fn lossless_sample(
+    component: &mut Component,
+    predictor: Predictor,
+    point: u8,
+    position: SamplePosition,
+    table: Option<&Huffman>,
+    bits: &mut Bits<'_>,
+) -> Result<()> {
+    let table = table.ok_or_else(|| bits.error("missing lossless JPEG Huffman table"))?;
+    let code = table.code(bits)?;
+    let difference = match code.symbol {
+        0..=15 => bits.magnitude(code, code.symbol)?,
+        // Category 16 represents 32768 and has no following bits (H.1.2.2).
+        16 => {
+            bits.skip(code);
+            32_768
+        }
+        _ => return Err(bits.error("invalid lossless JPEG difference category")),
+    };
+    let Storage::Words(plane) = &mut component.storage else {
+        return Err(bits.error("invalid lossless JPEG component storage"));
+    };
+    let SamplePosition {
+        row,
+        column,
+        first_row,
+        precision,
+    } = position;
+    let sample = |row: usize, column: usize| -> Result<i32> {
+        plane
+            .get(row * component.stride + column)
+            .map(|&value| i32::from(value >> point))
+            .ok_or_else(|| bits.error("lossless JPEG neighbour outside component"))
+    };
+    let predicted = if row == first_row && column == 0 {
+        1 << (precision - point - 1)
+    } else if row == first_row {
+        sample(row, column - 1)?
+    } else if column == 0 {
+        sample(row - 1, column)?
+    } else {
+        let (left, above) = (sample(row, column - 1)?, sample(row - 1, column)?);
+        let corner = sample(row - 1, column - 1)?;
+        match predictor {
+            Predictor::Left => left,
+            Predictor::Above => above,
+            Predictor::Corner => corner,
+            Predictor::Gradient => left + above - corner,
+            Predictor::LeftHalf => left + ((above - corner) >> 1),
+            Predictor::AboveHalf => above + ((left - corner) >> 1),
+            Predictor::Average => (left + above) >> 1,
+        }
+    };
+    let value = (predicted + difference).rem_euclid(65_536);
+    if value >= 1 << (precision - point) {
+        return Err(bits.error("lossless JPEG sample exceeds its precision"));
+    }
+    let value = u16::try_from(value)
+        .map_err(|_| bits.error("invalid lossless JPEG reconstructed sample"))?;
+    *plane
+        .get_mut(row * component.stride + column)
+        .ok_or_else(|| bits.error("lossless JPEG sample outside component"))? = value << point;
+    Ok(())
+}
 
 pub(super) struct Scan {
     selected: Vec<(usize, usize, usize)>,
@@ -13,6 +119,7 @@ pub(super) struct Scan {
     pub(super) end: usize,
     pub(super) high: u8,
     pub(super) low: u8,
+    predictor: Option<Predictor>,
     /// An MCU of background blocks ([`background_mcu`]).
     background: Option<((u64, u32), usize)>,
 }
@@ -24,8 +131,8 @@ impl Scan {
         } else {
             let c = &frame.components[self.selected[0].0];
             (
-                (frame.width as usize * c.h).div_ceil(8 * frame.max_h),
-                (frame.height as usize * c.v).div_ceil(8 * frame.max_v),
+                (frame.width as usize * c.h).div_ceil(frame.process.unit() * frame.max_h),
+                (frame.height as usize * c.v).div_ceil(frame.process.unit() * frame.max_v),
             )
         };
         if interleaved
@@ -53,7 +160,7 @@ impl Scan {
                 .iter()
                 .position(|c| c.id == pair[0])
                 .ok_or(Error::syntax("unknown JPEG scan component"))?;
-            let max_table = if frame.baseline { 1 } else { 3 };
+            let max_table = if frame.process.is_baseline() { 1 } else { 3 };
             if selected.iter().any(|&(i, _, _)| i == index)
                 || pair[1] >> 4 > max_table
                 || pair[1] & 15 > max_table
@@ -72,19 +179,42 @@ impl Scan {
             data[3 + 2 * n] >> 4,
             data[3 + 2 * n] & 15,
         );
-        if start > end || end > 63 || high > 13 || low > 13 || (high != 0 && high != low + 1) {
+        let predictor = if frame.process.is_lossless() {
+            if end != 0
+                || high != 0
+                || low >= frame.precision
+                || selected.iter().any(|&(_, _, ac)| ac != 4)
+            {
+                return Err(Error::syntax("invalid lossless JPEG scan structure"));
+            }
+            Some(Predictor::try_from(start)?)
+        } else {
+            None
+        };
+        if predictor.is_none()
+            && (start > end || end > 63 || high > 13 || low > 13 || (high != 0 && high != low + 1))
+        {
             return Err(Error::syntax(
                 "invalid JPEG spectral selection or approximation",
             ));
         }
-        if frame.progressive {
+        if frame.process.is_progressive() {
             if (start == 0 && end != 0) || (start != 0 && n != 1) {
                 return Err(Error::syntax("invalid progressive JPEG scan structure"));
             }
-        } else if start != 0 || end != 63 || high != 0 || low != 0 {
+        } else if predictor.is_none() && (start != 0 || end != 63 || high != 0 || low != 0) {
             return Err(Error::syntax("invalid sequential JPEG scan structure"));
         }
         for &(i, _, _) in &selected {
+            if predictor.is_some() {
+                if frame.components[i].approximation[0] != -1 {
+                    return Err(Error::syntax("duplicate lossless JPEG component scan"));
+                }
+                frame.components[i].approximation.fill(
+                    i8::try_from(low).map_err(|_| Error::syntax("invalid JPEG point transform"))?,
+                );
+                continue;
+            }
             if start > 0 && frame.components[i].approximation[0] < 0 {
                 return Err(Error::syntax("JPEG AC scan precedes DC scan"));
             }
@@ -108,6 +238,7 @@ impl Scan {
             end,
             high,
             low,
+            predictor,
         })
     }
 }
@@ -128,9 +259,15 @@ impl Decoder {
         let scan = Scan::parse(payload, frame, &self.huffman)?;
         let interleaved = scan.selected.len() > 1;
         let (cols, rows) = scan.geometry(frame)?;
+        if scan.predictor.is_some() && !self.restart.is_multiple_of(cols) {
+            return Err(Error::syntax(
+                "lossless JPEG restart interval is not whole MCU rows",
+            ));
+        }
         let mut bits = entropy_bits(frame, data, offset, limits, self.work);
         let mut arithmetic = frame
-            .arithmetic
+            .process
+            .is_arithmetic()
             .then(|| {
                 super::arithmetic::Arithmetic::new(
                     data,
@@ -140,7 +277,8 @@ impl Decoder {
             })
             .transpose()?;
         let (mut predictors, mut eob, mut sequence) = ([0i32; 4], 0u32, 0u8);
-        let idct = (!frame.progressive).then(Idct::new);
+        let idct = (!frame.process.is_progressive() && scan.predictor.is_none()).then(Idct::new);
+        let mut restart_row = 0;
         // Sequential blocks share one buffer, cleared after each block.
         let mut sequential = [0; 64];
         for mcu in 0..cols * rows {
@@ -150,28 +288,45 @@ impl Decoder {
                     ((&mut bits, arithmetic.as_mut()), &mut self.padding_reported);
                 restart(entropy, (eob, &mut sequence), (diagnostics, reported))?;
                 predictors.fill(0);
+                restart_row = row;
             }
             if let Some(blocks) = skip(&scan, (mcu, frame), &predictors, &mut bits)? {
-                self.work = block_work(self.work, blocks, limits)?;
+                self.work = unit_work(self.work, blocks, frame.process, limits)?;
                 continue;
             }
             for &(i, dc, ac) in &scan.selected {
                 let c = &mut frame.components[i];
                 // The tables cannot change within a scan (B.2.4.1). Validate
                 // and latch in component order at its first MCU only.
-                if mcu == 0 {
-                    latch_quant(c, &self.quant, frame.baseline)
+                if mcu == 0 && scan.predictor.is_none() {
+                    latch_quant(c, &self.quant, frame.process.is_baseline())
                         .map_err(|error| error.at(Position::Buffer(offset)))?;
                 }
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {
-                        self.work = block_work(self.work, 1, limits)?;
+                        self.work = unit_work(self.work, 1, frame.process, limits)?;
                         let (block_row, block_column) = if interleaved {
                             (row * c.v + y, column * c.h + x)
                         } else {
                             (row, column)
                         };
+                        if let Some(predictor) = scan.predictor {
+                            lossless_sample(
+                                c,
+                                predictor,
+                                scan.low,
+                                SamplePosition {
+                                    row: block_row,
+                                    column: block_column,
+                                    first_row: restart_row * vertical,
+                                    precision: frame.precision,
+                                },
+                                self.huffman.get(dc).and_then(Option::as_ref),
+                                &mut bits,
+                            )?;
+                            continue;
+                        }
                         if let Storage::Native(plane) = &mut c.storage {
                             let tables = (&self.huffman, dc, ac);
                             let block = ((block_row, block_column), &mut predictors[i]);
@@ -191,7 +346,7 @@ impl Decoder {
                             coder.block(
                                 block,
                                 &scan,
-                                frame.progressive,
+                                frame.process.is_progressive(),
                                 &self.conditioning,
                                 i,
                                 (dc, ac),
@@ -203,7 +358,7 @@ impl Decoder {
                             huffman_block(
                                 block,
                                 &scan,
-                                (frame.progressive, frame.precision),
+                                (frame.process.is_progressive(), frame.precision),
                                 (
                                     self.huffman.get(dc).and_then(Option::as_ref),
                                     self.huffman.get(ac).and_then(Option::as_ref),
@@ -278,9 +433,11 @@ fn restart(
     Ok(())
 }
 
-/// Charges data units' 64 coefficients each against the work budget.
-fn block_work(work: usize, units: usize, limits: &Limits) -> Result<usize> {
-    work.checked_add(64 * units)
+/// Charges DCT coefficients or lossless samples against the work budget.
+fn unit_work(work: usize, units: usize, process: Process, limits: &Limits) -> Result<usize> {
+    units
+        .checked_mul(process.unit().pow(2))
+        .and_then(|used| work.checked_add(used))
         .filter(|&w| w <= limits.operations)
         .ok_or(Error::limit("JPEG scan work budget exceeded"))
 }

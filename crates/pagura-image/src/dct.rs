@@ -1,4 +1,5 @@
-//! Huffman and arithmetic sequential/progressive JPEG (T.81 B, D, F and G),
+//! Huffman and arithmetic sequential/progressive JPEG and Huffman lossless
+//! JPEG (T.81 B, D, F, G and H),
 //! used by ISO 32000-2 clause 7.4.8. Samples use a separable floating-point
 //! IDCT; independently encoded fixtures allow an absolute error of one level.
 mod arithmetic;
@@ -62,16 +63,21 @@ struct Decoder {
 
 /// Decodes baseline, extended sequential and progressive JPEG, with Huffman
 /// or arithmetic entropy coding and eight or twelve bit sample precision.
+/// Huffman lossless JPEG accepts two through sixteen bits, all seven
+/// non-differential predictors, point transforms and whole-row restarts.
 /// Twelve-bit samples are reconstructed and clamped in 0..4095. Colour
 /// transforms retain that precision (chroma centre 2048), then samples are
 /// scaled to 0..255 with a single rounding. This normalization is reader policy:
 /// PDF 7.4.8 specifies bytes, but no twelve-to-eight bit conversion.
+/// Lossless coding is an interoperability extension to PDF's required DCT
+/// processes. Its native unsigned samples use the same full-range byte
+/// normalization after any colour transform; no DCT level shift is applied.
 /// APP14 takes precedence over `color_transform` (Table 13). Chroma uses
 /// nearest-neighbour expansion; no smoothing is applied to the encoded data.
 ///
 /// # Errors
 /// Returns positioned syntax/limit errors, or stable Unsupported tags for
-/// lossless/hierarchical coding and precision other than eight or twelve bits.
+/// arithmetic lossless/hierarchical coding and unsupported DCT precision.
 pub fn decode(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Result<DctImage> {
     decode_with_diagnostics(
         data,
@@ -154,7 +160,7 @@ fn run(
         }
         let payload = segment(data, &mut offset)?;
         let result = match marker {
-            0xc0..=0xc2 | 0xc9 | 0xca => {
+            0xc0..=0xc3 | 0xc9 | 0xca => {
                 if decoder.frame.is_some() {
                     return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
@@ -177,9 +183,9 @@ fn run(
                 crate::features::JPEG_ARITHMETIC,
                 "arithmetic JPEG coding is unsupported",
             )),
-            0xc3 | 0xc5..=0xc7 | 0xde | 0xdf => Err(Error::unsupported(
+            0xc5..=0xc7 | 0xde | 0xdf => Err(Error::unsupported(
                 crate::features::JPEG_PROCESS,
-                "JPEG lossless or hierarchical process is unsupported",
+                "JPEG hierarchical process is unsupported",
             )),
             0xdb => quant_tables(payload, &mut decoder.quant),
             0xc4 => {

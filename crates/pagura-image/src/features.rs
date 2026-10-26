@@ -7,11 +7,11 @@ pub const EMBEDDED_ALPHA: Feature = Feature::new("image.embedded-alpha");
 pub const JPX_SAMPLE_LAYOUT: Feature = Feature::new("image.JPX-sample-layout");
 /// JPEG 2000 colour information cannot be represented.
 pub const JPX_COLOUR: Feature = Feature::new("image.JPX-colour");
-/// Arithmetic JPEG coding (T.81 Annex D).
+/// Arithmetic lossless or hierarchical JPEG coding (T.81 H/J).
 pub const JPEG_ARITHMETIC: Feature = Feature::new("jpeg.arithmetic");
-/// JPEG precision other than eight bits per component.
+/// DCT JPEG precision outside the supported eight-/twelve-bit processes.
 pub const JPEG_PRECISION: Feature = Feature::new("jpeg.precision");
-/// Lossless or hierarchical JPEG coding.
+/// Hierarchical JPEG coding or height deferred to DNL.
 pub const JPEG_PROCESS: Feature = Feature::new("jpeg.process");
 /// CCITT two-dimensional extension mode.
 pub const CCITT_EXTENSION: Feature = Feature::new("ccitt.extension");
