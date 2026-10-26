@@ -156,11 +156,14 @@ been exercised. Later discoveries reopen the inventory and relevant package.
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
 **Started:** the [document-service probe slice](../benchmarks/probes/README.md)
-adds ten independent populated/empty/rejection controls, 60 explicit case/engine
+adds ten independent populated/empty/rejection controls, 70 explicit case/engine
 cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
 six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstruction
 and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
-operation/configuration matrix and Pagura document-service observations remain open. These
+operation/configuration matrix remains open. `f948c64f289f2ec80112f92b0f06f7c88b0f882b`
+adds Pagura through the public metadata/attachment/text CLI and additive inspect
+geometry, preserving all six baseline columns. Current-head hosted observations
+are pending; every Pagura cell must meet its independent expectation. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.

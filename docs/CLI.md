@@ -73,3 +73,15 @@ These commands currently cover catalog metadata and EmbeddedFiles only. The
 library's object-local metadata, AF arrays and RF related files are not CLI
 selection targets yet. Annotation attachment discovery, streaming extraction,
 checksums, editing and host/viewer integration remain in D02.
+
+## Inspection geometry (schema 2)
+
+`inspect INPUT` retains page/object counts, original byte length and diagnostics.
+Its additive `page_geometry` array follows page order. Each record gives
+`media_box` and `crop_box` as normalized `[x0,y0,x1,y1]` coordinates in default
+user space, `rotation` in clockwise degrees and `user_unit` in units of 1/72 inch.
+The crop box is already intersected with the media box by the document view.
+These are source geometry values, without pixel rounding. For displayed sizes,
+subtract the box endpoints, multiply by UserUnit and exchange width/height for
+90/270-degree rotation. Different rendering APIs may select different boxes;
+G01's current baseline fixtures use equal media/crop boxes and default transforms.

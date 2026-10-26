@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `92aa8d5812452c14c2b6dd9903569dcdc48bfe6a`. G00 source inventory is complete for this revision.
+Source audit: `f948c64f289f2ec80112f92b0f06f7c88b0f882b`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
@@ -23,7 +23,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 | ID / package | Feature | Library / CLI / host / viewer | Existing support | Remaining |
 |---|---|---|---|---|
-| `document.structure` / R01 | PDF file structures and reported recovery | partial / partial / partial / partial | Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. | Current-corpus recovery classification; external resources require a host contract. |
+| `document.structure` / R01 | PDF file structures and reported recovery | partial / partial / partial / partial | Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. CLI inspect exposes normalized media/crop boxes, rotation and UserUnit without rounding. | Current-corpus recovery classification; external resources require a host contract. |
 | `document.range-input` / D01 | Range and linearization-aware loading | missing / missing / missing / missing | Complete-buffer opening, lazy object caches and immutable source bytes are available. | Immutable range sources, missing-data state, scoped loading, linearization and resumable host jobs (ADR 0035 proposed). |
 | `security.passwords` / D03 | Password security and encoding | partial / partial / partial / partial | Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion. | Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01. |
 | `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |

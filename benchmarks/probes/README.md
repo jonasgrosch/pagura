@@ -2,7 +2,8 @@
 
 The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
-controls and a non-PDF rejection control. All six baseline columns are retained.
+controls and a non-PDF rejection control. Pagura joins all six baseline columns,
+yielding 70 document-service cells. Its observations use the public CLI only.
 G01 remains open: these ten cases do not establish family or product parity.
 The companion [render manifest](rendering.json) adds six independent pixel
 oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
@@ -10,8 +11,9 @@ premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
 existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
-| Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
+| Engine | Public adapter paths | Explicit adapter gaps | Hosted execution |
 |---|---|---|---|
+| Pagura (subject) | CLI inspect, metadata, attachments, extract-attachment and text | Object-local metadata/AF/RF and broader operation configurations remain open | Ubuntu, pinned Rust, default features |
 | PDFium | Pages, metadata, attachments, text | Optional V8/XFA builds not covered | Ubuntu, locked pypdfium2 wheel |
 | MuPDF | Pages, metadata, attachments, text | Optional providers not covered | Ubuntu, locked PyMuPDF wheel |
 | pdf.js | Pages, metadata, attachments, text | Browser configuration not covered | Ubuntu, locked Node legacy build; eval disabled |
@@ -59,8 +61,8 @@ python tools/capability_probes.py check
 python tools/capability_render.py check
 # Hosted Ubuntu, after installing the OS Poppler GLib/GI packages:
 python tools/competitors.py setup --engines pdfium,mupdf,pdfjs,hayro
-python tools/capability_probes.py run --engines pdfium,mupdf,pdfjs,poppler,hayro --output /tmp/linux.json
 cargo build --release --locked --offline --bin pagura
+python tools/capability_probes.py run --engines pdfium,mupdf,pdfjs,poppler,hayro,pagura --output /tmp/linux.json
 python tools/capability_render.py run --engines pdfium,mupdf,pdfjs,poppler,hayro,pagura --output /tmp/render-linux.json
 # Hosted macOS:
 python tools/competitors.py setup --engines quartz
@@ -73,7 +75,7 @@ python tools/capability_render.py combine /tmp/render-linux.json /tmp/render-mac
 
 Each platform publishes `capability-document-services-<os>`, even when a probe
 fails. After successful platform jobs, `capability-document-services` combines
-all 60 cells, requiring disjoint engine selections and identical revision,
+all 70 cells, requiring disjoint engine selections and identical revision,
 workflow-run, source and fixture hashes. Reports record environment, adapter,
 manifest, lock and native binary identities. Python/pdf.js/hayro dependencies
 are pinned; Poppler and CoreGraphics use the actual recorded OS versions, not
@@ -102,11 +104,13 @@ defect. No tolerance is relaxed to turn an observation into a pass.
 
 `pass` requires the independent expectation, or an engine rejection for the
 invalid-input control. A wrong result is `incorrect`; a rejection of valid input
-is `rejected`. `unsupported` requires a named explicit backend refusal; the
+is `rejected`. `unsupported` requires a named explicit backend refusal; `limit` records a bounded
+resource refusal and never passes an invalid-input control; the
 adapters do not invent one from exceptions. Timeout, adapter errors, absent
 adapter paths and unavailable engine installations remain distinct outcomes.
 CI requires a completed observation on each implemented adapter path: `pass`,
-`incorrect`, a valid-input rejection or a named explicit unsupported result.
+`incorrect`, a valid-input rejection, a named explicit unsupported result or a
+recorded resource limit. Limits still need scope/budget adjudication.
 Competitor differences are evidence, so they stay visible without failing the
 measuring tool. Broken/unavailable adapters, engine installations and timeouts
 fail the workflow. The seven explicitly unimplemented case/engine cells stay
@@ -122,6 +126,29 @@ revisions, fixtures, source hashes or workflow runs and incomplete/overlapping
 engine coverage. These controls use stubs, not competitor libraries.
 Pixel controls additionally cover wrong/corrupt output, stale files, dimension
 and hash mismatches, tolerance drift and process crashes.
+
+## Pagura document-service observations
+
+The [subject adapter](../adapters/capability_pagura.py) reads the public CLI's
+versioned reports. Page dimensions use the normalized crop box, rotation and
+UserUnit. Info probes compare Title/Author; null values normalize to empty strings
+for the existing cross-engine contract. Attachments use the Unicode name when
+present and ASCII F bytes otherwise; broader legacy encodings remain unprobed.
+EF/UF is selected when present, otherwise EF/F, and the extracted bytes are hashed.
+The destination is an adapter-owned fixed temporary path; PDF filenames never
+select filesystem paths. Text probes read page zero and apply the same CRLF/LF
+normalization as the baseline adapters.
+
+The actual subject binary is versioned and hashed using the shared render/service
+identity path. Reports retain all six baselines and the subject; joining refuses
+a report set that omits any of them. A Pagura disagreement fails CI. The subject
+adapter recognizes an input refusal only from exit 1 and a known engine error
+prefix; crashes, usage/IO failures and unknown messages remain adapter errors.
+Native diagnostics are represented by hashes. Commands share a 20-second operation
+deadline, with 64 KiB report/diagnostic and 64 MiB extracted-payload bounds. These
+adapter bounds are separate from product limits. Offline stub controls cover
+stale output, path selection, invalid schemas, boolean/numeric confusion, failures,
+timeouts and unavailable binaries. Current-head hosted execution is pending.
 
 ## Attachment API controls
 
@@ -159,7 +186,7 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
 
 ## Next G01 increments
 
-- Extend Pagura observations beyond rendering through its actual public surfaces,
+- Extend Pagura observations beyond the initial rendering and document-service controls,
   including explicit missing typed metadata/attachment APIs, before claiming
   comparative parity.
 - Resolve the remaining hayro/CoreGraphics adapter gaps against their public API

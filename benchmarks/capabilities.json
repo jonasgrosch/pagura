@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "92aa8d5812452c14c2b6dd9903569dcdc48bfe6a",
+  "audited_revision": "f948c64f289f2ec80112f92b0f06f7c88b0f882b",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -30,8 +30,8 @@
     "crates/pagura-appearance/src/form/style.rs": "20e35fa393dede64c02a299c88984a93d35de65292e1b75f3eb518d3ab333db1",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
-    "crates/pagura-cli/src/args.rs": "c93e60057612dab991f6527b1a9a5fc7199290b3cbe24002ecb52f78e897a307",
-    "crates/pagura-cli/src/commands.rs": "7e27b7a9a4cfddc675ae7715a46a6a7f43e41a1e9380cb4afd5ad43e99efc9b2",
+    "crates/pagura-cli/src/args.rs": "70bf6b7008c5ff5307f8d77e9e943155ed9baa276ffaf34c8748770e51186bd9",
+    "crates/pagura-cli/src/commands.rs": "57a3e62e9ac39089cdd4dfb8f67359c6e37145991a8ea2e54d1ab998ae70e3e0",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
@@ -204,9 +204,9 @@
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
     "crates/pagura-cli/src/document_services.rs": "b0a5155fd22cbe4a59fa831369ca4382b32c9115d9d79e757f004e4f33274901",
-    "crates/pagura-cli/src/json.rs": "ee27544fd1047dd6287e4cd61854695e36910f93b9e7af35506c531e1fb4e97b",
+    "crates/pagura-cli/src/json.rs": "737c87970f69f2a8515b707758e3e88a4359d915c90da0d158b6e19fe00d0183",
     "crates/pagura-cli/src/main.rs": "03cebde00b13b62ed2199d776cc475e38da6d3d3d8d8732b549b57015de6398a",
-    "crates/pagura-cli/tests/cli.rs": "796a0dedf7f1c937407e0f81608db5f0e8c971d6ffd338b95e9adbe424e5128b",
+    "crates/pagura-cli/tests/cli.rs": "0cc3322c55ce885efac2dcc098b9b1c557cc5f51f745469d71163d80fdc68b09",
     "crates/pagura-cli/src/args/tests.rs": "cc61ba1fa32135ada5f108006ee9a35a46f01a8f2796e55a718120e69936f6c4"
   },
   "capabilities": [
@@ -225,17 +225,20 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction.",
+      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. CLI inspect exposes normalized media/crop boxes, rotation and UserUnit without rounding.",
       "remaining": "Current-corpus recovery classification; external resources require a host contract.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/features.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-cli/src/commands.rs",
+        "crates/pagura-cli/src/json.rs"
       ],
       "tests": [
-        "crates/pagura/tests/api/document.rs"
+        "crates/pagura/tests/api/document.rs",
+        "crates/pagura-cli/tests/cli.rs"
       ],
       "requirements": [
         "catalog-identity-recovery",
