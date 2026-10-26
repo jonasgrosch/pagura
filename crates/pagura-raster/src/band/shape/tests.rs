@@ -261,3 +261,58 @@ fn listed_rows_are_admitted_beside_their_strip_list() {
     let error = list(peak - 1).unwrap_err();
     assert_eq!(error.message, RENDER_BYTES);
 }
+
+/// A closed loop of short segments stroked with a pen `width` across, in a
+/// 64 × 128 area.
+fn looped(width: f64) -> Shape {
+    let mut path = crate::PathBuilder::new();
+    for k in 0..48 {
+        let t = std::f64::consts::TAU * f64::from(k) / 48.0;
+        let p = Point::new(32.0 + 3.0 * t.cos(), 64.0 + 3.0 * t.sin());
+        if k == 0 {
+            path.move_to(p);
+        } else {
+            path.line_to(p).unwrap();
+        }
+    }
+    path.close();
+    let path = path.finish();
+    let stroke = Stroke {
+        width,
+        join: crate::LineJoin::Round,
+        ..Stroke::default()
+    };
+    let limits = Limits::default();
+    let options = ShapeOptions {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 64,
+                y1: 128,
+            },
+            band_height: 32,
+        },
+        limits: &limits,
+    };
+    Shape::stroke_in(
+        &path,
+        &stroke,
+        (Transform::IDENTITY, Transform::IDENTITY),
+        Adjustment::None,
+        &Prep::new(&options, None),
+    )
+    .unwrap()
+    .unwrap()
+}
+
+/// A pen whose spine holds 8 px resolves every row of its stroke; a
+/// narrower one only the rows its certificate doubts.
+#[test]
+fn wide_spines_resolve_every_row() {
+    let wide = looped(20.0);
+    assert_eq!(wide.resolved.rows.len(), wide.bounds.height() as usize);
+    let narrow = looped(12.0);
+    assert_ne!(narrow.resolved.rows.len(), 0);
+    assert!(narrow.resolved.rows.len() < narrow.bounds.height() as usize);
+}

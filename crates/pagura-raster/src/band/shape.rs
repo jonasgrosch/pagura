@@ -19,6 +19,23 @@ use pagura_core::{Error, Meter, Result};
 /// The message of every preparation work budget error.
 pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
 
+/// The spine radius, in device pixels, from which a stroke resolves every
+/// row rather than certify its windings: there the spine passes over most
+/// of each row's cells, so resolving a row costs less than certifying it,
+/// and the certificate of a wide pen's fans is the larger cost (about 30%
+/// of 0933 at 150 dpi). Instructions on the Graviton runner, against
+/// resolving only the rows the certificate doubts:
+///
+/// | radius from | 0933 | step-B pages (0015 0020 0121 0347 0611 0618) | 1,000 pages |
+/// |---|---|---|---|
+/// | 4 px | 0.621 | 1.000–1.002 | – |
+/// | 8 px | 0.621 | 1.000–1.002 | 0.9996, worst 0775 1.011 |
+/// | 16 px | 0.621 | 1.000–1.002 | – |
+///
+/// Every stroke with a spine resolving every row instead slowed those six
+/// pages by 19–47%: their strokes are under 4 px.
+const WIDE_SPINE: f64 = 8.0;
+
 /// The message of the scratch byte budget errors of preparation.
 pub(crate) const RENDER_BYTES: &str = "render memory budget exceeded";
 
@@ -332,8 +349,12 @@ impl Shape {
         options: &Prep<'_>,
         bytes: &mut Meter,
     ) -> Result<Option<Self>> {
+        let wide = spine.as_ref().is_some_and(|s| s.radius() >= WIDE_SPINE);
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
+            // A wide pen's stroke resolves every row, around what its spine
+            // proves covered.
+            Tiling::Unproven if wide => Winding::Unknown,
             // Only the slabs where the outline may overlap itself need the
             // union resolver.
             Tiling::Unproven => Winding::Check(0.0),
