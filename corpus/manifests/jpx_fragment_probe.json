@@ -1,0 +1,641 @@
+{
+  "schema": 2,
+  "area": "jpx_fragment_probe",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "jpx_fragment_probe/codestream-single-fragment",
+      "kind": "pdf",
+      "description": "codestream single fragment",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-single-fragment.pdf",
+      "sha256": "e22436f580d8945db5617401ece7ee2bb17194e4d8bbd7cfd0991ca200ff7e41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-single-fragment.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/codestream-single-fragment",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "jpx_validity": "baseline-first-image",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-single-fragment-codec-control",
+      "kind": "pdf",
+      "description": "codestream single fragment codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-single-fragment-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-single-fragment-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/codestream-single-fragment",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-single-fragment-brand-control",
+      "kind": "pdf",
+      "description": "codestream single fragment brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-single-fragment-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-single-fragment-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/codestream-single-fragment",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-single-fragment-rgb-control",
+      "kind": "pdf",
+      "description": "codestream single fragment rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-single-fragment-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-single-fragment-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/codestream-single-fragment",
+      "role": "rgb-control",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-split-marker",
+      "kind": "pdf",
+      "description": "codestream split marker",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-split-marker.pdf",
+      "sha256": "db49cc198169b2cb880c4916df8f8d31ccdce269a472546cf4b1aba89c51b6e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-split-marker.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/codestream-split-marker",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "jpx_validity": "baseline-first-image",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-split-marker-codec-control",
+      "kind": "pdf",
+      "description": "codestream split marker codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-split-marker-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-split-marker-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/codestream-split-marker",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-split-marker-brand-control",
+      "kind": "pdf",
+      "description": "codestream split marker brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-split-marker-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-split-marker-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/codestream-split-marker",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/codestream-split-marker-rgb-control",
+      "kind": "pdf",
+      "description": "codestream split marker rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/codestream-split-marker-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/codestream-split-marker-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/codestream-split-marker",
+      "role": "rgb-control",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-image-header",
+      "kind": "pdf",
+      "description": "reference image header",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-image-header.pdf",
+      "sha256": "be5bd440e9cf9f338346287a5f4503079b4361d436dd226bb2a65ad8383260e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-image-header.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-image-header",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "jpx_validity": "baseline-first-image",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-image-header-codec-control",
+      "kind": "pdf",
+      "description": "reference image header codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-image-header-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-image-header-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-image-header",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-image-header-brand-control",
+      "kind": "pdf",
+      "description": "reference image header brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-image-header-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-image-header-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-image-header",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-image-header-rgb-control",
+      "kind": "pdf",
+      "description": "reference image header rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-image-header-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-image-header-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/reference-image-header",
+      "role": "rgb-control",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-color-group",
+      "kind": "pdf",
+      "description": "reference split color group",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-color-group.pdf",
+      "sha256": "8c97a63e29664815d43b421e92fb15e20e9200be847c207b80a1b063df17ecb1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-color-group.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-split-color-group",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "jpx_validity": "baseline-first-image",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-color-group-codec-control",
+      "kind": "pdf",
+      "description": "reference split color group codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-color-group-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-color-group-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-split-color-group",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-color-group-brand-control",
+      "kind": "pdf",
+      "description": "reference split color group brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-color-group-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-color-group-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-split-color-group",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-split-color-group-rgb-control",
+      "kind": "pdf",
+      "description": "reference split color group rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-split-color-group-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-split-color-group-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/reference-split-color-group",
+      "role": "rgb-control",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-and-codestream-fragments",
+      "kind": "pdf",
+      "description": "reference and codestream fragments",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments.pdf",
+      "sha256": "efa708608d9c1bf30046b30f798318e37f44c6fd739efa3d7ca8d59e5b8a8a2a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-and-codestream-fragments",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "jpx_validity": "baseline-first-image",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-and-codestream-fragments-codec-control",
+      "kind": "pdf",
+      "description": "reference and codestream fragments codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-and-codestream-fragments",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-and-codestream-fragments-brand-control",
+      "kind": "pdf",
+      "description": "reference and codestream fragments brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/reference-and-codestream-fragments",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/reference-and-codestream-fragments-rgb-control",
+      "kind": "pdf",
+      "description": "reference and codestream fragments rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/reference-and-codestream-fragments-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/reference-and-codestream-fragments",
+      "role": "rgb-control",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/later-image-fragments",
+      "kind": "pdf",
+      "description": "later image fragments",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/later-image-fragments.pdf",
+      "sha256": "1853cfe696b62fe142a5b7d4bed745714b3220643d39645c8b0d4b811a5847e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/later-image-fragments.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/later-image-fragments",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "jpx_validity": "baseline-first-image",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/later-image-fragments-codec-control",
+      "kind": "pdf",
+      "description": "later image fragments codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/later-image-fragments-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/later-image-fragments-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/later-image-fragments",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/later-image-fragments-brand-control",
+      "kind": "pdf",
+      "description": "later image fragments brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/later-image-fragments-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/later-image-fragments-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_fragment_probe/later-image-fragments",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/later-image-fragments-rgb-control",
+      "kind": "pdf",
+      "description": "later image fragments rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_fragment_probe/later-image-fragments-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_fragment_probe/later-image-fragments-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_fragment_probe/later-image-fragments",
+      "role": "rgb-control",
+      "evidence_scope": "Independent internal-fragment diagnostic; runtime evidence is separate"
+    },
+    {
+      "id": "jpx_fragment_probe/fragment-offset-outside",
+      "kind": "vector",
+      "description": "T.801 M.11.3.1: DR=0 fragment extent must lie in the current file",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-offset-outside.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-offset-outside.jpx",
+          "sha256": "1c270d1cd45f6ffc8439baec9f0cd2ac3fe4c27a507eba6f94b9fbd2f4f3f249"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_fragment_probe/fragment-extent-outside",
+      "kind": "vector",
+      "description": "T.801 M.11.3.1: DR=0 fragment extent must lie in the current file",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-extent-outside.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-extent-outside.jpx",
+          "sha256": "06296056ae9c36b71490231689c7baed48ac883e286051cee3f4df4727e19d08"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_fragment_probe/fragment-count-truncated",
+      "kind": "vector",
+      "description": "T.801 Table M.17: NF equals the number of complete fourteen-byte records",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-count-truncated.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-count-truncated.jpx",
+          "sha256": "7e2cf10ca2ce19ec3a640037fcb401f9cac6f6e5855787144e0797f3331627f6"
+        }
+      },
+      "error": "syntax"
+    }
+  ]
+}

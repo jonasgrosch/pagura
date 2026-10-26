@@ -686,3 +686,38 @@ Single-byte opacity types 0/1 are supported; chroma-key is explicitly
 unadjudicated, with no guessed pixel/error oracle. Selected-image fragments,
 cross-references, nonidentity registration and unimplemented required reader
 features remain explicit gaps.
+
+## R02/R03 internal JPX fragment diagnostic
+
+`tools/fixturegen/jpx_fragment_probe.py` authors six subjects with the existing
+codec/RGB oracle owners. Product source is unchanged from `20011ead5`. The
+private rendering manifest contains 26 cases: each subject has an ordinary JP2
+control, a flat-jpxb control with the same codestream, and an independent RGB
+control, plus blank/rectangle. Tolerances stay one channel unit for encoded
+images and zero for RGB controls. Three malformed vectors remain outside that
+rendering denominator. No hosted result is yet claimed.
+
+T.801 M.9.2.5/.6 permits ordered in-file fragments for the selected codestream
+and referenced metadata. M.11.3.1/Table M.17 defines the fragment count and
+64-bit offset, 32-bit length and 16-bit data-reference fields. Every reference
+here uses DR=0. Metadata references precede the selected codestream, and the
+JP2 header precedes all media/first-image headers (M.9.2.6/.7). M.11.4 resolves
+referenced box contents rather than searching for a physical target header;
+the split `cgrp` case deliberately has no such contiguous target header.
+
+The subjects cover a single codestream span, three spans splitting marker
+bytes, referenced `ihdr` contents, split `cgrp` child-box contents, combined
+metadata/codestream fragments, and a later fragmented image that PDF does not
+select. Deliberate gaps between Media Data boxes prevent a reader from treating
+the bounding byte range as the concatenated stream. Selected fragmentation
+requires Cor.4 feature 13 in DCM/FUAM; later-only fragmentation and the second
+layer are FUAM-only. The three malformed vectors isolate an offset outside the
+file, an extent beyond the file, and a truncated list count.
+
+Dispatch only the existing `capabilities.yml` workflow on the reviewed private
+ref, using its explicit GitHub-hosted runner labels. Retain platform reports,
+actual pixels, source/binary/engine identities and artifact hashes. Adjudicate
+all four roles together; an adapter error is not automatically Unsupported.
+This diagnostic does not cover external providers, out-of-order data, recursive
+references, binary-filter offsets, or family-wide support. Its reduced manifest
+must never replace the retained PR's full image controls.
