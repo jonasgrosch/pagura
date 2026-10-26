@@ -477,6 +477,10 @@ fn assemble<O: Outline>(
             };
             tiling = tiling.max(built);
         }
+        // The chains stay charged across the runs, and no longer.
+        let released = chains.heap_bytes();
+        drop(chains);
+        bytes.refund(released);
         if tiling <= accept {
             return Ok((tiles, pen_transform, tiling));
         }

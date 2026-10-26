@@ -124,6 +124,7 @@ pub(super) fn append(
             joints,
             pen,
             stroke,
+            room: limits.path_segments.saturating_sub(out.len()),
         };
         trace(out, &traced, caps.as_ref(), chains, limits, bytes)?;
         if let (false, None, LineCap::Round, [(start, _), ..], [.., (finish, _)]) = (
@@ -595,9 +596,21 @@ struct Traced<'a> {
     joints: Joints,
     pen: Pen,
     stroke: &'a Stroke,
+    /// The outline segments the output admitted when the run began.
+    room: usize,
 }
 
 impl Traced<'_> {
+    /// Refuses a chain that no polygon within the outline budget closes,
+    /// before more joints are traced into it: a contour holds at least
+    /// either of its chains, plus its close.
+    fn fits(&self, chain: &[Point]) -> Result<()> {
+        if chain.len() >= self.room {
+            return Err(Error::limit("stroke outline budget exceeded"));
+        }
+        Ok(())
+    }
+
     /// Segment `i`'s corner at its joint `j` on one side, as its piece has
     /// it.
     fn corner(&self, i: usize, j: usize, left: bool) -> Point {
@@ -653,12 +666,12 @@ impl Traced<'_> {
                     bytes.reserve_capacity(chain, 3)?;
                     chain.extend([from, self.points[j], to]);
                 }
-                return Ok(());
+                return self.fits(chain);
             }
         }
         bytes.reserve_capacity(chain, 1)?;
         chain.push(from);
-        Ok(())
+        self.fits(chain)
     }
 
     /// One side of the part of `length` segments from segment `start`.
@@ -1438,6 +1451,7 @@ mod tests {
                     tolerance: TOLERANCE,
                 },
                 stroke: &Stroke::default(),
+                room: usize::MAX,
             };
             if !matches!(turns[1], super::Joint::Straight) || traced.meets(1) {
                 continue;
@@ -1515,5 +1529,98 @@ mod tests {
             }
         }
         assert!(taken > 200, "{taken}");
+    }
+
+    /// A closed star of 40 spikes, each tip and notch nearly a reversal:
+    /// round joins make most of its outline, on both sides.
+    fn star() -> Vec<(f64, f64)> {
+        (0..80_u32)
+            .map(|i| {
+                let angle = std::f64::consts::TAU * f64::from(i) / 80.0;
+                let radius = if i % 2 == 0 { 200.0 } else { 20.0 };
+                (radius * angle.cos(), radius * angle.sin())
+            })
+            .collect()
+    }
+
+    #[test]
+    fn traced_outlines_refuse_exactly_at_the_outline_budget() {
+        let path = polyline(&star(), true);
+        let stroke = Stroke {
+            width: 30.0,
+            join: LineJoin::Round,
+            ..Stroke::default()
+        };
+        let outline = |path_segments| {
+            let limits = Limits {
+                path_segments,
+                ..Limits::default()
+            };
+            pieces(
+                &path,
+                Transform::IDENTITY,
+                &stroke,
+                &limits,
+                (Tiling::Unproven, TOLERANCE),
+                &mut crate::testing::bytes(),
+            )
+        };
+        let (full, _, tiling) = outline(Limits::default().path_segments).unwrap();
+        assert_eq!(tiling, Tiling::Unproven);
+        let needed = full.segments().len();
+        assert!(needed > 7 * 80, "{needed}");
+        assert_eq!(outline(needed).unwrap().0, full);
+        let error = outline(needed - 1).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (
+                pagura_core::ErrorKind::Limit,
+                "stroke outline budget exceeded"
+            )
+        );
+    }
+
+    #[test]
+    fn tracing_stops_within_the_outline_budget() {
+        // Both chains of a closed run grow joint by joint before either
+        // closes; they stop where the budget refuses them, not after every
+        // join arc of the run.
+        let run = super::super::Run {
+            points: star().into_iter().map(|(x, y)| Point::new(x, y)).collect(),
+            closed: true,
+            tangent: Point::new(1.0, 0.0),
+        };
+        let pen = super::Pen {
+            radius: 15.0,
+            tolerance: 0.001,
+        };
+        let stroke = Stroke {
+            width: 30.0,
+            join: LineJoin::Round,
+            ..Stroke::default()
+        };
+        let trace = |limits: &Limits, chains: &mut super::Chains| {
+            let mut out = PathBuilder::new();
+            super::append(
+                &mut out,
+                &run,
+                (pen, &stroke),
+                chains,
+                limits,
+                &mut crate::testing::bytes(),
+            )
+            .map(|_| out.len())
+        };
+        let full = trace(&Limits::default(), &mut super::Chains::default()).unwrap();
+        let limits = Limits {
+            path_segments: 7 * 80,
+            ..Limits::default()
+        };
+        assert!(full > 8 * limits.path_segments, "{full}");
+        let mut chains = super::Chains::default();
+        let error = trace(&limits, &mut chains).unwrap_err();
+        assert_eq!(error.message, "stroke outline budget exceeded");
+        let traced = chains.outline.len().max(chains.left.len());
+        assert!(traced < 2 * limits.path_segments, "{traced} of {full}");
     }
 }
