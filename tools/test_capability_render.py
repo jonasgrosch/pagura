@@ -37,7 +37,7 @@ class RenderProbeTests(unittest.TestCase):
         with patch.object(render, 'identify', return_value=identity):
             actual = render.subject_identity(['stub'])
         self.assertEqual(actual['version'], {'engine': 'pagura 0.1.0 (safe Rust)'})
-        self.assertEqual(actual['artifacts'], {'$REPO/target/release/pagura': 'a' * 64})
+        self.assertEqual(actual['artifacts'], {str(Path('$REPO') / 'target/release/pagura'): 'a' * 64})
         self.assertNotIn('revision', actual)
         with patch.object(render, 'identify', return_value={'status': 'unavailable', 'reason': '/private/path'}):
             actual = render.subject_identity(['stub'])
