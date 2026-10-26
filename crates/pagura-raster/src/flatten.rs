@@ -428,8 +428,6 @@ fn flatten_using(
                 }
                 bounded_points([point], transform)?;
                 append(&mut current.points, point, &mut count, limits, bytes)?;
-                current.closed = false;
-                current.degenerate = true;
                 start = point;
                 position = point;
                 None
