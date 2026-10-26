@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "0d2c34b71b2c1a8416ecbb26e6cb36638367b5c3",
+  "audited_revision": "42b651911daddc199a4d9a059efd8dbc16a33777",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -249,7 +249,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "c676c08cee4e48bfd9e4893baf20d6f534678fccc18aa6f80ac0d64d1fc47364",
+    "references/requirements/content.json": "c03ac8ffc91e3312df087a6c1316cf292770cb21afeba7939427c907a0e3f5a2",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -321,15 +321,15 @@
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
     "crates/pagura-appearance/src/annotation/cloud.rs": "d1e96bc689f3a7e21399ada0932eb518194276ac7bf8a721a162aa8285c804d8",
     "crates/pagura-appearance/src/rich.rs": "c47bc7c9fffc84824a83dae44521285173de1460b7bc94467d1c9ec912c10576",
-    "crates/pagura-appearance/src/rich/xml.rs": "3f6e37423ffb076bc4d9b0e971d86468804fda6478ab9afa5ce5d06f0ce90a19",
+    "crates/pagura-appearance/src/rich/xml.rs": "85aac1bd67ebc9d74aa439f2d6f320319c6f65c21645409d5b3cad53034f0bb5",
     "crates/pagura-appearance/src/rich/style.rs": "1797dd50724cd142088d30d602fa71c9e8e7974ff058d1ae90e18d93425f273a",
     "crates/pagura-appearance/src/rich/layout.rs": "e037c8825df7c00a5e037407cdb669f74357567b66b201aef68b5c325b7ec190",
     "crates/pagura-appearance/src/annotation/tests/cloud.rs": "d10e839e5ff845b7a45922625fb0fcb95afb515a9a782d879ddd9bff8852bbb5",
     "crates/pagura-appearance/src/rich/tests.rs": "6ccdab307f2704bf04fc4407419ab5015fb980ae06d01c706a0c39b3726258c0",
     "tools/fixturegen/cloud_annotations.py": "25d3e5f68bd4aae9eabe8a976deb3623653192ae17d8a2aec3223c0ca2ba8cc7",
-    "tools/fixturegen/rich_annotations.py": "aec1b25bda2d55302dfd65db0fe17fe6ee276db627cc4b23631346ff589ad735",
+    "tools/fixturegen/rich_annotations.py": "07a8b028fefacdfa75c8c7474c62fa25dc902a69662e4abbf13ee4736b5b1d86",
     "corpus/manifests/cloud_annotations.json": "8aee0ed9c228c7716982fecadea1dfd22c1722223e474f15af89f434f91bb712",
-    "corpus/manifests/rich_annotations.json": "66e7bf24283f947492a6c2df33849cdcdb77039a3c9964949bd88953fbb05abe"
+    "corpus/manifests/rich_annotations.json": "fc63f6e5afd10e44c3a358637d10551c7f468b206c8d651e86a4489701a69a5c"
   },
   "capabilities": [
     {
@@ -1762,6 +1762,10 @@
         "rich_annotations/whitespace",
         "rich_annotations/scaled",
         "rich_annotations/raised",
+        "rich_annotations/superscript-72",
+        "rich_annotations/subscript-72",
+        "rich_annotations/superscript-144",
+        "rich_annotations/subscript-144",
         "rich_annotations/underline",
         "rich_annotations/default-scale",
         "rich_annotations/default-matrix",
