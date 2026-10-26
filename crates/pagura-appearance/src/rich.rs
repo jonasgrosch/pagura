@@ -75,12 +75,7 @@ pub(crate) fn contents(
     let bytes = value
         .as_string()
         .ok_or(Error::syntax("annotation Contents must be a text string"))?;
-    let limits = document.limits();
-    storage.charge(bytes.len().saturating_mul(3).min(limits.string_bytes))?;
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    let result = text_string::decode(bytes, &limits, &mut diagnostics)?;
-    document.report(diagnostics.take());
-    Ok(result)
+    decode(document, bytes, storage)
 }
 
 fn rich_content(

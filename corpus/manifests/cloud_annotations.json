@@ -265,6 +265,286 @@
       "tolerance": 1
     },
     {
+      "id": "cloud_annotations/Square-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-stroke-72.pdf",
+      "sha256": "c0b7a6d537c9028eccebc53ca34f45abc1198779d82799a3381f29c5da99a8b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Square-stroke-72.ppm",
+      "oracle_sha256": "0ad4548306628134301009ba82b9878a14978f9e5ec12d6529c8ee7ad0f7be29",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-stroke-144.pdf",
+      "sha256": "c0b7a6d537c9028eccebc53ca34f45abc1198779d82799a3381f29c5da99a8b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Square-stroke-144.ppm",
+      "oracle_sha256": "6d2e9b2f72848926506b80ae89ea7a5cf060c9c985077996d344bce5d8ad7b66",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-stroke-72.pdf",
+      "sha256": "01b7ff2cad9dd518897315bd3a9fbe27262e9e499e93aa891c613b21cb7f4b25",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Circle-stroke-72.ppm",
+      "oracle_sha256": "74746fb22d67d927f880229632fcead6fb8a8d26e855d6a2930eb8fa78a62952",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-stroke-144.pdf",
+      "sha256": "01b7ff2cad9dd518897315bd3a9fbe27262e9e499e93aa891c613b21cb7f4b25",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Circle-stroke-144.ppm",
+      "oracle_sha256": "0a98c6634ab03d60425e082c2b670351ab0a4b1b1013183dc92c16639b346ba1",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-stroke-72.pdf",
+      "sha256": "a1becf6b21605e2eaffb94fe535c2aafecbbc1e02de0dea492dc722fd12537c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Polygon-stroke-72.ppm",
+      "oracle_sha256": "859d6e47f635ce5b388c712081eb2074cdba4cf9786c00498e73a59f5e0c687a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-stroke-144.pdf",
+      "sha256": "a1becf6b21605e2eaffb94fe535c2aafecbbc1e02de0dea492dc722fd12537c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Polygon-stroke-144.ppm",
+      "oracle_sha256": "87fce0c620ca59be16931331e08e96ca10ffa21bb6a078bcead91b5723125264",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-stroke-72.pdf",
+      "sha256": "d319132160c96797068482da5c3234e7904edde707e0ba40d69b17c94c1f83f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/FreeText-stroke-72.ppm",
+      "oracle_sha256": "0ad4548306628134301009ba82b9878a14978f9e5ec12d6529c8ee7ad0f7be29",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-stroke-144.pdf",
+      "sha256": "d319132160c96797068482da5c3234e7904edde707e0ba40d69b17c94c1f83f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/FreeText-stroke-144.ppm",
+      "oracle_sha256": "6d2e9b2f72848926506b80ae89ea7a5cf060c9c985077996d344bce5d8ad7b66",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-1-72",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-1-72.pdf",
+      "sha256": "f3bdb7df7b58b20c2cabf5dcd6aacfc1c41b79c2d558db8786bbf958d764d9bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/dashed-1-72.ppm",
+      "oracle_sha256": "9a181998a55ebaca140e3622317e9f4196b6c3d8659321c2cfbba131ac45caa9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-1-144",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-1-144.pdf",
+      "sha256": "f3bdb7df7b58b20c2cabf5dcd6aacfc1c41b79c2d558db8786bbf958d764d9bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/dashed-1-144.ppm",
+      "oracle_sha256": "48b5618398d3a3a23bc1620d4a8eb4b06d371fae888b5dd7a05ce102d2a75d85",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-2-72",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-2-72.pdf",
+      "sha256": "29b1b93d35c196b39715cf019d264953bf0a05d3e27cf6fab11d256bd27cfdd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/dashed-2-72.ppm",
+      "oracle_sha256": "68877fef109a67897d6a250d5c491a837ea7694f500fd52e2d4cb9ec3b5a5ef1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-2-144",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-2-144.pdf",
+      "sha256": "29b1b93d35c196b39715cf019d264953bf0a05d3e27cf6fab11d256bd27cfdd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/dashed-2-144.ppm",
+      "oracle_sha256": "03a4cf385d091a3a04668743ac53b17f7153cd3ac061af7ca82d2259d13bdac4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/stroke-opacity",
+      "kind": "pdf",
+      "description": "Independent stroke coverage followed by rotation or source-over opacity establishes pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/stroke-opacity.pdf",
+      "sha256": "08e8cda3c315062703283435a201288e9a1684c23375217dfeac5fb2a0d27059",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/stroke-opacity.ppm",
+      "oracle_sha256": "204e06b42abf44027f9fd757ba00ed50377a9fe22fcb35a495ccb63b7c772f9a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/stroke-rotated",
+      "kind": "pdf",
+      "description": "Independent stroke coverage followed by rotation or source-over opacity establishes pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/stroke-rotated.pdf",
+      "sha256": "bd6c257484432d21b46ed73ff48dce99a9af330c786b4d256fba6068b97ad683",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/stroke-rotated.ppm",
+      "oracle_sha256": "0ad4548306628134301009ba82b9878a14978f9e5ec12d6529c8ee7ad0f7be29",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
       "id": "cloud_annotations/bad-intensity",
       "kind": "pdf",
       "description": "Malformed cloud declarations fail before no-mark shortcuts",

@@ -1640,9 +1640,10 @@
         "12.5.6.9 Table 181"
       ],
       "rule": "Generate bounded convex parabolic cloud lobes for Square, Circle, Polygon and FreeText. Preserve declared BS width/dashes, opacity, RD and original appearance BBox. Validate finite intensity in [0,2]; zero intensity preserves the ordinary outline. Lobe shape and spacing are documented reader policy.",
-      "status": "implemented; independent quadratic fill controls and hosted checks pending",
+      "status": "implemented; independent fill/stroke controls authored, hosted validation pending",
       "tests": [
         "pagura-appearance annotation::tests::cloud",
+        "tools/test_cloud_pixels.py",
         "cloud_annotations/Square-72",
         "cloud_annotations/Square-144",
         "cloud_annotations/Circle-72",
@@ -1656,12 +1657,26 @@
         "cloud_annotations/opacity",
         "cloud_annotations/rotated",
         "cloud_annotations/width-affects-lobes",
+        "cloud_annotations/Square-stroke-72",
+        "cloud_annotations/Square-stroke-144",
+        "cloud_annotations/Circle-stroke-72",
+        "cloud_annotations/Circle-stroke-144",
+        "cloud_annotations/Polygon-stroke-72",
+        "cloud_annotations/Polygon-stroke-144",
+        "cloud_annotations/FreeText-stroke-72",
+        "cloud_annotations/FreeText-stroke-144",
+        "cloud_annotations/dashed-1-72",
+        "cloud_annotations/dashed-1-144",
+        "cloud_annotations/dashed-2-72",
+        "cloud_annotations/dashed-2-144",
+        "cloud_annotations/stroke-opacity",
+        "cloud_annotations/stroke-rotated",
         "cloud_annotations/bad-intensity",
         "cloud_annotations/negative",
         "cloud_annotations/excess",
         "cloud_annotations/bad-effect"
       ],
-      "gaps": "Cloud fill expectations integrate original quadratic contour segments exactly. Curved stroke/dash accuracy, richer rich-text layout and R/D interaction remain separate gates."
+      "gaps": "Fill expectations integrate quadratic contours exactly. Stroke controls use independently computed true normal offsets, closed-form arclength dash cuts and exact nonzero polygon coverage, with a geometry error bound below one-eighth channel at 144 dpi. Wider dash patterns, unequal-axis ellipses, concave polygons and curved PDF 2.0 Path effects need further independent coverage. Appearance-state interaction remains a separate gate."
     },
     {
       "id": "content-rich-annotation-text",
