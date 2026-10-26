@@ -374,42 +374,22 @@ fn interleave(
         .first()
         .ok_or(Error::syntax("missing JPX components"))?
         .0;
-    let pixels = count / components.len();
-    let sample = |pixel: usize, c: &jpx::JpxComponent, g: &jpx::ComponentGeometry| -> Result<u16> {
-        // T.800 B.2/G.4 fix the sample positions. Piecewise-constant expansion
-        // with border replication is the chosen resampling policy; no phase
-        // reset occurs at a nonzero reference-grid origin.
-        let x = u64::from(reference_origin[0]) + (pixel % width as usize) as u64;
-        let y = u64::from(reference_origin[1]) + (pixel / width as usize) as u64;
-        let x = (x.saturating_sub(u64::from(g.origin[0])) / u64::from(g.step[0]))
-            .min(u64::from(c.width - 1));
-        let y = (y.saturating_sub(u64::from(g.origin[1])) / u64::from(g.step[1]))
-            .min(u64::from(c.height - 1));
-        let index = usize::try_from(y * u64::from(c.width) + x)
-            .map_err(|_| Error::limit("JPX sample index overflow"))?;
-        c.samples
-            .get(index)
-            .copied()
-            .ok_or(Error::syntax("invalid JPX sample index"))
-    };
     if !mixed && first.bits <= 8 {
         let mut values = Vec::with_capacity(count);
-        for i in 0..pixels {
-            for &(c, g) in components {
-                values.push(
-                    u8::try_from(sample(i, c, g)?)
-                        .map_err(|_| Error::syntax("JPX sample exceeds byte precision"))?,
-                );
-            }
-        }
+        each_sample(components, count, width, reference_origin, |sample| {
+            values.push(
+                u8::try_from(sample)
+                    .map_err(|_| Error::syntax("JPX sample exceeds byte precision"))?,
+            );
+            Ok(())
+        })?;
         return Ok(Samples::Bytes(values));
     }
     let mut values = Vec::with_capacity(count);
-    for i in 0..pixels {
-        for &(c, g) in components {
-            values.push(sample(i, c, g)?);
-        }
-    }
+    each_sample(components, count, width, reference_origin, |sample| {
+        values.push(sample);
+        Ok(())
+    })?;
     if mixed {
         Ok(Samples::Mixed {
             values,
@@ -418,6 +398,68 @@ fn interleave(
     } else {
         Ok(Samples::Words(values))
     }
+}
+
+/// Passes `take` the `count` samples of `components` in image order: pixel
+/// by pixel, each pixel's components in turn. T.800 B.2/G.4 fix the sample
+/// positions. Piecewise-constant expansion with border replication is the
+/// chosen resampling policy; no phase reset occurs at a nonzero
+/// reference-grid origin. Each component's sample column is found once for
+/// every image column, and its sample row once a row.
+fn each_sample(
+    components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
+    count: usize,
+    width: u32,
+    reference_origin: [u32; 2],
+    mut take: impl FnMut(u16) -> Result<()>,
+) -> Result<()> {
+    let overflow = || Error::limit("JPX sample index overflow");
+    let place = |at: u64, origin: u32, step: u32, size: u32| {
+        (at.saturating_sub(u64::from(origin)) / u64::from(step))
+            .min(u64::from(size.saturating_sub(1)))
+    };
+    let pixels = count / components.len().max(1);
+    let image_width = usize::try_from(width).map_err(|_| overflow())?;
+    if image_width == 0 {
+        return Ok(());
+    }
+    let columns = components
+        .iter()
+        .map(|&(c, g)| {
+            (0..width)
+                .map(|x| {
+                    let at = u64::from(reference_origin[0]) + u64::from(x);
+                    usize::try_from(place(at, g.origin[0], g.step[0], c.width))
+                        .map_err(|_| overflow())
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let mut rows: Vec<&[u16]> = Vec::with_capacity(components.len());
+    for (row, start) in (0u64..).zip((0..pixels).step_by(image_width)) {
+        rows.clear();
+        for &(c, g) in components {
+            let y = place(
+                u64::from(reference_origin[1]) + row,
+                g.origin[1],
+                g.step[1],
+                c.height,
+            );
+            let span = usize::try_from(c.width).map_err(|_| overflow())?;
+            let first = usize::try_from(y * u64::from(c.width)).map_err(|_| overflow())?;
+            rows.push(
+                c.samples
+                    .get(first..first + span)
+                    .ok_or(Error::syntax("invalid JPX sample index"))?,
+            );
+        }
+        for x in 0..(pixels - start).min(image_width) {
+            for (samples, columns) in rows.iter().zip(&columns) {
+                take(samples[columns[x]])?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn embedded_space(color: jpx::JpxColor, count: u8, signed: bool) -> Result<ImageKind> {
