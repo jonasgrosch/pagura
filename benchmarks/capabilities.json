@@ -387,7 +387,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7. Current CFF2 FontDICT unknown operators are ignored through the existing DICT parser; all 34 integrated rendering controls pass at 95249301d, with full functional checks passing on Ubuntu, macOS and Windows. Type 1 sbw retains both advance components for composite validation while the horizontal advance API and PDF dictionary metrics keep their contracts; independent native/PDF controls await hosted acceptance. CFF2 Top and Private DICTs now share the context-specific unknown-operator discard path; eight additional PDF controls await hosted acceptance.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7. Current CFF2 FontDICT unknown operators are ignored through the existing DICT parser; all 34 integrated rendering controls pass at 95249301d, with full functional checks passing on Ubuntu, macOS and Windows. Type 1 sbw retains both advance components for composite validation while the horizontal advance API and PDF dictionary metrics keep their contracts; all 40 integrated render controls and full Ubuntu/macOS/Windows checks pass at 3e5d8e69c. CFF2 Top and Private DICTs now share the context-specific unknown-operator discard path; eight additional PDF controls await hosted acceptance. TTC/OTC 1/2 selection reuses the sfnt directory reader and original shared bytes, with native index/ordered-name selection and PDF FontName/BaseFont binding; the 20 unchanged diagnostic controls and new native boundary tests await hosted acceptance.",
       "remaining": "Remaining formats, legacy CFF2 matrix interpretation, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
@@ -399,14 +399,20 @@
         "crates/pagura-font/src/sfnt/names.rs",
         "crates/pagura-font/src/sfnt/cmap.rs",
         "crates/pagura-font/src/cff.rs",
-        "crates/pagura-font/src/cff/dict.rs"
+        "crates/pagura-font/src/cff/dict.rs",
+        "crates/pagura-font/src/sfnt/collection.rs",
+        "crates/pagura-font/src/sfnt/directory.rs",
+        "crates/pagura-text/src/program.rs",
+        "crates/pagura-text/src/encoding.rs"
       ],
       "tests": [
         "crates/pagura-font/tests/vectors/static_fonts.rs",
         "crates/pagura-font/tests/vertical.rs",
         "crates/pagura-font/src/sfnt/vertical/tests.rs",
         "crates/pagura-font/src/sfnt/cmap/tests.rs",
-        "crates/pagura-font/src/cff/dict/tests.rs"
+        "crates/pagura-font/src/cff/dict/tests.rs",
+        "crates/pagura-font/src/sfnt/collection/tests.rs",
+        "crates/pagura-font/tests/vectors/collections.rs"
       ],
       "requirements": [
         "font-bounds",
@@ -505,7 +511,37 @@
         "font_formats/cff2-dict-font-simple",
         "font_formats/cff2-dict-font-cid",
         "font_formats/cff2-dict-private-simple",
-        "font_formats/cff2-dict-private-cid"
+        "font_formats/cff2-dict-private-cid",
+        "font_collections/glyf-simple-first-control",
+        "font_collections/glyf-simple-second-control",
+        "font_collections/glyf-simple-single-v1",
+        "font_collections/glyf-simple-single-v2",
+        "font_collections/glyf-simple-pair-first",
+        "font_collections/glyf-simple-pair-second",
+        "font_collections/glyf-cid-first-control",
+        "font_collections/glyf-cid-second-control",
+        "font_collections/glyf-cid-single-v1",
+        "font_collections/glyf-cid-single-v2",
+        "font_collections/glyf-cid-pair-first",
+        "font_collections/glyf-cid-pair-second",
+        "font_collections/cff-cid-first-control",
+        "font_collections/cff-cid-second-control",
+        "font_collections/cff-cid-single-v1",
+        "font_collections/cff-cid-single-v2",
+        "font_collections/cff-cid-pair-first",
+        "font_collections/cff-cid-pair-second",
+        "font_collections/rectangle-0",
+        "font_collections/rectangle-1",
+        "font_collections/native-glyf-v1",
+        "font_collections/native-glyf-v2",
+        "font_collections/native-glyf-standalone",
+        "font_collections/native-glyf-late-directory",
+        "font_collections/native-glyf-dsig",
+        "font_collections/native-cff-v1",
+        "font_collections/native-cff-v2",
+        "font_collections/native-cff-standalone",
+        "font_collections/native-cff-late-directory",
+        "font_collections/native-cff-dsig"
       ],
       "comparisons": {
         "pdfium": "unprobed",

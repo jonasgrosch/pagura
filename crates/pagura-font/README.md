@@ -41,6 +41,26 @@ must enforce simple/CID-specific cmap rules, Type 1 binary eexec and Length1/2/3
 stream subtype compatibility and subset naming. Hex PFA/PFB fixture success
 is not a claim that these wrappers are permitted PDF embeddings.
 
+TTC/OTC collection versions 1 and 2 reuse the sfnt directory reader and retain
+one original byte buffer. `parse_with_face` accepts an index or ordered
+PostScript name hints; ordinary `parse` selects index zero. The earliest hint
+matching any face must identify exactly one. Unmatched or ambiguous names are
+`Syntax`; an out-of-range caller index is `InvalidArgument`. Naming-table
+versions 0/1 support their Unicode, Windows and Macintosh Roman name encodings.
+Only the selected face's tables are decoded. Name selection scans other faces'
+directory/name records under the same work budget; shared tables may precede
+the selected directory. Standalone programs ignore these name hints.
+
+PDF collection binding tries exact FontName/BaseFont and then valid subset-tag
+removal. This is a measured reader policy: PDF Table 124 supplies no collection
+index. The [OpenType collection](https://learn.microsoft.com/en-us/typography/opentype/spec/otff#font-collections)
+and [name](https://learn.microsoft.com/en-us/typography/opentype/spec/name) specifications
+supply container rules. DSIG is inert; signature authentication, checksum
+validation and hint execution are outside this reader. The original diagnostic
+PDFs and independent pixel oracles are unchanged; implementation acceptance is
+pending. [Probe evidence](../../benchmarks/probes/README.md#font-collections)
+records baseline results and native boundary coverage.
+
 `vertical_substitution(script, language)` reads selected GSUB tables lazily and
 returns an owned glyph map. It supports single substitution formats 1/2,
 coverage formats 1/2 and extension-wrapped single substitutions. Script and
@@ -142,7 +162,7 @@ Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
 Remaining coverage: nondefault variation instances, legacy CFF2 Font DICT matrix interpretation,
-derived post 4 printer names and unknown post formats, TrueType collections, and
+derived post 4 printer names and unknown post formats, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
 CFF CharstringType 1 or standalone TN 5014 CIDFont programs. Unrecognized OtherSubrs use chapter 8’s required
 argument fallback rather than invoking PostScript. Current CFF2 Font DICTs
@@ -158,7 +178,9 @@ in [hosted run 40403532318](https://github.com/jonasgrosch/pagura/actions/runs/4
 Native stack/entry/work controls pass full Ubuntu/macOS/Windows checks in
 [run 40403532292](https://github.com/jonasgrosch/pagura/actions/runs/40403532292).
 The same discard path now covers Top and Private DICT namespaces; four native
-and eight PDF controls await hosted acceptance. Required CFF2 structures and
+and eight PDF controls pass functional checks on all three platforms at `e568b4292`
+in [run 40414804728](https://github.com/jonasgrosch/pagura/actions/runs/40414804728);
+combined rendering acceptance remains pending. Required CFF2 structures and
 complete known-operator validation remain review gaps. Format 14 UVS records
 do not change this API's single-code PDF
 selection: 9.6.5.4 maps one code through a named base subtable, and 9.7.4.2
@@ -168,8 +190,10 @@ Type 1 `sbw` retains both advance components in the existing glyph state,
 including base/composite equality for `seac`. The public horizontal-advance
 method returns the x component; PDF text positioning uses PDF dictionary
 metrics. Eleven new native vectors and six paired rendering controls cover
-nonhorizontal advances, malformed widths and composite agreement; hosted
-acceptance is pending.
+nonhorizontal advances, malformed widths and composite agreement. All 40 integrated
+render controls pass at `3e5d8e69c` in [run 40408412177](https://github.com/jonasgrosch/pagura/actions/runs/40408412177),
+and [functional run 40408412284](https://github.com/jonasgrosch/pagura/actions/runs/40408412284) passes
+on Ubuntu, macOS and Windows.
 
 Type 1 seac follows chapter 3.1/6.4's explicit origin rule: component
 paths already include their sidebearings, so the accent origin is translated

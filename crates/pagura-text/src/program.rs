@@ -5,7 +5,7 @@ use crate::{
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
-use pagura_font::{FontFormat, FontProgram};
+use pagura_font::{FontFace, FontFormat, FontProgram};
 
 /// Loads the embedded program of `descriptor`. `metrics_font` is the simple
 /// font itself, or the CIDFont of a Type 0 font: its subtype selects the
@@ -28,7 +28,16 @@ pub(crate) fn load(
         .get(key)
         .and_then(Value::as_reference)
         .ok_or_else(|| Error::syntax("embedded font must be a stream reference"))?;
-    load_stream(document, id, key, kind, metrics_font, rendering).map_err(|e| e.in_object(id))
+    load_stream(
+        document,
+        id,
+        key,
+        kind,
+        metrics_font,
+        descriptor.dictionary,
+        rendering,
+    )
+    .map_err(|e| e.in_object(id))
 }
 
 fn load_stream(
@@ -37,6 +46,7 @@ fn load_stream(
     key: &[u8],
     kind: FontKind,
     metrics_font: &Dictionary,
+    descriptor: &Dictionary,
     rendering: bool,
 ) -> Result<FontProgram> {
     let object = document.object(id)?;
@@ -68,10 +78,19 @@ fn load_stream(
         offset: 0,
     };
     let mut diagnostics = Diagnostics::new(document.recovery());
+    // PDF Table 124 supplies no collection index. Measured reader policy:
+    // prefer exact FontName/BaseFont matches, then their 9.9.2 subset names;
+    // require a unique face instead of silently using the first directory.
+    let names = if data.starts_with(b"ttcf") {
+        collection_names(document, descriptor, metrics_font)?
+    } else {
+        [b"".as_slice(); 4]
+    };
     // Shared storage made straight from the stream data: one copy at most.
-    let result = FontProgram::parse_with_diagnostics(
+    let result = FontProgram::parse_with_face(
         std::sync::Arc::<[u8]>::from(data),
         format,
+        FontFace::PostScriptNames(&names),
         &document.limits(),
         &mut diagnostics,
     );
@@ -82,6 +101,27 @@ fn load_stream(
             .map(|diagnostic| diagnostic.within(start).in_object(id)),
     )?;
     result.map_err(|error| error.within(start))
+}
+
+fn collection_names<'a>(
+    document: &'a Document,
+    descriptor: &'a Dictionary,
+    font: &'a Dictionary,
+) -> Result<[&'a [u8]; 4]> {
+    let descriptor = match optional(document, descriptor, b"FontName")? {
+        Some(value) => value
+            .as_name()
+            .ok_or_else(|| Error::syntax("invalid FontName"))?
+            .as_bytes(),
+        None => b"",
+    };
+    let base = crate::encoding::font_name(document, font)?;
+    Ok([
+        descriptor,
+        base,
+        crate::encoding::without_subset_tag(descriptor),
+        crate::encoding::without_subset_tag(base),
+    ])
 }
 
 /// The program length a font stream's `Length1` to `Length3` declare, as an

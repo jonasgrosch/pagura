@@ -347,3 +347,45 @@ has ZIP SHA-256 `acd3178e1d7c6c64f628015d0365e4633779e86343f19f808bfe826380ffee6
 and report SHA-256 `fc175b33ad985248f7593f771b1af751ded43eee9216ca4cf1d8251f1afdeb96`.
 This evidence precedes the additional eight DICT controls and current one-pass
 base changes. It does not extend the static PostScript program subset.
+
+
+## Font collections
+
+[Diagnostic run 40413575630](https://github.com/jonasgrosch/pagura/actions/runs/40413575630)
+at `4aa3d18ce2c9c1f5d35353150eff29bab5188f80` uses 22 controls: four ordinary
+pixel controls and three embedding routes with standalone first/second faces,
+single-face TTC versions 1/2, and a shared two-face collection naming either
+face. Routes are simple/CID TrueType and CID OpenType CFF. The original writer
+uses literal 100-by-200 and 200-by-400 glyph rectangles; all pixel tolerances
+were fixed at zero before the run.
+
+pdf.js 6.4.299 passes all 22, including selecting the second named face.
+MuPDF 1.28.5, Poppler 24.02.0 and hayro 0.8.0 render the first TrueType face
+when the second is named: the observed RGB hash exactly matches the first
+rectangle control. MuPDF's CFF standalone controls pass but its CFF collections
+are blank. Poppler/hayro CFF standalone controls also fail, so those results do
+not isolate collection support. PDFium 156.0.8076.0 and Quartz 26.6.2 fail the
+standalone font controls; their collection failures likewise establish no
+format-specific verdict. All engines pass the four ordinary controls.
+Pagura passes the standalones and ordinary controls; all twelve collection
+subjects return adapter errors. The runner did not classify these as
+`Unsupported`, and the diagnostic outcome remains unchanged.
+
+The Linux report artifact is `12694308182`, ZIP SHA-256
+`21a7c12923ac925c9fd60f9ac8f2c709321fcbd8fae3955bb431691bfea71b97`,
+report SHA-256 `6545d699412607421b07cd2fdf820b42ec56bf6a51e7ffe359022d09e4313811`.
+The macOS report artifact is `12694732307`, ZIP SHA-256
+`0c9c8f4c484a4b43f6d24c5512e7eb3d580730b5a286cd35a22f3b2fa0160771`,
+report SHA-256 `61b6c7ff919800ea4003d1b16ee42b078365c7fc417b34c6b2c292ee3008577f`.
+Only each report's selected engines are observations; the other rows are
+placeholders. Linux's expected Pagura failures prevented combined-report jobs.
+
+The implementation reuses the existing sfnt directory and glyph readers,
+retains original shared bytes, and selects a unique face from ordered exact
+PostScript name hints. Native callers can also use an index. PDF name binding
+is an explicit reader policy because Table 124 supplies no collection index.
+The original twenty collection-area records and all PDF/PPM bytes are unchanged
+in the integrated set of 68 controls. Ten native vectors add shared-owner,
+index/name, late-directory and inert DSIG coverage; unit tests exercise
+name-table versions/encodings, ambiguity, truncation and budgets. Hosted
+implementation acceptance is pending. No family comparison is promoted.

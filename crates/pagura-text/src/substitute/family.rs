@@ -149,11 +149,7 @@ fn style(suffix: &[u8]) -> Option<Style> {
 
 /// Lowercases `name` without its subset tag, hyphens, commas and spaces.
 fn normalized<'a>(name: &[u8], buffer: &'a mut [u8; MAX_NAME]) -> Option<&'a [u8]> {
-    let name = if name.get(6) == Some(&b'+') && name.get(..6)?.iter().all(u8::is_ascii_uppercase) {
-        name.get(7..)?
-    } else {
-        name
-    };
+    let name = crate::encoding::without_subset_tag(name);
     if name.len() > MAX_NAME {
         return None;
     }

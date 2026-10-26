@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "bundled-data")]
 pub use pagura_data::Bundled;
-pub use pagura_font::{FontFormat, FontProgram};
+pub use pagura_font::{FontFace, FontFormat, FontProgram};
 pub use pagura_text::{
     CidToUnicode, PredefinedCMap, Provider, StandardDescriptor, StandardFont, StandardMetrics,
 };

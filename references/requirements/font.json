@@ -11,7 +11,7 @@
         "9.6.5.4",
         "9.9.1"
       ],
-      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/8/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review",
+      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/8/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review; TTC/OTC index and unique-name selection implemented, hosted acceptance pending",
       "tests": [
         "font/truetype-cmap0",
         "font/truetype-cmap4",
@@ -41,9 +41,28 @@
         "font_formats/cmap12-windows-utf16-isolated",
         "font_formats/cmap8-windows-ucs4-isolated",
         "font_formats/cmap12-unicode-utf16-isolated",
-        "font_formats/cmap8-unicode-ucs4-isolated"
+        "font_formats/cmap8-unicode-ucs4-isolated",
+        "font_collections/glyf-simple-first-control",
+        "font_collections/glyf-simple-second-control",
+        "font_collections/glyf-simple-single-v1",
+        "font_collections/glyf-simple-single-v2",
+        "font_collections/glyf-simple-pair-first",
+        "font_collections/glyf-simple-pair-second",
+        "font_collections/glyf-cid-first-control",
+        "font_collections/glyf-cid-second-control",
+        "font_collections/glyf-cid-single-v1",
+        "font_collections/glyf-cid-single-v2",
+        "font_collections/glyf-cid-pair-first",
+        "font_collections/glyf-cid-pair-second",
+        "font_collections/rectangle-0",
+        "font_collections/rectangle-1",
+        "font_collections/native-glyf-v1",
+        "font_collections/native-glyf-v2",
+        "font_collections/native-glyf-standalone",
+        "font_collections/native-glyf-late-directory",
+        "font_collections/native-glyf-dsig"
       ],
-      "gaps": "Collections and remaining post formats are unsupported. Format 8 accepts complete numeric codes without decoding UTF-16 word streams; no scalar-to-packed-surrogate heuristic is introduced. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies and other internal layouts still require primary-format review.",
+      "gaps": "Remaining post formats are unsupported. Collection signatures and checksums are not authenticated or validated. Format 8 accepts complete numeric codes without decoding UTF-16 word streams; no scalar-to-packed-surrogate heuristic is introduced. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies and other internal layouts still require primary-format review.",
       "tables": [
         "124"
       ],
@@ -72,6 +91,17 @@
         "scope": "Microsoft's UTF-16 introduction and UCS4 high-word example disagree; Apple also differs on bitmap bit order. This change does not adjudicate a stream decoder or validate bitmap encoding semantics. It looks up the caller's numeric key unchanged, preserving PDF glyph-name selection and all existing cmap identities.",
         "expectations": "Native controls distinguish BMP, scalar and packed-surrogate numeric keys, gaps, group order/overlap, glyph overflow, exact work/entry bounds, truncated headers/groups and one deduplicated repair. Format 12/13 shared-path controls preserve sequential/constant mapping and their Unicode ceiling. Eight PDF controls retain the earlier diagnostic bytes and literal rectangle oracles; isolated supplementary cases map the literal PDF byte to a different glyph.",
         "evidence": "Diagnostic e8ffe19a1b380592191970f43d37712e4ebbbdec, hosted run40393193630: MuPDF passes both BMP subjects with paired format12 controls, and the isolated Windows UCS4 subject/control. Its isolated UTF16 subject fails; platform0 supplementary control also fails, preventing a format-specific conclusion there. Pagura before this change fails all format8 subjects but passes the paired format12 controls. Linux artifact12686106513 ZIP SHA256 a9e7ad3da9b26fc702e7b3e325f62ace290ed31ce5e44a663bda706b72d5d346; report SHA256 bd01f3e8635b336fe37ff184ad401b5caba157a25413fa606c26fe2005d8223f. Historical observations are unchanged. The implementation at e399327d78c1a1c302235977cfb9a5532c88a759 passes all 25 integrated Pagura rendering controls in hosted run40395913198 (175 cells); artifact12685388918 ZIP SHA256 83f2818c0602e4514f86f570fe62f9c03d77e4ad98df2714e649cd56118f766b, report SHA256 25f988c14b8dc61ca4d94f06eed99ef08c618f0a609b28bff7a236dcf3d126fe. Functional run40395908628 passes on Ubuntu, macOS and Windows."
+      },
+      "collection_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/otff#font-collections",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/name"
+        ],
+        "rule": "TTC headers 1/2 locate per-face sfnt directories; table offsets remain relative to the whole file and tables can be shared. Naming-table ID 6 supplies restricted ASCII PostScript names, encoded according to its platform. Versions 0/1 have bounded record and string-storage extents.",
+        "implementation": "One directory reader handles standalone and selected collection faces. The original FontBytes owner is retained without rewriting shared tables; other faces are scanned only for names when requested. Native callers select an index or ordered exact name hints. An ambiguous earliest match is rejected, even if a later hint is unique. PDF loading tries exact FontName/BaseFont, followed by those names without a valid six-letter subset tag. Standalone programs ignore collection name hints.",
+        "scope": "PDF Table 124 supplies no collection index; PDF named selection is measured reader policy, not a claimed normative embedding requirement. DSIG is inert and range checked, not authenticated. Checksums, hint execution, nondefault variations and unselected glyph validation remain outside this change.",
+        "expectations": "The 20 original diagnostic fixture records and all PDF/PPM bytes are unchanged. Ten native vectors cover indices/names, shared original storage, TTC versions 1/2, a selected directory after its shared tables, and an inert DSIG header. Unit controls cover name versions/encodings, ambiguity/priority, invalid or absent names, truncation and limits.",
+        "evidence": "Diagnostic 4aa3d18ce2c9c1f5d35353150eff29bab5188f80, hosted run40413575630: pdf.js passes all 22 controls, including both named faces in simple/CID TrueType and CID OpenType CFF. Pagura passes standalones and ordinary controls but all 12 collection subjects return adapter errors. Other baseline results and immutable report hashes are recorded in benchmarks/probes/README.md. Collection implementation acceptance is pending."
       }
     },
     {
@@ -218,7 +248,18 @@
         "font_formats/cff2-dict-font-simple",
         "font_formats/cff2-dict-font-cid",
         "font_formats/cff2-dict-private-simple",
-        "font_formats/cff2-dict-private-cid"
+        "font_formats/cff2-dict-private-cid",
+        "font_collections/cff-cid-first-control",
+        "font_collections/cff-cid-second-control",
+        "font_collections/cff-cid-single-v1",
+        "font_collections/cff-cid-single-v2",
+        "font_collections/cff-cid-pair-first",
+        "font_collections/cff-cid-pair-second",
+        "font_collections/native-cff-v1",
+        "font_collections/native-cff-v2",
+        "font_collections/native-cff-standalone",
+        "font_collections/native-cff-late-directory",
+        "font_collections/native-cff-dsig"
       ],
       "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Legacy CFF2 Font DICT matrix interpretation remains an unresolved compatibility choice. Nondefault variations, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported. CFF2 mandatory FDArray/Private presence, empty-Private offsets and complete known-operator validation remain unverified.",
       "tables": [
@@ -1024,6 +1065,10 @@
         "implementation": "One context predicate in the existing parser controls the existing discard path before entry allocation, duplicate and arity processing. Numeric syntax, work and stack limits still apply. CFF1 recognition and known CFF2 matrix/blend handling are unchanged.",
         "expectations": "Four independent native fonts and eight paired simple/CID PDF controls retain 100x200 outlines and PDF-owned widths. Unit controls cover foreign and reserved operators, duplicate known keys, 513/514 stacks and exact work/entry bounds. All prior font fixture bytes, records and rendering oracles are retained. Hosted acceptance pending. The new single-FontDICT fonts omit FDSelect, as required by current text; prior published fixtures remain unchanged.",
         "qualification": "The current OpenType CFF2 stack-decoding section explicitly directs ignoring unrecognized contextual operators and clearing operands, but its DICT-data paragraph calls behavior outside a namespace unspecified. Pagura selects the explicit bounded discard rule. These statements do not establish an unambiguous whole-format conformance or competitor verdict."
+      },
+      "collection_review": {
+        "shared_review": "font-truetype.collection_review",
+        "scope": "OpenType CFF collections use the same TTC and naming-table selection. CFF Name INDEX names are not required to equal naming-table ID 6."
       }
     },
     {
