@@ -399,9 +399,9 @@
         },
         {
           "locator": "7.4.9",
-          "rule": "Enumerated CMYK is supported, CIEJab is excluded, and unsupported embedded colour descriptions fall back by ordinary channel count.",
+          "rule": "Enumerated CMYK is supported and CIEJab is excluded. Without PDF ColorSpace, try ranked supported colour specifications before ordinary-channel unsigned device fallback; do not assign an undefined signed device fallback.",
           "verdict": "agree at metadata boundary",
-          "evidence": "jpx-container-colour-12/18/19 exercise CMYK, retained sYCC with device fallback and rejected CIEJab.",
+          "evidence": "jpx-container-colour-12/18/19 and paint_jpx_integration candidate/signed controls distinguish conversion support, malformed metadata and fallback exhaustion.",
           "implementation_agreement": "agree at metadata boundary",
           "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
         }
@@ -409,16 +409,16 @@
       "external_primary_text_review": [
         {
           "standard": "ISO/IEC 15444-1 / ISO/IEC 15444-2 / ICC specifications",
-          "status": "pending primary-text review",
-          "behaviour": "T.800 B.2, G.4 and I.5.3.6 reviewed at the PDF adapter boundary for placement/channel classification. Part 2 (T.801) colour ranking, ICC semantics and other coding algorithms remain pending in this registry; see the separate codec registry for its review.",
-          "evidence": "Integrated independently authored Python JPEG 2000 encoder, direct sample expectations and PDF wrappers; no external differential run in this change."
+          "status": "reviewed PDF colour/layout subset; broader Part 2 remains open",
+          "behaviour": "T.800 B.2, G.4, I.3.3 and I.5.3.3/I.5.3.6 cover placement, JP2 selection, signed restricted-TRC normalization and channel classification. T.801 M.11.7.2/Table M.23 covers ranked JPX colour candidates; the separate JPX/paint registries record the reviewed selection/ICC subset and remaining extensions.",
+          "evidence": "Independent JPX metadata/sample, colour-profile, palette/opacity, cache and native-size pixel controls; exact source/run/baseline evidence is retained in benchmarks/probes/README.md."
         }
       ],
-      "gaps": "JPX Part 2 colour ranking and fallback among multiple colour specifications need a decoder API exposing all candidates; current JP2 API returns only its authoritative first specification (T.800 I.3.3). Embedded ICC and sYCC interpretation is retained for painting; renderer support remains outside this crate. Precision above 16 bits remains unsupported.",
+      "gaps": "Precision above sixteen bits, general JPX Part 2 codestream/layering features and signed ICC combinations outside the restricted Gray/RGB matrix/TRC policy remain open. PDF colour ranking, supported-candidate fallback, sYCC and ICC painting are implemented by the shared JPX metadata and colour owners; see jpx-boxes, jpx-pdf-contract and paint-jpx-icc for exact boundaries and independent controls.",
       "choices": [
         "Preserve embedded colour profiles and non-device enumerated spaces for painting; mixed sample precision uses a zero common-precision sentinel with per-component accessors."
       ],
-      "verdict": "Dictionary colour overrides, JP2 enumerated/ICC metadata, ignored opacity, straight/premultiplied alpha and reference-grid placement exercised; JPX Part 2 ranking remains pending."
+      "verdict": "Dictionary colour overrides, ranked JPX candidates, supported-profile fallback, sYCC/ICC metadata, signed restricted-TRC biases, ignored opacity, straight/premultiplied alpha, Indexed/palette channels and reference-grid placement are covered by the shared decoder and independent PDF controls."
     },
     {
       "id": "image-length-repairs",
@@ -754,7 +754,7 @@
         "pagura-image dct::tests::arithmetic_and_twelve_bit_mutations_remain_bounded",
         "pagura-image dct::tests::arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget"
       ],
-      "gaps": "Lossless and hierarchical JPEG remain unsupported; T.83 compliance vectors are not included.",
+      "gaps": "Arithmetic lossless and hierarchical JPEG remain unsupported; non-hierarchical Huffman lossless is covered by image-jpeg-lossless. T.83 compliance vectors are not included.",
       "review": [
         {
           "locator": "T.81 B.2.4.3/Table B.6; T.81 D.1-D.3/Table D.3; T.81 F.1.4/F.2.4; T.81 G.1.3/G.2",
@@ -786,7 +786,7 @@
         "pagura-image dct::tests::twelve_bit_native_buffers_are_admitted_before_allocation",
         "pagura-image dct::transform::tests::eight_bit_colour_transform_keeps_byte_rounding"
       ],
-      "gaps": "Lossless and hierarchical JPEG remain unsupported; T.83 compliance vectors are not included.",
+      "gaps": "Arithmetic lossless and hierarchical JPEG remain unsupported; non-hierarchical Huffman lossless is covered by image-jpeg-lossless. T.83 compliance vectors are not included.",
       "review": [
         {
           "locator": "7.4.8; T.81 A.3.1-A.3.4; T.81 B.2.2/Table B.2; T.81 F.1.1.4/F.1.2.1; T.81 G.2",
