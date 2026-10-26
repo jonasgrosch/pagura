@@ -245,7 +245,7 @@
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; XObject and inline decoding now forward these diagnostics through Document::report.",
+      "gaps": "Undefined extension selectors remain Unsupported. Defined uncompressed mode is integrated with the existing run/row owners; the new controls await hosted acceptance. Damaged-row recovery remains reported through the existing diagnostics path.",
       "review": [
         {
           "locator": "7.4.6",
@@ -284,12 +284,18 @@
           "status": "partial primary-text review",
           "behaviour": "T.6 2.4.1.1-2 reviewed for EOFB and pad placement. Group 4 mode tables and changing-element algorithms remain pending primary-text review.",
           "evidence": "Synthetic Python fax encoder with directly constructed bitmap expectations; no external differential run or externally sourced known-answer data in this change."
+        },
+        {
+          "standard": "ITU-T T.4 (07/2003)4.2.1.3.3/Table4 notes2-4/Table 5 and T.6 (11/1988)2.3.1/Table4/2.4.1.3",
+          "status": "reviewed for defined uncompressed mode",
+          "behaviour": "Literal words, exit colours, the 1-D entrance suffix restriction and T.6 continuation across row boundaries. Unknown extension selectors remain explicit.",
+          "evidence": "image-ccitt-uncompressed has literal bitstrings and independently stated pixels, including row framing, polarity and resource refusals."
         }
       ],
       "choices": [
         "Count the damaged-row tolerance across the image; keep the standalone decoder strict and expose substitutions only through decode_with_diagnostics."
       ],
-      "verdict": "ISO parameter and row substitution rules agree; EOFB padding reviewed against T.6; other fax algorithms remain pending."
+      "verdict": "PDF parameters and reported substitution remain in their existing owner; defined uncompressed mode now has primary-derived controls and pending hosted acceptance."
     },
     {
       "id": "image-limits",
@@ -817,7 +823,7 @@
         "T.81 H.1.1-H.1.2.3",
         "T.81 H.2"
       ],
-      "status": "Huffman non-hierarchical process implemented; hosted acceptance pending",
+      "status": "Huffman non-hierarchical process implemented; hosted acceptance passed at c50727d340db1236c98eb769e002771d680e790a",
       "tests": [
         "image/jpeg-lossless-vector-precision-2",
         "image/jpeg-lossless-vector-precision-3",
@@ -929,6 +935,118 @@
           "reason": "PDF 7.4.8 specifies byte components and baseline/progressive JPEG without prescribing lossless/high-precision adaptation. This is the same declared normalization policy as twelve-bit DCT, not a normative PDF requirement. Independent full-page controls and public ImageSource/native/WASI/browser paths must validate it."
         }
       ]
+    },
+    {
+      "id": "image-ccitt-uncompressed",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.6/Table11",
+        "T.4 (07/2003)4.2.1.3.3, Table4 notes2-4, Table 5",
+        "T.6 (11/1988)2.3.1/Table4,2.4.1.3"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "pagura-image tests::independent_vectors",
+        "pagura-image bitonal_integration::bitonal_extensions_reach_the_pdf_image_api",
+        "pagura-image bitonal_integration::uncompressed_continuation_obeys_exact_work_and_live_storage_limits",
+        "tools/host_test.mjs"
+      ],
+      "vector_ids": [
+        "image/fax-uncompressed-word-0-0",
+        "image/fax-uncompressed-word-0-1",
+        "image/fax-uncompressed-word-0-2",
+        "image/fax-uncompressed-word-0-3",
+        "image/fax-uncompressed-word-0-4",
+        "image/fax-uncompressed-word-0-5",
+        "image/fax-uncompressed-exit-0-0-0",
+        "image/fax-uncompressed-exit-0-0-1",
+        "image/fax-uncompressed-exit-0-1-0",
+        "image/fax-uncompressed-exit-0-1-1",
+        "image/fax-uncompressed-exit-0-2-0",
+        "image/fax-uncompressed-exit-0-2-1",
+        "image/fax-uncompressed-exit-0-3-0",
+        "image/fax-uncompressed-exit-0-3-1",
+        "image/fax-uncompressed-exit-0-4-0",
+        "image/fax-uncompressed-exit-0-4-1",
+        "image/fax-uncompressed-word--1-0",
+        "image/fax-uncompressed-word--1-1",
+        "image/fax-uncompressed-word--1-2",
+        "image/fax-uncompressed-word--1-3",
+        "image/fax-uncompressed-word--1-4",
+        "image/fax-uncompressed-word--1-5",
+        "image/fax-uncompressed-exit--1-0-0",
+        "image/fax-uncompressed-exit--1-0-1",
+        "image/fax-uncompressed-exit--1-1-0",
+        "image/fax-uncompressed-exit--1-1-1",
+        "image/fax-uncompressed-exit--1-2-0",
+        "image/fax-uncompressed-exit--1-2-1",
+        "image/fax-uncompressed-exit--1-3-0",
+        "image/fax-uncompressed-exit--1-3-1",
+        "image/fax-uncompressed-exit--1-4-0",
+        "image/fax-uncompressed-exit--1-4-1",
+        "image/fax-uncompressed-continuation-1",
+        "image/fax-uncompressed-continuation-2",
+        "image/fax-uncompressed-continuation-3",
+        "image/fax-uncompressed-continuation-5",
+        "image/fax-uncompressed-continuation-7",
+        "image/fax-uncompressed-black-is-one",
+        "image/fax-uncompressed-no-eob-0",
+        "image/fax-uncompressed-no-eob-20",
+        "image/fax-uncompressed-aligned-0",
+        "image/fax-uncompressed-aligned--1",
+        "image/fax-uncompressed-resume-vertical",
+        "image/fax-uncompressed-resume-pass",
+        "image/fax-uncompressed-mixed",
+        "image/fax-uncompressed-undefined-0-0",
+        "image/fax-uncompressed-undefined-0-1",
+        "image/fax-uncompressed-undefined-0-2",
+        "image/fax-uncompressed-undefined-0-3",
+        "image/fax-uncompressed-undefined-0-4",
+        "image/fax-uncompressed-undefined-0-5",
+        "image/fax-uncompressed-undefined-0-6",
+        "image/fax-uncompressed-undefined--1-0",
+        "image/fax-uncompressed-undefined--1-1",
+        "image/fax-uncompressed-undefined--1-2",
+        "image/fax-uncompressed-undefined--1-3",
+        "image/fax-uncompressed-undefined--1-4",
+        "image/fax-uncompressed-undefined--1-5",
+        "image/fax-uncompressed-undefined--1-6",
+        "image/fax-uncompressed-invalid-word",
+        "image/fax-uncompressed-missing-exit",
+        "image/fax-uncompressed-forbidden-1d-prefix",
+        "image/fax-uncompressed-crosses-framed-g3",
+        "image/fax-uncompressed-crosses-framed-aligned",
+        "image/fax-uncompressed-crosses-framed-eol",
+        "image/ccitt-uncompressed-exit-0-4-1",
+        "image/ccitt-uncompressed-exit-0-4-1-rgb-control",
+        "image/ccitt-uncompressed-continuation-3",
+        "image/ccitt-uncompressed-continuation-3-rgb-control",
+        "image/ccitt-uncompressed-resume-vertical",
+        "image/ccitt-uncompressed-resume-vertical-rgb-control",
+        "image/ccitt-uncompressed-resume-pass",
+        "image/ccitt-uncompressed-resume-pass-rgb-control",
+        "image/ccitt-uncompressed-mixed",
+        "image/ccitt-uncompressed-mixed-rgb-control"
+      ],
+      "gaps": "Hosted acceptance of this extension batch is pending. Selectors 0..6 have no defined T.4/T.6 coding and remain Unsupported. This does not enable T.88-forbidden uncompressed coding in JBIG2 MMR.",
+      "review": [
+        {
+          "locator": "T.4 Table 5; T.6 Table4",
+          "rule": "Selector 111 enters raw coding. Literal words represent zero through four white pixels followed by black, or five white pixels. Exit words append zero through four white pixels and specify the following run colour.",
+          "verdict": "Literal codeword/pixel pairs exercise both entrances, every word and both exit colours. Resumed horizontal, vertical and pass coding uses the existing row transitions and reference line."
+        },
+        {
+          "locator": "T.6 2.3.1; ISO32000-2 Table11",
+          "rule": "An uncompressed pattern can span several unbroken T.6 rows. Output rows remain independently byte padded; row counts, EOFB, polarity and resource limits retain their PDF meaning. A literal cannot be interrupted by an encoded line marker or byte fill.",
+          "verdict": "Widths 1, 2, 3, 5 and 7 force within-word continuation; native pixel subjects and matched RGB controls cover rendering. Framed rows require the raw mode exit before their framing; malformed crossings are Syntax. No second sample plane is allocated."
+        },
+        {
+          "locator": "T.4 Table4 note4",
+          "rule": "The 1-D uncompressed entrance cannot immediately follow a codeword ending in 000.",
+          "verdict": "The parser rejects this EOL ambiguity; literal independent controls pin the refusal."
+        }
+      ],
+      "resource_contract": "The width-one twenty-row vector charges 45 bit/lookahead operations:10 entrance+21 literal-code bits+8 exit+6 initial optional-EOL lookahead. Live decoded storage is6*sizeof(usize)+21 bytes for the two transition lists, spare row and twenty output rows; the exact boundary succeeds and one-short work/storage/pixels/input bounds refuse. Expected pixels and bounds are not inferred from engine output."
     }
   ]
 }

@@ -13,7 +13,7 @@ pub const JPEG_ARITHMETIC: Feature = Feature::new("jpeg.arithmetic");
 pub const JPEG_PRECISION: Feature = Feature::new("jpeg.precision");
 /// Hierarchical JPEG coding or height deferred to DNL.
 pub const JPEG_PROCESS: Feature = Feature::new("jpeg.process");
-/// CCITT two-dimensional extension mode.
+/// Undefined CCITT extension selectors (T.4 Table 4, T.6 2.4.1.3).
 pub const CCITT_EXTENSION: Feature = Feature::new("ccitt.extension");
 
 /// JPEG component layouts outside the one-, three- and four-plane model.

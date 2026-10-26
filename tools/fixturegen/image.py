@@ -435,6 +435,10 @@ def eob_jpeg(run_count=4, restart=0):
 def cases():
     from . import jpeg as jpeg_models
     yield from jpeg_models.cases()
+    yield from uncompressed_fax_cases()
+    yield from uncompressed_fax_render_cases()
+    from .jbig2 import extended_template_render_cases
+    yield from extended_template_render_cases()
     yield from raw_cases()
     yield from dictionary_cases()
     yield from iso_review_cases()
@@ -1077,3 +1081,119 @@ def inline_filter_cases():
             '.dict': b'<< /W 1 /H 1 /BPC 8 /CS /G /F '+value+b' >>', '.in': b'\0', '.out': b'',
             '.params': f'kind=inline\noutcome={outcome}\nfeature=filter.unknown\nboundary_error=1\n'.encode()},
             ('image-inline-filter',), 'Malformed or unknown inline filters are never inferred from image bytes')
+
+
+def uncompressed_fax_cases():
+    """Literal T.4 Table5/T.6 Table4 words with separately stated bitmaps."""
+    from .jbig2 import bits_bytes, packed
+    enter = {0:'000000001111', -1:'0000001111'}
+    end = {0:'000000000001'*6, -1:'000000000001'*2}
+    # (wire code, original black/white pixels), including the five-white word
+    # whose final1 does not represent a black pixel.
+    words = [('1','1'),('01','01'),('001','001'),('0001','0001'),
+             ('00001','00001'),('000001','00000')]
+    def fixture(name, code, pixels, *, k=-1, width=None, **options):
+        width = width or len(pixels)
+        rows = [[int(v) for v in pixels[i:i+width]] for i in range(0,len(pixels),width)]
+        expected = packed([[1-v for v in row] for row in rows])
+        return vector('fax-uncompressed-'+name,'ccitt',bits_bytes(code+end[k]),expected,
+                      requirement='image-ccitt-uncompressed',k=k,width=width,height=len(rows),eob=1,**options)
+    for k in (0,-1):
+        for index,(code,pixels) in enumerate(words):
+            yield fixture(f'word-{k}-{index}',enter[k]+code+'00000010',pixels,k=k)
+        # Exit words append zero through four white pixels, then the tag gives
+        # the next run colour. Both following run colours remain observable.
+        for zeros in range(5):
+            for tag in (0,1):
+                exit_code = '0'*(6+zeros)+'1'+str(tag)
+                suffix = (BLACK if tag else WHITE)[4]
+                if k < 0:
+                    suffix = '001'+suffix+(WHITE if tag else BLACK)[0]
+                yield fixture(f'exit-{k}-{zeros}-{tag}',enter[k]+'1'+exit_code+suffix,
+                              '1'+'0'*zeros+str(tag)*4,k=k)
+    all_code = ''.join(code for code,_ in words)
+    all_pixels = ''.join(pixels for _,pixels in words)
+    # T.6 2.3.1 concatenates row-end/start pixels. Narrow widths force a
+    # single literal word to cross several rows; no row marker or padding.
+    for width in (1,2,3,5,7):
+        yield fixture(f'continuation-{width}',enter[-1]+all_code*width+'00000010',
+                      all_pixels*width,width=width)
+    # PDF Table11 preserves raw polarity and lets EOFB override Rows. With
+    # EndOfBlock false, either the stated row count or exhausted input ends it.
+    rows = [[int(v) for v in (all_pixels*3)[i:i+3]] for i in range(0,60,3)]
+    continuous = enter[-1]+all_code*3+'00000010'
+    yield vector('fax-uncompressed-black-is-one','ccitt',bits_bytes(continuous+end[-1]),packed(rows),
+                 requirement='image-ccitt-uncompressed',k=-1,width=3,height=1,eob=1,black=1)
+    for declared in (0,20):
+        yield vector(f'fax-uncompressed-no-eob-{declared}','ccitt',bits_bytes(continuous),
+                     packed([[1-v for v in row] for row in rows]),
+                     requirement='image-ccitt-uncompressed',k=-1,width=3,height=declared,eob=0)
+    for k in (0,-1):
+        wire = Wire()
+        for _ in range(2):
+            wire.align()
+            wire.code(enter[k]+'1111'+'00000010')
+        wire.align()
+        wire.code(end[k])
+        yield vector(f'fax-uncompressed-aligned-{k}','ccitt',wire.bytes(),b'\x00\x00',
+                     requirement='image-ccitt-uncompressed',k=k,width=4,height=2,eob=1,align=1)
+    # The first coded row has black pixels3..6. The next row leaves raw mode
+    # at column3; VR(1) ends its black run at8, then V(0) reaches column12.
+    first = '001'+WHITE[3]+BLACK[4]+'1'
+    yield fixture('resume-vertical',first+enter[-1]+'001'+'00000011'+'0111',
+                  '000111100000'+'001111110000',width=12)
+    # Exit after one black pixel into a white run; pass skips the reference
+    # row's black island, then V(0) reaches the final boundary.
+    yield fixture('resume-pass',first+enter[-1]+'1'+'00000010'+'00011',
+                  '000111100000'+'100000000000',width=12)
+    # T.4 mixed rows: first1-D, then2-D, each leaving raw mode before EOL.
+    pixels = '10000100'
+    raw = '1'+'00001'+'0000000010'
+    mixed = '0000000000011'+enter[0]+raw+'0000000000010'+enter[-1]+raw
+    mixed += ('0000000000011')*6
+    yield vector('fax-uncompressed-mixed','ccitt',bits_bytes(mixed),b'\x7b\x7b',
+                 requirement='image-ccitt-uncompressed',k=2,width=8,height=2,eob=1,eol=1)
+    for k in (0,-1):
+        prefix = '000000001' if k == 0 else '0000001'
+        for selector in range(7):
+            yield vector(f'fax-uncompressed-undefined-{k}-{selector}','ccitt',
+                         bits_bytes(prefix+f'{selector:03b}'),requirement='image-ccitt-uncompressed',
+                         outcome='unsupported',feature='ccitt.extension',k=k,width=8,height=1,eob=1)
+    for name, code, k, width in [
+        ('invalid-word',enter[-1]+'0'*11+'1',-1,8),
+        ('missing-exit',enter[-1]+'1111'+end[-1],-1,4),
+        ('forbidden-1d-prefix',WHITE[3]+enter[0]+'111'+'00000010',0,6),
+    ]:
+        yield vector('fax-uncompressed-'+name,'ccitt',bits_bytes(code),
+                     requirement='image-ccitt-uncompressed',outcome='syntax',k=k,width=width,height=1,eob=1)
+    for name,k,options in [('g3',0,{}),('aligned',-1,{'align':1}),('eol',-1,{'eol':1})]:
+        prefix = '000000000001' if options.get('eol') else ''
+        # A single five-white code cannot be interrupted by an EOL or byte
+        # fill. T.6 continuation is valid only in the unbroken bit stream.
+        code = prefix+enter[k]+'000001'+'00000010'+end[k]
+        yield vector('fax-uncompressed-crosses-framed-'+name,'ccitt',bits_bytes(code),
+                     requirement='image-ccitt-uncompressed',outcome='syntax',k=k,width=2,height=2,eob=1,**options)
+
+
+def uncompressed_fax_render_cases():
+    from dataclasses import replace
+    from .paint import image_case
+    selected = {'fax-uncompressed-continuation-3','fax-uncompressed-resume-vertical',
+                'fax-uncompressed-resume-pass','fax-uncompressed-mixed','fax-uncompressed-exit-0-4-1'}
+    for item in uncompressed_fax_cases():
+        if item.name not in selected:
+            continue
+        params = dict(line.split('=') for line in item.files['.params'].decode().splitlines())
+        width, height = int(params['width']), int(params['height'])
+        stride = (width+7)//8
+        pixels = item.files['.out']
+        colors = [(255*((pixels[y*stride+x//8] >> (7-x%8)) & 1),)*3
+                  for y in range(height) for x in range(width)]
+        settings = {'matrix':(width,0,0,height,2,2),'colors':colors,'requirement':'image-ccitt-uncompressed'}
+        dictionary = (b'/BitsPerComponent 1 /ColorSpace /DeviceGray /Filter /CCITTFaxDecode /DecodeParms << /K '
+                      + params['k'].encode()+b' /Columns '+str(width).encode()+b' /Rows '+str(height).encode()+b' >>')
+        name = 'ccitt-'+item.name.removeprefix('fax-')
+        yield image_case(name,item.files['.in'],dictionary,[],width,height,**settings)
+        control = image_case(name+'-rgb-control',bytes(v for c in colors for v in c),
+                             b'/BitsPerComponent 8 /ColorSpace /DeviceRGB',[],width,height,**settings)
+        yield replace(control,extra={**control.extra,'control_of':'image/'+name})

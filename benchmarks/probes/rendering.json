@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration and paired T.81 lossless-JPEG compatibility probes. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction is an explicit reader policy. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -3171,6 +3171,214 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "37b506203cf3963c321ea31bd4ec4a33c37d6d6e833cfc703cedbf9b3b9a766b",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-exit-0-4-1",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-exit-0-4-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7f9e45bcfd022f47b6f1c732a23e71d296ed969dd7b1e2926037bf6680f2bb15",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-exit-0-4-1-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-exit-0-4-1-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7f9e45bcfd022f47b6f1c732a23e71d296ed969dd7b1e2926037bf6680f2bb15",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-continuation-3",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-continuation-3",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ed35aeedbfe1e3b13dfef66f504bc0396b9ba51a15c2cf6a9ab5652af28a0725",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-continuation-3-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-continuation-3-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ed35aeedbfe1e3b13dfef66f504bc0396b9ba51a15c2cf6a9ab5652af28a0725",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-resume-vertical",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-resume-vertical",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5cb57db675ec7a5955d1114be69e298f09e4b65c3ac79010f247aa45b617855f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-resume-vertical-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-resume-vertical-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5cb57db675ec7a5955d1114be69e298f09e4b65c3ac79010f247aa45b617855f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-resume-pass",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-resume-pass",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "82443a1c2410c298bd587e507d81ad7446a2f30a2e12e7863db2dd48cb43b7ed",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-resume-pass-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-resume-pass-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "82443a1c2410c298bd587e507d81ad7446a2f30a2e12e7863db2dd48cb43b7ed",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-mixed",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-mixed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "4e9f6df6b2e694abcc043aa194f6f631a551103176753991acee874c99ecb077",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.ccitt-uncompressed-mixed-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/ccitt-uncompressed-mixed-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "4e9f6df6b2e694abcc043aa194f6f631a551103176753991acee874c99ecb077",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jbig2-extended-template-all-moved",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jbig2-extended-template-all-moved",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "55709568073ca68de57547f89f566672553e6d2a370ead8d43a8ddce86b56e28",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jbig2-extended-template-all-moved-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jbig2-extended-template-all-moved-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "55709568073ca68de57547f89f566672553e6d2a370ead8d43a8ddce86b56e28",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jbig2-extended-template-typical",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jbig2-extended-template-typical",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d6d448e2247367bb8b7c9ec8619eb23edd281803099d5601b6228d44337396c0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jbig2-extended-template-typical-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jbig2-extended-template-typical-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d6d448e2247367bb8b7c9ec8619eb23edd281803099d5601b6228d44337396c0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jbig2-extended-template-unknown-marker-in-header",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jbig2-extended-template-unknown-marker-in-header",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2a52cd386918a6cb6a5d649fdb8f64a87f60d74abcc77c2b6a4c6ecefdb28c5f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jbig2-extended-template-unknown-marker-in-header-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jbig2-extended-template-unknown-marker-in-header-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2a52cd386918a6cb6a5d649fdb8f64a87f60d74abcc77c2b6a4c6ecefdb28c5f",
         "tolerance": 0
       }
     }

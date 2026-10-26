@@ -245,7 +245,15 @@ explicit arithmetic/hierarchical boundaries. Three literal bitstreams separately
 pin category 16, negative half-difference rounding and overflowing predictions.
 Public ImageSource and exact memory/work limits are checked in the image tests;
 the existing host suite exercises the render subjects through native, WASI,
-session-client and partial-tile paths. Hosted acceptance of this batch is pending.
+session-client and partial-tile paths. This checkpoint passed at
+`c50727d340db1236c98eb769e002771d680e790a`: full Ubuntu/macOS/Windows
+[functional run 40357238745](https://github.com/jonasgrosch/pagura/actions/runs/40357238745),
+[editing run 40357236212](https://github.com/jonasgrosch/pagura/actions/runs/40357236212)
+and [render run 40357236500](https://github.com/jonasgrosch/pagura/actions/runs/40357236500).
+All 244 Pagura render controls pass in the 1,708-cell report, measured at merge
+`198c2b95d4af46e2ab4adaf021741b4f708d798c`. Artifact `12666298024` has SHA-256
+`bdb55a05509897da10e51347c806e8a949226cf9f1a7726d1c2b3767ccb7ba7a`.
+These results remain separate from acceptance of later source changes.
 
 Lossless JPEG is a compatibility extension beyond PDF 7.4.8's required
 baseline/progressive byte processes. The [image requirements](../../references/requirements/image.json)
@@ -276,3 +284,31 @@ the current codec vectors retain their explicit Unsupported boundary. The
 original Huffman expected pixels and tolerance zero remain unchanged. These
 observations justify the 8-bit compatibility work; they do not establish a
 general lossless, arithmetic or high-precision baseline-support verdict.
+
+## R03 bitonal extensions
+
+The next batch adds eight subjects with eight ordinary RGB controls: CCITT
+uncompressed continuation and resumed run coding, plus JBIG2 extended adaptive
+templates, typical prediction and unknown-length framing. The inventory now
+contains 260 render cases and 1,820 observation cells. All new pixels come from
+literal bit patterns or original geometric bitmaps at native pixel size; paired
+controls have identical PPM oracles and zero tolerance. No baseline support is
+inferred before execution, and current-head hosted acceptance is pending.
+
+The 65 fax vectors cover every T.4 Table 5 / T.6 Table 4 literal and exit, both
+run colours, 1-D/mixed/2-D coding, words spanning several T.6 rows, byte alignment,
+polarity, row-count/EOFB interaction and malformed framing. The exact continuation
+test budgets 45 bit/lookahead operations and `6*sizeof(usize)+21` live bytes for
+twenty width-one rows, with one-short refusals. T.88's prohibition of the same
+extension inside JBIG2 MMR remains in its separate existing decoder.
+
+The 66 JBIG2 vectors exercise all twelve adaptive pixels separately and together,
+overlap, coordinate limits, typical rows, every truncated coordinate header,
+noncausal pixels and unknown-length marker/count boundaries. The source is the
+official [T.88:2018 package](https://www.itu.int/rec/T-REC-T.88-201808-I/en),
+identical to the ISO 14492:2019 edition referenced by PDF 7.4.7. Its Figure 50 and
+explicit byte 0–23 list conflict with a sentence calling the field 32 bytes.
+The [requirements](../../references/requirements/jbig2.json) record the source
+hashes and the decision to follow the explicit twelve-pair layout; no unspecified
+bytes or alternate layout are guessed. Unknown-height allocation uses the actual
+row count, and the original exact budgets are extended to the 65,536 contexts.

@@ -95,12 +95,17 @@ NEIGHBOURS = (
     [(x,-1) for x in range(-3,3)] + [(x,0) for x in range(-4,0)],
 )
 DEFAULT_AT = (((3,-1),(-3,-1),(2,-2),(-2,-2)), ((3,-1),), ((2,-1),), ((2,-1),))
+# T.88 (08/2018) Figure 3(b), Table 5: these replace twelve of the same
+# sixteen neighbourhood positions. Their identity does not change when moved.
+EXTENDED_AT = ((-2,0),(0,-2),(-2,-1),(-1,-2),(1,-2),(2,-1),
+               (-3,0),(-4,0),(2,-2),(3,-1),(-2,-2),(-3,-1))
 
 
-def arithmetic(rows, template, typical=False, adaptive=None):
-    adaptive = adaptive or DEFAULT_AT[template]
+def arithmetic(rows, template, typical=False, adaptive=None, *, extended=False):
+    nominal = EXTENDED_AT if extended else DEFAULT_AT[template]
+    adaptive = adaptive or nominal
     positions = list(NEIGHBOURS[template])
-    for old, new in zip(DEFAULT_AT[template], adaptive):
+    for old, new in zip(nominal, adaptive):
         positions[NEIGHBOURS[template].index(old)] = new
     height, width = len(rows), len(rows[0])
     def pixel(x, y):
@@ -119,7 +124,7 @@ def arithmetic(rows, template, typical=False, adaptive=None):
             for dx, dy in positions:
                 context = context * 2 + pixel(x+dx,y+dy)
             encoder.encode(context, value)
-    flags = (template << 1) | (8 if typical else 0)
+    flags = (template << 1) | (8 if typical else 0) | (16 if extended else 0)
     return bytes([flags]) + b"".join(struct.pack("bb", *p) for p in adaptive) + encoder.finish()
 
 
@@ -428,6 +433,7 @@ def _text_region(symbols,placements,width,height,strips=1,offset=0,operator=0,de
 # Generic and symbol vectors share the fixture driver entry point.
 
 def cases():
+    yield from extended_template_cases()
     yield from unknown_length_edge_cases()
     yield from text_layout_edge_cases()
     yield from stripe_identity_cases()
@@ -529,7 +535,6 @@ def cases():
         data=_segment(1,48,1,_page_info(16384,1))+_segment(2,38,1,region(long_rows,arithmetic(long_rows,template)))
         yield vector(f"arithmetic-long-tail-{template}",data,long_rows)
     page=_segment(1,48,1,_page_info(7,3))
-    yield vector("unsupported-extended-template",page+_segment(2,38,1,region(rows,b"\x10")),outcome="unsupported",feature="jbig2.extended-template",requirement="jbig2-explicit-unsupported")
     yield vector("unsupported-mmr-extension",page+_segment(2,38,1,region(rows,b"\x01"+bits_bytes("0000001"))),outcome="syntax",requirement="jbig2-explicit-unsupported")
     encoder=ArithmeticEncoder()
     integer(encoder,"height",None)
@@ -1375,3 +1380,92 @@ def profiles_grammar_cases():
         ('trailing-data',_segment(0,52,0,struct.pack('>I',0)+b'\0'),page),
     ):
         yield vector('profiles-'+name,data,outcome='syntax',globals=globals,requirement='jbig2-profiles')
+
+
+def extended_template_cases():
+    """T.88:2018 6.2.5/7.4.6: independent original bitmaps and field layout.
+
+    Figure 50 and the explicit byte0..23 list define twelve signed pairs.
+    The adjacent '32-byte' sentence conflicts with both; no extra bytes are
+    invented or skipped. The requirement records this primary-text conflict.
+    """
+    rows = [[((x*73+y*29+x*y*17) ^ (x*11+y*y*9)) >> ((x+y)%7) & 1
+             for x in range(23)] for y in range(17)]
+    moved = ((-6,0),(3,-3),(-4,-2),(-2,-4),(5,-3),(4,-1),
+             (-7,0),(-8,0),(4,-2),(6,-1),(-5,-2),(-6,-1))
+    settings = [('nominal', EXTENDED_AT), ('all-moved', moved),
+                ('overlapping', ((-1,0),)*12),
+                ('coordinate-edges', ((-128,-128),(127,-1),(-1,0))*4)]
+    for index, point in enumerate(moved):
+        changed = list(EXTENDED_AT)
+        changed[index] = point
+        settings.append((f'moved-{index+1}', tuple(changed)))
+    for name, adaptive in settings:
+        encoded = arithmetic(rows, 0, adaptive=adaptive, extended=True)
+        data = _segment(1,48,1,_page_info(23,17)) + _segment(2,38,1,region(rows,encoded))
+        yield vector('extended-template-'+name,data,rows,requirement='jbig2-extended-template')
+    repeated = [[0]*23] + [rows[0]]*3 + [rows[1]]*2 + [[0]*23]*2
+    encoded = arithmetic(repeated,0,True,moved,extended=True)
+    data = _segment(1,48,1,_page_info(23,len(repeated))) + _segment(2,39,1,region(repeated,encoded))
+    yield vector('extended-template-typical',data,repeated,requirement='jbig2-extended-template')
+    small = [[1,0,1,0,0],[1,0,1,0,0],[0]*5]
+    tail = [[0,1,0,1,1]]
+    for name, adaptive in [('nominal', EXTENDED_AT), ('marker-in-header', EXTENDED_AT[:11]+((-1,-84),))]:
+        encoded = arithmetic(small,0,True,adaptive,extended=True)
+        data = _segment(1,48,1,_page_info(5,5)) + unknown_segment(2,small,encoded,0xffffffff,y=1)
+        data += _segment(3,38,1,region(tail,mmr(tail),y=4))
+        yield vector('extended-template-unknown-'+name,data,[[0]*5]+small+tail,requirement='jbig2-extended-template')
+    # EXTTEMPLATE is unused for templates1..3 (Table2 note e), so each still
+    # has one adaptive pair, including in unknown-length segment framing.
+    for template in (1,2,3):
+        coded = arithmetic(small,template)
+        coded = bytes([coded[0] | 16]) + coded[1:]
+        data = _segment(1,48,1,_page_info(5,3)) + unknown_segment(2,small,coded)
+        yield vector(f'extended-flag-unused-t{template}',data,small,requirement='jbig2-extended-template')
+    # Only GBTEMPLATE is required zero for MMR by 7.4.6.2. TPGDON and
+    # EXTTEMPLATE are unused procedure inputs, rather than reserved flag bits.
+    coded = bytes([0x19]) + mmr(small)[1:]
+    data = _segment(1,48,1,_page_info(5,3)) + _segment(2,38,1,region(small,coded))
+    yield vector('extended-flag-unused-mmr',data,small,requirement='jbig2-extended-template')
+    page = _segment(1,48,1,_page_info(5,3))
+    encoded = arithmetic(small,0,extended=True)
+    for length in range(24):
+        data = page + _segment(2,38,1,region(small,encoded[:1+length]))
+        yield vector(f'extended-template-truncated-at-{length}',data,outcome='syntax',requirement='jbig2-extended-template')
+    for index in range(12):
+        damaged = bytearray(encoded)
+        damaged[1+index*2:3+index*2] = bytes(2)
+        data = page + _segment(2,38,1,region(small,damaged))
+        yield vector(f'extended-template-noncausal-{index+1}',data,outcome='syntax',requirement='jbig2-extended-template')
+    unknown = unknown_segment(2,small,encoded,0xffffffff)
+    for count in range(4):
+        yield vector(f'extended-template-truncated-count-{count}',page+unknown[:-4]+unknown[-4:][:count],
+                     outcome='syntax',requirement='jbig2-extended-template')
+    for name,body in [
+        ('missing-marker',unknown_segment(2,small,encoded[:-2])),
+        ('count-exceeds-height',unknown_segment(2,small,encoded,2)),
+        ('mmr-template',unknown_segment(2,small,b'\x03'+mmr(small)[1:])),
+    ]:
+        yield vector('extended-template-'+name,page+body,outcome='syntax',requirement='jbig2-extended-template')
+
+
+def extended_template_render_cases():
+    from dataclasses import replace
+    from .paint import image_case
+    selected = {'extended-template-all-moved','extended-template-typical',
+                'extended-template-unknown-marker-in-header'}
+    for item in extended_template_cases():
+        if item.name not in selected:
+            continue
+        params = dict(line.split('=') for line in item.files['.params'].decode().splitlines())
+        width, height = int(params['width']), int(params['height'])
+        packed_pixels = item.files['.out']
+        stride = (width+7)//8
+        colors = [(255*(1-((packed_pixels[y*stride+x//8] >> (7-x%8)) & 1)),)*3
+                  for y in range(height) for x in range(width)]
+        settings = {'matrix':(width,0,0,height,2,2),'colors':colors,'requirement':'jbig2-extended-template'}
+        name = 'jbig2-'+item.name
+        yield image_case(name,item.files['.jb2'],b'/BitsPerComponent 1 /ColorSpace /DeviceGray /Filter /JBIG2Decode',[],width,height,**settings)
+        control = image_case(name+'-rgb-control',bytes(v for c in colors for v in c),
+                             b'/BitsPerComponent 8 /ColorSpace /DeviceRGB',[],width,height,**settings)
+        yield replace(control,extra={**control.extra,'control_of':'image/'+name})

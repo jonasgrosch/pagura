@@ -3515,6 +3515,1764 @@
       "control_of": "image/jpeg-lossless-huffman-ycbcr"
     },
     {
+      "id": "image/fax-uncompressed-word-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-0.in",
+          "sha256": "52e45914b2539065118d99ffc2ca6200f4368dd5700dfcd3adcd75b6514cac90"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-0.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-0.params",
+          "sha256": "f4c36ec0372942e766249c98902f62bfa6075d8d55c4f30f051eac9b92b35faf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-1.in",
+          "sha256": "cd8c1b5c8882ed2e628d6c7cdbcab3e23a06dacac3c23222de10df0cbef821a2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-1.out",
+          "sha256": "76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-1.params",
+          "sha256": "b1bae865c1eb3b7f1213b9ed4abae1e27e83cb9fd72d524354e1a9a57dbff64a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-2",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-2.in",
+          "sha256": "cec8991dc1d0d559d40e16ebc1067c8439c63c9ff46a39e45f7f2c376de54363"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-2.out",
+          "sha256": "e4ff5e7d7a7f08e9800a3e25cb774533cb20040df30b6ba10f956f9acd0eb3f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-2.params",
+          "sha256": "24ad78ff927651dc255146d6c13c7de98244c52d2d659554d5636c9c6402d676"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-3",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-3.in",
+          "sha256": "55fd16614173d595f0d08d610cffb142d3dfa1e6e9efc3b7d66c11b62adf8c6a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-3.out",
+          "sha256": "7d8c5da7fd418379048e430b33dc8ffcda739e44326b8a5d647dc0ad81ed2157"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-3.params",
+          "sha256": "ba382a70a9fa64ea966e4bdf3a86721a8e605541d08d86d3fd6f63dbbf6eb2aa"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-4",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-4.in",
+          "sha256": "8090a2864098c77a3ca54210e01743b3ee19002f6d02470a5e3d4e5b6f8f73b6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-4.out",
+          "sha256": "fde502858306c235a3121e42326b53228b7ef4690eeed92a2b2eafe73c03a3ef"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-4.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word-0-5",
+      "kind": "vector",
+      "description": "fax uncompressed word 0 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-5.in",
+          "sha256": "dec5db504ce4013a4be3a4526fb73456d24b84d1172999b25d332cf710f93772"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-5.out",
+          "sha256": "e596a8e5c49dd20a79bd0c1a7dd190a674507d1129785746fcc1c5e64cd8416c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word-0-5.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-0.in",
+          "sha256": "4f899c1eb108e7dacb4ff1d85c2ebff4d5e27b1e0cec6e45d97097ffc5cb73cb"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-0.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-0.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-1.in",
+          "sha256": "7ab32475707fea640a0767ec0938222afa843ab7856cbfc36e5f97ae6ec6f374"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-1.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-0-1.params",
+          "sha256": "4896a7bc6847fe1812e4f41e13c32b840edd6c5cf1f7f59ab2101fa7dc35e206"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-1-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-0.in",
+          "sha256": "543253d2f3f9e2f48e19b177348bc030f966548667e936158f294d2fd39a4fa6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-0.out",
+          "sha256": "cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-0.params",
+          "sha256": "a415ec44ee96597518076af2cd420a717cbd78a154efebfb1c101e8e1eb82635"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-1-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-1.in",
+          "sha256": "063a40935848af53e9ec9ea1753eec50e85e0f238b7cd4f02567fe20dd6f569c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-1.out",
+          "sha256": "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299ae"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-1-1.params",
+          "sha256": "a415ec44ee96597518076af2cd420a717cbd78a154efebfb1c101e8e1eb82635"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-2-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 2 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-0.in",
+          "sha256": "ebc6335296b717e80de3793d289bfde002fdcaa8be9d11ad4b0bd72342f31be9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-0.out",
+          "sha256": "7ace431cb61584cb9b8dc7ec08cf38ac0a2d649660be86d349fb43108b542fa4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-0.params",
+          "sha256": "653ccba3d1e5b458ffb3602ed253cb183dedb12c1bc9f81b0729d3b565e6ebab"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-2-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 2 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-1.in",
+          "sha256": "e8551200fdf92aa8e79cd82317dac80d003042c311afdf2a74370e5cc6b4817b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-1.out",
+          "sha256": "8d33f520a3c4cef80d2453aef81b612bfe1cb44c8b2025630ad38662763f13d3"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-2-1.params",
+          "sha256": "653ccba3d1e5b458ffb3602ed253cb183dedb12c1bc9f81b0729d3b565e6ebab"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-3-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 3 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-0.in",
+          "sha256": "e7d03001b7a10e03cd1d6bc63b3785e1dc728d5c8fef281c3dd960636d88d2d9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-0.out",
+          "sha256": "620bfdaa346b088fb49998d92f19a7eaf6bfc2fb0aee015753966da1028cb731"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-0.params",
+          "sha256": "d1e99463723606d7e1c6f02b9687082814da299649d584c620b33c5d8eb8c13c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-3-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 3 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-1.in",
+          "sha256": "5ae2168e05823f3dd15e20b9079f5420d68a0d631f65078fa8cde5bb2936ade8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-1.out",
+          "sha256": "148de9c5a7a44d19e56cd9ae1a554bf67847afb0c58f6e12fa29ac7ddfca9940"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-3-1.params",
+          "sha256": "d1e99463723606d7e1c6f02b9687082814da299649d584c620b33c5d8eb8c13c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-4-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 4 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-0.in",
+          "sha256": "5693a33d71f8653602e6adcc5d3a5e3ad958e679a6ef63ee748a4e22ee9b6f2b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-0.out",
+          "sha256": "517391d5972c2de2db58edb1b589927b0b9edf3379b6016905109f76d417be9d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-0.params",
+          "sha256": "97e4e2ff6733b4262cf6309b19634cef953e559e77c41052efd4a63390a94ecf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit-0-4-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit 0 4 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-1.in",
+          "sha256": "907a10310f683ba1de2bc8709cab50ba07deccbfd5a24f063dd5df7f17a0ff07"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-1.out",
+          "sha256": "14f825b2bbc32dd8d196367fa8776873069c12a8954d8da7513aa7704ddd09eb"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit-0-4-1.params",
+          "sha256": "97e4e2ff6733b4262cf6309b19634cef953e559e77c41052efd4a63390a94ecf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-0",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-0.in",
+          "sha256": "bc859ecb9bcdc8d1ef9eb880cc35ecf79792a6a249c772a0e4e5c79b149977e1"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-0.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-0.params",
+          "sha256": "8bb56e97c69b92097f5658e0952757ac172c7b22c0a87834866be4d30ce8190e"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-1",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-1.in",
+          "sha256": "608c0782647b3ae9dc0caddf65814e01e6ce6a597e7141af53965e611503b1aa"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-1.out",
+          "sha256": "76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-1.params",
+          "sha256": "ea78f718501e9d9b8e623de8b246c4ea3f9fd9adc3cdca4cc494984b2903b902"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-2",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-2.in",
+          "sha256": "e0326b0015e53f2d54645a3917f646118b19d680f0d147b32e99f137bedae50d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-2.out",
+          "sha256": "e4ff5e7d7a7f08e9800a3e25cb774533cb20040df30b6ba10f956f9acd0eb3f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-2.params",
+          "sha256": "3afaef2601f793fe5f68e1f1fd8a722cf4cc8e80cc9713e7d96f27ecff8b9211"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-3",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-3.in",
+          "sha256": "6f9f8b40bfce172dd069073bfa5de9c1fe6c622c18230617e3fd6aa808fbd4f4"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-3.out",
+          "sha256": "7d8c5da7fd418379048e430b33dc8ffcda739e44326b8a5d647dc0ad81ed2157"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-3.params",
+          "sha256": "d61e4f3175036755539c340b617dcd012a66faa98d0dc40adfd28773d2c7005b"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-4",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-4.in",
+          "sha256": "bb7616a4f9896d34ee7d17ea023b1b4fd612cd07e202835cc83630b2b50ec730"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-4.out",
+          "sha256": "fde502858306c235a3121e42326b53228b7ef4690eeed92a2b2eafe73c03a3ef"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-4.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-word--1-5",
+      "kind": "vector",
+      "description": "fax uncompressed word  1 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-5.in",
+          "sha256": "78dfe6870ec6b8f872be555f2d5bfd200e6fbca06190246d2226790e073c49ee"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-5.out",
+          "sha256": "e596a8e5c49dd20a79bd0c1a7dd190a674507d1129785746fcc1c5e64cd8416c"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-word--1-5.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-0.in",
+          "sha256": "1eb5d1fb0940bd21c2b8eafe7233a829c09d66fe26c8a1576eeb9a6bb79f33cc"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-0.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-0.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-1.in",
+          "sha256": "40f79dff31bb8d01a1bda913a0d08f2925bc5dfbffceaef5a7602e9e396adff5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-1.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-0-1.params",
+          "sha256": "89f810045ab38d459ec56d6d5603ab4469972a6a133064c25d36a5aca133ed4f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-1-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-0.in",
+          "sha256": "3325df89d16b230352548948cd5454d07fb1b7be798e672ee49778641f46bdc2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-0.out",
+          "sha256": "cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-0.params",
+          "sha256": "09d633ebb5c9f55a2990b4f7caac7cfc6e039bfcf34d5b1f22eeffa078b45d76"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-1-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-1.in",
+          "sha256": "2b5496f1b802bc480df02cd0c1abb036aafcd0a54d6f6f0b859c090d51bdc27e"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-1.out",
+          "sha256": "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299ae"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-1-1.params",
+          "sha256": "09d633ebb5c9f55a2990b4f7caac7cfc6e039bfcf34d5b1f22eeffa078b45d76"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-2-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 2 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-0.in",
+          "sha256": "6246249dd133316d4b12ce9aef9e554d042e2991d1b473785552ef6d1b57fc06"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-0.out",
+          "sha256": "7ace431cb61584cb9b8dc7ec08cf38ac0a2d649660be86d349fb43108b542fa4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-0.params",
+          "sha256": "f8a75b0dd13ed9eab4014261b42bc6578afafe2a05c2f53273001e7dd484305a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-2-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 2 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-1.in",
+          "sha256": "354694656f613dd2d7a266cd56eb4e98b1eeffad3779a97fb9e751189bcc42ec"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-1.out",
+          "sha256": "8d33f520a3c4cef80d2453aef81b612bfe1cb44c8b2025630ad38662763f13d3"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-2-1.params",
+          "sha256": "f8a75b0dd13ed9eab4014261b42bc6578afafe2a05c2f53273001e7dd484305a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-3-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 3 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-0.in",
+          "sha256": "55f22c5ec26714c2a63227d857ab0a25b8a777037f2ff9002f280c83d5804cbd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-0.out",
+          "sha256": "620bfdaa346b088fb49998d92f19a7eaf6bfc2fb0aee015753966da1028cb731"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-0.params",
+          "sha256": "34e0704c81eb22eeb05e175c7390dac921c41876997e6a85952eb0e1ecd6e64c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-3-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 3 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-1.in",
+          "sha256": "ea447009db129e098a61f82ceeb583ae87d8748197ff57729fcf25ab59abb049"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-1.out",
+          "sha256": "148de9c5a7a44d19e56cd9ae1a554bf67847afb0c58f6e12fa29ac7ddfca9940"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-3-1.params",
+          "sha256": "34e0704c81eb22eeb05e175c7390dac921c41876997e6a85952eb0e1ecd6e64c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-4-0",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 4 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-0.in",
+          "sha256": "5312f864164ef870289f5c2059d3630c2155fb5a8ca1e8693d3d05c51369f219"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-0.out",
+          "sha256": "517391d5972c2de2db58edb1b589927b0b9edf3379b6016905109f76d417be9d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-0.params",
+          "sha256": "7c5e29f4bd528eb5f15205b7d36bed684b5ebdf7424cfec527046f8ce06c8064"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-exit--1-4-1",
+      "kind": "vector",
+      "description": "fax uncompressed exit  1 4 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-1.in",
+          "sha256": "db4354056426507c2ddf7411159f944b0b6ffe4cbb7bb339e4c38282eca0d738"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-1.out",
+          "sha256": "14f825b2bbc32dd8d196367fa8776873069c12a8954d8da7513aa7704ddd09eb"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-exit--1-4-1.params",
+          "sha256": "7c5e29f4bd528eb5f15205b7d36bed684b5ebdf7424cfec527046f8ce06c8064"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-1",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-1.in",
+          "sha256": "c047169f1ca7536793997a17c16035c2eb847781ceb774fa6d2057ba41bff046"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-1.out",
+          "sha256": "e2039e7abc6ef6c14c83dab1727a13bea17f740580603a693b935f283a24ccf6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-1.params",
+          "sha256": "645e46864d5667600b001461d352e87466eb08408647eb26d05a5b60de808213"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-2",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-2.in",
+          "sha256": "5be9e868a54469c3bec1f80654f8268a1b1772399358e45b1ba5d46a2ead32c5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-2.out",
+          "sha256": "f2fad3aec356ecb31f4a1bd89d9a1558841a7b387239747b56812575752b880f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-2.params",
+          "sha256": "80eabc1b237aee8cb295c51a5eb8c46284528b68fae71d86de9de4d0419d5665"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-3",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-3.in",
+          "sha256": "e6f410c96b5a5865024d682ee835ee0eeb6545df2729f9a3efee8e1d12c12cd6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-3.out",
+          "sha256": "d2fa055b82a7cd11cee3fedd5b7fd872f3791e4c1ccce29987f9b60cfd46e128"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-3.params",
+          "sha256": "d959988500d7ab613c3cc0086d4d546e52d62950250f16058525a02e14159d8f"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-5",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-5.in",
+          "sha256": "eb46117695f6a94ae5b4a52535491558a0ac37737a185c888cc397f1d41c3961"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-5.out",
+          "sha256": "93b45d2fa7c6d778b5868d55157651e3ef60d4fb87001c95f2c12b0f3b8c60ce"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-5.params",
+          "sha256": "3574e877fe64a5631819a3d1891aef1455095f283944d8d8b6933bcc3d43ac15"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-continuation-7",
+      "kind": "vector",
+      "description": "fax uncompressed continuation 7",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-7.in",
+          "sha256": "74543c6a47c9ac6f470de9324f21950f567daf3b09a77e9087abea4e43e2ce8b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-7.out",
+          "sha256": "e50e4cf7ba9b11f7c0b5b13599e326b45267c42a5bd4778e8a09a53369814462"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-continuation-7.params",
+          "sha256": "55551632c0542ef690476a1663d2b44afd87b07f33e8d94a1cc895fa8a6c8535"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-black-is-one",
+      "kind": "vector",
+      "description": "fax uncompressed black is one",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-black-is-one.in",
+          "sha256": "e6f410c96b5a5865024d682ee835ee0eeb6545df2729f9a3efee8e1d12c12cd6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-black-is-one.out",
+          "sha256": "78992d26b6e09afef0a90614d6b60f828f9654ac69917aaf35e0c800fc3103df"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-black-is-one.params",
+          "sha256": "bf58843fc01a7685da72c833cf4ebad015e0d632db3f16ffd7ea2c667880fa55"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-no-eob-0",
+      "kind": "vector",
+      "description": "fax uncompressed no eob 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-0.in",
+          "sha256": "10bb154c52ff9460758cc519926dbef92721cc40c059b5e15650476c0e14772c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-0.out",
+          "sha256": "d2fa055b82a7cd11cee3fedd5b7fd872f3791e4c1ccce29987f9b60cfd46e128"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-0.params",
+          "sha256": "bd0ada1299795e9e7a0b45ae35fa4e0315047a98423eb6a5a0a34757b632ae86"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-no-eob-20",
+      "kind": "vector",
+      "description": "fax uncompressed no eob 20",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-20.in",
+          "sha256": "10bb154c52ff9460758cc519926dbef92721cc40c059b5e15650476c0e14772c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-20.out",
+          "sha256": "d2fa055b82a7cd11cee3fedd5b7fd872f3791e4c1ccce29987f9b60cfd46e128"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-no-eob-20.params",
+          "sha256": "e4077a395ca4aade83cd51971f9acc3454b4f0200f96adae2baab7b2c7b32bb8"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-aligned-0",
+      "kind": "vector",
+      "description": "fax uncompressed aligned 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned-0.in",
+          "sha256": "ae4dfc8c88304eceed96affcfc0290565ab4a89f6729de5fd6448c19e6ae2331"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned-0.out",
+          "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned-0.params",
+          "sha256": "dff834636e3219cb749422b8f098241d4a08d706e815ff463fa2d46724a663d9"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-aligned--1",
+      "kind": "vector",
+      "description": "fax uncompressed aligned  1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned--1.in",
+          "sha256": "30fb80f23cd71840a9acb0c2a5c30a1f05a24d0689ce19d66b7cd755dc95722b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned--1.out",
+          "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-aligned--1.params",
+          "sha256": "f7f9e9fe0cfab85376a76c4466f7ec5e6e860f989e9aa8b84bd476c717940c34"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-resume-vertical",
+      "kind": "vector",
+      "description": "fax uncompressed resume vertical",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-vertical.in",
+          "sha256": "8aca07ed57da12bd89c121cfdbd06c06a37f6a9833d50f543ece85d4905bd3ba"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-vertical.out",
+          "sha256": "6a4e7e677f3226cd30f8f46c7100694652c529fa4852bc30a26f926e733f643e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-vertical.params",
+          "sha256": "7054caff80469eb646d3a770195e107361f4535ebe983f50c152272a99fdef13"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-resume-pass",
+      "kind": "vector",
+      "description": "fax uncompressed resume pass",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-pass.in",
+          "sha256": "53e8c7e724c3ebff2486373fbbb7034469de360983086aa3942b06620624377f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-pass.out",
+          "sha256": "8c078ead4d347f351212357cbb455a94c66346d4d1658478135d37ae6789a336"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-resume-pass.params",
+          "sha256": "7054caff80469eb646d3a770195e107361f4535ebe983f50c152272a99fdef13"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-mixed",
+      "kind": "vector",
+      "description": "fax uncompressed mixed",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-mixed.in",
+          "sha256": "6079ecda97d013755b0e95c210f133b9063fb652ff32dbff3f2e00dc262815c5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-mixed.out",
+          "sha256": "9d0e8aa2892a9f23fa7f89051a4ae0a05c2c4858c25a86c4e9ebf9060b9a63b2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-mixed.params",
+          "sha256": "2d38daece967099bd007d2849ab7a1704572f1f828a97b400a42e2435bc0910b"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-0",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-0.in",
+          "sha256": "085edad400785fca7e7e90b1fac4beb776fc2beee5aa24352d5f39b5d57efcad"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-0.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-0.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-1",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-1.in",
+          "sha256": "c723228fbe3cf04cdf49e61f3e13fc0c407d2e1ff23d6eaa1b4299e7cbb418a1"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-1.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-1.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-2",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-2.in",
+          "sha256": "eaf132c40462dd25ee5be6c7944953c92f544953f110bb3a6630b9cb34f13e17"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-2.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-2.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-3",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-3.in",
+          "sha256": "425b04f73bcc6bdb70e201dcfaa1c227e363e0a0dc83025a688baa9e90b91cf2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-3.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-4",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-4.in",
+          "sha256": "81c2a21c99c2e261ad6d91443ffb383b57c321d7e33f09cb64c8b946bb14939b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-4.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-4.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-5",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-5.in",
+          "sha256": "672da2c7dfdf211e2998280dba9596bf0ca5cd834654b81cf4b32a2d713dba39"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-5.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-5.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined-0-6",
+      "kind": "vector",
+      "description": "fax uncompressed undefined 0 6",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-6.in",
+          "sha256": "548431144999ce11132441250358e8e03153d5cd91cb82cc27a8dbdcf8e1e80d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-6.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined-0-6.params",
+          "sha256": "feab805a4425ec4bd505e6f2e9604fe64069ba165d1afdfe8f99094828c2d012"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-0",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 0",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-0.in",
+          "sha256": "99be5efb88ca2013bd8e4eb035fd42d5245468fe9afa70d8ba9c1c419a48c4e8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-0.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-0.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-1",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 1",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-1.in",
+          "sha256": "ba3c702b24e4ef16c111bf92823170f6e81fd37fbafaccbeef52192a1c094380"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-1.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-1.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-2",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 2",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-2.in",
+          "sha256": "61d7e4731e7a6546d92e99105ffce332c9ab905311cba8dbad8ac4f3bbc49447"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-2.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-2.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-3",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-3.in",
+          "sha256": "f5e0e61250dc5ca346e045ef9b8830ff510ceebd97829a9047efcaf584db9587"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-3.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-4",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 4",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-4.in",
+          "sha256": "9b4fb24edd6d1d8830e272398263cdbf026b97392cc35387b991dc0248a628f9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-4.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-4.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-5",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 5",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-5.in",
+          "sha256": "23cfea09624d0880dc8dc30bf5fda8cd9ff7bf4770a119425a6995e15563b865"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-5.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-5.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-undefined--1-6",
+      "kind": "vector",
+      "description": "fax uncompressed undefined  1 6",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-6.in",
+          "sha256": "6191d6df2a4b8ad04a19ad70045422d4fb47b5bd189d2b63befde6043a9c9f11"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-6.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-undefined--1-6.params",
+          "sha256": "672e5f0787c91ac30cd149ca8fa0f1d0f0787f73204265d1d40e2baf61011960"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-invalid-word",
+      "kind": "vector",
+      "description": "fax uncompressed invalid word",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-invalid-word.in",
+          "sha256": "1ed7d6fa696d5898a20290a034b0078331b11adbfcd543979a14f381a9b6a3df"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-invalid-word.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-invalid-word.params",
+          "sha256": "14dfe5fb56df20d278285264b1217d0faca5e98b66c03ec8fdf9dd94048f34a6"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-missing-exit",
+      "kind": "vector",
+      "description": "fax uncompressed missing exit",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-missing-exit.in",
+          "sha256": "38c31e28eb55c15510811bb11bcb494ba239abdd838180213604b8b6d554e611"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-missing-exit.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-missing-exit.params",
+          "sha256": "3f00dae7bf3fdb31cd0f340dd54689ea3a31830ca1b72df7f3773b9c5b4c07b7"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-forbidden-1d-prefix",
+      "kind": "vector",
+      "description": "fax uncompressed forbidden 1d prefix",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-forbidden-1d-prefix.in",
+          "sha256": "30bc72f4eba7a4bae56edd14ee8bf73dd88face0737d99d8f01aada569aae817"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-forbidden-1d-prefix.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-forbidden-1d-prefix.params",
+          "sha256": "dbb65584d1d497057cd0eb1d603e19782250b11defab0179cbc3cee2fe004b32"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-crosses-framed-g3",
+      "kind": "vector",
+      "description": "fax uncompressed crosses framed g3",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-g3.in",
+          "sha256": "dec5db504ce4013a4be3a4526fb73456d24b84d1172999b25d332cf710f93772"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-g3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-g3.params",
+          "sha256": "d30fdbd41703a671110909cd612bf664a97e00055f66a3ee718c8217ca891ed7"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-crosses-framed-aligned",
+      "kind": "vector",
+      "description": "fax uncompressed crosses framed aligned",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-aligned.in",
+          "sha256": "78dfe6870ec6b8f872be555f2d5bfd200e6fbca06190246d2226790e073c49ee"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-aligned.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-aligned.params",
+          "sha256": "c8f9a201a7beaac05fad499e88d57418cd2ce3552c239e496716520b0a149144"
+        }
+      }
+    },
+    {
+      "id": "image/fax-uncompressed-crosses-framed-eol",
+      "kind": "vector",
+      "description": "fax uncompressed crosses framed eol",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-eol.in",
+          "sha256": "0051ab0993c9da8620d0eb817156da457c6fb1b1d1cfb62de5b65d04b37b7334"
+        },
+        ".out": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-eol.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-uncompressed-crosses-framed-eol.params",
+          "sha256": "d3f75f7c54c4a0e5f120d29d9e6d9c7787847ca1013c9851e602f2985efbaaf9"
+        }
+      }
+    },
+    {
+      "id": "image/ccitt-uncompressed-exit-0-4-1",
+      "kind": "pdf",
+      "description": "ccitt uncompressed exit 0 4 1",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1.pdf",
+      "sha256": "b6aeea75ae33492fb441620def3abc12e0fd129ff10bdcb1c277125de3ec5aee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1.ppm",
+      "oracle_sha256": "e93c0611f99c2192a85fd09fb5b23983bfa97a75333d49c0b2b7766401c77a1b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-exit-0-4-1-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed exit 0 4 1 rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1-rgb-control.pdf",
+      "sha256": "a30a58bea177043db34d7dde1f1d4dd55557457a1f735ccd240aea5adf173f8f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-exit-0-4-1-rgb-control.ppm",
+      "oracle_sha256": "e93c0611f99c2192a85fd09fb5b23983bfa97a75333d49c0b2b7766401c77a1b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-exit-0-4-1"
+    },
+    {
+      "id": "image/ccitt-uncompressed-continuation-3",
+      "kind": "pdf",
+      "description": "ccitt uncompressed continuation 3",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-continuation-3.pdf",
+      "sha256": "2cc44a869d5d23eaf8a52d9bd94ae42e473824a9e380e44355361940ea2bd1a7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-continuation-3.ppm",
+      "oracle_sha256": "4a640352b262a2cc1519ee8b643014d11320ad8d48f558fd870975a0ca7f6372",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-continuation-3-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed continuation 3 rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-continuation-3-rgb-control.pdf",
+      "sha256": "445109a45fdafb1b9eae3d14fbd0b7e9e9c0567a6ec72b108f5e94adbe4684ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-continuation-3-rgb-control.ppm",
+      "oracle_sha256": "4a640352b262a2cc1519ee8b643014d11320ad8d48f558fd870975a0ca7f6372",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-continuation-3"
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-vertical",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume vertical",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-vertical.pdf",
+      "sha256": "f44b4c14d3eee2a5db80d6234e99029c316bbf9163914d387f1dfef54ee1d169",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-vertical.ppm",
+      "oracle_sha256": "45ccaf54918ae6c5aeab84b2789f0f30a1f0a0973a4173c337b13ab161677072",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-vertical-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume vertical rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-vertical-rgb-control.pdf",
+      "sha256": "a1f35e8b53f4d3a3c5615f0f4e9679ecd9b1fb71a17e683f0dd57aff8ac9097c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-vertical-rgb-control.ppm",
+      "oracle_sha256": "45ccaf54918ae6c5aeab84b2789f0f30a1f0a0973a4173c337b13ab161677072",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-resume-vertical"
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-pass",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume pass",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-pass.pdf",
+      "sha256": "7fe7ba373a7bb4c42f1e6e4fd5eacc06aa7d1faa6943e8d9f7a11148c49baed0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-pass.ppm",
+      "oracle_sha256": "3ba9c1eba9d5ddf2f699fa7eaecc314ce61783f2201b416035129fd038803a9d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-resume-pass-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed resume pass rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-resume-pass-rgb-control.pdf",
+      "sha256": "057103334f72d288f9743c6c24c005d585fddf3a22f2284b0c12dd03769ec46a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-resume-pass-rgb-control.ppm",
+      "oracle_sha256": "3ba9c1eba9d5ddf2f699fa7eaecc314ce61783f2201b416035129fd038803a9d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-resume-pass"
+    },
+    {
+      "id": "image/ccitt-uncompressed-mixed",
+      "kind": "pdf",
+      "description": "ccitt uncompressed mixed",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-mixed.pdf",
+      "sha256": "160cb5f3594fd75d0c1e5a41a9121375ff67cde35e67c9088c28d9bb821de70f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-mixed.ppm",
+      "oracle_sha256": "069081955228c719980c22cd0228b0987d8667c7b141031dad624cb87501c733",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/ccitt-uncompressed-mixed-rgb-control",
+      "kind": "pdf",
+      "description": "ccitt uncompressed mixed rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-uncompressed"
+      ],
+      "path": "corpus/generated/image/ccitt-uncompressed-mixed-rgb-control.pdf",
+      "sha256": "a1065141068001141dc58cf66dc3b71e89847fe097db77b49e512f61a6837e88",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/ccitt-uncompressed-mixed-rgb-control.ppm",
+      "oracle_sha256": "069081955228c719980c22cd0228b0987d8667c7b141031dad624cb87501c733",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/ccitt-uncompressed-mixed"
+    },
+    {
+      "id": "image/jbig2-extended-template-all-moved",
+      "kind": "pdf",
+      "description": "jbig2 extended template all moved",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-all-moved.pdf",
+      "sha256": "66b300ddea29eeef2b8d739787f4409a1ce7dafe94853f7498cdb1cdac14e22c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-all-moved.ppm",
+      "oracle_sha256": "e82ab37c7671fa19b12f9ab4aeecaa5a83055c8da7cbc7e77161ba4eb7aa1c48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jbig2-extended-template-all-moved-rgb-control",
+      "kind": "pdf",
+      "description": "jbig2 extended template all moved rgb control",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-all-moved-rgb-control.pdf",
+      "sha256": "db20f929ed50c735fe9261de049f59300baa0d9b260cea7d84ddc280d7dea011",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-all-moved-rgb-control.ppm",
+      "oracle_sha256": "e82ab37c7671fa19b12f9ab4aeecaa5a83055c8da7cbc7e77161ba4eb7aa1c48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jbig2-extended-template-all-moved"
+    },
+    {
+      "id": "image/jbig2-extended-template-typical",
+      "kind": "pdf",
+      "description": "jbig2 extended template typical",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-typical.pdf",
+      "sha256": "0f5f8cf1cd1364659290587ecb269b16ff5512ceb9fc98b764b3da4aba2d88d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-typical.ppm",
+      "oracle_sha256": "ba2357e722b9073a7dfb7d47cfa5407d91ca068a98fce436743995d99c5c6542",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jbig2-extended-template-typical-rgb-control",
+      "kind": "pdf",
+      "description": "jbig2 extended template typical rgb control",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-typical-rgb-control.pdf",
+      "sha256": "388cd1aeb424a0aeada2b7c62b2a23c7ca4f2ed9aacd704287167db6e7e4fe68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-typical-rgb-control.ppm",
+      "oracle_sha256": "ba2357e722b9073a7dfb7d47cfa5407d91ca068a98fce436743995d99c5c6542",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jbig2-extended-template-typical"
+    },
+    {
+      "id": "image/jbig2-extended-template-unknown-marker-in-header",
+      "kind": "pdf",
+      "description": "jbig2 extended template unknown marker in header",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header.pdf",
+      "sha256": "cb8e27ba6e1dbe4a64fe1d996192f415fcb3912b4c016cecaf9e84307891f7b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header.ppm",
+      "oracle_sha256": "5f4812f410a2f7973826ca32ef19fb26e875b59c3f2812b65e8428e3072aa330",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jbig2-extended-template-unknown-marker-in-header-rgb-control",
+      "kind": "pdf",
+      "description": "jbig2 extended template unknown marker in header rgb control",
+      "expected": "render",
+      "requirements": [
+        "jbig2-extended-template"
+      ],
+      "path": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header-rgb-control.pdf",
+      "sha256": "b55384a9b966c1e788637fa45f712fe50ba1266e56980e2d1d1f48c9531f7362",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jbig2-extended-template-unknown-marker-in-header-rgb-control.ppm",
+      "oracle_sha256": "5f4812f410a2f7973826ca32ef19fb26e875b59c3f2812b65e8428e3072aa330",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jbig2-extended-template-unknown-marker-in-header"
+    },
+    {
       "id": "image/samples-1-1-raw",
       "kind": "vector",
       "description": "MSB rows, row padding and exact unpacked samples",
