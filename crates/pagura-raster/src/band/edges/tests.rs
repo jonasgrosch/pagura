@@ -2,6 +2,127 @@ use super::*;
 use crate::PathBuilder;
 
 #[test]
+fn many_sides_at_one_vertex_keep_the_previous_link_order() {
+    /// The keyed link as it was before it carried its side: the unstable
+    /// sorts' tie order depends on the size, which is the same.
+    #[derive(Clone, Copy)]
+    struct Previous {
+        lo: (i64, i64),
+        hi: (i64, i64),
+        forward: bool,
+        from: (i64, i64),
+        to: (i64, i64),
+        #[expect(dead_code, reason = "only the prior layout is compared")]
+        a: Point,
+    }
+    assert_eq!(size_of::<Keyed>(), size_of::<Previous>());
+    for count in [8, 64, 257] {
+        let origin = (0_i64, 0_i64);
+        let mut keys = vec![origin; count];
+        keys.extend((1..=count).rev().map(|i| (i64::try_from(i).unwrap(), 0)));
+        let next: Vec<_> = (count..2 * count).collect();
+        let mut kept: Vec<_> = (0..count).map(|i| (origin, i)).collect();
+        let mut previous: Vec<_> = kept
+            .iter()
+            .map(|&(from, a)| {
+                let to = keys[next[a]];
+                Previous {
+                    lo: from.min(to),
+                    hi: from.max(to),
+                    forward: from <= to,
+                    from,
+                    to,
+                    a: Point::default(),
+                }
+            })
+            .collect();
+        previous.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+        previous.sort_unstable_by_key(|e| e.from);
+        shared_order(&mut kept, (&keys, &next), &mut crate::testing::bytes()).unwrap();
+        assert!(
+            kept.iter()
+                .zip(&previous)
+                .all(|(&(_, a), e)| keys[next[a]] == e.to)
+        );
+    }
+}
+
+#[test]
+fn relinked_contours_match_a_search_of_the_start_keys() {
+    // Random unit squares on a small grid, some reversed or repeated: shared
+    // sides cancel, and several kept sides can start at one corner.
+    let mut state = 7_u64;
+    let mut random = |count: u64| {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (state >> 33) % count
+    };
+    for _ in 0..2000 {
+        let mut polygon = Polygon::default();
+        for _ in 0..=random(12) {
+            let (x, y) = (random(4) as f64, random(4) as f64);
+            let mut square = [(x, y), (x + 1.0, y), (x + 1.0, y + 1.0), (x, y + 1.0)];
+            if random(4) == 0 {
+                square.reverse();
+            }
+            polygon.starts.push(polygon.points.len());
+            polygon.points.extend(square.map(|(x, y)| Point::new(x, y)));
+        }
+        let expected = searched(&polygon);
+        let changed = polygon.cancel_shared(&mut crate::testing::bytes()).unwrap();
+        assert_eq!(changed, expected.is_some());
+        if let Some((points, starts)) = expected {
+            assert_eq!((polygon.points, polygon.starts), (points, starts));
+        }
+    }
+}
+
+/// The contours `cancel_shared` relinks `polygon` into, each successor found
+/// by a search of all kept sides in their order.
+fn searched(polygon: &Polygon) -> Option<(Vec<Point>, Vec<usize>)> {
+    let n = polygon.points.len();
+    let keys: Vec<_> = polygon
+        .points
+        .iter()
+        .map(|p| (ordered(p.x), ordered(p.y)))
+        .collect();
+    let mut next = Vec::new();
+    for (contour, &start) in polygon.starts.iter().enumerate() {
+        let end = polygon.starts.get(contour + 1).copied().unwrap_or(n);
+        next.extend(start + 1..end);
+        next.push(start);
+    }
+    let mut bytes = crate::testing::bytes();
+    let mut kept = uncancelled(&keys, &next, &mut Vec::new(), &mut bytes).unwrap();
+    if kept.len() == n {
+        return None;
+    }
+    kept.sort_unstable();
+    shared_order(&mut kept, (&keys, &next), &mut bytes).unwrap();
+    let mut used = vec![false; kept.len()];
+    let (mut points, mut starts) = (Vec::new(), Vec::new());
+    for first in 0..kept.len() {
+        if used[first] {
+            continue;
+        }
+        starts.push(points.len());
+        let mut current = first;
+        loop {
+            used[current] = true;
+            let a = kept[current].1;
+            points.push(polygon.points[a]);
+            let end = keys[next[a]];
+            if end == kept[first].0 {
+                break;
+            }
+            current = (0..kept.len()).find(|&i| kept[i].0 == end && !used[i])?;
+        }
+    }
+    Some((points, starts))
+}
+
+#[test]
 fn line_paths_skip_flattening_with_its_contours() {
     let limits = Limits::default();
     let t = Transform::new(1.5, 0.25, -0.5, 2.0, 3.0, -1.0);

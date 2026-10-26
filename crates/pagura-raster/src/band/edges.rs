@@ -648,70 +648,65 @@ impl Polygon {
             next.extend(start + 1..end);
             next.push(start);
         }
-        let mut kept = uncancelled(&keys, &next, bytes)?;
+        let mut pairs = Vec::new();
+        let mut kept = uncancelled(&keys, &next, &mut pairs, bytes)?;
         if kept.len() == n {
             return Ok(None);
         }
         // Relink by start point: any pairing at a shared vertex keeps the
         // winding, but which one is taken shapes the contours.
         kept.sort_unstable();
-        let mut links: Vec<Keyed> = Vec::new();
-        bytes.reserve(&mut links, kept.len())?;
-        links.extend(kept.iter().map(|&(from, a)| {
-            let to = keys[next[a]];
-            Keyed {
-                lo: from.min(to),
-                hi: from.max(to),
-                forward: from <= to,
-                from,
-                to,
-                a: self.points[a],
-            }
-        }));
-        if links.windows(2).any(|w| w[0].from == w[1].from) {
-            // Sides that share a start keep the order they had from sorting
-            // these values by undirected key, then by start. Sides with
-            // equal undirected keys and directions are equal.
-            links.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
-            links.sort_unstable_by_key(|e| e.from);
+        if kept.windows(2).any(|w| w[0].0 == w[1].0) {
+            shared_order(&mut kept, (&keys, &next), bytes)?;
         }
-        // Where each link's successors start: the links by end merged with
-        // the links by start.
-        let by_end = &mut kept;
-        by_end.clear();
-        by_end.extend(links.iter().enumerate().map(|(i, e)| (e.to, i)));
-        by_end.sort_unstable();
-        let mut successors: Vec<usize> = Vec::new();
-        bytes.reserve(&mut successors, links.len())?;
-        successors.resize(links.len(), 0);
-        let mut first = 0;
-        for &(to, i) in by_end.iter() {
-            first += links[first..].iter().take_while(|e| e.from < to).count();
-            successors[i] = first;
+        // Per side, where known, the first place of the kept sides that
+        // start where it starts. A link ends where the side after it in its
+        // contour starts: a kept side knows its place, and a cancelled one
+        // starts where its partner ends, where the side after that starts.
+        // Elsewhere a search of the start keys finds the place.
+        let mut firsts: Vec<usize> = Vec::new();
+        bytes.reserve(&mut firsts, n)?;
+        firsts.resize(n, usize::MAX);
+        for (place, &(from, a)) in kept.iter().enumerate() {
+            firsts[a] = match place.checked_sub(1).map(|before| kept[before]) {
+                Some((key, side)) if key == from => firsts[side],
+                _ => place,
+            };
+        }
+        for &(r, f) in &pairs {
+            firsts[r] = firsts[next[f]];
+            firsts[f] = firsts[next[r]];
         }
         let mut used: Vec<bool> = Vec::new();
-        bytes.reserve(&mut used, links.len())?;
-        used.resize(links.len(), false);
+        bytes.reserve(&mut used, kept.len())?;
+        used.resize(kept.len(), false);
         let mut points = Vec::new();
         let mut starts = Vec::new();
-        bytes.reserve(&mut points, links.len())?;
-        for first in 0..links.len() {
+        bytes.reserve(&mut points, kept.len())?;
+        for first in 0..kept.len() {
             if used[first] {
                 continue;
             }
             bytes.reserve_capacity(&mut starts, 1)?;
             starts.push(points.len());
-            let origin = links[first].from;
+            let origin = kept[first].0;
             let mut current = first;
             loop {
                 used[current] = true;
-                points.push(links[current].a);
-                let next = links[current].to;
-                if next == origin {
+                let a = kept[current].1;
+                points.push(self.points[a]);
+                let end = keys[next[a]];
+                if end == origin {
                     break;
                 }
-                let Some(found) = (successors[current]..links.len())
-                    .take_while(|&i| links[i].from == next)
+                // The first unused side that starts at the end continues
+                // the contour.
+                let successors = match firsts[next[a]] {
+                    usize::MAX => kept.partition_point(|&(from, _)| from < end),
+                    place => place,
+                };
+                let Some(found) = (successors..kept.len())
+                    .take_while(|&i| kept[i].0 == end)
                     .find(|&i| !used[i])
                 else {
                     return Ok(None);
@@ -748,14 +743,15 @@ impl Polygon {
     }
 }
 
-/// The sides, as their start keys and first points' indices, that no side of
-/// opposite direction cancels: of the sides with one undirected key, as many
+/// The sides that no side of opposite direction cancels, with the pairs that
+/// cancel appended to `pairs`: of the sides with one undirected key, as many
 /// reversed as forward ones cancel in pairs.
 fn uncancelled(
     keys: &[(i64, i64)],
     next: &[usize],
+    pairs: &mut Vec<(usize, usize)>,
     bytes: &mut Meter,
-) -> Result<Vec<((i64, i64), usize)>> {
+) -> Result<Vec<Kept>> {
     let undirected = |a: usize| {
         let (from, to) = (keys[a], keys[next[a]]);
         (from.min(to), from.max(to), from <= to)
@@ -793,6 +789,8 @@ fn uncancelled(
         for group in run.chunk_by(|(e, _), (g, _)| (e.0, e.1) == (g.0, g.1)) {
             let reversed = group.iter().filter(|(e, _)| !e.2).count();
             let cancelled = reversed.min(group.len() - reversed);
+            bytes.reserve_capacity(pairs, cancelled)?;
+            pairs.extend((0..cancelled).map(|i| (group[i].1, group[reversed + i].1)));
             let rest = group[cancelled..reversed]
                 .iter()
                 .chain(&group[reversed + cancelled..]);
@@ -802,17 +800,48 @@ fn uncancelled(
     Ok(kept)
 }
 
+/// Orders the `kept` sides, by start key and index, that share a start as
+/// sorting their keyed values by undirected key and then by start leaves
+/// them; the sides elsewhere keep their places.
+fn shared_order(
+    kept: &mut [Kept],
+    (keys, next): (&[(i64, i64)], &[usize]),
+    bytes: &mut Meter,
+) -> Result<()> {
+    let mut links: Vec<Keyed> = Vec::new();
+    bytes.reserve(&mut links, kept.len())?;
+    links.extend(kept.iter().map(|&(from, side)| {
+        let to = keys[next[side]];
+        Keyed {
+            lo: from.min(to),
+            hi: from.max(to),
+            forward: from <= to,
+            from,
+            side,
+            _size: [0; 3],
+        }
+    }));
+    // Sides with equal undirected keys and directions are equal.
+    links.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+    links.sort_unstable_by_key(|e| e.from);
+    for (place, e) in kept.iter_mut().zip(&links) {
+        place.1 = e.side;
+    }
+    Ok(())
+}
+
 /// A kept edge keyed for relinking: its ends' integer keys, undirected and
-/// directed, and its first end. Edges that share a start take the order an
-/// unstable sort of these values gives them, which depends on their size.
+/// by start, and its side. Edges that share a start take the order an
+/// unstable sort of these values gives them, which depends on their size:
+/// the 88 bytes they had when they carried their end key and start point.
 #[derive(Debug, Clone, Copy)]
 struct Keyed {
     lo: (i64, i64),
     hi: (i64, i64),
     forward: bool,
     from: (i64, i64),
-    to: (i64, i64),
-    a: Point,
+    side: usize,
+    _size: [u64; 3],
 }
 
 /// A hash of an undirected edge key: equal keys have equal fingerprints.
@@ -830,6 +859,9 @@ fn fingerprint(lo: (i64, i64), hi: (i64, i64)) -> u64 {
 
 /// An edge's undirected key and whether it runs from its lower end.
 type Undirected = ((i64, i64), (i64, i64), bool);
+
+/// A side kept for relinking: its start key and its first point's index.
+type Kept = ((i64, i64), usize);
 
 /// The total order of f64 as an integer: equal keys exactly for equal bits.
 #[expect(
