@@ -194,7 +194,7 @@ fn relationship_name(relationship: Relationship<'_>) -> Option<&[u8]> {
     })
 }
 
-fn blob(out: &mut Writer, value: &[u8]) -> Result<()> {
+pub(super) fn blob(out: &mut Writer, value: &[u8]) -> Result<()> {
     out.count(value.len())?;
     out.push(value)
 }
@@ -211,7 +211,7 @@ pub(super) fn text(out: &mut Writer, value: Option<&str>) -> Result<()> {
     bytes(out, value.map(str::as_bytes))
 }
 
-fn object(out: &mut Writer, value: Option<ObjectId>) -> Result<()> {
+pub(super) fn object(out: &mut Writer, value: Option<ObjectId>) -> Result<()> {
     out.flag(value.is_some())?;
     if let Some(value) = value {
         out.object(value)?;

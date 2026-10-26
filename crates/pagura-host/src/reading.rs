@@ -4,6 +4,9 @@
 //! frame encoder sends without copying.
 
 mod annotations;
+mod extended;
+pub(crate) use extended::service;
+pub use extended::{FileSelection, ServiceRequest};
 mod navigation;
 mod services;
 mod text;
@@ -106,6 +109,13 @@ impl Search<'_> {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
+    /// Exact scoped document-service operation (1.12).
+    Service {
+        /// Session-local handle.
+        document: Field<u32>,
+        /// Bounded, typed source selection.
+        request: ServiceRequest,
+    },
     /// Reading-order page text and selection geometry.
     Text(PageRef),
     /// A resumable search window.
@@ -170,6 +180,7 @@ impl Request<'_> {
     /// The request's kind byte.
     pub const fn kind(&self) -> RequestKind {
         match self {
+            Self::Service { request, .. } => request.kind(),
             Self::Text(_) => RequestKind::PageText,
             Self::Search(_) => RequestKind::Search,
             Self::Links(_) => RequestKind::Links,

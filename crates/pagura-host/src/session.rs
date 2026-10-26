@@ -150,6 +150,9 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         let version = self.require(request.kind().since())?;
         match request {
+            Request::Reauthenticate { document, password } => {
+                self.documents.reauthenticate(document, password)
+            }
             Request::Hello(_) => Ok(Response::Hello(version)),
             Request::Open {
                 bytes,
@@ -204,6 +207,9 @@ impl Session {
     fn reading(&mut self, request: reading::Request<'_>) -> Result<reading::Response> {
         let cap = self.config.session.reading_response_bytes;
         match request {
+            reading::Request::Service { document, request } => {
+                reading::service(self.documents.document(document)?, request, cap)
+            }
             reading::Request::Text(page) => {
                 let text = self.documents.text(page)?;
                 reading::page_text(&text, cap)

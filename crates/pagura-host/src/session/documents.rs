@@ -53,20 +53,49 @@ impl Documents {
         recovery: Recovery,
         password: &[u8],
     ) -> Result<Response> {
-        let retained = self
-            .source_bytes
-            .checked_add(bytes.len())
-            .filter(|&size| size <= self.limits.total_source_bytes)
-            .ok_or(Error::limit("session source byte budget exceeded"))?;
-        if self.slots.len() >= self.limits.max_documents || self.next_handle == u32::MAX {
-            return Err(Error::limit("session document handle budget exceeded"));
-        }
+        self.admit(bytes.len())?;
         let options = OpenOptions {
             limits: self.engine,
             recovery,
             password: password.to_vec(),
         };
         let document = Document::open(bytes, &options)?;
+        self.insert(document)
+            .map(|(document, pages)| Response::Open { document, pages })
+    }
+
+    pub(super) fn reauthenticate(
+        &mut self,
+        handle: Field<u32>,
+        password: &[u8],
+    ) -> Result<Response> {
+        // Preflight retained source/handle budgets before opening the snapshot.
+        self.admit(self.document(handle)?.original_bytes().len())?;
+        let document = self.document(handle)?.reauthenticate(password)?;
+        let (document, pages) = self.insert(document)?;
+        let mut out = crate::wire::Writer::new(8);
+        out.u32(document)?;
+        out.u32(pages)?;
+        Ok(Response::Reading(crate::reading::Response::new(
+            crate::protocol::ResponseKind::Reauthenticate,
+            out,
+        )))
+    }
+
+    fn admit(&self, length: usize) -> Result<usize> {
+        let retained = self
+            .source_bytes
+            .checked_add(length)
+            .filter(|&size| size <= self.limits.total_source_bytes)
+            .ok_or(Error::limit("session source byte budget exceeded"))?;
+        if self.slots.len() >= self.limits.max_documents || self.next_handle == u32::MAX {
+            return Err(Error::limit("session document handle budget exceeded"));
+        }
+        Ok(retained)
+    }
+
+    fn insert(&mut self, document: Document) -> Result<(u32, u32)> {
+        let retained = self.admit(document.original_bytes().len())?;
         let pages = u32::try_from(document.page_count()?)
             .map_err(|_| Error::limit("page count exceeds protocol range"))?;
         let handle = self.next_handle;
@@ -86,10 +115,7 @@ impl Documents {
         );
         self.next_handle += 1;
         self.source_bytes = retained;
-        Ok(Response::Open {
-            document: handle,
-            pages,
-        })
+        Ok((handle, pages))
     }
 
     pub(super) fn close(&mut self, handle: Field<u32>) -> Result<Response> {

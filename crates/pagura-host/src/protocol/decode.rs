@@ -17,6 +17,22 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
     let kind: RequestKind = reader.code()?;
     let id = reader.u32()?;
     let request = match kind {
+        RequestKind::Reauthenticate => Request::Reauthenticate {
+            document: reader.field(Reader::u32)?,
+            password: reader.blob(limits.string_bytes)?.get(),
+        },
+        RequestKind::Files
+        | RequestKind::FileBytes
+        | RequestKind::FileCheck
+        | RequestKind::ObjectMetadata
+        | RequestKind::ObjectMetadataBytes
+        | RequestKind::Collection
+        | RequestKind::Images
+        | RequestKind::ImageBytes
+        | RequestKind::Thumbnail => Request::Reading(reading::Request::Service {
+            document: reader.field(Reader::u32)?,
+            request: reader.service(kind)?,
+        }),
         RequestKind::Hello => Request::Hello(reader.field(Reader::u32)?),
         RequestKind::Open => {
             let flags = reader.field(Reader::u8)?;
@@ -192,6 +208,81 @@ impl<'a> Reader<'a> {
         }
         let offset = self.offset;
         Ok(Field::new(self.take(count)?, offset))
+    }
+
+    fn object(&mut self) -> Result<pagura::ObjectId> {
+        Ok(pagura::ObjectId::new(
+            self.u32()?,
+            u16::from_le_bytes(self.array()?),
+        ))
+    }
+
+    fn index(&mut self) -> Result<usize> {
+        self.field(Self::u32)?.index()
+    }
+
+    fn owner(&mut self) -> Result<pagura::metadata::MetadataOwner> {
+        use super::MetadataOwnerCode;
+        use pagura::metadata::MetadataOwner;
+        Ok(match self.code()? {
+            MetadataOwnerCode::Document => MetadataOwner::Document,
+            MetadataOwnerCode::Page => MetadataOwner::Page(self.index()?),
+            MetadataOwnerCode::Object => MetadataOwner::Object(self.object()?),
+        })
+    }
+
+    fn file_scope(&mut self) -> Result<pagura::files::FileScope> {
+        use super::FileScopeCode;
+        use pagura::files::FileScope;
+        Ok(match self.code()? {
+            FileScopeCode::Catalog => FileScope::Catalog,
+            FileScopeCode::Associated => FileScope::Associated,
+            FileScopeCode::PageAssociated => FileScope::PageAssociated(self.index()?),
+            FileScopeCode::ObjectAssociated => FileScope::ObjectAssociated(self.object()?),
+            FileScopeCode::PageAnnotations => FileScope::PageAnnotations(self.index()?),
+        })
+    }
+
+    fn file_selection(&mut self) -> Result<reading::FileSelection> {
+        let scope = self.file_scope()?;
+        let index = self.index()?;
+        let key: super::AttachmentKey = self.code()?;
+        let payload = match self.code()? {
+            super::PayloadKind::Embedded => pagura::files::FilePayload::Embedded(key.pdf_name()),
+            super::PayloadKind::Related => pagura::files::FilePayload::Related {
+                key: key.pdf_name(),
+                index: self.index()?,
+            },
+        };
+        Ok(reading::FileSelection {
+            scope,
+            index,
+            payload,
+        })
+    }
+
+    fn service(&mut self, kind: RequestKind) -> Result<reading::ServiceRequest> {
+        use reading::ServiceRequest;
+        Ok(match kind {
+            RequestKind::Files => ServiceRequest::Files(self.file_scope()?),
+            RequestKind::FileBytes => ServiceRequest::FileBytes(self.file_selection()?),
+            RequestKind::FileCheck => ServiceRequest::FileCheck(self.file_selection()?),
+            RequestKind::ObjectMetadata => ServiceRequest::Metadata(self.owner()?),
+            RequestKind::ObjectMetadataBytes => ServiceRequest::MetadataBytes(self.owner()?),
+            RequestKind::Collection => ServiceRequest::Collection,
+            RequestKind::Images => ServiceRequest::Images(self.owner()?),
+            RequestKind::Thumbnail => ServiceRequest::Thumbnail(self.owner()?),
+            RequestKind::ImageBytes => ServiceRequest::ImageBytes {
+                object: self.object()?,
+                thumbnail: self.code::<super::ImageAssetCode>()?
+                    == super::ImageAssetCode::Thumbnail,
+                mode: match self.code()? {
+                    super::ImageTransferCode::Stored => pagura::images::ImageTransferMode::Stored,
+                    super::ImageTransferCode::Encoded => pagura::images::ImageTransferMode::Encoded,
+                },
+            },
+            _ => return Err(self.error("not an extended service request")),
+        })
     }
 
     fn page(&mut self) -> Result<PageRef> {

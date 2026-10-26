@@ -15,6 +15,7 @@ export const VERSION_1_8 = Version.V1_8;
 export const VERSION_1_9 = Version.V1_9;
 export const VERSION_1_10 = Version.V1_10;
 export const VERSION_1_11 = Version.V1_11;
+export const VERSION_1_12 = Version.V1_12;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -110,6 +111,7 @@ export function decodeResponse(body) {
     case ResponseKind.PageText: case ResponseKind.Search: case ResponseKind.Links: case ResponseKind.Outlines: case ResponseKind.Labels: case ResponseKind.ReadingStats: case ResponseKind.Bounds: value = decodeReading(kind, r); break;
     case ResponseKind.FormFields: value = decodeFields(r); break;
     case ResponseKind.Metadata: case ResponseKind.Attachments: case ResponseKind.MetadataBytes: case ResponseKind.AttachmentBytes: case ResponseKind.AttachmentCheck:
+    case ResponseKind.Files: case ResponseKind.FileBytes: case ResponseKind.FileCheck: case ResponseKind.ObjectMetadata: case ResponseKind.ObjectMetadataBytes: case ResponseKind.Collection: case ResponseKind.Images: case ResponseKind.ImageBytes: case ResponseKind.Reauthenticate: case ResponseKind.Thumbnail:
     case ResponseKind.PageAttachments: case ResponseKind.PageAttachmentBytes: case ResponseKind.PageAttachmentCheck: value = decodeDocumentService(kind, r); break;
     case ResponseKind.FormStyles: value = decodeStyles(r); break;
     case ResponseKind.FormWidgets: value = decodeWidgets(r); break;
@@ -157,7 +159,7 @@ export function encodeRequest(kind, id, values = {}) {
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
   const reading = kind >= RequestKind.PageText && kind <= RequestKind.Bounds;
-  if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes || kind >= RequestKind.AttachmentCheck && kind <= RequestKind.PageAttachmentCheck) {
+  if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes || kind >= RequestKind.AttachmentCheck && kind <= RequestKind.Thumbnail) {
     const payload = reading ? encodeReading(kind, values) : encodeDocumentService(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
     view.setUint32(0, payload.length + 5, true); bytes[4] = kind; view.setUint32(5, id, true); bytes.set(payload, 9); return bytes;
   }

@@ -1,6 +1,7 @@
 //! CLI access to inert document services through the public facade.
 
 mod annotations;
+pub(crate) mod extended;
 
 use crate::{args::Source, failure::Failure, input::write_new, json};
 use pagura::files::{EmbeddedFile, FileSpecification, ParameterCheck, Relationship};

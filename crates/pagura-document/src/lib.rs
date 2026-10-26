@@ -17,6 +17,7 @@ pub mod features;
 pub mod files;
 pub mod forms;
 mod history;
+pub mod images;
 mod load;
 mod memory;
 pub mod metadata;

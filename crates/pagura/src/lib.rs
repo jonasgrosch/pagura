@@ -91,6 +91,8 @@ pub use pagura_core::{
 pub use pagura_document::files;
 /// Interactive form source views and in-memory filling (12.7). Actions are inert data.
 pub use pagura_document::forms;
+/// Source image assets and stored thumbnails, with explicit byte-transfer semantics.
+pub use pagura_document::images;
 /// Document information, language and inert metadata-stream access (14.3).
 pub use pagura_document::metadata;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).

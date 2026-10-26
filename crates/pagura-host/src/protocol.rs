@@ -13,9 +13,10 @@ mod encode;
 mod javascript;
 
 pub use codes::{
-    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode,
-    OpenFlags, OutlineStyle, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags,
-    TileStatus, Version,
+    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FileScopeCode,
+    FitCode, ImageAssetCode, ImageTransferCode, MetadataOwnerCode, OpenFlags, OutlineStyle,
+    PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus,
+    Version,
 };
 pub(crate) use decode::Reader;
 pub use decode::decode;
@@ -138,6 +139,13 @@ pub struct PngRequest {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
+    /// Reauthenticate a fresh snapshot without mutating the existing handle (1.12).
+    Reauthenticate {
+        /// Original immutable document handle.
+        document: Field<u32>,
+        /// Raw password bytes, bounded by string_bytes and never retained.
+        password: &'a [u8],
+    },
     /// Negotiate a version before accessing documents. The version is
     /// checked when the request is ordered.
     Hello(Field<u32>),
@@ -200,6 +208,7 @@ impl Request<'_> {
     pub const fn kind(&self) -> RequestKind {
         match self {
             Self::Hello(_) => RequestKind::Hello,
+            Self::Reauthenticate { .. } => RequestKind::Reauthenticate,
             Self::Open { .. } => RequestKind::Open,
             Self::PageInfo(_) => RequestKind::PageInfo,
             Self::RenderTile(_) => RequestKind::RenderTile,

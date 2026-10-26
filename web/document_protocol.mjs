@@ -1,3 +1,4 @@
+import { decodeExtended, encodeExtended } from './document_extended.mjs';
 import { AttachmentCheckStatus, AttachmentKey, MAX_ATTACHMENTS, MAX_READING_RESPONSE, RequestKind, ResponseKind } from './protocol_constants.mjs';
 
 function flag(r) { const value = r.u8(); if (value > 1) throw new Error('Invalid document-service flag'); return value === 1; }
@@ -24,6 +25,7 @@ function specification(r) {
 /** Protocol 1.8/1.10/1.11: strings are inert text, names are bytes, and sizes are exact BigInts. */
 export function decodeDocumentService(kind, r) {
   if (r.bytes.length > MAX_READING_RESPONSE + 5) throw new Error('Document-service response budget exceeded');
+  if (kind >= ResponseKind.Files && kind <= ResponseKind.Thumbnail && ![ResponseKind.FileBytes, ResponseKind.FileCheck].includes(kind)) return decodeExtended(kind, r, specification);
   if (kind === ResponseKind.Metadata) {
     const info = optional(r, () => {
       const value = { object: optional(r, () => r.object()) };
@@ -35,8 +37,8 @@ export function decodeDocumentService(kind, r) {
     return { info, language: optional(r, () => r.text()), metadataObject: optional(r, () => r.object()) };
   }
   if (kind === ResponseKind.MetadataBytes) return optional(r, () => blob(r));
-  if (kind === ResponseKind.AttachmentBytes || kind === ResponseKind.PageAttachmentBytes) return blob(r);
-  if (kind === ResponseKind.AttachmentCheck || kind === ResponseKind.PageAttachmentCheck) {
+  if (kind === ResponseKind.AttachmentBytes || kind === ResponseKind.PageAttachmentBytes || kind === ResponseKind.FileBytes) return blob(r);
+  if (kind === ResponseKind.AttachmentCheck || kind === ResponseKind.PageAttachmentCheck || kind === ResponseKind.FileCheck) {
     const observation = () => {
       const value = r.u8();
       if (!Object.values(AttachmentCheckStatus).includes(value)) throw new Error('Unknown attachment check status');
@@ -65,6 +67,7 @@ export function decodeDocumentService(kind, r) {
 }
 
 export function encodeDocumentService(kind, values) {
+  if (kind >= RequestKind.Files && kind <= RequestKind.Thumbnail) return encodeExtended(kind, values);
   const page = kind >= RequestKind.PageAttachments && kind <= RequestKind.PageAttachmentCheck;
   const selected = page ? kind !== RequestKind.PageAttachments : kind === RequestKind.AttachmentBytes || kind === RequestKind.AttachmentCheck;
   const indexOffset = page ? 8 : 4;

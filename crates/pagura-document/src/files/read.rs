@@ -78,6 +78,8 @@ pub(super) fn specification<'a>(
         volatile: false,
         identifiers: None,
         relationship: Relationship::Unspecified,
+        collection_item: Vec::new(),
+        encrypted_payload: None,
         embedded: Vec::new(),
         related: Vec::new(),
     };
@@ -122,6 +124,8 @@ pub(super) fn specification<'a>(
         }
     };
     result.identifiers = identifiers(context, dictionary, source)?;
+    result.collection_item = super::collection::items(context, dictionary, source)?;
+    result.encrypted_payload = super::collection::encrypted(context, dictionary, source)?;
     result.relationship = relationship(name(context, dictionary, b"AFRelationship", source)?);
     let embedded = context.present(dictionary, b"EF", source)?;
     let related = context.present(dictionary, b"RF", source)?;

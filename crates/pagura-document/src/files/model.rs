@@ -84,6 +84,10 @@ pub struct FileSpecification<'a> {
     pub identifiers: Option<[&'a [u8]; 2]>,
     /// Producer-declared association, defaulting to Unspecified.
     pub relationship: Relationship<'a>,
+    /// Custom collection data, with presentation prefixes kept separate.
+    pub collection_item: Vec<super::CollectionItem<'a>>,
+    /// Inert encrypted-payload declaration; no nested document is opened.
+    pub encrypted_payload: Option<super::EncryptedPayload<'a>>,
     /// EF entries, preserving each key even when several refer to one stream.
     pub embedded: Vec<EmbeddedFileEntry<'a>>,
     /// RF pairs, preserving their parent EF key and declared related-file name.

@@ -86,6 +86,8 @@ wire_codes! {
     V1_10 = 0x0001_000a,
     /// Page attachment annotation discovery and explicit payload operations.
     V1_11 = 0x0001_000b,
+    /// Scoped files, object metadata, collections, image transfer and reauthentication.
+    V1_12 = 0x0001_000c,
 }
 
 wire_codes! {
@@ -101,7 +103,7 @@ wire_codes! {
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_11;
+    pub const LATEST: Self = Self::V1_12;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -118,6 +120,7 @@ impl Version {
             Self::V1_9 => "PNG export requires protocol 1.9",
             Self::V1_10 => "attachment checks require protocol 1.10",
             Self::V1_11 => "page attachment operations require protocol 1.11",
+            Self::V1_12 => "extended document services require protocol 1.12",
         })
     }
 }
@@ -185,12 +188,42 @@ wire_codes! {
     PageAttachmentBytes = 29,
     /// Check the selected annotation attachment parameters (1.11).
     PageAttachmentCheck = 30,
+    /// Exact file collection and complete EF/RF declarations. (1.12).
+    Files = 31,
+    /// Exact scoped EF or RF payload bytes. (1.12).
+    FileBytes = 32,
+    /// Exact scoped EF or RF parameter comparisons. (1.12).
+    FileCheck = 33,
+    /// Metadata packet identity of an explicit owner. (1.12).
+    ObjectMetadata = 34,
+    /// Metadata packet bytes of an explicit owner. (1.12).
+    ObjectMetadataBytes = 35,
+    /// Portable collection declarations. (1.12).
+    Collection = 36,
+    /// Direct page image resources or one explicit image. (1.12).
+    Images = 37,
+    /// Stored or encoded image asset bytes. (1.12).
+    ImageBytes = 38,
+    /// Authenticate a new immutable snapshot. (1.12).
+    Reauthenticate = 39,
+    /// Stored thumbnail declaration of an explicit owner. (1.12).
+    Thumbnail = 40,
 }
 
 impl RequestKind {
     /// The first version that accepts this request.
     pub const fn since(self) -> Version {
         match self {
+            Self::Files
+            | Self::FileBytes
+            | Self::FileCheck
+            | Self::ObjectMetadata
+            | Self::ObjectMetadataBytes
+            | Self::Collection
+            | Self::Images
+            | Self::ImageBytes
+            | Self::Reauthenticate
+            | Self::Thumbnail => Version::V1_12,
             Self::Hello
             | Self::Open
             | Self::PageInfo
@@ -223,6 +256,17 @@ impl RequestKind {
     /// The kind of a successful response; failures are [`ResponseKind::Error`].
     pub const fn response(self) -> ResponseKind {
         match self {
+            Self::Files => ResponseKind::Files,
+            Self::FileBytes => ResponseKind::FileBytes,
+            Self::FileCheck => ResponseKind::FileCheck,
+            Self::ObjectMetadata => ResponseKind::ObjectMetadata,
+            Self::ObjectMetadataBytes => ResponseKind::ObjectMetadataBytes,
+            Self::Collection => ResponseKind::Collection,
+            Self::Images => ResponseKind::Images,
+            Self::ImageBytes => ResponseKind::ImageBytes,
+            Self::Reauthenticate => ResponseKind::Reauthenticate,
+            Self::Thumbnail => ResponseKind::Thumbnail,
+
             Self::Hello => ResponseKind::Hello,
             Self::Open => ResponseKind::Open,
             Self::PageInfo => ResponseKind::PageInfo,
@@ -320,6 +364,26 @@ wire_codes! {
     PageAttachmentBytes = 157,
     /// Page attachment parameter observations (1.11).
     PageAttachmentCheck = 158,
+    /// Exact file collection and complete EF/RF declarations. (1.12).
+    Files = 159,
+    /// Exact scoped EF or RF payload bytes. (1.12).
+    FileBytes = 160,
+    /// Exact scoped EF or RF parameter comparisons. (1.12).
+    FileCheck = 161,
+    /// Metadata packet identity of an explicit owner. (1.12).
+    ObjectMetadata = 162,
+    /// Metadata packet bytes of an explicit owner. (1.12).
+    ObjectMetadataBytes = 163,
+    /// Portable collection declarations. (1.12).
+    Collection = 164,
+    /// Direct page image resources or one explicit image. (1.12).
+    Images = 165,
+    /// Stored or encoded image asset bytes. (1.12).
+    ImageBytes = 166,
+    /// Authenticate a new immutable snapshot. (1.12).
+    Reauthenticate = 167,
+    /// Stored thumbnail declaration of an explicit owner. (1.12).
+    Thumbnail = 168,
     /// A structured failure.
     Error = 255,
 }
@@ -569,4 +633,57 @@ wire_codes! {
     White = 0,
     /// Retain straight alpha with transparent unpainted pixels.
     Transparent = 1,
+}
+
+wire_codes! {
+    /// File collection selectors (1.12).
+    pub enum FileScopeCode: u8, unknown = Error::syntax("unknown FileScopeCode code");
+    /// Catalog selection.
+    Catalog = 0,
+    /// Associated selection.
+    Associated = 1,
+    /// PageAssociated selection.
+    PageAssociated = 2,
+    /// ObjectAssociated selection.
+    ObjectAssociated = 3,
+    /// PageAnnotations selection.
+    PageAnnotations = 4,
+}
+
+wire_codes! {
+    /// Metadata and thumbnail owners (1.12).
+    pub enum MetadataOwnerCode: u8, unknown = Error::syntax("unknown MetadataOwnerCode code");
+    /// Document selection.
+    Document = 0,
+    /// Page selection.
+    Page = 1,
+    /// Object selection.
+    Object = 2,
+}
+
+wire_codes! {
+    /// File payload selectors (1.12).
+    pub enum PayloadKind: u8, unknown = Error::syntax("unknown PayloadKind code");
+    /// Embedded selection.
+    Embedded = 0,
+    /// Related selection.
+    Related = 1,
+}
+
+wire_codes! {
+    /// Image transfer modes (1.12).
+    pub enum ImageTransferCode: u8, unknown = Error::syntax("unknown ImageTransferCode code");
+    /// Stored selection.
+    Stored = 0,
+    /// Encoded selection.
+    Encoded = 1,
+}
+
+wire_codes! {
+    /// Image object selection (1.12).
+    pub enum ImageAssetCode: u8, unknown = Error::syntax("unknown ImageAssetCode code");
+    /// Image selection.
+    Image = 0,
+    /// Thumbnail selection.
+    Thumbnail = 1,
 }

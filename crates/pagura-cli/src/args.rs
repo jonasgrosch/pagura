@@ -1,6 +1,8 @@
 //! Command-line parsing: the arguments become a typed [`Command`], or a
 //! [`UsageError`] that exits with status 2 before any input is read.
 
+pub(crate) mod services;
+
 use pagura::{OverprintPreview, Recovery, RenderOptions, Rgba8};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -103,6 +105,11 @@ const BENCH_COUNTS: RangeInclusive<u32> = 1..=100_000;
 /// What to do.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Command {
+    /// Scoped document read/extract services.
+    Service {
+        source: Source,
+        request: services::ServiceCommand,
+    },
     /// Print [`USAGE`] and [`HELP`].
     Help,
     /// Print the version.
@@ -270,19 +277,27 @@ enum Flag {
     Overprint,
     MaxPages,
     Page,
+    Object,
+    Associated,
+    Related,
+    Stored,
     Format,
     Transparent,
     Version,
 }
 
 impl Flag {
-    const ALL: [Self; 9] = [
+    const ALL: [Self; 13] = [
         Self::Strict,
         Self::Timings,
         Self::Password,
         Self::Overprint,
         Self::MaxPages,
         Self::Page,
+        Self::Object,
+        Self::Associated,
+        Self::Related,
+        Self::Stored,
         Self::Format,
         Self::Transparent,
         Self::Version,
@@ -296,6 +311,10 @@ impl Flag {
             Self::Overprint => "--overprint",
             Self::MaxPages => "--max-pages",
             Self::Page => "--page",
+            Self::Object => "--object",
+            Self::Associated => "--associated",
+            Self::Related => "--related",
+            Self::Stored => "--stored",
             Self::Format => "--format",
             Self::Transparent => "--transparent",
             Self::Version => "--version",
@@ -312,6 +331,8 @@ struct Options {
     max_pages: Option<usize>,
     page: Option<usize>,
     format: ImageFormat,
+    object: Option<pagura::ObjectId>,
+    related: Option<usize>,
 }
 
 impl Options {
@@ -346,6 +367,17 @@ impl Options {
             }
             Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
             Flag::Page => self.page = Some(number(&value()?, "--page")?),
+            Flag::Related => self.related = Some(number(&value()?, "--related")?),
+            Flag::Object => {
+                let value = value()?;
+                let (number, generation) = text(&value, "--object")?
+                    .split_once(':')
+                    .ok_or_else(|| usage("--object requires NUMBER:GENERATION"))?;
+                self.object = Some(pagura::ObjectId::new(
+                    super_number(number, "object number")?,
+                    super_number(generation, "object generation")?,
+                ));
+            }
             Flag::Format => {
                 self.format = match value()?.to_str() {
                     Some("ppm") => ImageFormat::Ppm,
@@ -353,7 +385,12 @@ impl Options {
                     _ => return Err(usage("--format must be ppm or png")),
                 };
             }
-            Flag::Strict | Flag::Timings | Flag::Transparent | Flag::Version => {}
+            Flag::Strict
+            | Flag::Timings
+            | Flag::Transparent
+            | Flag::Version
+            | Flag::Associated
+            | Flag::Stored => {}
         }
         self.given.push(flag);
         Ok(())
@@ -457,6 +494,9 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
 /// The command `name` with its `operands`, if it takes the given options.
 fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Command, UsageError> {
     use Flag::{MaxPages, Overprint, Password, Strict};
+    if let Some(command) = services::command(name, operands, options)? {
+        return Ok(command);
+    }
     if let Some(command) = document_command(name, operands, options)? {
         return Ok(command);
     }
@@ -659,3 +699,7 @@ fn dpi(value: Option<&OsString>) -> Result<f64, UsageError> {
 
 #[cfg(test)]
 mod tests;
+
+fn super_number<T: FromStr>(value: &str, label: &str) -> Result<T, UsageError> {
+    value.parse().map_err(|_| usage(format!("invalid {label}")))
+}

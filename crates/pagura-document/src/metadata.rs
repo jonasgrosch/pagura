@@ -224,3 +224,36 @@ fn metadata<'a>(
         object,
     }))
 }
+
+/// Owner of a metadata stream. Page selection uses an exact zero-based ordinal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MetadataOwner {
+    /// The catalog's Metadata entry.
+    Document,
+    /// The selected page's Metadata entry.
+    Page(usize),
+    /// The selected object dictionary's Metadata entry.
+    Object(ObjectId),
+}
+
+impl Document {
+    /// Reads a metadata stream from an explicitly selected owner (14.3.2).
+    /// The packet remains lazy, inert bytes; Info/XMP reconciliation is not implied.
+    ///
+    /// # Errors
+    /// As [`Self::metadata`], including absent page/object identities and wrong owner types.
+    pub fn metadata_for(&self, owner: MetadataOwner) -> Result<Option<MetadataStream<'_>>> {
+        match owner {
+            MetadataOwner::Document => self.metadata(),
+            MetadataOwner::Page(index) => self.object_metadata(self.page(index)?.dictionary()),
+            MetadataOwner::Object(id) => {
+                let object = self.object(id)?;
+                let dictionary = object.dictionary().ok_or_else(|| {
+                    Error::syntax("metadata owner must be a dictionary").in_object(id)
+                })?;
+                self.object_metadata(dictionary)
+            }
+        }
+    }
+}

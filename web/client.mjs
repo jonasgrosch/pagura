@@ -1,5 +1,5 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_11 } from './protocol.mjs';
+import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_12 } from './protocol.mjs';
 import { PngBackground, RequestKind } from './protocol_constants.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
@@ -71,13 +71,23 @@ export class SessionClient {
     this.tail = result.then(() => {}, () => {}).finally(() => { this.queued--; });
     return result;
   }
-  async hello(version = VERSION_1_11) {
+  async hello(version = VERSION_1_12) {
     const result = await this.request(1, { version });
     if (result.version !== version) { const error = new Error('Unsupported host protocol version'); this.fail(error); throw error; }
     this.version = version;
     return result;
   }
   open(bytes, recovery = 1, password = new Uint8Array()) { return this.request(2, { bytes, recovery, password }); }
+  files(document, scope) { return this.request(RequestKind.Files, { document, scope }); }
+  fileBytes(document, scope, index, key, related = null) { return this.request(RequestKind.FileBytes, { document, scope, index, key, related }); }
+  fileCheck(document, scope, index, key, related = null) { return this.request(RequestKind.FileCheck, { document, scope, index, key, related }); }
+  metadataFor(document, owner) { return this.request(RequestKind.ObjectMetadata, { document, owner }); }
+  metadataBytesFor(document, owner) { return this.request(RequestKind.ObjectMetadataBytes, { document, owner }); }
+  collection(document) { return this.request(RequestKind.Collection, { document }); }
+  images(document, owner) { return this.request(RequestKind.Images, { document, owner }); }
+  thumbnail(document, owner) { return this.request(RequestKind.Thumbnail, { document, owner }); }
+  imageBytes(document, object, mode, thumbnail = false) { return this.request(RequestKind.ImageBytes, { document, object, mode, thumbnail }); }
+  reauthenticate(document, password) { return this.request(RequestKind.Reauthenticate, { document, password }); }
   metadata(document) { return this.request(RequestKind.Metadata, { document }); }
   attachments(document) { return this.request(RequestKind.Attachments, { document }); }
   metadataBytes(document) { return this.request(RequestKind.MetadataBytes, { document }); }

@@ -1,9 +1,10 @@
 //! The wire constants as an ECMAScript module (`web/protocol_constants.mjs`).
 
 use super::{
-    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode,
-    OpenFlags, OutlineStyle, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags,
-    TileStatus, Version,
+    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FileScopeCode,
+    FitCode, ImageAssetCode, ImageTransferCode, MetadataOwnerCode, OpenFlags, OutlineStyle,
+    PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus,
+    Version,
 };
 use crate::SessionLimits;
 use crate::editing;
@@ -74,7 +75,7 @@ fn write_module(out: &mut String) -> fmt::Result {
     Ok(())
 }
 
-fn tables() -> [Item<Vec<(&'static str, String)>>; 15] {
+fn tables() -> [Item<Vec<(&'static str, String)>>; 20] {
     let versions = Version::ALL
         .iter()
         .map(|version| (version.name(), format!("{:#010x}", version.code())))
@@ -143,6 +144,31 @@ fn tables() -> [Item<Vec<(&'static str, String)>>; 15] {
             flags!(SearchFlags),
         ),
         ("OutlineStyle", "Outline style bits.", flags!(OutlineStyle)),
+        (
+            "FileScopeCode",
+            "File collection selectors (1.12).",
+            codes!(FileScopeCode),
+        ),
+        (
+            "MetadataOwnerCode",
+            "Metadata and thumbnail owners (1.12).",
+            codes!(MetadataOwnerCode),
+        ),
+        (
+            "PayloadKind",
+            "File payload selectors (1.12).",
+            codes!(PayloadKind),
+        ),
+        (
+            "ImageTransferCode",
+            "Image transfer modes (1.12).",
+            codes!(ImageTransferCode),
+        ),
+        (
+            "ImageAssetCode",
+            "Image object selection (1.12).",
+            codes!(ImageAssetCode),
+        ),
     ]
 }
 

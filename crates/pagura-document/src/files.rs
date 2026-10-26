@@ -10,16 +10,23 @@
 
 mod annotations;
 mod checks;
+mod collection;
 mod model;
 mod read;
+mod selection;
 mod stream;
 
 pub use annotations::AttachmentAnnotation;
 pub use checks::{FileParameterChecks, ParameterCheck};
+pub use collection::{
+    Collection, CollectionField, CollectionFieldKind, CollectionItem, CollectionSort,
+    CollectionValue, CollectionView, EncryptedPayload,
+};
 pub use model::{
     EmbeddedFile, EmbeddedFileEntry, FileName, FileNames, FileParameters, FileSpecification,
     NamedFile, RelatedFile, Relationship,
 };
+pub use selection::{FilePayload, FileRecord, FileScope};
 
 use crate::navigation::trees::NameTree;
 use crate::view::{Context, Source};
