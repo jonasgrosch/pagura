@@ -460,6 +460,15 @@ limits; UI tests cover inert labels, failures and races. Hosted checks are pendi
 Object-local metadata, CLI/host AF/RF selection, attachment-only viewer password
 reauthentication, streaming, validation and writes remain open.
 
+**PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
+existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are
+consumed and converted to straight RGBA in place. CLI `render`/`convert` accepts
+`--format png` and optional `--transparent`; default PPM behavior is preserved.
+Independent Python decoding checks pixels, CRC/chunk framing and zlib completion;
+API tests cover caller budgets and in-place conversion. Hosted runtime checks
+are pending. This is whole-buffer output; incremental PNG/DEFLATE, host/viewer
+export, persistent jobs, ancillary color metadata and backpressure remain open.
+
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose
 lossless original-image extraction where valid and decoded-image export otherwise,

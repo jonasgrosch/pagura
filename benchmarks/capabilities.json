@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "48c355290299272e087d78e6fb75ce3e117e7637",
+  "audited_revision": "0288c02118232228254c1a26af2856b443a24be4",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -12,6 +12,7 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
+    "corpus/manifests/classic.json": "0929560398e6541b7e30966479633fae180eefe4eeea1453d4adbf5da57aaf20",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
     "corpus/manifests/files.json": "3a132db7a633c391f04e728844203b52e9305d7e8a0609fd1ccbdba9690eccbf",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
@@ -30,9 +31,9 @@
     "crates/pagura-appearance/src/form/style.rs": "20e35fa393dede64c02a299c88984a93d35de65292e1b75f3eb518d3ab333db1",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
-    "crates/pagura-cli/src/args.rs": "70bf6b7008c5ff5307f8d77e9e943155ed9baa276ffaf34c8748770e51186bd9",
-    "crates/pagura-cli/src/args/tests.rs": "cc61ba1fa32135ada5f108006ee9a35a46f01a8f2796e55a718120e69936f6c4",
-    "crates/pagura-cli/src/commands.rs": "57a3e62e9ac39089cdd4dfb8f67359c6e37145991a8ea2e54d1ab998ae70e3e0",
+    "crates/pagura-cli/src/args.rs": "fc3566fc06c5659f42113a72a010ffc41d755624a1dcf8688d9654356ee9a097",
+    "crates/pagura-cli/src/args/tests.rs": "ab08f1a98d85ae3e421793a9977bd7f0b6ac151af399cdde16dff0bd1955f904",
+    "crates/pagura-cli/src/commands.rs": "567dbafb5f71983d9d9bbc719ac5cd97cee279fefbb3c5a4c1c9364b16ac5c26",
     "crates/pagura-cli/src/document_services.rs": "b0a5155fd22cbe4a59fa831369ca4382b32c9115d9d79e757f004e4f33274901",
     "crates/pagura-cli/src/json.rs": "737c87970f69f2a8515b707758e3e88a4359d915c90da0d158b6e19fe00d0183",
     "crates/pagura-cli/src/main.rs": "03cebde00b13b62ed2199d776cc475e38da6d3d3d8d8732b549b57015de6398a",
@@ -152,6 +153,7 @@
     "crates/pagura-pki/src/validation/revocation/mod.rs": "56cd5b248aea2586f0da10540f165e2dc3393aa32ade55f52bc7f0ddba2d789e",
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
+    "crates/pagura-raster/src/pixmap.rs": "271183e63b7b4504e8f46b24c73061c3ccec03fa24cf15f941bd912c46ee8d65",
     "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
@@ -165,12 +167,14 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "6f4d1fba78aad9ee2d6725a51bf2d3e31c984a484536e58926473f8688563cd8",
+    "crates/pagura/src/lib.rs": "769ce294b4807bac6398f2f6b8c5b193efdc38dbf4c711defe217165ce78aeec",
+    "crates/pagura/src/png.rs": "68a9faf63cc1bb48d720d690ac4e43541ec3a466cf3eb009659498a9ee087a2c",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e2e02c9095b5fb66e6411f4ada0bdbe524bfb574049ce60997889f3f89f8b577",
     "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
+    "crates/pagura/tests/api/png.rs": "a9a4cc53373f76cfd16c18c2b5424ee2d1b2aa2577f51019b6b8faa503e075d6",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
     "crates/pagura/tests/api/text.rs": "de81815b47c165743e9e225f1b4b52bd078fad0024b6ef9921e6db41c47eda59",
@@ -197,7 +201,7 @@
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
-    "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
+    "references/requirements/render.json": "94b75b7cfff2065a5a4e9cc2782eb9c5507bb0cf9a437a0738c6ef3e92a8f2ce",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
@@ -208,6 +212,7 @@
     "tools/fixturegen/files.py": "6cd188ad91852f555d6d9cb250086de5f48758d77f8bad0d082e932368dfd306",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
+    "tools/test_png_export.py": "51cfbc6f9ef94f648d507e8d04cca65a3bf0a09909e75acf58eb24983db15f47",
     "web/client.mjs": "8007939f911b2d015409725e28aef98e6f8406b71b1673df359a347193f593e4",
     "web/document_protocol.mjs": "89456c8d1914cb3889ca3b0a989f07bc1a5542d4d761dd61c069b57030816d1c",
     "web/document_services.mjs": "3ea5c5abd4b62eb5c4ec4bccafbd3c5890abd9e6a9dc663afcdd87432fb8da7f",
@@ -1181,32 +1186,50 @@
       "operation": "export",
       "feature": "PNG/zlib output integration",
       "owners": [
+        "pagura",
         "pagura-codec",
+        "pagura-raster",
         "pagura-cli",
         "pagura-host"
       ],
       "surfaces": {
         "library": "partial",
-        "cli": "missing",
+        "cli": "partial",
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Whole-buffer PNG and DEFLATE encoders in the codec crate.",
-      "remaining": "Facade/CLI PNG output and incremental PNG/DEFLATE; extend existing algorithms and band output.",
+      "implemented": "Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default.",
+      "remaining": "Incremental PNG/DEFLATE, persistent output jobs, host/viewer export, async backpressure and ancillary color/profile metadata. Whole-buffer output is not streaming; broader export-format parity remains open.",
       "sources": [
         "crates/pagura-codec/src/png.rs",
         "crates/pagura-codec/src/flate/encode.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura/src/png.rs",
+        "crates/pagura-raster/src/pixmap.rs",
+        "crates/pagura-cli/src/commands.rs"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura/tests/api/png.rs",
+        "crates/pagura-cli/src/args/tests.rs",
+        "tools/test_png_export.py"
+      ],
       "requirements": [
         "encode-flate",
         "encode-png",
-        "filter-flate"
+        "filter-flate",
+        "png-export"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "classic/blank",
+        "classic/rectangle",
+        "classic/graphics-state",
+        "classic/negative-rectangle",
+        "classic/alpha-unsupported",
+        "classic/two-pages",
+        "classic/pattern-unsupported"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

@@ -1,4 +1,4 @@
-# Document-service CLI
+# CLI commands
 
 `pagura --help` lists all commands. These commands expose the library's metadata
 and catalog attachment views without altering the PDF:
@@ -72,7 +72,9 @@ overwritten. Output IO failures are reported and may leave a partial new file.
 These commands currently cover catalog metadata and EmbeddedFiles only. The
 library's object-local metadata, AF arrays and RF related files are not CLI
 selection targets yet. Annotation attachment discovery, streaming extraction,
-checksums, editing and host/viewer integration remain in D02.
+checksums and editing remain in D02. Protocol 1.8 and the viewer provide separate
+bounded catalog reads and explicit downloads; their selection scope has the same
+AF/RF and annotation-discovery limits.
 
 ## Inspection geometry (schema 2)
 
@@ -85,3 +87,36 @@ These are source geometry values, without pixel rounding. For displayed sizes,
 subtract the box endpoints, multiply by UserUnit and exchange width/height for
 90/270-degree rotation. Different rendering APIs may select different boxes;
 G01's current baseline fixtures use equal media/crop boxes and default transforms.
+
+## Page images
+
+```sh
+pagura render input.pdf page.ppm
+pagura render --format png input.pdf page.png
+pagura render --format png --transparent input.pdf transparent.png 144 0
+pagura convert --format png input.pdf existing-output-directory 144 0 3
+```
+
+`render` writes one zero-based page (default 0); `convert` writes all pages or an
+inclusive zero-based range. DPI defaults to 72. Directory outputs are numbered
+from 1 as `page-0001.ppm` or `page-0001.png`; the directory must already exist.
+`--format ppm|png` selects the encoding explicitly. PPM is the default regardless
+of the filename extension. `--transparent` requires PNG; otherwise both formats
+render over opaque white. Password, strict-mode and overprint options also apply.
+
+PNG contains straight RGBA8 pixels; the rendered premultiplied samples are
+converted in place, and fully transparent pixels have zero RGB. Output is
+non-interlaced with no ancillary color/profile metadata. Page recording, rendering
+and bounded PNG encoding finish before a new destination is created. Existing
+files are never overwritten; an IO error can leave a partial new file. In a
+multi-page conversion, previously completed files remain if a later page fails.
+
+PNG currently retains one full page surface and encoder scratch. PPM continues
+to stream renderer bands. `--timings` separates document opening, rendering and
+image encoding/writing; it does not establish a performance claim.
+
+Library callers can render a page or tile with the existing APIs and call
+`pagura::png::encode_pixmap(surface, pagura::png::Level::Default, &limits)`. The
+surface is consumed on success or failure. `pagura::png::encode` also accepts
+caller-owned Gray, RGB or straight RGBA buffers and encoding options. Incremental
+PNG, resumable jobs and host/viewer PNG export remain D02 work.
