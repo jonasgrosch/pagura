@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha and paired stored/generated annotation appearances. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Pixel disagreement may reflect reader artwork or sampling policy; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders and plain captions. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura caption expectations use pinned AFM/Arimo data. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -623,6 +623,552 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "3fd8ede2db9959a6eb7586a6bdc3acb2a2e3db346fb66143d52abb4b601f540c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.polygon-triangle-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "polygon_annotations/triangle-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6b7db5e7fb8a18f1889811f7f9c775abf4106bf0d84dc3831fb2c233b3c1b812",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.polygon-curve-fill-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "polygon_annotations/curve-fill-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6c98c8518687ad494363674d789cf934c720251933f12e6c46f974af7ea07f80",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.polygon-polyline-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "polygon_annotations/polyline-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "a1e7693f16ecaeac08969a41179f7329d97fd672cad7b25fb08f02ba1ae6a651",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.polygon-path-precedence",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "polygon_annotations/path-precedence",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6b7db5e7fb8a18f1889811f7f9c775abf4106bf0d84dc3831fb2c233b3c1b812",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.line-horizontal-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "line_annotations/horizontal-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2c26c4e0dadb00c9a116284b3c802c0bc4b6fd8736d072f440c1eb54c081f43c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.line-stored-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "line_annotations/stored-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2c26c4e0dadb00c9a116284b3c802c0bc4b6fd8736d072f440c1eb54c081f43c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.line-diagonal-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "line_annotations/diagonal-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c53cb9179cccac8ed1074d2cf94d7789f53aa5febdb261e0c8e4d484227771b1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.line-dash-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "line_annotations/dash-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "da0b59c2564f2ffb06aa77bad89bcf17b73b09421aed3feb44bf2124a405a5a6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.line-opacity",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "line_annotations/opacity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "346341666a0464ab35669d5438a57156c4b9f48bf2ba62cf92c259153bd40817",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.line-clipped",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "line_annotations/clipped",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c7534027e209a7736ef9b6e477c7988e43c1232f7edb056433b2ee69d53ad2fd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-Square-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-Square-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "13f95a1fe4ddd20b30f5e67daa7d949e118e765246e0376b9df471f33a8ff70e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-Circle-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-Circle-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "95566491da27f0e32240ec84dd01bcf34a0834bf1a904b632dfdc783a4b90696",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-Diamond-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-Diamond-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ab698dd2fa60ffe50b38bacbdf2808d4a733635befaa56f2bf417a9f0b4088f9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-OpenArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-OpenArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c82e04e49aeb878a5ac49fcfd3c6bbb1cddc6458b48e6834b3e18c375da0ce81",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-ClosedArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-ClosedArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6cc849242dba1aab2a7c746627839b7963ff050a64820afd0929f26911bc1e3a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-Butt-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-Butt-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f78ba4c09466854998d9f23f9335a6a2d15dec98761b57a1e958774979fffc2b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-ROpenArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-ROpenArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f47f452635a0e97194d8c5e70110b004400979d7a8a8bf4cce8b0da8bf340235",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-RClosedArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-RClosedArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "86ed43ae7c8abbfdde6638eb7412b8ef41e4406e905238e0ced8f2bfbac2cf8f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-line-Slash-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/line-Slash-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "43a50dfabd59cebaa7050804b84c26d6924d3f0d58e6ec3e4b94d146ec0aa3cc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-Square-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-Square-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "13f95a1fe4ddd20b30f5e67daa7d949e118e765246e0376b9df471f33a8ff70e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-Circle-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-Circle-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "95566491da27f0e32240ec84dd01bcf34a0834bf1a904b632dfdc783a4b90696",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-Diamond-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-Diamond-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ab698dd2fa60ffe50b38bacbdf2808d4a733635befaa56f2bf417a9f0b4088f9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-OpenArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-OpenArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c82e04e49aeb878a5ac49fcfd3c6bbb1cddc6458b48e6834b3e18c375da0ce81",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-ClosedArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-ClosedArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6cc849242dba1aab2a7c746627839b7963ff050a64820afd0929f26911bc1e3a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-Butt-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-Butt-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f78ba4c09466854998d9f23f9335a6a2d15dec98761b57a1e958774979fffc2b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-ROpenArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-ROpenArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f47f452635a0e97194d8c5e70110b004400979d7a8a8bf4cce8b0da8bf340235",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-RClosedArrow-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-RClosedArrow-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "86ed43ae7c8abbfdde6638eb7412b8ef41e4406e905238e0ced8f2bfbac2cf8f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.ending-polyline-Slash-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "ending_annotations/polyline-Slash-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "43a50dfabd59cebaa7050804b84c26d6924d3f0d58e6ec3e4b94d146ec0aa3cc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.leader-positive-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "leader_annotations/positive-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2e9c41a882caafe2084cf703fb580845792814264ccede2a770a8744e42e30d5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.leader-negative-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "leader_annotations/negative-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2e5b41895856cb7545f9b822b786ed0310c446a8b1ed80e402f9bca3596a5bea",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.leader-vertical-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "leader_annotations/vertical-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7a54ba2eed272b53aeebc2a509ce360c1e056f02f0e719e2c35616fea1f3d35b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.leader-only-extension",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "leader_annotations/only-extension",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ec9639976d6d74aa19dc04a427d529f98ebedf7c6873e8bd9bca050b99f703ff",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.leader-offset-without-leader",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "leader_annotations/offset-without-leader",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ce514251de19bb0e7498c98010af1b35b1277b69e9a8cabd4645d9bcbecb1f94",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.leader-opacity",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "leader_annotations/opacity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "afaca6474456dc99ac8d3b8d00aae57abbeb4853dc489e46a86cf4c5a337255a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-inline-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/inline-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "fc9173763d9f4976689c479694354596233e1a0e1776f96f74e9b338cabb630c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-top-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/top-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ffb06d609d4a7e676248ed3ef1f224a357244758cdfc3e75a4652393428dbd12",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-multiline-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/multiline-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "48e7148228c352b43edf3fb937346e08105c186bae355f3013f023eb6bb11e31",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-offset",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/offset",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "4fd21c4eaebc970697228ee061de958f8d2d366691dd3dc377d8f9a052e776ef",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-above",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/above",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "3576440d3fbca823baf97dcda2a0069d805ccd90f800a27fce453f5ae5031e35",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-vertical",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/vertical",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "91deb5f560ad2a8490b102ad51a4b0ad60d7d483dd5f1152086bd7c4a66e00bf",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-leaders",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/leaders",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b88b4d776029d07a3909b786c4bcc89021c562795dc2e1a9c05d3949d759550e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.caption-utf16",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "caption_annotations/utf16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "fc9173763d9f4976689c479694354596233e1a0e1776f96f74e9b338cabb630c",
         "tolerance": 1
       }
     }

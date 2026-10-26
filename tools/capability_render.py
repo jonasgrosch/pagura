@@ -139,6 +139,7 @@ def run(data, inventory, output, selected, images=None):
                                               for value in commands[name] if Path(value).is_file()})
                 identity['render_configuration'] = ('Page 0 at each fixture\'s declared 72/144 DPI; white backdrop; '
                                                     + RENDER_CONFIGURATIONS[name]
+                                                    + ' Generated annotation artwork/fonts use reader defaults; no font normalization. '
                                                     + ' Source and actual binary hashes retained.')
         identities[name] = identity
     source_files = [MANIFEST, LEDGER, *ADAPTER_FILES, *RENDER_ADAPTERS,
@@ -147,7 +148,9 @@ def run(data, inventory, output, selected, images=None):
                     Path('uv.lock'), Path('pyproject.toml'), Path('.python-version'), Path('.github/workflows/capabilities.yml'),
                     Path('benchmarks/node-package-lock.json'), Path('benchmarks/adapters/hayro/Cargo.lock'),
                     Path('benchmarks/adapters/hayro/Cargo.toml'), Path('rust-toolchain.toml'), Path('.cargo/config.toml'),
-                    Path('Cargo.toml'), Path('Cargo.lock'), Path('crates/pagura-cli/Cargo.toml')]
+                    Path('Cargo.toml'), Path('Cargo.lock'), Path('crates/pagura-cli/Cargo.toml'),
+                    Path('crates/pagura-data/Cargo.toml'), Path('data/lock.json'),
+                    Path('data/afm/Helvetica.afm'), Path('data/fonts/Arimo-Regular.ttf')]
     source_files.extend(Path('corpus/manifests') / (row['fixture'].split('/')[0] + '.json') for row in data['cases'])
     report = {'schema': 1, 'scope': data['scope'], 'generated_at': datetime.now(timezone.utc).isoformat(),
               'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),

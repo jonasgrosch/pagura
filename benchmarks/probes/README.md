@@ -5,9 +5,9 @@ catalog and first-page annotation attachment bytes, and text** using independent
 controls and a non-PDF rejection control. Pagura joins all six baseline columns,
 yielding 147 document-service cells. Its observations use the public CLI only.
 G01 remains open: these twenty-one cases do not establish family or product parity.
-The companion [render manifest](rendering.json) contains 48 independent pixel
-oracles: the original six graphics/JPX controls and 42 annotation controls. Its
-336 cells use the public Pagura CLI and all six existing public render adapters.
+The companion [render manifest](rendering.json) contains 90 independent pixel
+oracles: the original six graphics/JPX controls and 84 annotation controls. Its
+630 cells use the public Pagura CLI and all six existing public render adapters.
 Fixtures select 72 or 144 dpi explicitly; dimensions, pixel hashes and tolerances
 remain tied to their authored manifests. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
@@ -54,6 +54,15 @@ Published bindings and pinned pdf.js 6.4 descriptor fields were inspected to con
 public API shapes. The adapter logic and fixtures were authored independently; no
 competitor implementation was copied or translated.
 
+The latest expansion adds 42 Polygon/Line observations: four polygon/path controls,
+six straight-line controls, all nine non-None ending styles for both Line and
+PolyLine, six leader controls and eight plain-caption controls. These retain each
+fixture's existing oracle and tolerance. Caption expectations use independent AFM
+advances and pinned Arimo glyph contours; reports also hash those font data files
+and their lock. Other engines choose their own generated caption fonts and artwork.
+An output difference therefore needs font/layout/artwork adjudication before any
+feature-level claim. Hosted results for this expansion are pending.
+
 ## Execution and evidence
 
 The hosted [capability workflow](../../.github/workflows/capabilities.yml) runs
@@ -90,7 +99,7 @@ an asserted lock pin. Workspace/cache paths become placeholders. Native
 diagnostics retain byte counts and hashes rather than raw logs.
 
 `capability-rendering-<os>` and `capability-rendering` retain the pixel observations
-separately. Joining requires all six baselines plus Pagura across all 336 current cells. The CLI version and
+separately. Joining requires all six baselines plus Pagura across all 630 current cells. The CLI version and
 actual Pagura binary hash are recorded; the hosted workflow builds default
 features from its checkout using the pinned toolchain. Outside that workflow,
 a pre-existing binary has no asserted source revision. The exact PDF/oracle bytes and normalized RGB identities are hashed.

@@ -190,6 +190,14 @@ and 194 pixel disagreements, with Pagura passing all 45 controls. Retained image
 show artwork, border/inset, overlap-opacity and edge-coverage differences; these
 are observations for adjudication, not competitor defect or family-parity claims.
 
+The next annotation probe increment expands the shared manifest to 90 oracles
+and 630 engine/case cells. Forty-two new observations cover Polygon/Path geometry,
+straight Line controls, every non-None ending for Line and PolyLine, signed leaders
+and plain captions. Caption comparisons retain the pinned AFM/Arimo identities
+for Pagura and each other reader's default font/artwork policy. Existing oracle
+bytes and tolerances are unchanged. Hosted execution is pending; font/layout and
+API-layer differences require adjudication before capability conclusions.
+
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
 Use browser integration tests for browser-only behaviour, and capable optional
