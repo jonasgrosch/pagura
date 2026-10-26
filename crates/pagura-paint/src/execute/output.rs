@@ -3,7 +3,6 @@
 //! function (11.7.5.2), then source-over onto the background premultiplied
 //! once, each channel quantized once with `quantize_unit`.
 
-use super::frame::CHANNELS;
 use super::{Cover, PageBuffer, Usage, Workspace};
 use crate::plan::{Output, Plan};
 use crate::process;
@@ -149,15 +148,15 @@ fn wide(
     if alpha == 0.0 {
         return output.background;
     }
-    let mut straight = [0.0; CHANNELS];
-    for (value, &c) in straight.iter_mut().zip(&pixel[..n]) {
+    let process = layout.process.components();
+    let mut straight = [0.0; 4];
+    for (value, &c) in straight.iter_mut().zip(&pixel[..process]) {
         *value = (c / alpha).clamp(0.0, 1.0);
     }
-    let process = layout.process.components();
     let mut rgb = if output.spots.is_empty() {
         process::rgb(layout.process, &straight[..process])
     } else {
-        preview.rgb(output, &straight[..n], usage)
+        preview.rgb(output, &straight[..process], pixel, usage)
     };
     if let Some(functions) = select
         .checked_sub(1)
@@ -196,23 +195,38 @@ struct Preview {
 }
 
 impl Preview {
-    fn rgb(&mut self, output: &Output, straight: &[f64], usage: &mut Usage) -> [f64; 3] {
+    /// The RGB of `pixel`'s straight process colour `straight` with its
+    /// spot channels.
+    fn rgb(
+        &mut self,
+        output: &Output,
+        straight: &[f64],
+        pixel: &[f64],
+        usage: &mut Usage,
+    ) -> [f64; 3] {
         let layout = output.layout;
-        let process = layout.process.components();
+        let (process, n) = (layout.process.components(), layout.channels());
+        let (spots, alpha) = (&pixel[process..n], pixel[n]);
         let mut cmyk = [0.0; 4];
         if layout.process == Process::Cmyk {
-            cmyk.copy_from_slice(&straight[..4]);
+            cmyk.copy_from_slice(straight);
         } else {
-            let rgb = process::rgb(layout.process, &straight[..process]);
+            let rgb = process::rgb(layout.process, straight);
             Encoder::new(Process::Cmyk, &Conversion::default()).encode(rgb, &mut cmyk);
         }
-        let mut tints = [0.0; crate::plan::MAX_SPOTS];
-        for (tint, &value) in tints.iter_mut().zip(&straight[process..]) {
-            *tint = 1.0 - value;
-        }
-        let equivalent = match self.last {
-            Some((previous, equivalent)) if previous == tints => equivalent,
+        // Only the page's spots carry tints; the kept ones past them are 0.
+        let tint = |c: f64| 1.0 - (c / alpha).clamp(0.0, 1.0);
+        let equivalent = match &self.last {
+            Some((previous, equivalent))
+                if previous.iter().zip(spots).all(|(&p, &c)| p == tint(c)) =>
+            {
+                *equivalent
+            }
             _ => {
+                let mut tints = [0.0; crate::plan::MAX_SPOTS];
+                for (value, &c) in tints.iter_mut().zip(spots) {
+                    *value = tint(c);
+                }
                 let equivalent = equivalent(output, &tints, usage);
                 self.last = Some((tints, equivalent));
                 equivalent
@@ -303,6 +317,44 @@ mod tests {
             for (bytes, pixel) in row.iter().zip(pixels) {
                 assert_eq!(*bytes, wide(&output, pixel, 0, &mut preview, &mut usage));
             }
+        }
+    }
+
+    #[test]
+    fn a_kept_spot_equivalent_gives_each_pixel_its_own_bytes() {
+        // Two spots, repeated and changing tints, translucent pixels and
+        // values past alpha: each pixel as it follows the row equals the
+        // pixel on its own.
+        let spot = |cmyk, channel| crate::plan::SpotPlan {
+            convert: super::super::tests::ink(cmyk),
+            components: 1,
+            inputs: vec![(0, channel)],
+        };
+        let output = Output {
+            layout: crate::plan::Layout {
+                process: Process::Cmyk,
+                spots: 2,
+            },
+            background: [255, 128, 0, 192],
+            spots: vec![spot([0.0, 0.8, 0.3, 0.0], 0), spot([0.5, 0.0, 0.0, 0.2], 1)],
+            transfers: Vec::new(),
+        };
+        let samples = [0.0, -0.0, 0.25, 0.5, 1.0, 1.25];
+        let mut values = Vec::new();
+        for k in 0..96 {
+            let pick = |i: usize| samples[(k + i) % samples.len()];
+            let alpha = [1.0, 0.5, 0.0][k / 8 % 3];
+            values.extend((0..4).map(pick));
+            // The second spot changes while the first stays.
+            let spots = [samples[k / 4 % 6], samples[k / 2 % 6]];
+            values.extend(spots.into_iter().chain([alpha, 0.0, 0.0]));
+        }
+        let (mut preview, mut usage) = (Preview::default(), Usage::default());
+        for pixel in values.chunks_exact(output.layout.stride()) {
+            assert_eq!(
+                wide(&output, pixel, 0, &mut preview, &mut usage),
+                wide(&output, pixel, 0, &mut Preview::default(), &mut usage)
+            );
         }
     }
 }
