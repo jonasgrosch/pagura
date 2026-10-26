@@ -106,7 +106,7 @@ fn tall_and_wide_mixed_bodies_bound_work_in_every_band_grid() {
 fn current_placed_range_errors_are_independent_of_bands_and_store_state() {
     let limits = Limits::default();
     let path = outline([12, 96], Point::new(2.25, 35.25), false);
-    let build = || {
+    let build = || -> pagura_core::Result<_> {
         let value = GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits)?;
         Ok(Built {
             bytes: value.retained_bytes(),

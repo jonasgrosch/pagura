@@ -12,16 +12,17 @@
         "pagura-document/tests/sources.rs",
         "pagura/tests/api/source.rs",
         "pagura-core/tests/windows.rs",
-        "pagura-core/tests/memory.rs"
+        "pagura-core/tests/memory.rs",
+        "pagura-core/src/store.rs"
       ],
-      "gaps": "Document parser/cache migration, progressive opening/pages, jobs, encoding, protocol and scheduling remain group 11 obligations.",
+      "gaps": "Document parser/cache migration, progressive opening/pages, jobs, protocol and scheduling remain group 11 obligations.",
       "rule": "A source fixes identity and length. Supplies validate all overlaps before publishing new fragments. Missing bytes remain separate from terminal errors. Duplicate bytes do not advance availability; conflicting overlap invalidates future reads. Every retained allocation stays charged until its last lease drops. Assembly and missing-range frontiers obey explicit caps, and work accumulates across retries."
     },
     {
       "id": "owned-render-output-lifecycle",
       "reference": "project-policy",
       "clauses": [],
-      "status": "implemented; hosted validation pending",
+      "status": "implemented; hosted lifecycle and independent pixel controls pass on Ubuntu, macOS and Windows",
       "tests": [
         "pagura-paint/src/prepare/tests/session.rs",
         "pagura-paint/src/prepare/tests/streaming.rs",
@@ -34,7 +35,7 @@
       "id": "incremental-encoding-lifecycle",
       "reference": "project-policy",
       "clauses": [],
-      "status": "implemented; hosted validation pending",
+      "status": "implemented; hosted codec and public render-stream parity controls pass on Ubuntu, macOS and Windows",
       "tests": [
         "pagura-codec/tests/streaming.rs",
         "pagura-codec/src/flate/encode/tests.rs",

@@ -214,14 +214,16 @@ fn the_point_projection_is_the_same_across_decoded_limits_and_store_states() {
     assert!(low.curved() && high.curved());
     let store = Store::new(limits.decoded_bytes);
     let warm = store
-        .get_or_build(Key, || {
+        .get_or_build(Key, || -> pagura_core::Result<_> {
             Ok(Built {
                 bytes: low.retained_bytes(),
                 value: build(lo)?,
             })
         })
         .unwrap();
-    let again = store.get_or_build(Key, || panic!("warm value")).unwrap();
+    let again = store
+        .get_or_build(Key, || -> pagura_core::Result<_> { panic!("warm value") })
+        .unwrap();
     assert!(Arc::ptr_eq(&warm, &again));
     let options = options(&limits, 3);
     let prep = Prep::new(&options, None);

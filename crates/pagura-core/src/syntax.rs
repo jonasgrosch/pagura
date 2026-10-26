@@ -60,7 +60,7 @@ pub const fn hex_digit(byte: u8) -> Option<u8> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Origin {
-    /// The complete original file.
+    /// The original file, with an optional slice offset set on the parser.
     File,
     /// The decoded data of a stream object.
     Stream(ObjectId),
@@ -85,6 +85,7 @@ pub struct Parser<'a, M: ParseMode = CompleteInput> {
     data: &'a [u8],
     position: usize,
     origin: Origin,
+    origin_offset: usize,
     limits: Budgets,
     nodes: usize,
     diagnostics: Diagnostics,
@@ -119,6 +120,7 @@ impl<'a> Parser<'a> {
             data,
             position: 0,
             origin,
+            origin_offset: 0,
             limits: Budgets::from(limits),
             nodes: 0,
             diagnostics: Diagnostics::new(Recovery::Strict),
@@ -140,6 +142,22 @@ impl<'a> Parser<'a> {
         let mut parser = Self::new(data, origin, limits);
         parser.seek(offset)?;
         Ok(parser)
+    }
+
+    /// Places this slice at `offset` within its file, stream or buffer origin.
+    ///
+    /// Parsing and [`Self::seek`] keep slice-relative offsets; errors and
+    /// diagnostics use absolute positions within the selected origin. The
+    /// entire slice must fit the target's position representation.
+    ///
+    /// # Errors
+    /// Returns `Limit` if the last position would overflow `usize`.
+    pub fn with_origin_offset(mut self, offset: usize) -> Result<Self> {
+        offset
+            .checked_add(self.data.len())
+            .ok_or(Error::limit("parser origin position overflow"))?;
+        self.origin_offset = offset;
+        Ok(self)
     }
 }
 
@@ -163,20 +181,26 @@ impl<'a, M: ParseMode> Parser<'a, M> {
 
     /// The current location as a [`Position`].
     pub fn position(&self) -> Position {
-        self.origin.position(self.position)
+        // Construction admits the complete slice and seek stays within it.
+        self.origin.position(self.origin_offset + self.position)
     }
 
     /// Moves to `offset`.
     ///
     /// # Errors
     ///
-    /// Returns a syntax error if `offset` is beyond the end of the input.
+    /// Returns a syntax error if `offset` is beyond the end of the input,
+    /// or `Limit` if its absolute position overflows.
     pub fn seek(&mut self, offset: usize) -> ModeResult<M, ()> {
         if offset > self.data.len() {
+            let absolute = self
+                .origin_offset
+                .checked_add(offset)
+                .ok_or_else(|| self.limit("parser origin position overflow"))?;
             self.window_boundary();
             return Err(self
                 .mode
-                .end(Error::syntax("offset outside input").at(self.origin.position(offset))));
+                .end(Error::syntax("offset outside input").at(self.origin.position(absolute))));
         }
         self.position = offset;
         Ok(())

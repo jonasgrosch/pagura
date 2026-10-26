@@ -208,7 +208,7 @@ impl<'a> ShapeBuilder<'a> {
         bytes.reserve_map_capacity(&mut self.edges, 1)?;
         bytes.reserve_capacity(&mut self.handles, 1)?;
         let limits = self.limits;
-        let edges = self.store.get_or_build(key, || {
+        let edges = self.store.get_or_build(key, || -> Result<_> {
             let edges = GlyphEdges::new(&source.outline, linear, limits)?;
             let bytes = edges.retained_bytes();
             Ok(Built {

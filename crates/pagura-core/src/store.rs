@@ -2,7 +2,6 @@
 //! ADR 0034): recorded scenes, decoded images, colour transforms, font
 //! programs, glyph edge setups, prepared functions and shadings.
 
-use crate::Result;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -113,12 +112,15 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns the error of `build`; nothing is stored then.
-    pub fn get_or_build<K: StoreKey>(
+    /// Returns the caller's error of `build`; nothing is stored then. The
+    /// store does not interpret terminal errors or temporary availability.
+    /// Completed dependencies built by the callback remain stored if this
+    /// build fails. No store lock is held while calling `build`.
+    pub fn get_or_build<K: StoreKey, E>(
         &self,
         key: K,
-        build: impl FnOnce() -> Result<Built<K::Value>>,
-    ) -> Result<Arc<K::Value>> {
+        build: impl FnOnce() -> Result<Built<K::Value>, E>,
+    ) -> Result<Arc<K::Value>, E> {
         if let Some(value) = self.get(&key) {
             return Ok(value);
         }
@@ -220,6 +222,7 @@ fn hash_key<K: StoreKey>(key: &K) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Result;
 
     #[derive(Debug, Hash, PartialEq, Eq)]
     struct Key(u32);
@@ -249,7 +252,7 @@ mod tests {
         let store = Store::new(100);
         let a = store.get_or_build(Key(1), || built(10)).unwrap();
         let b = store
-            .get_or_build(Key(1), || panic!("built twice"))
+            .get_or_build(Key(1), || -> Result<_> { panic!("built twice") })
             .unwrap();
         assert!(Arc::ptr_eq(&a, &b));
         assert_eq!(store.retained_bytes(), 10);
@@ -260,7 +263,7 @@ mod tests {
         let store = Store::new(100);
         store.get_or_build(Key(1), || built(1)).unwrap();
         let text = store
-            .get_or_build(Other(1), || {
+            .get_or_build(Other(1), || -> Result<_> {
                 Ok(Built {
                     value: "x".to_owned(),
                     bytes: 1,
@@ -303,5 +306,42 @@ mod tests {
             .unwrap_err();
         assert_eq!(error.message, "test");
         assert!(store.get(&Key(1)).is_none());
+    }
+
+    #[test]
+    fn caller_availability_keeps_completed_dependencies_but_never_the_wait() {
+        #[derive(Debug, PartialEq, Eq)]
+        struct Missing(u64);
+
+        let store = Store::new(100);
+        let result = store.get_or_build(Key(1), || {
+            let dependency = store.get_or_build(Key(2), || {
+                Ok::<_, Missing>(Built {
+                    value: vec![7, 9],
+                    bytes: 2,
+                })
+            })?;
+            assert_eq!(*dependency, [7, 9]);
+            Err(Missing(103))
+        });
+        assert_eq!(result.unwrap_err(), Missing(103));
+        assert!(store.get(&Key(1)).is_none());
+        assert_eq!(store.retained_bytes(), 2);
+
+        let dependency = store.get(&Key(2)).unwrap();
+        let value = store
+            .get_or_build(Key(1), || -> std::result::Result<_, Missing> {
+                let kept = store.get_or_build(Key(2), || -> std::result::Result<_, Missing> {
+                    panic!("completed dependency was rebuilt")
+                })?;
+                assert!(Arc::ptr_eq(&kept, &dependency));
+                Ok(Built {
+                    value: vec![kept[0], 11],
+                    bytes: 2,
+                })
+            })
+            .unwrap();
+        assert_eq!(*value, [7, 11]);
+        assert_eq!(store.retained_bytes(), 4);
     }
 }

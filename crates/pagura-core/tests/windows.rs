@@ -1,7 +1,7 @@
 //! Frozen syntax controls for complete and extendable input boundaries.
 
 use pagura_core::syntax::{InputEnd, Origin, Parser, WindowRead};
-use pagura_core::{Error, ErrorKind, Limits, Name, Recovery, Result, Value};
+use pagura_core::{Error, ErrorKind, Limits, Name, ObjectId, Position, Recovery, Result, Value};
 
 fn parse(bytes: &[u8], end: InputEnd, recovery: Recovery) -> Result<WindowRead<Value>> {
     Parser::new(bytes, Origin::Buffer, Limits::default())
@@ -208,4 +208,60 @@ fn callback_syntax_failure_is_terminal_after_any_boundary_observation() {
             (ErrorKind::Syntax, "independent callback failure")
         );
     }
+}
+
+#[test]
+fn window_errors_and_repairs_keep_absolute_origin_positions() {
+    let object = ObjectId::new(17, 2);
+    for origin in [Origin::File, Origin::Stream(object), Origin::Buffer] {
+        let error = Parser::new(b"[true @]", origin, Limits::default())
+            .with_origin_offset(101)
+            .unwrap()
+            .read_window(InputEnd::Extendable, Parser::parse)
+            .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.position, origin.position(107));
+
+        let WindowRead::Complete(parsed) =
+            Parser::new(b"<< /A 1 /A 2 >>", origin, Limits::default())
+                .with_origin_offset(211)
+                .unwrap()
+                .with_recovery(Recovery::Repair)
+                .read_window(InputEnd::Extendable, Parser::parse)
+                .unwrap()
+        else {
+            panic!("complete window")
+        };
+        assert_eq!(parsed.offset, 15);
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].position, origin.position(219));
+    }
+}
+
+#[test]
+fn origin_admission_and_seek_check_overflow_without_changing_local_offsets() {
+    let mut parser = Parser::new(b"a 17]", Origin::File, Limits::default())
+        .with_origin_offset(301)
+        .unwrap();
+    parser.seek(2).unwrap();
+    assert_eq!(parser.offset(), 2);
+    assert_eq!(parser.position(), Position::File(303));
+    assert_eq!(parser.parse().unwrap(), Value::Integer(17));
+    assert_eq!(parser.offset(), 4);
+    assert_eq!(parser.position(), Position::File(305));
+    assert_eq!(parser.seek(9).unwrap_err().position, Position::File(310));
+
+    assert_eq!(
+        Parser::new(b"x", Origin::File, Limits::default())
+            .with_origin_offset(usize::MAX)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Limit
+    );
+    let mut parser = Parser::new(b"", Origin::File, Limits::default())
+        .with_origin_offset(usize::MAX)
+        .unwrap();
+    assert_eq!(parser.seek(1).unwrap_err().kind, ErrorKind::Limit);
+    assert_eq!(parser.offset(), 0);
+    assert_eq!(parser.position(), Position::File(usize::MAX));
 }

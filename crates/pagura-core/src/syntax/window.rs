@@ -157,6 +157,7 @@ impl<'a> Parser<'a> {
             data: self.data,
             position: self.position,
             origin: self.origin,
+            origin_offset: self.origin_offset,
             limits: self.limits,
             nodes: self.nodes,
             diagnostics: self.diagnostics,
