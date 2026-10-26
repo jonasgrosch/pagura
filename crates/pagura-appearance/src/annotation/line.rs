@@ -39,9 +39,9 @@ pub(super) fn generate(
             Subpath::Polyline(&[]),
             Subpath::Polyline(&[]),
         ];
-        if let Some(leaders) = &layout.leaders {
-            paths[1] = Subpath::Polyline(&leaders[0]);
-            paths[2] = Subpath::Polyline(&leaders[1]);
+        if let Some([first, second]) = &layout.leaders {
+            paths[1] = Subpath::Polyline(first);
+            paths[2] = Subpath::Polyline(second);
         }
         marks.stroke(
             &paths,
