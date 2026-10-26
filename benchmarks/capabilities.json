@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "bc28baccaae3e688fddd2a7b21fbb93fe01ebb78",
+  "audited_revision": "87a0a7fd1bd6c8096d0360d8d5a9077600197bb3",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -67,11 +67,12 @@
     "crates/pagura-core/src/lib.rs": "a111eb19b2ebfcfe642f1227d8be72ffb235c462157c79bdd0ee17efc5995c3d",
     "crates/pagura-core/src/meter.rs": "d13fe1dae9ef9952af6e7657450cbf7c0a01513ab94dcf07ae8e4636a8d14857",
     "crates/pagura-core/src/meter/memory.rs": "24c77d5918996b0a578f3ab49656ce20590149474f02c5ad0c543fbb03072dae",
-    "crates/pagura-core/src/syntax.rs": "ba59c9d5ddd4813b1885c93a30a4586d9a007d8fef70b7637888f9c2cc11d912",
+    "crates/pagura-core/src/store.rs": "2cffb5f811142b892b49c26eba6e9040b7d8f891e4a971f8fd032b6e189f625a",
+    "crates/pagura-core/src/syntax.rs": "ea1e51e150d549c0993dda871b772c33eae570567a02805c8de711c9ba02ce53",
     "crates/pagura-core/src/syntax/direct.rs": "d5d927d5cf97282fefd984916baa17b8a0cace89a028f4fb65695e4ea2da9b83",
-    "crates/pagura-core/src/syntax/window.rs": "123a89bc0bf8428613cd0bea6b2816080009058cf61125ea582910472f9e8ef2",
+    "crates/pagura-core/src/syntax/window.rs": "efbce8908f96f89800209ccb83bc89053058a86dcec3ac19f436a2ff166c1f8e",
     "crates/pagura-core/tests/memory.rs": "d5ee4748042515814a12e6cf8ede61274dfd7d9b648d5947ec9b82d2ada2dd59",
-    "crates/pagura-core/tests/windows.rs": "dd3cae760fd83054bb3309ed8e8b19b3b18b5e907b74e41f6b0a7f9bc44ccc8b",
+    "crates/pagura-core/tests/windows.rs": "0d5bd990423dc424f66682e0ded39a21ee5fa37519975003c96237add0c22cf4",
     "crates/pagura-crypto/src/hash/md5.rs": "b73634cbd9549de7c1893096b2fe61bb2e1fd4b238cab05a2509008925a64af0",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
@@ -255,7 +256,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "edd3f0d4c3b0612e707ffcead0bf4c97c04599900ae9b38f5fc40a7e0b406043",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/sources.json": "500eb35a576d8218827e319e565ba5cc061238d8de3e6dd499a4c12234dcc56d",
+    "references/requirements/sources.json": "3a9552de24f894eb222b750a4e5756c853f833b9cd698cc6e6252f2c83532617",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
@@ -371,7 +372,7 @@
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Complete-buffer document opening, lazy object caches and immutable source bytes remain available. Separate bounded complete/sparse byte sources expose immutable identity, exact missing ranges, atomic overlap validation, generation-based progress and allocation-accounted leases through the facade. Source storage is not yet connected to document parsing. The shared slice parser distinguishes structurally incomplete windows from true EOF while retaining complete-input behavior and provisional diagnostics.",
+      "implemented": "Complete-buffer document opening, lazy object caches and immutable source bytes remain available. Separate bounded complete/sparse byte sources expose immutable identity, exact missing ranges, atomic overlap validation, generation-based progress and allocation-accounted leases through the facade. Source storage is not yet connected to document parsing. The shared slice parser distinguishes structurally incomplete windows from true EOF while retaining complete-input behavior and provisional diagnostics. Window positions retain absolute file/stream origins. The existing shared value store accepts caller-specific failures and retains completed dependencies across an unavailable build.",
       "remaining": "Document window integration and availability propagation, retry-safe cache publication, scoped/linearized opening, lazy page access, owned jobs, protocol v2, browser/native range drivers and bounded worker scheduling remain group 11 work under accepted ADR 0036. Complete-source storage controls passed hosted Ubuntu, macOS and Windows; full document availability parity remains unvalidated.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
@@ -389,14 +390,16 @@
         "crates/pagura-core/src/syntax/window.rs",
         "crates/pagura-core/src/syntax/direct.rs",
         "crates/pagura-core/src/meter.rs",
-        "crates/pagura-core/src/meter/memory.rs"
+        "crates/pagura-core/src/meter/memory.rs",
+        "crates/pagura-core/src/store.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
         "crates/pagura-document/tests/sources.rs",
         "crates/pagura/tests/api/source.rs",
         "crates/pagura-core/tests/windows.rs",
-        "crates/pagura-core/tests/memory.rs"
+        "crates/pagura-core/tests/memory.rs",
+        "crates/pagura-core/src/store.rs"
       ],
       "requirements": [
         "document-loading-bounds",
