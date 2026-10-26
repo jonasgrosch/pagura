@@ -1863,6 +1863,8 @@ mod tests {
                 points: vec![Point::new(0.0, 0.0), Point::new(f64::from(i), 9.0)],
                 closed: false,
                 tangent: Point::new(1.0, 0.0),
+                caps: [None; 2],
+                joins: Vec::new(),
             })
             .collect();
         let stroke = Stroke {
@@ -1906,6 +1908,8 @@ mod tests {
                 ],
                 closed: false,
                 tangent: Point::new(1.0, 0.0),
+                caps: [None; 2],
+                joins: Vec::new(),
             })
             .collect();
         let stroke = Stroke {
