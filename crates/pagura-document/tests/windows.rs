@@ -143,6 +143,64 @@ fn malformed_available_prefix_is_terminal_even_when_later_bytes_are_missing() {
     assert_eq!(again, error);
     assert_eq!(window.work(), work);
     assert_eq!(window.offset(), 103);
+    assert_eq!(window.seek(0).unwrap_err(), error);
+    assert_eq!(window.offset(), 103);
+    assert_eq!(window.work(), work);
+}
+
+#[test]
+fn repositioning_preserves_work_and_releases_only_the_abandoned_wait() {
+    let source = sparse(1024).unwrap();
+    source.supply(ID, 400, b"(a)").unwrap();
+    let mut window = Window::new(
+        source.clone(),
+        0,
+        Limits::default(),
+        LoadingLimits {
+            work: 6,
+            ..LoadingLimits::default()
+        },
+    )
+    .unwrap();
+    let Err(ReadFault::Unavailable(missing)) = window.read(value) else {
+        panic!("empty prefix")
+    };
+    assert_eq!(window.work(), 1);
+    assert_eq!(
+        window.seek(1025).unwrap_err().kind,
+        ErrorKind::InvalidArgument
+    );
+    assert_eq!(window.offset(), 0);
+    assert_eq!(window.work(), 1);
+    let Err(ReadFault::Unavailable(again)) = window.read(value) else {
+        panic!("unchanged wait")
+    };
+    assert!(std::ptr::eq(missing.ranges(), again.ranges()));
+    assert_eq!(window.work(), 1);
+    window.seek(400).unwrap();
+    assert_eq!(window.work(), 1);
+    assert_eq!(
+        window.read(value).unwrap().value,
+        Value::String(b"a".to_vec())
+    );
+    // One initial missing read, then a sparse range and its three-byte prefix.
+    assert_eq!(window.work(), 6);
+    window.seek(400).unwrap();
+    let Err(ReadFault::Invalid(error)) = window.read(value) else {
+        panic!("cumulative work refusal")
+    };
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(window.seek(1024).unwrap_err(), error);
+    assert_eq!(window.work(), 6);
+
+    let mut window = reader(source.clone(), 400).unwrap();
+    source.close();
+    let error = window.seek(0).unwrap_err();
+    let Err(ReadFault::Invalid(again)) = window.read(value) else {
+        panic!("closed source")
+    };
+    assert_eq!(again, error);
+    assert_eq!(window.offset(), 400);
 }
 
 #[test]

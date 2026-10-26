@@ -106,6 +106,32 @@ impl Window {
         self.work.used()
     }
 
+    /// Starts another unit at an absolute file offset, abandoning a pending
+    /// unit while retaining this reader's cumulative work charge. No source
+    /// bytes are fetched and no previously terminal failure is cleared.
+    ///
+    /// # Errors
+    /// Returns the prior terminal failure or a source lifecycle error; an
+    /// out-of-file offset returns `InvalidArgument`. Failed repositioning
+    /// leaves the cursor and any pending unit unchanged.
+    pub fn seek(&mut self, offset: u64) -> Result<()> {
+        if let Some(error) = &self.terminal {
+            return Err(error.clone());
+        }
+        self.source.check()?;
+        let length = super::length(self.source.len(), &self.limits)?;
+        let at = ByteRange::new(offset, offset)?
+            .offsets(self.source.len())?
+            .start;
+        if self.cap == 0 && at < length {
+            return Err(Error::limit("parser window byte budget exceeded"));
+        }
+        self.at = at;
+        self.length = INITIAL_BYTES.min(self.cap).min(length - at);
+        self.waiting = None;
+        Ok(())
+    }
+
     /// Parses one owned value, growing its window when structure requires it.
     ///
     /// The callback must describe the same unit when retrying a wait. Keep its

@@ -15,7 +15,8 @@
         "pagura/tests/api/source.rs",
         "pagura-core/tests/windows.rs",
         "pagura-core/tests/memory.rs",
-        "pagura-core/src/store.rs"
+        "pagura-core/src/store.rs",
+        "pagura-document/src/xref/boundary/tests.rs"
       ],
       "gaps": "Document parser/cache migration, progressive opening/pages, jobs, protocol and scheduling remain group 11 obligations.",
       "rule": "A source fixes identity and length, admitted against both the configured file cap and target-sized file positions. Supplies validate all overlaps before publishing new fragments. Missing bytes remain separate from terminal errors. Duplicate bytes do not advance availability; conflicting overlap invalidates future reads and cached waits. Every retained allocation stays charged until its last lease drops. Assembly and missing-range frontiers obey explicit caps, and work accumulates across retries. Bounded windows reuse the slice parser, preserve absolute positions, and publish only completed values and diagnostics. An available prefix can complete a unit before later holes; repeated unchanged waits do not reparse."

@@ -196,6 +196,8 @@ fn owned_revision_chain_keeps_a_primary_section_while_its_supplement_waits() {
     };
     let mut chain = Chain::new(1000, 0, &limits).unwrap();
     let source = source().unwrap();
+    let mut window = Window::new(source.clone(), 0, limits, LoadingLimits::default()).unwrap();
+    let mut work = 0;
     for (offset, kind, literal) in [
         (1000, Kind::Section, primary),
         (700, Kind::Stream, supplement),
@@ -207,13 +209,8 @@ fn owned_revision_chain_keeps_a_primary_section_while_its_supplement_waits() {
             objects: request.objects,
             ..limits
         };
-        let mut window = Window::new(
-            source.clone(),
-            u64::try_from(offset).unwrap(),
-            limits,
-            LoadingLimits::default(),
-        )
-        .unwrap();
+        window.seek(u64::try_from(offset).unwrap()).unwrap();
+        assert_eq!(window.work(), work);
         let read = |parser: &mut pagura_core::syntax::Parser<'_, _>| {
             let mut diagnostics = Diagnostics::new(Recovery::Strict);
             let section = match kind {
@@ -235,6 +232,8 @@ fn owned_revision_chain_keeps_a_primary_section_while_its_supplement_waits() {
         assert_eq!(parsed.diagnostics, []);
         section.end += offset;
         chain.accept(section).unwrap();
+        assert!(window.work() > work);
+        work = window.work();
     }
     assert_eq!(chain.request(), None);
     let table = chain.into_table();

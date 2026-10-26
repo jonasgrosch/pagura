@@ -1,22 +1,16 @@
 //! File structure and cross-reference data (ISO 32000-2 clauses 7.5.2–7.5.8).
 
+mod boundary;
 mod chain;
+pub(crate) use boundary::header;
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 
 use crate::repairs;
 use pagura_core::syntax::{Origin, ParseMode, Parser, is_whitespace};
-use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result,
-};
+use pagura_core::{Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result};
 use std::collections::BTreeMap;
 
-/// The header must start within the first 1024 bytes (7.5.2).
-const HEADER_WINDOW: usize = 1024;
-/// `%PDF-1.x` or `%PDF-2.x`.
-const HEADER_LENGTH: usize = 8;
-/// `startxref` must lie within the last 1024 bytes (7.5.5).
-const TAIL_WINDOW: usize = 1024;
 /// A misplaced object header may be this many bytes before or after its
 /// cross-reference offset (ADR 0003).
 pub(crate) const OFFSET_SLACK: usize = 32;
@@ -153,7 +147,7 @@ pub(crate) fn read(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<XrefTable> {
-    let start = find_startxref(bytes, limits, diagnostics)?.ok_or(
+    let start = boundary::find_startxref(bytes, limits, diagnostics)?.ok_or(
         Error::syntax("missing startxref near the end of the file").at(Position::File(bytes.len())),
     )?;
     // Leading junk can either be included in the recorded offsets or have
@@ -388,93 +382,6 @@ pub(crate) fn integer_offset(dictionary: &Dictionary, key: &[u8]) -> Result<Opti
                 ))
         })
         .transpose()
-}
-
-/// Finds the `%PDF-` header and returns its offset (7.5.2).
-pub(crate) fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
-    let offset = bytes
-        .get(..bytes.len().min(HEADER_WINDOW + HEADER_LENGTH))
-        .and_then(|head| {
-            // The header grammar permits any single minor digit for major
-            // versions 1 and 2.
-            head.windows(HEADER_LENGTH).position(|part| match part {
-                [b'%', b'P', b'D', b'F', b'-', b'1' | b'2', b'.', minor] => minor.is_ascii_digit(),
-                _ => false,
-            })
-        })
-        .filter(|&at| at < HEADER_WINDOW)
-        .ok_or(Error::syntax("missing or unknown PDF header").at(Position::File(0)))?;
-    if offset != 0 {
-        diagnostics.repair(
-            Diagnostic::new(
-                repairs::HEADER_OFFSET,
-                "PDF header follows leading junk; offsets adjusted when necessary",
-            )
-            .at(Position::File(offset)),
-        )?;
-    }
-    let line = offset + HEADER_LENGTH;
-    if !matches!(bytes.get(line), Some(b'\r' | b'\n')) {
-        let suffix = bytes
-            .get(line..)
-            .ok_or(Error::syntax("truncated PDF header"))?;
-        if !suffix
-            .iter()
-            .take(HEADER_WINDOW)
-            .any(|&byte| matches!(byte, b'\r' | b'\n'))
-        {
-            return Err(Error::syntax("missing or unknown PDF header").at(Position::File(offset)));
-        }
-        diagnostics.repair(
-            Diagnostic::new(
-                repairs::HEADER_FORMAT,
-                "extra bytes in the PDF header line; version retained",
-            )
-            .at(Position::File(line)),
-        )?;
-    }
-    Ok(offset)
-}
-
-/// Finds the offset given after the last `startxref` (clause 7.5.5).
-fn find_startxref(
-    bytes: &[u8],
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<Option<usize>> {
-    const STARTXREF: &[u8] = b"startxref";
-    let window = bytes.len().saturating_sub(TAIL_WINDOW);
-    let Some(marker) = bytes
-        .get(window..)
-        .unwrap_or_default()
-        .windows(STARTXREF.len())
-        .rposition(|part| part == STARTXREF)
-        .map(|index| window + index)
-    else {
-        return Ok(None);
-    };
-    let mut tail = Parser::with_offset(bytes, marker + STARTXREF.len(), Origin::File, *limits)?;
-    let offset = usize::try_from(tail.unsigned()?)
-        .ok()
-        .filter(|&offset| offset < bytes.len())
-        .ok_or(Error::syntax("startxref offset outside the file").at(Position::File(marker)))?;
-    let rest = bytes.get(tail.offset()..).unwrap_or_default();
-    let rest = rest
-        .get(rest.iter().take_while(|&&byte| is_whitespace(byte)).count()..)
-        .unwrap_or_default();
-    let Some(after_eof) = rest.strip_prefix(b"%%EOF") else {
-        return Err(Error::syntax("missing %%EOF after startxref").at(tail.position()));
-    };
-    if !after_eof.iter().all(|&b| is_whitespace(b)) {
-        diagnostics.repair(
-            Diagnostic::new(
-                repairs::TRAILING_BYTES,
-                "data follows the final %%EOF; ignored",
-            )
-            .at(Position::File(bytes.len() - after_eof.len())),
-        )?;
-    }
-    Ok(Some(offset))
 }
 
 /// Reads the subsections of a classic table, up to `trailer` (clause 7.5.4).
