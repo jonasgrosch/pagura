@@ -245,6 +245,68 @@ fn alpha_precision_premultiplication_and_live_storage_are_preserved() {
 }
 
 #[test]
+fn signed_bias_budget_counts_only_retained_color_metadata() {
+    let decoded = jpx::JpxImage {
+        width: 2,
+        height: 1,
+        components: vec![
+            jpx::JpxComponent {
+                bits: 8,
+                signed: true,
+                width: 2,
+                height: 1,
+                samples: vec![0, 255],
+            },
+            jpx::JpxComponent {
+                bits: 9,
+                signed: false,
+                width: 2,
+                height: 1,
+                samples: vec![0, 511],
+            },
+        ],
+        // The adapter preserves opaque profile bytes; colour interpretation
+        // validates the profile after this sample-storage boundary.
+        color: jpx::JpxColor::Icc(Vec::new()),
+        alpha: Some(1),
+    };
+    for (color_space, bias_bytes) in [
+        (None, size_of::<u16>()),
+        (Some(Value::name(b"DeviceGray")), 0),
+    ] {
+        let mut image = DecodedImage {
+            kind: ImageKind::Color { color_space },
+            ..empty()
+        };
+        // One signed colour channel needs one bias; opacity needs none.
+        // An explicit PDF colour space allocates no embedded-colour metadata.
+        let live = 8
+            + 2
+            + 4
+            + 2 * (size_of::<jpx::JpxComponent>()
+                + size_of::<jpx::ComponentGeometry>()
+                + 2 * size_of::<&jpx::JpxComponent>()
+                + 1)
+            + bias_bytes;
+        let mut limits = Limits {
+            decoded_bytes: live - 1,
+            ..Limits::default()
+        };
+        assert_eq!(
+            jpx_image::adapt(placed(decoded.clone()), 2, &mut image, &limits)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+        limits.decoded_bytes = live;
+        jpx_image::adapt(placed(decoded.clone()), 2, &mut image, &limits).unwrap();
+        if let ImageKind::EmbeddedColor { sample_bias, .. } = image.kind {
+            assert_eq!(sample_bias, [128]);
+        }
+    }
+}
+
+#[test]
 fn unused_opacity_layout_is_ignored() {
     let decoded = jpx::JpxImage {
         width: 2,
