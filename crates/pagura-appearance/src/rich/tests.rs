@@ -1,7 +1,7 @@
 use super::*;
 use crate::{ProviderFonts, annotation_appearance_with_fonts};
 use pagura_core::{
-    ErrorKind, Rect,
+    ErrorKind, Limits, Name, Rect,
     syntax::{Origin, Parser},
 };
 use pagura_document::OpenOptions;
@@ -13,11 +13,12 @@ fn parse(source: &str, base: Style, limits: &Limits) -> Result<xml::Text> {
         base,
         limits,
         &mut Meter::new(limits.operations, "test work"),
+        &mut Meter::new(limits.document_bytes, "test storage"),
     )
 }
 
 fn base() -> Style {
-    Style::new("Helvetica".into(), 12.0, Justification::Left)
+    Style::new(Name::new(b"Helvetica"), 12.0, Justification::Left)
 }
 
 #[test]
@@ -162,16 +163,53 @@ fn shared_caption_layout_preserves_empty_lines_and_ignores_unrelated_ds() {
         ("\r\nA\r\n", 6.0, 34.0),
         ("\n", 0.0, 22.0),
     ] {
+        let mut annotation = annotation.as_dictionary().unwrap().clone();
+        annotation.insert(
+            Name::new(b"Contents"),
+            Value::String(text_string::encode(text)),
+        );
         let layout = prepare(
             &document,
-            annotation.as_dictionary().unwrap(),
-            text,
+            &annotation,
             &appearance,
             Justification::Center,
             f64::INFINITY,
             &fonts,
+            &mut Meter::new(document.limits().document_bytes, "test storage"),
         )
         .unwrap();
         assert_eq!((layout.width, layout.height), (width, height), "{text:?}");
     }
+}
+
+#[test]
+fn small_rich_appearance_uses_the_shared_storage_allowance() {
+    let document = Document::open(
+        fixture("rich_annotations", "plain-72.pdf"),
+        &OpenOptions {
+            limits: Limits {
+                document_bytes: 65_536,
+                ..Limits::default()
+            },
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let annotation = Parser::new(
+        b"<< /Subtype /FreeText /DA (/F1 10 Tf) /RC (<p>AB</p>) /BS << /W 0 >> >>",
+        Origin::Buffer,
+        Limits::default(),
+    )
+    .parse()
+    .unwrap();
+    let fonts = ProviderFonts::new(None, &document.limits());
+    let appearance = annotation_appearance_with_fonts(
+        &document,
+        annotation.as_dictionary().unwrap(),
+        Rect::from_corners(4.0, 4.0, 124.0, 60.0).unwrap(),
+        &fonts,
+    )
+    .unwrap()
+    .unwrap();
+    assert!(String::from_utf8_lossy(appearance.content()).contains("<41> Tj"));
 }

@@ -76,25 +76,25 @@ fn paint_text(
     storage.charge_product(da_bytes.len(), 2)?;
     work.charge(da_bytes.len())?;
     let da = DefaultAppearance::parse(da_bytes, &limits)?;
-    let text = if optional(document, annotation, b"RC")?.is_some() {
-        String::new()
-    } else {
-        rich::contents(document, annotation, &mut storage)?
-    };
     let rich = if optional(document, annotation, b"RC")?.is_some()
         || optional(document, annotation, b"DS")?.is_some()
     {
         Some(rich::prepare(
             document,
             annotation,
-            &text,
             &da,
             quadding,
             area.width(),
             fonts,
+            &mut storage,
         )?)
     } else {
         None
+    };
+    let text = if rich.is_some() {
+        String::new()
+    } else {
+        rich::contents(document, annotation, &mut storage)?
     };
     if area.width() > 0.0
         && area.height() > 0.0

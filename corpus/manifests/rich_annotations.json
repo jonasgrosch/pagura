@@ -145,6 +145,66 @@
       "tolerance": 1
     },
     {
+      "id": "rich_annotations/raw-font-plain",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/raw-font-plain.pdf",
+      "sha256": "f3ed952c2a1bd3cfc0124267c3bef673370d0af25b392e7673e5512c0c0e4bca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/raw-font-plain.ppm",
+      "oracle_sha256": "433877af615dfb959130a6e3013169a505aac27b3d84fc4902e6fa9fa0d7afed",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/raw-font-rich",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/raw-font-rich.pdf",
+      "sha256": "38d29295927229515bde39c198d2378860aa3f21682641305fd631ead2c33a14",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/raw-font-rich.ppm",
+      "oracle_sha256": "433877af615dfb959130a6e3013169a505aac27b3d84fc4902e6fa9fa0d7afed",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/raw-font-default-style",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/raw-font-default-style.pdf",
+      "sha256": "c09663a501bb6cc421e112422169bcf74c18089a46957482f398ea436a706802",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/raw-font-default-style.ppm",
+      "oracle_sha256": "ddae7398bad78750288976e4fbe89a0fc301342bc9aed600e4228ac57731a7ea",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
       "id": "rich_annotations/mixed-size",
       "kind": "pdf",
       "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
@@ -339,6 +399,86 @@
       "repairs": [],
       "oracle": "corpus/generated/rich_annotations/spacing.ppm",
       "oracle_sha256": "afe501a36ff6a15f255316e706dff421dd3e441cca15e845324da40a07b5e3aa",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/space-relative-spacing",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/space-relative-spacing.pdf",
+      "sha256": "4da59f2ef8d4548fa1513220a2a12c202c833cd4bb83749d034599394657402f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/space-relative-spacing.ppm",
+      "oracle_sha256": "d59f7298ada35f2186d2ba228a8593f55ce28248cfc7fab9644c64df1172f1ee",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/negative-relative-spacing",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/negative-relative-spacing.pdf",
+      "sha256": "3c9d7d629a00b5008dc88a90aa988b6139b78af2401392331b0c3aa7748d8122",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/negative-relative-spacing.ppm",
+      "oracle_sha256": "1b92cc66d35c98e3d8cce7af2ee535ce8079d7769b75417f993aa63c78131079",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/space-relative-size-order",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/space-relative-size-order.pdf",
+      "sha256": "58c83f752524479a5745acaf4028c7f25b5100f6aa623fe1a89ad3ce4b891c53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/space-relative-size-order.ppm",
+      "oracle_sha256": "0bb6e0b7fbd6cc5e872b729fcdec4f68a7094a4b269c844f943246266ffc8d20",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/em-relative-size-order",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/em-relative-size-order.pdf",
+      "sha256": "0a5679d529084151020bfcdff1585b8ae12878e1e9122cb436da9d51710f94d1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/em-relative-size-order.ppm",
+      "oracle_sha256": "aff7e2e1e194f8c748ff8ac8f242bae2afe235b4e530baec86e5d4e40316c589",
       "dpi": 72,
       "width": 128,
       "height": 64,
@@ -1064,6 +1204,81 @@
       ],
       "path": "corpus/generated/rich_annotations/unsupported-layout.pdf",
       "sha256": "75f0e3445d4870cb6f1bf123ca4d885be0e4de963277358954888906315ccec8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/relative-margin",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/relative-margin.pdf",
+      "sha256": "aab13fe99501d5419b2d4564585c2622a4a1e65414653f6e0f98a19d48c02ebf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/relative-indent",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/relative-indent.pdf",
+      "sha256": "ad78dcaffae0c41541c41e3b5b7f1bd9d991a3c1b6f76cffe7c78865ab51eabb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/unitless-leading",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/unitless-leading.pdf",
+      "sha256": "31cce69acb45d5db82e8c7168cc305cc71267d2e957e376f50c27bc568de1cf1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/unitless-shorthand-leading",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/unitless-shorthand-leading.pdf",
+      "sha256": "d935b0cb220c0af06d8d8dae5d4c7c9b63f6d1a599339b23174bce2c3a358c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/adjacent-margins",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/adjacent-margins.pdf",
+      "sha256": "b99d59a78398bb7e5c6fc541e6188e529d1fad73503ce8a945dc0c30ed2e96b9",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

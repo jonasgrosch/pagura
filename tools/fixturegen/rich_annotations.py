@@ -15,11 +15,12 @@ BLACK=(0.,0.,0.)
 BLUE=(0.,0.,1.)
 
 
-def source(xml: bytes | int | None=b'<body><p>AB</p></body>',*,ds=None,contents=b'AB',rect=(4,4,124,60),extra=None,rotate=0,alpha=1.,stored=None,streamed=False,shape='FreeText'):
+def source(xml: bytes | int | None=b'<body><p>AB</p></body>',*,ds=None,contents=b'AB',rect=(4,4,124,60),extra=None,rotate=0,alpha=1.,stored=None,streamed=False,shape='FreeText',font_name='F1'):
     objects=base()
     objects[10]['Fields']=[]
+    objects[10]['DR']['Font']={font_name:ref(70)}
     objects[3]['Rotate']=rotate
-    annotation={'Type':name('Annot'),'Subtype':name(shape),'Rect':list(rect),'BS':{'W':0},'DA':b'/F1 10 Tf 0 g','Contents':contents,'CA':alpha}
+    annotation={'Type':name('Annot'),'Subtype':name(shape),'Rect':list(rect),'BS':{'W':0},'DA':f'/{font_name} 10 Tf 0 g'.encode(),'Contents':contents,'CA':alpha}
     if shape=='Line':annotation|={'L':[10,20,110,20],'Cap':True,'C':[0,0,0]}
     if xml is not None:annotation['RC']=ref(90) if streamed else xml
     if streamed:
@@ -67,6 +68,9 @@ def cases():
     yield rendered('span-color',b'<body><p>A<span style="color:#0000ff">B</span></p></body>',regions=[ordinary[0],(ordinary[1][0],BLUE)])
     yield rendered('inheritance',b'<body style="color:#0000ff"><p>AB</p></body>',regions=[(r,BLUE) for r,_ in ordinary])
     yield rendered('default-style',None,ds=b'font:10pt F1;color:rgb(0,0,255)',regions=[(r,BLUE) for r,_ in ordinary])
+    yield rendered('raw-font-plain',None,font_name='F#80')
+    yield rendered('raw-font-rich',font_name='F#80')
+    yield rendered('raw-font-default-style',None,font_name='F#80',ds=b'color:#0000ff',regions=[(r,BLUE) for r,_ in ordinary])
     yield rendered('mixed-size',b'<body><p>A<span style="font-size:20pt">B</span></p></body>',regions=[((6,42,11,49),BLACK),((12,42,22,56),BLACK)])
     yield rendered('line-break',b'<body><p>A<br/>B</p></body>',regions=[ordinary[0],((6,38,11,45),BLACK)])
     yield rendered('paragraphs',b'<body><p>A</p><p>B</p></body>',regions=[ordinary[0],((6,38,11,45),BLACK)])
@@ -77,6 +81,10 @@ def cases():
     yield rendered('right',b'<body><p style="text-align:right">AB</p></body>',regions=[((110,50,115,57),BLACK),((116,50,121,57),BLACK)])
     yield rendered('margins',b'<body><p style="margin:2pt 3pt 4pt 5pt">AB</p></body>',regions=[((11,48,16,55),BLACK),((17,48,22,55),BLACK)])
     yield rendered('spacing',b'<body><p style="letter-spacing:1pt">AB</p></body>',regions=[ordinary[0],((13,50,18,57),BLACK)])
+    yield rendered('space-relative-spacing',b'<p style="letter-spacing:100%">AB</p>',regions=[ordinary[0],((18,50,23,57),BLACK)])
+    yield rendered('negative-relative-spacing',b'<p style="letter-spacing:-50%">AB</p>',regions=[ordinary[0],((9,50,14,57),BLACK)])
+    yield rendered('space-relative-size-order',b'<p style="letter-spacing:100%;font-size:20pt">AB</p>',regions=[((6,42,16,56),BLACK),((30,42,40,56),BLACK)])
+    yield rendered('em-relative-size-order',b'<p style="letter-spacing:0.2em;font-size:20pt">AB</p>',regions=[((6,42,16,56),BLACK),((22,42,32,56),BLACK)])
     yield rendered('wrap',b'<body><p>AB CD</p></body>',rect=(4,4,24,60),clip=(6,6,22,58),regions=ordinary+[((6,38,11,45),BLACK),((12,38,17,45),BLACK)])
     yield rendered('entities',b'<body><p>A&#32;B</p></body>',regions=[ordinary[0],((18,50,23,57),BLACK)])
     yield rendered('whitespace',b'<body>\n<p>  A\n\t B  </p>\n</body>',regions=[ordinary[0],((18,50,23,57),BLACK)])
@@ -112,7 +120,12 @@ def cases():
                            ('ds-type',b'<p>AB</p>',{'DS':42})]:
         yield Case(label,source(xml,extra=extra),OPEN,(REQUIREMENT,),'Invalid selected rich text fails explicitly',extra={'render_error':'syntax'})
     for label,xml in [('external-entity',b'<!DOCTYPE p><p>AB</p>'),('embedded-object',b'<p><span xfa:embed="other"/></p>'),
-                       ('rtl',b'<p dir="rtl">AB</p>'),('unsupported-layout',b'<p style="tab-stops:20pt">AB</p>')]:
+                       ('rtl',b'<p dir="rtl">AB</p>'),('unsupported-layout',b'<p style="tab-stops:20pt">AB</p>'),
+                       ('relative-margin',b'<p style="margin-left:10%">AB</p>'),
+                       ('relative-indent',b'<p style="text-indent:2em">AB</p>'),
+                       ('unitless-leading',b'<p style="line-height:1.5">AB</p>'),
+                       ('unitless-shorthand-leading',b'<p style="font:10pt/1.5 F1">AB</p>'),
+                       ('adjacent-margins',b'<body><p style="margin-bottom:2pt">A</p><p style="margin-top:3pt">B</p></body>')]:
         yield Case(label,source(xml),UNSUPPORTED,(REQUIREMENT,),'Unsupported semantics are never silently omitted',feature='annotation.appearance')
     yield Case('automatic-size',source(extra={'DA':b'/F1 0 Tf'}),UNSUPPORTED,(REQUIREMENT,),
                'Unimplemented rich automatic sizing fails explicitly rather than selecting an arbitrary size',feature='annotation.appearance')

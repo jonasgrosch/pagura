@@ -185,5 +185,6 @@ At `919f87168`, hosted save/reopen, native/WASI and browser editing checks pass,
 including generated checkbox/radio Off and on states, source-state names,
 NeedAppearances selection and atomic failures; all three functional platforms pass. At `424839e7a`, Pagura passed all
 180 independent annotation render probes. These results cover those revisions;
-the added MK R, common rich-text and cloudy controls await validation on this
+the 64 border/MK R controls also pass hosted save/reopen and browser checks at
+`8b0d4f21d`. The common rich-text/cloudy integration awaits validation on this
 consolidated revision. Wider V01/V02 gates remain open.

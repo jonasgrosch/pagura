@@ -10,7 +10,7 @@ use crate::features;
 use crate::fonts::FontSource;
 use crate::form::da::DefaultAppearance;
 use crate::values::optional;
-use pagura_core::{Diagnostics, Dictionary, Error, Limits, Meter, Result, Value, text_string};
+use pagura_core::{Diagnostics, Dictionary, Error, Meter, Result, Value, text_string};
 use pagura_document::{Document, forms::Justification};
 use style::Style;
 
@@ -20,11 +20,11 @@ pub(crate) use layout::Layout;
 pub(crate) fn prepare(
     document: &Document,
     annotation: &Dictionary,
-    text: &str,
     appearance: &DefaultAppearance,
     alignment: Justification,
     width: f64,
     fonts: &dyn FontSource,
+    storage: &mut Meter,
 ) -> Result<Layout> {
     let rc = optional(document, annotation, b"RC")?;
     let ds = if optional(document, annotation, b"Subtype")?
@@ -36,38 +36,30 @@ pub(crate) fn prepare(
         None
     };
     let limits = document.limits();
-    // Source, parsed styles, encoded layout and font/resource state coexist.
-    // Each phase gets one quarter of the caller's storage allowance.
-    let limits = Limits {
-        document_bytes: limits.document_bytes / 4,
-        ..limits
-    };
     let mut work = Meter::new(limits.operations, "rich text work budget exceeded");
-    let family = std::str::from_utf8(appearance.font.as_bytes())
-        .map_err(|_| unsupported("non-Unicode rich text font resource name"))?
-        .to_owned();
-    let mut base = Style::new(family, appearance.size, alignment);
+    let mut base = Style::new(appearance.font.clone(), appearance.size, alignment);
     base.leading = (appearance.leading > 0.0).then_some(appearance.leading);
     base.rise = appearance.rise;
-    base.spacing = appearance.character_space;
+    base.spacing = style::Spacing::Absolute(appearance.character_space);
     if let Some(ds) = ds {
         let bytes = ds
             .as_string()
             .ok_or(Error::syntax("rich text DS must be a text string"))?;
-        let css = decode(document, bytes, &limits)?;
+        let css = decode(document, bytes, storage)?;
         work.charge_product(css.len(), 4)?;
         base.apply(&css)?;
     }
     let parsed = if rc.is_some() {
-        let source = rich_content(document, annotation, &limits)?;
+        let source = rich_content(document, annotation, storage)?;
         work.charge_product(source.len(), 4)?;
-        xml::Text::parse(&source, base, &limits, &mut work)?
+        xml::Text::parse(&source, base, &limits, &mut work, storage)?
     } else {
+        let text = contents(document, annotation, storage)?;
         work.charge(text.len())?;
-        xml::Text::plain(text, base, &limits, &mut work)?
+        xml::Text::plain(&text, base, &limits, &mut work, storage)?
     };
     layout::prepare(
-        document, parsed, appearance, width, fonts, &limits, &mut work,
+        document, parsed, appearance, width, fonts, storage, &mut work,
     )
 }
 
@@ -91,7 +83,12 @@ pub(crate) fn contents(
     Ok(result)
 }
 
-fn rich_content(document: &Document, annotation: &Dictionary, limits: &Limits) -> Result<String> {
+fn rich_content(
+    document: &Document,
+    annotation: &Dictionary,
+    storage: &mut Meter,
+) -> Result<String> {
+    let limits = document.limits();
     let value = annotation
         .get(b"RC")
         .ok_or(Error::syntax("missing rich text content"))?;
@@ -99,9 +96,8 @@ fn rich_content(document: &Document, annotation: &Dictionary, limits: &Limits) -
         let object = document.object(id)?;
         if object.is_stream() {
             let bytes = document.stream_data(object)?;
-            if bytes.len().saturating_mul(4) > limits.document_bytes
-                || bytes.len() > limits.string_bytes
-            {
+            storage.charge_product(bytes.len(), 4)?;
+            if bytes.len() > limits.string_bytes {
                 return Err(Error::limit("rich text source storage exceeded"));
             }
             if bytes.starts_with(&[0xfe, 0xff]) || bytes.starts_with(&[0xff, 0xfe]) {
@@ -137,15 +133,14 @@ fn rich_content(document: &Document, annotation: &Dictionary, limits: &Limits) -
     let bytes = document.resolve(value)?.as_string().ok_or(Error::syntax(
         "rich text RC must be a text string or stream",
     ))?;
-    decode(document, bytes, limits)
+    decode(document, bytes, storage)
 }
 
-fn decode(document: &Document, bytes: &[u8], limits: &Limits) -> Result<String> {
-    if bytes.len().saturating_mul(3) > limits.document_bytes {
-        return Err(Error::limit("rich text source storage exceeded"));
-    }
+fn decode(document: &Document, bytes: &[u8], storage: &mut Meter) -> Result<String> {
+    let limits = document.limits();
+    storage.charge(bytes.len().saturating_mul(3).min(limits.string_bytes))?;
     let mut diagnostics = Diagnostics::new(document.recovery());
-    let result = text_string::decode(bytes, limits, &mut diagnostics)?;
+    let result = text_string::decode(bytes, &limits, &mut diagnostics)?;
     document.report(diagnostics.take());
     Ok(result)
 }

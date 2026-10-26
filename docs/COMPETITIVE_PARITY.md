@@ -70,8 +70,8 @@ changes and fixes are accounted for in the replacement group.
 | 18 | Version, extension and exact profile conformance | C01 | Relevant feature groups |
 
 The current review consolidation retains #213 for document services and complete
-PNG export, #256 for appearance generation, and the #182/#187 image work as one
-image-integration group. The independent source branches remain recoverable.
+PNG export, #256 for appearance generation, and #182 for the consolidated
+image-integration group. Superseded #187 is closed. The independent source branches remain recoverable.
 A retained PR is draft until its advertised boundary, public surfaces and hosted
 checks are complete. Remaining work stays assigned in this plan, even if a group
 cannot yet claim the entire package's acceptance gate.
