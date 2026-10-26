@@ -400,3 +400,100 @@ fn file_attachment_icons_have_bounded_content_and_validate_visual_entries() {
         None
     );
 }
+
+#[test]
+fn ink_paths_resolve_indirect_arrays_and_coordinates() {
+    let document = Document::open(
+        fixture("ink_annotations", "indirect.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let annotation = dictionary(b"<< /Subtype /Ink /InkList 6 0 R /BS << /W 2 >> >>");
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    assert_eq!(
+        annotation_appearance(&document, &annotation, area).unwrap(),
+        generate(
+            b"<< /Subtype /Ink /InkList [[4 8 20 8] [20 12 20 24]] /BS << /W 2 >> >>",
+            area,
+        )
+        .unwrap()
+    );
+}
+
+#[test]
+fn ink_validates_geometry_even_when_color_or_width_suppresses_marks() {
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    for style in ["/C []", "/BS << /W 0 >>"] {
+        assert_eq!(
+            generate(
+                format!("<< /Subtype /Ink /InkList [[4 8 28 8]] {style} >>").as_bytes(),
+                area,
+            )
+            .unwrap(),
+            None
+        );
+        for value in [
+            "null",
+            "42",
+            "[]",
+            "[[]]",
+            "[42]",
+            "[[4 8 20]]",
+            "[[4 /Bad]]",
+        ] {
+            assert_eq!(
+                generate(
+                    format!("<< /Subtype /Ink /InkList {value} {style} >>").as_bytes(),
+                    area,
+                )
+                .unwrap_err()
+                .kind,
+                ErrorKind::Syntax,
+                "{value} {style}"
+            );
+        }
+    }
+    assert!(
+        generate(
+            b"<< /Subtype /Ink /InkList [[4 8 28 8]] /ca /NotUsedByStrokes >>",
+            area,
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn ink_generation_bounds_aggregate_segments_storage_and_output() {
+    for limits in [
+        Limits {
+            path_segments: 3,
+            ..Limits::default()
+        },
+        Limits {
+            render_bytes: 1,
+            ..Limits::default()
+        },
+        Limits {
+            stream_bytes: 16,
+            ..Limits::default()
+        },
+    ] {
+        let document = Document::open(
+            fixture("ink_annotations", "indirect.pdf"),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        // Repeated indirect paths must charge their aggregate, even though
+        // the document cache holds only one source coordinate array.
+        let annotation = dictionary(b"<< /Subtype /Ink /InkList [7 0 R 7 0 R] >>");
+        assert_eq!(
+            annotation_appearance(&document, &annotation, rect(0.0, 0.0, 32.0, 32.0))
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+    }
+}

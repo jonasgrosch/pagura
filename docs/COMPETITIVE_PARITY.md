@@ -332,10 +332,21 @@ work; cloudy effects still refuse explicitly. Thirty-two authored controls
 include 23 closed-form conic/rectangle pixel oracles, stored appearances,
 72/144 dpi, unequal axes, rotation, transparent borders, opacity and indirect
 entries. Native/WASI/client, partial-tile and viewer checks use the same
-independent expectations. Hosted execution is pending; unequal-axis stroke/dash
-expectations and richer borders remain open.
+independent expectations. These checks pass at `a69e470c3` in
+[run 40286507880](https://github.com/jonasgrosch/pagura/actions/runs/40286507880).
+Unequal-axis stroke/dash expectations and richer borders remain open.
 
-Complete missing normal appearances for FreeText, text markup, Ink, Line,
+**InkList appearances implemented:** samples form straight-connected paths with
+BS width/dash, C and CA under the original annotation clip. Reader policy uses
+butt caps, miter joins and one stroke operation for all disjoint paths. Repeated
+indirect paths count toward aggregate segment/storage bounds; generated content
+has its own byte cap. Thirty-four controls include 25 independent pixel oracles
+for corners, crossing paths, dashes, diagonals, two resolutions, rotation, opacity,
+clipping and stored/generated appearances. Geometry validates even with zero
+width or an empty color. Native/WASI/client, partial-tile and viewer checks are
+registered; hosted execution is pending. PDF 2.0 Path generation remains explicit.
+
+Complete missing normal appearances for FreeText, text markup, Line,
 Polygon/PolyLine, Stamp, Caret and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses

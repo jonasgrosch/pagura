@@ -1,0 +1,668 @@
+{
+  "schema": 2,
+  "area": "ink_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "ink_annotations/line-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/line-72.pdf",
+      "sha256": "067697e2702c4c9192d0276b7d2ca5bc8b1877da08eef287198284fcfc8f3938",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/line-72.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/line-stored-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/line-stored-72.pdf",
+      "sha256": "9159c9f2ca7d9aeead96062a240845d60d7aa87d4ad43452323b6464ddd41b24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/line-stored-72.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/line-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/line-144.pdf",
+      "sha256": "067697e2702c4c9192d0276b7d2ca5bc8b1877da08eef287198284fcfc8f3938",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/line-144.ppm",
+      "oracle_sha256": "9ed78f1f4652ea5150d50371e97d4884422191a79907d62ef24cce7c38fe9bc2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/line-stored-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/line-stored-144.pdf",
+      "sha256": "9159c9f2ca7d9aeead96062a240845d60d7aa87d4ad43452323b6464ddd41b24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/line-stored-144.ppm",
+      "oracle_sha256": "9ed78f1f4652ea5150d50371e97d4884422191a79907d62ef24cce7c38fe9bc2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/corner-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/corner-72.pdf",
+      "sha256": "8834a1419d4ffc7c7684c6dcb1d36828c495ded03bb7748978c0ecd6b133f9a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/corner-72.ppm",
+      "oracle_sha256": "8f47ddbe11c3d201f55d048dc06540deca5f8acdba07886a11b0711ddced1df4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/corner-stored-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/corner-stored-72.pdf",
+      "sha256": "a8f72d036066635366fc4acb34f3dd75f459cad06806d8b4c1f5fe0cd4b5b306",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/corner-stored-72.ppm",
+      "oracle_sha256": "8f47ddbe11c3d201f55d048dc06540deca5f8acdba07886a11b0711ddced1df4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/corner-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/corner-144.pdf",
+      "sha256": "8834a1419d4ffc7c7684c6dcb1d36828c495ded03bb7748978c0ecd6b133f9a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/corner-144.ppm",
+      "oracle_sha256": "2302ba7f3d72d5034f1d5d560f79971ccc23bcfbd9b60218b276bf32ed0cd5e7",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/corner-stored-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/corner-stored-144.pdf",
+      "sha256": "a8f72d036066635366fc4acb34f3dd75f459cad06806d8b4c1f5fe0cd4b5b306",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/corner-stored-144.ppm",
+      "oracle_sha256": "2302ba7f3d72d5034f1d5d560f79971ccc23bcfbd9b60218b276bf32ed0cd5e7",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/cross-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/cross-72.pdf",
+      "sha256": "3d1b16c2f55be63676389ade853637b69cbf7b330982d1dd70c4082139211b1c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/cross-72.ppm",
+      "oracle_sha256": "a8d36c287e926843bc1f4b0b8cb8822d34adb140f3a10b7b86973493c758774e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/cross-stored-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/cross-stored-72.pdf",
+      "sha256": "d43b6f8233e3a27d31a181a5aec805a1d00db85600086ea781b7649c33cdaed2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/cross-stored-72.ppm",
+      "oracle_sha256": "a8d36c287e926843bc1f4b0b8cb8822d34adb140f3a10b7b86973493c758774e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/cross-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/cross-144.pdf",
+      "sha256": "3d1b16c2f55be63676389ade853637b69cbf7b330982d1dd70c4082139211b1c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/cross-144.ppm",
+      "oracle_sha256": "71c685e841f1aeb326462d52437035cd775deee4526c88cb55c9a271db85668d",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/cross-stored-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/cross-stored-144.pdf",
+      "sha256": "d43b6f8233e3a27d31a181a5aec805a1d00db85600086ea781b7649c33cdaed2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/cross-stored-144.ppm",
+      "oracle_sha256": "71c685e841f1aeb326462d52437035cd775deee4526c88cb55c9a271db85668d",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/dash-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/dash-72.pdf",
+      "sha256": "2122f767532779ea382e7557265a9668d38eeacaa2a96c1f04eda10e585a24a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/dash-72.ppm",
+      "oracle_sha256": "8e9992af735a5fcf78b08a69b237b17f2d752f55b24c2db9f356322ee2f02e01",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/diagonal-72",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/diagonal-72.pdf",
+      "sha256": "a6bc1e4564dee1511e367cd092a753342b9219a5ecbf47c3aa048d3ee28f794a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/diagonal-72.ppm",
+      "oracle_sha256": "2d94e0f1fd17f510871675ad569aca2204cee201975dadf89819d530275899e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/dash-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/dash-144.pdf",
+      "sha256": "2122f767532779ea382e7557265a9668d38eeacaa2a96c1f04eda10e585a24a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/dash-144.ppm",
+      "oracle_sha256": "30173d0ab542dadaad118e45db623aba68445fb599e8b1cad2511daca944bc46",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/diagonal-144",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/diagonal-144.pdf",
+      "sha256": "a6bc1e4564dee1511e367cd092a753342b9219a5ecbf47c3aa048d3ee28f794a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/diagonal-144.ppm",
+      "oracle_sha256": "7d255700978054772af2f6634e260d23c818cfb330ba2dca6e6aea03cbd53505",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/rotated",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/rotated.pdf",
+      "sha256": "c1fb4a62d2b2b1a0aa7baf5e1a155f1d527286fbe40fee173d121ba945ed119f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/rotated.ppm",
+      "oracle_sha256": "3531b60ad31281a0076f978dc15942a1c8843ff9d21aaf3e97511fb535970089",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/cross-opacity",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/cross-opacity.pdf",
+      "sha256": "9c223f5c57749f7d0644450ab7d838db05cd2448defe7ab6f6f6ed277a685d89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/cross-opacity.ppm",
+      "oracle_sha256": "a987119bbce18336e0af65d6593c423622afe4c2830f4dcde14884270e35b26c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/clipped",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/clipped.pdf",
+      "sha256": "691b427691ae4acda95c3e38427b359e3468a940601ade44bd34256e517539bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/clipped.ppm",
+      "oracle_sha256": "85e1b7f5a07e91257da33faffa2b4a66ae79c270aed6032d3157c284ea3bd66a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/zero-width",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/zero-width.pdf",
+      "sha256": "ac96e748446db90a680583403c1fc1b3d71e92097993e1a42026b1971bcf3d9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/zero-width.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/no-color",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/no-color.pdf",
+      "sha256": "de7d45ccddb967f630d001490534c9ab58f969c4f2214b186e5b2c23b7bcf9b2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/no-color.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/single-point",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/single-point.pdf",
+      "sha256": "47faabf2989c71f74b535fae11eecae4072dd726b88230958aab8bc43a887595",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/single-point.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/null-path",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/null-path.pdf",
+      "sha256": "be13983dffc6b6c7edc4158aa3d87b93278741ec90de1e892b0b5cde3562a241",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/null-path.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/indirect",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/indirect.pdf",
+      "sha256": "4f066a61e90d1b93314122d4b740771877a1c0c1a944f7e70d85d3518924e152",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/indirect.ppm",
+      "oracle_sha256": "10f03936c99ae8957f5e3a8ae78a52e566f91744a9b3f65cd4dc8adedee9a451",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/missing",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/missing.pdf",
+      "sha256": "5bb311e7a792bccd6f84403f5fef08e5b3c12f728cd0bebf56cb75eccf702772",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/null",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/null.pdf",
+      "sha256": "cf50e00c64d88662e3cc0de12cdc64b698feb47bd0e0b4730a6a711f5e1bbe92",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/wrong-type",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/wrong-type.pdf",
+      "sha256": "2aa6e185b5bcfac439f8a318c99bdac875e55e135caf297a67e42b3e65d99a36",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/empty",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/empty.pdf",
+      "sha256": "cdd70a9ab683e646c9b13896ccf99bc1b04718340f6fb3f64e00391dd247b0e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/empty-path",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/empty-path.pdf",
+      "sha256": "1acdbc677e4b2f10c5e3ebbb6240a225da5e12dba35b4af9645c318e320825f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/path-type",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/path-type.pdf",
+      "sha256": "ef392ace921fb065c643a18531f3858f4f881b2c4121cf07807d57042ba47771",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/odd-path",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/odd-path.pdf",
+      "sha256": "3f2ca2ea5cf0e282478fbcb5f3eb50568bfd4aa095ad88bda578dee1cb57394d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/coordinate-type",
+      "kind": "pdf",
+      "description": "Ink geometry requires nonempty arrays of finite coordinate pairs",
+      "expected": "open",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/coordinate-type.pdf",
+      "sha256": "702ab49237a137c98014cd83bcf6b8945520b5c61142c3667df265dec79591e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ink_annotations/pdf2-path",
+      "kind": "pdf",
+      "description": "PDF 2.0 Path appearance generation remains explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "content-ink-appearances"
+      ],
+      "path": "corpus/generated/ink_annotations/pdf2-path.pdf",
+      "sha256": "8130a7ee17d24bf27dc493dcfe5fceedd91103d419be607c18dac1e93d553b0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "ink_annotations/stored-ignores-geometry",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/stored-ignores-geometry.pdf",
+      "sha256": "bfe44bfe38ec7323b3d8494abf18015afa7dbcf7aba8aa106a00cd4a242214d6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/stored-ignores-geometry.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    }
+  ]
+}

@@ -508,7 +508,7 @@
         "12.5.6.8"
       ],
       "rule": "Visible link, square and circle borders remain inside Rect. BS overrides Border. Zero-width borders and absent interior colours are transparent. Seven note icons have geometric appearances selected by project device policy; exact-area coverage and channel rounding are project policies.",
-      "status": "link/square/circle appearance generation and predefined note/file icons",
+      "status": "link/square/circle, InkList and predefined note/file icon appearance generation",
       "tests": [
         "content/annotation-icon-Comment",
         "content/annotation-icon-Key",
@@ -833,7 +833,7 @@
         "12.5.6.8 Table 180"
       ],
       "rule": "Absent Circle appearances draw an ellipse within Rect, with BS/Border styling, optional IC fill and independent CA/ca opacity. Square/Circle RD entries inset left, top, right and bottom before border positioning while retaining the original appearance BBox. RD values are finite, nonnegative and leave positive dimensions. Null RD/BE entries are absent; missing/null BE/S selects plain S. Eight tangent cubic arcs and a half-width border inset are bounded reader artwork policies, not exact conic claims. Stored appearances retain precedence.",
-      "status": "circle/ellipse appearances and square/circle rectangle differences implemented; hosted accuracy validation pending",
+      "status": "circle/ellipse appearances and square/circle rectangle differences implemented; native/WASI/client/partial-tile/viewer accuracy checks passed at a69e470c3",
       "tests": [
         "pagura-appearance annotation::tests::rectangle_differences_inset_left_top_right_bottom_without_changing_placement",
         "pagura-appearance annotation::tests::plain_and_absent_border_effects_preserve_circle_and_square_geometry",
@@ -873,6 +873,57 @@
         "circle_annotations/cloudy"
       ],
       "gaps": "Cloudy, rounded and relief border synthesis remains explicit. Independent unequal-axis stroke/dash coverage and other annotation subtypes remain open. Pixel expectations use closed-form conic intersection areas, independent of emitted cubic paths."
+    },
+    {
+      "id": "content-ink-appearances",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.4 Table 168",
+        "12.5.5",
+        "12.5.6.13 Table 185"
+      ],
+      "rule": "InkList paths contain coordinate pairs in default user space. Reader policy joins samples with straight segments, butt caps and miter joins in one stroke, applying C, CA and BS width/dash. All paths validate before painting or returning an empty mark; indirect paths/coordinates resolve. Aggregate segment and temporary-storage bounds charge repeated indirect paths, and generated content has independent byte limits. Stored appearances retain precedence and the annotation rectangle clips the generated appearance.",
+      "status": "InkList generation implemented; hosted accuracy validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::ink_paths_resolve_indirect_arrays_and_coordinates",
+        "pagura-appearance annotation::tests::ink_validates_geometry_even_when_color_or_width_suppresses_marks",
+        "pagura-appearance annotation::tests::ink_generation_bounds_aggregate_segments_storage_and_output",
+        "ink_annotations/line-72",
+        "ink_annotations/line-stored-72",
+        "ink_annotations/line-144",
+        "ink_annotations/line-stored-144",
+        "ink_annotations/corner-72",
+        "ink_annotations/corner-stored-72",
+        "ink_annotations/corner-144",
+        "ink_annotations/corner-stored-144",
+        "ink_annotations/cross-72",
+        "ink_annotations/cross-stored-72",
+        "ink_annotations/cross-144",
+        "ink_annotations/cross-stored-144",
+        "ink_annotations/dash-72",
+        "ink_annotations/diagonal-72",
+        "ink_annotations/dash-144",
+        "ink_annotations/diagonal-144",
+        "ink_annotations/rotated",
+        "ink_annotations/cross-opacity",
+        "ink_annotations/clipped",
+        "ink_annotations/zero-width",
+        "ink_annotations/no-color",
+        "ink_annotations/single-point",
+        "ink_annotations/null-path",
+        "ink_annotations/indirect",
+        "ink_annotations/missing",
+        "ink_annotations/null",
+        "ink_annotations/wrong-type",
+        "ink_annotations/empty",
+        "ink_annotations/empty-path",
+        "ink_annotations/path-type",
+        "ink_annotations/odd-path",
+        "ink_annotations/coordinate-type",
+        "ink_annotations/pdf2-path",
+        "ink_annotations/stored-ignores-geometry"
+      ],
+      "gaps": "PDF 2.0 Path generation, richer border styles, handwriting recognition and popup interaction remain separate. Independent pixel expectations use literal stroke regions, exact region unions and convex clipping; stored controls fill the regions instead of emitting the generator stroke path."
     }
   ]
 }
