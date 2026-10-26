@@ -117,12 +117,16 @@ fn checks_respect_response_and_decode_limits_and_exact_selection() -> Result<()>
         ("check-flate", 2, 0, 1, 7),
         ("check-flate", 1, 1, 1, 7),
         ("check-flate", 1, 0, 4, 7),
-        ("external-stream", 1, 0, 0, 1),
+        ("external-stream", 1, 0, 0, 3),
     ] {
         let mut input = input(Version::V1_10, name, b"", false)?;
         requests(&mut input, document, index, key);
         let bodies = serve(Session::default(), &input)?;
         assert_eq!((bodies[2][0], bodies[2][5]), (255, category), "{name}");
+        if name == "external-stream" {
+            let tag = b"stream.external";
+            assert!(bodies[2].windows(tag.len()).any(|bytes| bytes == tag));
+        }
         assert_eq!(bodies[3][0], 131);
     }
     Ok(())
