@@ -287,11 +287,11 @@ fn compatibility_standard_font_fallback_is_narrow_and_preserves_resources() {
     )
     .unwrap();
     let mut resources = Dictionary::new();
-    assert!(compatibility::supply_font(&document, &mut resources, b"CustomFont").is_err());
+    assert!(supply_font(&document, &mut resources, b"CustomFont").is_err());
     assert!(resources.is_empty());
-    compatibility::supply_font(&document, &mut resources, b"Helvetica").unwrap();
+    supply_font(&document, &mut resources, b"Helvetica").unwrap();
     let before = resources.clone();
-    compatibility::supply_font(&document, &mut resources, b"Helvetica").unwrap();
+    supply_font(&document, &mut resources, b"Helvetica").unwrap();
     assert_eq!(resources, before);
     let fonts = resources.get(b"Font").unwrap().as_dictionary().unwrap();
     let font = fonts.get(b"Helvetica").unwrap().as_dictionary().unwrap();
