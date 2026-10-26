@@ -11,7 +11,7 @@ mod destinations;
 mod labels;
 mod links;
 mod outlines;
-mod trees;
+pub(crate) mod trees;
 
 pub use actions::{Action, ActionKind, ActionSequence, NamedAction, Script};
 pub use destinations::{

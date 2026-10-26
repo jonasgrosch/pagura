@@ -227,3 +227,17 @@ body.dragging #viewport { outline: 3px dashed var(--focus); outline-offset: -8px
 
 .form-widget:not(.form-dirty)::selection { color: transparent; background: #337ac633; }
 .form-widget:disabled { cursor: progress; }
+
+#document-services-dialog { max-width: min(42rem, 94vw); }
+#document-services-dialog dd, #document-services-dialog li { overflow-wrap: anywhere; white-space: pre-wrap; }
+#document-services-dialog dt { font-weight: 600; }
+#document-services-dialog dd { margin: 0 0 .75rem; }
+#document-services-dialog li { margin-bottom: 1rem; }
+#document-services-dialog li button { margin: .25rem 0; }
+#document-attachment-page-form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+#document-attachment-page { width: 6rem; padding: .5rem; }
+
+#png-export-form > label { display: block; margin: .75rem 0 .25rem; }
+#png-export-form > label:has(input[type=checkbox]) { display: flex; }
+#png-export-form > input[type=number] { display: block; width: 8rem; padding: .5rem; }
+#png-export-submit { margin-top: .75rem; }

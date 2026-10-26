@@ -1,6 +1,7 @@
 import { decodeFields, decodeWidgets, decodeStyles, encodeChanges } from './editing_protocol.mjs';
 import { decodeReading, encodeReading } from './reading_protocol.mjs';
-import { DiagnosticCode, ErrorCategory, MAX_FILE, MAX_FRAME, MAX_PASSWORD, OpenFlags, PositionKind, RequestKind, ResponseKind, TileStatus, Version } from './protocol_constants.mjs';
+import { decodeDocumentService, encodeDocumentService } from './document_protocol.mjs';
+import { DiagnosticCode, ErrorCategory, MAX_FILE, MAX_FRAME, MAX_PASSWORD, OpenFlags, PngBackground, PositionKind, RequestKind, ResponseKind, TileStatus, Version } from './protocol_constants.mjs';
 /** Project-owned protocol v1 codec. See crates/pagura-host/PROTOCOL.md. */
 export { MAX_FILE, MAX_FRAME };
 export const VERSION_1_1 = Version.V1_1;
@@ -10,6 +11,11 @@ export const VERSION_1_4 = Version.V1_4;
 export const VERSION_1_5 = Version.V1_5;
 export const VERSION_1_6 = Version.V1_6;
 export const VERSION_1_7 = Version.V1_7;
+export const VERSION_1_8 = Version.V1_8;
+export const VERSION_1_9 = Version.V1_9;
+export const VERSION_1_10 = Version.V1_10;
+export const VERSION_1_11 = Version.V1_11;
+export const VERSION_1_12 = Version.V1_12;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -104,8 +110,12 @@ export function decodeResponse(body) {
     case ResponseKind.Stats: value = { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32() }; break;
     case ResponseKind.PageText: case ResponseKind.Search: case ResponseKind.Links: case ResponseKind.Outlines: case ResponseKind.Labels: case ResponseKind.ReadingStats: case ResponseKind.Bounds: value = decodeReading(kind, r); break;
     case ResponseKind.FormFields: value = decodeFields(r); break;
+    case ResponseKind.Metadata: case ResponseKind.Attachments: case ResponseKind.MetadataBytes: case ResponseKind.AttachmentBytes: case ResponseKind.AttachmentCheck:
+    case ResponseKind.Files: case ResponseKind.FileBytes: case ResponseKind.FileCheck: case ResponseKind.ObjectMetadata: case ResponseKind.ObjectMetadataBytes: case ResponseKind.Collection: case ResponseKind.Images: case ResponseKind.ImageBytes: case ResponseKind.Reauthenticate: case ResponseKind.Thumbnail:
+    case ResponseKind.PageAttachments: case ResponseKind.PageAttachmentBytes: case ResponseKind.PageAttachmentCheck: value = decodeDocumentService(kind, r); break;
     case ResponseKind.FormStyles: value = decodeStyles(r); break;
     case ResponseKind.FormWidgets: value = decodeWidgets(r); break;
+    case ResponseKind.PagePng: value = r.take(r.u32()); break;
     case ResponseKind.SavedForm: { const length = r.u32(); if (length > MAX_FILE) throw new Error('Saved PDF exceeds budget'); value = r.take(length); break; }
     case ResponseKind.Error: {
       const category = r.u8(), tag = r.text(), repair = r.text(), message = r.text();
@@ -148,8 +158,9 @@ export function encodeRequest(kind, id, values = {}) {
     return value;
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
-  if (kind >= RequestKind.PageText && kind <= RequestKind.Bounds) {
-    const payload = encodeReading(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
+  const reading = kind >= RequestKind.PageText && kind <= RequestKind.Bounds;
+  if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes || kind >= RequestKind.AttachmentCheck && kind <= RequestKind.Thumbnail) {
+    const payload = reading ? encodeReading(kind, values) : encodeDocumentService(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
     view.setUint32(0, payload.length + 5, true); bytes[4] = kind; view.setUint32(5, id, true); bytes.set(payload, 9); return bytes;
   }
   const changes = kind === RequestKind.SaveForm ? encodeChanges(values.changes) : null;
@@ -166,6 +177,10 @@ export function encodeRequest(kind, id, values = {}) {
     case RequestKind.RenderTile: case RequestKind.GenerationTile:
       if (!Number.isFinite(values.scale) || values.scale <= 0) throw new Error('Scale must be positive and finite');
       size = kind === RequestKind.GenerationTile ? 41 : 37; break;
+    case RequestKind.PagePng:
+      if (!Number.isFinite(values.scale) || values.scale <= 0) throw new Error('Scale must be positive and finite');
+      if (!Object.values(PngBackground).includes(values.background)) throw new Error('Invalid PNG background');
+      size = 22; break;
     case RequestKind.SaveForm: size = 13 + changes.length; break;
     case RequestKind.Diagnostics: case RequestKind.Close: case RequestKind.DiagnosticDetails: case RequestKind.FormFields: size = 9; break;
     default: throw new Error('Unknown request kind');
@@ -179,13 +194,16 @@ export function encodeRequest(kind, id, values = {}) {
   if (kind === RequestKind.Hello) integer(values.version ?? Version.V1);
   if (kind === RequestKind.Open) { bytes[offset++] = values.recovery; blob(values.password); blob(values.bytes); }
   if (kind === RequestKind.GenerationTile) integer(values.generation);
-  if ((kind >= RequestKind.PageInfo && kind <= RequestKind.GenerationTile) || [RequestKind.DiagnosticDetails, RequestKind.FormFields, RequestKind.SaveForm, RequestKind.FormWidgets, RequestKind.FormStyles].includes(kind)) integer(values.document);
+  if ((kind >= RequestKind.PageInfo && kind <= RequestKind.GenerationTile) || [RequestKind.DiagnosticDetails, RequestKind.FormFields, RequestKind.SaveForm, RequestKind.FormWidgets, RequestKind.FormStyles, RequestKind.PagePng].includes(kind)) integer(values.document);
   if (kind === RequestKind.SaveForm) blob(changes);
   if (kind === RequestKind.Generation) integer(values.generation);
-  if (kind === RequestKind.PageInfo || kind === RequestKind.RenderTile || kind === RequestKind.GenerationTile || kind === RequestKind.FormWidgets || kind === RequestKind.FormStyles) integer(values.page);
+  if (kind === RequestKind.PageInfo || kind === RequestKind.RenderTile || kind === RequestKind.GenerationTile || kind === RequestKind.FormWidgets || kind === RequestKind.FormStyles || kind === RequestKind.PagePng) integer(values.page);
   if (kind === RequestKind.RenderTile || kind === RequestKind.GenerationTile) {
     view.setFloat64(offset, values.scale, true); offset += 8;
     for (const key of ['x', 'y', 'width', 'height']) integer(values[key]);
+  }
+  if (kind === RequestKind.PagePng) {
+    view.setFloat64(offset, values.scale, true); offset += 8; bytes[offset] = values.background;
   }
   return bytes;
 }

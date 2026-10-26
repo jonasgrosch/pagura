@@ -60,7 +60,7 @@ pub struct Tree<'a, K> {
 }
 
 impl<'a, K: TreeKey<'a>> Tree<'a, K> {
-    pub(super) fn new(document: &'a Document, root: &'a Value) -> Self {
+    pub(crate) fn new(document: &'a Document, root: &'a Value) -> Self {
         Self {
             document,
             root,
@@ -69,7 +69,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         }
     }
 
-    pub(super) fn with_source(mut self, source: Source) -> Self {
+    pub(crate) fn with_source(mut self, source: Source) -> Self {
         self.source = source;
         self
     }
@@ -311,7 +311,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         Ok(entries)
     }
 
-    pub(super) fn entries_with(&self, context: &mut Context<'a>) -> Result<Vec<Entry<'a, K>>> {
+    pub(crate) fn entries_with(&self, context: &mut Context<'a>) -> Result<Vec<Entry<'a, K>>> {
         let mut stack = vec![Frame::Enter(self.root, self.source, 0)];
         let mut ranges: Vec<Option<(K, K)>> = Vec::new();
         let mut visited = BTreeSet::new();
@@ -424,7 +424,7 @@ fn merge<K: Ord + Copy>(range: &mut Option<(K, K)>, (low, high): (K, K)) {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(super) struct Entry<'a, K> {
+pub(crate) struct Entry<'a, K> {
     pub key: K,
     pub value: &'a Value,
     pub source: Source,

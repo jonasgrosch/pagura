@@ -14,6 +14,11 @@ export const Version = Object.freeze({
   V1_5: 0x00010005,
   V1_6: 0x00010006,
   V1_7: 0x00010007,
+  V1_8: 0x00010008,
+  V1_9: 0x00010009,
+  V1_10: 0x0001000a,
+  V1_11: 0x0001000b,
+  V1_12: 0x0001000c,
 });
 
 /** Request kind bytes. */
@@ -39,6 +44,25 @@ export const RequestKind = Object.freeze({
   SaveForm: 19,
   FormWidgets: 20,
   FormStyles: 21,
+  Metadata: 22,
+  Attachments: 23,
+  MetadataBytes: 24,
+  AttachmentBytes: 25,
+  PagePng: 26,
+  AttachmentCheck: 27,
+  PageAttachments: 28,
+  PageAttachmentBytes: 29,
+  PageAttachmentCheck: 30,
+  Files: 31,
+  FileBytes: 32,
+  FileCheck: 33,
+  ObjectMetadata: 34,
+  ObjectMetadataBytes: 35,
+  Collection: 36,
+  Images: 37,
+  ImageBytes: 38,
+  Reauthenticate: 39,
+  Thumbnail: 40,
 });
 
 /** Response kind bytes. */
@@ -64,7 +88,48 @@ export const ResponseKind = Object.freeze({
   SavedForm: 147,
   FormWidgets: 148,
   FormStyles: 149,
+  Metadata: 150,
+  Attachments: 151,
+  MetadataBytes: 152,
+  AttachmentBytes: 153,
+  PagePng: 154,
+  AttachmentCheck: 155,
+  PageAttachments: 156,
+  PageAttachmentBytes: 157,
+  PageAttachmentCheck: 158,
+  Files: 159,
+  FileBytes: 160,
+  FileCheck: 161,
+  ObjectMetadata: 162,
+  ObjectMetadataBytes: 163,
+  Collection: 164,
+  Images: 165,
+  ImageBytes: 166,
+  Reauthenticate: 167,
+  Thumbnail: 168,
   Error: 255,
+});
+
+/** Background of an exported PNG page (1.9). */
+export const PngBackground = Object.freeze({
+  White: 0,
+  Transparent: 1,
+});
+
+/** Attachment parameter observations (1.10). */
+export const AttachmentCheckStatus = Object.freeze({
+  NotDeclared: 0,
+  Matches: 1,
+  Mismatch: 2,
+});
+
+/** Explicit embedded-file filename keys (1.8). */
+export const AttachmentKey = Object.freeze({
+  File: 0,
+  Unicode: 1,
+  Dos: 2,
+  Mac: 3,
+  Unix: 4,
 });
 
 /** Error categories of response kind 255. */
@@ -139,6 +204,40 @@ export const OutlineStyle = Object.freeze({
   BOLD: 2,
 });
 
+/** File collection selectors (1.12). */
+export const FileScopeCode = Object.freeze({
+  Catalog: 0,
+  Associated: 1,
+  PageAssociated: 2,
+  ObjectAssociated: 3,
+  PageAnnotations: 4,
+});
+
+/** Metadata and thumbnail owners (1.12). */
+export const MetadataOwnerCode = Object.freeze({
+  Document: 0,
+  Page: 1,
+  Object: 2,
+});
+
+/** File payload selectors (1.12). */
+export const PayloadKind = Object.freeze({
+  Embedded: 0,
+  Related: 1,
+});
+
+/** Image transfer modes (1.12). */
+export const ImageTransferCode = Object.freeze({
+  Stored: 0,
+  Encoded: 1,
+});
+
+/** Image object selection (1.12). */
+export const ImageAssetCode = Object.freeze({
+  Image: 0,
+  Thumbnail: 1,
+});
+
 /** Largest frame body: max(file_bytes + string_bytes + 14, pixels * 4 + 18,
  *  reading_response_bytes + 5, 1024) under the default limits, at most u32::MAX. */
 export const MAX_FRAME = 570425358;
@@ -163,6 +262,9 @@ export const MAX_SEARCH_PAGES = 16;
 
 /** Most semantic characters in one page text response. */
 export const MAX_PAGE_CHARACTERS = 1000000;
+
+/** Most catalog attachments in one listing (1.8). */
+export const MAX_ATTACHMENTS = 1024;
 
 /** Most form fields in one inspection or save (1.5). */
 export const MAX_FORM_FIELDS = 1024;

@@ -252,6 +252,9 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
     round_trip(TileStatus::ALL, TileStatus::code);
     round_trip(FitCode::ALL, FitCode::code);
     round_trip(ActionCode::ALL, ActionCode::code);
+    round_trip(AttachmentKey::ALL, AttachmentKey::code);
+    round_trip(AttachmentCheckStatus::ALL, AttachmentCheckStatus::code);
+    round_trip(PngBackground::ALL, PngBackground::code);
     // Responses answer requests with the high bit set (PROTOCOL.md).
     for &kind in RequestKind::ALL {
         assert_eq!(kind.response().code(), kind.code() | 0x80);
@@ -266,7 +269,11 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
             0x0001_0004,
             0x0001_0005,
             0x0001_0006,
-            0x0001_0007
+            0x0001_0007,
+            0x0001_0008,
+            0x0001_0009,
+            0x0001_000a,
+            0x0001_000b
         ]
     );
     assert!(Version::try_from(2).is_err());

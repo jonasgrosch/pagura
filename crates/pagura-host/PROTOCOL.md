@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.4
+# Pagura session protocol v1 through v1.11
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -17,7 +17,8 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-or `hello(65540)` (0x00010004) for v1.4.
+`hello(65540)` (0x00010004) for v1.4, through `hello(65547)`
+(0x0001000b) for v1.11. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -445,3 +446,257 @@ appearance interpretation, including its matrix and fitting; DA supplies a
 fallback for empty/unavailable text. The source handle's rendering policy also
 applies here. Source decoding is capped at 32 MiB per request; at most 4096
 widgets are described. Versions 1.0–1.6 retain their existing layouts.
+
+## Document services (v1.8)
+
+`hello(65544)` adds the following requests without changing earlier layouts.
+Older negotiated versions reject these operations with InvalidArgument and stay
+usable. These requests require protocol 1.8 or newer.
+
+| Request kind | Payload | Success kind | Payload |
+|---|---|---|---|
+| 22 metadata | `u32 handle` | 150 | Metadata record below |
+| 23 attachments | `u32 handle` | 151 | `u32 count`, then catalog attachment records |
+| 24 metadata_bytes | `u32 handle` | 152 | Optional `blob` |
+| 25 attachment_bytes | `u32 handle,index`, `u8 filename_key` | 153 | `blob` |
+
+An optional value is `u8 present` (exactly 0 or 1), followed by its value only
+when present. An object identity is `u32 number | u16 generation`. Missing and
+empty text/blob values remain distinct. Filename keys are F=0, UF=1, DOS=2,
+Mac=3 and Unix=4 (`AttachmentKey`); other codes are terminal syntax errors.
+A valid but absent key or out-of-range attachment index is an operational
+InvalidArgument error, with the request field position. There is no key fallback.
+
+A metadata record contains:
+
+1. Optional Info record: optional object identity; eight optional UTF-8 texts in
+   the order Title, Author, Subject, Keywords, Creator, Producer, CreationDate,
+   ModDate; and a text trapping declaration (`True`, `False` or `Unknown`).
+2. Optional catalog language text.
+3. Optional catalog metadata-stream object identity.
+
+Info, language and packet identity use the public typed document views. Packet
+bytes are read only by request 24. Info and XMP are separate, unreconciled sources;
+no XML parsing, entities, schemas, calendars or profile validation are implied.
+
+Catalog attachment records appear in EmbeddedFiles name-tree byte-key order;
+their zero-based ordinal is the index for request 25. Each record contains:
+
+1. Raw name-tree key `blob`, then optional file-specification object identity.
+2. Optional UF text; four optional raw filename blobs in F, DOS, Mac, Unix order.
+3. Optional description text, optional file-system-name blob, optional
+   relationship-name blob, then `u8 volatile` (0 or 1).
+4. `u32 payload_count`, then each payload: `u8 filename_key`, object identity,
+   optional media-type-name blob, optional `u64 declared_size`.
+
+Bytes are preserved for names without a defined text encoding. The browser
+represents declared sizes as exact BigInts. Size and relationship are producer
+declarations, not verified payload lengths or security conclusions. Listings
+contain at most 1024 files and five EF entries per file. Unknown future library
+relationship variants are represented as absent, never guessed. This version
+lists catalog EmbeddedFiles only; AF/RF, annotation discovery and portfolios
+remain separate work.
+
+All four responses use `SessionLimits::reading_response_bytes` (32 MiB by
+default), checked before each fallible writer append. Source views and payload
+decoding separately obey the document view/stream limits. Payloads are fully
+decoded before the response is framed; this is not streaming output or a cap on
+total transient memory. Exceeding either limit returns one error, no partial
+response, and leaves the session usable. Listings do not decode embedded bytes;
+request 25 applies attachment crypt filters and EFOpen authentication even when
+an embedded stream omits Type. External filenames and URLs are never followed.
+
+The viewer loads these records only when Properties and attachments is opened.
+Text is placed with `textContent`. Downloads require an explicit button click,
+use an octet-stream Blob and fixed local filenames (`metadata.xmp` or
+`attachment-N-KEY.bin`), and revoke their object URLs. Closing the dialog,
+replacing the document or restarting the host invalidates pending results and
+downloads. Payload content is never previewed or executed. Errors in one listing
+remain visible without hiding the other service or the document's pages.
+
+
+## Version 1.9: complete PNG page export
+
+Request 26 `page_png` contains `u32 handle,page | f64 scale | u8 background`.
+Scale is positive and finite, relative to 72 DPI. Background 0 composites onto
+opaque white; 1 retains transparent unpainted pixels. Other background codes,
+truncation and trailing bytes are terminal protocol errors. Missing page/handle,
+invalid scale, rendering/encoding failures and budget limits are operational
+errors; the session remains usable. Earlier negotiated versions refuse the new
+request without ending the session.
+
+Response 154 contains `u32 byte_count | PNG bytes`. The complete page uses its
+PDF crop, rotation and UserUnit, screen annotation policy and Auto overprint.
+It shares the document render store and ordinary preparation/rasterization path.
+PNG is straight RGBA8, non-interlaced and without ancillary color/profile chunks.
+No partial image is returned. View-only rotation and viewport generations do not
+change this source-page operation.
+
+Surface pixel and decoded-byte budgets are checked before page recording. The
+encoder retains the document's input/scratch limits; its output stream-byte cap
+is additionally lowered to `max_frame_bytes - 9` for the frame header and byte
+count. PNG does not borrow the reading-response budget. The operation retains a
+whole surface plus encoder scratch, then complete encoded bytes and the outgoing
+frame. It is synchronous: incremental output, active-request cancellation and
+host backpressure remain separate work.
+
+The browser client defaults to 1.11 and exposes `pagePng(handle, page, scale,
+background)`. More → Export page PNG lets the user choose a page, 1–2400 DPI and
+a white or transparent background. Downloads use fixed `page-NNNN.png` names and
+`image/png`; object URLs are revoked. Current form values are copied at the click
+and, when present, saved to a disposable document handle. That handle is closed
+on completion, failure or a stale result. The open source and drafts are not
+replaced. Closing the dialog or changing the document discards pending results;
+it does not interrupt a running host command. Failed form snapshot/render/encode
+operations produce an error instead of a download.
+
+Evidence: public Rust wire/version/budget tests, Python PNG/CRC/zlib pixel decoding
+against independent page oracles, native/WASI/client byte parity, and viewer
+option/snapshot/race/cleanup tests. These checks are authored; hosted runtime
+validation and real-browser interaction verification are pending.
+
+## Version 1.10: attachment parameter checks
+
+`hello(65546)` adds request 27 `attachment_check`: `u32 handle,index` followed
+by `u8 filename_key`, using the same catalog order and exact EF keys as request
+25. Older negotiated versions return operational InvalidArgument and remain
+usable. Malformed keys, truncation or trailing bytes are terminal syntax errors.
+Absent handles, indexes or EF keys are operational errors, without fallback.
+
+Success 155 contains `object` (`u32 number | u16 generation`), `u64 decoded_size`,
+`u8 size_status`, `u8 checksum_status`. `AttachmentCheckStatus` values are 0
+not-declared, 1 matches and 2 mismatch; other values are invalid. The JavaScript
+client returns `{ object, decodedSize, size, checksum }` with an exact BigInt
+size. The payload is exactly 16 bytes, the body 21 and framed response 25.
+A completed mismatch is a successful observation, not a protocol error.
+
+Checks use `EmbeddedFile::check_parameters`: complete authorized decoding under
+the document's stream limits, then Size and Table 45 MD5 comparisons. Missing
+declarations still require successful decoding. The reading-response cap must
+allow 16 bytes before decoding starts; decoding/scratch budgets are independent.
+No payload bytes are returned or retained in the result. Password, unsupported
+filter, malformed content and resource failures produce errors, not observations.
+The source is unchanged. Checking is synchronous and whole-buffer; declarations
+are not evidence of authenticity, MIME correctness or content safety.
+
+`Client.attachmentCheck(handle,index,key)` exposes the command. Properties and
+attachments offers an explicit Check size and checksum button for each EF
+payload. Listing or downloading does not implicitly check. The result shows the
+actual size, both observations and any operation failure. It never downloads a
+payload. One dialog operation is pending at a time; close, document/epoch/client
+changes and recovery invalidate results and callbacks. This discards a stale
+response; it does not interrupt the synchronous host command.
+
+Evidence: literal request/response and malformed-code tests, old-version checks,
+exact response/decode budgets, attachment authorization and selection failures,
+independent compressed fixture observations, native/WASI/client parity, exact
+BigInt values and viewer missing/mismatch/error/duplicate/stale-state tests.
+Hosted verification is pending; real-browser interaction remains to be checked.
+
+
+## Version 1.11: page attachment annotations
+
+`hello(65547)` adds three requests, distinct from catalog attachment commands:
+
+| Kind | Request | Payload | Success |
+|---|---|---|---|
+| 28 | `page_attachments` | `u32 handle,page` | 156 |
+| 29 | `page_attachment_bytes` | `u32 handle,page,index; u8 filename_key` | 157 |
+| 30 | `page_attachment_check` | `u32 handle,page,index; u8 filename_key` | 158 |
+
+`index` is the original zero-based Annots slot, including other annotation
+subtypes. Selecting a link or an absent slot is an operational InvalidArgument;
+there is no catalog fallback or fallback to a different EF key. Malformed wire
+fields are terminal syntax errors. Versions 1–1.10 refuse these operations but
+continue accepting their own commands. The page is zero-based.
+
+Response 156 begins with `u32 count` (at most 1024). Each record contains:
+
+1. `u32 index`, increasing in original Annots order; `object annotation`.
+2. Four finite `f64` values: normalized `x0,y0,x1,y1` in default user space.
+3. Optional UTF-8 Contents and optional byte-string icon name, each using the
+   existing canonical presence flag followed by a length-prefixed value.
+4. The file-specification record from response 151, starting at its optional
+   object identity. There is no catalog name-tree key in this record.
+
+An absent icon means the Table 187 PushPin default; unknown declared names stay
+as bytes. Contents and the file specification's description remain separate.
+Repeated annotation identities have separate indexes. Hidden annotations are
+included in discovery. No icon is synthesized or file activated by listing.
+The complete library view is validated before any response is sent. Its own
+traversal/result limits precede encoding; the shared reading-response cap also
+bounds the encoded result. A list failure produces no partial success response.
+
+Response 157 is a length-prefixed payload, exactly like response 153. Response
+158 has the same 16-byte observation payload as response 155, including object
+identity, exact u64 decoded size and two independent declaration statuses.
+Authorization, stream budgets and the 16-byte check-response preflight remain
+identical to catalog operations. Discovery does not decode embedded bytes.
+
+The client exposes `pageAttachments(handle,page)`,
+`pageAttachmentBytes(handle,page,index,key)` and
+`pageAttachmentCheck(handle,page,index,key)`. Listing records are
+`{index,object,rectangle,contents,icon,file}`; `file` contains the existing
+file-specification fields, and all byte strings remain Uint8Array values.
+Client decoding rejects noncanonical flags, invalid rectangles, non-increasing
+indexes, duplicate EF keys, oversized counts, unknown observation statuses and
+truncated/trailing data. Viewer selection is separate follow-up work.
+
+Evidence includes literal wire values, old-version gates, exact original slots,
+page-only/catalog separation, missing/malformed/duplicate entries, declaration
+checks, password failures/Identity and independent response/decode limits. Hosted
+native/WASI/client tests are authored; current-head runtime validation is pending.
+
+## Version 1.12: scoped document source services
+
+Every request below begins with `u32 document`; every response is encoded under
+the reading-response cap. Request and response kinds remain offset by 128.
+Earlier versions refuse these operations without changing their own records.
+
+| Request / response | Remaining request payload | Successful response |
+|---|---|---|
+| 31 / 159 Files | file scope | counted records: index, optional key bytes, 1.8 specification, extended details |
+| 32 / 160 FileBytes | file scope, u32 index, u8 EF key, payload selection | byte blob |
+| 33 / 161 FileCheck | same as FileBytes | existing 1.10 parameter-check record |
+| 34 / 162 ObjectMetadata | owner | optional metadata object identity |
+| 35 / 163 ObjectMetadataBytes | owner | optional byte blob |
+| 36 / 164 Collection | none | optional collection declaration |
+| 37 / 165 Images | page/object owner | counted optional resource name and image declaration |
+| 38 / 166 ImageBytes | page/object owner, u8 image kind, u8 transfer mode | mode text, optional codec text, byte blob |
+| 39 / 167 Reauthenticate | password byte blob | new u32 handle, u32 page count |
+| 40 / 168 Thumbnail | page/object owner | optional image declaration |
+
+File scope is a code: 0 catalog EmbeddedFiles, 1 catalog AF, 2 page AF followed
+by u32 page, 3 object AF followed by object identity, or 4 page annotations
+followed by u32 page. Annotation indexes retain original Annots slots. Payload
+selection is 0 EF or 1 RF followed by u32 pair ordinal within that exact EF key.
+There is no fallback or deduplication. Owner is 0 document, 1 page followed by
+u32 page, or 2 object followed by identity. Images/Thumbnail require page/object;
+ordinary ImageBytes requires an image object. Image kind 0 means image, 1 means
+thumbnail of the selected owner. Transfer modes are 0 stored and 1 encoded.
+
+Extended file details contain optional ID byte pairs; a parameter record per EF
+entry; RF records (key/name byte blobs, object, optional MIME, parameter record);
+CI records (key bytes, optional prefix, type name and value); and optional EP
+subtype/version byte names. Parameters retain optional exact u64 size, decoded
+date strings and checksum bytes. CI integer values use decimal text, decoded by
+the client into BigInt; real values use finite f64. CI value type names are
+absent, text, integer and real. Sort/presentation declarations remain inert.
+Collection responses contain optional identity/initial key, view name, fields
+(key, label, kind, optional decimal order, visible/editable flags) and sort keys.
+Collection views are Details, Tiles, Hidden or Navigator; field kinds are the
+public CollectionFieldKind variant names. Counts are capped at 1024.
+
+An image declaration contains object identity, u32 width, u32 height and a
+thumbnail flag. It validates source shape, not image samples or complete PDF
+colour/mask semantics. Source transfers are binary assets: stored bytes may be
+encrypted, encoded bytes retain codec/PDF interpretation dependencies. Codec
+names are DCTDecode, JPXDecode, JBIG2Decode or CCITTFaxDecode; absent codec in
+encoded mode means packed PDF samples. No standalone appearance is asserted.
+
+Reauthentication opens a separate immutable snapshot with the original recovery
+and engine limits. Wrong EFOpen-only credentials fail immediately; failed
+attempts consume no handle. Source/handle budgets are checked before opening.
+The existing document is unchanged, and the new handle must be closed. The
+viewer uses it only for the explicitly requested operation and clears supplied
+password bytes after each attempt. Stale dialogs cannot download its output.

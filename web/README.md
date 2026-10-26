@@ -406,3 +406,38 @@ intercepts no uploads or cross-origin requests, and stores no PDF contents.
 Local servers already providing isolation skip registration. HTTPS and service
 workers are required on static hosts; unsupported browsers show an error rather
 than repeatedly reloading. Pages is static hosting, not a document backend.
+
+## Properties and attachments
+
+Open **More → Properties and attachments** to inspect declared Info fields,
+document language and document attachments. Page attachments appear separately;
+the initial selection follows the current page. Enter a page number and choose
+**Show page attachments** to inspect another page. Annotation notes, icon names
+and file descriptions stay distinct. All source labels remain inert text.
+
+Listings never decode payloads. Explicit Download buttons select one exact EF
+payload. Downloads use `metadata.xmp`, `attachment-N-KEY.bin` or
+`page-P-attachment-N-KEY.bin` and an octet-stream MIME type. No XML, URLs or
+embedded content execute, and source filenames cannot choose output paths.
+**Check size and checksum** decodes the selected payload and compares its size
+and PDF CheckSum with their declarations. Missing, matching and mismatching
+values remain separate; this does not establish file safety or authenticity.
+Sizes retain exact integer precision. Dates remain unvalidated declarations.
+
+Changing the selected page, closing the dialog, opening another PDF or restarting
+the host discards obsolete results and downloads. A page-listing failure preserves
+available properties and document attachments. Decode operations are serialized
+within the current selection. The host listing cap is 1024 attachments, and each
+response is at most 32 MiB. Document stream limits bound complete-buffer decoding;
+a browser resource-limit failure ends the session and requires host recovery.
+
+Protocol 1.8 provides properties/catalog reads, 1.10 adds parameter checks and
+1.11 adds page annotation selection. Host/native/WASI and viewer tests live in
+`tools/document_services_test.mjs`, `tools/document_services_view_test.mjs`,
+`tools/attachment_checks_test.mjs`, `tools/page_attachments_test.mjs`,
+`tools/page_attachments_view_test.mjs` and the corresponding `pagura-host/tests`
+files. Catalog properties/check workflows have passing hosted evidence recorded
+in [the plan](../docs/COMPETITIVE_PARITY.md); the new page viewer controls pass the hosted browser shim, with real-browser
+interaction validation still open. AF/RF selection,
+attachment-only password prompts, icon activation, streaming,
+metadata validation and editing remain open.

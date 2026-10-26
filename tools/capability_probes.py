@@ -11,7 +11,9 @@ import math
 import os
 import platform
 import subprocess
+import sys
 import tempfile
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,22 +23,24 @@ from benchkit.engines import engines, identify
 
 MANIFEST = Path("benchmarks/probes/document-services.json")
 ADAPTER = Path("benchmarks/adapters/capability_python.py")
-SELECTED = ("pdfium", "mupdf")
-ADAPTER_FILES = [ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
+SELECTED = ("pdfium", "mupdf", "pagura")
+ADAPTER_FILES = [Path("benchmarks/adapters/capability_pagura.py"), Path("benchmarks/adapters/capability_hayro.py"), ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
                  Path("benchmarks/adapters/capability_pdfjs_services.mjs"),
                  Path("benchmarks/adapters/capability_poppler.py"), Path("benchmarks/adapters/capability_quartz.swift"),
                  Path("benchmarks/adapters/hayro/src/bin/capabilities.rs")]
 # Explicit adapter coverage, not a claim of backend absence. These cells stay
 # visible and cannot be used to close a capability or release gate.
 UNIMPLEMENTED = {
-    ("hayro", "attachments"): "no attachment extractor implemented over hayro's public object API",
     ("hayro", "text"): "no text reconstruction implemented over hayro's public interpreter API",
     ("quartz", "text"): "no text reconstruction implemented over CoreGraphics PDF operators",
 }
 OPERATIONS = {"pages": "document.structure", "metadata": "document.metadata",
-              "attachments": "document.attachments", "text": "text.accessibility"}
+              "attachments": "document.attachments", "annotation-attachments": "document.attachments",
+              "text": "text.accessibility"}
+ANNOTATION_FIXTURES = {"annotation-only", "annotation-both", "annotation-mixed", "annotation-second-page", "annotation-compressed"}
+FIXTURES = {"services", "complete-ef", "empty", "invalid", "nested-attachments", "compressed-attachments"} | ANNOTATION_FIXTURES
 OUTCOMES = {"pass", "incorrect", "rejected", "unsupported", "timeout", "adapter-error",
-            "adapter-unavailable", "engine-unavailable", "not-run"}
+            "adapter-unavailable", "engine-unavailable", "not-run", "limit"}
 PAYLOAD = b"Synthetic attachment.\n"
 
 
@@ -48,27 +52,43 @@ def fixture(variant: str) -> bytes:
     """Hand-authored PDF objects, independent of Pagura and all probed engines.
 
     ISO 32000-2: 7.5 (xref), 7.7.4 (EmbeddedFiles), 7.11.3 (file spec),
-    9.4 (text objects), 14.3.3 (Info). No fonts or private-corpus assets needed.
+    9.4 (text objects), 12.5.6.15 (FileAttachment), 14.3.3 (Info).
+    No fonts or private-corpus assets needed.
     """
     if variant == "invalid":
         return b"This is intentionally not a PDF.\n"
-    if variant not in ("services", "complete-ef", "empty"):
+    if variant not in FIXTURES:
         raise ValueError("unknown synthetic variant")
     full = variant != "empty"
+    catalog_files = variant in {"services", "complete-ef", "annotation-both", "nested-attachments", "compressed-attachments"}
+    tree = b"<< /Kids [9 0 R] >>" if variant == "nested-attachments" else b"<< /Names [(probe.txt) 7 0 R] >>"
+    compressed = variant in {"compressed-attachments", "annotation-compressed"}
+    annotations = (b" /Annots [10 0 R 9 0 R 9 0 R]" if variant == "annotation-mixed" else
+                   b" /Annots [9 0 R]" if variant in {"annotation-only", "annotation-both", "annotation-compressed"} else b"")
     content = b"BT /F1 12 Tf 20 50 Td (Parity probe) Tj ET\n" if full else b""
     def stream(value: bytes, extra: bytes = b"") -> bytes:
         return b"<< /Length " + str(len(value)).encode() + extra + b" >>\nstream\n" + value + b"\nendstream"
     objects = [
-        b"<< /Type /Catalog /Pages 2 0 R" + (b" /Names << /EmbeddedFiles << /Names [(probe.txt) 7 0 R] >> >>" if full else b"") + b" >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R" + (b" /Names << /EmbeddedFiles " + tree + b" >>" if catalog_files else b"") + b" >>",
+        (b"<< /Type /Pages /Kids [3 0 R 10 0 R] /Count 2 >>" if variant == "annotation-second-page" else
+         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R" + annotations + b" >>",
         stream(content), b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     ]
     if full:
         objects += [b"<< /Title (Capability probe) /Author (Pagura fixtures) >>",
                     b"<< /Type /Filespec /F (probe.txt) /UF (probe.txt) /EF << /F 8 0 R" +
-                    (b" /UF 8 0 R" if variant == "complete-ef" else b"") + b" >> >>",
-                    stream(PAYLOAD, b" /Type /EmbeddedFile /Subtype /text#2Fplain")]
+                    (b" /UF 8 0 R" if variant == "complete-ef" or variant in ANNOTATION_FIXTURES else b"") + b" >> >>",
+                    stream(zlib.compress(PAYLOAD, level=0) if compressed else PAYLOAD,
+                           b" /Type /EmbeddedFile /Subtype /text#2Fplain" + (b" /Filter /FlateDecode" if compressed else b""))]
+    if variant in ANNOTATION_FIXTURES:
+        objects.append(b"<< /Type /Annot /Subtype /FileAttachment /Rect [10 20 30 40] /FS 7 0 R /Contents (Probe attachment) /Name /Paperclip >>")
+    if variant == "nested-attachments":
+        objects.append(b"<< /Limits [(probe.txt) (probe.txt)] /Names [(probe.txt) 7 0 R] >>")
+    if variant == "annotation-mixed":
+        objects.append(b"<< /Type /Annot /Subtype /Link /Rect [0 0 1 1] /Dest [3 0 R /Fit] >>")
+    if variant == "annotation-second-page":
+        objects.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Annots [9 0 R] >>")
     output = bytearray(b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
     offsets = [0]
     for index, body in enumerate(objects, 1):
@@ -97,14 +117,15 @@ def validate_manifest(data, inventory):
         require(isinstance(row["id"], str) and row["id"] not in seen, "duplicate probe case")
         seen.add(row["id"])
         require(row["capability"] in identities and OPERATIONS.get(row["operation"]) == row["capability"], "unassigned probe operation")
-        require(row["fixture"] in {"services", "complete-ef", "empty", "invalid"}, "unknown probe fixture")
+        require(row["fixture"] in FIXTURES, "unknown probe fixture")
         require(row["oracle"] in {"exact-json", "reject-invalid"}, "unknown probe oracle")
         require((row["oracle"] == "reject-invalid") == (row["fixture"] == "invalid"), "invalid rejection control")
         require(row["oracle"] != "reject-invalid" or row["expected"] is None, "rejection control must have no value")
     require(any(row["oracle"] == "reject-invalid" for row in cases), "missing invalid-input control")
     for operation in OPERATIONS:
         variants = {row["fixture"] for row in cases if row["operation"] == operation}
-        require({"services", "empty"} <= variants, f"missing populated/empty controls for {operation}")
+        positive = "annotation-only" if operation == "annotation-attachments" else "services"
+        require({positive, "empty"} <= variants, f"missing populated/empty controls for {operation}")
 
 
 def same_value(left, right):
@@ -132,7 +153,7 @@ def adjudicate(case, response):
             return {"outcome": "adapter-error", "reason": "invalid value envelope"}
         passed = case["oracle"] == "exact-json" and same_value(response["value"], case["expected"])
         return {"outcome": "pass" if passed else "incorrect", "observed": response["value"]}
-    if status in {"rejected", "adapter-error", "adapter-unavailable", "engine-unavailable"}:
+    if status in {"rejected", "adapter-error", "adapter-unavailable", "engine-unavailable", "timeout", "limit"}:
         if set(response) != {"schema", "status", "reason"} or not isinstance(response["reason"], str):
             return {"outcome": "adapter-error", "reason": "invalid error envelope"}
         passed = status == "rejected" and case["oracle"] == "reject-invalid"
@@ -191,17 +212,44 @@ def public_identity(identity):
     return result
 
 
+def subject_inventory(inventory):
+    """Keep all six competitor baselines and add the measured subject."""
+    require("pagura" not in inventory["engines"], "subject is not a competitor baseline")
+    return {**inventory, "engines": [*inventory["engines"], "pagura"]}
+
+
+def subject_identity(command):
+    """Hash the actual CLI; a version alone cannot attest its build revision."""
+    identity = identify("pagura", command)
+    if identity["status"] == "available":
+        identity["version"] = json.dumps({"engine": identity["version"]})
+    result = public_identity(identity)
+    result["configuration"] = ("Pagura public CLI. The actual binary is hashed; "
+                               "the hosted workflow records its build command and default features. "
+                               "A separately supplied binary has no asserted build revision.")
+    return result
+
+
 def service_commands():
     render = engines()
-    return {"pdfium": [render["pdfium"][0], str(ROOT / ADAPTER), "pdfium"],
+    return {"pagura": [sys.executable, str(ROOT / "benchmarks/adapters/capability_pagura.py"), render["pagura"][0]],
+            "pdfium": [render["pdfium"][0], str(ROOT / ADAPTER), "pdfium"],
             "mupdf": [render["mupdf"][0], str(ROOT / ADAPTER), "mupdf"],
             "pdfjs": [render["pdfjs"][0], str(ROOT / "benchmarks/adapters/capability_pdfjs.mjs")],
             "poppler": ["/usr/bin/python3", str(ROOT / "benchmarks/adapters/capability_poppler.py")],
-            "hayro": [str(CACHE / "hayro-target/release/capabilities")],
+            "hayro": [sys.executable, str(ROOT / "benchmarks/adapters/capability_hayro.py"), str(CACHE / "hayro-target/release/capabilities")],
             "quartz": [str(CACHE / "capability-quartz")]}
 
 
 def service_identity(name, command):
+    if name == "pagura":
+        result = subject_identity([command[-1]])
+        result["service_configuration"] = ("Default repair mode and empty password; Info Title/Author only; "
+                                            "crop/rotation/UserUnit page dimensions; first-page text; "
+                                            "catalog and first-page annotation attachments are separate; "
+                                            "both prefer EF/UF when present, else EF/F. "
+                                            "No raw legacy filename encoding is guessed beyond ASCII.")
+        return result
     identity = identify(name, command)
     if name == "poppler" and identity["status"] == "available":
         # The OS package is not lock-pinned. Attest the actual GLib/core libraries
@@ -214,10 +262,10 @@ def service_identity(name, command):
     result = public_identity(identity)
     result["configuration"] = {
         "pdfium": "Pinned default pypdfium2 wheel; optional V8/XFA builds are not probed.",
-        "mupdf": "Pinned default PyMuPDF wheel; optional providers are not probed.",
+        "mupdf": "Pinned default PyMuPDF wheel; catalog attachments use the public native MuPDF name-tree loader and embedded-file API, while page annotations retain PyMuPDF handles. Optional providers are not probed.",
         "pdfjs": "Pinned pdfjs-dist Node legacy build; eval disabled; browser behavior is not probed.",
         "poppler": "Hosted Ubuntu GLib/GI packages; actual version and native hashes recorded, not lock-pinned.",
-        "hayro": "Pinned standalone hayro default features; public page/ASCII Info APIs only.",
+        "hayro": "Pinned standalone hayro default features; public pages, ASCII Info and object/stream APIs. Catalog name trees and first-page FileAttachment annotations stay separate; EF/UF is preferred, else EF/F. ASCII filenames only; 128 files, 1024 traversal items/slots and 64 KiB aggregate decoded-output adapter bounds. Stream decoding completes before the output bound.",
         "quartz": "Hosted macOS CoreGraphics; OS version and adapter binary hash recorded; no PDFKit.",
     }[name]
     return result
@@ -228,7 +276,8 @@ def observation_complete(engine, case, result):
 
     Wrong values and explicit refusals are usable observations, still reported
     as failures to meet the independent oracle. An adapter/build failure or a
-    timeout cannot establish such an observation and fails the workflow.
+    timeout or resource-limit outcome cannot establish such an observation and
+    fails the workflow; adapter bounds are not an engine capability verdict.
     """
     if (engine, case["operation"]) in UNIMPLEMENTED:
         return result["outcome"] == "adapter-unavailable"
@@ -245,7 +294,8 @@ def run(data, inventory, output, selected=SELECTED):
                     Path("tools/benchkit/config.py"), Path("tools/competitors.py"), LEDGER, Path("uv.lock"),
                     Path("pyproject.toml"), Path(".python-version"), Path(".github/workflows/capabilities.yml"),
                     Path("benchmarks/node-package-lock.json"), Path("benchmarks/adapters/hayro/Cargo.lock"),
-                    Path("benchmarks/adapters/hayro/Cargo.toml"), Path("rust-toolchain.toml"), Path(".cargo/config.toml")]
+                    Path("benchmarks/adapters/hayro/Cargo.toml"), Path("rust-toolchain.toml"), Path(".cargo/config.toml"),
+                    Path("Cargo.toml"), Path("Cargo.lock"), Path("crates/pagura-cli/Cargo.toml")]
     report = {"schema": 1, "scope": data["scope"], "generated_at": datetime.now(timezone.utc).isoformat(),
               "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
               "workflow_run": os.environ.get("GITHUB_RUN_ID"), "selected_engines": list(selected),
@@ -277,6 +327,7 @@ def run(data, inventory, output, selected=SELECTED):
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     cases = {case["id"]: case for case in data["cases"]}
     return all(observation_complete(row["engine"], cases[row["case"]], row)
+               and (row["engine"] != "pagura" or row["outcome"] == "pass")
                for row in report["results"] if row["engine"] in selected)
 
 
@@ -357,7 +408,7 @@ def main():
     merge.add_argument("reports", type=Path, nargs="+")
     merge.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    data, inventory = read_json(ROOT / MANIFEST), read_json(ROOT / LEDGER)
+    data, inventory = read_json(ROOT / MANIFEST), subject_inventory(read_json(ROOT / LEDGER))
     validate_manifest(data, inventory)
     if args.command == "run":
         if not run(data, inventory, args.output, tuple(args.engines.split(","))):
@@ -367,9 +418,9 @@ def main():
         report = combine([read_json(path) for path in args.reports], data, inventory)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print("G01 combined all six baseline columns; per-cell outcomes retain adapter gaps and failures.")
+        print("G01 combined all six baselines plus Pagura; per-cell outcomes retain adapter gaps and failures.")
     else:
-        print(f"G01 manifest valid: {len(data['cases'])} cases, {len(inventory['engines'])} baseline columns; no engines invoked.")
+        print(f"G01 manifest valid: {len(data['cases'])} cases, {len(inventory['engines'])} engine columns (six baselines plus Pagura); no engines invoked.")
 
 
 if __name__ == "__main__":

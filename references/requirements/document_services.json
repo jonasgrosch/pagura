@@ -1,0 +1,16 @@
+{
+  "schema": 2,
+  "area": "document_services",
+  "scope": "Read-only synchronous source services reviewed against local ISO 32000-2:2020 EC3. The library owns exact selection and source traversal; CLI/host/viewer only encode selection and display inert data. Validation of profiles, XML semantics and dates remains separate from reading their declarations.",
+  "requirements": [
+    {
+      "id": "document-services-scoped-extraction",
+      "reference": "iso32000-2-full-text",
+      "clauses": ["7.11; Tables 43-47", "7.6.7; Table 28", "12.3.4-12.3.5; Tables 153-156", "14.3.2; Tables 347-348", "14.13"],
+      "status": "implemented; hosted validation pending",
+      "tests": ["pagura/tests/document_services.rs", "pagura-host/tests/document_services_extended.rs", "pagura-cli/tests/document_services_extended.rs", "document_services/complete"],
+      "gaps": "Whole-buffer source transfer. Painted image occurrences, isolated normalized image export, nested form/pattern resource inventory, folder/layout navigator behavior, full XMP/schema/date/profile validation, async output and D02b writes remain separately owned.",
+      "rule": "Keep scope, object generation, original Annots/AF/RF indexes, EF keys and duplicate related-file names distinct. Preserve exact integer/text/packet/stream bytes. Original and encoded image transfers are named binary assets, not a claim of standalone image appearance. Password retries produce a separately authenticated immutable snapshot and never mutate the original handle. Downloads require explicit caller paths or fixed viewer names."
+    }
+  ]
+}

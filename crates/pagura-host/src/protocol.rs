@@ -13,8 +13,10 @@ mod encode;
 mod javascript;
 
 pub use codes::{
-    ActionCode, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle, PositionKind,
-    RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
+    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FileScopeCode,
+    FitCode, ImageAssetCode, ImageTransferCode, MetadataOwnerCode, OpenFlags, OutlineStyle,
+    PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus,
+    Version,
 };
 pub(crate) use decode::Reader;
 pub use decode::decode;
@@ -32,6 +34,8 @@ pub(crate) mod layout {
     pub(crate) const KIND_OFFSET: usize = 0;
     /// Offset of the request id in a body.
     pub(crate) const ID_OFFSET: usize = 1;
+    /// A PNG body before its bytes: header and byte count.
+    pub(crate) const PNG_OVERHEAD: usize = HEADER_BYTES + 4;
     /// Framing errors are reported at the start of the frame (PROTOCOL.md).
     pub(crate) const FRAME_START: usize = 0;
     /// The largest body the `u32` length field can describe.
@@ -119,10 +123,29 @@ pub struct TileRequest {
     pub tile: Field<Tile>,
 }
 
+/// A complete PNG page export (1.9), independent of viewport generations.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+pub struct PngRequest {
+    /// Source page, including its effective crop box, rotation and UserUnit.
+    pub page: PageRef,
+    /// Resolution relative to 72 DPI.
+    pub scale: Field<f64>,
+    /// Explicit white or transparent background.
+    pub background: Field<PngBackground>,
+}
+
 /// A borrowed, fully validated request payload.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
+    /// Reauthenticate a fresh snapshot without mutating the existing handle (1.12).
+    Reauthenticate {
+        /// Original immutable document handle.
+        document: Field<u32>,
+        /// Raw password bytes, bounded by string_bytes and never retained.
+        password: &'a [u8],
+    },
     /// Negotiate a version before accessing documents. The version is
     /// checked when the request is ordered.
     Hello(Field<u32>),
@@ -161,7 +184,7 @@ pub enum Request<'a> {
     Close(Field<u32>),
     /// Snapshot session retention accounting (1.1).
     Stats,
-    /// Reading operations (1.2 and 1.3).
+    /// Reading operations (1.2, 1.3 and 1.8).
     Reading(crate::reading::Request<'a>),
     /// Inspect bounded form controls (1.5).
     FormFields(Field<u32>),
@@ -176,6 +199,8 @@ pub enum Request<'a> {
     FormWidgets(PageRef),
     /// Inspect text presentation from stored widget appearances (1.7).
     FormStyles(PageRef),
+    /// Export a complete page as straight RGBA8 PNG (1.9).
+    PagePng(PngRequest),
 }
 
 impl Request<'_> {
@@ -183,6 +208,7 @@ impl Request<'_> {
     pub const fn kind(&self) -> RequestKind {
         match self {
             Self::Hello(_) => RequestKind::Hello,
+            Self::Reauthenticate { .. } => RequestKind::Reauthenticate,
             Self::Open { .. } => RequestKind::Open,
             Self::PageInfo(_) => RequestKind::PageInfo,
             Self::RenderTile(_) => RequestKind::RenderTile,
@@ -197,6 +223,7 @@ impl Request<'_> {
             Self::SaveForm { .. } => RequestKind::SaveForm,
             Self::FormWidgets(_) => RequestKind::FormWidgets,
             Self::FormStyles(_) => RequestKind::FormStyles,
+            Self::PagePng(_) => RequestKind::PagePng,
         }
     }
 }
@@ -297,6 +324,8 @@ pub enum Response {
     FormWidgets(Vec<u8>),
     /// Bounded native text editor metrics (1.7).
     FormStyles(Vec<u8>),
+    /// Complete PNG bytes, without partial output on failure (1.9).
+    PagePng(Vec<u8>),
     /// Repairs in discovery order. The legacy layout has no kind byte, so
     /// informational records are not encoded.
     Diagnostics(Vec<Diagnostic>),
@@ -324,6 +353,7 @@ impl Response {
             Self::SavedForm(_) => ResponseKind::SavedForm,
             Self::FormWidgets(_) => ResponseKind::FormWidgets,
             Self::FormStyles(_) => ResponseKind::FormStyles,
+            Self::PagePng(_) => ResponseKind::PagePng,
             Self::Diagnostics(_) => ResponseKind::Diagnostics,
             Self::DiagnosticDetails(_) => ResponseKind::DiagnosticDetails,
             Self::Close => ResponseKind::Close,

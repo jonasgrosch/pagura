@@ -237,6 +237,70 @@
         "tools/host_test.mjs viewer mixed diagnostic counts"
       ],
       "gaps": "Information omitted from older diagnostics responses is available through the negotiated 1.4 typed snapshot."
+    },
+    {
+      "id": "host-document-services",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Protocol 1.8 bounded metadata/catalog attachment reads and explicit byte downloads; hosted validation pending",
+      "tests": [
+        "pagura-host tests/document_services.rs",
+        "tools/document_services_test.mjs",
+        "tools/document_services_view_test.mjs"
+      ],
+      "gaps": "Catalog EmbeddedFiles and catalog XMP only. No AF/RF or annotation discovery, streaming, source mutation, XML/schema/profile validation or filename/URL execution. Response and document decoding budgets are separate."
+    },
+    {
+      "id": "host-png-export",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Protocol 1.9 whole-page PNG export and explicit viewer download; hosted Linux/macOS/Windows checks pass at f4ee9bcef",
+      "tests": [
+        "pagura-host tests/png.rs",
+        "tools/test_png_export.py",
+        "tools/png_export_test.mjs"
+      ],
+      "gaps": "Whole-buffer synchronous output only; no active-request cancellation, backpressure, PNG color/profile metadata or viewer rotation transform. Real-browser verification remains pending.",
+      "rule": "The shared renderer and public PNG encoder preserve ordinary page semantics. Pixel/decoded-byte preflight and stream/frame limits remain distinct. Viewer exports copy click-time form values through a temporary handle and discard stale results; they do not adopt or erase drafts."
+    },
+    {
+      "id": "host-attachment-checks",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "protocol 1.10 and viewer checks implemented; hosted Linux/macOS/Windows checks pass at 64d6462b6",
+      "tests": [
+        "pagura-host/tests/attachment_checks.rs",
+        "tools/attachment_checks_test.mjs",
+        "pagura-host protocol::tests::protocol_constants"
+      ],
+      "gaps": "Synchronous whole-buffer decoding; no streaming, active cancellation, attachment-only viewer password prompt, semantic validation or authenticity result.",
+      "rule": "Kind 27 selects the exact catalog index and EF key. Success 155 carries object identity, exact decoded u64 size and distinct not-declared/matches/mismatch statuses. Resource and authorization failures cannot produce a completed observation. A 16-byte reading payload is required before decoding. Viewer checks are explicit, do not download bytes and discard stale results."
+    },
+    {
+      "id": "host-page-attachments",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "protocol 1.11 host/client page attachment listing, retrieval and checks implemented; hosted Linux/macOS/Windows checks pass at e28dc0798",
+      "rule": "Kinds 28\u201330 select one page and preserve original Annots slots. Responses retain annotation identity, normalized rectangle, Contents, declared icon and the nested file specification. Exact page/slot/EF selection never falls back to a catalog entry. Discovery is lazy; complete authorized decoding precedes byte or check responses. Listings are bounded by 1024 entries, document traversal/result limits and reading-response bytes. Invalid views return errors without a partial listing. Older negotiated sessions remain usable.",
+      "tests": [
+        "pagura-host/tests/page_attachments.rs",
+        "tools/page_attachments_test.mjs",
+        "file_annotations/listing-limit",
+        "pagura-host protocol::tests::protocol_constants"
+      ],
+      "gaps": "Icon activation, AF/RF selection, streaming and active-request cancellation remain separate work. Viewer selection is specified by viewer-page-attachments."
+    },
+    {
+      "id": "viewer-page-attachments",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "explicit page attachment selection, download and parameter checks implemented; hosted browser-shim checks pass at dde52cd7f; real-browser validation pending",
+      "rule": "The properties dialog lists the current page separately from document attachments and accepts a bounded, one-based page selection. Original Annots slots and exact EF keys select downloads and checks. Source names, Contents, descriptions and icon names remain inert text; generated download names never derive from a PDF filename. Listing never decodes payloads. Immutable document/client/epoch and dialog selection snapshots discard obsolete listings, downloads and checks. Only one decode operation can start per current dialog selection. A page listing error preserves independent properties and document attachment controls.",
+      "tests": [
+        "tools/page_attachments_view_test.mjs",
+        "tools/host_test.mjs"
+      ],
+      "gaps": "Real-browser interaction validation, icon activation, AF/RF selection, attachment-only password reauthentication and streaming remain open."
     }
   ]
 }
