@@ -172,7 +172,7 @@ fn context<'a>(
         composite,
         store,
         limits,
-        region: pagura_raster::DeviceRect {
+        region: DeviceRect {
             x0: 0,
             y0: 0,
             x1: u32::MAX,

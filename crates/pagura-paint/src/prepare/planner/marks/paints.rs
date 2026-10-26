@@ -61,7 +61,7 @@ impl Planner<'_> {
                     pixels,
                     (&mut budget.functions, &budget.bytes),
                 )?;
-                let index = self.add_paint(prepared, pixels, budget)?;
+                let index = self.add_paint(prepared, bounds, budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     budget.bytes.reserve_map_capacity(self.solids(), 1)?;
                     self.solids().insert(key, index);
@@ -104,7 +104,7 @@ impl Planner<'_> {
                 prepared?
             }
         };
-        self.add_paint(prepared, pixels, budget)
+        self.add_paint(prepared, bounds, budget)
     }
 
     /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
@@ -142,14 +142,21 @@ impl Planner<'_> {
     }
 
     /// Keeps a prepared paint, reserving its bytes and its geometry work
-    /// over `pixels` (mesh shadings), and the repairs preparing it made.
-    fn add_paint(&mut self, paint: Source, pixels: usize, budget: &mut Budget) -> Result<u32> {
+    /// over `region` (mesh shadings), and the repairs preparing it made.
+    fn add_paint(
+        &mut self,
+        paint: Source,
+        region: pagura_raster::DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<u32> {
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
         let payload = paint.bytes();
         budget.bytes.charge(payload)?;
         let retained = (|| {
-            budget.work.charge_product(pixels, paint.work_per_pixel())?;
+            budget
+                .work
+                .charge(paint.geometry_work(region, budget.work.remaining()))?;
             budget.bytes.reserve_capacity(&mut self.parts.paints, 1)?;
             budget
                 .bytes
@@ -189,6 +196,6 @@ impl Planner<'_> {
             pixels,
             (&mut budget.functions, &budget.bytes),
         )?;
-        self.add_paint(prepared, pixels, budget)
+        self.add_paint(prepared, bounds, budget)
     }
 }

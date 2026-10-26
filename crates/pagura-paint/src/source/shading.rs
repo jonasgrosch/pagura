@@ -31,7 +31,7 @@ use pagura_color::{MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Rect, Result};
 use pagura_interpret::features;
 use pagura_interpret::{Shading, ShadingFunction, ShadingKind};
-use pagura_raster::{Point, Transform};
+use pagura_raster::{DeviceRect, Point, Transform};
 
 /// The function input of one sample: `t`, `(x, y)` or mesh values.
 type Input = [f64; MAX_COMPONENTS];
@@ -258,15 +258,33 @@ impl ShadingSource {
             .and_then(|c| c.get(all * self.channels..(all + 1) * self.channels))
     }
 
-    /// Geometry work units one pixel costs at most, which the executor
-    /// reserves as render work: mesh primitive tests (one per triangle, at
-    /// most `MAX_WORK` per patch) for each sample; zero for analytic
-    /// shadings.
-    pub(crate) fn geometry_work(&self) -> usize {
-        match &*self.geometry {
-            Geometry::Mesh(mesh) => mesh.work().saturating_mul(self.samples()),
-            _ => 0,
+    /// Geometry work units filling the pixels of `region` costs at most,
+    /// which preparation reserves as render work: for each sample, the mesh
+    /// primitives its cell lists (one unit per triangle, at most `MAX_WORK`
+    /// per patch), at the sample's point as execution places it; zero for
+    /// analytic shadings. Counting stops once it passes `limit`.
+    pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
+        let Geometry::Mesh(mesh) = &*self.geometry else {
+            return 0;
+        };
+        let divisor = f64::from(self.rate);
+        let mut work = 0_usize;
+        for y in region.y0..region.y1 {
+            for x in region.x0..region.x1 {
+                for (sx, sy) in (0..self.rate).flat_map(|sy| (0..self.rate).map(move |sx| (sx, sy)))
+                {
+                    let point = Point::new(
+                        f64::from(x) + (f64::from(sx) + 0.5) / divisor,
+                        f64::from(y) + (f64::from(sy) + 0.5) / divisor,
+                    ) * self.inverse;
+                    work = work.saturating_add(mesh.work_at(point));
+                }
+                if work > limit {
+                    return work;
+                }
+            }
         }
+        work
     }
 
     /// Bytes this source holds besides its function and colour data: mesh
