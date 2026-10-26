@@ -1,0 +1,1214 @@
+{
+  "schema": 2,
+  "area": "jpx_layout_probe",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "jpx_layout_probe/jpch-inherit",
+      "kind": "pdf",
+      "description": "jpch inherit",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-inherit.pdf",
+      "sha256": "143faa97afcbc718b93b5f20824faf1929759fd2f6ad2dbbf60415463f4bcf5b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-inherit.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jpch-inherit",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-inherit-codec-control",
+      "kind": "pdf",
+      "description": "jpch inherit codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-inherit-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-inherit-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jpch-inherit",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-inherit-brand-control",
+      "kind": "pdf",
+      "description": "jpch inherit brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-inherit-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-inherit-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jpch-inherit",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-inherit-rgb-control",
+      "kind": "pdf",
+      "description": "jpch inherit rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-inherit-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-inherit-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/jpch-inherit",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-inherit",
+      "kind": "pdf",
+      "description": "jplh inherit",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-inherit.pdf",
+      "sha256": "8141633027d06bce7c15a1c247182fea1636fd7700e15f42a60180c8a28459d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-inherit.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jplh-inherit",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-inherit-codec-control",
+      "kind": "pdf",
+      "description": "jplh inherit codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-inherit-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-inherit-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jplh-inherit",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-inherit-brand-control",
+      "kind": "pdf",
+      "description": "jplh inherit brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-inherit-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-inherit-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jplh-inherit",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-inherit-rgb-control",
+      "kind": "pdf",
+      "description": "jplh inherit rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-inherit-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-inherit-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/jplh-inherit",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/creg-identity",
+      "kind": "pdf",
+      "description": "creg identity",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/creg-identity.pdf",
+      "sha256": "283ea7efbf4e7cd4a522c9c16759962718a978eac70dfac2e93dd6df3a42d595",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/creg-identity.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/creg-identity",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/creg-identity-codec-control",
+      "kind": "pdf",
+      "description": "creg identity codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/creg-identity-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/creg-identity-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/creg-identity",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/creg-identity-brand-control",
+      "kind": "pdf",
+      "description": "creg identity brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/creg-identity-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/creg-identity-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/creg-identity",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/creg-identity-rgb-control",
+      "kind": "pdf",
+      "description": "creg identity rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/creg-identity-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/creg-identity-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/creg-identity",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/cgrp-color",
+      "kind": "pdf",
+      "description": "cgrp color",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/cgrp-color.pdf",
+      "sha256": "2b7014f8a46e06b0709fa5e0b3f84f430ccd36686e48e468df97e7c37860ede8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/cgrp-color.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/cgrp-color",
+      "role": "subject",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/cgrp-color-codec-control",
+      "kind": "pdf",
+      "description": "cgrp color codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/cgrp-color-codec-control.pdf",
+      "sha256": "7c038ebbdca101927ab78c769f52da7715864e82bbc67208aa0682fb8cf74d58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/cgrp-color-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/cgrp-color",
+      "role": "codec-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/cgrp-color-brand-control",
+      "kind": "pdf",
+      "description": "cgrp color brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/cgrp-color-brand-control.pdf",
+      "sha256": "c819c80180a0fef0633018da91aaa2d066707fa237180e9b9b4950a2af2c8c16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/cgrp-color-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/cgrp-color",
+      "role": "brand-control",
+      "codestream_sha256": "14094ae9b4f3234429d9166d53ddeee575959ce331269857af92fc4e34904707"
+    },
+    {
+      "id": "jpx_layout_probe/cgrp-color-rgb-control",
+      "kind": "pdf",
+      "description": "cgrp color rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/cgrp-color-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/cgrp-color-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/cgrp-color",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-palette",
+      "kind": "pdf",
+      "description": "jpch palette",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-palette.pdf",
+      "sha256": "8ed92fdaf3bd65984f34c6d2f9c737051668095b82a9ba029b9d1eb1544a48d6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-palette.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jpch-palette",
+      "role": "subject",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-palette-codec-control",
+      "kind": "pdf",
+      "description": "jpch palette codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-palette-codec-control.pdf",
+      "sha256": "51a82dfb36ab50bffdc654c66229bc04c036b77390c82e13f757bbff807c1ea8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-palette-codec-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jpch-palette",
+      "role": "codec-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-palette-brand-control",
+      "kind": "pdf",
+      "description": "jpch palette brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-palette-brand-control.pdf",
+      "sha256": "225d8cee720d74368a5b515c538f019eddf37b6765f390760d0f4d0fbb8b6115",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-palette-brand-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jpch-palette",
+      "role": "brand-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/jpch-palette-rgb-control",
+      "kind": "pdf",
+      "description": "jpch palette rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jpch-palette-rgb-control.pdf",
+      "sha256": "5cf73c1f4674b21164e8128288d825171d72ac473fff29159969837c726b263e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jpch-palette-rgb-control.ppm",
+      "oracle_sha256": "06e9732f9d1f310604fa2062c41beffb135813a894cb0bc6ed70f5e547214b6f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/jpch-palette",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight",
+      "kind": "pdf",
+      "description": "opct straight",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight.pdf",
+      "sha256": "7add3144189bcda5df59f2413381191f02b8527ba71e7e3aa5a4b5ce720d5360",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-straight",
+      "role": "subject",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-codec-control",
+      "kind": "pdf",
+      "description": "opct straight codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-codec-control.pdf",
+      "sha256": "5a37b95b869a1222245117367d401d927adb16c0a865900a6dbf67879ce149be",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-codec-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-straight",
+      "role": "codec-control",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-brand-control",
+      "kind": "pdf",
+      "description": "opct straight brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-brand-control.pdf",
+      "sha256": "6b50606f69901235618f8d1b436f1bc260904fc9ad752ed5bf9e11aa5a1f1326",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-brand-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-straight",
+      "role": "brand-control",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-rgb-control",
+      "kind": "pdf",
+      "description": "opct straight rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-rgb-control.pdf",
+      "sha256": "945241d6d0ace527297e040d8016c65c559c3c4d81b6df6cd22dedce49171928",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-rgb-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/opct-straight",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-cdef",
+      "kind": "pdf",
+      "description": "jplh cdef",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-cdef.pdf",
+      "sha256": "2663643823013fb7bb57cc434e1f4e821449d1c67fe661590f2cde914a764301",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-cdef.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jplh-cdef",
+      "role": "subject",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-cdef-codec-control",
+      "kind": "pdf",
+      "description": "jplh cdef codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-cdef-codec-control.pdf",
+      "sha256": "5a37b95b869a1222245117367d401d927adb16c0a865900a6dbf67879ce149be",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-cdef-codec-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jplh-cdef",
+      "role": "codec-control",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-cdef-brand-control",
+      "kind": "pdf",
+      "description": "jplh cdef brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-cdef-brand-control.pdf",
+      "sha256": "6b50606f69901235618f8d1b436f1bc260904fc9ad752ed5bf9e11aa5a1f1326",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-cdef-brand-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/jplh-cdef",
+      "role": "brand-control",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/jplh-cdef-rgb-control",
+      "kind": "pdf",
+      "description": "jplh cdef rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/jplh-cdef-rgb-control.pdf",
+      "sha256": "945241d6d0ace527297e040d8016c65c559c3c4d81b6df6cd22dedce49171928",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/jplh-cdef-rgb-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/jplh-cdef",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/opct-ignored",
+      "kind": "pdf",
+      "description": "opct ignored",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-ignored.pdf",
+      "sha256": "3f5afa824dfede73863cef78e6c7b36c363162a8388d943c41bde7faed9e7625",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-ignored.ppm",
+      "oracle_sha256": "455e729daa70f9f40099f912cea5316713e9c8bc99fa3e7cb7ba5b3f877d99e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-ignored",
+      "role": "subject",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/opct-ignored-codec-control",
+      "kind": "pdf",
+      "description": "opct ignored codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-ignored-codec-control.pdf",
+      "sha256": "6373d684aea61b8bf3e774472f0faa391a1e644c20a9bcead833111dab43dafa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-ignored-codec-control.ppm",
+      "oracle_sha256": "455e729daa70f9f40099f912cea5316713e9c8bc99fa3e7cb7ba5b3f877d99e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-ignored",
+      "role": "codec-control",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/opct-ignored-brand-control",
+      "kind": "pdf",
+      "description": "opct ignored brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-ignored-brand-control.pdf",
+      "sha256": "4f3af7afbf66fc35856f9aaecb36dcb9bb256b2e6f649800f0c86a453e769472",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-ignored-brand-control.ppm",
+      "oracle_sha256": "455e729daa70f9f40099f912cea5316713e9c8bc99fa3e7cb7ba5b3f877d99e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-ignored",
+      "role": "brand-control",
+      "codestream_sha256": "63cc530693aafe3b54770888c9347cf810ea133b995391ae7fa85cccab92e55c"
+    },
+    {
+      "id": "jpx_layout_probe/opct-ignored-rgb-control",
+      "kind": "pdf",
+      "description": "opct ignored rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-ignored-rgb-control.pdf",
+      "sha256": "717eab43d0ab3b2919c6e2c8495c068040f6c976fa87ad2f3918c02a98fe162e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-ignored-rgb-control.ppm",
+      "oracle_sha256": "455e729daa70f9f40099f912cea5316713e9c8bc99fa3e7cb7ba5b3f877d99e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/opct-ignored",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-palette",
+      "kind": "pdf",
+      "description": "opct straight palette",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-palette.pdf",
+      "sha256": "013defb5003a2ca3c68d2e9a826e2ff587e81270a858924df669dcc9ee8188b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-palette.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-straight-palette",
+      "role": "subject",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-palette-codec-control",
+      "kind": "pdf",
+      "description": "opct straight palette codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-palette-codec-control.pdf",
+      "sha256": "fe9f320d2e8bf5b5000ad525ce24f20af5efe26e72b9893a1938284ff21f877a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-palette-codec-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-straight-palette",
+      "role": "codec-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-palette-brand-control",
+      "kind": "pdf",
+      "description": "opct straight palette brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-palette-brand-control.pdf",
+      "sha256": "dff2526eb0ee99dcf5a3bcb1d81c73df153526ce93c2d16a9346a6faa10abfa1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-palette-brand-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-straight-palette",
+      "role": "brand-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/opct-straight-palette-rgb-control",
+      "kind": "pdf",
+      "description": "opct straight palette rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-straight-palette-rgb-control.pdf",
+      "sha256": "945241d6d0ace527297e040d8016c65c559c3c4d81b6df6cd22dedce49171928",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-straight-palette-rgb-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/opct-straight-palette",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/combined-first-headers",
+      "kind": "pdf",
+      "description": "combined first headers",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/combined-first-headers.pdf",
+      "sha256": "c4a59186573986ebaa02038378f89e8ffb82f5cc3340b16734da84d10a018d4d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/combined-first-headers.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/combined-first-headers",
+      "role": "subject",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/combined-first-headers-codec-control",
+      "kind": "pdf",
+      "description": "combined first headers codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/combined-first-headers-codec-control.pdf",
+      "sha256": "fe9f320d2e8bf5b5000ad525ce24f20af5efe26e72b9893a1938284ff21f877a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/combined-first-headers-codec-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/combined-first-headers",
+      "role": "codec-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/combined-first-headers-brand-control",
+      "kind": "pdf",
+      "description": "combined first headers brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/combined-first-headers-brand-control.pdf",
+      "sha256": "dff2526eb0ee99dcf5a3bcb1d81c73df153526ce93c2d16a9346a6faa10abfa1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/combined-first-headers-brand-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/combined-first-headers",
+      "role": "brand-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/combined-first-headers-rgb-control",
+      "kind": "pdf",
+      "description": "combined first headers rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/combined-first-headers-rgb-control.pdf",
+      "sha256": "945241d6d0ace527297e040d8016c65c559c3c4d81b6df6cd22dedce49171928",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/combined-first-headers-rgb-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/combined-first-headers",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied",
+      "kind": "pdf",
+      "description": "opct premultiplied",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied.pdf",
+      "sha256": "3bbd4029e0993d4a01f52440d4ff335d101cac21d337d8a8c8c978277d0debbd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-premultiplied",
+      "role": "subject",
+      "codestream_sha256": "51b96666b5ab9598884e0ceff3cdd33001376f16eedec845e8dcbb7b4f925c9d"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-codec-control",
+      "kind": "pdf",
+      "description": "opct premultiplied codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-codec-control.pdf",
+      "sha256": "e7ac14c00e2abb158f7a589bb469622fda1a65945ed5b2b3a1bfe9141dff6172",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-codec-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-premultiplied",
+      "role": "codec-control",
+      "codestream_sha256": "51b96666b5ab9598884e0ceff3cdd33001376f16eedec845e8dcbb7b4f925c9d"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-brand-control",
+      "kind": "pdf",
+      "description": "opct premultiplied brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-brand-control.pdf",
+      "sha256": "3853f4096f3664d23d88abdfe2c0bf47a8bf025731eb612c1708faf3591e8b5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-brand-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-premultiplied",
+      "role": "brand-control",
+      "codestream_sha256": "51b96666b5ab9598884e0ceff3cdd33001376f16eedec845e8dcbb7b4f925c9d"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-rgb-control",
+      "kind": "pdf",
+      "description": "opct premultiplied rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-rgb-control.pdf",
+      "sha256": "945241d6d0ace527297e040d8016c65c559c3c4d81b6df6cd22dedce49171928",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-rgb-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/opct-premultiplied",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-palette",
+      "kind": "pdf",
+      "description": "opct premultiplied palette",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette.pdf",
+      "sha256": "58fc6c876d74c7a132c83dbbf7d0da3f78edba330831b74a0fc76c5712ece30a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-premultiplied-palette",
+      "role": "subject",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-palette-codec-control",
+      "kind": "pdf",
+      "description": "opct premultiplied palette codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette-codec-control.pdf",
+      "sha256": "7733fc81c07e86a3cc76a80e2b4944a1c280a3bd9716a799ded9c89acf183025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette-codec-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-premultiplied-palette",
+      "role": "codec-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-palette-brand-control",
+      "kind": "pdf",
+      "description": "opct premultiplied palette brand control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette-brand-control.pdf",
+      "sha256": "203a0bdc9b38a0a9f07b58e24e950cc9d7fbc8f39c3ad507308e7eef395a8310",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette-brand-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_layout_probe/opct-premultiplied-palette",
+      "role": "brand-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_layout_probe/opct-premultiplied-palette-rgb-control",
+      "kind": "pdf",
+      "description": "opct premultiplied palette rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette-rgb-control.pdf",
+      "sha256": "945241d6d0ace527297e040d8016c65c559c3c4d81b6df6cd22dedce49171928",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_layout_probe/opct-premultiplied-palette-rgb-control.ppm",
+      "oracle_sha256": "81686e944b0e5deb8b0587a8774d1e51c77e9575888c1f0f334c4bcc89d51ac4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_layout_probe/opct-premultiplied-palette",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_layout_probe/opct-and-cdef",
+      "kind": "vector",
+      "description": "T.801 M.11.7/M.11.7.6: opct and cdef are mutually exclusive within a layer",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_layout_probe/opct-and-cdef.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_layout_probe/opct-and-cdef.jpx",
+          "sha256": "6d4849fc1b4b92ceb38e00a7fb969fc01b9b77a11c0b3f75270cbc51337e656c"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_layout_probe/opct-location",
+      "kind": "vector",
+      "description": "T.801 M.11.7.6: opct is confined to a Compositing Layer Header",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_layout_probe/opct-location.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_layout_probe/opct-location.jpx",
+          "sha256": "9936062b28cb460f8ca5a96c9191d4c19467898d47f75ce52fcc88c2804db312"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_layout_probe/opct-reserved",
+      "kind": "vector",
+      "description": "T.801 Table M.33: opacity type3 is reserved",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_layout_probe/opct-reserved.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_layout_probe/opct-reserved.jpx",
+          "sha256": "d85ac9addadb5964849b412051db5ee5e3d10db875842958c5d2693e8f221af2"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_layout_probe/opct-excess",
+      "kind": "vector",
+      "description": "T.801 Table M.33: type0 has no following fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_layout_probe/opct-excess.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_layout_probe/opct-excess.jpx",
+          "sha256": "9134dc29860e17b2c98f2adff180546e9e745ce5fba5853d1ea4e520094f7eec"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_layout_probe/first-image-duplicate",
+      "kind": "vector",
+      "description": "T.801 M.9.2.7: baseline first-image entries cannot duplicate jp2h entries",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_layout_probe/first-image-duplicate.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_layout_probe/first-image-duplicate.jpx",
+          "sha256": "d6701a20d37514bfe3148c39c3a954f11da2521c8015f44a821aaa7816df6fb7"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_layout_probe/chroma-key-unadjudicated",
+      "kind": "vector",
+      "description": "T.801 M.11.7.6/Table M.34 field-presence contradiction; chroma-key and PDF SMaskInData interaction remain outside this diagnostic. No invalid/unsupported verdict is assigned.",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_layout_probe/chroma-key-unadjudicated.jpx",
+          "sha256": "1c38f46601977096abe909e96c70b924260329617e3156abe170dfdec1ea9b50"
+        },
+        ".note": {
+          "path": "corpus/generated/jpx_layout_probe/chroma-key-unadjudicated.note",
+          "sha256": "195e8196bc126f4f5c189424bcc4b9a703ffdfcaac84a6c6ea0071f5ec153db1"
+        }
+      },
+      "observation": "unprobed-boundary"
+    }
+  ]
+}

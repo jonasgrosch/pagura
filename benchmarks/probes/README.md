@@ -549,3 +549,42 @@ is one `ColorSpecification` and one allocation-initialisation operation;
 one-short byte and zero-operation controls must refuse it before insertion.
 The new implementation's hosted acceptance is pending; the green d167 result
 above applies to the preceding 274-control checkpoint.
+
+
+## R02/R03 first-image JPX layout diagnostic
+
+The private `probe/jpx-first-image-layout` branch keeps product code identical
+to `df04ea06ba92dfa3732150b83b98f015ec0f8845`. Its independent generator is
+[`jpx_layout_probe.py`](../../tools/fixturegen/jpx_layout_probe.py), with fixture
+identities in [`jpx_layout_probe.json`](../../corpus/manifests/jpx_layout_probe.json).
+No baseline observations have been collected. The reduced rendering manifest
+is diagnostic-only: 12 subjects with three controls each, plus blank/rectangle,
+for 50 cases and 350 planned cells across the six pinned baselines and Pagura.
+
+T.801 M.9.2.2/.7/.8 and M.11.6/.7 define the first-image obligation separately
+from multilayer composition. Subjects cover inherited codestream/layer headers,
+identity registration, layer colour groups, codestream palette/component maps,
+layer channel definitions, and straight/premultiplied final-channel opacity.
+Palette subjects preserve 8-bit colour and 16-bit alpha; an ignored-opacity
+subject checks PDF SMaskInData 0. The combined subject places each first-image
+field in exactly one owner. No subject duplicates a JP2-header field, combines
+codestreams, requests external data, or implies animation/resampling.
+
+Every subject has an ordinary JP2 codec control and a flattened jpx/jpxb brand
+control with identical sample bytes, plus an independent unfiltered RGB control.
+The first three retain the same codestream SHA-256 in the manifest. Opacity
+expectations use exact rational source-over arithmetic; stored premultiplied
+codes are exactly representable at both alpha precisions. Codec/subject/brand
+tolerance is one channel unit; RGB tolerance is zero. No renderer supplies any
+expected pixel. Cor4 Table M.14 masks declare only the unrestricted Part 1
+codestream and the actual opacity feature.
+
+Five malformed vectors separately cover conflicting opacity/channel definitions,
+wrong box location, reserved opacity type, excess fields, and duplicate
+first-image fields. The chroma-key vector has no pixel or error verdict:
+M.11.7.6/Table M.34 reverses the NCH/CVi field-presence conditions relative to
+Table M.33 and the prose. Table M.33 also repeats Otyp=0 in the type1 row and
+mentions an undefined PR field. The probe uses the single-byte straight and
+premultiplied forms; it does not guess a chroma-key/PDF policy. These six vectors
+are excluded from the 50-case render diagnostic. The canonical JPX requirement
+retains the exact primary locators and the unresolved contradiction.
