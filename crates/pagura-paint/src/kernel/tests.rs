@@ -208,6 +208,59 @@ fn the_f64_kernel_is_the_earlier_paint_bit_for_bit() {
 }
 
 #[test]
+fn coverage_stores_are_the_kernel_at_coverage_opacities_bit_for_bit() {
+    let mut random = Lcg(11);
+    let mut state = 0x2545_f491_4f6c_dd1d_u64;
+    let mut next = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        state
+    };
+    for process in [Process::Gray, Process::Rgb, Process::Cmyk] {
+        let layout = Layout { process, spots: 0 };
+        let (n, stride) = (process.components(), layout.stride());
+        for _ in 0..50 {
+            let len = 1 + usize::try_from(next() % 20).unwrap_or(0);
+            let mut pixels = Vec::with_capacity(len * stride);
+            for _ in 0..len {
+                let old = pixel(&mut random);
+                pixels.extend_from_slice(&old.color[..n]);
+                pixels.extend_from_slice(&[old.alpha, old.group, old.shape]);
+            }
+            let color = [0; 4].map(|_| random.unit());
+            let bytes: Vec<u8> = (0..len)
+                .map(|_| u8::try_from(next() % 256).unwrap_or(0))
+                .collect();
+            let uniform = vec![bytes[0]; len];
+            for (coverage, values) in [
+                (Coverage::Bytes(&bytes), &bytes),
+                (Coverage::Uniform(bytes[0]), &uniform),
+            ] {
+                let mut covered = pixels.clone();
+                cover(&mut covered, &color[..n], layout, coverage);
+                let opacity: Vec<f64> = values.iter().map(|&c| UNIT[usize::from(c)]).collect();
+                let sources = Sources {
+                    colors: Colors::Constant(&color[..n]),
+                    alpha: &opacity,
+                    shape: &opacity,
+                };
+                let mode = Mode {
+                    layout,
+                    blend: BlendMode::Normal,
+                    knockout: false,
+                    preserve: 0,
+                };
+                let mut composited = pixels.clone();
+                composite(&mut composited, &sources, &[], &mode);
+                let bits = |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+                assert_eq!(bits(&covered), bits(&composited), "{process:?}");
+            }
+        }
+    }
+}
+
+#[test]
 fn spot_channels_take_normal_for_difference_exclusion_and_nonseparable_modes() {
     let layout = Layout {
         process: Process::Rgb,
