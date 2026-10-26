@@ -116,3 +116,22 @@ fn plan_bytes(plan: &Plan) -> usize {
         + plan.slots.layouts.capacity() * size_of::<Option<ScratchLayout>>()
         + plan.conversions.capacity() * size_of::<Conversion>()
 }
+
+#[test]
+fn a_region_at_the_pixel_cap_prepares_and_a_row_more_is_refused() {
+    let limits = Limits::default();
+    let side = 16_384_u32;
+    assert_eq!(u64::from(side) * u64::from(side), limits.pixels as u64);
+    let request = |rows| {
+        let page = pagura_raster::DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: side,
+            y1: rows,
+        };
+        RenderRequest::new(pagura_raster::Transform::IDENTITY, page, page)
+    };
+    assert!(super::area(&request(side), &limits).is_ok());
+    let error = super::area(&request(side + 1), &limits).unwrap_err();
+    assert_eq!(error.message, "render pixel budget exceeded");
+}

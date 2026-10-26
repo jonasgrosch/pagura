@@ -114,7 +114,7 @@ pub(crate) fn budget(
         .checked_mul(u64::from(components))
         .and_then(|v| usize::try_from(v).ok())
         .ok_or(Error::limit("image sample size overflow"))?;
-    if pixels > limits.pixels as u64
+    if pixels > u64::from(limits.image.pixels)
         || count
             .checked_mul(if bits > 8 { 2 } else { 1 })
             .is_none_or(|bytes| bytes > limits.decoded_bytes)

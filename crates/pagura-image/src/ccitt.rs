@@ -297,7 +297,7 @@ fn decode_inner(
         }
         let next_rows = rows
             .checked_add(1)
-            .filter(|&v| v <= limits.pixels / width)
+            .filter(|&v| v <= pagura_core::convert::u32_to_usize(limits.image.pixels) / width)
             .ok_or(Error::limit("CCITT pixel budget exceeded"))?;
         let length = output
             .len()

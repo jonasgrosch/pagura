@@ -214,7 +214,7 @@ fn decode_arrays_stencils_and_inline_abbreviations() {
 #[test]
 fn image_and_codec_budgets_precede_allocations() {
     let limits = Limits {
-        pixels: 1,
+        image: pagura_core::ImageLimits { pixels: 1 },
         decoded_bytes: 1024,
         ..Limits::default()
     };
@@ -407,7 +407,7 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
 #[test]
 fn truncated_and_mutated_codecs_never_invent_samples() {
     let limits = Limits {
-        pixels: 4096,
+        image: pagura_core::ImageLimits { pixels: 4096 },
         decoded_bytes: 65536,
         decode_work: 100_000,
         ..Limits::default()
@@ -475,4 +475,21 @@ fn deferred_jpeg_height_is_an_explicit_capability_gap() {
     encoded[frame + 5..frame + 7].fill(0);
     let error = dct::decode(&encoded, None, &Limits::default()).unwrap_err();
     assert_eq!(error.feature(), Some(crate::features::JPEG_PROCESS));
+}
+
+#[test]
+fn images_up_to_the_pixel_cap_are_bounded_by_their_bytes() {
+    let limits = Limits::default();
+    let budget = |width, height, components| {
+        crate::parameters::budget(width, height, components, 8, &limits)
+    };
+    // One 8-bit component at the pixel cap fills `decoded_bytes` exactly.
+    assert_eq!(
+        budget(16_384, 16_384, 1).unwrap(),
+        pagura_core::convert::u32_to_usize(limits.image.pixels)
+    );
+    assert!(budget(16_384, 16_385, 1).is_err());
+    // RGB samples reach the byte budget first.
+    assert!(budget(9_400, 9_400, 3).is_ok());
+    assert!(budget(16_384, 16_384, 3).is_err());
 }

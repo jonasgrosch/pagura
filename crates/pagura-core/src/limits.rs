@@ -63,7 +63,9 @@ pub struct Limits {
     /// signed revisions and DocMDP/FieldMDP change analysis of signature
     /// inspection (12.8).
     pub traversal_work: usize,
-    /// Maximum number of pixels in one rendered surface.
+    /// Maximum number of pixels in one rendered surface. It limits only the
+    /// output a caller asks for: a render's working memory is bounded by
+    /// `render_bytes`. One image's samples are capped by `image.pixels`.
     pub pixels: usize,
     /// Maximum number of content-stream tokens interpreted per page.
     pub operations: usize,
@@ -112,8 +114,12 @@ pub struct Limits {
     /// one unit per Type 4 calculator operator executed and per sample
     /// looked up or interpolated in a sampled, exponential or stitching
     /// function. Reserved during preparation through the prepared sources
-    /// that evaluate them.
+    /// that evaluate them. The default is that of `render_work` and
+    /// `decode_work`, which cost nanoseconds per unit too, so the three
+    /// bound a similar worst-case time (ADR 0016).
     pub function_work: usize,
+    /// Budgets of decoded images.
+    pub image: ImageLimits,
     /// Budgets of signature validation (ADR 0015).
     pub signatures: SignatureLimits,
 }
@@ -123,6 +129,25 @@ impl Limits {
     /// (7.10.5), the architectural limit of ISO 32000-1 Annex C, Table C.1.
     /// A standard limit, not a budget, so it is not a field.
     pub const CALCULATOR_STACK: usize = 100;
+}
+
+/// Budgets of decoded images (ADR 0016). The fields are `u32`, which every
+/// default fits, so that [`Limits`] stays small; widen them with
+/// [`u32_to_usize`](crate::convert::u32_to_usize).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImageLimits {
+    /// Maximum number of pixels one image declares, before any of its
+    /// samples are decoded. Its memory is bounded by `decoded_bytes`, and
+    /// its decoding by `decode_work` and `decode_bytes`.
+    pub pixels: u32,
+}
+
+impl Default for ImageLimits {
+    fn default() -> Self {
+        Self {
+            pixels: 256 * 1024 * 1024,
+        }
+    }
 }
 
 /// Budgets of signature validation (ADR 0015): ASN.1 encodings,
@@ -192,8 +217,10 @@ impl Default for SignatureLimits {
 impl Default for Limits {
     fn default() -> Self {
         const MIB: usize = 1024 * 1024;
-        const PIXELS: usize = 64 * MIB;
-        const WORK: usize = 32 * PIXELS;
+        const PIXELS: usize = 256 * MIB;
+        // 32 units per pixel of a 64 Mi-pixel render or image, the most a
+        // 32-bit `usize` holds at that rate (ADR 0016, decision 3).
+        const WORK: usize = 32 * 64 * MIB;
         Self {
             file_bytes: 512 * MIB,
             document_bytes: 128 * MIB,
@@ -213,10 +240,10 @@ impl Default for Limits {
             mask_sources: 256,
             display_commands: 10_000_000,
             render_bytes: 512 * MIB,
-            render_work: 2_000_000_000,
-            // 32 units per pixel at the pixel cap: a progressive or 4:4:4
-            // JPEG of that size decodes, unlike under the 50M-token
-            // `operations` budget that capped codecs before (ADR 0016).
+            render_work: WORK,
+            // A progressive or 4:4:4 JPEG as large as `decoded_bytes` admits
+            // decodes, unlike under the 50M-token `operations` budget that
+            // capped codecs before (ADR 0016).
             decode_work: WORK,
             decode_bytes: 256 * MIB,
             font_work: 50_000_000,
@@ -224,6 +251,7 @@ impl Default for Limits {
             text_items: 1_000_000,
             text_work: 50_000_000,
             function_work: WORK,
+            image: ImageLimits::default(),
             signatures: SignatureLimits::default(),
         }
     }
@@ -236,7 +264,7 @@ mod tests {
     #[test]
     fn defaults_fit_a_32_bit_address_space() {
         // Destructured exhaustively so that a new field is checked too; the
-        // signature group is u32 by type.
+        // image and signature groups are u32 by type.
         let Limits {
             file_bytes,
             document_bytes,
@@ -264,6 +292,7 @@ mod tests {
             text_items,
             text_work,
             function_work,
+            image: _,
             signatures: _,
         } = Limits::default();
         for value in [
@@ -306,12 +335,25 @@ mod tests {
     }
 
     #[test]
-    fn decode_work_scales_with_the_pixel_budget() {
+    fn decode_work_covers_the_largest_image_the_byte_budget_admits() {
         let limits = Limits::default();
         // DCT charges 64 units per 8×8 block of each component in each scan,
         // so a 4:4:4 RGB image costs 3 units per pixel per scan. A progressive
-        // one with eight scans must fit at the pixel cap.
-        assert!(limits.decode_work >= 3 * 8 * limits.pixels);
+        // one with eight scans must fit at the largest RGB image whose
+        // samples `decoded_bytes` holds.
+        assert!(limits.decode_work >= 3 * 8 * (limits.decoded_bytes / 3));
         assert!(limits.decode_work > limits.operations);
+    }
+
+    #[test]
+    fn work_budgets_allow_32_units_per_pixel_of_a_64_mi_pixel_render() {
+        let limits = Limits::default();
+        let pixels = 64 * 1024 * 1024;
+        for work in [limits.render_work, limits.decode_work, limits.function_work] {
+            assert_eq!(work, 32 * pixels);
+        }
+        // The same rate at the size caps would not fit a 32-bit `usize`.
+        assert!(u32::try_from(32 * 256 * 1024 * 1024_u64).is_err());
+        assert!(limits.pixels >= 4 * pixels);
     }
 }

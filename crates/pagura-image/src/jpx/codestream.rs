@@ -103,7 +103,7 @@ fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
             reader.position(),
         ));
     }
-    if area(x1 - x0, y1 - y0)? > budget.limits.pixels {
+    if area(x1 - x0, y1 - y0)? > pagura_core::convert::u32_to_usize(budget.limits.image.pixels) {
         return Err(Error::limit("JPEG 2000 pixel budget exceeded"));
     }
     let columns = (x1 - tile_x0).div_ceil(tile_width);

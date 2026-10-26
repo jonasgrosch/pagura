@@ -5,7 +5,7 @@ use pagura_testkit::fixture;
 #[test]
 fn arithmetic_and_twelve_bit_mutations_remain_bounded() {
     let limits = Limits {
-        pixels: 4096,
+        image: pagura_core::ImageLimits { pixels: 4096 },
         decoded_bytes: 1 << 20,
         decode_work: 100_000,
         ..Limits::default()
@@ -45,7 +45,7 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
             ..Limits::default()
         },
         Limits {
-            pixels: 100,
+            image: pagura_core::ImageLimits { pixels: 100 },
             ..Limits::default()
         },
     ] {
