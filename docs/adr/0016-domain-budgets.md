@@ -190,3 +190,27 @@ store's capacity, plus any value too large to retain, which its build budgets
 bound; this replaces the consequence above that `render_bytes` alone bounds a
 page's peak memory.
 
+## Amendment, 2026-10-26: progressive source and job budgets (ADR 0035)
+
+Loading, extraction and encoding use separate domain configuration records, passed
+by reference or owned by their operation. They do not enlarge `Limits`, which
+remains at its 256-byte boundary, and do not borrow syntax, image or render fields.
+Every allocation/work charge still goes through `Meter` before the work.
+
+`pagura-document::source::SourceLimits` bounds retained source/assembly allocations,
+one assembly window, stored chunk records, a returned missing-range frontier and
+cumulative source work. `Limits::file_bytes` continues to bound the declared file
+length. An accepted allocation owns a reservation; sharing a byte lease shares
+that reservation, and the last lease releases it. Closing a source drops its map
+but cannot refund externally pinned storage. Failed supply publishes no fragment;
+duplicate supply changes no availability generation but consumes its actual
+validation work. Materialization reserves peak duplicate storage explicitly.
+
+Loading-job work, extracted records and encoder work/storage have their own
+domain meters and do not reset on yield or unavailable input. Prepared rendering
+retains its established charges. Host limits bound active/queued jobs, workers,
+transport frames, source totals and pinned output slots across operations. A
+source or output wait releases CPU admission; the bytes it retains remain charged.
+Defaults and adversarial checks accompany each implementation before admission
+is connected to a host. Domain configuration is not evidence of a measured bound.
+

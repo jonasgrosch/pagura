@@ -1,22 +1,23 @@
 # Async PDF loading, image extraction and streamed image responses
 
-Status: proposed architecture and implementation plan, originally drafted
-2026-10-23; reconciled with the current one-pass source for the competitive plan.
+Status: accepted architecture and implementation plan, 2026-10-26. Implementation
+and its exit gates remain pending; accepted contracts do not establish completion.
 
-Baseline: `render/one-pass`, commit
-`19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
-The remaining packages below are proposals. Since the original `a909bf998`
-baseline, public band output and CLI PPM streaming have landed; section 2
-credits them and P5 covers only the remaining resumable-session work.
-[Proposed ADR 0035](../adr/0035-progressive-sources-and-streaming-jobs.md)
-records the decisions; this document is the implementation handoff.
+Baseline: `fc09a6b202b53e4faba6d43e96bd20e30623c65d`, the consolidated synchronous
+services and complete PNG implementation directly on `render/one-pass` at
+`73e1ab018`. Public band output, CLI PPM streaming, complete PNG export and direct
+image/thumbnail source extraction already exist. Section 2 credits these paths;
+the packages below extend their shared implementations.
+[ADR 0035](../adr/0035-progressive-sources-and-streaming-jobs.md) records the
+accepted source, validation, ownership and extraction contracts.
 
 This is the detailed design for **D01 and D02a's image/output slice** in the
 [competitive parity plan](../COMPETITIVE_PARITY.md), not a parallel backlog.
 P0–P3 implement D01 loading, P4 D02a extraction, P5/P6 shared resumable output
 and encoding, and P7–P9 their integration and validation. Metadata/attachments,
 other export formats and D02b editing remain in the umbrella plan. Native/WASM
-worker-pool scheduling is a later D01 slice; this plan's first release excludes it.
+worker scheduling remains a D01 obligation inside this same group. P0–P9 delivery
+does not close group 11 until the scheduling gates in section 10 also pass.
 
 ## 1. Outcome and scope
 
@@ -47,7 +48,7 @@ scene. All dimensions and source lengths remain within existing engine limits.
 The implementation preserves ADR 0034's one interpreter, exact-only rendering,
 source-ordered preparation, region-independent scene, and infallible band
 execution. Rough previews, operator-by-operator page display, JPEG encoding,
-parsed-object eviction, revision overlays, JSPI and worker-pool rendering are
+parsed-object eviction, revision overlays and JSPI are
 separate work. There is no second PDF parser or renderer for streaming.
 
 ## 2. What exists on the baseline
@@ -65,14 +66,16 @@ The baseline, rather than an earlier main checkout, determines the work:
 | [`ImageSource`](../../crates/pagura-image/src/source.rs) | Owns complete encoded data after general-purpose filters; samples decode later | Lazy sample decoding does not yet provide lazy network access to the payload |
 | [`Rendering::render_until` / `render_bands`](../../crates/pagura-paint/src/execute.rs) | One driver serves collection and a fallible band consumer; every call restarts from the first row | Add a persistent cursor; stopping is not currently resumable stepping |
 | [`RenderContext::render_bands`](../../crates/pagura-render/src/context.rs) | Public final-band callback and stop callback, with preparation/repair/allocation preflight and one bounded RGBA output band | Preserve this API; add owned pause/resume and bounded leases for async demand |
-| [CLI PPM conversion](../../crates/pagura-cli/src/commands.rs) | Streams the existing band API through a fixed 48 KiB RGB packing array; no full output surface | Preserve output/preflight/error behaviour; add PNG export using the existing encoder algorithms |
+| [CLI PPM conversion](../../crates/pagura-cli/src/commands.rs) | Streams the existing band API through a fixed 48 KiB RGB packing array; no full output surface | Preserve output/preflight/error behaviour |
+| [Complete PNG export](../../crates/pagura/src/png.rs) | Facade, CLI, host and viewer encode complete page surfaces, including transparent RGBA | Adapt these APIs to the incremental encoder while retaining their complete-result contracts |
+| [Source image services](../../crates/pagura-document/src/images.rs) | Direct resource/object images and stored thumbnails expose explicit stored/encoded bytes | Reuse these identities and stream readers; add broader resource contexts, interpreted occurrences and normalized output |
 | [`png::encode`](../../crates/pagura-codec/src/png.rs) | Filters the whole image, compresses it, returns a `Vec<u8>` | Extend the existing encoder with incremental input and output |
 | [`flate::compress`](../../crates/pagura-codec/src/flate/encode.rs) | Whole-input LZ77 and stored/fixed/dynamic block selection | Retain those algorithms while introducing bounded history and block state |
 | [`SessionClient`](../../web/client.mjs) | One pending request serializes the session | A waiting job must return a response so range supply cannot deadlock |
 
 PNG and DEFLATE encoding already exist as whole-buffer APIs. Final pixel-band
 streaming, consumer errors and between-band stopping also exist. The remaining
-work adds persistent jobs, incremental encoding and facade/service integration;
+work adds persistent jobs, incremental encoding and demand-driven service integration;
 it does not create a second encoder, band driver or rendering mode.
 
 ## 3. Invariants and success criteria
@@ -173,7 +176,7 @@ not add support for documents larger than the engine's addressable limits.
 
 ### 5.2 Source API and leases
 
-Proposed contracts, with spelling finalized in the contract work package:
+Accepted contracts; the implementation keeps these ownership and failure meanings:
 
 ```rust,ignore
 pub trait ByteSource: Send + Sync {
@@ -195,6 +198,24 @@ a bounded, sorted, non-overlapping set of missing ranges. It contains no
 credentials, URL, HTTP client, callback or runtime handle. `ByteLease` owns
 shared backing storage and a slice extent. It is safe to move across tasks and
 keeps that storage alive after a source map lock is released.
+
+`SourceIdentity` uses an opaque `u64` registration ID plus a 32-byte version
+token supplied by the host; neither is a URL or credential. The source descriptor
+fixes its `u64` length, checked against `Limits::file_bytes` and the target address
+width before allocation. Ranges are validated half-open intervals. Supplies carry
+the exact identity and offset; a stale identity is rejected without changing this
+source, while conflicting bytes for the same identity make it terminally invalid.
+All overlaps are checked before any new fragment is published. One successful
+insertion publishes its non-overlapping fragments and availability generation
+atomically. Duplicate bytes do not advance that generation.
+
+`SourceLimits` separately bounds retained allocation bytes, one assembly window,
+chunk records, missing ranges and cumulative supplied/read work. Accepted chunks
+and assembly allocations carry shared reservations; cloning a lease does not
+charge the same backing twice, and closing a source does not release memory still
+pinned by a lease. A complete-source materialization reserves any necessary copy
+against that same retained-byte budget and the assembly allowance. The host also
+accounts for incoming transport frames, which are outside the source store.
 
 Provide `CompleteBytes` and `SparseBytes` implementations. A contiguous read
 returns a lease into existing storage. A read across chunks uses a bounded,
@@ -251,8 +272,8 @@ Terminal top-level errors remain cacheable only where the existing path/context
 rules make them permanent for this source and validation policy. Success in a
 dependency remains reusable if the requesting operation later waits.
 
-Generalize the existing store builder to accept a caller error type, with the
-current terminal-error builder as a wrapper. The core store still caches values
+Generalize the existing `get_or_build` signature to accept a caller error type;
+terminal-error callers keep the same method. The core store still caches values
 only and knows nothing about PDF ranges. It must not hold a lock while building.
 
 Private attempt state owns provisional diagnostics and reservations. Publish
@@ -492,6 +513,18 @@ Source insert notification uses generation checks and register-then-recheck
 logic to avoid lost wakeups. There is no polling timer or worker blocked waiting
 for bytes. Never hold a source, object or store mutex across `.await`.
 
+Native and browser/WASI worker scheduling is part of this group's completion.
+The shared scheduler contract bounds queued jobs, running CPU units, live source
+bytes and pinned output slots, with foreground, explicit extraction and speculative
+priorities and bounded starvation. Cancellation removes only the owning demand;
+shared source requests continue while another job needs them. Shutdown joins or
+terminates workers and releases their reservations. Native workers share immutable
+prepared scenes and own scratch per executing region. Isolated WASI worker
+instances use the same jobs and protocol; any copied source/store data is charged
+to the aggregate worker budget. Worker count must not affect output bytes, ordered
+operation diagnostics or terminal outcomes. Tests cover one and multiple workers,
+slow inputs/outputs, priority inversion, cancellation and teardown.
+
 Recording/preparation contain CPU work that may remain one non-preemptible unit
 initially. Running them on a bounded pool keeps the server executor responsive,
 but does not make them instantly cancellable. Measure that latency and add
@@ -690,7 +723,7 @@ because dropping a blocking task's handle does not preempt its CPU operation.
 
 ## 15. Protocol v2 and browser reuse
 
-Keep v1.0–1.7 behavior frozen and complete-buffer based. Add a negotiated v2
+Keep v1.0–1.12 behavior frozen and complete-buffer based. Add a negotiated v2
 surface with explicit source and job handles. Final wire tags/layout are a
 deliverable of the contract package, generated from the existing canonical
 protocol tables rather than hand-maintained JS duplicates.
@@ -766,7 +799,7 @@ have moved. These packages do not authorize starting implementation on their own
 
 | ID | Remaining deliverable and primary files | Depends on | Earlier effort hypothesis |
 |---|---|---|---:|
-| P0 | Freeze source/fault/job/validation/export/band/encoder contracts; baseline existing complete behavior; proposed ADR amendments | — | 2 days |
+| P0 | Implement the accepted source/fault/job/validation/export/band/encoder contracts; baseline existing complete behavior; domain-budget amendments | — | 2 days |
 | P1 | `pagura-document/src/source.rs` and modules; leases, range map, complete source, checked windows in core syntax/document adapters | P0 | 4–6 days |
 | P2 | Resumable builder/xref/object streams/security; ReadFault propagation; retry-safe caches; historical source and whole-source API migration | P1 | 6–9 days |
 | P3 | Lazy page directory, scoped validation, dependency frontiers and repair fallback; complete-input parity | P2 | 4–6 days |
@@ -908,7 +941,7 @@ Run focused crate/public-API tests first, then `uv run tools/check.py` after
 integration. The latter is the existing full repository gate; it is not a
 replacement for new streaming HTTP tests or an automatic performance
 certification. Scalar WASI checks use
-`RUSTFLAGS="-C target-feature=-simd128"` and an isolated target directory, so an
+`RUSTFLAGS="-C target-feature=-simd128 -C overflow-checks=on"` and an isolated target directory, so an
 old SIMD artifact cannot satisfy the scalar gate.
 
 ## 20. Measurements and release gates
@@ -970,17 +1003,20 @@ serves browser, native server and complete-buffer workloads, with useful early
 results and predictable memory. The graphics kernels and error/precision
 contracts remain the accepted render/one-pass architecture.
 
-## 22. Decision checklist for implementation kickoff
+## 22. Accepted contracts and completion tracking
 
-The proposed ADR makes the default decisions concrete. Before coding, record
-acceptance of its scope and API migration in the normal repository process;
-the plan itself is a requested design artifact, not an implementation dispatch.
-The checklist is technical readiness, not a request to pause writing this plan:
+ADR 0035 fixes source identity/lease ownership, explicit materialization, the two
+validation policies, retry-safe cache/diagnostic publication, owned job/output-slot
+states and context-aware extraction identity. Source-dependent APIs migrate once;
+complete-input convenience entry points and protocol v1 adapt that same path.
+The separate native integration dependency boundary preserves engine policy.
 
-- [ ] Baseline refreshed from the finalized refactor head and tests captured.
-- [ ] Availability/source APIs and scoped validation contract fixed in P0.
-- [ ] Image discovery/export semantics and passthrough eligibility fixed.
-- [ ] Native integration dependency boundary documented without policy changes.
-- [ ] Band and encoder preflight/output budgets specified.
-- [ ] Work packages, measured baselines and exit gates mapped to one integration
-  line; pending work remains visibly pending.
+The four contracts require concrete admission tests before adapters are connected:
+leases remain charged until their last owner drops them; unavailable input cannot
+publish a failure or repair; output demand bounds runnable work and pinned slots;
+source/occurrence identity prevents cross-context normalized-image cache reuse.
+P0–P9 and native/WASM scheduling remain implementation/validation obligations on
+one integration line. Hosted functional run 40333159571 passed all three operating
+systems for the service baseline's product sources; this does not validate any
+new source/job code. Runtime, corpus and performance checks remain hosted under
+ADR 0031, including the commands described in this plan.
