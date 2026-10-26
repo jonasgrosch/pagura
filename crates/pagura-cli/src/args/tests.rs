@@ -1,4 +1,4 @@
-use super::{Bench, Command, Conversion, Output, Source, Timings, parse};
+use super::{Bench, Command, Conversion, ImageFormat, Output, Source, Timings, parse};
 use pagura::{OverprintPreview, Recovery, RenderOptions};
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -204,6 +204,7 @@ fn conversions_select_pages_dpi_and_timings() {
         Ok(Command::Convert(Conversion {
             source: source("a.pdf", b"", Recovery::Repair),
             output: Output::File(PathBuf::from("b.ppm")),
+            format: ImageFormat::Ppm,
             render: RenderOptions::from_dpi(144.0),
             pages: Some(3..=3),
             timings: Timings::Print,
@@ -214,6 +215,7 @@ fn conversions_select_pages_dpi_and_timings() {
         Ok(Command::Convert(Conversion {
             source: source("a.pdf", b"", Recovery::Repair),
             output: Output::Directory(PathBuf::from("out")),
+            format: ImageFormat::Ppm,
             render: RenderOptions::from_dpi(72.0),
             pages: None,
             timings: Timings::Off,
@@ -226,6 +228,31 @@ fn conversions_select_pages_dpi_and_timings() {
     assert_eq!(
         (conversion.render, conversion.pages),
         (RenderOptions::from_dpi(36.5), Some(1..=4))
+    );
+}
+
+#[test]
+fn png_format_and_transparency_are_explicit_and_command_scoped() {
+    for name in ["render", "convert"] {
+        let Ok(Command::Convert(conversion)) =
+            run(&[name, "--transparent", "a.pdf", "out", "--format", "png"])
+        else {
+            panic!("PNG conversion must parse");
+        };
+        assert_eq!(conversion.format, ImageFormat::Png);
+        assert_eq!(conversion.render.background, pagura::Rgba8::TRANSPARENT);
+        assert!(run(&[name, "--transparent", "a.pdf", "out"]).is_err());
+        assert!(run(&[name, "--format", "jpg", "a.pdf", "out"]).is_err());
+    }
+    assert!(run(&["inspect", "--format", "png", "a.pdf"]).is_err());
+    assert!(run(&["scan", "--transparent", "a.pdf"]).is_err());
+    let Ok(Command::Convert(conversion)) = run(&["render", "a.pdf", "out.png"]) else {
+        panic!("default conversion");
+    };
+    assert_eq!(
+        conversion.format,
+        ImageFormat::Ppm,
+        "extensions do not silently change output format"
     );
 }
 

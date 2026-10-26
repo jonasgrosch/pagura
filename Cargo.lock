@@ -7,6 +7,7 @@ name = "pagura"
 version = "0.1.0"
 dependencies = [
  "pagura-appearance",
+ "pagura-codec",
  "pagura-color",
  "pagura-core",
  "pagura-crypto",

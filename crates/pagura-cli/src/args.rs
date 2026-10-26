@@ -1,7 +1,7 @@
 //! Command-line parsing: the arguments become a typed [`Command`], or a
 //! [`UsageError`] that exits with status 2 before any input is read.
 
-use pagura::{OverprintPreview, Recovery, RenderOptions};
+use pagura::{OverprintPreview, Recovery, RenderOptions, Rgba8};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::ops::RangeInclusive;
@@ -18,9 +18,9 @@ usage: pagura inspect [--strict] [--password TEXT] INPUT
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
        pagura render [--strict] [--password TEXT] [--overprint MODE] [--timings]
-              INPUT OUTPUT.ppm [DPI [PAGE]]
+              [--format ppm|png] [--transparent] INPUT OUTPUT [DPI [PAGE]]
        pagura convert [--strict] [--password TEXT] [--overprint MODE] [--timings]
-              INPUT OUTPUT_DIR [DPI [FIRST LAST]]
+              [--format ppm|png] [--transparent] INPUT OUTPUT_DIR [DPI [FIRST LAST]]
        pagura scan [--password TEXT] [--overprint MODE] [--max-pages N] INPUT [DPI]
        pagura roundtrip [--password TEXT] INPUT OUTPUT
        pagura microbench [--strict] [--password TEXT] [--overprint MODE]
@@ -46,8 +46,8 @@ commands:
   text        print the text of every page, or of PAGE, separated by form feeds
   find        print one JSON line per match: page, character range and quads
               in default user space
-  render      render PAGE (default 0) to a binary PPM file over white
-  convert     render every page, or FIRST to LAST, to OUTPUT_DIR/page-NNNN.ppm
+  render      render PAGE (default 0) to PPM (default) or PNG over white
+  convert     render every page, or FIRST to LAST, to OUTPUT_DIR/page-NNNN.FORMAT
   scan        open and render every page without writing images, and print
               one JSON line describing what opened, rendered and failed; it
               opens strictly first and repairs only when that fails
@@ -77,6 +77,8 @@ options:
                    the file, build the page list), render (interpret and
                    rasterize) and emit (encode and write the image); the
                    engine's contribution to a conversion is open + render
+  --format FORMAT  render/convert output: ppm (default) or png
+  --transparent    transparent PNG background; requires --format png
   --max-pages N    scan at most N pages per document
   --version        print the version
   --help, -h       print this help
@@ -118,7 +120,7 @@ pub(crate) enum Command {
     Text { source: Source, page: Option<usize> },
     /// Print the matches of a query as JSON lines.
     Find { source: Source, query: String },
-    /// Render pages to PPM images: `render` and `convert`.
+    /// Render pages to PPM or PNG images: `render` and `convert`.
     Convert(Conversion),
     /// Open and render without writing images; print a JSON report.
     Scan {
@@ -150,6 +152,7 @@ pub(crate) struct Source {
 pub(crate) struct Conversion {
     pub(crate) source: Source,
     pub(crate) output: Output,
+    pub(crate) format: ImageFormat,
     /// The resolution and overprint policy.
     pub(crate) render: RenderOptions,
     /// Zero-based and inclusive; all pages when absent.
@@ -157,12 +160,29 @@ pub(crate) struct Conversion {
     pub(crate) timings: Timings,
 }
 
+/// Image encodings exposed by render/convert; selection is explicit.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum ImageFormat {
+    #[default]
+    Ppm,
+    Png,
+}
+
+impl ImageFormat {
+    pub(crate) const fn extension(self) -> &'static str {
+        match self {
+            Self::Ppm => "ppm",
+            Self::Png => "png",
+        }
+    }
+}
+
 /// Where converted pages go.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Output {
     /// One page to one file.
     File(PathBuf),
-    /// Every page to `page-NNNN.ppm` in an existing directory.
+    /// Every page to `page-NNNN.FORMAT` in an existing directory.
     Directory(PathBuf),
 }
 
@@ -233,16 +253,20 @@ enum Flag {
     Password,
     Overprint,
     MaxPages,
+    Format,
+    Transparent,
     Version,
 }
 
 impl Flag {
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 8] = [
         Self::Strict,
         Self::Timings,
         Self::Password,
         Self::Overprint,
         Self::MaxPages,
+        Self::Format,
+        Self::Transparent,
         Self::Version,
     ];
 
@@ -253,6 +277,8 @@ impl Flag {
             Self::Password => "--password",
             Self::Overprint => "--overprint",
             Self::MaxPages => "--max-pages",
+            Self::Format => "--format",
+            Self::Transparent => "--transparent",
             Self::Version => "--version",
         }
     }
@@ -265,6 +291,7 @@ struct Options {
     password: Vec<u8>,
     overprint: OverprintPreview,
     max_pages: Option<usize>,
+    format: ImageFormat,
 }
 
 impl Options {
@@ -298,7 +325,14 @@ impl Options {
                 };
             }
             Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
-            Flag::Strict | Flag::Timings | Flag::Version => {}
+            Flag::Format => {
+                self.format = match value()?.to_str() {
+                    Some("ppm") => ImageFormat::Ppm,
+                    Some("png") => ImageFormat::Png,
+                    _ => return Err(usage("--format must be ppm or png")),
+                };
+            }
+            Flag::Strict | Flag::Timings | Flag::Transparent | Flag::Version => {}
         }
         self.given.push(flag);
         Ok(())
@@ -337,8 +371,20 @@ impl Options {
     fn render(&self, dpi: Option<&OsString>) -> Result<RenderOptions, UsageError> {
         Ok(RenderOptions {
             overprint: self.overprint,
+            background: if self.has(Flag::Transparent) {
+                Rgba8::TRANSPARENT
+            } else {
+                Rgba8::WHITE
+            },
             ..RenderOptions::from_dpi(self::dpi(dpi)?)
         })
+    }
+
+    fn image_format(&self) -> Result<ImageFormat, UsageError> {
+        if self.has(Flag::Transparent) && self.format != ImageFormat::Png {
+            return Err(usage("--transparent requires --format png"));
+        }
+        Ok(self.format)
     }
 
     fn timings(&self) -> Timings {
@@ -389,8 +435,11 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
 
 /// The command `name` with its `operands`, if it takes the given options.
 fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Command, UsageError> {
-    use Flag::{MaxPages, Overprint, Password, Strict, Timings as TimingsFlag};
+    use Flag::{MaxPages, Overprint, Password, Strict};
     if let Some(command) = document_command(name, operands, options)? {
+        return Ok(command);
+    }
+    if let Some(command) = image_command(name, operands, options)? {
         return Ok(command);
     }
     let command = match (name, operands) {
@@ -415,31 +464,6 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
                 source: options.chosen_source(input),
                 query: text(query, "QUERY")?.to_owned(),
             }
-        }
-        ("render", [input, output, rest @ ..]) if rest.len() <= 2 => {
-            options.allow(name, &[Strict, Password, Overprint, TimingsFlag])?;
-            let page = rest.get(1).map_or(Ok(0), |page| number(page, "PAGE"))?;
-            Command::Convert(Conversion {
-                source: options.chosen_source(input),
-                output: Output::File(PathBuf::from(output)),
-                render: options.render(rest.first())?,
-                pages: Some(page..=page),
-                timings: options.timings(),
-            })
-        }
-        ("convert", [input, output, rest @ ..]) if matches!(rest.len(), 0 | 1 | 3) => {
-            options.allow(name, &[Strict, Password, Overprint, TimingsFlag])?;
-            let pages = match rest {
-                [_, first, last] => Some(number(first, "FIRST")?..=number(last, "LAST")?),
-                _ => None,
-            };
-            Command::Convert(Conversion {
-                source: options.chosen_source(input),
-                output: Output::Directory(PathBuf::from(output)),
-                render: options.render(rest.first())?,
-                pages,
-                timings: options.timings(),
-            })
         }
         ("scan", [input, rest @ ..]) if rest.len() <= 1 => {
             options.allow(name, &[Password, Overprint, MaxPages])?;
@@ -485,6 +509,51 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
         _ => return Err(usage(format!("unknown command {name}"))),
     };
     Ok(command)
+}
+
+/// Output format and background options apply only to image conversion commands.
+fn image_command(
+    name: &str,
+    operands: &[OsString],
+    options: &Options,
+) -> Result<Option<Command>, UsageError> {
+    if !matches!(name, "render" | "convert") {
+        return Ok(None);
+    }
+    use Flag::{Format, Overprint, Password, Strict, Timings, Transparent};
+    options.allow(
+        name,
+        &[Strict, Password, Overprint, Timings, Format, Transparent],
+    )?;
+    let command = match (name, operands) {
+        ("render", [input, output, rest @ ..]) if rest.len() <= 2 => {
+            let page = rest.get(1).map_or(Ok(0), |page| number(page, "PAGE"))?;
+            Command::Convert(Conversion {
+                source: options.chosen_source(input),
+                output: Output::File(PathBuf::from(output)),
+                format: options.image_format()?,
+                render: options.render(rest.first())?,
+                pages: Some(page..=page),
+                timings: options.timings(),
+            })
+        }
+        ("convert", [input, output, rest @ ..]) if matches!(rest.len(), 0 | 1 | 3) => {
+            let pages = match rest {
+                [_, first, last] => Some(number(first, "FIRST")?..=number(last, "LAST")?),
+                _ => None,
+            };
+            Command::Convert(Conversion {
+                source: options.chosen_source(input),
+                output: Output::Directory(PathBuf::from(output)),
+                format: options.image_format()?,
+                render: options.render(rest.first())?,
+                pages,
+                timings: options.timings(),
+            })
+        }
+        _ => return Err(usage(format!("wrong number of arguments for {name}"))),
+    };
+    Ok(Some(command))
 }
 
 fn document_command(

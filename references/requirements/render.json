@@ -111,6 +111,20 @@
       ],
       "gaps": "Opaque rendering retains its separate documented accuracy decision; non-Normal, non-RGB, retained child, transfer-bearing and CMYK/spot simulation buffers remain F64.",
       "rule": "Normal source-over is evaluated on the same coverage bytes. N16 admits coverage-only opacity with a single rounded division by 255; F32 admits only a conservative static bound below half a level before output rounding. Amplifying feeds retain F64 from their first store. Glyph-run instances count as individual stores. Active CMYK and spot simulation, and every deferred transfer feed, retain F64 from the first store."
+    },
+    {
+      "id": "png-export",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "whole-buffer PNG facade and CLI page output; hosted validation pending",
+      "tests": [
+        "pagura/tests/api/png.rs",
+        "pagura-raster::pixmap::tests::consuming_straight_conversion_reuses_storage_and_normalizes_alpha",
+        "tools/test_png_export.py",
+        "pagura-cli/src/args/tests.rs"
+      ],
+      "gaps": "Incremental PNG/DEFLATE, resumable output, host backpressure, host/viewer export and ancillary color metadata remain open.",
+      "rule": "Public pixel buffers use the existing bounded Gray/RGB/straight-RGBA encoder. Consumed Pixmaps convert premultiplied RGBA in place, clearing hidden RGB at zero alpha. CLI render/convert selects PNG explicitly, supports white or transparent backgrounds and never overwrites an existing path. Independent Python decoding checks pixels, PNG framing and zlib termination; PPM remains the default."
     }
   ]
 }

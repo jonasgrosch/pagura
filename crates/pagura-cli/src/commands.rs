@@ -1,12 +1,12 @@
 //! Running a parsed [`Command`]; every result goes to `out`.
 
-use crate::args::{Command, Conversion, HELP, Output, Source, Timings, USAGE};
+use crate::args::{Command, Conversion, HELP, ImageFormat, Output, Source, Timings, USAGE};
 use crate::failure::Failure;
 use crate::input::{create_new, write_new};
 use crate::{document_services, json, microbench, scan};
 use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
-use pagura::{Document, RenderContext, RenderOptions, Rgba8, device_size};
+use pagura::{Document, RenderContext, RenderOptions, device_size};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -198,75 +198,16 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
         )));
     }
     let open = started.elapsed();
-    // PPM has no alpha. The renderer composites onto opaque white before
-    // quantizing, so its final RGB bytes can be written directly.
-    let options = RenderOptions {
-        background: Rgba8::WHITE,
-        ..conversion.render
-    };
     let mut stages = Vec::with_capacity(indices.clone().count());
     for page in indices {
-        let page_started = Instant::now();
-        let emit_started = Instant::now();
         let path = match &conversion.output {
             Output::File(path) => path.clone(),
-            Output::Directory(directory) => image_path(directory, page),
+            Output::Directory(directory) => image_path(directory, page, conversion.format),
         };
-        #[expect(
-            clippy::large_stack_arrays,
-            reason = "one fixed 48 KiB output packing buffer, independent of input dimensions"
-        )]
-        let mut rgb = [0; RGB_CHUNK_BYTES];
-        let mut used = 0;
-        let mut file: Option<File> = None;
-        let mut emit = emit_started.elapsed();
-        // Each page is visited once: its scene is dropped after rendering
-        // instead of being stored.
-        let source = document.page(page)?;
-        let scene = context.record(source)?;
-        let size = device_size(source, &options)?;
-        let rendered = context.render_bands(
-            &scene,
-            &options,
-            None,
-            |_| false,
-            |_, pixels| {
-                let emit_started = Instant::now();
-                let written = (|| {
-                    // The first callback follows preparation, strict
-                    // repair checks and every renderer allocation.
-                    let file = match &mut file {
-                        Some(file) => file,
-                        empty => {
-                            let mut opened = create_new(&path)?;
-                            write_ppm_header(&mut opened, size)?;
-                            empty.insert(opened)
-                        }
-                    };
-                    write_rgb(file, pixels, &mut rgb, &mut used)
-                })();
-                emit += emit_started.elapsed();
-                written
-            },
-        );
-        drop(scene);
-        let emit_started = Instant::now();
-        // A successful stop keeps its completed bands. On any earlier engine
-        // or consumer error, discard the tail without another writer call.
-        let finished = if matches!(&rendered, Ok(Ok(_))) {
-            file.as_mut()
-                .map_or(Ok(()), |file| drain_rgb(file, &rgb, &mut used))
-        } else {
-            Ok(())
-        };
-        drop(file);
-        emit += emit_started.elapsed();
-        // Sink work is interleaved with execution. Measure all of it in
-        // emit, including conversion and file close, rather than render.
-        let render = page_started.elapsed().saturating_sub(emit);
-        rendered??;
-        finished?;
-        stages.push(Stage { page, render, emit });
+        stages.push(match conversion.format {
+            ImageFormat::Ppm => convert_ppm(&context, page, &conversion.render, &path)?,
+            ImageFormat::Png => convert_png(&context, page, &conversion.render, &path)?,
+        });
     }
     if conversion.timings == Timings::Print {
         write_timings(out, open, &stages, started.elapsed())?;
@@ -274,10 +215,103 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
     Ok(())
 }
 
-/// `page-NNNN.ppm` for zero-based `page`, numbered from 1 as pdftoppm names
+/// PPM stays on the existing bounded band-output path.
+fn convert_ppm(
+    context: &RenderContext,
+    page: usize,
+    options: &RenderOptions,
+    path: &Path,
+) -> Result<Stage, Failure> {
+    let page_started = Instant::now();
+    let emit_started = Instant::now();
+    #[expect(
+        clippy::large_stack_arrays,
+        reason = "one fixed 48 KiB output packing buffer, independent of input dimensions"
+    )]
+    let mut rgb = [0; RGB_CHUNK_BYTES];
+    let mut used = 0;
+    let mut file: Option<File> = None;
+    let mut emit = emit_started.elapsed();
+    // Each page is visited once: its scene is dropped after rendering
+    // instead of being stored.
+    let source = context.document().page(page)?;
+    let scene = context.record(source)?;
+    let size = device_size(source, options)?;
+    let rendered = context.render_bands(
+        &scene,
+        options,
+        None,
+        |_| false,
+        |_, pixels| {
+            let emit_started = Instant::now();
+            let written = (|| {
+                // The first callback follows preparation, strict
+                // repair checks and every renderer allocation.
+                let file = match &mut file {
+                    Some(file) => file,
+                    empty => {
+                        let mut opened = create_new(path)?;
+                        write_ppm_header(&mut opened, size)?;
+                        empty.insert(opened)
+                    }
+                };
+                write_rgb(file, pixels, &mut rgb, &mut used)
+            })();
+            emit += emit_started.elapsed();
+            written
+        },
+    );
+    drop(scene);
+    let emit_started = Instant::now();
+    // A successful stop keeps its completed bands. On any earlier engine
+    // or consumer error, discard the tail without another writer call.
+    let finished = if matches!(&rendered, Ok(Ok(_))) {
+        file.as_mut()
+            .map_or(Ok(()), |file| drain_rgb(file, &rgb, &mut used))
+    } else {
+        Ok(())
+    };
+    drop(file);
+    emit += emit_started.elapsed();
+    // Sink work is interleaved with execution. Measure all of it in
+    // emit, including conversion and file close, rather than render.
+    let render = page_started.elapsed().saturating_sub(emit);
+    rendered??;
+    finished?;
+    Ok(Stage { page, render, emit })
+}
+
+/// PNG currently collects a complete surface, then encodes before creating output.
+fn convert_png(
+    context: &RenderContext,
+    page: usize,
+    options: &RenderOptions,
+    path: &Path,
+) -> Result<Stage, Failure> {
+    let started = Instant::now();
+    let page_source = context.document().page(page)?;
+    let scene = context.record(page_source)?;
+    let surface = context.render_scene(&scene, options, None)?;
+    drop(scene);
+    let render = started.elapsed();
+    let started = Instant::now();
+    let bytes = pagura::png::encode_pixmap(
+        surface,
+        pagura::png::Level::Default,
+        context.document().limits(),
+    )?;
+    write_new(path, &bytes)?;
+    Ok(Stage {
+        page,
+        render,
+        emit: started.elapsed(),
+    })
+}
+
+/// `page-NNNN.FORMAT` for zero-based `page`, numbered from 1 as pdftoppm names
 /// its output, which the benchmark harness compares against.
-fn image_path(directory: &Path, page: usize) -> std::path::PathBuf {
-    directory.join(format!("page-{:04}.ppm", page + 1))
+fn image_path(directory: &Path, page: usize, format: ImageFormat) -> std::path::PathBuf {
+    directory.join(format!("page-{:04}.{}", page + 1, format.extension()))
 }
 
 /// The sole fixed packing buffer, shared across bands and independent of
@@ -290,7 +324,7 @@ fn write_ppm_header(out: &mut impl Write, (width, height): (u32, u32)) -> std::i
 }
 
 /// Packs already-quantized opaque output, with no second compositing or
-/// rounding step. Opaque white is fixed at the CLI's RenderOptions above.
+/// rounding step. The CLI selects opaque white for PPM before rendering.
 fn write_rgb(
     out: &mut impl Write,
     rgba: &[u8],
