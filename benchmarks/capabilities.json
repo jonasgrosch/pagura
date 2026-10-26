@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "50fae03b34c469717f1fb38f03e6e2e4b3dcec86",
+  "audited_revision": "e712f195b46de7b0177fa5f51e8a996eba36df0a",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -64,7 +64,8 @@
     "crates/pagura-appearance/src/features.rs": "d9bb81e64364395464224a9e17171287f89efec1caec0cbe77e743d6c95d30e3",
     "crates/pagura-appearance/src/fonts.rs": "5e685f76721a5500d7996cc8f7d27ebfc3a3accfbfb76686170a234f6bb818fa",
     "crates/pagura-appearance/src/fonts/encoding.rs": "bff6b19c01084d0e76c8e5b724eaf7ac4b3f1f68ab0badfcf807e6995db56fd2",
-    "crates/pagura-appearance/src/form.rs": "9dc104a371e8618c1cd5e5afbb9baec8d21fabf74b0dd416522af7bfde5045b3",
+    "crates/pagura-appearance/src/form.rs": "52c8897546da3f06f90521516e776005fc014ef0adae632951b4e91f78d16372",
+    "crates/pagura-appearance/src/form/buttons.rs": "7f3d4dd95edf2a5d3028facd3fbaffcf353d9f6a87164d46738bafb9059fd00d",
     "crates/pagura-appearance/src/form/compatibility.rs": "1d927a3fff57adc899c9199515dafd1b9d614d70758cd0cfd1b0ce196a3207bc",
     "crates/pagura-appearance/src/form/da.rs": "452a8895cb766bfaaf1364ff8f4191e4d3a66d107a914d684b1ac3fcaa6a35cf",
     "crates/pagura-appearance/src/form/layout.rs": "bd4a07c0c43c620b2d0cb5cf4ff768b6ea267e70c78bd988e160e42af9f8256c",
@@ -95,6 +96,7 @@
     "crates/pagura-document/src/features.rs": "ef3d5f167a74e2245076b32ecdda566c1c3e47c24fa082c17a0cd74a15026e29",
     "crates/pagura-document/src/forms.rs": "e5e3e885ca53854bdeb9083c5fd96001ac8bb7337c8783fd974e0e4c62be8ed1",
     "crates/pagura-document/src/forms/fill.rs": "dc05f4089de3799237281ec6ee56fcbb04fbf80b2cb622311dcf06c41b92990f",
+    "crates/pagura-document/src/forms/fill/buttons.rs": "f25bf9b84fdfe06365f1b69d70be8fe8c2c4127be221f5ed05e2c59e8606db93",
     "crates/pagura-document/src/forms/fill/text.rs": "b61117f6a332c9be9e1df70dc022e5cc6a4b5aac6e2744914e220be5015d6419",
     "crates/pagura-document/src/history.rs": "5e6d7191963736e1a0689f28f3a4d16d93f2f443b108f5d5df7e8ef02b07180a",
     "crates/pagura-document/src/lib.rs": "c1437ec68fde850daa0c1ef9052e45eb07227d9a53586a90ab276c071bd8e86c",
@@ -196,14 +198,15 @@
     "crates/pagura-text/src/substitute.rs": "4b666270e59ea0a56b7cd82838f1e3eafe7fa76fbcb5f8a8bfe731dea08c9e60",
     "crates/pagura-text/src/substitute/cid.rs": "c960f139a2f44adee03a30efb7ed71cc057b5632a60e2f2466b54c117a23ab30",
     "crates/pagura-write/src/lib.rs": "c51a1ce95091e024ba999884b6b1f558f9723426f0c7b248cf079887d1fdbb54",
-    "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
-    "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
+    "crates/pagura/src/editing.rs": "59bb2936ed1f24c0e3b646642906eaac4719d941d9d8b868aece70434653f3f7",
+    "crates/pagura/src/editing/forms.rs": "56c07857f77f1e3809c72356677a296936f1a9243740025b828a50b4c9bb5264",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
     "crates/pagura/src/lib.rs": "8957891da773217d57e291c1ea4e016fb865115d8e1ee7e16b9ff7173a38a5c2",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e2e02c9095b5fb66e6411f4ada0bdbe524bfb574049ce60997889f3f89f8b577",
-    "crates/pagura/tests/api/editing.rs": "6a15203e3e9e9b601323eb9b4d778cda760a12121bf100685672dc52d3582b9a",
+    "crates/pagura/tests/api/editing.rs": "cf71c47b564572ccb4c1575a8910786d62488a64f07de0003b9ad0f685741dad",
+    "crates/pagura/tests/api/editing/button_states.rs": "fce5fe9215887fbf5389142d6c70538cb2771fb39983ab779358f25f43e205a2",
     "crates/pagura/tests/api/editing/form_borders.rs": "7f0c6e0d08579c49bc58b40f94c4036abf337368e39c89533af3e0370abf7fb0",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
@@ -234,7 +237,7 @@
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
-    "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
+    "references/requirements/write.json": "4b4471e84dc53c6849058ee5fea0401b90e21c32d916b8cccda6188315279be7",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/editing_host_test.mjs": "22571ef2e3c3c3209123c78c84dbacbb416dddba1edd9c8950ffb5630541a933",
     "tools/fixturegen/caption_annotations.py": "389f779ef6d0c7f630a37e4a6c883805895845caf08e9a67dfe587f642972cd0",
@@ -1671,8 +1674,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Text/choice/button filling, generated appearances, stored-state persistence and browser preview/discard/download. Filled forms share rounded and relief border parsing/geometry with annotations. Thirty-five independent border controls are registered. Hosted validation at 424839e7 exposed missing persistence for generated button states; that integration is open and the suite is not passing.",
-      "remaining": "Rich text, broader encodings/transforms, generated button states and nested direct fields; XFA belongs to V03. Widget rotation, no-area text-layout policy, unequal-axis rounded stroke/dash and CMYK relief colour evidence remain open.",
+      "implemented": "Text/choice/button filling, generated appearances, saved values and browser preview/discard/download. Forms share rounded/relief border parsing and geometry with annotations. Missing checkbox/radio normal appearances now persist as both Off and on states through the preview generator, retaining source-state naming and NeedAppearances selection. Thirty-five independent border pixels and explicit state/save/reopen/atomic-failure tests are registered; new hosted validation is pending.",
+      "remaining": "Rich text, broader encodings/transforms, push-button artwork and nested direct fields; XFA belongs to V03. Widget rotation, no-area text layout and wider rounded-stroke/dash/CMYK evidence remain open.",
       "sources": [
         "crates/pagura-appearance/src/form.rs",
         "crates/pagura/src/editing/forms.rs",
@@ -1683,7 +1686,9 @@
         "crates/pagura-appearance/src/annotation/border/relief.rs",
         "crates/pagura-appearance/src/annotation/border.rs",
         "crates/pagura-appearance/src/annotation/marks/rounded.rs",
-        "crates/pagura-appearance/src/form/style.rs"
+        "crates/pagura-appearance/src/form/style.rs",
+        "crates/pagura-document/src/forms/fill/buttons.rs",
+        "crates/pagura-appearance/src/form/buttons.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/editing.rs",
@@ -1691,7 +1696,8 @@
         "crates/pagura-appearance/src/form/tests.rs",
         "tools/form_border_test.mjs",
         "tools/editing_host_test.mjs",
-        "tools/fixturegen/form_borders.py"
+        "tools/fixturegen/form_borders.py",
+        "crates/pagura/tests/api/editing/button_states.rs"
       ],
       "requirements": [
         "filled-form-save",
@@ -3274,7 +3280,7 @@
       ],
       "review": "gap",
       "capability": "forms.workflow",
-      "rationale": "Saving a button requires reusable normal appearance states; generating absent states is missing.",
+      "rationale": "Missing checkbox/radio appearances generate and persist both states. Push buttons without stored artwork remain an explicit save capability gap; full AcroForm parity remains open.",
       "evidence": [
         {
           "path": "crates/pagura/src/editing/forms.rs",
