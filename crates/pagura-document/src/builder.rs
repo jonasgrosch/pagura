@@ -7,6 +7,7 @@
 //! publishes only objects parsed against its final object table, trailer and
 //! security handler (ARCHITECTURE invariant 8).
 
+use crate::source::{ReadFault, ReadResult};
 use crate::xref::rebuild::{self, StreamSlots};
 use crate::xref::{self, XrefOrigin, XrefTable};
 use crate::{
@@ -24,7 +25,7 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 /// Opens `bytes`: from the primary cross-reference data, then, in repair
 /// mode after a structural failure of that data or of the document built
 /// from it, once from reconstructed data (ADR 0003).
-pub(crate) fn open(bytes: source::View, options: &OpenOptions) -> Result<Document> {
+pub(crate) fn open(bytes: source::View, options: &OpenOptions) -> ReadResult<Document> {
     bytes.check()?;
     let mut diagnostics = Diagnostics::new(options.recovery);
     let header = xref::header(&bytes, &mut diagnostics)?;
@@ -42,19 +43,23 @@ pub(crate) fn from_primary(
     options: &OpenOptions,
     mut diagnostics: Diagnostics,
     primary: Result<(XrefTable, Vec<Diagnostic>)>,
-) -> Result<Document> {
+) -> ReadResult<Document> {
     bytes.check()?;
-    let primary = primary.and_then(|(table, attempt)| {
-        let reported = diagnostics
-            .as_slice()
-            .iter()
-            .cloned()
-            .chain(attempt)
-            .collect();
-        DocumentBuilder::new(bytes.clone(), options, table, reported)?.build(&options.password)
-    });
+    let primary = primary
+        .map_err(ReadFault::from)
+        .and_then(|(table, attempt)| {
+            let reported = diagnostics
+                .as_slice()
+                .iter()
+                .cloned()
+                .chain(attempt)
+                .collect();
+            DocumentBuilder::new(bytes.clone(), options, table, reported)?.build(&options.password)
+        });
     match primary {
-        Err(error) if options.recovery == Recovery::Repair && xref::structural(&error) => {
+        Err(ReadFault::Invalid(error))
+            if options.recovery == Recovery::Repair && xref::structural(&error) =>
+        {
             let table = rebuild::read(&bytes, &options.limits, &mut diagnostics, error.position)?;
             DocumentBuilder::new(bytes, options, table, diagnostics.take())?
                 .build(&options.password)
@@ -171,7 +176,7 @@ impl DocumentBuilder {
 
     /// Authenticates, reads reconstructed object streams and catalog, then
     /// freezes the document and validates its catalog.
-    pub(crate) fn build(mut self, password: &[u8]) -> Result<Document> {
+    pub(crate) fn build(mut self, password: &[u8]) -> ReadResult<Document> {
         let origin = std::mem::take(&mut self.origin);
         if self
             .trailer

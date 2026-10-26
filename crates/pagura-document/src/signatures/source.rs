@@ -1,4 +1,5 @@
 //! Bind a signature dictionary to its original Contents token (12.8.3.3.1).
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{
     Dictionary, Error, Name, Result, Value,
@@ -12,13 +13,13 @@ pub(super) fn contents_span(
     root: &Value,
     extent: Range<usize>,
     source: Source,
-) -> Result<Option<Range<usize>>> {
+) -> ReadResult<Option<Range<usize>>> {
     let bytes = &ctx.document.original_bytes()[..extent.end];
     let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.document.limits())?;
     parser.unsigned()?;
     parser.unsigned()?;
     if !parser.keyword(b"obj") {
-        return Err(source.error(Error::syntax("signature source lacks object header")));
+        return Err((source.error(Error::syntax("signature source lacks object header"))).into());
     }
     parser.skip_whitespace();
     let start = parser.offset();
@@ -27,7 +28,7 @@ pub(super) fn contents_span(
     // compared with the original encrypted bytes.
     parser.parse()?;
     if !parser.keyword(b"endobj") {
-        return Err(source.error(Error::syntax("signature source lacks endobj")));
+        return Err((source.error(Error::syntax("signature source lacks endobj"))).into());
     }
     parser.seek(start)?;
     let Some(path) = dictionary_path(ctx, root, target, source)? else {
@@ -68,7 +69,7 @@ fn entry_start(
     parser: &mut Parser<'_>,
     key: &[u8],
     source: Source,
-) -> Result<Option<usize>> {
+) -> ReadResult<Option<usize>> {
     parser.skip_whitespace();
     let at = parser.offset();
     if !parser
@@ -121,7 +122,7 @@ fn dictionary_path<'a>(
     root: &'a Value,
     target: &Dictionary,
     source: Source,
-) -> Result<Option<Vec<Step<'a>>>> {
+) -> ReadResult<Option<Vec<Step<'a>>>> {
     ctx.allocate::<Node<'_>>(2, source)?;
     let mut nodes = vec![Node {
         value: root,

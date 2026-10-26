@@ -1,6 +1,7 @@
 //! Inherited field entries and shared primitive readers (12.7.4.1).
 use super::{AdditionalAction, Justification};
 use crate::navigation::actions;
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Result, Value};
 
@@ -63,7 +64,7 @@ impl<'a> Inherited<'a> {
         context: &mut Context<'a>,
         dictionary: &'a Dictionary,
         source: Source,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         for (key, entry) in Key::ALL.into_iter().zip(&mut self.0) {
             if let Some(value) = context.present(dictionary, key.name(), source)? {
                 *entry = Some(Entry { value, source });
@@ -76,7 +77,7 @@ impl<'a> Inherited<'a> {
         context: &mut Context<'a>,
         dictionary: &'a Dictionary,
         source: Source,
-    ) -> Result<Self> {
+    ) -> ReadResult<Self> {
         let mut inherited = Self::default();
         // The AcroForm dictionary supplies document-wide DA and Q (Table 224).
         for key in [Key::Da, Key::Q] {
@@ -88,7 +89,7 @@ impl<'a> Inherited<'a> {
     }
 }
 
-pub(super) fn unsigned<'a>(entry: Entry<'a>, context: &mut Context<'a>) -> Result<u32> {
+pub(super) fn unsigned<'a>(entry: Entry<'a>, context: &mut Context<'a>) -> ReadResult<u32> {
     let (value, source) = context.resolve(entry.value, entry.source)?;
     value
         .as_integer()
@@ -99,7 +100,7 @@ pub(super) fn unsigned<'a>(entry: Entry<'a>, context: &mut Context<'a>) -> Resul
 pub(super) fn appearance<'a>(
     context: &mut Context<'a>,
     entry: Option<Entry<'a>>,
-) -> Result<Option<&'a [u8]>> {
+) -> ReadResult<Option<&'a [u8]>> {
     entry
         .map(|entry| {
             let (value, source) = context.resolve(entry.value, entry.source)?;
@@ -113,7 +114,7 @@ pub(super) fn appearance<'a>(
 pub(super) fn quadding<'a>(
     context: &mut Context<'a>,
     entry: Option<Entry<'a>>,
-) -> Result<Justification> {
+) -> ReadResult<Justification> {
     Ok(
         match entry
             .map(|e| unsigned(e, context))
@@ -137,7 +138,7 @@ pub(super) fn string<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<String> {
+) -> ReadResult<String> {
     let (value, source) = context.resolve(value, source)?;
     context.text(
         value
@@ -152,7 +153,7 @@ pub(super) fn optional_text<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<String>> {
+) -> ReadResult<Option<String>> {
     context
         .present(dictionary, key, source)?
         .map(|v| string(context, v, source))
@@ -163,7 +164,7 @@ pub(super) fn additional<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Vec<AdditionalAction<'a>>> {
+) -> ReadResult<Vec<AdditionalAction<'a>>> {
     let Some(value) = context.present(dictionary, b"AA", source)? else {
         return Ok(Vec::new());
     };
@@ -186,7 +187,7 @@ pub(super) fn array<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<&'a [Value]> {
+) -> ReadResult<&'a [Value]> {
     let (value, source) = context.resolve(value, source)?;
     value
         .as_array()
@@ -198,7 +199,7 @@ pub(super) fn partial_name<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Option<String>> {
+) -> ReadResult<Option<String>> {
     let Some(value) = context.entry(dictionary, b"T", source)? else {
         return Ok(None);
     };

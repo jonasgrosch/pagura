@@ -1,7 +1,10 @@
 //! Recovery of object boundaries, stream extents and offsets (7.3.8.1, 7.3.10, 7.5.4).
 
+use crate::source::{NeedData, ReadFault, ReadResult};
 use crate::{Document, Location, repairs};
-use pagura_core::syntax::{Origin, Parser, is_whitespace};
+use pagura_core::syntax::{
+    ModeResult, Origin, ParseFault, ParseMode, Parser, WindowInput, is_whitespace,
+};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result,
     Value,
@@ -27,12 +30,12 @@ pub(crate) enum StreamContext {
 
 /// A complete value can end before a following object/xref token (7.3.10).
 /// Do not infer closure from EOF or skip arbitrary intervening tokens.
-pub(crate) fn end(
-    parser: &mut Parser<'_>,
+pub(crate) fn end<M: ParseMode>(
+    parser: &mut Parser<'_, M>,
     limits: &Limits,
     id: ObjectId,
     diagnostics: &mut Diagnostics,
-) -> Result<()> {
+) -> ModeResult<M, ()> {
     if parser.keyword(ENDOBJ) {
         return Ok(());
     }
@@ -61,7 +64,7 @@ pub(crate) fn end(
         || probe.keyword(b"xref")
         || probe.keyword(b"trailer")
     {
-        return diagnostics.repair(
+        return Ok(diagnostics.repair(
             Diagnostic::new(
                 repairs::OBJECT_END,
                 "complete indirect value has no endobj before the next object or \
@@ -69,11 +72,12 @@ pub(crate) fn end(
             )
             .at(parser.position())
             .in_object(id),
-        );
+        )?);
     }
-    Err(Error::syntax("missing endobj")
+    Err((Error::syntax("missing endobj")
         .at(parser.position())
         .in_object(id))
+    .into())
 }
 
 /// Recognize a positive indirect-object identity at a token boundary (7.3.10).
@@ -92,17 +96,19 @@ pub(super) fn stream_extent(
     document: &Document,
     id: ObjectId,
     dictionary: &Dictionary,
-    parser: &mut Parser<'_>,
+    parser: &mut Parser<'_, WindowInput<NeedData>>,
     path: &mut Vec<ObjectId>,
     repairs: &mut Diagnostics,
     context: StreamContext,
-) -> Result<Range<usize>> {
+) -> std::result::Result<Range<usize>, ParseFault<NeedData>> {
     let start = crate::stream::start(parser, repairs, Some(id))?;
-    let length = stream_length(document, id, dictionary, path)?;
+    let length = stream_length(document, id, dictionary, path).map_err(ParseFault::from)?;
     let bytes = parser.data();
     let end = length.and_then(|length| start.checked_add(length).filter(|&end| end <= bytes.len()));
     if let Some(end) = end {
-        parser.seek(end).map_err(|error| error.in_object(id))?;
+        parser.seek(end).map_err(|fault| {
+            <WindowInput<NeedData> as ParseMode>::map_error(fault, |error| error.in_object(id))
+        })?;
         if parser.keyword(ENDSTREAM) {
             return Ok(start..end);
         }
@@ -111,9 +117,10 @@ pub(super) fn stream_extent(
             .get(start..end)
             .is_some_and(|data| data.windows(ENDOBJ.len()).any(|part| part == ENDOBJ))
         {
-            return Err(Error::syntax("stream Length crosses an object boundary")
+            return Err((Error::syntax("stream Length crosses an object boundary")
                 .at(parser.position())
-                .in_object(id));
+                .in_object(id))
+            .into());
         }
     }
     let (marker, actual) = terminator(document, id, start, context)?;
@@ -127,7 +134,7 @@ pub(super) fn stream_extent(
     )?;
     parser.seek(marker)?;
     if !parser.keyword(ENDSTREAM) {
-        return Err(Error::syntax("missing endstream").in_object(id));
+        return Err((Error::syntax("missing endstream").in_object(id)).into());
     }
     Ok(start..actual)
 }
@@ -140,7 +147,7 @@ fn stream_length(
     id: ObjectId,
     dictionary: &Dictionary,
     path: &mut Vec<ObjectId>,
-) -> Result<Option<usize>> {
+) -> ReadResult<Option<usize>> {
     let Some(mut value) = dictionary.get(b"Length") else {
         return Ok(None);
     };
@@ -153,12 +160,14 @@ fn stream_length(
             Value::Integer(length) => break *length,
             Value::Reference(reference) => {
                 if visited.contains(reference) {
-                    return Err(Error::cycle("indirect stream Length cycle").in_object(*reference));
+                    return Err((Error::cycle("indirect stream Length cycle")
+                        .in_object(*reference))
+                    .into());
                 }
                 if visited.len() >= document.limits().depth {
-                    return Err(
-                        Error::limit("indirect stream Length depth exceeded").in_object(*reference)
-                    );
+                    return Err((Error::limit("indirect stream Length depth exceeded")
+                        .in_object(*reference))
+                    .into());
                 }
                 if object_stream
                     && document
@@ -166,14 +175,14 @@ fn stream_length(
                         .get(reference)
                         .is_some_and(|slot| matches!(slot.location, Location::Compressed { .. }))
                 {
-                    return Err(
-                        Error::syntax("object stream Length cannot be compressed").in_object(id)
-                    );
+                    return Err((Error::syntax("object stream Length cannot be compressed")
+                        .in_object(id))
+                    .into());
                 }
                 visited.push(*reference);
                 value = match document.object_inner(*reference, path) {
                     Ok(object) => object.value(),
-                    Err(error)
+                    Err(ReadFault::Invalid(error))
                         if error.repair.is_none()
                             && matches!(
                                 error.kind,
@@ -192,7 +201,7 @@ fn stream_length(
         return Ok(None);
     };
     if length > document.limits().stream_bytes {
-        return Err(Error::limit("stream size budget exceeded").in_object(id));
+        return Err((Error::limit("stream size budget exceeded").in_object(id)).into());
     }
     Ok(Some(length))
 }

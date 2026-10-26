@@ -23,6 +23,7 @@ pub use links::{BorderStyle, HighlightMode, Link, LinkBorder};
 pub use outlines::OutlineItem;
 pub use trees::{NameTree, NumberTree, Tree, TreeEntries, TreeKey};
 
+use crate::source::ReadResult;
 use crate::{Document, Page};
 use pagura_core::{Error, Result, Value};
 
@@ -58,7 +59,7 @@ impl Document {
     /// # Errors
     /// Returns positioned structural, target, text or budget errors. Safe link
     /// and count corrections are reported repairs under ADR 0003.
-    pub fn outlines(&self) -> Result<Vec<OutlineItem<'_>>> {
+    pub fn outlines(&self) -> ReadResult<Vec<OutlineItem<'_>>> {
         outlines::read(self)
     }
 
@@ -66,7 +67,7 @@ impl Document {
     ///
     /// # Errors
     /// Returns positioned syntax, cycle or budget errors.
-    pub fn actions<'a>(&'a self, value: &'a Value) -> Result<ActionSequence<'a>> {
+    pub fn actions<'a>(&'a self, value: &'a Value) -> ReadResult<ActionSequence<'a>> {
         actions::read(self, value)
     }
 
@@ -74,7 +75,7 @@ impl Document {
     ///
     /// # Errors
     /// Returns positioned malformed-label/tree or budget errors.
-    pub fn page_label_ranges(&self) -> Result<Vec<PageLabelRange>> {
+    pub fn page_label_ranges(&self) -> ReadResult<Vec<PageLabelRange>> {
         labels::ranges(self)
     }
 
@@ -83,7 +84,7 @@ impl Document {
     ///
     /// # Errors
     /// As [`Document::page_label_ranges`] and [`Document::pages`].
-    pub fn page_labels(&self) -> Result<PageLabels> {
+    pub fn page_labels(&self) -> ReadResult<PageLabels> {
         labels::read(self)
     }
 
@@ -106,7 +107,7 @@ impl Page {
     /// # Errors
     /// Returns positioned annotation, action, destination or budget errors,
     /// and `InvalidArgument` if `document` is not the one this page came from.
-    pub fn links<'a>(&'a self, document: &'a Document) -> Result<Vec<Link<'a>>> {
+    pub fn links<'a>(&'a self, document: &'a Document) -> ReadResult<Vec<Link<'a>>> {
         links::read(document, self)
     }
 

@@ -3,6 +3,7 @@
 mod data;
 pub use data::StreamData;
 
+use crate::source::ReadResult;
 use crate::source::{ByteLease, ByteRange};
 use crate::{Document, IndirectObject, features, repairs};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
@@ -27,13 +28,13 @@ pub(crate) enum Usage {
     EmbeddedFile,
 }
 
-pub(crate) fn raw(document: &Document, object: &IndirectObject) -> Result<ByteLease> {
+pub(crate) fn raw(document: &Document, object: &IndirectObject) -> ReadResult<ByteLease> {
     document.bytes.check()?;
     let range = object
         .stream_range()
         .ok_or_else(|| Error::syntax("object is not a stream").in_object(object.id()))?;
     if range.end > document.bytes.len() {
-        return Err(Error::syntax("stream lies outside the file").in_object(object.id()));
+        return Err((Error::syntax("stream lies outside the file").in_object(object.id())).into());
     }
     document.bytes.lease(ByteRange::new(
         usize_to_u64(range.start),
@@ -46,12 +47,15 @@ pub(crate) fn decoded(
     document: &Document,
     object: &IndirectObject,
     size: usize,
-) -> Result<StreamData> {
+) -> ReadResult<StreamData> {
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
     decode(document, object.id(), data, &chain, size)
 }
 
-pub(crate) fn embedded_decoded(document: &Document, object: &IndirectObject) -> Result<StreamData> {
+pub(crate) fn embedded_decoded(
+    document: &Document,
+    object: &IndirectObject,
+) -> ReadResult<StreamData> {
     let parameters = object
         .dictionary()
         .and_then(|dictionary| dictionary.get(b"DecodeParms"));
@@ -113,7 +117,7 @@ pub(crate) fn image(
     object: &IndirectObject,
     parameters: Option<&Value>,
     size: usize,
-) -> Result<ImageStream> {
+) -> ReadResult<ImageStream> {
     let (data, mut chain) = document.prepare_stream_with_parameters(
         object,
         parameters,
@@ -131,7 +135,7 @@ impl Document {
         &self,
         object: &IndirectObject,
         path: &mut Vec<ObjectId>,
-    ) -> Result<(StreamData, FilterChain)> {
+    ) -> ReadResult<(StreamData, FilterChain)> {
         self.prepare_stream_with_parameters(
             object,
             object
@@ -148,18 +152,19 @@ impl Document {
         parameters: Option<&Value>,
         path: &mut Vec<ObjectId>,
         usage: Usage,
-    ) -> Result<(StreamData, FilterChain)> {
+    ) -> ReadResult<(StreamData, FilterChain)> {
         let id = object.id();
         let raw = self.raw_stream_data(object)?;
         let dictionary = object
             .dictionary()
             .ok_or_else(|| Error::syntax("stream has no dictionary").in_object(id))?;
         if dictionary.contains_key(b"F") {
-            return Err(Error::unsupported(
+            return Err((Error::unsupported(
                 features::EXTERNAL_STREAM,
                 "external stream data is not supported",
             )
-            .in_object(id));
+            .in_object(id))
+            .into());
         }
         let filter = dictionary
             .get(b"Filter")
@@ -182,7 +187,7 @@ fn decrypt(
     raw: ByteLease,
     chain: &mut FilterChain,
     usage: Usage,
-) -> Result<StreamData> {
+) -> ReadResult<StreamData> {
     let explicit = chain.take_crypt();
     if chain
         .filters()
@@ -190,7 +195,8 @@ fn decrypt(
         .any(|filter| matches!(filter, Filter::Crypt(_)))
     {
         return Err(
-            Error::syntax("Crypt must be the first and only Crypt filter").in_object(object.id()),
+            (Error::syntax("Crypt must be the first and only Crypt filter").in_object(object.id()))
+                .into(),
         );
     }
     let Some(security) = &document.security else {
@@ -199,8 +205,9 @@ fn decrypt(
             .is_some_and(|name| name.as_bytes() != b"Identity")
         {
             return Err(
-                Error::syntax("Crypt filter requires an encryption dictionary")
-                    .in_object(object.id()),
+                (Error::syntax("Crypt filter requires an encryption dictionary")
+                    .in_object(object.id()))
+                .into(),
             );
         }
         return Ok(raw.into());
@@ -210,7 +217,9 @@ fn decrypt(
         .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
     if dictionary.is_name(b"Type", b"XRef") && !object.is_direct() {
         if explicit.is_some() {
-            return Err(Error::syntax("xref streams cannot be encrypted").in_object(object.id()));
+            return Err(
+                (Error::syntax("xref streams cannot be encrypted").in_object(object.id())).into(),
+            );
         }
         return Ok(raw.into());
     }

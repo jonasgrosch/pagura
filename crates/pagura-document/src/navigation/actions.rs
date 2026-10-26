@@ -1,5 +1,6 @@
 //! Actions are inert data, including their ordered Next graph (12.6).
 use super::destinations::{self, Destination, RemoteDestination};
+use crate::source::ReadResult;
 use crate::view::{Context, Source, ValueIdentity, identity};
 use crate::{Document, IndirectObject, repairs};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
@@ -97,20 +98,20 @@ fn boolean<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<bool>> {
+) -> ReadResult<Option<bool>> {
     match context.entry(dictionary, key, source)? {
         None => Ok(None),
         Some(Value::Boolean(flag)) => Ok(Some(*flag)),
-        Some(_) => Err(source.error(Error::syntax("action flag must be boolean"))),
+        Some(_) => Err((source.error(Error::syntax("action flag must be boolean"))).into()),
     }
 }
 
-fn file<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> Result<&'a Value> {
+fn file<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> ReadResult<&'a Value> {
     let (v, source) = context.resolve(value, source)?;
     if matches!(v, Value::String(_) | Value::Dictionary(_)) {
         Ok(v)
     } else {
-        Err(source.error(Error::syntax("invalid action file specification")))
+        Err((source.error(Error::syntax("invalid action file specification"))).into())
     }
 }
 
@@ -118,7 +119,7 @@ fn kind<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<ActionKind<'a>> {
+) -> ReadResult<ActionKind<'a>> {
     context.type_name(dictionary, b"Action", source)?;
     let name = context
         .required(dictionary, b"S", source)?
@@ -200,7 +201,9 @@ fn kind<'a>(
                 })?;
                 let object = context.document.object(id)?;
                 if object.stream_range().is_none() || identity(object.value()) != identity(script) {
-                    return Err(source.error(Error::syntax("script must be a string or stream")));
+                    return Err(
+                        (source.error(Error::syntax("script must be a string or stream"))).into(),
+                    );
                 }
                 Script::Stream(object)
             };
@@ -210,7 +213,7 @@ fn kind<'a>(
     })
 }
 
-pub(crate) fn read<'a>(document: &'a Document, value: &'a Value) -> Result<ActionSequence<'a>> {
+pub(crate) fn read<'a>(document: &'a Document, value: &'a Value) -> ReadResult<ActionSequence<'a>> {
     read_with(&mut Context::new(document), value, Source::default())
 }
 
@@ -231,7 +234,7 @@ pub(crate) fn read_with<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<ActionSequence<'a>> {
+) -> ReadResult<ActionSequence<'a>> {
     let mut actions = Vec::new();
     let mut active = BTreeSet::new();
     let mut stack = vec![Frame::Enter {
@@ -302,7 +305,7 @@ fn parse_launch<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<ActionKind<'a>> {
+) -> ReadResult<ActionKind<'a>> {
     let file = context
         .present(dictionary, b"F", source)?
         .map(|v| file(context, v, source))
@@ -313,9 +316,10 @@ fn parse_launch<'a>(
             platform |= context.present(dictionary, key, source)?.is_some();
         }
         if !platform {
-            return Err(source.error(Error::syntax(
+            return Err((source.error(Error::syntax(
                 "Launch requires a file or platform parameters",
-            )));
+            )))
+            .into());
         }
     }
     Ok(ActionKind::Launch {

@@ -4,6 +4,7 @@ pub(crate) mod contents;
 pub(crate) mod geometry;
 
 use crate::memory::{Reservation, path_bytes};
+use crate::source::ReadResult;
 use crate::view::ValueIdentity;
 use crate::{Document, repairs};
 use pagura_core::syntax::PathComponent;
@@ -19,7 +20,7 @@ const ARC_COUNTS: usize = 2 * size_of::<usize>();
 
 /// A branch missing its required Type is identifiable by reference-only Kids
 /// (7.7.3.2). The traversal reports the inference before following any children.
-pub(crate) fn branch(document: &Document, dictionary: &Dictionary) -> Result<bool> {
+pub(crate) fn branch(document: &Document, dictionary: &Dictionary) -> ReadResult<bool> {
     if dictionary.is_name(b"Type", b"Pages") {
         return Ok(true);
     }
@@ -123,7 +124,7 @@ impl PartialEq for Page {
 
 /// Walks the page tree from the catalog's `/Pages` root. The reservation
 /// holds the pages' retained bytes until the caller publishes them.
-pub(crate) fn read(document: &Document) -> Result<(Vec<Page>, Reservation<'_>)> {
+pub(crate) fn read(document: &Document) -> ReadResult<(Vec<Page>, Reservation<'_>)> {
     let root = document
         .catalog()?
         .get(b"Pages")
@@ -151,12 +152,13 @@ pub(crate) fn read(document: &Document) -> Result<(Vec<Page>, Reservation<'_>)> 
             .as_slice()
             .iter()
             .any(|item| item.repair() == Some(repairs::PAGE_CYCLE));
-        return Err(if cyclic {
+        return Err((if cyclic {
             Error::cycle("cyclic page tree contains no usable leaves")
         } else {
             Error::syntax("damaged page tree contains no usable leaves")
         }
-        .in_object(root));
+        .in_object(root))
+        .into());
     }
     document.report(walk.diagnostics.take());
     Ok((walk.pages, walk.reservation))
@@ -210,7 +212,7 @@ impl<'a> Walk<'a> {
         inherited: Inherited<'a>,
         parent: Option<ObjectId>,
         depth: usize,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if self.active.contains(&id) {
             self.diagnostics.repair(
                 Diagnostic::new(repairs::PAGE_CYCLE, "cyclic page-tree child edge omitted")
@@ -247,9 +249,9 @@ impl<'a> Walk<'a> {
         parent: Option<ObjectId>,
         depth: usize,
         source_path: &[PathComponent],
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if depth > self.document.limits().depth {
-            return Err(Error::limit("page tree depth budget exceeded").in_object(id));
+            return Err((Error::limit("page tree depth budget exceeded").in_object(id)).into());
         }
         self.work.charge(1).map_err(|error| error.in_object(id))?;
         if dictionary
@@ -274,7 +276,7 @@ impl<'a> Walk<'a> {
             NodeKind::Branch => self.intermediate(id, dictionary, inherited, depth, source_path),
             NodeKind::Leaf => {
                 if self.pages.len() >= self.document.limits().pages {
-                    return Err(Error::limit("page count budget exceeded").in_object(id));
+                    return Err((Error::limit("page count budget exceeded").in_object(id)).into());
                 }
                 let page = self.leaf(id, dictionary, inherited, source_path)?;
                 self.pages.push(page);
@@ -289,7 +291,7 @@ impl<'a> Walk<'a> {
         id: ObjectId,
         dictionary: &Dictionary,
         parent: Option<ObjectId>,
-    ) -> Result<NodeKind> {
+    ) -> ReadResult<NodeKind> {
         if dictionary.is_name(b"Type", b"Pages") {
             return Ok(NodeKind::Branch);
         }
@@ -310,7 +312,9 @@ impl<'a> Walk<'a> {
             return Ok(NodeKind::Leaf);
         }
         if dictionary.contains_key(b"Type") {
-            return Err(Error::syntax("page tree node Type must be Pages or Page").in_object(id));
+            return Err(
+                (Error::syntax("page tree node Type must be Pages or Page").in_object(id)).into(),
+            );
         }
         // Leaf evidence comes from the node itself: an inherited MediaBox
         // would make every untyped, childless node look like a page.
@@ -324,7 +328,9 @@ impl<'a> Walk<'a> {
         } else if leaf {
             NodeKind::Leaf
         } else {
-            return Err(Error::syntax("page tree node has no identifiable Type").in_object(id));
+            return Err(
+                (Error::syntax("page tree node has no identifiable Type").in_object(id)).into(),
+            );
         };
         self.diagnostics.repair(
             Diagnostic::new(
@@ -344,7 +350,7 @@ impl<'a> Walk<'a> {
         inherited: Inherited<'a>,
         depth: usize,
         source_path: &[PathComponent],
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let indirect = dictionary
             .get(b"Kids")
             .is_some_and(|value| matches!(value, Value::Reference(_)));
@@ -433,14 +439,18 @@ impl<'a> Walk<'a> {
         inherited: Inherited<'a>,
         depth: usize,
         source_path: &[PathComponent],
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if !source_path.is_empty() {
-            return Err(Error::syntax("direct Pages dictionary has no usable Kids").in_object(id));
+            return Err((Error::syntax("direct Pages dictionary has no usable Kids")
+                .in_object(id))
+            .into());
         }
         let kids = self.backlinks(id)?.to_vec();
         if kids.is_empty() {
             return Err(
-                Error::syntax("Pages node has no Kids or explicit Parent backlinks").in_object(id),
+                (Error::syntax("Pages node has no Kids or explicit Parent backlinks")
+                    .in_object(id))
+                .into(),
             );
         }
         self.diagnostics.repair(
@@ -460,7 +470,7 @@ impl<'a> Walk<'a> {
         &self,
         id: ObjectId,
         dictionary: &'a Dictionary,
-    ) -> Result<(Option<&'a Value>, ObjectId)> {
+    ) -> ReadResult<(Option<&'a Value>, ObjectId)> {
         let mut kids = dictionary.get(b"Kids");
         let mut owner = id;
         for _ in 0..=self.document.limits().depth {
@@ -475,14 +485,14 @@ impl<'a> Walk<'a> {
             kids = Some(self.document.object(*reference)?.value());
         }
         if kids.is_some_and(|value| matches!(value, Value::Reference(_))) {
-            return Err(Error::limit("Kids reference chain too long").in_object(id));
+            return Err((Error::limit("Kids reference chain too long").in_object(id)).into());
         }
         Ok((kids, owner))
     }
 
     /// Built at most once. Only explicit typed Page/Pages children contribute;
     /// inherited attributes and physical EOF never establish a node's identity.
-    fn backlinks(&mut self, parent: ObjectId) -> Result<&[ObjectId]> {
+    fn backlinks(&mut self, parent: ObjectId) -> ReadResult<&[ObjectId]> {
         if self.parents.is_none() {
             let mut parents: BTreeMap<ObjectId, Vec<ObjectId>> = BTreeMap::new();
             for id in self.document.object_ids() {
@@ -509,7 +519,11 @@ impl<'a> Walk<'a> {
     }
 
     /// Resolves the inherited Resources entry once per resource dictionary.
-    fn resources(&mut self, page: ObjectId, inherited: Inherited<'a>) -> Result<Arc<Dictionary>> {
+    fn resources(
+        &mut self,
+        page: ObjectId,
+        inherited: Inherited<'a>,
+    ) -> ReadResult<Arc<Dictionary>> {
         let key = match inherited.resources {
             None => ResourceKey::Empty,
             Some(Value::Reference(reference)) => ResourceKey::Object(*reference),
@@ -525,7 +539,11 @@ impl<'a> Walk<'a> {
         let dictionary = match value {
             Some(Value::Dictionary(resources)) => Some(resources),
             None | Some(Value::Null) => None,
-            _ => return Err(Error::syntax("Resources must be a dictionary").in_object(page)),
+            _ => {
+                return Err(
+                    (Error::syntax("Resources must be a dictionary").in_object(page)).into(),
+                );
+            }
         };
         let resources =
             dictionary.map_or_else(Arc::default, |dictionary| Arc::new(dictionary.clone()));
@@ -541,7 +559,7 @@ impl<'a> Walk<'a> {
         dictionary: &Dictionary,
         inherited: Inherited<'a>,
         source_path: &[PathComponent],
-    ) -> Result<Page> {
+    ) -> ReadResult<Page> {
         let document = self.document;
         let (media_box, crop_box) = geometry::boxes(
             document,
@@ -564,7 +582,9 @@ impl<'a> Walk<'a> {
                     .number(value)
                     .map_err(|error| error.in_object(id))?;
                 if unit <= 0.0 {
-                    return Err(Error::syntax("UserUnit must be a positive number").in_object(id));
+                    return Err((Error::syntax("UserUnit must be a positive number")
+                        .in_object(id))
+                    .into());
                 }
                 unit
             }

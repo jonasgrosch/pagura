@@ -5,6 +5,7 @@ use super::{
     policy::Policy,
     roles::{Roles, Usage},
 };
+use crate::source::ReadResult;
 use crate::{
     Document, IndirectObject,
     view::{Context, Source},
@@ -18,7 +19,7 @@ pub(super) fn read(
     (signed, policy): (&Roles, &Policy),
     ids: &BTreeSet<ObjectId>,
     past: &[Option<Roles>],
-) -> Result<Vec<ObjectChange>> {
+) -> ReadResult<Vec<ObjectChange>> {
     let mut changed_fields = BTreeSet::new();
     for id in old.fields.keys().chain(new.fields.keys()) {
         ctx.step(0, Source::default())?;
@@ -89,7 +90,7 @@ fn decision(
         &BTreeSet<ObjectId>,
     ),
     past: &[Option<Roles>],
-) -> Result<(Vec<ObjectRole>, D, D, R)> {
+) -> ReadResult<(Vec<ObjectRole>, D, D, R)> {
     let mut usages = BTreeSet::new();
     for usage in old
         .get(id)
@@ -163,7 +164,7 @@ fn trailer_change(
     before: &Document,
     after: &Document,
     policy: &Policy,
-) -> Result<Option<ObjectChange>> {
+) -> ReadResult<Option<ObjectChange>> {
     let a = before.trailer();
     let b = after.trailer();
     if equality::same_dictionary(ctx, a, b, equality::TRAILER_KEYS)? {
@@ -230,7 +231,7 @@ fn field_decision(
     (old, new, signed, policy): (&Roles, &Roles, &Roles, &Policy),
     changed_fields: &BTreeSet<ObjectId>,
     structural: bool,
-) -> Result<D> {
+) -> ReadResult<D> {
     let mut locked = false;
     for owner in usages
         .iter()
@@ -288,7 +289,7 @@ fn object_roles_overlay(
     rule: R,
     before: (&Document, Option<&IndirectObject>),
     after: (&Document, Option<&IndirectObject>),
-) -> Result<bool> {
+) -> ReadResult<bool> {
     if roles.contains(&ObjectRole::AnnotationAppearance)
         || (matches!(rule, R::Signing | R::Annotation)
             && roles.iter().any(|r| {

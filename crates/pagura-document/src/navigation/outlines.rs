@@ -1,5 +1,6 @@
 //! Flat, bounded outline traversal (12.3.3, Tables 150–152).
 use super::destinations::{self, Target};
+use crate::source::ReadResult;
 use crate::view::{Context, Source, ValueIdentity, identity, number};
 use crate::{Document, repairs};
 use pagura_core::{Dictionary, Error, ErrorKind, Result, Value};
@@ -66,7 +67,7 @@ fn edge<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<&'a Value>> {
+) -> ReadResult<Option<&'a Value>> {
     let Some(value) = dictionary.get(key).filter(|v| !v.is_null()) else {
         return Ok(None);
     };
@@ -91,7 +92,7 @@ fn child_level<'a>(
     source: Source,
     owner: Option<usize>,
     depth: usize,
-) -> Result<Option<(&'a Value, Level)>> {
+) -> ReadResult<Option<(&'a Value, Level)>> {
     let (dictionary, source) = context.dictionary(value, source)?;
     let first = edge(context, dictionary, b"First", source)?;
     let last = edge(context, dictionary, b"Last", source)?
@@ -125,7 +126,7 @@ fn check_link<'a>(
     key: &[u8],
     expected: Option<ValueIdentity>,
     source: Source,
-) -> Result<()> {
+) -> ReadResult<()> {
     let actual = edge(context, dictionary, key, source)?
         .map(|v| reciprocal(context, v, source))
         .transpose()?
@@ -144,7 +145,7 @@ fn appearance<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<([f64; 3], i64)> {
+) -> ReadResult<([f64; 3], i64)> {
     let mut color = [0.0; 3];
     if let Some(value) = context.entry(dictionary, b"C", source)? {
         let values = value.as_array().filter(|v| v.len() == 3).ok_or_else(|| {
@@ -153,7 +154,9 @@ fn appearance<'a>(
         for (out, value) in color.iter_mut().zip(values) {
             *out = number(context.resolve(value, source)?.0, source)?;
             if !(0.0..=1.0).contains(out) {
-                return Err(source.error(Error::syntax("outline color outside unit range")));
+                return Err(
+                    (source.error(Error::syntax("outline color outside unit range"))).into(),
+                );
             }
         }
     }
@@ -166,12 +169,12 @@ fn appearance<'a>(
         .transpose()?
         .unwrap_or(0);
     if flags & !FLAGS != 0 {
-        return Err(source.error(Error::syntax("reserved outline style flags")));
+        return Err((source.error(Error::syntax("reserved outline style flags"))).into());
     }
     Ok((color, flags))
 }
 
-pub(super) fn read(document: &Document) -> Result<Vec<OutlineItem<'_>>> {
+pub(super) fn read(document: &Document) -> ReadResult<Vec<OutlineItem<'_>>> {
     let mut context = Context::new(document);
     let (catalog, catalog_source) = context.catalog()?;
     let Some(root) = context.present(catalog, b"Outlines", catalog_source)? else {
@@ -270,7 +273,7 @@ fn item<'a>(
     dictionary: &'a Dictionary,
     level: &Level,
     source: Source,
-) -> Result<(OutlineItem<'a>, Option<i64>)> {
+) -> ReadResult<(OutlineItem<'a>, Option<i64>)> {
     let title = context
         .required(dictionary, b"Title", source)?
         .as_string()
@@ -306,7 +309,7 @@ fn validate_counts<'a>(
     mut counts: Vec<Count>,
     root_dictionary: &'a Dictionary,
     source: Source,
-) -> Result<()> {
+) -> ReadResult<()> {
     let mut visible = 0usize;
     // Children follow their parent in preorder, so a reverse pass sees every
     // child's visible total before its parent's.
@@ -352,7 +355,7 @@ fn reciprocal<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<Option<ValueIdentity>> {
+) -> ReadResult<Option<ValueIdentity>> {
     match context.resolve(value, source) {
         Ok((value, _)) => Ok(Some(identity(value))),
         Err(error) if error.kind == ErrorKind::MissingObject => {

@@ -1,4 +1,5 @@
 use super::{EmbeddedFile, EmbeddedFileEntry, FileParameters, RelatedFile, read};
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Result, Value};
 
@@ -7,7 +8,7 @@ pub(super) fn entries<'a>(
     specification: &'a Dictionary,
     embedded: &'a Dictionary,
     source: Source,
-) -> Result<Vec<EmbeddedFileEntry<'a>>> {
+) -> ReadResult<Vec<EmbeddedFileEntry<'a>>> {
     let mut files = Vec::new();
     for (key, value) in embedded {
         context.step(0, source)?;
@@ -15,10 +16,10 @@ pub(super) fn entries<'a>(
             continue;
         }
         if !matches!(key.as_bytes(), b"F" | b"UF" | b"DOS" | b"Mac" | b"Unix") {
-            return Err(source.error(Error::syntax("invalid EF filename key")));
+            return Err((source.error(Error::syntax("invalid EF filename key"))).into());
         }
         if read::bytes(context, specification, key.as_bytes(), source)?.is_none() {
-            return Err(source.error(Error::syntax("EF entry has no matching filename")));
+            return Err((source.error(Error::syntax("EF entry has no matching filename"))).into());
         }
         context.allocate::<EmbeddedFileEntry<'_>>(1, source)?;
         files.push(EmbeddedFileEntry {
@@ -34,7 +35,7 @@ pub(super) fn related<'a>(
     embedded: &'a Dictionary,
     related: &'a Dictionary,
     source: Source,
-) -> Result<Vec<RelatedFile<'a>>> {
+) -> ReadResult<Vec<RelatedFile<'a>>> {
     let mut files = Vec::new();
     for (key, value) in related {
         context.step(0, source)?;
@@ -43,14 +44,16 @@ pub(super) fn related<'a>(
             continue;
         }
         if context.present(embedded, key.as_bytes(), source)?.is_none() {
-            return Err(source.error(Error::syntax("RF key has no matching EF entry")));
+            return Err((source.error(Error::syntax("RF key has no matching EF entry"))).into());
         }
         let pairs = value
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("RF entry requires an array")))?;
         let (pairs, remainder) = pairs.as_chunks::<2>();
         if !remainder.is_empty() {
-            return Err(source.error(Error::syntax("RF array requires name/stream pairs")));
+            return Err(
+                (source.error(Error::syntax("RF array requires name/stream pairs"))).into(),
+            );
         }
         for [name, value] in pairs {
             context.step(0, source)?;
@@ -73,9 +76,9 @@ fn stream<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<EmbeddedFile<'a>> {
+) -> ReadResult<EmbeddedFile<'a>> {
     if !matches!(value, Value::Reference(_)) {
-        return Err(source.error(Error::syntax("embedded file must reference a stream")));
+        return Err((source.error(Error::syntax("embedded file must reference a stream"))).into());
     }
     let (value, source) = context.resolve(value, source)?;
     let id = source
@@ -105,7 +108,7 @@ fn parameters<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<FileParameters<'a>> {
+) -> ReadResult<FileParameters<'a>> {
     let (dictionary, source) = context.dictionary(value, source)?;
     let size = read::entry(context, dictionary, b"Size", source)?
         .map(|(value, source)| {

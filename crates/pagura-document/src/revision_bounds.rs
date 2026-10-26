@@ -1,4 +1,5 @@
 //! Strict Prev-chain revision terminators (7.5.6).
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{
     Error, Result, Value,
@@ -14,7 +15,7 @@ pub(crate) fn boundary(
     revision: &crate::Revision,
     end: usize,
     source: Source,
-) -> Result<(Boundary, usize)> {
+) -> ReadResult<(Boundary, usize)> {
     let bytes = ctx.document.original_bytes();
     let offset = revision.end_section;
     let mut parser =
@@ -27,29 +28,34 @@ pub(crate) fn boundary(
                 source.error(Error::limit("signature xref count exceeds address space"))
             })?;
             if count > ctx.document.limits().objects {
-                return Err(source.error(Error::limit("signature xref entry budget exceeded")));
+                return Err(
+                    (source.error(Error::limit("signature xref entry budget exceeded"))).into(),
+                );
             }
             for _ in 0..count {
                 ctx.step(0, source)?;
                 parser.unsigned()?;
                 parser.unsigned()?;
                 if !matches!(parser.word()?, b"n" | b"f") {
-                    return Err(
-                        source.error(Error::syntax("invalid signature revision xref entry"))
-                    );
+                    return Err((source
+                        .error(Error::syntax("invalid signature revision xref entry")))
+                    .into());
                 }
             }
         }
         if parser.parse()?.as_dictionary().is_none() {
-            return Err(source.error(Error::syntax(
+            return Err((source.error(Error::syntax(
                 "signature revision trailer must be a dictionary",
-            )));
+            )))
+            .into());
         }
     } else {
         parser.unsigned()?;
         parser.unsigned()?;
         if !parser.keyword(b"obj") {
-            return Err(source.error(Error::syntax("signature revision lacks xref object")));
+            return Err(
+                (source.error(Error::syntax("signature revision lacks xref object"))).into(),
+            );
         }
         let value = parser.parse()?;
         let dictionary = value
@@ -66,7 +72,9 @@ pub(crate) fn boundary(
                 ))
             })?;
         if !dictionary.is_name(b"Type", b"XRef") || !parser.keyword(b"stream") {
-            return Err(source.error(Error::syntax("signature revision is not an xref stream")));
+            return Err(
+                (source.error(Error::syntax("signature revision is not an xref stream"))).into(),
+            );
         }
         let rest = &parser.data()[parser.offset()..];
         let eol = if rest.starts_with(b"\r\n") {
@@ -74,7 +82,7 @@ pub(crate) fn boundary(
         } else if rest.starts_with(b"\n") || rest.starts_with(b"\r") {
             1
         } else {
-            return Err(source.error(Error::syntax("signature xref stream lacks EOL")));
+            return Err((source.error(Error::syntax("signature xref stream lacks EOL"))).into());
         };
         let stream_end = parser
             .offset()
@@ -84,15 +92,18 @@ pub(crate) fn boundary(
             .ok_or_else(|| source.error(Error::syntax("signature xref stream exceeds revision")))?;
         parser.seek(stream_end)?;
         if !parser.keyword(b"endstream") || !parser.keyword(b"endobj") {
-            return Err(source.error(Error::syntax("signature xref stream lacks terminator")));
+            return Err(
+                (source.error(Error::syntax("signature xref stream lacks terminator"))).into(),
+            );
         }
     }
     if !parser.keyword(b"startxref")
         || usize::try_from(parser.unsigned()?).ok() != Some(revision.offset())
     {
-        return Err(source.error(Error::syntax(
+        return Err((source.error(Error::syntax(
             "signature revision startxref does not match Prev chain",
-        )));
+        )))
+        .into());
     }
     // %%EOF is a comment to the ordinary tokenizer. Only PDF whitespace may
     // intervene here; skip_whitespace would swallow the boundary itself.
@@ -101,7 +112,7 @@ pub(crate) fn boundary(
         at += 1;
     }
     if !bytes.get(at..end).is_some_and(|b| b.starts_with(b"%%EOF")) {
-        return Err(source.error(Error::syntax("signature revision lacks EOF marker")));
+        return Err((source.error(Error::syntax("signature revision lacks EOF marker"))).into());
     }
     let eof = at + 5;
     let eol = match bytes.get(eof..end) {
@@ -111,7 +122,7 @@ pub(crate) fn boundary(
     };
     // A marker followed by ordinary text is not an EOF comment boundary.
     if eol == eof && eof < end && !bytes.get(eof).is_some_and(|&b| is_whitespace(b)) {
-        return Err(source.error(Error::syntax("signature EOF marker has trailing text")));
+        return Err((source.error(Error::syntax("signature EOF marker has trailing text"))).into());
     }
     Ok((Boundary { eof, eol }, eol - offset))
 }

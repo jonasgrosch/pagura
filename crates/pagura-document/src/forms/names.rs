@@ -1,4 +1,5 @@
 //! Bounded duplicate-value comparison, including indirect subvalues.
+use crate::source::ReadResult;
 use crate::view::{Context, Source, identity};
 use pagura_core::{Result, Value};
 use std::collections::BTreeSet;
@@ -18,7 +19,7 @@ pub(super) fn equivalent<'a>(
     b: Option<&'a Value>,
     source: Source,
     strings: Strings,
-) -> Result<bool> {
+) -> ReadResult<bool> {
     let (Some(a), Some(b)) = (a, b) else {
         return Ok(a.is_none() && b.is_none());
     };

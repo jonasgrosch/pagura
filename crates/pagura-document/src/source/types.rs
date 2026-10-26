@@ -156,14 +156,67 @@ impl NeedData {
     }
 }
 
+impl PartialEq for NeedData {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity == other.identity
+            && self.generation == other.generation
+            && self.ranges() == other.ranges()
+    }
+}
+
+impl Eq for NeedData {}
+
 /// Source availability, separate from terminal PDF/argument/resource errors.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ReadFault {
     /// The requested bytes have not arrived; retry only after useful supply.
     Unavailable(NeedData),
     /// A terminal failure of the operation or source.
     Invalid(Error),
+}
+
+impl ReadFault {
+    /// The terminal error, if this is not an unavailable-input frontier.
+    pub const fn as_error(&self) -> Option<&Error> {
+        match self {
+            Self::Invalid(error) => Some(error),
+            Self::Unavailable(_) => None,
+        }
+    }
+
+    /// Adds context to a terminal error without altering an unavailable frontier.
+    #[must_use]
+    pub fn map_error(self, map: impl FnOnce(Error) -> Error) -> Self {
+        match self {
+            Self::Invalid(error) => Self::Invalid(map(error)),
+            unavailable => unavailable,
+        }
+    }
+
+    /// Applies [`Error::at`] to a terminal error; availability is unchanged.
+    #[must_use]
+    pub fn at(self, position: pagura_core::Position) -> Self {
+        self.map_error(|error| error.at(position))
+    }
+
+    /// Applies [`Error::in_object`] to a terminal error; availability is unchanged.
+    #[must_use]
+    pub fn in_object(self, object: pagura_core::ObjectId) -> Self {
+        self.map_error(|error| error.in_object(object))
+    }
+
+    /// Applies [`Error::in_object_opt`] to a terminal error; availability is unchanged.
+    #[must_use]
+    pub fn in_object_opt(self, object: Option<pagura_core::ObjectId>) -> Self {
+        self.map_error(|error| error.in_object_opt(object))
+    }
+
+    /// Applies [`Error::within`] to a terminal error; availability is unchanged.
+    #[must_use]
+    pub fn within(self, start: pagura_core::Position) -> Self {
+        self.map_error(|error| error.within(start))
+    }
 }
 
 impl From<Error> for ReadFault {

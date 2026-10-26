@@ -4,6 +4,7 @@ mod padding;
 mod policy;
 mod repair;
 
+use crate::source::ReadResult;
 use crate::{Document, IndirectObject, Location, ObjectSource, features, repairs};
 use pagura_core::{Dictionary, Error, ErrorKind, Name, ObjectId, Result, ResultExt, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
@@ -36,7 +37,7 @@ struct CryptFilter {
 const REVISION_3_PERMISSIONS: u32 = 0x0d00;
 
 /// Reads the encryption dictionary and authenticates `password` (7.6.4).
-pub(crate) fn read(document: &Document, password: &[u8]) -> Result<Option<Security>> {
+pub(crate) fn read(document: &Document, password: &[u8]) -> ReadResult<Option<Security>> {
     let Some(encrypt) = document
         .trailer()
         .get(b"Encrypt")
@@ -56,7 +57,7 @@ fn handler(
     encrypt: &Value,
     id: Option<ObjectId>,
     password: &[u8],
-) -> Result<Security> {
+) -> ReadResult<Security> {
     uncompressed(document, encrypt, "Encrypt dictionary cannot be compressed")?;
     let dictionary = document.resolve_dictionary(encrypt)?;
     let filter = dictionary
@@ -68,10 +69,11 @@ fn handler(
         } else {
             features::UNKNOWN_SECURITY
         };
-        return Err(Error::unsupported(
+        return Err((Error::unsupported(
             feature,
             "non-Standard security handler is not implemented",
-        ));
+        ))
+        .into());
     }
     let mut policy = Policy::new(document, id)?;
     let permissions = policy.unsigned_permissions(dictionary)?;
@@ -141,7 +143,7 @@ fn authenticate_document(
     password: &[u8],
     methods: &Methods,
     policy: &mut Policy,
-) -> Result<Option<FileKey>> {
+) -> ReadResult<Option<FileKey>> {
     let short_key = short_rc4_key(params);
     if short_key {
         policy.repair(
@@ -309,7 +311,7 @@ struct Methods {
 fn methods<'a>(
     dictionary: &'a Dictionary,
     params: &SecurityParams,
-    resolve: impl Fn(&'a Value) -> Result<&'a Value>,
+    resolve: impl Fn(&'a Value) -> ReadResult<&'a Value>,
     policy: &mut Policy,
 ) -> Result<Methods> {
     if params.version < 4 {
@@ -353,7 +355,7 @@ fn methods<'a>(
                     Some(b"DocOpen" | b"EFOpen")
                 )
             {
-                return Err(Error::syntax("invalid crypt filter AuthEvent"));
+                return Err((Error::syntax("invalid crypt filter AuthEvent")).into());
             }
             filters.insert(
                 name.as_bytes().to_vec(),
@@ -370,7 +372,7 @@ fn methods<'a>(
         match dictionary.get(key) {
             None => Ok(default),
             Some(Value::Name(name)) => lookup(&filters, name.as_bytes(), key == b"EFF"),
-            _ => Err(Error::syntax("default crypt filter must be a name")),
+            _ => Err((Error::syntax("default crypt filter must be a name")).into()),
         }
     };
     let strings = select(b"StrF", CryptMethod::Identity)?;
@@ -475,16 +477,14 @@ impl Security {
         object: &IndirectObject,
         explicit: crate::stream::CryptSelection,
         usage: crate::stream::Usage,
-    ) -> Result<CryptMethod> {
+    ) -> ReadResult<CryptMethod> {
         let dictionary = object
             .dictionary()
             .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
         let embedded = usage == crate::stream::Usage::EmbeddedFile
             || dictionary.is_name(b"Type", b"EmbeddedFile");
         if !matches!(explicit, crate::stream::CryptSelection::Default) && !self.crypt_filters {
-            return Err(Error::syntax(
-                "Crypt filters require encryption version 4 or 5",
-            ));
+            return Err((Error::syntax("Crypt filters require encryption version 4 or 5")).into());
         }
         if !self.encrypt_metadata
             && !object.is_direct()
@@ -514,9 +514,10 @@ impl Security {
             crate::stream::CryptSelection::Default => self.streams,
         };
         if self.key.is_none() && authorization {
-            return Err(Error::password(
+            return Err((Error::password(
                 "embedded file access requires an authenticated password",
-            ));
+            ))
+            .into());
         }
         Ok(method)
     }
@@ -623,10 +624,10 @@ impl Document {
     ///
     /// # Errors
     /// Opening/budget errors, or `Password` when credentials do not authenticate.
-    pub fn reauthenticate(&self, password: &[u8]) -> Result<Self> {
+    pub fn reauthenticate(&self, password: &[u8]) -> ReadResult<Self> {
         self.bytes.check()?;
         if password.len() > self.limits.string_bytes {
-            return Err(Error::limit("password byte budget exceeded"));
+            return Err((Error::limit("password byte budget exceeded")).into());
         }
         let options = crate::OpenOptions {
             limits: self.limits,
@@ -639,9 +640,9 @@ impl Document {
             .as_ref()
             .is_some_and(|security| !security.authenticated())
         {
-            return Err(Error::password(
-                "password did not authorize embedded file access",
-            ));
+            return Err(
+                (Error::password("password did not authorize embedded file access")).into(),
+            );
         }
         Ok(authenticated)
     }

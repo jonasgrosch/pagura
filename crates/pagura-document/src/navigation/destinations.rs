@@ -1,6 +1,7 @@
 //! Explicit and named destinations (12.3.2, Table 149; Annex J.3.3–J.3.4).
 use super::actions;
 use crate::Document;
+use crate::source::ReadResult;
 use crate::view::{Context, Source, identity, number};
 use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use std::collections::BTreeSet;
@@ -115,7 +116,7 @@ fn key(value: &Value) -> Option<DestinationName<'_>> {
     }
 }
 
-fn optional(value: &Value, source: Source) -> Result<Option<f64>> {
+fn optional(value: &Value, source: Source) -> ReadResult<Option<f64>> {
     if value.is_null() {
         Ok(None)
     } else {
@@ -127,26 +128,28 @@ fn view<'a>(
     context: &mut Context<'a>,
     values: &'a [Value],
     source: Source,
-) -> Result<DestinationView> {
+) -> ReadResult<DestinationView> {
     if values.is_empty() || values.len() > 5 {
-        return Err(source.error(Error::syntax("incorrect destination operand count")));
+        return Err((source.error(Error::syntax("incorrect destination operand count"))).into());
     }
     context.allocate::<&Value>(values.len(), source)?;
     let values = values
         .iter()
         .map(|v| context.resolve(v, source).map(|(v, _)| v))
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<ReadResult<Vec<_>>>()?;
     let Some((name, operands)) = values
         .split_first()
         .and_then(|(name, operands)| Some((name.as_name()?, operands)))
     else {
-        return Err(source.error(Error::syntax("destination requires a view name")));
+        return Err((source.error(Error::syntax("destination requires a view name"))).into());
     };
     Ok(match (name.as_bytes(), operands) {
         (b"XYZ", [left, top, zoom]) => {
             let zoom = optional(zoom, source)?.filter(|v| *v != 0.0);
             if zoom.is_some_and(|v| v < 0.0) {
-                return Err(source.error(Error::syntax("destination zoom must be nonnegative")));
+                return Err(
+                    (source.error(Error::syntax("destination zoom must be nonnegative"))).into(),
+                );
             }
             DestinationView::Xyz {
                 left: optional(left, source)?,
@@ -170,14 +173,15 @@ fn view<'a>(
         (b"FitBH", [top]) => DestinationView::FitBh(optional(top, source)?),
         (b"FitBV", [left]) => DestinationView::FitBv(optional(left, source)?),
         _ => {
-            return Err(source.error(Error::syntax(
+            return Err((source.error(Error::syntax(
                 "unknown destination view or incorrect operand count",
-            )));
+            )))
+            .into());
         }
     })
 }
 
-pub(super) fn local(document: &Document, value: &Value) -> Result<Destination> {
+pub(super) fn local(document: &Document, value: &Value) -> ReadResult<Destination> {
     resolve(&mut Context::new(document), value, Source::default())
 }
 
@@ -185,14 +189,14 @@ pub(super) fn resolve<'a>(
     context: &mut Context<'a>,
     mut value: &'a Value,
     mut source: Source,
-) -> Result<Destination> {
+) -> ReadResult<Destination> {
     let mut visited = BTreeSet::new();
     for depth in 0..=context.document.limits().depth {
         context.step(depth, source)?;
         (value, source) = context.resolve(value, source)?;
         context.index_entry(source)?;
         if !visited.insert(identity(value)) {
-            return Err(source.error(Error::cycle("cyclic named destination")));
+            return Err((source.error(Error::cycle("cyclic named destination"))).into());
         }
         match value {
             Value::Dictionary(dictionary) => {
@@ -220,9 +224,9 @@ pub(super) fn resolve<'a>(
                     )?;
                     page
                 } else {
-                    return Err(
-                        source.error(Error::syntax("local destination requires a page reference"))
-                    );
+                    return Err((source
+                        .error(Error::syntax("local destination requires a page reference")))
+                    .into());
                 };
                 return Ok(Destination {
                     page,
@@ -238,13 +242,13 @@ pub(super) fn resolve<'a>(
             }
         }
     }
-    Err(source.error(Error::limit("destination resolution depth exceeded")))
+    Err((source.error(Error::limit("destination resolution depth exceeded"))).into())
 }
 
 fn find<'a>(
     context: &mut Context<'a>,
     name: DestinationName<'a>,
-) -> Result<Option<(&'a Value, Source)>> {
+) -> ReadResult<Option<(&'a Value, Source)>> {
     let (catalog, catalog_source) = context.catalog()?;
     // A name uses the legacy dictionary first; a string uses the name tree
     // first. The other representation is a compatibility fallback by bytes.
@@ -290,7 +294,7 @@ pub(super) fn remote<'a>(
     context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
-) -> Result<RemoteDestination<'a>> {
+) -> ReadResult<RemoteDestination<'a>> {
     let (value, source) = context.resolve(value, source)?;
     if let Some(name) = key(value) {
         return Ok(RemoteDestination::Named(name));
@@ -302,7 +306,9 @@ pub(super) fn remote<'a>(
         .split_first()
         .and_then(|(page, operands)| Some((usize::try_from(page.as_integer()?).ok()?, operands)))
     else {
-        return Err(source.error(Error::syntax("remote destination page must be nonnegative")));
+        return Err(
+            (source.error(Error::syntax("remote destination page must be nonnegative"))).into(),
+        );
     };
     Ok(RemoteDestination::Explicit {
         page,
@@ -314,7 +320,7 @@ pub(super) fn target<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Option<Target<'a>>> {
+) -> ReadResult<Option<Target<'a>>> {
     let action = context.present(dictionary, b"A", source)?;
     let dest = context.present(dictionary, b"Dest", source)?;
     if action.is_some() && dest.is_some() {
@@ -331,7 +337,7 @@ pub(super) fn target<'a>(
         .transpose()
 }
 
-pub(super) fn named(document: &Document) -> Result<Vec<NamedDestination<'_>>> {
+pub(super) fn named(document: &Document) -> ReadResult<Vec<NamedDestination<'_>>> {
     let mut context = Context::new(document);
     let (catalog, source) = context.catalog()?;
     let mut entries = Vec::new();

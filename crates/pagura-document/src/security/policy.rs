@@ -2,6 +2,7 @@
 
 use super::repair;
 use crate::Document;
+use crate::source::ReadResult;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, ObjectId, Position, Repair, Result, Value};
 
 /// The repairs of one encryption dictionary, reported at its source.
@@ -12,7 +13,7 @@ pub(super) struct Policy {
 }
 
 impl Policy {
-    pub(super) fn new(document: &Document, object: Option<ObjectId>) -> Result<Self> {
+    pub(super) fn new(document: &Document, object: Option<ObjectId>) -> ReadResult<Self> {
         Ok(Self {
             diagnostics: Diagnostics::new(document.recovery()),
             object,
@@ -74,7 +75,7 @@ impl Policy {
     /// Preserve the original first identifier: Algorithms 2/3 consume its exact
     /// bytes. R5/R6 do not use identifiers for key derivation. Missing legacy
     /// key material remains an error in parameter extraction, not an invented ID.
-    pub(super) fn identifiers(&mut self, trailer: &Dictionary) -> Result<()> {
+    pub(super) fn identifiers(&mut self, trailer: &Dictionary) -> ReadResult<()> {
         let valid = trailer
             .get(b"ID")
             .and_then(Value::as_array)

@@ -1,5 +1,6 @@
 //! Freeze permissions and decoded field selections in the signed revision.
 use super::{FieldSelection, MdpPermission, Signature, Transform, roles::Roles, transforms};
+use crate::source::ReadResult;
 use crate::{
     Document,
     view::{Context, Source},
@@ -13,7 +14,7 @@ pub(super) struct Selection {
     names: BTreeSet<String>,
 }
 impl Selection {
-    fn read(ctx: &mut Context<'_>, selection: &FieldSelection<'_>) -> Result<Self> {
+    fn read(ctx: &mut Context<'_>, selection: &FieldSelection<'_>) -> ReadResult<Self> {
         let (all, exclude, raw) = match selection {
             FieldSelection::All => (true, false, &[][..]),
             FieldSelection::Include(names) => (false, false, names.as_slice()),
@@ -30,7 +31,7 @@ impl Selection {
             names,
         })
     }
-    fn locks(&self, ctx: &mut Context<'_>, name: &str) -> Result<bool> {
+    fn locks(&self, ctx: &mut Context<'_>, name: &str) -> ReadResult<bool> {
         ctx.step(0, Source::default())?;
         if self.all {
             return Ok(true);
@@ -61,7 +62,7 @@ impl Policy {
         id: ObjectId,
         signed: &Roles,
         later: &Roles,
-    ) -> Result<bool> {
+    ) -> ReadResult<bool> {
         // Original identity and name cannot be escaped by renaming a locked
         // field. New fields are tested too, particularly for All and Exclude.
         for name in [signed.fields.get(&id), later.fields.get(&id)]
@@ -91,7 +92,7 @@ fn references<'a>(
     d: &'a Dictionary,
     policy: &mut Policy,
     own: bool,
-) -> Result<()> {
+) -> ReadResult<()> {
     for reference in transforms::references(ctx, d, Source::default())? {
         match reference.transform {
             Transform::DocMdp(p) => {
@@ -120,7 +121,7 @@ pub(super) fn read(
     doc: &Document,
     signature: &Signature<'_>,
     shared: &Context<'_>,
-) -> Result<Policy> {
+) -> ReadResult<Policy> {
     let mut ctx = shared.for_document(doc);
     let mut policy = Policy {
         permission: None,

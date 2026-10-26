@@ -6,6 +6,7 @@
 //! is probed, and probe storage obeys the decoded/retained byte limits.
 
 use crate::object::{self, stream as object_stream};
+use crate::source::ReadResult;
 use crate::{Document, Location};
 use pagura_codec::{Filter, FilterChain};
 use pagura_core::{
@@ -25,7 +26,7 @@ pub(super) fn select(
     params: &SecurityParams,
     methods: &super::Methods,
     policy: &mut super::policy::Policy,
-) -> Result<Derivation> {
+) -> ReadResult<Derivation> {
     if super::short_rc4_key(params)
         && methods.strings == CryptMethod::Rc4
         && methods.streams == CryptMethod::Rc4
@@ -49,7 +50,7 @@ pub(super) fn select(
     Ok(Derivation::Standard)
 }
 
-fn detect(document: &Document, key: &FileKey) -> Result<Option<ObjectId>> {
+fn detect(document: &Document, key: &FileKey) -> ReadResult<Option<ObjectId>> {
     let Some(&number) = document.object_streams.keys().next() else {
         return Ok(None);
     };
@@ -100,10 +101,11 @@ fn detect(document: &Document, key: &FileKey) -> Result<Option<ObjectId>> {
                     &mut diagnostics,
                 )?;
                 if contents.retained_bytes() > document.limits().document_bytes {
-                    return Err(
-                        Error::limit("key recovery object stream exceeds retained budget")
-                            .in_object(id),
-                    );
+                    return Err((Error::limit(
+                        "key recovery object stream exceeds retained budget",
+                    )
+                    .in_object(id))
+                    .into());
                 }
                 let indexes: std::collections::BTreeMap<_, _> = contents.identities().collect();
                 let mut witness = false;

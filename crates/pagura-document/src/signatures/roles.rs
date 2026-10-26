@@ -1,5 +1,6 @@
 //! Reachability-derived roles. A shared object retains every use and field owner.
 use super::ObjectRole;
+use crate::source::ReadResult;
 use crate::{
     Document, Location,
     forms::{FieldKind, FieldValue},
@@ -45,7 +46,7 @@ pub(super) fn read(
     doc: &Document,
     ctx: &mut Context<'_>,
     facts: &super::history::Facts,
-) -> Result<Roles> {
+) -> ReadResult<Roles> {
     let mut roles = Roles {
         source_end: doc.original_bytes().len(),
         ..Roles::default()
@@ -104,7 +105,7 @@ pub(super) fn read(
     Ok(roles)
 }
 
-fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
+fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> ReadResult<()> {
     for page in doc.pages()? {
         ctx.step(0, Source::default())?;
         ctx.allocate::<usize>(8, Source::default())?;
@@ -133,7 +134,7 @@ fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Resul
                         v.as_reference()
                             .ok_or_else(|| Error::syntax("annotation must be indirect"))
                     })
-                    .collect::<Result<Vec<_>>>()?
+                    .collect::<ReadResult<Vec<_>>>()?
             }
         } else {
             Vec::new()
@@ -146,7 +147,7 @@ fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Resul
     }
     Ok(())
 }
-fn read_storage(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
+fn read_storage(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> ReadResult<()> {
     ctx.allocate::<usize>(doc.revisions().len().saturating_mul(16), Source::default())?;
     let xrefs: BTreeSet<_> = doc
         .revisions()
@@ -194,7 +195,7 @@ fn read_length(
     stream: ObjectId,
     value: &Value,
     depth: usize,
-) -> Result<()> {
+) -> ReadResult<()> {
     let mut length = value.as_dictionary().and_then(|d| d.get(b"Length"));
     let mut depth = depth;
     while let Some(source) = length.and_then(Value::as_reference) {
@@ -225,7 +226,7 @@ fn walk(
     value: &Value,
     usage: Usage,
     depth: usize,
-) -> Result<()> {
+) -> ReadResult<()> {
     ctx.step(depth, Source::default())?;
     if let Value::Reference(id) = value {
         ctx.allocate::<usize>(16, Source::default())?;
@@ -308,7 +309,7 @@ fn dictionary(
     d: &Dictionary,
     usage: Usage,
     depth: usize,
-) -> Result<()> {
+) -> ReadResult<()> {
     use ObjectRole as R;
     if usage.role == R::Signature {
         return signature_dependencies(doc, ctx, roles, d, depth);
@@ -393,7 +394,7 @@ fn dictionary(
     Ok(())
 }
 
-fn read_form(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
+fn read_form(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> ReadResult<()> {
     if let Some(form) = doc.acro_form()? {
         roles.ambiguous = form.has_xfa;
         let mut names = BTreeSet::new();
@@ -482,7 +483,7 @@ fn signature_dependencies(
     roles: &mut Roles,
     d: &Dictionary,
     depth: usize,
-) -> Result<()> {
+) -> ReadResult<()> {
     let usage = Usage {
         role: ObjectRole::Other,
         field: None,
@@ -512,7 +513,7 @@ fn signature_dependencies(
     Ok(())
 }
 
-fn trailer(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
+fn trailer(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> ReadResult<()> {
     for (key, value) in doc.trailer() {
         if key.as_bytes() == b"Root" || super::equality::TRAILER_KEYS.contains(&key.as_bytes()) {
             continue;

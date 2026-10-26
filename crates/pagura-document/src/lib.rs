@@ -44,6 +44,7 @@ pub use pagura_core::Rotation;
 pub use stream::{ImageStream, StreamData};
 pub use xref::{Revision, RevisionKind};
 
+use crate::source::{ReadFault, ReadResult};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Recovery, Result, Value,
 };
@@ -124,7 +125,15 @@ impl Document {
         if bytes.len() > options.limits.file_bytes {
             return Err(Error::limit("file size budget exceeded"));
         }
-        builder::open(source::View::local(bytes, &options.limits)?, options)
+        // This entry point admits complete local bytes before the common read
+        // path. It cannot turn an unavailable source into a PDF syntax error.
+        match builder::open(source::View::local(bytes, &options.limits)?, options) {
+            Ok(document) => Ok(document),
+            Err(ReadFault::Invalid(error)) => Err(error),
+            Err(ReadFault::Unavailable(_)) => Err(Error::invalid_argument(
+                "complete input is required by Document::open",
+            )),
+        }
     }
 
     /// The original, unmodified file bytes.
@@ -241,7 +250,7 @@ impl Document {
     /// Returns `MissingObject` if `id` is not an in-use entry, and syntax
     /// or limit errors if the object cannot be parsed or retained within
     /// [`Limits::document_bytes`].
-    pub fn object(&self, id: ObjectId) -> Result<&IndirectObject> {
+    pub fn object(&self, id: ObjectId) -> ReadResult<&IndirectObject> {
         self.object_inner(id, &mut Vec::new())
     }
 
@@ -254,7 +263,7 @@ impl Document {
     ///
     /// Returns errors from loading the referenced object and a limit error
     /// for reference chains deeper than [`Limits::depth`].
-    pub fn resolve<'a>(&'a self, value: &'a Value) -> Result<&'a Value> {
+    pub fn resolve<'a>(&'a self, value: &'a Value) -> ReadResult<&'a Value> {
         self.resolve_inner(value, &mut Vec::new())
             .map(|(value, _)| value)
     }
@@ -265,7 +274,7 @@ impl Document {
     ///
     /// As [`Document::resolve`], plus a syntax error if the result is not a
     /// dictionary.
-    pub fn resolve_dictionary<'a>(&'a self, value: &'a Value) -> Result<&'a Dictionary> {
+    pub fn resolve_dictionary<'a>(&'a self, value: &'a Value) -> ReadResult<&'a Dictionary> {
         let (value, origin) = self.resolve_inner(value, &mut Vec::new())?;
         value
             .as_dictionary()
@@ -277,7 +286,7 @@ impl Document {
     /// # Errors
     ///
     /// Returns a syntax error if the trailer has no usable `/Root`.
-    pub fn catalog(&self) -> Result<&Dictionary> {
+    pub fn catalog(&self) -> ReadResult<&Dictionary> {
         let root = self
             .trailer
             .get(b"Root")
@@ -290,7 +299,7 @@ impl Document {
     /// # Errors
     ///
     /// Returns a syntax error if `object` is not a stream.
-    pub fn raw_stream_data(&self, object: &IndirectObject) -> Result<source::ByteLease> {
+    pub fn raw_stream_data(&self, object: &IndirectObject) -> ReadResult<source::ByteLease> {
         stream::raw(self, object)
     }
 
@@ -302,7 +311,7 @@ impl Document {
     /// filters, a limit error if decoding would exceed
     /// [`Limits::decoded_bytes`], syntax errors for corrupt data, and `Password`
     /// for embedded encrypted data awaiting EFOpen authorization (7.6.6).
-    pub fn stream_data(&self, object: &IndirectObject) -> Result<StreamData> {
+    pub fn stream_data(&self, object: &IndirectObject) -> ReadResult<StreamData> {
         stream::decoded(self, object, 0)
     }
 
@@ -312,7 +321,11 @@ impl Document {
     /// # Errors
     ///
     /// As [`Document::stream_data`].
-    pub fn stream_data_sized(&self, object: &IndirectObject, size: usize) -> Result<StreamData> {
+    pub fn stream_data_sized(
+        &self,
+        object: &IndirectObject,
+        size: usize,
+    ) -> ReadResult<StreamData> {
         stream::decoded(self, object, size)
     }
 
@@ -336,7 +349,7 @@ impl Document {
         object: &IndirectObject,
         size: usize,
         enough: &mut dyn FnMut(&[u8]) -> Prefix,
-    ) -> Result<Option<Vec<u8>>> {
+    ) -> ReadResult<Option<Vec<u8>>> {
         let (data, chain) = self.prepare_stream(object, &mut Vec::new())?;
         Ok(chain.decode_prefix(&data, (self.limits().decoded_bytes, size), enough))
     }
@@ -348,7 +361,7 @@ impl Document {
     ///
     /// As [`Document::stream_data`]; an image codec that is not the last
     /// filter fails with its `Unsupported` tag.
-    pub fn image_stream(&self, object: &IndirectObject) -> Result<ImageStream> {
+    pub fn image_stream(&self, object: &IndirectObject) -> ReadResult<ImageStream> {
         self.image_stream_with_parameters(
             object,
             object
@@ -375,7 +388,7 @@ impl Document {
         &self,
         object: &IndirectObject,
         parameters: Option<&Value>,
-    ) -> Result<ImageStream> {
+    ) -> ReadResult<ImageStream> {
         stream::image(self, object, parameters, 0)
     }
 
@@ -391,7 +404,7 @@ impl Document {
         object: &IndirectObject,
         parameters: Option<&Value>,
         size: usize,
-    ) -> Result<ImageStream> {
+    ) -> ReadResult<ImageStream> {
         stream::image(self, object, parameters, size)
     }
 
@@ -401,7 +414,7 @@ impl Document {
     ///
     /// Returns errors from interpreting the page tree, including a limit error
     /// if retaining its complete pages/resources exceeds [`Limits::document_bytes`].
-    pub fn pages(&self) -> Result<&[Page]> {
+    pub fn pages(&self) -> ReadResult<&[Page]> {
         self.bytes.check()?;
         let pages = if let Some(pages) = self.pages.get() {
             pages
@@ -409,7 +422,13 @@ impl Document {
             // Walk outside the cell: every dependency is loaded before a lock
             // is held (ADR 0012). A walk that loses a race to publish drops
             // its reservation, so only the published walk stays charged.
-            let walk = pages::read(self);
+            let walk = match pages::read(self) {
+                Err(ReadFault::Unavailable(missing)) => {
+                    return Err(ReadFault::Unavailable(missing));
+                }
+                Err(ReadFault::Invalid(error)) => Err(error),
+                Ok(walk) => Ok(walk),
+            };
             let mut published = None;
             let pages = self.pages.get_or_init(|| {
                 let (pages, reservation) = walk?;
@@ -421,7 +440,7 @@ impl Document {
             }
             pages
         };
-        pages.as_deref().map_err(Clone::clone)
+        pages.as_deref().map_err(|error| error.clone().into())
     }
 
     /// Number of pages.
@@ -429,7 +448,7 @@ impl Document {
     /// # Errors
     ///
     /// As [`Document::pages`].
-    pub fn page_count(&self) -> Result<usize> {
+    pub fn page_count(&self) -> ReadResult<usize> {
         self.pages().map(<[Page]>::len)
     }
 
@@ -439,7 +458,7 @@ impl Document {
     ///
     /// As [`Document::pages`], plus `InvalidArgument` for an index beyond
     /// the last page.
-    pub fn page(&self, index: usize) -> Result<&Page> {
+    pub fn page(&self, index: usize) -> ReadResult<&Page> {
         self.pages()?
             .get(index)
             .ok_or(Error::invalid_argument("page index outside document"))
@@ -455,7 +474,7 @@ impl Document {
     /// from loading the stream objects. Repaired direct streams use their
     /// containing object's identity and retain individual file source ranges.
     /// Fails with `InvalidArgument` for a page of another document.
-    pub fn content_streams(&self, page: &Page) -> Result<Vec<&IndirectObject>> {
+    pub fn content_streams(&self, page: &Page) -> ReadResult<Vec<&IndirectObject>> {
         self.check_page(page)?;
         pages::contents::read(self, page)
     }

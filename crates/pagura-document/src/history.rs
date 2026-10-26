@@ -1,6 +1,7 @@
 //! Lazy strict revision snapshots sharing source storage and cache accounting.
 use crate::builder::DocumentBuilder;
 use crate::features::{HISTORICAL_ENCRYPTION, HISTORICAL_SOURCE};
+use crate::source::{ReadFault, ReadResult};
 use crate::{
     Document, IndirectObject,
     view::{Context, Source},
@@ -34,11 +35,11 @@ impl Document {
     /// absent identity, and parsing/cache-limit errors. Historical access to
     /// earlier encrypted or repaired revisions is unsupported; no newer object is used
     /// as a fallback for an inaccessible earlier revision.
-    pub fn object_at_revision(&self, revision: usize, id: ObjectId) -> Result<&IndirectObject> {
+    pub fn object_at_revision(&self, revision: usize, id: ObjectId) -> ReadResult<&IndirectObject> {
         self.revision_document(revision)?.object(id)
     }
 
-    pub(crate) fn revision_document(&self, index: usize) -> Result<&Document> {
+    pub(crate) fn revision_document(&self, index: usize) -> ReadResult<&Document> {
         self.revision_with_context(index, &mut Context::new(self))
     }
 
@@ -46,10 +47,10 @@ impl Document {
         &self,
         index: usize,
         ctx: &mut Context<'_>,
-    ) -> Result<&Document> {
+    ) -> ReadResult<&Document> {
         self.bytes.check()?;
         if index >= self.revisions.len() {
-            return Err(Error::invalid_argument("revision index outside document"));
+            return Err((Error::invalid_argument("revision index outside document")).into());
         }
         if index == 0 {
             return Ok(self);
@@ -58,10 +59,11 @@ impl Document {
             || !self.diagnostics().is_empty()
             || self.suppressed_diagnostics() != 0
         {
-            return Err(Error::unsupported(
+            return Err((Error::unsupported(
                 HISTORICAL_SOURCE,
                 "historical access requires unrepaired unencrypted source",
-            ));
+            ))
+            .into());
         }
         let store = &self.historical;
         if store.snapshots.get().is_none() {
@@ -102,11 +104,16 @@ impl Document {
                             .transpose()?,
                         ctx,
                     );
-                    if let Err(error) = &parsed
-                        && error.kind == ErrorKind::Limit
-                    {
-                        return Err(error.clone());
-                    }
+                    let parsed = match parsed {
+                        Err(ReadFault::Unavailable(missing)) => {
+                            return Err(ReadFault::Unavailable(missing));
+                        }
+                        Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Limit => {
+                            return Err(error.into());
+                        }
+                        Err(ReadFault::Invalid(error)) => Err(error),
+                        Ok(document) => Ok(document),
+                    };
                     entry.value.get_or_init(|| parsed);
                 }
             }
@@ -122,7 +129,7 @@ impl Document {
             .get()
             .ok_or_else(|| Error::syntax("revision cache is uninitialized"))?
             .as_ref()
-            .map_err(Clone::clone)
+            .map_err(|error| error.clone().into())
     }
 
     fn open_revision(
@@ -130,7 +137,7 @@ impl Document {
         index: usize,
         previous: Option<&Document>,
         ctx: &mut Context<'_>,
-    ) -> Result<Document> {
+    ) -> ReadResult<Document> {
         let revision = &self.revisions[index];
         let source = Source {
             object: None,
@@ -160,9 +167,9 @@ impl Document {
         for (&number, &entry) in revision.entries.iter() {
             ctx.step(0, source)?;
             if matches!(entry.location, crate::Location::Offset(at) if at >= boundary.eol) {
-                return Err(
-                    source.error(Error::syntax("historical xref points outside its revision"))
-                );
+                return Err((source
+                    .error(Error::syntax("historical xref points outside its revision")))
+                .into());
             }
             table.entries.insert(number, entry);
         }
@@ -181,10 +188,11 @@ impl Document {
         }
         table.revisions = self.revisions[index..].to_vec();
         if table.trailer.get(b"Encrypt").is_some_and(|v| !v.is_null()) {
-            return Err(source.error(Error::unsupported(
+            return Err((source.error(Error::unsupported(
                 HISTORICAL_ENCRYPTION,
                 "encrypted historical revision is unsupported",
-            )));
+            )))
+            .into());
         }
         DocumentBuilder::revision(bytes, self, table)?.build(&[])
     }

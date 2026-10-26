@@ -4,6 +4,7 @@
 //! Stored bytes may be encrypted; encoded bytes retain codec/PDF interpretation
 //! dependencies. Normalized image/page rendering belongs to the interpreter.
 
+use crate::source::ReadResult;
 use crate::view::Context;
 use crate::{Document, ImageCodec, ImageStream, IndirectObject, StreamData};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
@@ -68,7 +69,7 @@ impl<'a> ImageAsset<'a> {
     /// # Errors
     /// Stream bounds, authorization, filter and decoded-byte budgets. Stored mode
     /// preserves ciphertext and does not imply successful authentication.
-    pub fn transfer(&self, mode: ImageTransferMode) -> Result<ImageTransfer> {
+    pub fn transfer(&self, mode: ImageTransferMode) -> ReadResult<ImageTransfer> {
         let (data, codec) = match mode {
             ImageTransferMode::Stored => (self.document.raw_stream_data(self.object)?.into(), None),
             ImageTransferMode::Encoded => {
@@ -86,7 +87,7 @@ impl Document {
     ///
     /// # Errors
     /// Missing identity, non-image/non-stream source, malformed dimensions or budgets.
-    pub fn image_asset(&self, id: ObjectId) -> Result<ImageAsset<'_>> {
+    pub fn image_asset(&self, id: ObjectId) -> ReadResult<ImageAsset<'_>> {
         asset(&mut Context::new(self), id, AssetKind::Image)
     }
 
@@ -96,7 +97,7 @@ impl Document {
     ///
     /// # Errors
     /// Invalid owner/stream identity, cycles, dimensions and view budgets.
-    pub fn thumbnail(&self, owner: ObjectId) -> Result<Option<ImageAsset<'_>>> {
+    pub fn thumbnail(&self, owner: ObjectId) -> ReadResult<Option<ImageAsset<'_>>> {
         let mut context = Context::new(self);
         let source = context.source(owner)?;
         let dictionary = self
@@ -107,7 +108,7 @@ impl Document {
             return Ok(None);
         };
         if value.as_reference().is_none() {
-            return Err(source.error(Error::syntax("Thumb must reference a stream")));
+            return Err((source.error(Error::syntax("Thumb must reference a stream"))).into());
         }
         let (_, location) = context.resolve(value, source)?;
         let id = location
@@ -123,7 +124,7 @@ impl Document {
     ///
     /// # Errors
     /// Page/resource type and reference errors, cycles and view budgets.
-    pub fn page_image_resources(&self, page: usize) -> Result<Vec<ImageResource<'_>>> {
+    pub fn page_image_resources(&self, page: usize) -> ReadResult<Vec<ImageResource<'_>>> {
         let page = self.page(page)?;
         let mut context = Context::new(self);
         let source = context.source(page.id())?;
@@ -177,7 +178,11 @@ enum AssetKind {
     Thumbnail,
 }
 
-fn asset<'a>(context: &mut Context<'a>, id: ObjectId, kind: AssetKind) -> Result<ImageAsset<'a>> {
+fn asset<'a>(
+    context: &mut Context<'a>,
+    id: ObjectId,
+    kind: AssetKind,
+) -> ReadResult<ImageAsset<'a>> {
     let source = context.source(id)?;
     let object = context.document.object(id)?;
     let dictionary = object
@@ -190,7 +195,7 @@ fn asset<'a>(context: &mut Context<'a>, id: ObjectId, kind: AssetKind) -> Result
             .and_then(Value::as_name)
             .is_none_or(|name| name != b"Image")
     {
-        return Err(source.error(Error::syntax("image asset Subtype must be Image")));
+        return Err((source.error(Error::syntax("image asset Subtype must be Image"))).into());
     }
     let mut dimension = |key| -> Result<u32> {
         context

@@ -4,6 +4,7 @@
 //! object and position it read to every error and repair.
 
 use crate::Document;
+use crate::source::ReadResult;
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, INDEX_ENTRY_OVERHEAD, Meter, ObjectId, Position,
     Repair, Result, Value, text_string,
@@ -23,6 +24,13 @@ impl Source {
     /// Adds this source to `error` where it has none (innermost wins).
     pub(crate) const fn error(self, error: Error) -> Error {
         error.at(self.position).in_object_opt(self.object)
+    }
+
+    pub(crate) fn fault(
+        self,
+        fault: impl Into<crate::source::ReadFault>,
+    ) -> crate::source::ReadFault {
+        fault.into().map_error(|error| self.error(error))
     }
 
     pub(crate) const fn diagnostic(self, diagnostic: Diagnostic) -> Diagnostic {
@@ -71,7 +79,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub(crate) fn catalog(&mut self) -> Result<(&'a Dictionary, Source)> {
+    pub(crate) fn catalog(&mut self) -> ReadResult<(&'a Dictionary, Source)> {
         self.document.catalog()?;
         let root = self
             .document
@@ -81,7 +89,7 @@ impl<'a> Context<'a> {
         self.dictionary(root, Source::default())
     }
 
-    pub(crate) fn source(&mut self, id: ObjectId) -> Result<Source> {
+    pub(crate) fn source(&mut self, id: ObjectId) -> ReadResult<Source> {
         let object = self.document.object(id)?;
         Ok(Source {
             object: Some(id),
@@ -89,7 +97,7 @@ impl<'a> Context<'a> {
         })
     }
 
-    pub(crate) fn page_index(&mut self, id: ObjectId, source: Source) -> Result<usize> {
+    pub(crate) fn page_index(&mut self, id: ObjectId, source: Source) -> ReadResult<usize> {
         if self.pages.is_none() {
             let pages = self.document.pages()?;
             self.allocate::<(ObjectId, usize)>(pages.len(), source)?;
@@ -149,7 +157,7 @@ impl<'a> Context<'a> {
         &mut self,
         mut value: &'a Value,
         mut source: Source,
-    ) -> Result<(&'a Value, Source)> {
+    ) -> ReadResult<(&'a Value, Source)> {
         static NULL: Value = Value::Null;
         let mut references = std::collections::BTreeSet::new();
         for depth in 0..=self.document.limits().depth {
@@ -159,7 +167,9 @@ impl<'a> Context<'a> {
             self.step(depth, source)?;
             self.index_entry(source)?;
             if !references.insert(*id) {
-                return Err(source.error(Error::cycle("cyclic navigation reference chain")));
+                return Err(
+                    (source.error(Error::cycle("cyclic navigation reference chain"))).into(),
+                );
             }
             if !self.document.slots.contains_key(id) {
                 return Ok((&NULL, source));
@@ -167,21 +177,21 @@ impl<'a> Context<'a> {
             let object = self
                 .document
                 .object(*id)
-                .map_err(|error| source.error(error))?;
+                .map_err(|error| source.fault(error))?;
             source = Source {
                 object: Some(*id),
                 position: object.source().position(),
             };
             value = object.value();
         }
-        Err(source.error(Error::limit("navigation reference depth exceeded")))
+        Err((source.error(Error::limit("navigation reference depth exceeded"))).into())
     }
 
     pub(crate) fn dictionary(
         &mut self,
         value: &'a Value,
         source: Source,
-    ) -> Result<(&'a Dictionary, Source)> {
+    ) -> ReadResult<(&'a Dictionary, Source)> {
         let (value, source) = self.resolve(value, source)?;
         value
             .as_dictionary()
@@ -196,7 +206,7 @@ impl<'a> Context<'a> {
         dictionary: &'a Dictionary,
         key: &[u8],
         source: Source,
-    ) -> Result<Option<&'a Value>> {
+    ) -> ReadResult<Option<&'a Value>> {
         let Some(value) = dictionary.get(key) else {
             return Ok(None);
         };
@@ -209,7 +219,7 @@ impl<'a> Context<'a> {
         dictionary: &'a Dictionary,
         key: &[u8],
         source: Source,
-    ) -> Result<Option<&'a Value>> {
+    ) -> ReadResult<Option<&'a Value>> {
         dictionary
             .get(key)
             .map(|value| self.resolve(value, source).map(|(value, _)| value))
@@ -222,7 +232,7 @@ impl<'a> Context<'a> {
         dictionary: &'a Dictionary,
         expected: &[u8],
         source: Source,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if self
             .entry(dictionary, b"Type", source)?
             .is_some_and(|value| {
@@ -231,7 +241,7 @@ impl<'a> Context<'a> {
                     .is_none_or(|name| name.as_bytes() != expected)
             })
         {
-            return Err(source.error(Error::syntax("invalid navigation dictionary Type")));
+            return Err((source.error(Error::syntax("invalid navigation dictionary Type"))).into());
         }
         Ok(())
     }
@@ -241,7 +251,7 @@ impl<'a> Context<'a> {
         dictionary: &'a Dictionary,
         key: &[u8],
         source: Source,
-    ) -> Result<&'a Value> {
+    ) -> ReadResult<&'a Value> {
         self.entry(dictionary, key, source)?
             .ok_or_else(|| source.error(Error::syntax("required navigation entry is absent")))
     }

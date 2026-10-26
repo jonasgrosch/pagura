@@ -1,5 +1,6 @@
 //! Lazy object loading, dependency budgets and reference resolution (7.3.10).
 
+use crate::source::{ReadFault, ReadResult};
 use crate::{Document, IndirectObject, Location, object};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, ObjectId, Result, Value};
@@ -15,19 +16,19 @@ impl Document {
         &self,
         id: ObjectId,
         path: &mut Vec<ObjectId>,
-    ) -> Result<&IndirectObject> {
+    ) -> ReadResult<&IndirectObject> {
         self.bytes.check()?;
         if path.contains(&id) {
-            return Err(Error::cycle("object loading cycle").in_object(id));
+            return Err((Error::cycle("object loading cycle").in_object(id)).into());
         }
         if path.len() >= self.limits.depth {
-            return Err(Error::limit("object loading depth exceeded").in_object(id));
+            return Err((Error::limit("object loading depth exceeded").in_object(id)).into());
         }
         let slot = self.slots.get(&id).ok_or_else(|| {
             Error::missing_object("object is not in use or its generation differs").in_object(id)
         })?;
         if let Some(object) = slot.object.get() {
-            return object.as_ref().map_err(Clone::clone);
+            return object.as_ref().map_err(|error| error.clone().into());
         }
         let top_level = path.is_empty();
         path.push(id);
@@ -36,7 +37,7 @@ impl Document {
             Location::Compressed { stream, index } => {
                 object::stream::parse(self, id, stream, index, path)
             }
-            Location::Free => Err(Error::missing_object("object is free")),
+            Location::Free => Err((Error::missing_object("object is free")).into()),
         };
         path.pop();
         let loaded = parsed
@@ -48,8 +49,10 @@ impl Document {
             })
             .map_err(|error| error.in_object(id));
         let loaded = match loaded {
-            Err(error) if !top_level => return Err(error),
-            loaded => loaded,
+            Err(ReadFault::Unavailable(missing)) => return Err(ReadFault::Unavailable(missing)),
+            Err(ReadFault::Invalid(error)) if !top_level => return Err(error.into()),
+            Err(ReadFault::Invalid(error)) => Err(error),
+            Ok(loaded) => Ok(loaded),
         };
         slot.object
             .get_or_init(|| {
@@ -59,7 +62,7 @@ impl Document {
                 Ok(object)
             })
             .as_ref()
-            .map_err(Clone::clone)
+            .map_err(|error| error.clone().into())
     }
 
     /// Follows references from `value` to a direct value, also returning the
@@ -68,7 +71,7 @@ impl Document {
         &'a self,
         value: &'a Value,
         path: &mut Vec<ObjectId>,
-    ) -> Result<(&'a Value, Option<ObjectId>)> {
+    ) -> ReadResult<(&'a Value, Option<ObjectId>)> {
         static NULL: Value = Value::Null;
         self.bytes.check()?;
         let mut current = value;
@@ -83,24 +86,28 @@ impl Document {
             current = self.object_inner(*id, path)?.value();
             origin = Some(*id);
         }
-        Err(Error::limit("reference chain too long").in_object_opt(origin))
+        Err((Error::limit("reference chain too long").in_object_opt(origin)).into())
     }
 
     /// Resolves `value` and the elements and entries one level below it,
     /// for small parameter structures such as `/DecodeParms`.
-    pub(crate) fn resolve_deep(&self, value: &Value, path: &mut Vec<ObjectId>) -> Result<Value> {
+    pub(crate) fn resolve_deep(
+        &self,
+        value: &Value,
+        path: &mut Vec<ObjectId>,
+    ) -> ReadResult<Value> {
         Ok(match self.resolve_inner(value, path)?.0 {
             Value::Array(values) => Value::Array(
                 values
                     .iter()
                     .map(|value| self.resolve_deep_entry(value, path))
-                    .collect::<Result<_>>()?,
+                    .collect::<ReadResult<_>>()?,
             ),
             other => self.resolve_deep_entry(other, path)?,
         })
     }
 
-    fn resolve_deep_entry(&self, value: &Value, path: &mut Vec<ObjectId>) -> Result<Value> {
+    fn resolve_deep_entry(&self, value: &Value, path: &mut Vec<ObjectId>) -> ReadResult<Value> {
         Ok(match self.resolve_inner(value, path)?.0 {
             Value::Dictionary(dictionary) => Value::Dictionary(
                 dictionary
@@ -108,7 +115,7 @@ impl Document {
                     .map(|(key, value)| {
                         Ok((key.clone(), self.resolve_inner(value, path)?.0.clone()))
                     })
-                    .collect::<Result<_>>()?,
+                    .collect::<ReadResult<_>>()?,
             ),
             other => other.clone(),
         })

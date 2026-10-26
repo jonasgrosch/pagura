@@ -4,6 +4,7 @@ use super::{
     Signature, SignatureField, SignatureResults, Signatures, SignerTrust, SubFilter,
     ValidationTime, byte_range, revisions, transforms,
 };
+use crate::source::ReadResult;
 use crate::{
     Document,
     forms::{Field, FieldKind, FieldValue},
@@ -15,7 +16,7 @@ struct Reader<'a> {
     ctx: Context<'a>,
     boundaries: Option<Vec<Option<revisions::Boundary>>>,
 }
-pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> Result<Signatures<'a>> {
+pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> ReadResult<Signatures<'a>> {
     let form = doc.acro_form()?;
     let mut reader = Reader {
         ctx: ctx.for_document(doc),
@@ -52,9 +53,10 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> Result<Signature
                 .allocate::<u8>(field.qualified_name.len(), source)?;
             let parsed = (|| {
                 if widget_counts[index] > 1 {
-                    return Err(source.error(Error::syntax(
+                    return Err((source.error(Error::syntax(
                         "signature field cannot have multiple widgets",
-                    )));
+                    )))
+                    .into());
                 }
                 let lock = reader
                     .ctx
@@ -118,7 +120,7 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> Result<Signature
     Ok(result)
 }
 
-fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> Result<Source> {
+fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> ReadResult<Source> {
     for depth in 0..=ctx.document.limits().depth {
         let field = &fields[index];
         let source = Source {
@@ -138,11 +140,14 @@ fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> 
             break;
         }
     }
-    Err(Error::syntax("signature field lacks a source value"))
+    Err((Error::syntax("signature field lacks a source value")).into())
 }
 
 impl<'a> Reader<'a> {
-    fn catalog_signature(&mut self, key: &[u8]) -> Result<(Option<Signature<'a>>, Option<Error>)> {
+    fn catalog_signature(
+        &mut self,
+        key: &[u8],
+    ) -> ReadResult<(Option<Signature<'a>>, Option<Error>)> {
         let parsed = (|| {
             let (catalog, source) = self.ctx.catalog()?;
             let Some(perms) = self.ctx.present(catalog, b"Perms", source)? else {
@@ -164,12 +169,14 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn signature(&mut self, d: &'a Dictionary, source: Source) -> Result<Signature<'a>> {
+    fn signature(&mut self, d: &'a Dictionary, source: Source) -> ReadResult<Signature<'a>> {
         self.ctx.step(0, source)?;
         if transforms::name(d, b"Type", source)?
             .is_some_and(|n| !matches!(n.as_bytes(), b"Sig" | b"DocTimeStamp"))
         {
-            return Err(source.error(Error::syntax("signature Type must be Sig or DocTimeStamp")));
+            return Err((source
+                .error(Error::syntax("signature Type must be Sig or DocTimeStamp")))
+            .into());
         }
         let filter = transforms::name(d, b"Filter", source)?
             .ok_or_else(|| source.error(Error::syntax("signature requires Filter")))?;

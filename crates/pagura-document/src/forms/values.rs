@@ -3,6 +3,7 @@ use super::{
     ButtonKind, ChoiceOption, ChoiceStyle, FieldFlags, FieldKind, FieldValue,
     attributes::{self, Entry, Inherited, Key},
 };
+use crate::source::ReadResult;
 use crate::view::{Context, Source, identity};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 
@@ -12,7 +13,7 @@ pub(super) fn kind<'a>(
     effective: &Inherited<'a>,
     flags: FieldFlags,
     source: Source,
-) -> Result<FieldKind<'a>> {
+) -> ReadResult<FieldKind<'a>> {
     let ft = effective
         .get(Key::Ft)
         .ok_or_else(|| source.error(Error::syntax("terminal form field requires FT")))?;
@@ -72,7 +73,7 @@ pub(super) fn kind<'a>(
     })
 }
 
-fn strings<'a>(context: &mut Context<'a>, entry: Entry<'a>) -> Result<Vec<String>> {
+fn strings<'a>(context: &mut Context<'a>, entry: Entry<'a>) -> ReadResult<Vec<String>> {
     let values = attributes::array(context, entry.value, entry.source)?;
     context.allocate::<String>(values.len(), entry.source)?;
     values
@@ -84,7 +85,10 @@ fn strings<'a>(context: &mut Context<'a>, entry: Entry<'a>) -> Result<Vec<String
         .collect()
 }
 
-fn options<'a>(context: &mut Context<'a>, entry: Option<Entry<'a>>) -> Result<Vec<ChoiceOption>> {
+fn options<'a>(
+    context: &mut Context<'a>,
+    entry: Option<Entry<'a>>,
+) -> ReadResult<Vec<ChoiceOption>> {
     let Some(entry) = entry else {
         return Ok(Vec::new());
     };
@@ -97,9 +101,9 @@ fn options<'a>(context: &mut Context<'a>, entry: Option<Entry<'a>>) -> Result<Ve
             let (v, source) = context.resolve(v, entry.source)?;
             let (export, display) = if let Value::Array(pair) = v {
                 let [export, display] = pair.as_slice() else {
-                    return Err(
-                        source.error(Error::syntax("choice option pair requires two strings"))
-                    );
+                    return Err((source
+                        .error(Error::syntax("choice option pair requires two strings")))
+                    .into());
                 };
                 (
                     attributes::string(context, export, source)?,
@@ -120,7 +124,7 @@ pub(super) fn read<'a>(
     context: &mut Context<'a>,
     kind: &FieldKind<'a>,
     entry: Option<Entry<'a>>,
-) -> Result<Option<(FieldValue<'a>, Source)>> {
+) -> ReadResult<Option<(FieldValue<'a>, Source)>> {
     let Some(entry) = entry else {
         return Ok(None);
     };
@@ -149,7 +153,7 @@ pub(super) fn read<'a>(
     Ok(Some((value, source)))
 }
 
-fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> Result<String> {
+fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> ReadResult<String> {
     if let Some(bytes) = value.as_string() {
         return context.text(bytes, source);
     }
@@ -163,7 +167,7 @@ fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> Resul
         })?;
     let bytes = context.document.stream_data(object)?;
     if bytes.len() > context.document.limits().string_bytes {
-        return Err(source.error(Error::limit("form text stream exceeds string budget")));
+        return Err((source.error(Error::limit("form text stream exceeds string budget"))).into());
     }
     context.allocate::<u8>(bytes.len(), source)?;
     context.text(&bytes, source)
@@ -172,7 +176,7 @@ fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> Resul
 pub(super) fn field_type<'a>(
     context: &mut Context<'a>,
     effective: &Inherited<'a>,
-) -> Result<Option<&'a Name>> {
+) -> ReadResult<Option<&'a Name>> {
     effective
         .get(Key::Ft)
         .map(|e| {

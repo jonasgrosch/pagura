@@ -1,10 +1,11 @@
 //! Page content sequences (7.8.2), including reported direct-stream recovery.
 
+use crate::source::ReadResult;
 use crate::{Document, IndirectObject, Page};
 use pagura_core::syntax::PathComponent;
 use pagura_core::{Error, Name, Result, Value};
 
-pub(crate) fn read<'a>(document: &'a Document, page: &Page) -> Result<Vec<&'a IndirectObject>> {
+pub(crate) fn read<'a>(document: &'a Document, page: &Page) -> ReadResult<Vec<&'a IndirectObject>> {
     let Some(mut value) = page.dictionary().get(b"Contents") else {
         return Ok(Vec::new());
     };
@@ -35,9 +36,9 @@ pub(crate) fn read<'a>(document: &'a Document, page: &Page) -> Result<Vec<&'a In
             })
             .collect(),
         Value::Reference(_) => {
-            Err(Error::limit("Contents reference chain too long").in_object(owner.id()))
+            Err((Error::limit("Contents reference chain too long").in_object(owner.id())).into())
         }
-        _ => Err(Error::syntax("Contents must be a stream or array").in_object(page.id())),
+        _ => Err((Error::syntax("Contents must be a stream or array").in_object(page.id())).into()),
     }
 }
 
@@ -46,7 +47,7 @@ fn one<'a>(
     value: &Value,
     owner: &'a IndirectObject,
     path: &[PathComponent],
-) -> Result<&'a IndirectObject> {
+) -> ReadResult<&'a IndirectObject> {
     if let Some(mut id) = value.as_reference() {
         for _ in 0..=document.limits().depth {
             let object = document.object(id)?;
@@ -54,11 +55,11 @@ fn one<'a>(
                 return Ok(object);
             }
             let Some(next) = object.value().as_reference() else {
-                return Err(Error::syntax("Contents entry is not a stream").in_object(id));
+                return Err((Error::syntax("Contents entry is not a stream").in_object(id)).into());
             };
             id = next;
         }
-        return Err(Error::limit("Contents reference chain too long").in_object(id));
+        return Err((Error::limit("Contents reference chain too long").in_object(id)).into());
     }
     owner
         .direct_stream(path)

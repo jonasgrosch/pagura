@@ -1,4 +1,5 @@
 use super::{FileNames, FileSpecification, Relationship, stream};
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 
@@ -7,7 +8,7 @@ pub(super) fn entry<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<(&'a Value, Source)>> {
+) -> ReadResult<Option<(&'a Value, Source)>> {
     let Some(value) = dictionary.get(key) else {
         return Ok(None);
     };
@@ -20,7 +21,7 @@ pub(super) fn bytes<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<&'a [u8]>> {
+) -> ReadResult<Option<&'a [u8]>> {
     entry(context, dictionary, key, source)?
         .map(|(value, source)| {
             value
@@ -35,7 +36,7 @@ pub(super) fn text<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<String>> {
+) -> ReadResult<Option<String>> {
     entry(context, dictionary, key, source)?
         .map(|(value, source)| {
             let bytes = value
@@ -51,7 +52,7 @@ pub(super) fn name<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<&'a Name>> {
+) -> ReadResult<Option<&'a Name>> {
     entry(context, dictionary, key, source)?
         .map(|(value, source)| {
             value
@@ -65,7 +66,7 @@ pub(super) fn specification<'a>(
     context: &mut Context<'a>,
     original: &'a Value,
     source: Source,
-) -> Result<FileSpecification<'a>> {
+) -> ReadResult<FileSpecification<'a>> {
     let indirect = matches!(original, Value::Reference(_));
     let (value, source) = context.resolve(original, source)?;
     context.allocate::<FileSpecification<'_>>(1, source)?;
@@ -90,7 +91,9 @@ pub(super) fn specification<'a>(
     if let Some(id) = result.object
         && context.document.object(id)?.is_stream()
     {
-        return Err(source.error(Error::syntax("file specification must not be a stream")));
+        return Err(
+            (source.error(Error::syntax("file specification must not be a stream"))).into(),
+        );
     }
     let dictionary = value.as_dictionary().ok_or_else(|| {
         source.error(Error::syntax(
@@ -110,9 +113,10 @@ pub(super) fn specification<'a>(
         && result.names.mac.is_none()
         && result.names.unix.is_none()
     {
-        return Err(source.error(Error::syntax(
+        return Err((source.error(Error::syntax(
             "file specification requires F or a legacy path",
-        )));
+        )))
+        .into());
     }
     result.file_system = name(context, dictionary, b"FS", source)?;
     result.description = text(context, dictionary, b"Desc", source)?;
@@ -120,7 +124,7 @@ pub(super) fn specification<'a>(
         None => false,
         Some((Value::Boolean(flag), _)) => *flag,
         Some((_, source)) => {
-            return Err(source.error(Error::syntax("file volatility must be boolean")));
+            return Err((source.error(Error::syntax("file volatility must be boolean"))).into());
         }
     };
     result.identifiers = identifiers(context, dictionary, source)?;
@@ -134,14 +138,16 @@ pub(super) fn specification<'a>(
         || context.present(dictionary, b"EP", source)?.is_some())
         && name(context, dictionary, b"Type", source)?.is_none()
     {
-        return Err(source.error(Error::syntax(
+        return Err((source.error(Error::syntax(
             "embedded file specification requires Type Filespec",
-        )));
+        )))
+        .into());
     }
     if (embedded.is_some() || related.is_some()) && !indirect {
-        return Err(source.error(Error::syntax(
+        return Err((source.error(Error::syntax(
             "embedded file specification must be indirect",
-        )));
+        )))
+        .into());
     }
     if let Some(embedded) = embedded {
         let (embedded, location) = context.dictionary(embedded, source)?;
@@ -151,7 +157,7 @@ pub(super) fn specification<'a>(
             result.related = stream::related(context, embedded, related, location)?;
         }
     } else if related.is_some() {
-        return Err(source.error(Error::syntax("related files require EF")));
+        return Err((source.error(Error::syntax("related files require EF"))).into());
     }
     Ok(result)
 }
@@ -160,12 +166,12 @@ fn identifiers<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Option<[&'a [u8]; 2]>> {
+) -> ReadResult<Option<[&'a [u8]; 2]>> {
     let Some((value, source)) = entry(context, dictionary, b"ID", source)? else {
         return Ok(None);
     };
     let Some([first, second]) = value.as_array() else {
-        return Err(source.error(Error::syntax("file ID requires two strings")));
+        return Err((source.error(Error::syntax("file ID requires two strings"))).into());
     };
     let (first, first_source) = context.resolve(first, source)?;
     let (second, second_source) = context.resolve(second, source)?;

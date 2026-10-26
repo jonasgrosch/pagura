@@ -2,6 +2,7 @@
 
 use super::read;
 use crate::Document;
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
 
@@ -135,7 +136,7 @@ impl Document {
     ///
     /// # Errors
     /// Malformed declarations, cycles, text repairs and traversal/result budgets.
-    pub fn collection(&self) -> Result<Option<Collection<'_>>> {
+    pub fn collection(&self) -> ReadResult<Option<Collection<'_>>> {
         let mut context = Context::new(self);
         let (catalog, source) = context.catalog()?;
         let Some(value) = context.present(catalog, b"Collection", source)? else {
@@ -154,7 +155,7 @@ impl Document {
                 context.dictionary(navigator, source)?;
                 CollectionView::Navigator
             }
-            _ => return Err(source.error(Error::syntax("invalid collection View"))),
+            _ => return Err((source.error(Error::syntax("invalid collection View"))).into()),
         };
         // Table 153 explicitly treats a non-string D as absent.
         let initial_file = context
@@ -177,7 +178,7 @@ fn schema<'a>(
     context: &mut Context<'a>,
     owner: &'a Dictionary,
     source: Source,
-) -> Result<Vec<CollectionField<'a>>> {
+) -> ReadResult<Vec<CollectionField<'a>>> {
     let Some(value) = context.present(owner, b"Schema", source)? else {
         return Ok(Vec::new());
     };
@@ -202,7 +203,11 @@ fn schema<'a>(
             Some(b"CreationDate") => CollectionFieldKind::CreationDate,
             Some(b"Size") => CollectionFieldKind::Size,
             Some(b"CompressedSize") => CollectionFieldKind::CompressedSize,
-            _ => return Err(source.error(Error::syntax("invalid collection field Subtype"))),
+            _ => {
+                return Err(
+                    (source.error(Error::syntax("invalid collection field Subtype"))).into(),
+                );
+            }
         };
         let name = read::text(context, dictionary, b"N", source)?
             .ok_or_else(|| source.error(Error::syntax("collection field label is absent")))?;
@@ -232,7 +237,7 @@ fn boolean<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<bool>> {
+) -> ReadResult<Option<bool>> {
     context
         .entry(dictionary, key, source)?
         .map(|value| {
@@ -247,7 +252,7 @@ fn sort<'a>(
     context: &mut Context<'a>,
     owner: &'a Dictionary,
     source: Source,
-) -> Result<Vec<CollectionSort<'a>>> {
+) -> ReadResult<Vec<CollectionSort<'a>>> {
     let Some(value) = context.present(owner, b"Sort", source)? else {
         return Ok(Vec::new());
     };
@@ -257,13 +262,18 @@ fn sort<'a>(
     let keys = match keys {
         Value::Array(values) => values.as_slice(),
         Value::Name(_) => std::slice::from_ref(keys),
-        _ => return Err(source.error(Error::syntax("collection sort requires name or array"))),
+        _ => {
+            return Err(
+                (source.error(Error::syntax("collection sort requires name or array"))).into(),
+            );
+        }
     };
     let directions = context.entry(dictionary, b"A", source)?;
     if directions.is_some_and(|value| !matches!(value, Value::Boolean(_) | Value::Array(_))) {
-        return Err(source.error(Error::syntax(
+        return Err((source.error(Error::syntax(
             "collection sort direction must be boolean or array",
-        )));
+        )))
+        .into());
     }
     context.allocate::<CollectionSort<'_>>(keys.len(), source)?;
     let mut result = Vec::new();
@@ -284,9 +294,9 @@ fn sort<'a>(
             None | Some((Value::Null, _)) => true,
             Some((Value::Boolean(value), _)) => *value,
             _ => {
-                return Err(
-                    source.error(Error::syntax("collection sort direction must be boolean"))
-                );
+                return Err((source
+                    .error(Error::syntax("collection sort direction must be boolean")))
+                .into());
             }
         };
         result.push(CollectionSort { key, ascending });
@@ -298,7 +308,7 @@ pub(super) fn items<'a>(
     context: &mut Context<'a>,
     owner: &'a Dictionary,
     source: Source,
-) -> Result<Vec<CollectionItem<'a>>> {
+) -> ReadResult<Vec<CollectionItem<'a>>> {
     let Some(value) = context.present(owner, b"CI", source)? else {
         return Ok(Vec::new());
     };
@@ -327,9 +337,10 @@ pub(super) fn items<'a>(
             Some(Value::Integer(value)) => Some(CollectionValue::Integer(*value)),
             Some(Value::Real(value)) if value.is_finite() => Some(CollectionValue::Real(*value)),
             _ => {
-                return Err(source.error(Error::syntax(
+                return Err((source.error(Error::syntax(
                     "collection item requires text, date or finite number",
-                )));
+                )))
+                .into());
             }
         };
         result.push(CollectionItem { key, value, prefix });
@@ -341,7 +352,7 @@ pub(super) fn encrypted<'a>(
     context: &mut Context<'a>,
     owner: &'a Dictionary,
     source: Source,
-) -> Result<Option<EncryptedPayload<'a>>> {
+) -> ReadResult<Option<EncryptedPayload<'a>>> {
     let Some(value) = context.present(owner, b"EP", source)? else {
         return Ok(None);
     };

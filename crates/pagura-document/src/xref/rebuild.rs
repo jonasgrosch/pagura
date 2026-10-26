@@ -9,6 +9,7 @@
 use super::{Location, XrefEntry, XrefOrigin, XrefTable, entry_budget, structural};
 use crate::object::recovery::{self, StreamContext, TERMINATOR_SLACK, header};
 use crate::object::stream::headers;
+use crate::source::ReadResult;
 use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
@@ -348,7 +349,7 @@ pub(crate) fn object_streams(
     document: &Document,
     streams: Vec<ObjectId>,
     remaining: usize,
-) -> Result<StreamSlots> {
+) -> ReadResult<StreamSlots> {
     let mut plan = StreamSlots::default();
     let mut budget = Meter::new(remaining, "reconstruction object budget exceeded");
     let encrypt = document
@@ -389,10 +390,11 @@ pub(crate) fn object_streams(
         let physical = plan.physical_offset(document, id)?;
         for (number, index) in contents.identities() {
             if number == id.number || encrypt.is_some_and(|encrypt| encrypt.number == number) {
-                return Err(Error::syntax(
+                return Err((Error::syntax(
                     "object stream cannot contain itself or the encryption dictionary",
                 )
-                .in_object(id));
+                .in_object(id))
+                .into());
             }
             let old = plan.slot(document, number);
             if let Some(old) = old
@@ -423,7 +425,7 @@ pub(crate) fn object_streams(
 /// The Root of a reconstructed document: `None` keeps the trailer's when it
 /// names a usable catalog; otherwise the last physical catalog candidate,
 /// reported as a repair.
-pub(crate) fn root(document: &Document) -> Result<Option<ObjectId>> {
+pub(crate) fn root(document: &Document) -> ReadResult<Option<ObjectId>> {
     match document.catalog() {
         Ok(catalog) if crate::catalog::candidate(document, catalog)? => return Ok(None),
         Err(error) if !structural(&error) => return Err(error),

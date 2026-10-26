@@ -4,6 +4,7 @@ use super::{
     attributes::{self, Entry, Inherited, Key},
     names, values, widgets,
 };
+use crate::source::ReadResult;
 use crate::{
     Document, repairs,
     view::{Context, Source, ValueIdentity, identity},
@@ -26,7 +27,7 @@ struct Walk<'a> {
     names: BTreeMap<String, Inherited<'a>>,
 }
 
-pub(super) fn read(document: &Document) -> Result<Option<AcroForm<'_>>> {
+pub(super) fn read(document: &Document) -> ReadResult<Option<AcroForm<'_>>> {
     let mut context = Context::new(document);
     let (catalog, source) = context.catalog()?;
     let Some(value) = context.present(catalog, b"AcroForm", source)? else {
@@ -74,7 +75,7 @@ fn header<'a>(
     dictionary: &'a Dictionary,
     source: Source,
     inherited: &Inherited<'a>,
-) -> Result<AcroForm<'a>> {
+) -> ReadResult<AcroForm<'a>> {
     Ok(AcroForm {
         fields: Vec::new(),
         widgets: Vec::new(),
@@ -112,7 +113,7 @@ fn header<'a>(
 }
 
 impl<'a> Walk<'a> {
-    fn node(&mut self, pending: &Pending<'a>, stack: &mut Vec<Pending<'a>>) -> Result<()> {
+    fn node(&mut self, pending: &Pending<'a>, stack: &mut Vec<Pending<'a>>) -> ReadResult<()> {
         let Pending {
             value,
             source,
@@ -206,7 +207,7 @@ impl<'a> Walk<'a> {
         dictionary: &'a Dictionary,
         parent: Option<usize>,
         source: Source,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let expected = parent.map(|i| self.form.fields[i].dictionary);
         let actual = self
             .context
@@ -236,7 +237,7 @@ impl<'a> Walk<'a> {
         source: Source,
         parent: Option<usize>,
         effective: &Inherited<'a>,
-    ) -> Result<Field<'a>> {
+    ) -> ReadResult<Field<'a>> {
         self.context.allocate::<Field<'_>>(1, source)?;
         let partial_name = attributes::partial_name(&mut self.context, dictionary, source)?;
         if partial_name.as_ref().is_none_or(|s| s.contains('.')) {
@@ -314,7 +315,11 @@ impl<'a> Walk<'a> {
         })
     }
 
-    fn has_field_children(&mut self, dictionary: &'a Dictionary, source: Source) -> Result<bool> {
+    fn has_field_children(
+        &mut self,
+        dictionary: &'a Dictionary,
+        source: Source,
+    ) -> ReadResult<bool> {
         let Some(kids) = self.context.present(dictionary, b"Kids", source)? else {
             return Ok(false);
         };
@@ -328,7 +333,12 @@ impl<'a> Walk<'a> {
         Ok(false)
     }
 
-    fn duplicate(&mut self, name: &str, effective: &Inherited<'a>, source: Source) -> Result<()> {
+    fn duplicate(
+        &mut self,
+        name: &str,
+        effective: &Inherited<'a>,
+        source: Source,
+    ) -> ReadResult<()> {
         if let Some(previous) = self.names.get(name).copied() {
             let field_type = values::field_type(&mut self.context, effective)?;
             let same_type = field_type == values::field_type(&mut self.context, &previous)?;

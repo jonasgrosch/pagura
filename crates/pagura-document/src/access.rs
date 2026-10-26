@@ -5,6 +5,7 @@
 //! of the wrong type is a syntax error in the object that held it.
 
 use crate::Document;
+use crate::source::ReadResult;
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
 
 impl Document {
@@ -13,7 +14,7 @@ impl Document {
     /// # Errors
     ///
     /// As [`Document::resolve`], plus a syntax error for another type.
-    pub fn integer(&self, value: &Value) -> Result<i64> {
+    pub fn integer(&self, value: &Value) -> ReadResult<i64> {
         let (value, origin) = self.located(value)?;
         value
             .as_integer()
@@ -26,7 +27,7 @@ impl Document {
     ///
     /// As [`Document::resolve`], plus a syntax error for another type or a
     /// non-finite real.
-    pub fn number(&self, value: &Value) -> Result<f64> {
+    pub fn number(&self, value: &Value) -> ReadResult<f64> {
         let (value, origin) = self.located(value)?;
         number(value, origin)
     }
@@ -36,7 +37,7 @@ impl Document {
     /// # Errors
     ///
     /// As [`Document::resolve`], plus a syntax error for another type.
-    pub fn name<'a>(&'a self, value: &'a Value) -> Result<&'a Name> {
+    pub fn name<'a>(&'a self, value: &'a Value) -> ReadResult<&'a Name> {
         let (value, origin) = self.located(value)?;
         value
             .as_name()
@@ -50,7 +51,7 @@ impl Document {
     ///
     /// As [`Document::number`], plus a syntax error for a value that is not
     /// an array of `N` elements.
-    pub fn numbers<const N: usize>(&self, value: &Value) -> Result<[f64; N]> {
+    pub fn numbers<const N: usize>(&self, value: &Value) -> ReadResult<[f64; N]> {
         let (value, origin) = self.located(value)?;
         let elements = value
             .as_array()
@@ -78,7 +79,7 @@ impl Document {
         &'a self,
         dictionary: &'a Dictionary,
         key: &[u8],
-    ) -> Result<Option<&'a Value>> {
+    ) -> ReadResult<Option<&'a Value>> {
         self.bytes.check()?;
         let Some(value) = dictionary.get(key) else {
             return Ok(None);
@@ -87,7 +88,7 @@ impl Document {
         Ok((!value.is_null()).then_some(value))
     }
 
-    fn located<'a>(&'a self, value: &'a Value) -> Result<(&'a Value, Option<ObjectId>)> {
+    fn located<'a>(&'a self, value: &'a Value) -> ReadResult<(&'a Value, Option<ObjectId>)> {
         self.resolve_inner(value, &mut Vec::new())
     }
 }

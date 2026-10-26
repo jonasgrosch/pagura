@@ -3,10 +3,11 @@
 use super::RevisionCoverage;
 pub(super) use crate::revision_bounds::Boundary;
 use crate::revision_bounds::boundary;
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{Position, Result};
 
-pub(super) fn read(ctx: &mut Context<'_>) -> Result<Vec<Option<Boundary>>> {
+pub(super) fn read(ctx: &mut Context<'_>) -> ReadResult<Vec<Option<Boundary>>> {
     let revisions = ctx.document.revisions();
     ctx.allocate::<Option<Boundary>>(revisions.len(), Source::default())?;
     revisions
@@ -32,7 +33,7 @@ pub(super) fn read(ctx: &mut Context<'_>) -> Result<Vec<Option<Boundary>>> {
                     Ok(Some(boundary))
                 }
                 Err(error) if error.kind == pagura_core::ErrorKind::Limit => {
-                    Err(source.error(error))
+                    Err((source.fault(error)).into())
                 }
                 Err(_) => Ok(None),
             }

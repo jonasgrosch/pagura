@@ -7,6 +7,7 @@
 //! Traversal and owned Info strings use the document's view budgets. Decoding a
 //! metadata stream uses the ordinary stream/decryption limits and performs no IO.
 
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use crate::{Document, IndirectObject, StreamData};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
@@ -80,7 +81,7 @@ impl<'a> MetadataStream<'a> {
     /// # Errors
     /// As [`Document::stream_data`], including stream budgets, unsupported
     /// filters, external-data refusal and required authorization.
-    pub fn data(&self) -> Result<StreamData> {
+    pub fn data(&self) -> ReadResult<StreamData> {
         self.document.stream_data(self.object)
     }
 }
@@ -94,7 +95,7 @@ impl Document {
     /// # Errors
     /// Positioned type, cycle, text-decoding or view-budget errors. Text repairs
     /// follow the document's recovery mode and are reported in its diagnostics.
-    pub fn information(&self) -> Result<Option<DocumentInfo<'_>>> {
+    pub fn information(&self) -> ReadResult<Option<DocumentInfo<'_>>> {
         let mut context = Context::new(self);
         let Some(value) = context.present(self.trailer(), b"Info", Source::default())? else {
             return Ok(None);
@@ -107,7 +108,7 @@ impl Document {
                 Some(b"True") => Trapped::True,
                 Some(b"False") => Trapped::False,
                 Some(b"Unknown") => Trapped::Unknown,
-                _ => return Err(source.error(Error::syntax("invalid Info Trapped name"))),
+                _ => return Err((source.error(Error::syntax("invalid Info Trapped name"))).into()),
             },
         };
         Ok(Some(DocumentInfo {
@@ -130,7 +131,7 @@ impl Document {
     ///
     /// # Errors
     /// Positioned catalog, type, cycle, text-decoding or view-budget errors.
-    pub fn language(&self) -> Result<Option<String>> {
+    pub fn language(&self) -> ReadResult<Option<String>> {
         let mut context = Context::new(self);
         let (catalog, source) = context.catalog()?;
         text(&mut context, catalog, b"Lang", source)
@@ -142,7 +143,7 @@ impl Document {
     ///
     /// # Errors
     /// Positioned catalog, type, reference/cycle or view-budget errors.
-    pub fn metadata(&self) -> Result<Option<MetadataStream<'_>>> {
+    pub fn metadata(&self) -> ReadResult<Option<MetadataStream<'_>>> {
         let mut context = Context::new(self);
         let (catalog, source) = context.catalog()?;
         metadata(&mut context, catalog, source)
@@ -157,7 +158,7 @@ impl Document {
     pub fn object_metadata<'a>(
         &'a self,
         dictionary: &'a Dictionary,
-    ) -> Result<Option<MetadataStream<'a>>> {
+    ) -> ReadResult<Option<MetadataStream<'a>>> {
         metadata(&mut Context::new(self), dictionary, Source::default())
     }
 }
@@ -167,7 +168,7 @@ fn text<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
-) -> Result<Option<String>> {
+) -> ReadResult<Option<String>> {
     let Some(value) = dictionary.get(key) else {
         return Ok(None);
     };
@@ -185,7 +186,7 @@ fn metadata<'a>(
     context: &mut Context<'a>,
     owner: &'a Dictionary,
     source: Source,
-) -> Result<Option<MetadataStream<'a>>> {
+) -> ReadResult<Option<MetadataStream<'a>>> {
     let Some(value) = owner.get(b"Metadata") else {
         return Ok(None);
     };
@@ -214,7 +215,9 @@ fn metadata<'a>(
                     .is_some_and(|name| name.as_bytes() == expected)
             })
         {
-            return Err(location.error(Error::syntax("invalid metadata stream Type or Subtype")));
+            return Err(
+                (location.error(Error::syntax("invalid metadata stream Type or Subtype"))).into(),
+            );
         }
     }
     context.allocate::<MetadataStream<'_>>(1, location)?;
@@ -242,7 +245,7 @@ impl Document {
     ///
     /// # Errors
     /// As [`Self::metadata`], including absent page/object identities and wrong owner types.
-    pub fn metadata_for(&self, owner: MetadataOwner) -> Result<Option<MetadataStream<'_>>> {
+    pub fn metadata_for(&self, owner: MetadataOwner) -> ReadResult<Option<MetadataStream<'_>>> {
         match owner {
             MetadataOwner::Document => self.metadata(),
             MetadataOwner::Page(index) => self.object_metadata(self.page(index)?.dictionary()),

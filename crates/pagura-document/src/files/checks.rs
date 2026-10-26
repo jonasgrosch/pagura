@@ -1,6 +1,7 @@
 //! Explicit checks of file-parameter declarations against decoded bytes (Table 45).
 
 use super::EmbeddedFile;
+use crate::source::ReadResult;
 use pagura_core::{Result, convert::usize_to_u64};
 use pagura_crypto::{Digest, Md5};
 

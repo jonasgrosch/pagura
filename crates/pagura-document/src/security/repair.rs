@@ -3,6 +3,7 @@
 //! The source object and core parser determine token boundaries. Only fixed-size
 //! binary security fields can bypass EOL normalization, after a length mismatch.
 
+use crate::source::ReadResult;
 use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
@@ -43,7 +44,7 @@ pub(crate) fn hashes(
     id: Option<ObjectId>,
     params: &mut SecurityParams,
     diagnostics: &mut Diagnostics,
-) -> Result<()> {
+) -> ReadResult<()> {
     let expected = hash_length(params);
     if params.owner_hash.len() != expected || params.user_hash.len() != expected {
         literal_hashes(document, id, params, diagnostics)?;

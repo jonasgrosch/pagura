@@ -1,5 +1,6 @@
 //! Page labels (12.4.2, Table 161), including repeated-letter numbering.
 use crate::Document;
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{Error, Name, Result};
 
@@ -50,7 +51,7 @@ pub struct PageLabelRange {
     pub start: u64,
 }
 
-pub(super) fn ranges(document: &Document) -> Result<Vec<PageLabelRange>> {
+pub(super) fn ranges(document: &Document) -> ReadResult<Vec<PageLabelRange>> {
     let mut context = Context::new(document);
     let (catalog, tree_source) = context.catalog()?;
     let Some(tree) = context.present(catalog, b"PageLabels", tree_source)? else {
@@ -78,7 +79,7 @@ pub(super) fn ranges(document: &Document) -> Result<Vec<PageLabelRange>> {
                     .as_name()
                     .ok_or(Error::syntax("unknown page label style"))
                     .and_then(LabelStyle::try_from)
-                    .map_err(|error| source.error(error))
+                    .map_err(|error| source.fault(error))
             })
             .transpose()?;
         let prefix = context
@@ -172,7 +173,7 @@ impl PageLabels {
     }
 }
 
-pub(super) fn read(document: &Document) -> Result<PageLabels> {
+pub(super) fn read(document: &Document) -> ReadResult<PageLabels> {
     Ok(PageLabels {
         ranges: ranges(document)?,
         pages: document.page_count()?,

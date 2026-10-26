@@ -1,4 +1,5 @@
 //! One traversal for name and number trees (7.9.6–7.9.7, Tables 36–37).
+use crate::source::ReadResult;
 use crate::view::{Context, Source, identity};
 use crate::{Document, repairs};
 use pagura_core::{Error, ErrorKind, Result, Value};
@@ -81,7 +82,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     /// # Errors
     /// Returns positioned structural/reference/budget errors; safe tree repairs
     /// reject strictly with the corresponding `tree.*` repair tag.
-    pub fn get(&self, key: &K::Query) -> Result<Option<&'a Value>> {
+    pub fn get(&self, key: &K::Query) -> ReadResult<Option<&'a Value>> {
         self.get_with(&mut Context::new(self.document), key)
             .map(|v| v.map(|(v, _)| v))
     }
@@ -92,7 +93,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     ///
     /// # Errors
     /// As [`Self::get`]. No partial collection is returned on a budget failure.
-    pub fn entries(&self) -> Result<TreeEntries<'a, K>> {
+    pub fn entries(&self) -> ReadResult<TreeEntries<'a, K>> {
         Ok(TreeEntries {
             inner: self
                 .entries_with(&mut Context::new(self.document))?
@@ -105,7 +106,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         value: &'a Value,
         source: Source,
         root: bool,
-    ) -> Result<Option<(K, K)>> {
+    ) -> ReadResult<Option<(K, K)>> {
         let (dictionary, source) = context.dictionary(value, source)?;
         let (limits, present) = match context.entry(dictionary, b"Limits", source) {
             Ok(value) => (value, value.is_some()),
@@ -130,7 +131,11 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         Ok(bounds)
     }
 
-    fn bound_key(context: &mut Context<'a>, value: &'a Value, source: Source) -> Result<Option<K>> {
+    fn bound_key(
+        context: &mut Context<'a>,
+        value: &'a Value,
+        source: Source,
+    ) -> ReadResult<Option<K>> {
         match context.resolve(value, source) {
             Ok((value, _)) => Ok(K::from_value(value)),
             Err(error) if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) => {
@@ -145,7 +150,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         value: &'a Value,
         source: Source,
         root: bool,
-    ) -> Result<Option<(&'a Value, Source)>> {
+    ) -> ReadResult<Option<(&'a Value, Source)>> {
         match context.resolve(value, source) {
             Ok((value, _)) if !root && value.is_null() => {
                 context.repair(
@@ -175,7 +180,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         &self,
         context: &mut Context<'a>,
         key: &K::Query,
-    ) -> Result<Option<(&'a Value, Source)>> {
+    ) -> ReadResult<Option<(&'a Value, Source)>> {
         let mut stack = vec![(self.root, self.source, 0)];
         let mut visited = BTreeSet::new();
         while let Some((value, source, depth)) = stack.pop() {
@@ -261,9 +266,10 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                         .map(|e| (e.value, e.source)));
                 }
                 _ => {
-                    return Err(source.error(Error::syntax(
+                    return Err((source.error(Error::syntax(
                         "tree node requires exactly one of Kids and entries",
-                    )));
+                    )))
+                    .into());
                 }
             }
         }
@@ -278,12 +284,12 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         context: &mut Context<'a>,
         value: &'a Value,
         source: Source,
-    ) -> Result<Vec<Entry<'a, K>>> {
+    ) -> ReadResult<Vec<Entry<'a, K>>> {
         let values = value
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("tree entries must be an array")))?;
         if values.len() % 2 != 0 {
-            return Err(source.error(Error::syntax("tree has an unmatched key")));
+            return Err((source.error(Error::syntax("tree has an unmatched key"))).into());
         }
         context.allocate::<Entry<'a, K>>(values.len() / 2, source)?;
         let entries: Vec<_> = values
@@ -300,7 +306,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                     })
                     .ok_or_else(|| source.error(Error::syntax("invalid tree key type")))
             })
-            .collect::<Result<_>>()?;
+            .collect::<ReadResult<_>>()?;
         if entries.windows(2).any(|v| v[0].key >= v[1].key) {
             context.repair(
                 repairs::TREE_ORDER,
@@ -311,7 +317,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         Ok(entries)
     }
 
-    pub(crate) fn entries_with(&self, context: &mut Context<'a>) -> Result<Vec<Entry<'a, K>>> {
+    pub(crate) fn entries_with(&self, context: &mut Context<'a>) -> ReadResult<Vec<Entry<'a, K>>> {
         let mut stack = vec![Frame::Enter(self.root, self.source, 0)];
         let mut ranges: Vec<Option<(K, K)>> = Vec::new();
         let mut visited = BTreeSet::new();
@@ -368,7 +374,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 )?;
             }
             if pairs.is_none() && kids.is_none() {
-                return Err(source.error(Error::syntax("tree node requires Kids or entries")));
+                return Err(
+                    (source.error(Error::syntax("tree node requires Kids or entries"))).into(),
+                );
             }
             if let Some(pairs) = pairs {
                 let pairs = Self::pairs(context, pairs, source)?;

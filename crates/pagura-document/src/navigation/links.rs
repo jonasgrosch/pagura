@@ -1,6 +1,7 @@
 //! Link annotations, their hit geometry and inert targets (12.5.6.5).
 
 use super::destinations::{self, Target};
+use crate::source::ReadResult;
 use crate::view::{Context, Source, number};
 use crate::{Document, Page, repairs};
 use pagura_core::{Dictionary, Error, ErrorKind, Name, Rect, Result, Value};
@@ -103,7 +104,11 @@ pub struct Link<'a> {
     pub dictionary: &'a Dictionary,
 }
 
-fn numbers<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> Result<Vec<f64>> {
+fn numbers<'a>(
+    context: &mut Context<'a>,
+    value: &'a Value,
+    source: Source,
+) -> ReadResult<Vec<f64>> {
     let (value, source) = context.resolve(value, source)?;
     let values = value
         .as_array()
@@ -118,20 +123,20 @@ fn numbers<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> R
         .collect()
 }
 
-fn nonnegative(value: f64, source: Source) -> Result<f64> {
+fn nonnegative(value: f64, source: Source) -> ReadResult<f64> {
     if value >= 0.0 {
         Ok(value)
     } else {
-        Err(source.error(Error::syntax("negative annotation border dimension")))
+        Err((source.error(Error::syntax("negative annotation border dimension"))).into())
     }
 }
 
-fn dash<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> Result<Vec<f64>> {
+fn dash<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> ReadResult<Vec<f64>> {
     let dash = numbers(context, value, source)?;
     if dash.iter().any(|&length| length < 0.0)
         || (!dash.is_empty() && dash.iter().all(|&length| length == 0.0))
     {
-        return Err(source.error(Error::syntax("invalid annotation dash pattern")));
+        return Err((source.error(Error::syntax("invalid annotation dash pattern"))).into());
     }
     Ok(dash)
 }
@@ -140,7 +145,7 @@ fn border<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<LinkBorder> {
+) -> ReadResult<LinkBorder> {
     let mut border = LinkBorder {
         horizontal_radius: 0.0,
         vertical_radius: 0.0,
@@ -158,7 +163,7 @@ fn border<'a>(
                 .as_name()
                 .ok_or(Error::syntax("unknown annotation border style"))
                 .and_then(BorderStyle::try_from)
-                .map_err(|error| source.error(error))?;
+                .map_err(|error| source.fault(error))?;
         }
         border.dash = if let Some(value) = style.get(b"D") {
             dash(context, value, source)?
@@ -173,7 +178,9 @@ fn border<'a>(
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("Border must be an array")))?;
         let ([horizontal, vertical, width] | [horizontal, vertical, width, _]) = values else {
-            return Err(source.error(Error::syntax("Border requires three or four entries")));
+            return Err(
+                (source.error(Error::syntax("Border requires three or four entries"))).into(),
+            );
         };
         for (target, value) in [
             (&mut border.horizontal_radius, horizontal),
@@ -196,7 +203,7 @@ fn quads<'a>(
     value: &'a Value,
     rectangle: Rect,
     source: Source,
-) -> Result<Vec<[f64; 8]>> {
+) -> ReadResult<Vec<[f64; 8]>> {
     let values = match numbers(context, value, source) {
         Ok(values) if values.len() % 8 == 0 => values,
         Ok(_) => {
@@ -218,7 +225,7 @@ fn quads<'a>(
     Ok(values.as_chunks::<8>().0.to_vec())
 }
 
-fn ignore_quads(context: &mut Context<'_>, source: Source) -> Result<()> {
+fn ignore_quads(context: &mut Context<'_>, source: Source) -> ReadResult<()> {
     context.repair(
         repairs::LINK_QUADS,
         "malformed link QuadPoints ignored; Rect used (12.5.6.5, Table 176)",
@@ -226,7 +233,7 @@ fn ignore_quads(context: &mut Context<'_>, source: Source) -> Result<()> {
     )
 }
 
-pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> Result<Vec<Link<'a>>> {
+pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> ReadResult<Vec<Link<'a>>> {
     document.check_page(page)?;
     let mut context = Context::new(document);
     let source = context.source(page.id())?;
@@ -256,7 +263,7 @@ pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> Result<Vec<Lin
             source,
         )?;
         let &[x0, y0, x1, y1] = values.as_slice() else {
-            return Err(source.error(Error::syntax("link Rect requires four numbers")));
+            return Err((source.error(Error::syntax("link Rect requires four numbers"))).into());
         };
         let rectangle = Rect::from_corners(x0, y0, x1, y1)
             .ok_or_else(|| source.error(Error::syntax("invalid link rectangle")))?;
@@ -270,7 +277,7 @@ pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> Result<Vec<Lin
                 .as_name()
                 .ok_or(Error::syntax("invalid link highlight mode"))
                 .and_then(HighlightMode::try_from)
-                .map_err(|error| source.error(error))?,
+                .map_err(|error| source.fault(error))?,
             None => HighlightMode::Invert,
         };
         context.allocate::<Link<'_>>(1, source)?;

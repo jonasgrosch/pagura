@@ -1,5 +1,6 @@
 //! Lazy object-stream decoding and indexed access, clause 7.5.7.
 
+use crate::source::ReadResult;
 use crate::xref::integer_offset;
 use crate::{Document, IndirectObject, Location, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
@@ -42,7 +43,7 @@ pub(crate) fn parse(
     stream: u32,
     index: u32,
     path: &mut Vec<ObjectId>,
-) -> Result<(IndirectObject, Vec<Diagnostic>)> {
+) -> ReadResult<(IndirectObject, Vec<Diagnostic>)> {
     let stream_id = ObjectId::new(stream, 0);
     let object = physical(document, stream_id, path)?;
     let dictionary = object
@@ -56,7 +57,8 @@ pub(crate) fn parse(
         .is_some_and(|value| !matches!(value, Value::Reference(_)))
     {
         return Err(
-            Error::syntax("ObjStm Extends must be an indirect reference").in_object(stream_id),
+            (Error::syntax("ObjStm Extends must be an indirect reference").in_object(stream_id))
+                .into(),
         );
     }
     let cache = document
@@ -119,9 +121,10 @@ pub(crate) fn parse(
     let value = parser.parse().map_err(|error| error.in_object(id))?;
     if !parser.at_end() {
         return Err(
-            Error::syntax("compressed object has trailing tokens or a nested stream")
+            (Error::syntax("compressed object has trailing tokens or a nested stream")
                 .at(parser.position())
-                .in_object(id),
+                .in_object(id))
+            .into(),
         );
     }
     let diagnostics = parser
@@ -148,7 +151,7 @@ fn physical<'a>(
     document: &'a Document,
     stream_id: ObjectId,
     path: &mut Vec<ObjectId>,
-) -> Result<&'a IndirectObject> {
+) -> ReadResult<&'a IndirectObject> {
     let slot = document
         .slots
         .get(&stream_id)
@@ -159,13 +162,16 @@ fn physical<'a>(
             index: 0,
         };
         if slot.location == self_entry {
-            return Err(Error::syntax(
+            return Err((Error::syntax(
                 "object-stream self entry requires its physical stream definition",
             )
             .in_object(stream_id)
-            .with_repair(repairs::OBJECT_STREAM_SELF_ENTRY));
+            .with_repair(repairs::OBJECT_STREAM_SELF_ENTRY))
+            .into());
         }
-        return Err(Error::syntax("object streams cannot be compressed").in_object(stream_id));
+        return Err(
+            (Error::syntax("object streams cannot be compressed").in_object(stream_id)).into(),
+        );
     }
     document.object_inner(stream_id, path)
 }

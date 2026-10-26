@@ -1,5 +1,6 @@
 //! Catalog identification and reported Type inference (7.7.2).
 
+use crate::source::ReadResult;
 use crate::{Document, repairs};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Result, Value};
 
@@ -26,7 +27,7 @@ pub(crate) fn other_type(name: &[u8], expected: &[u8]) -> bool {
 }
 
 /// Infer a missing/unknown Type through Pages; conflicting known types fail.
-pub(crate) fn candidate(document: &Document, dictionary: &Dictionary) -> Result<bool> {
+pub(crate) fn candidate(document: &Document, dictionary: &Dictionary) -> ReadResult<bool> {
     if dictionary.is_name(b"Type", b"Catalog") {
         return Ok(true);
     }
@@ -46,13 +47,13 @@ pub(crate) fn candidate(document: &Document, dictionary: &Dictionary) -> Result<
         .map_or(Ok(false), |pages| crate::pages::branch(document, pages))
 }
 
-pub(crate) fn validate(document: &Document) -> Result<()> {
+pub(crate) fn validate(document: &Document) -> ReadResult<()> {
     let dictionary = document.catalog()?;
     if dictionary.is_name(b"Type", b"Catalog") {
         return Ok(());
     }
     if !candidate(document, dictionary)? {
-        return Err(Error::syntax("document Root is not a Catalog"));
+        return Err((Error::syntax("document Root is not a Catalog")).into());
     }
     let mut diagnostic = if dictionary.contains_key(b"Type") {
         Diagnostic::new(

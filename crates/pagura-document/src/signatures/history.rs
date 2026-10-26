@@ -1,5 +1,6 @@
 //! Discover signatures hidden by later field removal or replacement (7.5.6).
 use super::{HistoricalSignature, RevisionCoverage, Signature, Signatures, read};
+use crate::source::ReadResult;
 use crate::{
     Document, ObjectSource,
     view::{Context, Source},
@@ -13,7 +14,7 @@ pub(super) struct Facts {
     pub timestamps: BTreeSet<ObjectId>,
 }
 impl Facts {
-    fn read(signatures: &Signatures<'_>, ctx: &mut Context<'_>) -> Result<Self> {
+    fn read(signatures: &Signatures<'_>, ctx: &mut Context<'_>) -> ReadResult<Self> {
         let mut facts = Self::default();
         for signature in signatures
             .fields
@@ -45,7 +46,7 @@ struct Identity {
     offset: usize,
     contents: Option<usize>,
 }
-fn key(doc: &Document, signature: &Signature<'_>) -> Result<Option<Identity>> {
+fn key(doc: &Document, signature: &Signature<'_>) -> ReadResult<Option<Identity>> {
     let Some(id) = signature.object else {
         return Ok(None);
     };
@@ -68,7 +69,7 @@ pub(super) fn discover<'a>(
     doc: &'a Document,
     ctx: &mut Context<'_>,
     result: &mut Signatures<'a>,
-) -> Result<Vec<Option<Facts>>> {
+) -> ReadResult<Vec<Option<Facts>>> {
     ctx.allocate::<Option<Facts>>(doc.revisions().len(), Source::default())?;
     let mut facts = vec![Some(Facts::read(result, ctx)?)];
     result.history_complete = !doc.revisions().is_empty()

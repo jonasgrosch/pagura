@@ -1,5 +1,6 @@
 //! Widget source data and appearance-state names (12.5.6.19, 12.7.5.2).
 use super::{Widget, attributes};
+use crate::source::ReadResult;
 use crate::{
     navigation::actions,
     repairs,
@@ -20,7 +21,7 @@ pub(super) fn read<'a>(
     source: Source,
     field: usize,
     representation: Representation,
-) -> Result<Widget<'a>> {
+) -> ReadResult<Widget<'a>> {
     let merged = representation == Representation::Merged;
     if !is_widget(context, dictionary, source)? {
         context.repair(
@@ -61,11 +62,11 @@ fn rectangle<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Rect> {
+) -> ReadResult<Rect> {
     let value = context.required(dictionary, b"Rect", source)?;
     let values = attributes::array(context, value, source)?;
     let [x0, y0, x1, y1] = values else {
-        return Err(source.error(Error::syntax("widget Rect requires four numbers")));
+        return Err((source.error(Error::syntax("widget Rect requires four numbers"))).into());
     };
     let mut read = |v| context.resolve(v, source).and_then(|(v, s)| number(v, s));
     let (x0, y0, x1, y1) = (read(x0)?, read(y0)?, read(x1)?, read(y1)?);
@@ -77,7 +78,7 @@ fn on_states<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Vec<&'a Name>> {
+) -> ReadResult<Vec<&'a Name>> {
     let Some(ap) = context.present(dictionary, b"AP", source)? else {
         return Ok(Vec::new());
     };
@@ -114,7 +115,7 @@ pub(super) fn is_widget<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<bool> {
+) -> ReadResult<bool> {
     Ok(context
         .entry(dictionary, b"Subtype", source)?
         .and_then(|v| v.as_name())

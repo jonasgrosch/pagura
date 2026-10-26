@@ -1,4 +1,5 @@
 //! Semantic object comparison without decoding or normalizing stream bytes.
+use crate::source::ReadResult;
 use crate::{
     Document, IndirectObject,
     view::{Context, Source},
@@ -22,7 +23,7 @@ pub(super) fn equal(
     after: &Document,
     a: &IndirectObject,
     b: &IndirectObject,
-) -> Result<bool> {
+) -> ReadResult<bool> {
     if !equal_value(ctx, a.value(), b.value(), 0)? || a.is_stream() != b.is_stream() {
         return Ok(false);
     }
@@ -41,7 +42,7 @@ pub(super) fn equal(
     }
     Ok(true)
 }
-fn equal_value(ctx: &mut Context<'_>, a: &Value, b: &Value, depth: usize) -> Result<bool> {
+fn equal_value(ctx: &mut Context<'_>, a: &Value, b: &Value, depth: usize) -> ReadResult<bool> {
     ctx.step(depth, Source::default())?;
     match (a, b) {
         (Value::Dictionary(a), Value::Dictionary(b)) => dictionary_at(ctx, a, b, &[], depth + 1),
@@ -64,7 +65,7 @@ pub(super) fn same_dictionary(
     a: &Dictionary,
     b: &Dictionary,
     ignored: &[&[u8]],
-) -> Result<bool> {
+) -> ReadResult<bool> {
     dictionary_at(ctx, a, b, ignored, 0)
 }
 fn dictionary_at(
@@ -73,7 +74,7 @@ fn dictionary_at(
     b: &Dictionary,
     ignored: &[&[u8]],
     depth: usize,
-) -> Result<bool> {
+) -> ReadResult<bool> {
     for (key, value) in a {
         if ignored.contains(&key.as_bytes()) {
             continue;

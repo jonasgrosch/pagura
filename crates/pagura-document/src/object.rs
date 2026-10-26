@@ -7,6 +7,8 @@ use recovery::{StreamContext, corrected_offset, end, stream_extent, zero_catalog
 
 use crate::Document;
 use crate::memory::path_bytes;
+use crate::source::{NeedData, ReadFault, ReadResult};
+use pagura_core::syntax::{InputEnd, ParseFault, Parser, WindowInput, WindowRead};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use std::ops::Range;
 
@@ -151,11 +153,31 @@ pub(crate) fn parse_at(
     id: ObjectId,
     offset: usize,
     path: &mut Vec<ObjectId>,
-) -> Result<(IndirectObject, Vec<Diagnostic>)> {
-    let in_object = |error: Error| error.in_object(id);
+) -> ReadResult<(IndirectObject, Vec<Diagnostic>)> {
     let mut repairs = pagura_core::Diagnostics::new(document.recovery());
     let offset = corrected_offset(document, id, offset, &mut repairs)?;
-    let mut parser = document.file_parser(offset).map_err(in_object)?;
+    let parser = document
+        .file_parser(offset)
+        .map_err(|error| error.in_object(id))?;
+    match parser.read_window_with_control(InputEnd::Complete, |parser| {
+        parse(document, id, offset, path, parser, &mut repairs)
+    })? {
+        WindowRead::Complete(parsed) => Ok(parsed.value),
+        WindowRead::Deferred(missing) => Err(ReadFault::Unavailable(missing)),
+        _ => Err(Error::syntax("incomplete indirect object at file end")
+            .in_object(id)
+            .into()),
+    }
+}
+
+fn parse(
+    document: &Document,
+    id: ObjectId,
+    offset: usize,
+    path: &mut Vec<ObjectId>,
+    parser: &mut Parser<'_, WindowInput<NeedData>>,
+    repairs: &mut pagura_core::Diagnostics,
+) -> std::result::Result<(IndirectObject, Vec<Diagnostic>), ParseFault<NeedData>> {
     let zero_catalog = zero_catalog_header(document, id, offset);
     let number = if zero_catalog {
         0
@@ -167,9 +189,10 @@ pub(crate) fn parse_at(
         && parser.keyword(b"obj");
     if !header_matches {
         return Err(
-            Error::syntax("cross-reference entry disagrees with object header")
+            (Error::syntax("cross-reference entry disagrees with object header")
                 .at(Position::File(offset))
-                .in_object(id),
+                .in_object(id))
+            .into(),
         );
     }
     let (value, direct) = parser
@@ -180,13 +203,14 @@ pub(crate) fn parse_at(
                     .get(b"Encrypt")
                     .is_some_and(|value| !value.is_null())
             {
-                return Err(Error::syntax(
+                return Err((Error::syntax(
                     "direct streams cannot be loaded before security initialization",
                 )
-                .in_object(id));
+                .in_object(id))
+                .into());
             }
             if !parser.keyword(b"stream") {
-                return Err(Error::syntax("missing direct stream keyword").in_object(id));
+                return Err((Error::syntax("missing direct stream keyword").in_object(id)).into());
             }
             stream_extent(
                 document,
@@ -194,12 +218,16 @@ pub(crate) fn parse_at(
                 dictionary,
                 parser,
                 path,
-                &mut repairs,
+                repairs,
                 StreamContext::Direct,
             )
             .map(Some)
         })
-        .map_err(in_object)?;
+        .map_err(|fault| {
+            <WindowInput<NeedData> as pagura_core::syntax::ParseMode>::map_error(fault, |error| {
+                error.in_object(id)
+            })
+        })?;
     let stream = if parser.keyword(b"stream") {
         Some(stream_extent(
             document,
@@ -207,9 +235,9 @@ pub(crate) fn parse_at(
             value
                 .as_dictionary()
                 .ok_or_else(|| Error::syntax("stream value must be a dictionary").in_object(id))?,
-            &mut parser,
+            parser,
             path,
-            &mut repairs,
+            repairs,
             StreamContext::Indirect,
         )?)
     } else {
@@ -228,9 +256,10 @@ pub(crate) fn parse_at(
         });
         if !catalog || stream.is_some() || !direct.is_empty() || !parser.keyword(b"endobj") {
             return Err(
-                Error::syntax("zero-numbered root is not a complete plain Catalog")
+                (Error::syntax("zero-numbered root is not a complete plain Catalog")
                     .at(Position::File(offset))
-                    .in_object(id),
+                    .in_object(id))
+                .into(),
             );
         }
         repairs.repair(
@@ -242,7 +271,7 @@ pub(crate) fn parse_at(
             .in_object(id),
         )?;
     } else {
-        end(&mut parser, &document.limits(), id, &mut repairs)?;
+        end(parser, &document.limits(), id, &mut repairs)?;
     }
     let source = ObjectSource::File(offset..parser.offset());
     repairs.absorb(

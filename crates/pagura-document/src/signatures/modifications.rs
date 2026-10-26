@@ -7,6 +7,7 @@ use super::{
     policy,
     roles::{self, Roles},
 };
+use crate::source::ReadResult;
 use crate::{
     Document,
     view::{Context, Source},
@@ -88,7 +89,7 @@ fn prepare(
     ctx: &mut Context<'_>,
     facts: &[Option<Facts>],
     oldest_signed: usize,
-) -> Result<Prepared> {
+) -> ReadResult<Prepared> {
     let count = oldest_signed + 1;
     ctx.allocate::<Option<Roles>>(count, Source::default())?;
     let mut roles = Vec::new();
@@ -120,7 +121,7 @@ fn analyse(
     index: usize,
     roles: &[Option<Roles>],
     updates: &[BTreeSet<pagura_core::ObjectId>],
-) -> Result<PermittedModifications> {
+) -> ReadResult<PermittedModifications> {
     let mut result = ModificationAnalysis {
         signed_revision: index,
         revisions: Vec::new(),

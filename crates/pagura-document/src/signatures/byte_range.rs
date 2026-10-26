@@ -1,4 +1,5 @@
 //! Source-bound byte ranges (12.8.1, Table 255; 12.8.3.3.1).
+use crate::source::ReadResult;
 use crate::{
     ObjectSource,
     view::{Context, Source},
@@ -59,7 +60,7 @@ pub(super) fn check<'a>(
     ctx: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<std::result::Result<ByteRange<'a>, ByteRangeError>> {
+) -> ReadResult<std::result::Result<ByteRange<'a>, ByteRangeError>> {
     if dictionary
         .iter()
         .any(|(_, v)| matches!(v, Value::Reference(_)))

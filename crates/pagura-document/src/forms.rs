@@ -17,6 +17,7 @@ mod values;
 mod widgets;
 
 use crate::Document;
+use crate::source::ReadResult;
 
 pub use fill::{
     ButtonValue, ChoiceSelection, ChoiceValue, FillValue, FilledField, FilledValue, FormFiller,
@@ -35,7 +36,7 @@ impl Document {
     ///
     /// # Errors
     /// As [`Self::acro_form`]; changes have their own bounded storage.
-    pub fn form_filler(&self) -> Result<Option<FormFiller<'_>>> {
+    pub fn form_filler(&self) -> ReadResult<Option<FormFiller<'_>>> {
         self.acro_form()?
             .map(|form| FormFiller::new(self, form))
             .transpose()
@@ -48,7 +49,7 @@ impl Document {
     /// Returns positioned syntax, cycle/reference or resource-limit errors.
     /// Safe structural and naming corrections are reported repairs (ADR 0003);
     /// strict mode rejects them with their repair tag.
-    pub fn acro_form(&self) -> Result<Option<AcroForm<'_>>> {
+    pub fn acro_form(&self) -> ReadResult<Option<AcroForm<'_>>> {
         tree::read(self)
     }
 }

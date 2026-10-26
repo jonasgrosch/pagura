@@ -1,6 +1,7 @@
 //! Inert file-attachment annotation discovery (12.5.6.15, Table 187).
 
 use super::{FileSpecification, read};
+use crate::source::ReadResult;
 use crate::view::{Context, Source, number};
 use crate::{Document, Page};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Rect, Result, Value};
@@ -50,7 +51,7 @@ impl Page {
     pub fn attachment_annotations<'a>(
         &'a self,
         document: &'a Document,
-    ) -> Result<Vec<AttachmentAnnotation<'a>>> {
+    ) -> ReadResult<Vec<AttachmentAnnotation<'a>>> {
         document.check_page(self)?;
         let mut context = Context::new(document);
         let source = context.source(self.id())?;
@@ -66,14 +67,16 @@ impl Page {
         for (index, value) in values.iter().enumerate() {
             context.step(0, source)?;
             if !matches!(value, Value::Reference(_)) {
-                return Err(source.error(Error::syntax("annotation must be indirect")));
+                return Err((source.error(Error::syntax("annotation must be indirect"))).into());
             }
             let (dictionary, source) = context.dictionary(value, source)?;
             let object = source
                 .object
                 .ok_or_else(|| source.error(Error::syntax("annotation identity is absent")))?;
             if document.object(object)?.is_stream() {
-                return Err(source.error(Error::syntax("annotation must not be a stream")));
+                return Err(
+                    (source.error(Error::syntax("annotation must not be a stream"))).into(),
+                );
             }
             let subtype = read::name(&mut context, dictionary, b"Subtype", source)?
                 .ok_or_else(|| source.error(Error::syntax("annotation Subtype is absent")))?;
@@ -103,14 +106,14 @@ fn rectangle<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Rect> {
+) -> ReadResult<Rect> {
     let (value, source) = read::entry(context, dictionary, b"Rect", source)?
         .ok_or_else(|| source.error(Error::syntax("file attachment requires Rect")))?;
     let values = value
         .as_array()
         .ok_or_else(|| source.error(Error::syntax("annotation Rect must be an array")))?;
     let [x0, y0, x1, y1] = values else {
-        return Err(source.error(Error::syntax("annotation Rect requires four numbers")));
+        return Err((source.error(Error::syntax("annotation Rect requires four numbers"))).into());
     };
     let mut coordinate = |value| {
         context

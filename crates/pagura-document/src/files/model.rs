@@ -1,3 +1,4 @@
+use crate::source::ReadResult;
 use crate::{Document, IndirectObject, StreamData};
 use pagura_core::{Dictionary, Name, ObjectId, Result, Value};
 
@@ -180,7 +181,7 @@ impl<'a> EmbeddedFile<'a> {
     /// # Errors
     /// Stream/filter/decoded-budget errors, missing password authorization,
     /// or explicit refusal of external stream data. No partial payload is returned.
-    pub fn data(&self) -> Result<StreamData> {
+    pub fn data(&self) -> ReadResult<StreamData> {
         crate::stream::embedded_decoded(self.document, self.object)
     }
 }

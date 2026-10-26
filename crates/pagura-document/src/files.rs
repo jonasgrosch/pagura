@@ -30,6 +30,7 @@ pub use model::{
 pub use selection::{FilePayload, FileRecord, FileScope};
 
 use crate::navigation::trees::NameTree;
+use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use crate::{Document, Page};
 use pagura_core::{Dictionary, Error, Result, Value};
@@ -43,7 +44,7 @@ impl Document {
     /// # Errors
     /// Positioned syntax, reference/cycle, text-repair and view-budget errors.
     /// Payload filters and authorization are checked lazily by [`EmbeddedFile::data`].
-    pub fn file_specification<'a>(&'a self, value: &'a Value) -> Result<FileSpecification<'a>> {
+    pub fn file_specification<'a>(&'a self, value: &'a Value) -> ReadResult<FileSpecification<'a>> {
         read::specification(&mut Context::new(self), value, Source::default())
     }
 
@@ -54,7 +55,7 @@ impl Document {
     /// # Errors
     /// As [`Self::file_specification`], plus bounded name-tree validation and
     /// reported tree repairs. No partial result is returned after failure.
-    pub fn embedded_files(&self) -> Result<Vec<NamedFile<'_>>> {
+    pub fn embedded_files(&self) -> ReadResult<Vec<NamedFile<'_>>> {
         let mut context = Context::new(self);
         let (catalog, source) = context.catalog()?;
         let Some(names) = context.present(catalog, b"Names", source)? else {
@@ -85,7 +86,7 @@ impl Document {
     /// # Errors
     /// As [`Self::file_specification`], including a non-array AF or a non-dictionary
     /// member. This reads the associations; it does not validate a PDF profile.
-    pub fn associated_files(&self) -> Result<Vec<FileSpecification<'_>>> {
+    pub fn associated_files(&self) -> ReadResult<Vec<FileSpecification<'_>>> {
         let mut context = Context::new(self);
         let (catalog, source) = context.catalog()?;
         associated(&mut context, catalog, source)
@@ -99,7 +100,7 @@ impl Document {
     pub fn object_associated_files<'a>(
         &'a self,
         dictionary: &'a Dictionary,
-    ) -> Result<Vec<FileSpecification<'a>>> {
+    ) -> ReadResult<Vec<FileSpecification<'a>>> {
         associated(&mut Context::new(self), dictionary, Source::default())
     }
 }
@@ -113,7 +114,7 @@ impl Page {
     pub fn associated_files<'a>(
         &'a self,
         document: &'a Document,
-    ) -> Result<Vec<FileSpecification<'a>>> {
+    ) -> ReadResult<Vec<FileSpecification<'a>>> {
         document.check_page(self)?;
         let mut context = Context::new(document);
         let source = context.source(self.id())?;
@@ -125,7 +126,7 @@ fn associated<'a>(
     context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-) -> Result<Vec<FileSpecification<'a>>> {
+) -> ReadResult<Vec<FileSpecification<'a>>> {
     let Some((value, source)) = read::entry(context, dictionary, b"AF", source)? else {
         return Ok(Vec::new());
     };
@@ -138,7 +139,9 @@ fn associated<'a>(
         context.step(0, source)?;
         let specification = read::specification(context, value, source)?;
         if specification.source.as_dictionary().is_none() {
-            return Err(source.error(Error::syntax("associated file requires a dictionary")));
+            return Err(
+                (source.error(Error::syntax("associated file requires a dictionary"))).into(),
+            );
         }
         files.push(specification);
     }

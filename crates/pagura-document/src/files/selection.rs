@@ -2,6 +2,7 @@
 
 use super::{EmbeddedFile, FileSpecification};
 use crate::Document;
+use crate::source::ReadResult;
 use pagura_core::{Error, ObjectId, Result};
 
 /// The collection in which a file index has meaning. No fallback is performed.
@@ -53,7 +54,7 @@ impl Document {
     ///
     /// # Errors
     /// Invalid page/object identity, malformed views, cycles and document budgets.
-    pub fn files(&self, scope: FileScope) -> Result<Vec<FileRecord<'_>>> {
+    pub fn files(&self, scope: FileScope) -> ReadResult<Vec<FileRecord<'_>>> {
         match scope {
             FileScope::Catalog => records(
                 self,
@@ -89,7 +90,7 @@ impl Document {
                         })?;
                         self.object_associated_files(dictionary)?
                     }
-                    _ => return Err(Error::invalid_argument("unsupported file scope")),
+                    _ => return Err((Error::invalid_argument("unsupported file scope")).into()),
                 };
                 records(
                     self,
@@ -116,7 +117,7 @@ impl Document {
         scope: FileScope,
         index: usize,
         payload: FilePayload<'_>,
-    ) -> Result<EmbeddedFile<'_>> {
+    ) -> ReadResult<EmbeddedFile<'_>> {
         let file = self
             .files(scope)?
             .into_iter()
@@ -134,7 +135,7 @@ impl<'a> FileSpecification<'a> {
     ///
     /// # Errors
     /// `InvalidArgument` when the requested key or related-file pair is absent.
-    pub fn into_payload(self, payload: FilePayload<'_>) -> Result<EmbeddedFile<'a>> {
+    pub fn into_payload(self, payload: FilePayload<'_>) -> ReadResult<EmbeddedFile<'a>> {
         match payload {
             FilePayload::Embedded(key) => self
                 .embedded
@@ -155,7 +156,7 @@ impl<'a> FileSpecification<'a> {
 fn records<'a>(
     document: &Document,
     values: impl ExactSizeIterator<Item = FileRecord<'a>>,
-) -> Result<Vec<FileRecord<'a>>> {
+) -> ReadResult<Vec<FileRecord<'a>>> {
     let mut context = crate::view::Context::new(document);
     context.allocate::<FileRecord<'_>>(values.len(), crate::view::Source::default())?;
     Ok(values.collect())
