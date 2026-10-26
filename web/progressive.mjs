@@ -8,13 +8,17 @@ function exact(value) {
   if (typeof value !== 'number' && typeof value !== 'bigint') throw new Error('Invalid source length or offset');
   return BigInt(value);
 }
-function wait(promise, signal) {
-  if (!signal) return promise;
-  check(signal);
+function wait(promise, ...signals) {
+  signals = signals.filter(Boolean);
+  for (const signal of signals) check(signal);
   return new Promise((resolve, reject) => {
-    const abort = () => reject(cancelled(signal));
-    signal.addEventListener('abort', abort, { once: true });
-    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    const listeners = signals.map((signal) => [signal, () => finish(reject, cancelled(signal))]);
+    function finish(complete, value) {
+      for (const [signal, listener] of listeners) signal.removeEventListener('abort', listener);
+      complete(value);
+    }
+    for (const [signal, listener] of listeners) signal.addEventListener('abort', listener, { once: true });
+    promise.then((value) => finish(resolve, value), (error) => finish(reject, error));
   });
 }
 
@@ -91,6 +95,7 @@ export class ProgressiveDriver {
   }
   async range(handle, source, start, end, signal) {
     check(signal);
+    if (this.closed || source.closed) throw new DOMException('Source closed', 'AbortError');
     const key = `${start}:${end}`;
     let entry = source.pending.get(key);
     if (!entry) {
@@ -98,6 +103,7 @@ export class ProgressiveDriver {
       const current = entry;
       current.promise = this.io.run(async () => {
         check(current.controller.signal);
+        if (this.closed || source.closed) throw new DOMException('Source closed', 'AbortError');
         const packet = await source.read({ start, end }, current.controller.signal);
         check(current.controller.signal);
         if (source.closed || !sameVersion(source.version, packet.version) || exact(packet.length) !== source.length
@@ -114,7 +120,9 @@ export class ProgressiveDriver {
       source.pending.set(key, current);
     }
     entry.waiters++;
-    try { return await wait(entry.promise, signal); }
+    // Closing shared demand ends every waiter even if an external provider
+    // ignores cancellation. Its actual I/O slot stays occupied until it settles.
+    try { return await wait(entry.promise, signal, entry.controller.signal); }
     finally {
       entry.waiters--;
       if (!entry.waiters && !entry.done) {

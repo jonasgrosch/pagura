@@ -151,10 +151,38 @@ async function cancelledRangeCanBeRequestedAgain() {
   await assert.rejects(noProgress.run(1).next(), /no availability progress/); await noProgress.close();
 }
 
+async function ignoredProviderCancellation() {
+  const client = fakeClient(new Map([[1, [demand()]], [2, [demand()]]]));
+  const driver = new ProgressiveDriver(client, { concurrentRanges: 1 });
+  let reads = 0;
+  await driver.register({ length: 4n, version, read() { reads++; return new Promise(() => {}); } });
+  const left = driver.run(1), right = driver.run(2);
+  const stopped = Promise.all([assert.rejects(left.next(), { name: 'AbortError' }), assert.rejects(right.next(), { name: 'AbortError' })]);
+  await tick(); assert.equal(reads, 1);
+  const stale = driver.sources.get(1);
+  await driver.closeSource(1);
+  // A deterministic microtask deadline prevents a broken waiter from hanging CI.
+  assert.equal(await Promise.race([stopped.then(() => true), tick().then(() => false)]), true);
+  assert.equal(driver.io.active, 1, 'ignored provider I/O remains charged');
+  assert.equal(driver.jobs.size, 0);
+  await assert.rejects(driver.range(1, stale, 0n, 4n), { name: 'AbortError' });
+  assert.equal(reads, 1);
+  await driver.close();
+
+  const pendingClient = fakeClient(new Map([[1, [demand()]]]));
+  const pending = new ProgressiveDriver(pendingClient);
+  await pending.register({ length: 4n, version, read: () => new Promise(() => {}) });
+  const ended = assert.rejects(pending.run(1).next(), { name: 'AbortError' });
+  await tick(); await pending.close();
+  assert.equal(await Promise.race([ended.then(() => true), tick().then(() => false)]), true);
+  assert.equal(pending.io.active, 1);
+}
+
 layouts();
 await serialClient();
 await sharedDemandAndOutput();
 await cancellationAndShutdown();
 await malformedRangesAndQueuedCancellation();
 await cancelledRangeCanBeRequestedAgain();
+await ignoredProviderCancellation();
 console.log('Progressive protocol and browser ownership controls passed.');
