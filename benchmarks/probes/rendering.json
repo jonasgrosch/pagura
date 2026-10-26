@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads and Caret symbols. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura caption expectations use pinned AFM/Arimo data. Alternate text-markup quad ordering is a reported Pagura repair, separate from strict opening. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads and Caret symbols. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura caption expectations use pinned AFM/Arimo data. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",

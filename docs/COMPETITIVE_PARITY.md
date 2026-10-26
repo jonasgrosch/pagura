@@ -209,7 +209,8 @@ A further 27 text-markup/Caret controls expand the current render manifest to
 overlapping and empty quads, skew, all four markup styles, alternate-order recovery,
 both Caret symbols, stored artwork, RD, opacity and indirection. Existing oracle
 bytes and tolerances are unchanged. Alternate-order cases measure recovery rather
-than strict rendering; their fixture metadata describes strict opening only.
+than strict rendering; their strict_valid metadata is false because the CLI
+strict audit includes opening, page enumeration and rendering.
 Hosted execution for this increment is pending; the 90-case measurement above
 remains tied to its recorded revision.
 

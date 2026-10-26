@@ -353,7 +353,8 @@ symbols, for 117 cases / 819 cells. Highlights include underlying black/cyan
 content, Multiply/opacity, overlap, skew and zero-area geometry. Underline,
 StrikeOut and Squiggly retain their literal polygon expectations. Alternate
 TL/TR/BL/BR ordering measures recovery policy: it is reported by Pagura and
-rejected by Strict rendering; fixture `strict_valid` describes opening only.
+rejected by Strict rendering. Fixture `strict_valid` is false: the CLI strict
+audit includes opening, page enumeration and rendering.
 Caret controls cover both symbols, direct stored artwork, RD, opacity and
 indirect entries. Existing oracle bytes and tolerances are unchanged. Hosted
 results for this expanded matrix are pending.
