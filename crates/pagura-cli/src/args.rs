@@ -517,10 +517,10 @@ fn image_command(
     operands: &[OsString],
     options: &Options,
 ) -> Result<Option<Command>, UsageError> {
+    use Flag::{Format, Overprint, Password, Strict, Timings, Transparent};
     if !matches!(name, "render" | "convert") {
         return Ok(None);
     }
-    use Flag::{Format, Overprint, Password, Strict, Timings, Transparent};
     options.allow(
         name,
         &[Strict, Password, Overprint, Timings, Format, Transparent],
