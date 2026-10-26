@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "50109feb8fbce9e5aa2523b2195f6549837b8da8",
+  "audited_revision": "0616478c60e81e3de9c449fba15336bed63087d7",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -13,7 +13,7 @@
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
-    "corpus/manifests/font_formats.json": "8223a87041e252f225091a97bffc68a00f19eafee62e2ad628c37903c34c4faf",
+    "corpus/manifests/font_formats.json": "daf5613ff7b2f3f6a5c8b7a6cfab4823ad642ed1f62b2aef2dff3f367c5c3891",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
@@ -68,9 +68,11 @@
     "crates/pagura-extract/src/structure/content.rs": "fcedc48f6f79294eccc2fa5b9dc90cde53f9527ffece4d1ce9d11205bbefef81",
     "crates/pagura-extract/src/structure/copy.rs": "fdf63c725b37978c64bc67b56d3a06649f1b9befa0eeba64a5f73e52b8d87065",
     "crates/pagura-extract/src/structure/roles.rs": "395727aad59dfe61ec5eee945f91df84a4a0e3189abd8104ca5eff7a993f2de3",
-    "crates/pagura-font/README.md": "a6e8490007ad43b222142cce455aae3cf4136f412a06c056a440fe1de357c04c",
+    "crates/pagura-font/README.md": "512b06545d0c339f5dee33d3ed85571a820590ada86f2adac7208a8b7bb35835",
     "crates/pagura-font/src/cff.rs": "d679afdd4e5afa8d0ff7a2d00244ad84689d65854355afaca410b0516575c1c0",
-    "crates/pagura-font/src/lib.rs": "e1f05f12e24cdb0da0af18c0cf9468d7b0a8139388eb7ca7111459fb80fb83f6",
+    "crates/pagura-font/src/lib.rs": "eb5b254373adcb1600c8967a9619541e1de483d7715bedb2df72dc19c54e7d31",
+    "crates/pagura-font/src/sfnt/cmap.rs": "f5102915652641c02cd1e697c8b716491b6b65f27fe54c7d6ee3fcd3dd9dd383",
+    "crates/pagura-font/src/sfnt/cmap/tests.rs": "77bd5f29f81693656fb69d67e25f6e24dff40f74b33757450f5f17543ae06fe0",
     "crates/pagura-font/src/sfnt/names.rs": "0188f1452fb0083e872df4ed91a6f3bfefd8278c41a02e5d5348ab707c891a6c",
     "crates/pagura-font/src/sfnt/vertical.rs": "7b7c3dfc18f409a7a9e22f281d00391811a4a533331ecccf0525688bc9cdbaa5",
     "crates/pagura-font/src/sfnt/vertical/tests.rs": "fd9e50b258f5e86b272ef009b7da9f11acba46b91311afba563ef720b8b0c63c",
@@ -173,7 +175,7 @@
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
-    "references/requirements/font.json": "3fece0755daa31cc52d1fd95051f27766a731a142c0454257a96f56456f056b5",
+    "references/requirements/font.json": "4384559385125f4f3110b680a1682a4ee49f801ba4f9370e4bcbcae7b506a938",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
@@ -383,7 +385,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 single substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy Apple post4 code arrays are admitted for existing cmap use; this latest addition awaits hosted acceptance and does not synthesize printer names.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission passes 17 rendering controls. Format8 numeric groups reuse the existing cmap reader and await hosted validation; neither change adds a font-selection path.",
       "remaining": "Remaining formats, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
@@ -392,12 +394,14 @@
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-font/src/sfnt/vertical.rs",
-        "crates/pagura-font/src/sfnt/names.rs"
+        "crates/pagura-font/src/sfnt/names.rs",
+        "crates/pagura-font/src/sfnt/cmap.rs"
       ],
       "tests": [
         "crates/pagura-font/tests/vectors/static_fonts.rs",
         "crates/pagura-font/tests/vertical.rs",
-        "crates/pagura-font/src/sfnt/vertical/tests.rs"
+        "crates/pagura-font/src/sfnt/vertical/tests.rs",
+        "crates/pagura-font/src/sfnt/cmap/tests.rs"
       ],
       "requirements": [
         "font-bounds",
@@ -450,7 +454,15 @@
         "font_formats/post4-direct",
         "font_formats/post3-control-direct",
         "font_formats/post4-direct-unnamed",
-        "font_formats/post3-control-direct-unnamed"
+        "font_formats/post3-control-direct-unnamed",
+        "font_formats/cmap8-windows-bmp",
+        "font_formats/cmap12-windows-bmp",
+        "font_formats/cmap8-unicode-bmp",
+        "font_formats/cmap12-unicode-bmp",
+        "font_formats/cmap12-windows-utf16-isolated",
+        "font_formats/cmap8-windows-ucs4-isolated",
+        "font_formats/cmap12-unicode-utf16-isolated",
+        "font_formats/cmap8-unicode-ucs4-isolated"
       ],
       "comparisons": {
         "pdfium": "unprobed",
