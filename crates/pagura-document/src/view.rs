@@ -3,8 +3,8 @@
 //! its caller-owned results to `Limits::document_bytes`, and attaches the
 //! object and position it read to every error and repair.
 
-use crate::Document;
 use crate::source::ReadResult;
+use crate::{DiagnosticBatch, Document};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, INDEX_ENTRY_OVERHEAD, Meter, ObjectId, Position,
     Repair, Result, Value, text_string,
@@ -48,15 +48,22 @@ struct Work {
 
 pub(crate) struct Context<'a> {
     pub(crate) document: &'a Document,
+    diagnostics: DiagnosticBatch<'a>,
     work: Rc<RefCell<Work>>,
     pages: Option<BTreeMap<ObjectId, usize>>,
 }
 
 impl<'a> Context<'a> {
+    #[cfg(test)]
     pub(crate) fn new(document: &'a Document) -> Self {
+        Self::with_diagnostics(document, DiagnosticBatch::new(document))
+    }
+
+    fn with_diagnostics(document: &'a Document, diagnostics: DiagnosticBatch<'a>) -> Self {
         let limits = document.limits();
         Self {
             document,
+            diagnostics,
             work: Rc::new(RefCell::new(Work {
                 steps: Meter::new(
                     limits.traversal_work,
@@ -69,11 +76,26 @@ impl<'a> Context<'a> {
         }
     }
 
+    /// One bounded semantic inspection. No provisional report is published
+    /// while any dependency is unavailable; terminal errors retain reports.
+    pub(crate) fn run<T>(
+        document: &'a Document,
+        read: impl FnOnce(Self) -> ReadResult<T>,
+    ) -> ReadResult<T> {
+        DiagnosticBatch::run(document, |diagnostics| {
+            read(Self::with_diagnostics(
+                document,
+                diagnostics.for_document(document),
+            ))
+        })
+    }
+
     /// A context for another revision of the document, charging this one's
     /// budgets.
     pub(crate) fn for_document<'b>(&self, document: &'b Document) -> Context<'b> {
         Context {
             document,
+            diagnostics: self.diagnostics.for_document(document),
             work: Rc::clone(&self.work),
             pages: None,
         }
@@ -268,8 +290,8 @@ impl<'a> Context<'a> {
         message: &'static str,
         source: Source,
     ) -> Result<()> {
-        self.document
-            .repair(source.diagnostic(Diagnostic::new(tag, message)))
+        self.diagnostics
+            .record(source.diagnostic(Diagnostic::new(tag, message)))
     }
 
     /// Decodes a text string (7.9.2.2) through [`text_string::decode`], with
@@ -278,12 +300,12 @@ impl<'a> Context<'a> {
         let mut diagnostics = Diagnostics::new(self.document.recovery());
         let text = text_string::decode(bytes, &self.document.limits(), &mut diagnostics)
             .map_err(|error| source.error(error))?;
-        self.document.report(
+        self.diagnostics.absorb(
             diagnostics
                 .take()
                 .into_iter()
                 .map(|diagnostic| source.diagnostic(diagnostic)),
-        );
+        )?;
         self.allocate::<u8>(text.len(), source)?;
         Ok(text)
     }

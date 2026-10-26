@@ -157,7 +157,8 @@ fn records<'a>(
     document: &Document,
     values: impl ExactSizeIterator<Item = FileRecord<'a>>,
 ) -> ReadResult<Vec<FileRecord<'a>>> {
-    let mut context = crate::view::Context::new(document);
-    context.allocate::<FileRecord<'_>>(values.len(), crate::view::Source::default())?;
-    Ok(values.collect())
+    crate::view::Context::run(document, |mut context| {
+        context.allocate::<FileRecord<'_>>(values.len(), crate::view::Source::default())?;
+        Ok(values.collect())
+    })
 }

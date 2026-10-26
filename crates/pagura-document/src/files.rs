@@ -45,7 +45,9 @@ impl Document {
     /// Positioned syntax, reference/cycle, text-repair and view-budget errors.
     /// Payload filters and authorization are checked lazily by [`EmbeddedFile::data`].
     pub fn file_specification<'a>(&'a self, value: &'a Value) -> ReadResult<FileSpecification<'a>> {
-        read::specification(&mut Context::new(self), value, Source::default())
+        Context::run(self, |mut context| {
+            read::specification(&mut context, value, Source::default())
+        })
     }
 
     /// Catalog EmbeddedFiles name-tree entries in byte-key order (7.7.4, 7.11.4).
@@ -56,28 +58,29 @@ impl Document {
     /// As [`Self::file_specification`], plus bounded name-tree validation and
     /// reported tree repairs. No partial result is returned after failure.
     pub fn embedded_files(&self) -> ReadResult<Vec<NamedFile<'_>>> {
-        let mut context = Context::new(self);
-        let (catalog, source) = context.catalog()?;
-        let Some(names) = context.present(catalog, b"Names", source)? else {
-            return Ok(Vec::new());
-        };
-        let (names, source) = context.dictionary(names, source)?;
-        let Some(root) = context.present(names, b"EmbeddedFiles", source)? else {
-            return Ok(Vec::new());
-        };
-        let entries = NameTree::new(self, root)
-            .with_source(source)
-            .entries_with(&mut context)?;
-        context.allocate::<NamedFile<'_>>(entries.len(), source)?;
-        let mut files = Vec::new();
-        for entry in entries {
-            context.step(0, entry.source)?;
-            files.push(NamedFile {
-                key: entry.key,
-                specification: read::specification(&mut context, entry.value, entry.source)?,
-            });
-        }
-        Ok(files)
+        Context::run(self, |mut context| {
+            let (catalog, source) = context.catalog()?;
+            let Some(names) = context.present(catalog, b"Names", source)? else {
+                return Ok(Vec::new());
+            };
+            let (names, source) = context.dictionary(names, source)?;
+            let Some(root) = context.present(names, b"EmbeddedFiles", source)? else {
+                return Ok(Vec::new());
+            };
+            let entries = NameTree::new(self, root)
+                .with_source(source)
+                .entries_with(&mut context)?;
+            context.allocate::<NamedFile<'_>>(entries.len(), source)?;
+            let mut files = Vec::new();
+            for entry in entries {
+                context.step(0, entry.source)?;
+                files.push(NamedFile {
+                    key: entry.key,
+                    specification: read::specification(&mut context, entry.value, entry.source)?,
+                });
+            }
+            Ok(files)
+        })
     }
 
     /// Files associated with the catalog, preserving AF array order (14.13.3).
@@ -87,9 +90,10 @@ impl Document {
     /// As [`Self::file_specification`], including a non-array AF or a non-dictionary
     /// member. This reads the associations; it does not validate a PDF profile.
     pub fn associated_files(&self) -> ReadResult<Vec<FileSpecification<'_>>> {
-        let mut context = Context::new(self);
-        let (catalog, source) = context.catalog()?;
-        associated(&mut context, catalog, source)
+        Context::run(self, |mut context| {
+            let (catalog, source) = context.catalog()?;
+            associated(&mut context, catalog, source)
+        })
     }
 
     /// Files associated with an object dictionary (14.13).
@@ -101,7 +105,9 @@ impl Document {
         &'a self,
         dictionary: &'a Dictionary,
     ) -> ReadResult<Vec<FileSpecification<'a>>> {
-        associated(&mut Context::new(self), dictionary, Source::default())
+        Context::run(self, |mut context| {
+            associated(&mut context, dictionary, Source::default())
+        })
     }
 }
 
@@ -116,9 +122,10 @@ impl Page {
         document: &'a Document,
     ) -> ReadResult<Vec<FileSpecification<'a>>> {
         document.check_page(self)?;
-        let mut context = Context::new(document);
-        let source = context.source(self.id())?;
-        associated(&mut context, self.dictionary(), source)
+        Context::run(document, |mut context| {
+            let source = context.source(self.id())?;
+            associated(&mut context, self.dictionary(), source)
+        })
     }
 }
 

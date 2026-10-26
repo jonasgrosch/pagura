@@ -53,54 +53,55 @@ impl Page {
         document: &'a Document,
     ) -> ReadResult<Vec<AttachmentAnnotation<'a>>> {
         document.check_page(self)?;
-        let mut context = Context::new(document);
-        let source = context.source(self.id())?;
-        let Some((value, source)) =
-            read::entry(&mut context, self.dictionary(), b"Annots", source)?
-        else {
-            return Ok(Vec::new());
-        };
-        let values = value
-            .as_array()
-            .ok_or_else(|| source.error(Error::syntax("page Annots must be an array")))?;
-        let mut result = Vec::new();
-        for (index, value) in values.iter().enumerate() {
-            context.step(0, source)?;
-            if !matches!(value, Value::Reference(_)) {
-                return Err(source
-                    .error(Error::syntax("annotation must be indirect"))
-                    .into());
+        Context::run(document, |mut context| {
+            let source = context.source(self.id())?;
+            let Some((value, source)) =
+                read::entry(&mut context, self.dictionary(), b"Annots", source)?
+            else {
+                return Ok(Vec::new());
+            };
+            let values = value
+                .as_array()
+                .ok_or_else(|| source.error(Error::syntax("page Annots must be an array")))?;
+            let mut result = Vec::new();
+            for (index, value) in values.iter().enumerate() {
+                context.step(0, source)?;
+                if !matches!(value, Value::Reference(_)) {
+                    return Err(source
+                        .error(Error::syntax("annotation must be indirect"))
+                        .into());
+                }
+                let (dictionary, source) = context.dictionary(value, source)?;
+                let object = source
+                    .object
+                    .ok_or_else(|| source.error(Error::syntax("annotation identity is absent")))?;
+                if document.object(object)?.is_stream() {
+                    return Err(source
+                        .error(Error::syntax("annotation must not be a stream"))
+                        .into());
+                }
+                let subtype = read::name(&mut context, dictionary, b"Subtype", source)?
+                    .ok_or_else(|| source.error(Error::syntax("annotation Subtype is absent")))?;
+                if subtype.as_bytes() != b"FileAttachment" {
+                    continue;
+                }
+                context.type_name(dictionary, b"Annot", source)?;
+                context.allocate::<AttachmentAnnotation<'_>>(1, source)?;
+                let file = context
+                    .present(dictionary, b"FS", source)?
+                    .ok_or_else(|| source.error(Error::syntax("file attachment requires FS")))?;
+                result.push(AttachmentAnnotation {
+                    index,
+                    object,
+                    dictionary,
+                    rectangle: rectangle(&mut context, dictionary, source)?,
+                    contents: read::text(&mut context, dictionary, b"Contents", source)?,
+                    icon: read::name(&mut context, dictionary, b"Name", source)?,
+                    specification: read::specification(&mut context, file, source)?,
+                });
             }
-            let (dictionary, source) = context.dictionary(value, source)?;
-            let object = source
-                .object
-                .ok_or_else(|| source.error(Error::syntax("annotation identity is absent")))?;
-            if document.object(object)?.is_stream() {
-                return Err(source
-                    .error(Error::syntax("annotation must not be a stream"))
-                    .into());
-            }
-            let subtype = read::name(&mut context, dictionary, b"Subtype", source)?
-                .ok_or_else(|| source.error(Error::syntax("annotation Subtype is absent")))?;
-            if subtype.as_bytes() != b"FileAttachment" {
-                continue;
-            }
-            context.type_name(dictionary, b"Annot", source)?;
-            context.allocate::<AttachmentAnnotation<'_>>(1, source)?;
-            let file = context
-                .present(dictionary, b"FS", source)?
-                .ok_or_else(|| source.error(Error::syntax("file attachment requires FS")))?;
-            result.push(AttachmentAnnotation {
-                index,
-                object,
-                dictionary,
-                rectangle: rectangle(&mut context, dictionary, source)?,
-                contents: read::text(&mut context, dictionary, b"Contents", source)?,
-                icon: read::name(&mut context, dictionary, b"Name", source)?,
-                specification: read::specification(&mut context, file, source)?,
-            });
-        }
-        Ok(result)
+            Ok(result)
+        })
     }
 }
 

@@ -237,62 +237,63 @@ fn ignore_quads(context: &mut Context<'_>, source: Source) -> Result<()> {
 
 pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> ReadResult<Vec<Link<'a>>> {
     document.check_page(page)?;
-    let mut context = Context::new(document);
-    let source = context.source(page.id())?;
-    let Some(annotations) = context.entry(page.dictionary(), b"Annots", source)? else {
-        return Ok(Vec::new());
-    };
-    let annotations = annotations
-        .as_array()
-        .ok_or_else(|| source.error(Error::syntax("page Annots must be an array")))?;
-    let mut links = Vec::new();
-    for value in annotations {
-        context.step(0, source)?;
-        let (dictionary, source) = context.dictionary(value, source)?;
-        if context
-            .entry(dictionary, b"Subtype", source)?
-            .and_then(Value::as_name)
-            .is_none_or(|name| name != b"Link")
-        {
-            continue;
+    Context::run(document, |mut context| {
+        let source = context.source(page.id())?;
+        let Some(annotations) = context.entry(page.dictionary(), b"Annots", source)? else {
+            return Ok(Vec::new());
+        };
+        let annotations = annotations
+            .as_array()
+            .ok_or_else(|| source.error(Error::syntax("page Annots must be an array")))?;
+        let mut links = Vec::new();
+        for value in annotations {
+            context.step(0, source)?;
+            let (dictionary, source) = context.dictionary(value, source)?;
+            if context
+                .entry(dictionary, b"Subtype", source)?
+                .and_then(Value::as_name)
+                .is_none_or(|name| name != b"Link")
+            {
+                continue;
+            }
+            context.type_name(dictionary, b"Annot", source)?;
+            let values = numbers(
+                &mut context,
+                dictionary
+                    .get(b"Rect")
+                    .ok_or_else(|| source.error(Error::syntax("link requires Rect")))?,
+                source,
+            )?;
+            let &[x0, y0, x1, y1] = values.as_slice() else {
+                return Err(source
+                    .error(Error::syntax("link Rect requires four numbers"))
+                    .into());
+            };
+            let rectangle = Rect::from_corners(x0, y0, x1, y1)
+                .ok_or_else(|| source.error(Error::syntax("invalid link rectangle")))?;
+            let quad_points = context
+                .entry(dictionary, b"QuadPoints", source)?
+                .map(|value| quads(&mut context, value, rectangle, source))
+                .transpose()?
+                .unwrap_or_default();
+            let highlight = match context.entry(dictionary, b"H", source)? {
+                Some(value) => value
+                    .as_name()
+                    .ok_or(Error::syntax("invalid link highlight mode"))
+                    .and_then(HighlightMode::try_from)
+                    .map_err(|error| source.fault(error))?,
+                None => HighlightMode::Invert,
+            };
+            context.allocate::<Link<'_>>(1, source)?;
+            links.push(Link {
+                rectangle,
+                quad_points,
+                border: border(&mut context, dictionary, source)?,
+                highlight,
+                target: destinations::target(&mut context, dictionary, source)?,
+                dictionary,
+            });
         }
-        context.type_name(dictionary, b"Annot", source)?;
-        let values = numbers(
-            &mut context,
-            dictionary
-                .get(b"Rect")
-                .ok_or_else(|| source.error(Error::syntax("link requires Rect")))?,
-            source,
-        )?;
-        let &[x0, y0, x1, y1] = values.as_slice() else {
-            return Err(source
-                .error(Error::syntax("link Rect requires four numbers"))
-                .into());
-        };
-        let rectangle = Rect::from_corners(x0, y0, x1, y1)
-            .ok_or_else(|| source.error(Error::syntax("invalid link rectangle")))?;
-        let quad_points = context
-            .entry(dictionary, b"QuadPoints", source)?
-            .map(|value| quads(&mut context, value, rectangle, source))
-            .transpose()?
-            .unwrap_or_default();
-        let highlight = match context.entry(dictionary, b"H", source)? {
-            Some(value) => value
-                .as_name()
-                .ok_or(Error::syntax("invalid link highlight mode"))
-                .and_then(HighlightMode::try_from)
-                .map_err(|error| source.fault(error))?,
-            None => HighlightMode::Invert,
-        };
-        context.allocate::<Link<'_>>(1, source)?;
-        links.push(Link {
-            rectangle,
-            quad_points,
-            border: border(&mut context, dictionary, source)?,
-            highlight,
-            target: destinations::target(&mut context, dictionary, source)?,
-            dictionary,
-        });
-    }
-    Ok(links)
+        Ok(links)
+    })
 }

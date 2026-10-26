@@ -96,38 +96,39 @@ impl Document {
     /// Positioned type, cycle, text-decoding or view-budget errors. Text repairs
     /// follow the document's recovery mode and are reported in its diagnostics.
     pub fn information(&self) -> ReadResult<Option<DocumentInfo<'_>>> {
-        let mut context = Context::new(self);
-        let Some(value) = context.present(self.trailer(), b"Info", Source::default())? else {
-            return Ok(None);
-        };
-        let (dictionary, source) = context.dictionary(value, Source::default())?;
-        context.allocate::<DocumentInfo<'_>>(1, source)?;
-        let trapped = match context.entry(dictionary, b"Trapped", source)? {
-            None => Trapped::Unknown,
-            Some(value) => match value.as_name().map(Name::as_bytes) {
-                Some(b"True") => Trapped::True,
-                Some(b"False") => Trapped::False,
-                Some(b"Unknown") => Trapped::Unknown,
-                _ => {
-                    return Err(source
-                        .error(Error::syntax("invalid Info Trapped name"))
-                        .into());
-                }
-            },
-        };
-        Ok(Some(DocumentInfo {
-            object: source.object,
-            dictionary,
-            title: text(&mut context, dictionary, b"Title", source)?,
-            author: text(&mut context, dictionary, b"Author", source)?,
-            subject: text(&mut context, dictionary, b"Subject", source)?,
-            keywords: text(&mut context, dictionary, b"Keywords", source)?,
-            creator: text(&mut context, dictionary, b"Creator", source)?,
-            producer: text(&mut context, dictionary, b"Producer", source)?,
-            creation_date: text(&mut context, dictionary, b"CreationDate", source)?,
-            modification_date: text(&mut context, dictionary, b"ModDate", source)?,
-            trapped,
-        }))
+        Context::run(self, |mut context| {
+            let Some(value) = context.present(self.trailer(), b"Info", Source::default())? else {
+                return Ok(None);
+            };
+            let (dictionary, source) = context.dictionary(value, Source::default())?;
+            context.allocate::<DocumentInfo<'_>>(1, source)?;
+            let trapped = match context.entry(dictionary, b"Trapped", source)? {
+                None => Trapped::Unknown,
+                Some(value) => match value.as_name().map(Name::as_bytes) {
+                    Some(b"True") => Trapped::True,
+                    Some(b"False") => Trapped::False,
+                    Some(b"Unknown") => Trapped::Unknown,
+                    _ => {
+                        return Err(source
+                            .error(Error::syntax("invalid Info Trapped name"))
+                            .into());
+                    }
+                },
+            };
+            Ok(Some(DocumentInfo {
+                object: source.object,
+                dictionary,
+                title: text(&mut context, dictionary, b"Title", source)?,
+                author: text(&mut context, dictionary, b"Author", source)?,
+                subject: text(&mut context, dictionary, b"Subject", source)?,
+                keywords: text(&mut context, dictionary, b"Keywords", source)?,
+                creator: text(&mut context, dictionary, b"Creator", source)?,
+                producer: text(&mut context, dictionary, b"Producer", source)?,
+                creation_date: text(&mut context, dictionary, b"CreationDate", source)?,
+                modification_date: text(&mut context, dictionary, b"ModDate", source)?,
+                trapped,
+            }))
+        })
     }
 
     /// The catalog's Lang text string (7.7.2, 14.9.2), without language-tag
@@ -136,9 +137,10 @@ impl Document {
     /// # Errors
     /// Positioned catalog, type, cycle, text-decoding or view-budget errors.
     pub fn language(&self) -> ReadResult<Option<String>> {
-        let mut context = Context::new(self);
-        let (catalog, source) = context.catalog()?;
-        text(&mut context, catalog, b"Lang", source)
+        Context::run(self, |mut context| {
+            let (catalog, source) = context.catalog()?;
+            text(&mut context, catalog, b"Lang", source)
+        })
     }
 
     /// The document-level metadata stream attached to the catalog (14.3.2).
@@ -148,9 +150,10 @@ impl Document {
     /// # Errors
     /// Positioned catalog, type, reference/cycle or view-budget errors.
     pub fn metadata(&self) -> ReadResult<Option<MetadataStream<'_>>> {
-        let mut context = Context::new(self);
-        let (catalog, source) = context.catalog()?;
-        metadata(&mut context, catalog, source)
+        Context::run(self, |mut context| {
+            let (catalog, source) = context.catalog()?;
+            metadata(&mut context, catalog, source)
+        })
     }
 
     /// Metadata attached to an object dictionary (14.3.2, Table 348).
@@ -163,7 +166,9 @@ impl Document {
         &'a self,
         dictionary: &'a Dictionary,
     ) -> ReadResult<Option<MetadataStream<'a>>> {
-        metadata(&mut Context::new(self), dictionary, Source::default())
+        Context::run(self, |mut context| {
+            metadata(&mut context, dictionary, Source::default())
+        })
     }
 }
 

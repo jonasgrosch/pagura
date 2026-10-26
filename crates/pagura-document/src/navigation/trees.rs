@@ -83,8 +83,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     /// Returns positioned structural/reference/budget errors; safe tree repairs
     /// reject strictly with the corresponding `tree.*` repair tag.
     pub fn get(&self, key: &K::Query) -> ReadResult<Option<&'a Value>> {
-        self.get_with(&mut Context::new(self.document), key)
-            .map(|v| v.map(|(v, _)| v))
+        Context::run(self.document, |mut context| {
+            self.get_with(&mut context, key).map(|v| v.map(|(v, _)| v))
+        })
     }
 
     /// Validates the complete tree, then iterates in key order. Duplicate keys
@@ -94,10 +95,10 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     /// # Errors
     /// As [`Self::get`]. No partial collection is returned on a budget failure.
     pub fn entries(&self) -> ReadResult<TreeEntries<'a, K>> {
-        Ok(TreeEntries {
-            inner: self
-                .entries_with(&mut Context::new(self.document))?
-                .into_iter(),
+        Context::run(self.document, |mut context| {
+            Ok(TreeEntries {
+                inner: self.entries_with(&mut context)?.into_iter(),
+            })
         })
     }
 

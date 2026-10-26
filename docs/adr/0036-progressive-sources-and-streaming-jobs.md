@@ -117,7 +117,11 @@ preserving reports already emitted for a completed failure under the old API.
 An unavailable dependency discards only provisional reports; it cannot undo
 completed object/stream/cache dependencies. Nested callers share a borrowed
 attempt reporter rather than installing a thread-local sink or rolling back
-another operation's document diagnostics.
+another operation's document diagnostics. Typed document views use one Context
+operation batch: historical contexts share pending reports but apply their own
+recovery policy, and only the initiating document receives the completed batch.
+A nested independent operation has its own batch; it cannot drain an outer
+pending buffer. Source lifecycle checks guard entry and successful publication.
 
 ### 3. Load requested dependencies and declare validation scope
 

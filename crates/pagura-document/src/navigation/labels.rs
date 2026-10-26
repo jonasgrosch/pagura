@@ -52,68 +52,75 @@ pub struct PageLabelRange {
 }
 
 pub(super) fn ranges(document: &Document) -> ReadResult<Vec<PageLabelRange>> {
-    let mut context = Context::new(document);
-    let (catalog, tree_source) = context.catalog()?;
-    let Some(tree) = context.present(catalog, b"PageLabels", tree_source)? else {
-        return Ok(Vec::new());
-    };
-    let mut result = Vec::new();
-    let pages = document.page_count()?;
-    for entry in document
-        .number_tree(tree)
-        .with_source(tree_source)
-        .entries_with(&mut context)?
-    {
-        let (dictionary, source) = context.dictionary(entry.value, entry.source)?;
-        context.type_name(dictionary, b"PageLabel", source)?;
-        let page = usize::try_from(entry.key)
-            .ok()
-            .filter(|n| *n < pages)
-            .ok_or_else(|| {
-                source.error(Error::syntax("page label range index outside document"))
-            })?;
-        let style = context
-            .entry(dictionary, b"S", source)?
-            .map(|value| {
-                value
-                    .as_name()
-                    .ok_or(Error::syntax("unknown page label style"))
-                    .and_then(LabelStyle::try_from)
-                    .map_err(|error| source.fault(error))
-            })
-            .transpose()?;
-        let prefix = context
-            .entry(dictionary, b"P", source)?
-            .map(|v| {
-                v.as_string()
-                    .ok_or_else(|| source.error(Error::syntax("page label prefix must be text")))
-                    .and_then(|b| context.text(b, source))
-            })
-            .transpose()?
-            .unwrap_or_default();
-        let start = context
-            .entry(dictionary, b"St", source)?
-            .map(|v| {
-                v.as_integer()
-                    .and_then(|n| u64::try_from(n).ok())
-                    .filter(|n| *n > 0)
-                    .ok_or_else(|| source.error(Error::syntax("page label St must be positive")))
-            })
-            .transpose()?
-            .unwrap_or(1);
-        context.allocate::<PageLabelRange>(1, source)?;
-        result.push(PageLabelRange {
-            source,
-            page,
-            prefix,
-            style,
-            start,
-        });
-    }
-    if result.first().is_none_or(|r| r.page != 0) {
-        return Err(tree_source.fault(Error::syntax("page labels require a range at page zero")));
-    }
-    Ok(result)
+    Context::run(document, |mut context| {
+        let (catalog, tree_source) = context.catalog()?;
+        let Some(tree) = context.present(catalog, b"PageLabels", tree_source)? else {
+            return Ok(Vec::new());
+        };
+        let mut result = Vec::new();
+        let pages = document.page_count()?;
+        for entry in document
+            .number_tree(tree)
+            .with_source(tree_source)
+            .entries_with(&mut context)?
+        {
+            let (dictionary, source) = context.dictionary(entry.value, entry.source)?;
+            context.type_name(dictionary, b"PageLabel", source)?;
+            let page = usize::try_from(entry.key)
+                .ok()
+                .filter(|n| *n < pages)
+                .ok_or_else(|| {
+                    source.error(Error::syntax("page label range index outside document"))
+                })?;
+            let style = context
+                .entry(dictionary, b"S", source)?
+                .map(|value| {
+                    value
+                        .as_name()
+                        .ok_or(Error::syntax("unknown page label style"))
+                        .and_then(LabelStyle::try_from)
+                        .map_err(|error| source.fault(error))
+                })
+                .transpose()?;
+            let prefix = context
+                .entry(dictionary, b"P", source)?
+                .map(|v| {
+                    v.as_string()
+                        .ok_or_else(|| {
+                            source.error(Error::syntax("page label prefix must be text"))
+                        })
+                        .and_then(|b| context.text(b, source))
+                })
+                .transpose()?
+                .unwrap_or_default();
+            let start = context
+                .entry(dictionary, b"St", source)?
+                .map(|v| {
+                    v.as_integer()
+                        .and_then(|n| u64::try_from(n).ok())
+                        .filter(|n| *n > 0)
+                        .ok_or_else(|| {
+                            source.error(Error::syntax("page label St must be positive"))
+                        })
+                })
+                .transpose()?
+                .unwrap_or(1);
+            context.allocate::<PageLabelRange>(1, source)?;
+            result.push(PageLabelRange {
+                source,
+                page,
+                prefix,
+                style,
+                start,
+            });
+        }
+        if result.first().is_none_or(|r| r.page != 0) {
+            return Err(
+                tree_source.fault(Error::syntax("page labels require a range at page zero"))
+            );
+        }
+        Ok(result)
+    })
 }
 
 /// Parsed page-label ranges, reusable for a viewer's page list. No document

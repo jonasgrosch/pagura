@@ -3,7 +3,7 @@
 use crate::Document;
 use crate::source::{ReadFault, ReadResult};
 use pagura_core::{Diagnostic, DiagnosticKind, Diagnostics, ObjectId, Position, Recovery, Result};
-use std::{cell::RefCell, collections::BTreeSet, sync::PoisonError};
+use std::{cell::RefCell, collections::BTreeSet, rc::Rc, sync::PoisonError};
 
 pub(crate) const CAPACITY: usize = 1024;
 
@@ -39,7 +39,7 @@ impl Log {
 #[derive(Debug)]
 pub struct DiagnosticBatch<'a> {
     document: &'a Document,
-    pending: RefCell<Log>,
+    pending: Rc<RefCell<Log>>,
 }
 
 impl<'a> DiagnosticBatch<'a> {
@@ -56,13 +56,14 @@ impl<'a> DiagnosticBatch<'a> {
         document: &'a Document,
         read: impl FnOnce(&Self) -> ReadResult<T>,
     ) -> ReadResult<T> {
-        let batch = Self {
-            document,
-            pending: RefCell::new(Log::default()),
-        };
-        let result = read(&batch);
+        document.check_source()?;
+        let batch = Self::new(document);
+        let result = read(&batch).and_then(|value| {
+            document.check_source()?;
+            Ok(value)
+        });
         if !matches!(&result, Err(ReadFault::Unavailable(_))) {
-            let pending = batch.pending.into_inner();
+            let pending = std::mem::take(&mut *batch.pending.borrow_mut());
             let mut target = document
                 .diagnostics
                 .lock()
@@ -73,6 +74,23 @@ impl<'a> DiagnosticBatch<'a> {
             target.suppressed = target.suppressed.saturating_add(pending.suppressed);
         }
         result
+    }
+
+    pub(crate) fn new(document: &'a Document) -> Self {
+        Self {
+            document,
+            pending: Rc::new(RefCell::new(Log::default())),
+        }
+    }
+
+    /// One inspection can read historical documents under their own recovery
+    /// policies. Only the initiating run publishes this shared pending buffer;
+    /// a fork never owns a publication boundary or rolls back dependency logs.
+    pub(crate) fn for_document<'b>(&self, document: &'b Document) -> DiagnosticBatch<'b> {
+        DiagnosticBatch {
+            document,
+            pending: Rc::clone(&self.pending),
+        }
     }
 
     /// The document's recovery policy for nested parsers.

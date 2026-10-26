@@ -21,61 +21,29 @@ pub(super) fn apply(
 ) -> ReadResult<()> {
     // Structural source checks have their own shared budget. Changes cannot
     // erase an already established ByteRange or revision coverage result.
-    let mut ctx = Context::new(doc);
-    let oldest_signed = signatures
-        .fields
-        .iter()
-        .filter_map(|f| f.signature.as_ref())
-        .chain(signatures.usage_rights.iter())
-        .chain(signatures.historical.iter().map(|h| &h.signature))
-        .filter_map(|s| match s.results.revision_coverage {
-            RevisionCoverage::Covered { index, .. } => Some(index),
-            _ => None,
-        })
-        .max()
-        .unwrap_or(0);
-    let prepared = facts.and_then(|facts| {
-        if signatures.history_complete && oldest_signed > 0 {
-            prepare(doc, &mut ctx, &facts, oldest_signed)
-        } else {
-            Ok((Vec::new(), Vec::new()))
-        }
-    });
-    if let Err(ReadFault::Unavailable(missing)) = &prepared {
-        return Err(ReadFault::Unavailable(missing.clone()));
-    }
-    for signature in signatures
-        .fields
-        .iter_mut()
-        .filter_map(|f| f.signature.as_mut())
-        .chain(signatures.usage_rights.iter_mut())
-        .chain(signatures.historical.iter_mut().map(|h| &mut h.signature))
-    {
-        signature.results.permitted_modifications = match signature.results.revision_coverage {
-            RevisionCoverage::Covered { index, .. } if signatures.history_complete => {
-                if index == 0 {
-                    PermittedModifications::Analysed(ModificationAnalysis {
-                        signed_revision: 0,
-                        revisions: Vec::new(),
-                        outcome: O::NoChanges,
-                    })
-                } else if let Ok((roles, updates)) = &prepared {
-                    match analyse(doc, &mut ctx, signature, index, roles, updates) {
-                        Ok(analysis) => analysis,
-                        Err(ReadFault::Invalid(_)) => PermittedModifications::Inconclusive,
-                        Err(unavailable) => return Err(unavailable),
-                    }
-                } else {
-                    PermittedModifications::Inconclusive
-                }
+    Context::run(doc, |mut ctx| {
+        let oldest_signed = signatures
+            .fields
+            .iter()
+            .filter_map(|f| f.signature.as_ref())
+            .chain(signatures.usage_rights.iter())
+            .chain(signatures.historical.iter().map(|h| &h.signature))
+            .filter_map(|s| match s.results.revision_coverage {
+                RevisionCoverage::Covered { index, .. } => Some(index),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0);
+        let prepared = facts.and_then(|facts| {
+            if signatures.history_complete && oldest_signed > 0 {
+                prepare(doc, &mut ctx, &facts, oldest_signed)
+            } else {
+                Ok((Vec::new(), Vec::new()))
             }
-            RevisionCoverage::Covered { .. }
-            | RevisionCoverage::RepairedDocument
-            | RevisionCoverage::Indeterminate => PermittedModifications::Inconclusive,
-            _ => PermittedModifications::NotAnalysedYet,
-        };
-    }
-    if !doc.diagnostics().is_empty() || doc.suppressed_diagnostics() != 0 {
+        });
+        if let Err(ReadFault::Unavailable(missing)) = &prepared {
+            return Err(ReadFault::Unavailable(missing.clone()));
+        }
         for signature in signatures
             .fields
             .iter_mut()
@@ -83,10 +51,43 @@ pub(super) fn apply(
             .chain(signatures.usage_rights.iter_mut())
             .chain(signatures.historical.iter_mut().map(|h| &mut h.signature))
         {
-            signature.results.permitted_modifications = PermittedModifications::Inconclusive;
+            signature.results.permitted_modifications = match signature.results.revision_coverage {
+                RevisionCoverage::Covered { index, .. } if signatures.history_complete => {
+                    if index == 0 {
+                        PermittedModifications::Analysed(ModificationAnalysis {
+                            signed_revision: 0,
+                            revisions: Vec::new(),
+                            outcome: O::NoChanges,
+                        })
+                    } else if let Ok((roles, updates)) = &prepared {
+                        match analyse(doc, &mut ctx, signature, index, roles, updates) {
+                            Ok(analysis) => analysis,
+                            Err(ReadFault::Invalid(_)) => PermittedModifications::Inconclusive,
+                            Err(unavailable) => return Err(unavailable),
+                        }
+                    } else {
+                        PermittedModifications::Inconclusive
+                    }
+                }
+                RevisionCoverage::Covered { .. }
+                | RevisionCoverage::RepairedDocument
+                | RevisionCoverage::Indeterminate => PermittedModifications::Inconclusive,
+                _ => PermittedModifications::NotAnalysedYet,
+            };
         }
-    }
-    Ok(())
+        if !doc.diagnostics().is_empty() || doc.suppressed_diagnostics() != 0 {
+            for signature in signatures
+                .fields
+                .iter_mut()
+                .filter_map(|f| f.signature.as_mut())
+                .chain(signatures.usage_rights.iter_mut())
+                .chain(signatures.historical.iter_mut().map(|h| &mut h.signature))
+            {
+                signature.results.permitted_modifications = PermittedModifications::Inconclusive;
+            }
+        }
+        Ok(())
+    })
 }
 
 type Prepared = (Vec<Option<Roles>>, Vec<BTreeSet<pagura_core::ObjectId>>);

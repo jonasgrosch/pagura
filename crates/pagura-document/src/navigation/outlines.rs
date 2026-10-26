@@ -178,96 +178,97 @@ fn appearance<'a>(
 }
 
 pub(super) fn read(document: &Document) -> ReadResult<Vec<OutlineItem<'_>>> {
-    let mut context = Context::new(document);
-    let (catalog, catalog_source) = context.catalog()?;
-    let Some(root) = context.present(catalog, b"Outlines", catalog_source)? else {
-        return Ok(Vec::new());
-    };
-    let (root, source) = context.resolve(root, catalog_source)?;
-    let (root_dictionary, source) = context.dictionary(root, source)?;
-    if context
-        .entry(root_dictionary, b"Type", source)?
-        .is_some_and(|v| v.as_name().is_none_or(|n| n != b"Outlines"))
-    {
-        context.repair(
-            repairs::OUTLINE_TYPE,
-            "incorrect optional outline Type ignored in catalog Outlines context \
-             (12.3.3, Table 150)",
-            source,
-        )?;
-    }
-    let mut items = Vec::new();
-    let mut counts = Vec::new();
-    let mut visited = BTreeSet::new();
-    let mut stack = Vec::new();
-    if let Some((first, level)) = child_level(&mut context, root, source, None, 0)? {
-        stack.push(Pending {
-            value: first,
-            level,
-            previous: None,
-        });
-    }
-    while let Some(Pending {
-        value,
-        level,
-        previous,
-    }) = stack.pop()
-    {
-        context.step(level.depth, level.source)?;
-        let (value, source) = context.resolve(value, level.source)?;
-        context.index_entry(source)?;
-        if !visited.insert(identity(value)) {
+    Context::run(document, |mut context| {
+        let (catalog, catalog_source) = context.catalog()?;
+        let Some(root) = context.present(catalog, b"Outlines", catalog_source)? else {
+            return Ok(Vec::new());
+        };
+        let (root, source) = context.resolve(root, catalog_source)?;
+        let (root_dictionary, source) = context.dictionary(root, source)?;
+        if context
+            .entry(root_dictionary, b"Type", source)?
+            .is_some_and(|v| v.as_name().is_none_or(|n| n != b"Outlines"))
+        {
             context.repair(
-                repairs::OUTLINE_CYCLE,
-                "repeated outline item omitted (12.3.3)",
+                repairs::OUTLINE_TYPE,
+                "incorrect optional outline Type ignored in catalog Outlines context \
+             (12.3.3, Table 150)",
                 source,
             )?;
-            continue;
         }
-        let (dictionary, source) = context.dictionary(value, source)?;
-        check_link(
-            &mut context,
-            dictionary,
-            b"Parent",
-            Some(level.parent),
-            source,
-        )?;
-        check_link(&mut context, dictionary, b"Prev", previous, source)?;
-        let (item, declared) = item(&mut context, dictionary, &level, source)?;
-        let index = items.len();
-        items.push(item);
-        counts.push(Count {
-            declared,
-            source,
-            children: 0,
-        });
-        if let Some(next) = edge(&mut context, dictionary, b"Next", source)? {
-            context.allocate::<Pending<'_>>(1, source)?;
-            stack.push(Pending {
-                value: next,
-                level,
-                previous: Some(identity(value)),
-            });
-        } else if level.last != Some(identity(value)) {
-            context.repair(
-                repairs::OUTLINE_LINKS,
-                "outline Last differs from forward-chain endpoint; endpoint used (12.3.3)",
-                level.source,
-            )?;
-        }
-        if let Some((first, child)) =
-            child_level(&mut context, value, source, Some(index), level.depth + 1)?
-        {
-            context.allocate::<Pending<'_>>(1, source)?;
+        let mut items = Vec::new();
+        let mut counts = Vec::new();
+        let mut visited = BTreeSet::new();
+        let mut stack = Vec::new();
+        if let Some((first, level)) = child_level(&mut context, root, source, None, 0)? {
             stack.push(Pending {
                 value: first,
-                level: child,
+                level,
                 previous: None,
             });
         }
-    }
-    validate_counts(&mut context, &items, counts, root_dictionary, source)?;
-    Ok(items)
+        while let Some(Pending {
+            value,
+            level,
+            previous,
+        }) = stack.pop()
+        {
+            context.step(level.depth, level.source)?;
+            let (value, source) = context.resolve(value, level.source)?;
+            context.index_entry(source)?;
+            if !visited.insert(identity(value)) {
+                context.repair(
+                    repairs::OUTLINE_CYCLE,
+                    "repeated outline item omitted (12.3.3)",
+                    source,
+                )?;
+                continue;
+            }
+            let (dictionary, source) = context.dictionary(value, source)?;
+            check_link(
+                &mut context,
+                dictionary,
+                b"Parent",
+                Some(level.parent),
+                source,
+            )?;
+            check_link(&mut context, dictionary, b"Prev", previous, source)?;
+            let (item, declared) = item(&mut context, dictionary, &level, source)?;
+            let index = items.len();
+            items.push(item);
+            counts.push(Count {
+                declared,
+                source,
+                children: 0,
+            });
+            if let Some(next) = edge(&mut context, dictionary, b"Next", source)? {
+                context.allocate::<Pending<'_>>(1, source)?;
+                stack.push(Pending {
+                    value: next,
+                    level,
+                    previous: Some(identity(value)),
+                });
+            } else if level.last != Some(identity(value)) {
+                context.repair(
+                    repairs::OUTLINE_LINKS,
+                    "outline Last differs from forward-chain endpoint; endpoint used (12.3.3)",
+                    level.source,
+                )?;
+            }
+            if let Some((first, child)) =
+                child_level(&mut context, value, source, Some(index), level.depth + 1)?
+            {
+                context.allocate::<Pending<'_>>(1, source)?;
+                stack.push(Pending {
+                    value: first,
+                    level: child,
+                    previous: None,
+                });
+            }
+        }
+        validate_counts(&mut context, &items, counts, root_dictionary, source)?;
+        Ok(items)
+    })
 }
 
 /// Reads one item's own entries, returning its declared Count for validation.

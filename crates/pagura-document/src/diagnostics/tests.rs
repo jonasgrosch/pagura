@@ -223,3 +223,58 @@ fn batches_share_strict_rejection_identity_and_bounded_suppression() {
     );
     assert_eq!(strict.diagnostics(), [] as [Diagnostic; 0]);
 }
+
+#[test]
+fn historical_forks_share_only_provisional_reports_and_nested_runs_are_independent() {
+    use crate::source::{ByteSource, SourceIdentity, SourceLimits, SparseBytes};
+    let document = Document::open(
+        fixture("signature-changes", "form-fill-p2.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let historical = document.revision_document(1).unwrap();
+    assert_eq!(historical.recovery(), pagura_core::Recovery::Strict);
+    let identity = SourceIdentity::new(39, [37; 32]);
+    let source =
+        SparseBytes::new(identity, 4, &document.limits(), &SourceLimits::default()).unwrap();
+    let outer = Diagnostic::new(TAG, "pending outer report").at(Position::File(1));
+    let inner =
+        Diagnostic::information(TAG.as_str(), "pending historical report").at(Position::File(2));
+    let completed = Diagnostic::new(TAG, "completed independent read").at(Position::File(3));
+    for _ in 0..3 {
+        let result = DiagnosticBatch::run(&document, |batch| {
+            batch.record(outer.clone())?;
+            let fork = batch.for_document(historical);
+            fork.record(inner.clone())?;
+            DiagnosticBatch::run(&document, |independent| {
+                independent.record(completed.clone())?;
+                Ok(())
+            })?;
+            source.materialize()
+        });
+        assert!(matches!(
+            result,
+            Err(crate::source::ReadFault::Unavailable(_))
+        ));
+        assert_eq!(document.diagnostics(), std::slice::from_ref(&completed));
+        assert_eq!(historical.diagnostics(), []);
+    }
+    source.supply(identity, 0, b"done").unwrap();
+    DiagnosticBatch::run(&document, |batch| {
+        batch.record(outer.clone())?;
+        batch.for_document(historical).record(inner.clone())?;
+        source.materialize()
+    })
+    .unwrap();
+    assert_eq!(document.diagnostics(), [completed, outer, inner]);
+    assert_eq!(historical.diagnostics(), []);
+    let refused = DiagnosticBatch::run(&document, |batch| {
+        batch
+            .for_document(historical)
+            .record(Diagnostic::new(TAG, "strict historical refusal"))?;
+        Ok(())
+    })
+    .unwrap_err();
+    assert_eq!(refused.as_error().unwrap().repair, Some(TAG));
+    assert_eq!(document.diagnostics().len(), 3);
+}

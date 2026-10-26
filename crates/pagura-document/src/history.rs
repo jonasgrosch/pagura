@@ -40,7 +40,9 @@ impl Document {
     }
 
     pub(crate) fn revision_document(&self, index: usize) -> ReadResult<&Document> {
-        self.revision_with_context(index, &mut Context::new(self))
+        Context::run(self, |mut context| {
+            self.revision_with_context(index, &mut context)
+        })
     }
 
     pub(crate) fn revision_with_context(

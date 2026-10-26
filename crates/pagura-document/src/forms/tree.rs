@@ -28,46 +28,47 @@ struct Walk<'a> {
 }
 
 pub(super) fn read(document: &Document) -> ReadResult<Option<AcroForm<'_>>> {
-    let mut context = Context::new(document);
-    let (catalog, source) = context.catalog()?;
-    let Some(value) = context.present(catalog, b"AcroForm", source)? else {
-        return Ok(None);
-    };
-    let (dictionary, source) = context.dictionary(value, source)?;
-    let inherited = Inherited::defaults(&mut context, dictionary, source)?;
-    let form = header(&mut context, dictionary, source, &inherited)?;
-    let roots = if let Some(fields) = context.present(dictionary, b"Fields", source)? {
-        attributes::array(&mut context, fields, source)?
-    } else {
-        context.repair(
-            repairs::FORM_FIELDS,
-            "absent Fields read as an empty field tree (12.7.3, Table 224)",
-            source,
-        )?;
-        &[]
-    };
-    context.allocate::<Pending<'_>>(roots.len(), source)?;
-    let mut stack: Vec<_> = roots
-        .iter()
-        .rev()
-        .map(|value| Pending {
-            value,
-            source,
-            parent: None,
-            inherited,
-            depth: 0,
-        })
-        .collect();
-    let mut walk = Walk {
-        context,
-        form,
-        seen: BTreeSet::new(),
-        names: BTreeMap::new(),
-    };
-    while let Some(pending) = stack.pop() {
-        walk.node(&pending, &mut stack)?;
-    }
-    Ok(Some(walk.form))
+    Context::run(document, |mut context| {
+        let (catalog, source) = context.catalog()?;
+        let Some(value) = context.present(catalog, b"AcroForm", source)? else {
+            return Ok(None);
+        };
+        let (dictionary, source) = context.dictionary(value, source)?;
+        let inherited = Inherited::defaults(&mut context, dictionary, source)?;
+        let form = header(&mut context, dictionary, source, &inherited)?;
+        let roots = if let Some(fields) = context.present(dictionary, b"Fields", source)? {
+            attributes::array(&mut context, fields, source)?
+        } else {
+            context.repair(
+                repairs::FORM_FIELDS,
+                "absent Fields read as an empty field tree (12.7.3, Table 224)",
+                source,
+            )?;
+            &[]
+        };
+        context.allocate::<Pending<'_>>(roots.len(), source)?;
+        let mut stack: Vec<_> = roots
+            .iter()
+            .rev()
+            .map(|value| Pending {
+                value,
+                source,
+                parent: None,
+                inherited,
+                depth: 0,
+            })
+            .collect();
+        let mut walk = Walk {
+            context,
+            form,
+            seen: BTreeSet::new(),
+            names: BTreeMap::new(),
+        };
+        while let Some(pending) = stack.pop() {
+            walk.node(&pending, &mut stack)?;
+        }
+        Ok(Some(walk.form))
+    })
 }
 
 fn header<'a>(

@@ -187,7 +187,9 @@ fn view<'a>(
 }
 
 pub(super) fn local(document: &Document, value: &Value) -> ReadResult<Destination> {
-    resolve(&mut Context::new(document), value, Source::default())
+    Context::run(document, |mut context| {
+        resolve(&mut context, value, Source::default())
+    })
 }
 
 pub(super) fn resolve<'a>(
@@ -347,38 +349,39 @@ pub(super) fn target<'a>(
 }
 
 pub(super) fn named(document: &Document) -> ReadResult<Vec<NamedDestination<'_>>> {
-    let mut context = Context::new(document);
-    let (catalog, source) = context.catalog()?;
-    let mut entries = Vec::new();
-    if let Some(value) = context.present(catalog, b"Dests", source)? {
-        let (dictionary, source) = context.dictionary(value, source)?;
-        for (key, _) in dictionary {
-            let Some(value) = context.present(dictionary, key.as_bytes(), source)? else {
-                continue;
-            };
-            context.step(0, source)?;
-            context.allocate::<NamedDestination<'_>>(1, source)?;
-            entries.push(NamedDestination {
-                name: DestinationName::Name(key),
-                destination: resolve(&mut context, value, source)?,
-            });
-        }
-    }
-    if let Some(names) = context.present(catalog, b"Names", source)? {
-        let (names, source) = context.dictionary(names, source)?;
-        if let Some(root) = context.present(names, b"Dests", source)? {
-            for entry in document
-                .name_tree(root)
-                .with_source(source)
-                .entries_with(&mut context)?
-            {
+    Context::run(document, |mut context| {
+        let (catalog, source) = context.catalog()?;
+        let mut entries = Vec::new();
+        if let Some(value) = context.present(catalog, b"Dests", source)? {
+            let (dictionary, source) = context.dictionary(value, source)?;
+            for (key, _) in dictionary {
+                let Some(value) = context.present(dictionary, key.as_bytes(), source)? else {
+                    continue;
+                };
+                context.step(0, source)?;
                 context.allocate::<NamedDestination<'_>>(1, source)?;
                 entries.push(NamedDestination {
-                    name: DestinationName::String(entry.key),
-                    destination: resolve(&mut context, entry.value, entry.source)?,
+                    name: DestinationName::Name(key),
+                    destination: resolve(&mut context, value, source)?,
                 });
             }
         }
-    }
-    Ok(entries)
+        if let Some(names) = context.present(catalog, b"Names", source)? {
+            let (names, source) = context.dictionary(names, source)?;
+            if let Some(root) = context.present(names, b"Dests", source)? {
+                for entry in document
+                    .name_tree(root)
+                    .with_source(source)
+                    .entries_with(&mut context)?
+                {
+                    context.allocate::<NamedDestination<'_>>(1, source)?;
+                    entries.push(NamedDestination {
+                        name: DestinationName::String(entry.key),
+                        destination: resolve(&mut context, entry.value, entry.source)?,
+                    });
+                }
+            }
+        }
+        Ok(entries)
+    })
 }

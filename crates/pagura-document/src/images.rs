@@ -88,7 +88,9 @@ impl Document {
     /// # Errors
     /// Missing identity, non-image/non-stream source, malformed dimensions or budgets.
     pub fn image_asset(&self, id: ObjectId) -> ReadResult<ImageAsset<'_>> {
-        asset(&mut Context::new(self), id, AssetKind::Image)
+        Context::run(self, |mut context| {
+            asset(&mut context, id, AssetKind::Image)
+        })
     }
 
     /// Reads the stored thumbnail of an object dictionary (12.3.4).
@@ -98,25 +100,25 @@ impl Document {
     /// # Errors
     /// Invalid owner/stream identity, cycles, dimensions and view budgets.
     pub fn thumbnail(&self, owner: ObjectId) -> ReadResult<Option<ImageAsset<'_>>> {
-        let mut context = Context::new(self);
-        let source = context.source(owner)?;
-        let dictionary = self
-            .object(owner)?
-            .dictionary()
-            .ok_or_else(|| source.error(Error::syntax("thumbnail owner must be a dictionary")))?;
-        let Some(value) = context.present(dictionary, b"Thumb", source)? else {
-            return Ok(None);
-        };
-        if value.as_reference().is_none() {
-            return Err(source
-                .error(Error::syntax("Thumb must reference a stream"))
-                .into());
-        }
-        let (_, location) = context.resolve(value, source)?;
-        let id = location
-            .object
-            .ok_or_else(|| location.error(Error::syntax("Thumb must reference a stream")))?;
-        asset(&mut context, id, AssetKind::Thumbnail).map(Some)
+        Context::run(self, |mut context| {
+            let source = context.source(owner)?;
+            let dictionary = self.object(owner)?.dictionary().ok_or_else(|| {
+                source.error(Error::syntax("thumbnail owner must be a dictionary"))
+            })?;
+            let Some(value) = context.present(dictionary, b"Thumb", source)? else {
+                return Ok(None);
+            };
+            if value.as_reference().is_none() {
+                return Err(source
+                    .error(Error::syntax("Thumb must reference a stream"))
+                    .into());
+            }
+            let (_, location) = context.resolve(value, source)?;
+            let id = location
+                .object
+                .ok_or_else(|| location.error(Error::syntax("Thumb must reference a stream")))?;
+            asset(&mut context, id, AssetKind::Thumbnail).map(Some)
+        })
     }
 
     /// Lists direct image XObjects in a page's inherited Resources dictionary.
@@ -128,39 +130,40 @@ impl Document {
     /// Page/resource type and reference errors, cycles and view budgets.
     pub fn page_image_resources(&self, page: usize) -> ReadResult<Vec<ImageResource<'_>>> {
         let page = self.page(page)?;
-        let mut context = Context::new(self);
-        let source = context.source(page.id())?;
-        let resources = page.resources();
-        let Some(value) = context.present(resources, b"XObject", source)? else {
-            return Ok(Vec::new());
-        };
-        let (objects, source) = context.dictionary(value, source)?;
-        context.allocate::<ImageResource<'_>>(objects.len(), source)?;
-        let mut images = Vec::new();
-        for (name, _) in objects {
-            context.step(0, source)?;
-            let Some(value) = context.present(objects, name.as_bytes(), source)? else {
-                continue;
+        Context::run(self, |mut context| {
+            let source = context.source(page.id())?;
+            let resources = page.resources();
+            let Some(value) = context.present(resources, b"XObject", source)? else {
+                return Ok(Vec::new());
             };
-            let (dictionary, location) = context.dictionary(value, source)?;
-            if context
-                .entry(dictionary, b"Subtype", location)?
-                .and_then(Value::as_name)
-                .is_some_and(|name| name == b"Image")
-            {
-                let id = location
-                    .object
-                    .filter(|_| value.as_reference().is_some())
-                    .ok_or_else(|| {
-                        location.error(Error::syntax("image XObject must be indirect"))
-                    })?;
-                images.push(ImageResource {
-                    name,
-                    asset: asset(&mut context, id, AssetKind::Image)?,
-                });
+            let (objects, source) = context.dictionary(value, source)?;
+            context.allocate::<ImageResource<'_>>(objects.len(), source)?;
+            let mut images = Vec::new();
+            for (name, _) in objects {
+                context.step(0, source)?;
+                let Some(value) = context.present(objects, name.as_bytes(), source)? else {
+                    continue;
+                };
+                let (dictionary, location) = context.dictionary(value, source)?;
+                if context
+                    .entry(dictionary, b"Subtype", location)?
+                    .and_then(Value::as_name)
+                    .is_some_and(|name| name == b"Image")
+                {
+                    let id = location
+                        .object
+                        .filter(|_| value.as_reference().is_some())
+                        .ok_or_else(|| {
+                            location.error(Error::syntax("image XObject must be indirect"))
+                        })?;
+                    images.push(ImageResource {
+                        name,
+                        asset: asset(&mut context, id, AssetKind::Image)?,
+                    });
+                }
             }
-        }
-        Ok(images)
+            Ok(images)
+        })
     }
 }
 

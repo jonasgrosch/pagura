@@ -137,44 +137,45 @@ impl Document {
     /// # Errors
     /// Malformed declarations, cycles, text repairs and traversal/result budgets.
     pub fn collection(&self) -> ReadResult<Option<Collection<'_>>> {
-        let mut context = Context::new(self);
-        let (catalog, source) = context.catalog()?;
-        let Some(value) = context.present(catalog, b"Collection", source)? else {
-            return Ok(None);
-        };
-        let indirect = value.as_reference().is_some();
-        let (dictionary, source) = context.dictionary(value, source)?;
-        context.type_name(dictionary, b"Collection", source)?;
-        let view = match read::name(&mut context, dictionary, b"View", source)?.map(Name::as_bytes)
-        {
-            None | Some(b"D") => CollectionView::Details,
-            Some(b"T") => CollectionView::Tiles,
-            Some(b"H") => CollectionView::Hidden,
-            Some(b"C") => {
-                let navigator = context.required(dictionary, b"Navigator", source)?;
-                context.dictionary(navigator, source)?;
-                CollectionView::Navigator
-            }
-            _ => {
-                return Err(source
-                    .error(Error::syntax("invalid collection View"))
-                    .into());
-            }
-        };
-        // Table 153 explicitly treats a non-string D as absent.
-        let initial_file = context
-            .entry(dictionary, b"D", source)?
-            .and_then(Value::as_string);
-        let fields = schema(&mut context, dictionary, source)?;
-        let sort = sort(&mut context, dictionary, source)?;
-        Ok(Some(Collection {
-            object: source.object.filter(|_| indirect),
-            dictionary,
-            initial_file,
-            view,
-            fields,
-            sort,
-        }))
+        Context::run(self, |mut context| {
+            let (catalog, source) = context.catalog()?;
+            let Some(value) = context.present(catalog, b"Collection", source)? else {
+                return Ok(None);
+            };
+            let indirect = value.as_reference().is_some();
+            let (dictionary, source) = context.dictionary(value, source)?;
+            context.type_name(dictionary, b"Collection", source)?;
+            let view =
+                match read::name(&mut context, dictionary, b"View", source)?.map(Name::as_bytes) {
+                    None | Some(b"D") => CollectionView::Details,
+                    Some(b"T") => CollectionView::Tiles,
+                    Some(b"H") => CollectionView::Hidden,
+                    Some(b"C") => {
+                        let navigator = context.required(dictionary, b"Navigator", source)?;
+                        context.dictionary(navigator, source)?;
+                        CollectionView::Navigator
+                    }
+                    _ => {
+                        return Err(source
+                            .error(Error::syntax("invalid collection View"))
+                            .into());
+                    }
+                };
+            // Table 153 explicitly treats a non-string D as absent.
+            let initial_file = context
+                .entry(dictionary, b"D", source)?
+                .and_then(Value::as_string);
+            let fields = schema(&mut context, dictionary, source)?;
+            let sort = sort(&mut context, dictionary, source)?;
+            Ok(Some(Collection {
+                object: source.object.filter(|_| indirect),
+                dictionary,
+                initial_file,
+                view,
+                fields,
+                sort,
+            }))
+        })
     }
 }
 

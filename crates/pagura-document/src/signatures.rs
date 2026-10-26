@@ -64,14 +64,15 @@ impl Document {
     pub fn signatures(&self) -> ReadResult<Signatures<'_>> {
         // Source identity and historical coverage currently require complete input.
         let _source = self.materialize()?;
-        let mut ctx = crate::view::Context::new(self);
-        let mut result = read::read(self, &ctx)?;
-        let facts = history::discover(self, &mut ctx, &mut result);
-        if facts.is_err() {
-            result.history_complete = false;
-        }
-        modifications::apply(self, &mut result, facts)?;
-        Ok(result)
+        crate::view::Context::run(self, |mut ctx| {
+            let mut result = read::read(self, &ctx)?;
+            let facts = history::discover(self, &mut ctx, &mut result);
+            if facts.is_err() {
+                result.history_complete = false;
+            }
+            modifications::apply(self, &mut result, facts)?;
+            Ok(result)
+        })
     }
 }
 

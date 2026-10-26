@@ -218,7 +218,9 @@ fn kind<'a>(
 }
 
 pub(crate) fn read<'a>(document: &'a Document, value: &'a Value) -> ReadResult<ActionSequence<'a>> {
-    read_with(&mut Context::new(document), value, Source::default())
+    Context::run(document, |mut context| {
+        read_with(&mut context, value, Source::default())
+    })
 }
 
 /// One step of the iterative depth-first walk over an action's Next tree.
