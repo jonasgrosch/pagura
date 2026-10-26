@@ -272,6 +272,7 @@ fn metadata_and_source_images_do_not_conflate_source_and_rendered_appearance() {
         document
             .raw_stream_data(document.object(id(9)).unwrap())
             .unwrap()
+            .bytes()
     );
     assert_ne!(stored.data.as_ref(), [255, 0, 0, 0, 255, 0]);
     for owner in [id(3), id(10)] {
