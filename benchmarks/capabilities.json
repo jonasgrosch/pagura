@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "2eff145c3a9a83613f2917197c6db40c625494bc",
+  "audited_revision": "d3da8c8891affa6ed1bd75f5c101ac6b60b95ac2",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -142,6 +142,7 @@
     "crates/pagura-pki/src/validation/revocation/mod.rs": "56cd5b248aea2586f0da10540f165e2dc3393aa32ade55f52bc7f0ddba2d789e",
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
+    "crates/pagura-reference/src/image.rs": "daf7d3c8ef39581f5e87a3a93ca0c7080a76564170f6393de6fe45549dc66b24",
     "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
@@ -181,7 +182,7 @@
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
-    "references/requirements/paint.json": "24dfc9c63ca616939e1ceea3504c89297b9df783708f98941a3ddabaeaa0c3a0",
+    "references/requirements/paint.json": "888819e876aabe77e673f5c37c614961daf5e032c548667e0f5c870706cbb1a4",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
@@ -639,7 +640,8 @@
         "crates/pagura-image/tests/jpx_integration.rs",
         "tools/fixturegen/paint_jpx_native.py",
         "tools/fixturegen/paint_jpx_rgb.py",
-        "tools/fixturegen/paint_jpx_integration.py"
+        "tools/fixturegen/paint_jpx_integration.py",
+        "crates/pagura-reference/src/image.rs"
       ],
       "requirements": [
         "jpx-pdf-contract",
