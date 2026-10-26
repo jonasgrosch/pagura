@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "607829c3b93000d02a53cead0fefc2d4c5cf470d",
+  "audited_revision": "702659b95533f8c7b07652d44af897833a627d7d",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -16,7 +16,7 @@
     "corpus/manifests/caret_annotations.json": "388dd60ceba28ffde3d51d456b446bbe6c57f96b420d3cb74dff7f035cf95a3f",
     "corpus/manifests/circle_annotations.json": "0b333e347129ad536339916c86de9465b0bfc279a6a8226799b1dfa723e35ee7",
     "corpus/manifests/cloud_annotations.json": "8aee0ed9c228c7716982fecadea1dfd22c1722223e474f15af89f434f91bb712",
-    "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
+    "corpus/manifests/content.json": "695b477fe7d1a567dce00f58936fa526e5bd052056f8086b40daabd4be400b77",
     "corpus/manifests/ending_annotations.json": "ff8d2d2495e05a0ebe782b8f3292692bf939be30a8511364ec297815edc0ed9d",
     "corpus/manifests/file_attachment_icons.json": "c4662b806f255d426e120c38b42daeb45986e38efbfddc5d539f5c84f154d2fa",
     "corpus/manifests/form_borders.json": "be067790327a9195a6c6db1dda7730a21b5b932195d9284dbb71c394e76a39a7",
@@ -67,7 +67,7 @@
     "crates/pagura-appearance/src/features.rs": "cdf17343c581cbff15a12b151243c51b30ee42303e01e18d9e444e069dda0c2d",
     "crates/pagura-appearance/src/fonts.rs": "e723d5284e7df441c230bf8208adb637d3cfe9a797b486b4b0e5aa1d4ea5b55c",
     "crates/pagura-appearance/src/fonts/encoding.rs": "bff6b19c01084d0e76c8e5b724eaf7ac4b3f1f68ab0badfcf807e6995db56fd2",
-    "crates/pagura-appearance/src/form.rs": "62ee93694231b36a7df17e8e706fdd8d6fb79853a0d57b45db1abba4cea635ae",
+    "crates/pagura-appearance/src/form.rs": "ccb8e7a8cfb3392eb80c24e50b078fc8899fe2027c33b202b4d8784d584bf0a6",
     "crates/pagura-appearance/src/form/buttons.rs": "0588008c30fcba5579fb83e486fed79d752f1511b047d1405ae71b44bd4dd3f9",
     "crates/pagura-appearance/src/form/compatibility.rs": "1d927a3fff57adc899c9199515dafd1b9d614d70758cd0cfd1b0ce196a3207bc",
     "crates/pagura-appearance/src/form/da.rs": "452a8895cb766bfaaf1364ff8f4191e4d3a66d107a914d684b1ac3fcaa6a35cf",
@@ -82,6 +82,7 @@
     "crates/pagura-appearance/src/rich/style.rs": "732fdad0fea77b1e7c6389b87bae1798c7a18d591682b693152d76dbbfcf0e38",
     "crates/pagura-appearance/src/rich/tests.rs": "85172eb48e1a652a1d23dad7f3bab0b864b4743f2a96cf57fa33b98798ae3069",
     "crates/pagura-appearance/src/rich/xml.rs": "d41146407d9ffbe174f8d32029482b5ad077393592db4128976b73665707bb37",
+    "crates/pagura-appearance/src/stream.rs": "96ba2029764398dd4c36381f623d76428f2938ffcc54f9e6299053259bd51a87",
     "crates/pagura-appearance/src/values.rs": "81a4c6cd359a805e408c594491f698f88b944c412a70b52d10cfec97a16d5d24",
     "crates/pagura-appearance/src/widget_rotation.rs": "4be03eecb64752c6ec7e481922da725347f92a4ec1a039998b02e44f5a877e98",
     "crates/pagura-cli/src/args.rs": "a3b99f4113502251bde2384bbc03d6851cc96c1899fc27ca10ad4f6ad74fa348",
@@ -160,7 +161,7 @@
     "crates/pagura-interpret/src/dump.rs": "9af4c6ef19ca9f2c3c41a29cd5afc2769422706cb5a7aed471ac165170fcf776",
     "crates/pagura-interpret/src/features.rs": "7e5a38d35b2250c7e352e0ae74cc14b61325aad361c4e75cd93af5a0a84c7e5f",
     "crates/pagura-interpret/src/lib.rs": "4fee62ce36e00bb76d99ba852a2179ae9a9fd1de6249bb77cae0a1a87983d302",
-    "crates/pagura-interpret/src/machine/annotations.rs": "4260c83265478a1388efb2aa9d42676e1f5d3ff66b2104204892643d9ee1caa8",
+    "crates/pagura-interpret/src/machine/annotations.rs": "a4d5af02a40b8ec1be144bc3cc8330d33622270891c55449db47909c015c28d1",
     "crates/pagura-interpret/src/machine/extgstate.rs": "b434259c3831d7dab8da80f28507519f1042c501bded4353d96823361b31527f",
     "crates/pagura-interpret/src/machine/form.rs": "c7339375a5c88f8be5fd0f5c20be8fc31eff38d033efd1772bac70940c8fce83",
     "crates/pagura-interpret/src/machine/image/describe.rs": "37a614ca83376150926a58dc22c64ad9436e06d1732872e173a1f78166ef35e0",
@@ -225,13 +226,13 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "5f317e882a6bf776b0b4242f0fbf36ad9944f6bffb6269c463df03bc5676a779",
+    "references/requirements/content.json": "7f2b69389c5b8e1b63aefbcfaa75c6055110eabb3ec414c4d309d056b808e87b",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
-    "references/requirements/forms.json": "9b9d0fc71c4b1d07f2f402e587c85df3038392e50341ea5e7dd08332caec07ca",
+    "references/requirements/forms.json": "ce9b6c3acedf45db3a101b136e267b5fd16defed7ffa0f5367cb58d3735285ed",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
     "references/requirements/image.json": "3410e86abc83f72875194f80fe95c16e5719b091698d440adbfbd7d65133032a",
@@ -980,7 +981,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored normal appearances and state dictionaries; generated icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions.",
+      "implemented": "Stored normal appearances and state dictionaries; generated icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions. Forms and annotations share stored normal/rollover/down selection as data; host/viewer rendering still selects normal appearance.",
       "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, relative or interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; curved cloud stroke/dash and wider callout accuracy; other subtype synthesis; nonrectangular relief/radii; remaining rounded stroke/dash evidence; nonempty widgets and interaction-selected AP/R/AP/D states. Full V01 acceptance remains open.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
@@ -1018,7 +1019,8 @@
         "crates/pagura-appearance/src/rich.rs",
         "crates/pagura-appearance/src/rich/xml.rs",
         "crates/pagura-appearance/src/rich/style.rs",
-        "crates/pagura-appearance/src/rich/layout.rs"
+        "crates/pagura-appearance/src/rich/layout.rs",
+        "crates/pagura-appearance/src/stream.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
@@ -1756,7 +1758,11 @@
         "rich_annotations/relative-indent",
         "rich_annotations/unitless-leading",
         "rich_annotations/unitless-shorthand-leading",
-        "rich_annotations/adjacent-margins"
+        "rich_annotations/adjacent-margins",
+        "content/annotation-appearance-streams",
+        "content/annotation-appearance-states",
+        "content/annotation-appearance-null",
+        "content/annotation-appearance-null-state"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -1800,7 +1806,8 @@
         "crates/pagura-appearance/src/form/style.rs",
         "crates/pagura-document/src/forms/fill/buttons.rs",
         "crates/pagura-appearance/src/form/buttons.rs",
-        "crates/pagura-appearance/src/widget_rotation.rs"
+        "crates/pagura-appearance/src/widget_rotation.rs",
+        "crates/pagura-appearance/src/stream.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/editing.rs",
