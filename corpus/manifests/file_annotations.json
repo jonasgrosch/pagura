@@ -50,6 +50,21 @@
       "feature": "annotation.appearance"
     },
     {
+      "id": "file_annotations/listing-limit",
+      "kind": "pdf",
+      "description": "Hidden annotations still count toward the host listing bound",
+      "expected": "open",
+      "requirements": [
+        "document-file-annotations",
+        "host-page-attachments"
+      ],
+      "path": "corpus/generated/file_annotations/listing-limit.pdf",
+      "sha256": "addd64fd9d56fc06d3ed39c22f091c7a2f952666eff0320705c1c770e5dd1081",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
       "id": "file_annotations/absent",
       "kind": "pdf",
       "description": "absent",

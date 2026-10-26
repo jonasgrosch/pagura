@@ -84,6 +84,8 @@ wire_codes! {
     V1_9 = 0x0001_0009,
     /// Explicit attachment size and checksum comparisons.
     V1_10 = 0x0001_000a,
+    /// Page attachment annotation discovery and explicit payload operations.
+    V1_11 = 0x0001_000b,
 }
 
 wire_codes! {
@@ -99,7 +101,7 @@ wire_codes! {
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_10;
+    pub const LATEST: Self = Self::V1_11;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -115,6 +117,7 @@ impl Version {
             Self::V1_8 => "document services require protocol 1.8",
             Self::V1_9 => "PNG export requires protocol 1.9",
             Self::V1_10 => "attachment checks require protocol 1.10",
+            Self::V1_11 => "page attachment operations require protocol 1.11",
         })
     }
 }
@@ -176,6 +179,12 @@ wire_codes! {
     PagePng = 26,
     /// Check the selected attachment parameters against decoded bytes (1.10).
     AttachmentCheck = 27,
+    /// FileAttachment annotations on one page, without reading payloads (1.11).
+    PageAttachments = 28,
+    /// Explicit page, Annots slot and EF key selection (1.11).
+    PageAttachmentBytes = 29,
+    /// Check the selected annotation attachment parameters (1.11).
+    PageAttachmentCheck = 30,
 }
 
 impl RequestKind {
@@ -202,6 +211,9 @@ impl RequestKind {
             Self::FormStyles => Version::V1_7,
             Self::PagePng => Version::V1_9,
             Self::AttachmentCheck => Version::V1_10,
+            Self::PageAttachments | Self::PageAttachmentBytes | Self::PageAttachmentCheck => {
+                Version::V1_11
+            }
             Self::Metadata | Self::Attachments | Self::MetadataBytes | Self::AttachmentBytes => {
                 Version::V1_8
             }
@@ -238,6 +250,9 @@ impl RequestKind {
             Self::AttachmentBytes => ResponseKind::AttachmentBytes,
             Self::PagePng => ResponseKind::PagePng,
             Self::AttachmentCheck => ResponseKind::AttachmentCheck,
+            Self::PageAttachments => ResponseKind::PageAttachments,
+            Self::PageAttachmentBytes => ResponseKind::PageAttachmentBytes,
+            Self::PageAttachmentCheck => ResponseKind::PageAttachmentCheck,
         }
     }
 }
@@ -299,6 +314,12 @@ wire_codes! {
     PagePng = 154,
     /// Completed size and checksum observations (1.10).
     AttachmentCheck = 155,
+    /// FileAttachment annotation records for one page (1.11).
+    PageAttachments = 156,
+    /// Explicitly selected page attachment bytes (1.11).
+    PageAttachmentBytes = 157,
+    /// Page attachment parameter observations (1.11).
+    PageAttachmentCheck = 158,
     /// A structured failure.
     Error = 255,
 }

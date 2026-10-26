@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.10
+# Pagura session protocol v1 through v1.11
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -17,8 +17,8 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-`hello(65540)` (0x00010004) for v1.4, through `hello(65546)`
-(0x0001000a) for v1.10. Versions 1.5–1.7 add the form operations below.
+`hello(65540)` (0x00010004) for v1.4, through `hello(65547)`
+(0x0001000b) for v1.11. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -540,7 +540,7 @@ whole surface plus encoder scratch, then complete encoded bytes and the outgoing
 frame. It is synchronous: incremental output, active-request cancellation and
 host backpressure remain separate work.
 
-The browser client defaults to 1.10 and exposes `pagePng(handle, page, scale,
+The browser client defaults to 1.11 and exposes `pagePng(handle, page, scale,
 background)`. More → Export page PNG lets the user choose a page, 1–2400 DPI and
 a white or transparent background. Downloads use fixed `page-NNNN.png` names and
 `image/png`; object URLs are revoked. Current form values are copied at the click
@@ -592,3 +592,57 @@ exact response/decode budgets, attachment authorization and selection failures,
 independent compressed fixture observations, native/WASI/client parity, exact
 BigInt values and viewer missing/mismatch/error/duplicate/stale-state tests.
 Hosted verification is pending; real-browser interaction remains to be checked.
+
+
+## Version 1.11: page attachment annotations
+
+`hello(65547)` adds three requests, distinct from catalog attachment commands:
+
+| Kind | Request | Payload | Success |
+|---|---|---|---|
+| 28 | `page_attachments` | `u32 handle,page` | 156 |
+| 29 | `page_attachment_bytes` | `u32 handle,page,index; u8 filename_key` | 157 |
+| 30 | `page_attachment_check` | `u32 handle,page,index; u8 filename_key` | 158 |
+
+`index` is the original zero-based Annots slot, including other annotation
+subtypes. Selecting a link or an absent slot is an operational InvalidArgument;
+there is no catalog fallback or fallback to a different EF key. Malformed wire
+fields are terminal syntax errors. Versions 1–1.10 refuse these operations but
+continue accepting their own commands. The page is zero-based.
+
+Response 156 begins with `u32 count` (at most 1024). Each record contains:
+
+1. `u32 index`, increasing in original Annots order; `object annotation`.
+2. Four finite `f64` values: normalized `x0,y0,x1,y1` in default user space.
+3. Optional UTF-8 Contents and optional byte-string icon name, each using the
+   existing canonical presence flag followed by a length-prefixed value.
+4. The file-specification record from response 151, starting at its optional
+   object identity. There is no catalog name-tree key in this record.
+
+An absent icon means the Table 187 PushPin default; unknown declared names stay
+as bytes. Contents and the file specification's description remain separate.
+Repeated annotation identities have separate indexes. Hidden annotations are
+included in discovery. No icon is synthesized or file activated by listing.
+The complete library view is validated before any response is sent. Its own
+traversal/result limits precede encoding; the shared reading-response cap also
+bounds the encoded result. A list failure produces no partial success response.
+
+Response 157 is a length-prefixed payload, exactly like response 153. Response
+158 has the same 16-byte observation payload as response 155, including object
+identity, exact u64 decoded size and two independent declaration statuses.
+Authorization, stream budgets and the 16-byte check-response preflight remain
+identical to catalog operations. Discovery does not decode embedded bytes.
+
+The client exposes `pageAttachments(handle,page)`,
+`pageAttachmentBytes(handle,page,index,key)` and
+`pageAttachmentCheck(handle,page,index,key)`. Listing records are
+`{index,object,rectangle,contents,icon,file}`; `file` contains the existing
+file-specification fields, and all byte strings remain Uint8Array values.
+Client decoding rejects noncanonical flags, invalid rectangles, non-increasing
+indexes, duplicate EF keys, oversized counts, unknown observation statuses and
+truncated/trailing data. Viewer selection is separate follow-up work.
+
+Evidence includes literal wire values, old-version gates, exact original slots,
+page-only/catalog separation, missing/malformed/duplicate entries, declaration
+checks, password failures/Identity and independent response/decode limits. Hosted
+native/WASI/client tests are authored; current-head runtime validation is pending.

@@ -1,5 +1,5 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_10 } from './protocol.mjs';
+import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_11 } from './protocol.mjs';
 import { PngBackground, RequestKind } from './protocol_constants.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
@@ -71,7 +71,7 @@ export class SessionClient {
     this.tail = result.then(() => {}, () => {}).finally(() => { this.queued--; });
     return result;
   }
-  async hello(version = VERSION_1_10) {
+  async hello(version = VERSION_1_11) {
     const result = await this.request(1, { version });
     if (result.version !== version) { const error = new Error('Unsupported host protocol version'); this.fail(error); throw error; }
     this.version = version;
@@ -83,6 +83,12 @@ export class SessionClient {
   metadataBytes(document) { return this.request(RequestKind.MetadataBytes, { document }); }
   attachmentCheck(document, index, key) { return this.request(RequestKind.AttachmentCheck, { document, index, key }); }
   attachmentBytes(document, index, key) { return this.request(RequestKind.AttachmentBytes, { document, index, key }); }
+  /** FileAttachment annotations preserve their original Annots slots, independently of catalog attachments. */
+  pageAttachments(document, page) { return this.request(RequestKind.PageAttachments, { document, page }); }
+  /** Retrieve the exact page, Annots slot and EF key; never activate source-controlled names. */
+  pageAttachmentBytes(document, page, index, key) { return this.request(RequestKind.PageAttachmentBytes, { document, page, index, key }); }
+  /** Check complete decoded bytes against declarations for one exact annotation payload. */
+  pageAttachmentCheck(document, page, index, key) { return this.request(RequestKind.PageAttachmentCheck, { document, page, index, key }); }
   formStyles(document, page) { return this.request(21, { document, page }); }
   formWidgets(document, page) { return this.request(20, { document, page }); }
   formFields(document) { return this.request(18, { document }); }

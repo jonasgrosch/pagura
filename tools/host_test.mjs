@@ -1,4 +1,5 @@
 import { testAttachmentChecks, testAttachmentCheckView } from './attachment_checks_test.mjs';
+import { testPageAttachments } from './page_attachments_test.mjs';
 import { testPngExport, testPngExportView } from './png_export_test.mjs';
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
@@ -229,6 +230,7 @@ async function main() {
     await testDocumentServices(client, root, native, wasiRun);
     await testDocumentServicesView();
     await testAttachmentChecks(client, root, native, wasiRun);
+    await testPageAttachments(client, root, native, wasiRun);
     await testAttachmentCheckView();
     await testPngExport(client, root, native, wasiRun);
     await testPngExportView();

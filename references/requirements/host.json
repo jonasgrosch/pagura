@@ -254,7 +254,7 @@
       "id": "host-png-export",
       "reference": "project-policy",
       "clauses": [],
-      "status": "Protocol 1.9 whole-page PNG export and explicit viewer download; hosted validation pending",
+      "status": "Protocol 1.9 whole-page PNG export and explicit viewer download; hosted Linux/macOS/Windows checks pass at f4ee9bcef",
       "tests": [
         "pagura-host tests/png.rs",
         "tools/test_png_export.py",
@@ -267,7 +267,7 @@
       "id": "host-attachment-checks",
       "reference": "project-policy",
       "clauses": [],
-      "status": "protocol 1.10 and explicit viewer checks implemented; hosted validation pending",
+      "status": "protocol 1.10 and viewer checks implemented; hosted Linux/macOS/Windows checks pass at 64d6462b6",
       "tests": [
         "pagura-host/tests/attachment_checks.rs",
         "tools/attachment_checks_test.mjs",
@@ -275,6 +275,20 @@
       ],
       "gaps": "Synchronous whole-buffer decoding; no streaming, active cancellation, attachment-only viewer password prompt, semantic validation or authenticity result.",
       "rule": "Kind 27 selects the exact catalog index and EF key. Success 155 carries object identity, exact decoded u64 size and distinct not-declared/matches/mismatch statuses. Resource and authorization failures cannot produce a completed observation. A 16-byte reading payload is required before decoding. Viewer checks are explicit, do not download bytes and discard stale results."
+    },
+    {
+      "id": "host-page-attachments",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "protocol 1.11 host/client page attachment listing, retrieval and checks implemented; hosted validation pending",
+      "rule": "Kinds 28–30 select one page and preserve original Annots slots. Responses retain annotation identity, normalized rectangle, Contents, declared icon and the nested file specification. Exact page/slot/EF selection never falls back to a catalog entry. Discovery is lazy; complete authorized decoding precedes byte or check responses. Listings are bounded by 1024 entries, document traversal/result limits and reading-response bytes. Invalid views return errors without a partial listing. Older negotiated sessions remain usable.",
+      "tests": [
+        "pagura-host/tests/page_attachments.rs",
+        "tools/page_attachments_test.mjs",
+        "file_annotations/listing-limit",
+        "pagura-host protocol::tests::protocol_constants"
+      ],
+      "gaps": "Viewer controls, icon synthesis/activation, AF/RF selection, streaming and active-request cancellation remain separate work."
     }
   ]
 }

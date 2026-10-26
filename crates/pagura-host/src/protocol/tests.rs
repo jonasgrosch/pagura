@@ -272,7 +272,8 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
             0x0001_0007,
             0x0001_0008,
             0x0001_0009,
-            0x0001_000a
+            0x0001_000a,
+            0x0001_000b
         ]
     );
     assert!(Version::try_from(2).is_err());

@@ -62,7 +62,7 @@ pub(crate) fn attachments(document: &Document, cap: usize) -> Result<Response> {
     Ok(Response::new(ResponseKind::Attachments, out))
 }
 
-fn specification(out: &mut Writer, file: &FileSpecification<'_>) -> Result<()> {
+pub(super) fn specification(out: &mut Writer, file: &FileSpecification<'_>) -> Result<()> {
     object(out, file.object)?;
     text(out, file.names.unicode.as_deref())?;
     for name in [
@@ -106,9 +106,17 @@ pub(crate) fn attachment_bytes(
 ) -> Result<Response> {
     let files = document.embedded_files()?;
     let file = attachment(&files, index, key)?;
+    payload_bytes(file, cap, ResponseKind::AttachmentBytes)
+}
+
+pub(super) fn payload_bytes(
+    file: &EmbeddedFile<'_>,
+    cap: usize,
+    kind: ResponseKind,
+) -> Result<Response> {
     let mut out = Writer::new(cap);
     blob(&mut out, &file.data()?)?;
-    Ok(Response::new(ResponseKind::AttachmentBytes, out))
+    Ok(Response::new(kind, out))
 }
 
 pub(crate) fn attachment_check(
@@ -119,6 +127,14 @@ pub(crate) fn attachment_check(
 ) -> Result<Response> {
     let files = document.embedded_files()?;
     let file = attachment(&files, index, key)?;
+    payload_check(file, cap, ResponseKind::AttachmentCheck)
+}
+
+pub(super) fn payload_check(
+    file: &EmbeddedFile<'_>,
+    cap: usize,
+    kind: ResponseKind,
+) -> Result<Response> {
     // Object id (6), decoded size (8) and two observations (2). Refuse an
     // undersized response budget before decoding, without implying a check.
     if cap < 16 {
@@ -130,7 +146,7 @@ pub(crate) fn attachment_check(
     out.u64(checked.decoded_size)?;
     out.u8(check_status(checked.size)?.code())?;
     out.u8(check_status(checked.checksum)?.code())?;
-    Ok(Response::new(ResponseKind::AttachmentCheck, out))
+    Ok(Response::new(kind, out))
 }
 
 fn check_status(value: ParameterCheck) -> Result<AttachmentCheckStatus> {
@@ -183,7 +199,7 @@ fn blob(out: &mut Writer, value: &[u8]) -> Result<()> {
     out.push(value)
 }
 
-fn bytes(out: &mut Writer, value: Option<&[u8]>) -> Result<()> {
+pub(super) fn bytes(out: &mut Writer, value: Option<&[u8]>) -> Result<()> {
     out.flag(value.is_some())?;
     if let Some(value) = value {
         blob(out, value)?;
@@ -191,7 +207,7 @@ fn bytes(out: &mut Writer, value: Option<&[u8]>) -> Result<()> {
     Ok(())
 }
 
-fn text(out: &mut Writer, value: Option<&str>) -> Result<()> {
+pub(super) fn text(out: &mut Writer, value: Option<&str>) -> Result<()> {
     bytes(out, value.map(str::as_bytes))
 }
 

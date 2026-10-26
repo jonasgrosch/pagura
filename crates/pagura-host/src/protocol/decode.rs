@@ -86,6 +86,23 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
             index: reader.field(Reader::u32)?,
             key: reader.field(Reader::code)?,
         }),
+        RequestKind::PageAttachments => {
+            Request::Reading(reading::Request::PageAttachments(reader.page()?))
+        }
+        RequestKind::PageAttachmentBytes => {
+            Request::Reading(reading::Request::PageAttachmentBytes {
+                page: reader.page()?,
+                index: reader.field(Reader::u32)?,
+                key: reader.field(Reader::code)?,
+            })
+        }
+        RequestKind::PageAttachmentCheck => {
+            Request::Reading(reading::Request::PageAttachmentCheck {
+                page: reader.page()?,
+                index: reader.field(Reader::u32)?,
+                key: reader.field(Reader::code)?,
+            })
+        }
     };
     reader.finish()?;
     Ok(RequestFrame { id, request })

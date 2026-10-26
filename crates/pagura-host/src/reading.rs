@@ -3,10 +3,12 @@
 //! Every reading response is encoded here into one capped payload, which the
 //! frame encoder sends without copying.
 
+mod annotations;
 mod navigation;
 mod services;
 mod text;
 
+pub(crate) use annotations::{page_attachment_bytes, page_attachment_check, page_attachments};
 pub(crate) use navigation::{labels, links, outlines};
 pub(crate) use services::{
     attachment_bytes, attachment_check, attachments, metadata, metadata_bytes,
@@ -27,7 +29,7 @@ pub const MAX_SEARCH_PAGES: u32 = 16;
 pub const MAX_QUERY_BYTES: usize = 4096;
 /// Most semantic characters in one page text response.
 pub const MAX_PAGE_CHARACTERS: usize = 1_000_000;
-/// Most catalog attachment records in one listing response.
+/// Most catalog or page attachment records in one listing response.
 pub const MAX_ATTACHMENTS: usize = 1024;
 
 /// The bounded search window and continuation cursor.
@@ -124,6 +126,26 @@ pub enum Request<'a> {
     Attachments(Field<u32>),
     /// Inert metadata-stream bytes, separately requested (1.8).
     MetadataBytes(Field<u32>),
+    /// FileAttachment annotations on a page, with lazy payload identities (1.11).
+    PageAttachments(PageRef),
+    /// Bytes from an explicitly selected page attachment (1.11).
+    PageAttachmentBytes {
+        /// Session-local document and zero-based page index.
+        page: PageRef,
+        /// Original zero-based Annots slot, including non-file annotations.
+        index: Field<u32>,
+        /// Exact EF key; no fallback to catalog or another key.
+        key: Field<AttachmentKey>,
+    },
+    /// Parameter observations for an explicitly selected page attachment (1.11).
+    PageAttachmentCheck {
+        /// Session-local document and zero-based page index.
+        page: PageRef,
+        /// Original zero-based Annots slot, including non-file annotations.
+        index: Field<u32>,
+        /// Exact EF key; no fallback to catalog or another key.
+        key: Field<AttachmentKey>,
+    },
     /// Explicit size/checksum check; the complete authorized payload is decoded (1.10).
     AttachmentCheck {
         /// Session-local document handle.
@@ -160,6 +182,9 @@ impl Request<'_> {
             Self::MetadataBytes(_) => RequestKind::MetadataBytes,
             Self::AttachmentBytes { .. } => RequestKind::AttachmentBytes,
             Self::AttachmentCheck { .. } => RequestKind::AttachmentCheck,
+            Self::PageAttachments(_) => RequestKind::PageAttachments,
+            Self::PageAttachmentBytes { .. } => RequestKind::PageAttachmentBytes,
+            Self::PageAttachmentCheck { .. } => RequestKind::PageAttachmentCheck,
         }
     }
 }

@@ -17,6 +17,7 @@ export const Version = Object.freeze({
   V1_8: 0x00010008,
   V1_9: 0x00010009,
   V1_10: 0x0001000a,
+  V1_11: 0x0001000b,
 });
 
 /** Request kind bytes. */
@@ -48,6 +49,9 @@ export const RequestKind = Object.freeze({
   AttachmentBytes: 25,
   PagePng: 26,
   AttachmentCheck: 27,
+  PageAttachments: 28,
+  PageAttachmentBytes: 29,
+  PageAttachmentCheck: 30,
 });
 
 /** Response kind bytes. */
@@ -79,6 +83,9 @@ export const ResponseKind = Object.freeze({
   AttachmentBytes: 153,
   PagePng: 154,
   AttachmentCheck: 155,
+  PageAttachments: 156,
+  PageAttachmentBytes: 157,
+  PageAttachmentCheck: 158,
   Error: 255,
 });
 

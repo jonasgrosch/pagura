@@ -30,6 +30,8 @@ def cases():
     yield case('page-only', names=b'')
     yield case('many', b'<<' + BASE + b'/Contents ' + text('Repeated attachment description ' * 256) + b' >>',
                annots=b'[' + b'8 0 R ' * 200 + b']')
+    yield Case('listing-limit', source(page=b'/Annots [' + b'8 0 R ' * 1025 + b']', extra=(b'<<' + BASE + b'/F 2 >>',)),
+               OPEN, (REQUIREMENT, 'host-page-attachments'), 'Hidden annotations still count toward the host listing bound')
     yield case('absent', annots=b'null', render_error=None)
     yield case('empty', annots=b'[]', render_error=None)
     yield Case('missing', source(), OPEN, (REQUIREMENT,), 'Missing Annots is an empty view')

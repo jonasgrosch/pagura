@@ -247,6 +247,27 @@ impl Session {
                 index,
                 key,
             } => reading::attachment_bytes(self.documents.document(document)?, index, key, cap),
+            reading::Request::PageAttachments(page) => {
+                reading::page_attachments(self.documents.document(page.document)?, page.page, cap)
+            }
+            reading::Request::PageAttachmentBytes { page, index, key } => {
+                reading::page_attachment_bytes(
+                    self.documents.document(page.document)?,
+                    page.page,
+                    index,
+                    key,
+                    cap,
+                )
+            }
+            reading::Request::PageAttachmentCheck { page, index, key } => {
+                reading::page_attachment_check(
+                    self.documents.document(page.document)?,
+                    page.page,
+                    index,
+                    key,
+                    cap,
+                )
+            }
         }
     }
 
