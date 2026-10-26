@@ -170,7 +170,7 @@ or claim that preserved signed bytes establish permission to edit.
 
 ## Planned source and job integration
 
-The [proposed ADR 0035](adr/0035-progressive-sources-and-streaming-jobs.md)
+The [accepted ADR 0036](adr/0036-progressive-sources-and-streaming-jobs.md)
 and [detailed plan](plans/async-pdf-loading-and-image-streaming.md) extend the
 one-pass model with immutable range sources and resumable jobs. Current input
 still requires complete bytes. Current `RenderContext::render_bands` streams

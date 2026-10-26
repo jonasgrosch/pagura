@@ -7,6 +7,9 @@
 //! [`encode_pixmap`] collect that implementation. PNG output has no ancillary
 //! colour/profile metadata.
 
+mod render;
+pub use render::RenderEncoder;
+
 pub use pagura_codec::flate::Level;
 pub use pagura_codec::png::{
     ChunkLease, ColorType, Encoder, EncodingLimits, EncodingOutput, Options, encode,

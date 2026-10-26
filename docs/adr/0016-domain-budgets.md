@@ -190,7 +190,7 @@ store's capacity, plus any value too large to retain, which its build budgets
 bound; this replaces the consequence above that `render_bytes` alone bounds a
 page's peak memory.
 
-## Amendment, 2026-10-26: progressive source and job budgets (ADR 0035)
+## Amendment, 2026-10-26: progressive source and job budgets (ADR 0036)
 
 Loading, extraction and encoding use separate domain configuration records, passed
 by reference or owned by their operation. They do not enlarge `Limits`, which

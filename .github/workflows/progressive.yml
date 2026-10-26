@@ -29,5 +29,7 @@ jobs:
         run: cargo test -p pagura-paint
       - name: Verify public owned output against independent image oracles
         run: 'cargo test -p pagura --test api session::'
+      - name: Verify rendered PNG streaming and alpha conversion
+        run: 'cargo test -p pagura --test api png::'
       - name: Verify incremental codecs and independent decoder fixtures
         run: cargo test -p pagura-codec

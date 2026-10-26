@@ -81,7 +81,7 @@ integration. Milestone numbers are outcomes, not completion claims.
 - Long coverage-guided fuzz campaigns (the `fuzz/` targets) on dedicated hardware.
 - **Loading, image extraction and output (D01/D02a):** the
   [consolidated detailed design](plans/async-pdf-loading-and-image-streaming.md)
-  and [proposed ADR 0035](adr/0035-progressive-sources-and-streaming-jobs.md)
+  and [accepted ADR 0036](adr/0036-progressive-sources-and-streaming-jobs.md)
   cover immutable range sources, missing-data jobs, tail-first/linearized
   loading, image assets, resumable bands, incremental PNG/DEFLATE and native
   async/browser integration. Band callbacks, stop callbacks, CLI streamed PPM

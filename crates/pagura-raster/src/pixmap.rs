@@ -34,6 +34,14 @@ impl Rgba8 {
         Self::new(r, g, b, 255)
     }
 
+    /// Converts one premultiplied output pixel using the surface conversion.
+    /// Zero alpha produces zero RGBA; nonzero channels round to the nearest
+    /// straight byte and saturate when malformed input exceeds its alpha.
+    pub fn from_premultiplied(pixel: [u8; 4]) -> Self {
+        let [r, g, b, a] = unpremultiply(pixel);
+        Self::new(r, g, b, a)
+    }
+
     /// The premultiplied RGBA8 bytes used by pixel surfaces.
     pub fn premultiplied(self) -> [u8; 4] {
         let scale = |channel| multiply(channel, self.a);

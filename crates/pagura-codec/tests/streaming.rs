@@ -16,23 +16,27 @@ fn pixels(length: usize) -> Vec<u8> {
         .collect()
 }
 
-fn streamed(input: &[u8], dimensions: (u32, u32), options: Options, split: usize) -> Vec<u8> {
+fn streamed(
+    input: &[u8],
+    dimensions: (u32, u32),
+    options: &Options,
+    split: usize,
+) -> pagura_core::Result<Vec<u8>> {
     let mut encoder = Encoder::new(
         dimensions.0,
         dimensions.1,
         options.color_type,
         options.level,
         EncodingLimits::default(),
-    )
-    .unwrap();
+    )?;
     let admitted = encoder.retained_bytes();
     let (mut position, mut bytes) = (0_usize, Vec::new());
     loop {
-        match encoder.advance().unwrap() {
+        match encoder.advance()? {
             EncodingOutput::Chunk(chunk) => bytes.extend_from_slice(chunk.bytes()),
             EncodingOutput::NeedInput => {
                 let end = position.saturating_add(split).min(input.len());
-                let count = encoder.write(&input[position..end]).unwrap();
+                let count = encoder.write(&input[position..end])?;
                 assert!(
                     count > 0,
                     "encoder requested unavailable input at {position}"
@@ -42,21 +46,19 @@ fn streamed(input: &[u8], dimensions: (u32, u32), options: Options, split: usize
             }
             EncodingOutput::Yielded => {}
             EncodingOutput::Complete => break,
-            other => panic!("unexpected result: {other:?}"),
+            _ => {
+                return Err(pagura_core::Error::invalid_argument(
+                    "unexpected streaming test state",
+                ));
+            }
         }
     }
     assert_eq!(position, input.len());
     assert_eq!(encoder.retained_bytes(), 0);
-    assert!(matches!(
-        encoder.advance().unwrap(),
-        EncodingOutput::Complete
-    ));
+    assert!(matches!(encoder.advance()?, EncodingOutput::Complete));
     encoder.cancel();
-    assert!(matches!(
-        encoder.advance().unwrap(),
-        EncodingOutput::Complete
-    ));
-    bytes
+    assert!(matches!(encoder.advance()?, EncodingOutput::Complete));
+    Ok(bytes)
 }
 
 #[test]
@@ -79,7 +81,10 @@ fn input_partitions_never_change_png_blocks_filters_or_chunk_boundaries() {
                 // existing codec fixture gate; all partition schedules must match it.
                 let expected = png::encode(&samples, dimensions.0, dimensions.1, &options).unwrap();
                 for split in [1, 17, 257, 65535, usize::MAX] {
-                    assert_eq!(streamed(&samples, dimensions, options, split), expected);
+                    assert_eq!(
+                        streamed(&samples, dimensions, &options, split).unwrap(),
+                        expected
+                    );
                 }
             }
         }

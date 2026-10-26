@@ -8,7 +8,7 @@ services and complete PNG implementation directly on `render/one-pass` at
 `73e1ab018`. Public band output, CLI PPM streaming, complete PNG export and direct
 image/thumbnail source extraction already exist. Section 2 credits these paths;
 the packages below extend their shared implementations.
-[ADR 0035](../adr/0035-progressive-sources-and-streaming-jobs.md) records the
+[ADR 0036](../adr/0036-progressive-sources-and-streaming-jobs.md) records the
 accepted source, validation, ownership and extraction contracts.
 
 This is the detailed design for **D01 and D02a's image/output slice** in the
@@ -564,9 +564,11 @@ cannot overwrite it.
 
 Expose band metadata: requested region, full output dimensions, starting row,
 row count, stride, and alpha/colour representation. The executor produces
-premultiplied RGBA8. PNG requires straight samples; the output adapter performs
-the same conversion policy as `Pixmap::to_straight_rgba`, one row at a time,
-including the alpha-zero rule. A canvas/native caller may consume the native
+premultiplied RGBA8. PNG requires straight samples; `png::RenderEncoder` owns the prepared session
+and uses one admitted row with the same `Rgba8::from_premultiplied` conversion
+as `Pixmap::to_straight_rgba`, including the alpha-zero rule. It rejects already
+advanced sessions before publishing a header, and forwards output demand and
+terminal cancellation to the same renderer and encoder. A canvas/native caller may consume the native
 representation explicitly.
 
 For one region, concatenating bands must equal the existing collected render
@@ -1014,7 +1016,7 @@ contracts remain the accepted render/one-pass architecture.
 
 ## 22. Accepted contracts and completion tracking
 
-ADR 0035 fixes source identity/lease ownership, explicit materialization, the two
+ADR 0036 fixes source identity/lease ownership, explicit materialization, the two
 validation policies, retry-safe cache/diagnostic publication, owned job/output-slot
 states and context-aware extraction identity. Source-dependent APIs migrate once;
 complete-input convenience entry points and protocol v1 adapt that same path.

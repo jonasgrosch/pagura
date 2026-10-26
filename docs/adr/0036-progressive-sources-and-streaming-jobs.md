@@ -1,4 +1,4 @@
-# ADR 0035: Progressive sources and streaming jobs
+# ADR 0036: Progressive sources and streaming jobs
 
 Status: accepted 2026-10-26 for group 11 of the competitive plan. Source review
 starts from `fc09a6b202b53e4faba6d43e96bd20e30623c65d`, including synchronous
@@ -190,6 +190,24 @@ and queued-work bounds, starvation controls and shutdown cleanup. Browser transp
 may copy immutable supplied data between isolated WASI instances; those copies
 must be accounted rather than described as shared memory. P0–P9 delivery alone
 does not close group 11 until this D01 scheduling obligation has passed its gates.
+
+## Relationship to the band-thread proposal
+
+[The existing band-thread proposal](https://github.com/jonasgrosch/pagura/pull/156)
+retains ADR 0035. At source revision `a10f681b524dda7b580f1c7626e2358f70df1341`
+it shares one prepared scene across private per-worker scratch, admits helpers
+from the remaining render budget and uses the same executor and output
+quantization. Those primitives are compatible with this decision.
+
+Its collected-surface scoped-thread driver, global `Send` change to stop
+callbacks and disabled WASM helpers do not provide owned streaming jobs or the
+host scheduler. Consolidation must keep one band execution path and fixed
+ordered output slots, preserving existing callback compatibility. Cross-job
+priorities, aggregate admission, source/output waits and shutdown belong to the
+host scheduler. Any parallel bands within one render need a bounded reorder
+window over the same slots and executor; they do not justify another renderer
+or repeated region preparation. The proposal's exploratory timings are not
+validation of this implementation.
 
 ## Options considered
 

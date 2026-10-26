@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "sources",
-  "scope": "Project-owned source availability and owned output lifecycle contracts from ADR 0035. Independent literal byte vectors test source storage; analytic image oracles and existing compositor controls validate owned rendering.",
+  "scope": "Project-owned source availability and owned output lifecycle contracts from ADR 0036. Independent literal byte vectors test source storage; analytic image oracles and existing compositor controls validate owned rendering.",
   "requirements": [
     {
       "id": "source-availability-and-leases",
@@ -38,9 +38,10 @@
       "tests": [
         "pagura-codec/tests/streaming.rs",
         "pagura-codec/src/flate/encode/tests.rs",
-        "pagura-codec/src/encoding_tests.rs"
+        "pagura-codec/src/encoding_tests.rs",
+        "pagura/tests/api/png.rs"
       ],
-      "gaps": "Rendered-band bridge, protocol and native/browser transport integration remain group 11 obligations.",
+      "gaps": "Protocol, CLI and native/browser transport integration remain group 11 obligations.",
       "rule": "PNG emits one canonical zlib stream using fixed DEFLATE and IDAT boundaries independent of input splits or output demand. Admission reserves bounded row/history/token/code/output storage and checks conservative work and output quotas. Pixel rows and output chunks stay bounded; held chunks retain their allocation charge. Only explicit completion after one checksum and IEND signifies success. Cancellation preserves existing leases without producing completion."
     }
   ]

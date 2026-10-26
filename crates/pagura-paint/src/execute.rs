@@ -203,7 +203,7 @@ impl Rendering<'_> {
         mut consume: impl FnMut(Range<u32>, &mut Vec<u8>) -> Result<(), E>,
     ) -> Result<Completion, E> {
         let mut cursor = BandCursor::new(self);
-        while let Some(rows) = cursor.rows(self) {
+        while let Some(rows) = cursor.rows(self.plan.area) {
             let row = rows.start;
             if stop(row) {
                 return Ok(Completion::Stopped { row });
@@ -233,8 +233,8 @@ impl BandCursor {
         }
     }
 
-    pub(crate) fn rows(&self, rendering: &Rendering<'_>) -> Option<Range<u32>> {
-        (self.next < self.end).then(|| rendering.plan.area.band_rows(self.next))
+    pub(crate) fn rows(&self, area: pagura_raster::Area) -> Option<Range<u32>> {
+        (self.next < self.end).then(|| area.band_rows(self.next))
     }
 
     pub(crate) const fn complete(&self) -> bool {

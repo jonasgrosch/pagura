@@ -113,6 +113,8 @@ pub struct RenderSession {
     state: State,
     output: Arc<MemoryBudget>,
     charges: Charges,
+    page: DeviceRect,
+    region: DeviceRect,
 }
 
 impl RenderSession {
@@ -156,6 +158,8 @@ impl RenderSession {
         let mut scratch = scratch.into_ready(&prepared.plan)?;
         let cursor = BandCursor::new(&mut rendering(&prepared, &mut scratch));
         let charges = prepared.charges();
+        let page = prepared.page;
+        let region = prepared.region();
         Ok(Self {
             state: State::Active(Box::new(Active {
                 prepared,
@@ -166,7 +170,30 @@ impl RenderSession {
             })),
             output,
             charges,
+            page,
+            region,
         })
+    }
+
+    /// The full device page before region selection.
+    pub fn page(&self) -> DeviceRect {
+        self.page
+    }
+
+    /// The immutable output region, also available after terminal completion.
+    pub fn region(&self) -> DeviceRect {
+        self.region
+    }
+
+    /// The first row not yet produced, or `None` in a terminal state.
+    pub fn next_row(&self) -> Option<u32> {
+        match &self.state {
+            State::Active(active) => active
+                .cursor
+                .rows(active.prepared.plan.area)
+                .map(|rows| rows.start),
+            State::Complete | State::Cancelled => None,
+        }
     }
 
     /// The unchanged paint budgets reserved by preparation for this region.
@@ -192,7 +219,7 @@ impl RenderSession {
         for slot in &mut active.slots {
             if let Some(buffer) = Arc::get_mut(slot) {
                 let mut rendering = rendering(&active.prepared, &mut active.scratch);
-                let Some(rows) = active.cursor.rows(&rendering) else {
+                let Some(rows) = active.cursor.rows(rendering.plan.area) else {
                     self.state = State::Complete;
                     return BandOutput::Complete;
                 };

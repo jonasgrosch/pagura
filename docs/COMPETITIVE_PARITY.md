@@ -23,7 +23,7 @@ The documents have distinct roles:
 | [ROADMAP](ROADMAP.md) | Milestones and priorities pointing to this backlog. |
 | [ADR 0034](adr/0034-one-interpreter-one-renderer.md) and [architecture](ARCHITECTURE.md) | Accepted one-pass component and accuracy contracts. |
 | [Async loading and image streaming plan](plans/async-pdf-loading-and-image-streaming.md) | Detailed P0–P9 implementation design for D01 and D02a's image/output slice. Its packages are subdivisions, not a second delivery queue. |
-| [Proposed ADR 0035](adr/0035-progressive-sources-and-streaming-jobs.md) | Pending source/job API decision for that slice; consolidation does not accept it. |
+| [Accepted ADR 0036](adr/0036-progressive-sources-and-streaming-jobs.md) | Accepted source ownership, validation, job-budget and extraction-identity contracts; implementation and validation remain group 11 work. |
 
 Preserve what one-pass already delivers: `pagura-content` tokenization,
 `pagura-interpret`'s single interpreter and negotiated `Device::Needs`, separate
@@ -60,7 +60,7 @@ changes and fixes are accounted for in the replacement group.
 | 08 | Explicit host actions, XFA and bounded script execution | V03 | 07, 11; scope ADR |
 | 09 | Logical text, search and accessible structure | V04 | 04 |
 | 10 | Layer state, print intent and viewer output | V05 | 05, 06, 09 |
-| 11 | Progressive source input, resumable jobs and streamed encoding | D01; D02a P0–P9 | 02; ADR 0035 |
+| 11 | Progressive source input, resumable jobs and streamed encoding | D01; D02a P0–P9 | 02; ADR 0036 |
 | 12 | Metadata, files, collections, image extraction and complete export APIs | D02a | 03 where image interpretation is needed |
 | 13 | Encryption access and end-to-end signature verification | D03, S01 | 02; explicit host trust/key contracts |
 | 14 | Full rewrite and encrypted output | E01 | 13; writer contract |
@@ -448,7 +448,7 @@ Native/browser output uses identical settings and valid page geometry.
 ## D01 — Progressive input, cancellation and scheduling
 
 Owner: `pagura-document`, `pagura-interpret`, `pagura-paint`, `pagura-render`,
-host and `web`; depends on G01 and proposed ADR 0035.
+host and `web`; depends on G01 and accepted ADR 0036.
 
 Use the [existing detailed design](plans/async-pdf-loading-and-image-streaming.md):
 P0–P3 define source/fault contracts, bounded windows, cache publication, ordinary
@@ -469,7 +469,7 @@ Acceptance: first-page display works before whole-file arrival on linearized
 fixtures; non-linearized files request required ranges correctly. Short/overlapping
 reads, cancellation, corrupt hints, changed source identity, missing ranges and
 slow providers are covered. Full and ranged input produce identical results
-within the same declared validation scope, as specified by ADR 0035.
+within the same declared validation scope, as specified by ADR 0036.
 Measure bytes fetched, time to first page, memory and cancellation latency under
 predeclared budgets; incomplete work cannot produce a successful partial page.
 

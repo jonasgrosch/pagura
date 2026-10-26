@@ -1,4 +1,4 @@
-//! Immutable complete and sparse byte sources (ADR 0035).
+//! Immutable complete and sparse byte sources (ADR 0036).
 //!
 //! Missing bytes are control flow, not PDF syntax errors. Sources perform no
 //! I/O. Leases retain their allocation and its budget charge until the last
