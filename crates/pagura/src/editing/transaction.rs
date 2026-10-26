@@ -118,7 +118,7 @@ impl<'a> Transaction<'a> {
     ) -> ReadResult<()> {
         let mut dictionary = self.dictionary(id)?;
         edit(&mut dictionary)?;
-        self.replace(id, NewObject::Value(Value::Dictionary(dictionary)))
+        Ok(self.replace(id, NewObject::Value(Value::Dictionary(dictionary)))?)
     }
 
     /// Commits to a new byte vector; the transaction remains available for retry.
@@ -133,16 +133,16 @@ impl<'a> Transaction<'a> {
         let source = self.document.materialize()?;
         let limits = self.document.limits();
         if self.is_empty() {
-            return pagura_write::write_incremental(
-                &source,
+            return Ok(pagura_write::write_incremental(
+                source.bytes(),
                 0,
                 self.document.trailer(),
                 &self.objects,
                 XrefFormat::Table,
                 &limits,
-            );
+            )?);
         }
-        source_policy(self.document, &source, options.signatures)?;
+        source_policy(self.document, source.bytes(), options.signatures)?;
         let revision = self
             .document
             .revisions()
@@ -194,14 +194,14 @@ impl<'a> Transaction<'a> {
             Name::new(b"Size"),
             Value::Integer(i64::from(source_size(self.document)?)),
         );
-        pagura_write::write_incremental(
-            &source,
+        Ok(pagura_write::write_incremental(
+            source.bytes(),
             revision.offset(),
             &trailer,
             &self.objects,
             format,
             &limits,
-        )
+        )?)
     }
 
     fn stage(&mut self, id: ObjectId, object: NewObject) -> Result<()> {

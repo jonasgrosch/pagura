@@ -14,7 +14,7 @@ fn scene_bytes_and_tight_errors_do_not_depend_on_store_history() {
     )
     .unwrap();
     let page = document.page(0).unwrap();
-    let record = |store: &Store, bytes| {
+    let record = |store: &Store, bytes| -> pagura_document::source::ReadResult<Scene> {
         let mut recorder = pagura_interpret::SceneRecorder::new(pagura_core::Limits {
             render_bytes: bytes,
             ..document.limits()
@@ -22,7 +22,7 @@ fn scene_bytes_and_tight_errors_do_not_depend_on_store_history() {
         Interpreter::new(&document)
             .with_store(store)
             .run(page, &mut recorder)?;
-        recorder.finish()
+        Ok(recorder.finish()?)
     };
     let store = Store::new(64 << 20);
     let first = record(&store, document.limits().render_bytes).unwrap();
@@ -38,8 +38,14 @@ fn scene_bytes_and_tight_errors_do_not_depend_on_store_history() {
     );
     let tight = first.bytes - 1;
     let error = record(&store, tight).unwrap_err();
-    assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
-    assert_eq!(error.message, "scene byte budget exceeded");
+    assert_eq!(
+        error.as_error().unwrap().kind,
+        pagura_core::ErrorKind::Limit
+    );
+    assert_eq!(
+        error.as_error().unwrap().message,
+        "scene byte budget exceeded"
+    );
     assert_eq!(record(&Store::new(0), tight).unwrap_err(), error);
     assert_eq!(record(&Store::new(64 << 20), tight).unwrap_err(), error);
 }
@@ -95,7 +101,14 @@ fn icc_profiles_are_shared_through_the_store() {
     let result = interpreter.scene(page);
     if let Err(error) = &result {
         // Sampled functions of another package are still being built.
-        assert!(error.message.contains("not implemented"), "{error}");
+        assert!(
+            error
+                .as_error()
+                .unwrap()
+                .message
+                .contains("not implemented"),
+            "{error}"
+        );
     }
     assert!(store.retained_bytes() > 0);
 }

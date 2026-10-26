@@ -170,7 +170,8 @@ fn a_scene_recording_builds_no_extraction_records() {
 }
 
 #[test]
-fn malformed_unicode_is_read_only_for_text_even_with_a_shared_store() -> Result<()> {
+fn malformed_unicode_is_read_only_for_text_even_with_a_shared_store()
+-> pagura_document::source::ReadResult<()> {
     for (name, tag) in [
         ("simple", "font.tounicode-simple-codes"),
         ("utf16", "font.tounicode-utf16"),
@@ -192,11 +193,15 @@ fn malformed_unicode_is_read_only_for_text_even_with_a_shared_store() -> Result<
         assert!(document.diagnostics().is_empty(), "{name}");
         let error = interpreter.text(page).unwrap_err();
         assert_eq!(
-            error.repair.map(pagura_core::Repair::as_str),
+            error
+                .as_error()
+                .unwrap()
+                .repair
+                .map(pagura_core::Repair::as_str),
             Some(tag),
             "{name}"
         );
-        assert!(error.object.is_some(), "{name}");
+        assert!(error.as_error().unwrap().object.is_some(), "{name}");
         assert_eq!(interpreter.text(page).unwrap_err(), error, "{name}");
         assert!(interpreter.scene(page)?.marks() > 0, "{name}");
         assert!(document.diagnostics().is_empty(), "{name}");

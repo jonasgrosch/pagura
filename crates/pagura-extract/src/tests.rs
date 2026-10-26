@@ -240,7 +240,8 @@ fn retained_bytes_include_long_names_empty_arc_paths_and_shared_glyph_text() -> 
 }
 
 #[test]
-fn structure_work_budget_and_document_identity_are_enforced() -> Result<()> {
+fn structure_work_budget_and_document_identity_are_enforced()
+-> pagura_document::source::ReadResult<()> {
     use pagura_document::{Document, OpenOptions};
     let bytes = pagura_testkit::fixture("text", "tagged-nested-order.pdf");
     let doc = Document::open(bytes.clone(), &OpenOptions::default())?;
@@ -249,7 +250,7 @@ fn structure_work_budget_and_document_identity_are_enforced() -> Result<()> {
         page("X")?
             .with_structure(&other, doc.page(0)?)
             .err()
-            .map(|e| e.kind),
+            .map(|e| e.as_error().unwrap().kind),
         Some(pagura_core::ErrorKind::InvalidArgument)
     );
     let limited = Document::open(
@@ -268,7 +269,10 @@ fn structure_work_budget_and_document_identity_are_enforced() -> Result<()> {
         Limits::default(),
     )?;
     let error = text.with_structure(&limited, limited.page(0)?).err();
-    assert_eq!(error.map(|e| e.kind), Some(pagura_core::ErrorKind::Limit));
+    assert_eq!(
+        error.map(|e| e.as_error().unwrap().kind),
+        Some(pagura_core::ErrorKind::Limit)
+    );
     Ok(())
 }
 

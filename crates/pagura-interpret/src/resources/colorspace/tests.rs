@@ -32,7 +32,7 @@ fn device_names_resolve_to_shared_spaces_unless_a_default_replaces_them() {
     let defaults = resources(&[(b"DefaultGray", Value::name(b"DeviceRGB"))]);
     let error = colors.named(&defaults, b"DeviceGray").unwrap_err();
     assert_eq!(
-        error.message,
+        error.as_error().unwrap().message,
         "default colour space has wrong component count"
     );
     let lab = Value::Array(vec![
@@ -52,7 +52,10 @@ fn device_names_resolve_to_shared_spaces_unless_a_default_replaces_them() {
     ]);
     let defaults = resources(&[(b"DefaultRGB", lab)]);
     let error = colors.named(&defaults, b"DeviceRGB").unwrap_err();
-    assert_eq!(error.message, "invalid default colour space family");
+    assert_eq!(
+        error.as_error().unwrap().message,
+        "invalid default colour space family"
+    );
 }
 
 #[test]
@@ -80,7 +83,10 @@ fn indexed_and_pattern_spaces_keep_their_bases() {
         Value::String(vec![0, 0, 0]),
     ]);
     let error = colors.resolve(&Dictionary::new(), &short).unwrap_err();
-    assert_eq!(error.message, "Indexed lookup has wrong length");
+    assert_eq!(
+        error.as_error().unwrap().message,
+        "Indexed lookup has wrong length"
+    );
 }
 
 #[test]
@@ -90,7 +96,7 @@ fn unknown_families_are_unsupported_and_devicen_names_are_checked() {
     let unknown = Value::Array(vec![Value::name(b"Spectral"), Value::Integer(3)]);
     let error = colors.resolve(&Dictionary::new(), &unknown).unwrap_err();
     assert_eq!(
-        error.feature(),
+        error.as_error().unwrap().feature(),
         Some(pagura_color::features::UNKNOWN_FAMILY)
     );
     let all = Value::Array(vec![
@@ -100,7 +106,10 @@ fn unknown_families_are_unsupported_and_devicen_names_are_checked() {
         Value::Null,
     ]);
     let error = colors.resolve(&Dictionary::new(), &all).unwrap_err();
-    assert_eq!(error.message, "All is forbidden in DeviceN");
+    assert_eq!(
+        error.as_error().unwrap().message,
+        "All is forbidden in DeviceN"
+    );
 }
 
 #[test]
@@ -126,13 +135,20 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     assert_eq!(first.object, Some(id));
     assert_eq!(first.range, [[0.0, 1.0]; 4]);
     assert!(matches!(
-        colors.embedded_icc(id, &data, 1).unwrap_err().kind,
+        colors
+            .embedded_icc(id, &data, 1)
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Syntax
     ));
     assert!(matches!(
         colors
             .embedded_icc(ObjectId::new(5, 0), b"broken", 3)
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Syntax
     ));
@@ -162,6 +178,9 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
         let error = Colors::new(&bounded, None)
             .embedded_icc(id, &data, 3)
             .unwrap_err();
-        assert!(matches!(error.kind, ErrorKind::Limit), "{error}");
+        assert!(
+            matches!(error.as_error().unwrap().kind, ErrorKind::Limit),
+            "{error}"
+        );
     }
 }

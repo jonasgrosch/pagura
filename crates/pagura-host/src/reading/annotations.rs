@@ -76,8 +76,8 @@ fn selected(
         .ok_or_else(|| {
             Error::invalid_argument("Annots slot is not a file attachment").at(index.position())
         })?;
-    annotation
+    Ok(annotation
         .specification
         .into_payload(FilePayload::Embedded(key.get().pdf_name()))
-        .map_err(|error| error.at(key.position()))
+        .map_err(|error| error.at(key.position()))?)
 }

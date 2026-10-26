@@ -167,7 +167,7 @@ fn attachment(
     files: Vec<NamedFile<'_>>,
     index: Field<u32>,
     key: Field<AttachmentKey>,
-) -> ReadResult<EmbeddedFile<'_>> {
+) -> Result<EmbeddedFile<'_>> {
     let file = files.into_iter().nth(index.index()?).ok_or_else(|| {
         Error::invalid_argument("attachment index outside catalog name tree").at(index.position())
     })?;

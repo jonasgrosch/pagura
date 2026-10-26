@@ -436,7 +436,10 @@ fn every_request_is_gated_by_the_version_that_added_it() {
     let error = ready(Version::V1_3)
         .execute(request(&body(17, &words(&[1]))))
         .unwrap_err();
-    assert_eq!(error.kind, pagura::ErrorKind::InvalidArgument);
+    assert_eq!(
+        error.as_error().unwrap().kind,
+        pagura::ErrorKind::InvalidArgument
+    );
 }
 
 #[test]

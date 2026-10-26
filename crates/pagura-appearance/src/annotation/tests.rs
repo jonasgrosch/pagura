@@ -24,7 +24,7 @@ fn rect(x0: f64, y0: f64, x1: f64, y1: f64) -> Rect {
     Rect::from_corners(x0, y0, x1, y1).unwrap()
 }
 
-fn generate(text: &[u8], area: Rect) -> Result<Option<AppearanceStream>> {
+fn generate(text: &[u8], area: Rect) -> ReadResult<Option<AppearanceStream>> {
     annotation_appearance(&document(), &dictionary(text), area)
 }
 
@@ -104,7 +104,10 @@ fn fill_opacity_falls_back_to_stroke_opacity_and_is_read_only_for_fills() {
         rect(0.0, 0.0, 8.0, 8.0),
     )
     .unwrap_err();
-    assert_eq!(error.message, "annotation parameter must be numeric");
+    assert_eq!(
+        error.as_error().unwrap().message,
+        "annotation parameter must be numeric"
+    );
 }
 
 #[test]
@@ -159,14 +162,14 @@ fn unsupported_annotations_are_tagged() {
     ] {
         let error = generate(text, area).unwrap_err();
         assert_eq!(
-            error.kind,
+            error.as_error().unwrap().kind,
             ErrorKind::Unsupported(features::ANNOTATION_APPEARANCE),
             "{}",
             String::from_utf8_lossy(text)
         );
     }
     let error = generate(b"<< /Rect [0 0 1 1] >>", area).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Syntax);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Syntax);
 }
 
 #[test]
@@ -188,7 +191,7 @@ fn content_and_storage_budgets_bound_generation() {
         rect(0.0, 0.0, 8.0, 8.0),
     )
     .unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
 }
 
 #[test]
@@ -201,7 +204,10 @@ fn unusable_dash_arrays_fail_at_generation() {
     ] {
         let error = generate(text, area).unwrap_err();
         assert_eq!(
-            (error.kind, error.message),
+            (
+                error.as_error().unwrap().kind,
+                error.as_error().unwrap().message
+            ),
             (ErrorKind::Syntax, "invalid annotation dash pattern"),
             "{}",
             String::from_utf8_lossy(text)

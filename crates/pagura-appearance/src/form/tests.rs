@@ -23,12 +23,12 @@ fn independent_appearance_programs_and_existing_states() {
             continue;
         }
         count += 1;
-        check_case(name, &params);
+        check_case(name, &params).unwrap();
     }
     assert!(count >= 20);
 }
 
-fn check_case(name: &str, params: &BTreeMap<&str, &str>) {
+fn check_case(name: &str, params: &BTreeMap<&str, &str>) -> ReadResult<()> {
     let document = Document::open(
         fixture("forms", &format!("{name}.pdf")),
         &OpenOptions {
@@ -66,7 +66,12 @@ fn check_case(name: &str, params: &BTreeMap<&str, &str>) {
         filler.set(0, input).unwrap();
     }
     if let Some(expected) = params["appearance"].strip_prefix("error:") {
-        let error = prepare(&filler, None).unwrap_err();
+        let fault = prepare(&filler, None)
+            .err()
+            .ok_or_else(|| Error::syntax("expected appearance rejection"))?;
+        let error = fault
+            .as_error()
+            .ok_or_else(|| Error::syntax("expected terminal appearance rejection"))?;
         let actual = error.feature().map_or_else(
             || error.kind.name().to_string(),
             |f| format!("unsupported:{f}"),
@@ -74,7 +79,7 @@ fn check_case(name: &str, params: &BTreeMap<&str, &str>) {
         assert_eq!(actual, expected, "{name}: {error}");
         assert!(error.object.is_some(), "{name}");
         assert_ne!(error.position, Position::Unknown, "{name}");
-        return;
+        return Ok(());
     }
     let appearances = prepare(&filler, None).unwrap_or_else(|e| panic!("{name}: {e}"));
     assert_eq!(appearances[0].widget(), 0);
@@ -99,6 +104,7 @@ fn check_case(name: &str, params: &BTreeMap<&str, &str>) {
         Appearance::Hidden => assert_eq!(params["appearance"], "hidden", "{name}"),
     }
     assert!(document.diagnostics().is_empty(), "{name}");
+    Ok(())
 }
 
 #[test]
@@ -225,8 +231,8 @@ fn appearance_storage_and_output_limits_fail_without_partial_results() {
     assert!(prepare(&filler, None).is_ok());
     filler.set(0, FillValue::Text(&"AB".repeat(5_000))).unwrap();
     let error = prepare(&filler, None).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
-    assert!(error.object.is_some());
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+    assert!(error.as_error().unwrap().object.is_some());
 }
 
 #[test]
@@ -308,8 +314,8 @@ fn an_invalid_widget_index_is_a_caller_error_without_widget_context() {
     .unwrap();
     let filler = document.form_filler().unwrap().unwrap();
     let error = prepare_widget(&filler, 99, None).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::InvalidArgument);
-    assert_eq!(error.position, Position::Unknown);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::InvalidArgument);
+    assert_eq!(error.as_error().unwrap().position, Position::Unknown);
 }
 
 #[test]
@@ -320,7 +326,8 @@ fn filled_widgets_regenerate_only_changed_or_requested_widgets() {
     let dictionary = filler.form().widgets[0].dictionary;
     let rect = filler.form().widgets[0].rectangle;
     let fonts = ProviderFonts::new(None, &document.limits());
-    let never = |_: &Dictionary| -> Result<bool> { panic!("an untouched widget is not culled") };
+    let never =
+        |_: &Dictionary| -> ReadResult<bool> { panic!("an untouched widget is not culled") };
     let widgets = FilledWidgets::new(&filler).unwrap();
     assert_eq!(
         widgets.appearance(dictionary, rect, &fonts, never).unwrap(),
@@ -369,10 +376,10 @@ fn filled_widgets_keep_a_culled_stored_appearance_without_layout() {
     assert!(seen.unwrap().contains_key(b"BBox"));
     let error = widgets
         .appearance(widget.dictionary, widget.rectangle, &fonts, |_| {
-            Err(Error::syntax("form has invalid BBox"))
+            Err(Error::syntax("form has invalid BBox").into())
         })
         .unwrap_err();
-    assert_eq!(error.message, "form has invalid BBox");
+    assert_eq!(error.as_error().unwrap().message, "form has invalid BBox");
 }
 
 #[test]
@@ -414,7 +421,11 @@ fn filled_widgets_keep_stored_appearances_of_untouched_unsupported_fields() {
                 .unwrap()
                 .appearance(dictionary, rect, &fonts, |_| Ok(false))
                 .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Unsupported(feature), "{name}");
+            assert_eq!(
+                error.as_error().unwrap().kind,
+                ErrorKind::Unsupported(feature),
+                "{name}"
+            );
             assert_eq!(document.diagnostics().len(), 1, "{name}");
         }
     }

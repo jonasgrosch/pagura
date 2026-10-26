@@ -3,7 +3,7 @@
 use super::{EmbeddedFile, FileSpecification};
 use crate::Document;
 use crate::source::ReadResult;
-use pagura_core::{Error, ObjectId};
+use pagura_core::{Error, ObjectId, Result};
 
 /// The collection in which a file index has meaning. No fallback is performed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,7 +125,7 @@ impl Document {
             .ok_or_else(|| {
                 Error::invalid_argument("attachment index outside selected collection")
             })?;
-        file.specification.into_payload(payload)
+        Ok(file.specification.into_payload(payload)?)
     }
 }
 
@@ -135,8 +135,8 @@ impl<'a> FileSpecification<'a> {
     ///
     /// # Errors
     /// `InvalidArgument` when the requested key or related-file pair is absent.
-    pub fn into_payload(self, payload: FilePayload<'_>) -> ReadResult<EmbeddedFile<'a>> {
-        Ok(match payload {
+    pub fn into_payload(self, payload: FilePayload<'_>) -> Result<EmbeddedFile<'a>> {
+        match payload {
             FilePayload::Embedded(key) => self
                 .embedded
                 .into_iter()
@@ -149,7 +149,7 @@ impl<'a> FileSpecification<'a> {
                 .nth(index)
                 .map(|entry| entry.file),
         }
-        .ok_or_else(|| Error::invalid_argument("file has no payload for this exact selection"))?)
+        .ok_or_else(|| Error::invalid_argument("file has no payload for this exact selection"))
     }
 }
 
