@@ -645,6 +645,46 @@
       "tolerance": 1
     },
     {
+      "id": "rich_annotations/text-stream-utf16-big",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/text-stream-utf16-big.pdf",
+      "sha256": "7d65058dae38526170b3a6f695c1b68cdc67f9cd0c62331fb229bd8d7e95472b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/text-stream-utf16-big.ppm",
+      "oracle_sha256": "433877af615dfb959130a6e3013169a505aac27b3d84fc4902e6fa9fa0d7afed",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/text-stream-utf16-little",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/text-stream-utf16-little.pdf",
+      "sha256": "31baf3e528e252a72cabd61623a57e3c651ffc371ac99b0ab3f4571de50ed69c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/text-stream-utf16-little.ppm",
+      "oracle_sha256": "433877af615dfb959130a6e3013169a505aac27b3d84fc4902e6fa9fa0d7afed",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
       "id": "rich_annotations/rc-precedence",
       "kind": "pdf",
       "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
@@ -943,6 +983,21 @@
       "strict_valid": true,
       "repairs": [],
       "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/invalid-stream-utf16",
+      "kind": "pdf",
+      "description": "XML stream encoding errors fail without text-string repair or substitution",
+      "expected": "open",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/invalid-stream-utf16.pdf",
+      "sha256": "a79bc5b42feccdb6f83cf83dc17b45ffc1778ffd14defa05a63da69c18082d56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
     }
   ]
 }

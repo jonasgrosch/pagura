@@ -99,11 +99,35 @@ fn rich_content(document: &Document, annotation: &Dictionary, limits: &Limits) -
         let object = document.object(id)?;
         if object.is_stream() {
             let bytes = document.stream_data(object)?;
-            if bytes.len() > limits.document_bytes || bytes.len() > limits.string_bytes {
+            if bytes.len().saturating_mul(4) > limits.document_bytes
+                || bytes.len() > limits.string_bytes
+            {
                 return Err(Error::limit("rich text source storage exceeded"));
             }
             if bytes.starts_with(&[0xfe, 0xff]) || bytes.starts_with(&[0xff, 0xfe]) {
-                return decode(document, &bytes, limits);
+                // XML streams follow their Unicode BOM; PDF text-string
+                // decoding is different and accepts only big-endian UTF-16.
+                let units = bytes[2..].chunks_exact(2);
+                if !units.remainder().is_empty() {
+                    return Err(Error::syntax("incomplete rich text UTF-16 unit"));
+                }
+                let units = units.map(|pair| {
+                    if bytes[0] == 0xff {
+                        u16::from_le_bytes([pair[0], pair[1]])
+                    } else {
+                        u16::from_be_bytes([pair[0], pair[1]])
+                    }
+                });
+                let mut source = String::new();
+                for character in char::decode_utf16(units) {
+                    let character = character
+                        .map_err(|_| Error::syntax("invalid rich text UTF-16 sequence"))?;
+                    if source.len().saturating_add(character.len_utf8()) > limits.string_bytes {
+                        return Err(Error::limit("rich text string budget exceeded"));
+                    }
+                    source.push(character);
+                }
+                return Ok(source);
             }
             return std::str::from_utf8(&bytes)
                 .map(str::to_owned)

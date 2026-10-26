@@ -92,6 +92,8 @@ def cases():
     yield rendered('opacity',alpha=.25)
     yield rendered('rotation',rotate=90,dpi=144)
     yield rendered('text-stream',streamed=True)
+    for suffix,encoding,bom in [('big','utf-16-be',b'\xfe\xff'),('little','utf-16-le',b'\xff\xfe')]:
+        yield rendered(f'text-stream-utf16-{suffix}',bom+'<body><p>AB</p></body>'.encode(encoding),streamed=True)
     yield rendered('rc-precedence',contents=42)
     yield rendered('ignored-elements',b'<body><p>A<unknown>B</unknown>B</p></body>')
     yield rendered('inert-link',b'<body><p><a href="https://example.invalid/">AB</a></p></body>')
@@ -108,3 +110,5 @@ def cases():
         yield Case(label,source(xml),UNSUPPORTED,(REQUIREMENT,),'Unsupported semantics are never silently omitted',feature='annotation.appearance')
     yield Case('automatic-size',source(extra={'DA':b'/F1 0 Tf'}),UNSUPPORTED,(REQUIREMENT,),
                'Unimplemented rich automatic sizing fails explicitly rather than selecting an arbitrary size',feature='annotation.appearance')
+    yield Case('invalid-stream-utf16',source(b'\xff\xfe\x00\xd8',streamed=True),OPEN,(REQUIREMENT,),
+               'XML stream encoding errors fail without text-string repair or substitution',extra={'render_error':'syntax'})
