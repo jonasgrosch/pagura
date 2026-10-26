@@ -18,6 +18,7 @@ pub(crate) fn load(
     id: Option<ObjectId>,
     mapping: Mapping,
     provider: &dyn Provider,
+    report: Report<'_>,
 ) -> ReadResult<PdfFont> {
     let Mapping::Composite { map, .. } = &mapping else {
         return Err(unavailable().into());
@@ -46,7 +47,6 @@ pub(crate) fn load(
     let metrics = Metrics::composite(document, descendant)?;
     // Inspect reachable CIDs, not the substitute's own CID charset. Stop at the
     // first hole; the diagnostic covers incomplete font coverage as a whole.
-    let report = Report::new(document);
     let mut work = Meter::new(
         document.limits().font_work,
         "CID substitute coverage work budget exceeded",

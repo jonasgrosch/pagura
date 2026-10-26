@@ -87,12 +87,13 @@ impl<'a> Descriptor<'a> {
         &self,
         document: &Document,
         position: Position,
+        report: Report<'_>,
     ) -> ReadResult<FontFlags> {
         let flags = self.flags(document)?;
         if let Some(flags) = flags.filter(|flags| flags.is_consistent()) {
             return Ok(flags);
         }
-        Report::new(document).diagnostic(
+        report.diagnostic(
             Diagnostic::new(
                 repairs::DESCRIPTOR_FLAGS,
                 "font descriptor must set exactly one of Symbolic and Nonsymbolic (9.8.2, Table 121)",
@@ -157,7 +158,9 @@ mod tests {
             let descriptor = Descriptor::of(&document, font)?
                 .ok_or(pagura_core::Error::syntax("missing descriptor"))?;
             let written = descriptor.flags(&document)?;
-            let flags = descriptor.normalized_flags(&document, Position::Unknown)?;
+            let flags = pagura_document::DiagnosticBatch::run(&document, |batch| {
+                descriptor.normalized_flags(&document, Position::Unknown, Report::new(batch))
+            })?;
             let expect =
                 String::from_utf8_lossy(&fixture("font", &format!("{name}.expect"))).into_owned();
             let symbolic = expect.lines().any(|line| line == "symbolic 1");

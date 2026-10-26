@@ -129,11 +129,11 @@ impl BaseEncoding {
 
 /// The predefined encoding a name selects. An unknown name is the reported
 /// repair `font.encoding-name`: the font's default encoding applies.
-fn predefined(document: &Document, name: &Name) -> Result<Option<BaseEncoding>> {
+fn predefined(report: Report<'_>, name: &Name) -> Result<Option<BaseEncoding>> {
     if let Some(encoding) = BaseEncoding::from_pdf_name(name.as_bytes()) {
         return Ok(Some(encoding));
     }
-    Report::new(document).diagnostic(Diagnostic::new(
+    report.diagnostic(Diagnostic::new(
         repairs::ENCODING_NAME,
         "unknown simple-font encoding name; using the font's default encoding (Table 112)",
     ))?;
@@ -147,13 +147,14 @@ pub(crate) fn load(
     document: &Document,
     value: Option<&Value>,
     default: Encoding,
+    report: Report<'_>,
 ) -> ReadResult<Encoding> {
     let Some(value) = value else {
         return Ok(default);
     };
     let value = document.resolve(value)?;
     if let Some(name) = value.as_name() {
-        return Ok(predefined(document, name)?.map_or(default, BaseEncoding::names));
+        return Ok(predefined(report, name)?.map_or(default, BaseEncoding::names));
     }
     let dict = value
         .as_dictionary()
@@ -163,7 +164,7 @@ pub(crate) fn load(
             .resolve(value)?
             .as_name()
             .ok_or_else(|| Error::syntax("invalid BaseEncoding"))?;
-        predefined(document, name)?.map_or(default, BaseEncoding::names)
+        predefined(report, name)?.map_or(default, BaseEncoding::names)
     } else {
         default
     };

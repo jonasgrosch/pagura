@@ -36,6 +36,7 @@ pub(crate) fn load(
     kind: FontKind,
     provider: &dyn Provider,
     position: Position,
+    report: Report<'_>,
 ) -> ReadResult<PdfFont> {
     if !matches!(kind, FontKind::Type1 | FontKind::TrueType) {
         return Err(unavailable().into());
@@ -45,7 +46,7 @@ pub(crate) fn load(
         .ok_or_else(|| Error::syntax("invalid BaseFont"))?;
     let standard = standard_name(base.as_bytes());
     let flags = descriptor
-        .map(|descriptor| descriptor.normalized_flags(document, position))
+        .map(|descriptor| descriptor.normalized_flags(document, position, report))
         .transpose()?;
     let symbolic = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
     if symbolic && !standard.is_some_and(Standard14::is_symbolic) {
@@ -54,7 +55,7 @@ pub(crate) fn load(
     let selected = match standard {
         Some(face) => face,
         None => match (descriptor, flags) {
-            (Some(descriptor), Some(flags)) => closest(document, descriptor, flags)?,
+            (Some(descriptor), Some(flags)) => closest(document, descriptor, flags, report)?,
             _ => return Err(unavailable().into()),
         },
     };
@@ -66,7 +67,7 @@ pub(crate) fn load(
     } else {
         font.get(b"Encoding")
     };
-    let mut names = encoding::load(document, encoding, data.metrics.encoding.clone())?;
+    let mut names = encoding::load(document, encoding, data.metrics.encoding.clone(), report)?;
     // A named Latin encoding can accompany a nonsymbolic declaration on a
     // known Symbol TrueType face. After the name route fails, 9.6.5.4 permits
     // reader fallbacks: use the known AFM code mapping. Explicit Differences
@@ -93,6 +94,7 @@ pub(crate) fn load(
             font,
             descriptor.map(|d| d.dictionary),
             GLYPH_SPACE_UNITS,
+            report,
         )?
     };
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
@@ -112,7 +114,7 @@ pub(crate) fn load(
     if data.program.is_some() {
         // Substitution is permitted PDF behavior, not a repair of malformed input.
         // Report it in strict mode too; no recovery permission is consumed.
-        Report::new(document).diagnostic(
+        report.diagnostic(
             Diagnostic::information(
                 crate::information::SUBSTITUTED,
                 selected.substitution_message(),
@@ -145,6 +147,7 @@ fn closest(
     document: &Document,
     descriptor: Descriptor<'_>,
     flags: FontFlags,
+    report: Report<'_>,
 ) -> ReadResult<Standard14> {
     if flags.contains(FontFlags::SYMBOLIC) {
         return Err(unavailable().into());
@@ -152,7 +155,7 @@ fn closest(
     let italic = flags.contains(FontFlags::ITALIC)
         || number(document, descriptor.dictionary, b"ItalicAngle", 0.0)? != 0.0;
     // An invalid FontWeight is reported even when ForceBold decides boldness.
-    let weight = weight(document, descriptor)?;
+    let weight = weight(document, descriptor, report)?;
     let bold = flags.contains(FontFlags::FORCE_BOLD) || weight >= BOLD_WEIGHT;
     let style = match (bold, italic) {
         (false, false) => Style::Regular,
@@ -163,7 +166,7 @@ fn closest(
     Ok(Family::from_flags(flags).face(style))
 }
 
-fn weight(document: &Document, descriptor: Descriptor<'_>) -> ReadResult<f64> {
+fn weight(document: &Document, descriptor: Descriptor<'_>, report: Report<'_>) -> ReadResult<f64> {
     let Some(value) = optional(document, descriptor.dictionary, b"FontWeight")? else {
         return Ok(NORMAL_WEIGHT);
     };
@@ -172,7 +175,7 @@ fn weight(document: &Document, descriptor: Descriptor<'_>) -> ReadResult<f64> {
     {
         return Ok(weight);
     }
-    Report::new(document).diagnostic(
+    report.diagnostic(
         Diagnostic::new(
             crate::repairs::DESCRIPTOR_WEIGHT,
             "invalid optional FontWeight ignored; using normal weight (9.8.1, Table 120)",

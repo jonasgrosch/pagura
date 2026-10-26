@@ -72,6 +72,7 @@ impl Metrics {
         font: &Dictionary,
         descriptor: Option<&Dictionary>,
         scale: f64,
+        report: Report<'_>,
     ) -> ReadResult<Self> {
         let missing =
             descriptor.map_or(Ok(0.0), |d| number(document, d, b"MissingWidth", 0.0))? * scale;
@@ -82,7 +83,7 @@ impl Metrics {
         let widths = array(value)?;
         let count = usize::from(last.saturating_sub(first)) + 1;
         let count = if last < first || widths.len() != count {
-            Report::new(document).diagnostic(Diagnostic::new(
+            report.diagnostic(Diagnostic::new(
                 repairs::WIDTHS_LENGTH,
                 "Widths length disagrees with FirstChar and LastChar; missing codes use MissingWidth (Table 109)",
             ))?;
@@ -493,7 +494,9 @@ mod tests {
         let descriptor = dictionary
             .get(b"FontDescriptor")
             .and_then(Value::as_dictionary);
-        let metrics = Metrics::simple(&document, dictionary, descriptor, 0.001)?;
+        let metrics = pagura_document::DiagnosticBatch::run(&document, |batch| {
+            Metrics::simple(&document, dictionary, descriptor, 0.001, Report::new(batch))
+        })?;
         for value in expected("simple-missing-width")? {
             let row = rows(&value)?;
             near(metrics.width(integer(&row[0])?), float(&row[1])?);

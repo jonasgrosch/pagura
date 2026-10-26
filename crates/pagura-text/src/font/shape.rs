@@ -156,7 +156,14 @@ mod tests {
             .object(ObjectId::new(4, 0))?
             .dictionary()
             .ok_or_else(|| Error::syntax("missing dictionary"))?;
-        let map = cid_map(&document, dict, Some(ObjectId::new(4, 0)))?;
+        let map = pagura_document::DiagnosticBatch::run(&document, |batch| {
+            cid_map(
+                &document,
+                dict,
+                Some(ObjectId::new(4, 0)),
+                crate::report::Report::new(batch),
+            )
+        })?;
         let data = fixture("text", "cid-to-gid.out");
         let expected = Parser::new(&data, Origin::Buffer, document.limits()).parse()?;
         for value in array(&expected)? {

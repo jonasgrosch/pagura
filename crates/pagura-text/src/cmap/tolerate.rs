@@ -68,6 +68,7 @@ impl CMap {
         &self,
         document: &pagura_document::Document,
         position: Position,
+        report: Report<'_>,
     ) -> Result<Option<Self>> {
         if self.simple_codes() {
             return Ok(None);
@@ -77,7 +78,7 @@ impl CMap {
                 "unsupported simple-font ToUnicode code length",
             ));
         }
-        Report::new(document).repair(
+        report.repair(
             repairs::TOUNICODE_SIMPLE_CODES,
             "simple-font ToUnicode uses two-byte source codes (9.10.3)",
             position,

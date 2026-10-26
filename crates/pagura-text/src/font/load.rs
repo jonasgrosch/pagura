@@ -8,11 +8,12 @@ use crate::{
     features,
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{array, numbers, optional, required},
+    report::Report,
     selection::Route,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Value};
-use pagura_document::Document;
 use pagura_document::source::ReadResult;
+use pagura_document::{DiagnosticBatch, Document};
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -30,95 +31,104 @@ pub(super) fn load_with(
     position: Position,
     rendering: bool,
 ) -> ReadResult<PdfFont> {
-    let kind = kind(document, font)?;
-    if kind == FontKind::Type3 {
-        return type3(document, font);
-    }
-    // The dictionary with widths and descriptor: the font itself, or the
-    // CIDFont of a Type 0 font (9.7.4).
-    let (metrics_font, mapping, metrics_id) = if kind == FontKind::Type0 {
-        let (descendant, id) = descendant(document, font)?;
-        let mapping = composite_mapping(document, font, provider)?;
-        (descendant, Some(mapping), id)
-    } else {
-        (font, None, None)
-    };
-    let descriptor = Descriptor::of(document, metrics_font)?;
-    // One predicate decides embedding for substitution and program loading,
-    // so a null or dangling FontFile still reaches the provider (7.3.10).
-    let embedded = match descriptor {
-        Some(descriptor) => descriptor.program_key(document)?.is_some(),
-        None => false,
-    };
-    if !embedded && let Some(provider) = provider {
-        if let Some(mapping) = mapping {
-            // CID substitution ignores the flags, but a contradictory pair is
-            // still the descriptor's reported repair.
-            if let Some(descriptor) = descriptor {
-                descriptor.normalized_flags(document, position)?;
+    DiagnosticBatch::run(document, |batch| {
+        let report = Report::new(batch);
+        let kind = kind(document, font)?;
+        if kind == FontKind::Type3 {
+            return type3(document, font, report);
+        }
+        // The dictionary with widths and descriptor: the font itself, or the
+        // CIDFont of a Type 0 font (9.7.4).
+        let (metrics_font, mapping, metrics_id) = if kind == FontKind::Type0 {
+            let (descendant, id) = descendant(document, font)?;
+            let mapping = composite_mapping(document, font, provider, report)?;
+            (descendant, Some(mapping), id)
+        } else {
+            (font, None, None)
+        };
+        let descriptor = Descriptor::of(document, metrics_font)?;
+        // One predicate decides embedding for substitution and program loading,
+        // so a null or dangling FontFile still reaches the provider (7.3.10).
+        let embedded = match descriptor {
+            Some(descriptor) => descriptor.program_key(document)?.is_some(),
+            None => false,
+        };
+        if !embedded && let Some(provider) = provider {
+            if let Some(mapping) = mapping {
+                // CID substitution ignores the flags, but a contradictory pair is
+                // still the descriptor's reported repair.
+                if let Some(descriptor) = descriptor {
+                    descriptor.normalized_flags(document, position, report)?;
+                }
+                return crate::substitute::cid::load(
+                    document,
+                    metrics_font,
+                    metrics_id,
+                    mapping,
+                    provider,
+                    report,
+                );
             }
-            return crate::substitute::cid::load(
-                document,
-                metrics_font,
-                metrics_id,
-                mapping,
-                provider,
+            return crate::substitute::load(
+                document, font, descriptor, kind, provider, position, report,
             );
         }
-        return crate::substitute::load(document, font, descriptor, kind, provider, position);
-    }
-    let descriptor = descriptor.ok_or_else(|| {
-        Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
-    })?;
-    let route = route(document, font, descriptor, position)?;
-    let program = Arc::new(crate::program::load(
-        document,
-        descriptor,
-        kind,
-        metrics_font,
-        rendering,
-    )?);
-    let metrics = if kind == FontKind::Type0 {
-        Metrics::composite(document, metrics_font)?
-    } else {
-        Metrics::simple(
+        let descriptor = descriptor.ok_or_else(|| {
+            Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
+        })?;
+        let route = route(document, font, descriptor, position, report)?;
+        let program = Arc::new(crate::program::load(
             document,
-            font,
-            Some(descriptor.dictionary),
-            GLYPH_SPACE_UNITS,
-        )?
-    };
-    let mapping = if let Some(mapping) = mapping {
-        mapping
-    } else {
-        Mapping::Simple(Box::new(simple_mapping(
-            document,
-            font,
+            descriptor,
             kind,
-            route,
-            program.builtin_encoding(),
-        )?))
-    };
-    let cid_map = cid_map(document, metrics_font, metrics_id)?;
-    let mode = match &mapping {
-        Mapping::Composite { map, .. } => map.mode,
-        Mapping::Simple(_) => WritingMode::Horizontal,
-    };
-    Ok(PdfFont {
-        kind,
-        writing_mode: mode,
-        source: Source::Program {
-            program,
-            route,
-            ownership: Ownership::Embedded,
-            cid_map,
-        },
-        mapping,
-        metrics,
-        limits: document.limits(),
-        retained: 0,
-    }
-    .accounted())
+            metrics_font,
+            rendering,
+            report,
+        )?);
+        let metrics = if kind == FontKind::Type0 {
+            Metrics::composite(document, metrics_font)?
+        } else {
+            Metrics::simple(
+                document,
+                font,
+                Some(descriptor.dictionary),
+                GLYPH_SPACE_UNITS,
+                report,
+            )?
+        };
+        let mapping = if let Some(mapping) = mapping {
+            mapping
+        } else {
+            Mapping::Simple(Box::new(simple_mapping(
+                document,
+                font,
+                kind,
+                route,
+                program.builtin_encoding(),
+                report,
+            )?))
+        };
+        let cid_map = cid_map(document, metrics_font, metrics_id, report)?;
+        let mode = match &mapping {
+            Mapping::Composite { map, .. } => map.mode,
+            Mapping::Simple(_) => WritingMode::Horizontal,
+        };
+        Ok(PdfFont {
+            kind,
+            writing_mode: mode,
+            source: Source::Program {
+                program,
+                route,
+                ownership: Ownership::Embedded,
+                cid_map,
+            },
+            mapping,
+            metrics,
+            limits: document.limits(),
+            retained: 0,
+        }
+        .accounted())
+    })
 }
 
 /// The single CIDFont of a Type 0 font and its object (9.7.6.1).
@@ -145,9 +155,10 @@ fn route(
     font: &Dictionary,
     descriptor: Descriptor<'_>,
     position: Position,
+    report: Report<'_>,
 ) -> ReadResult<Route> {
     let symbolic = descriptor
-        .normalized_flags(document, position)?
+        .normalized_flags(document, position, report)?
         .contains(FontFlags::SYMBOLIC);
     Ok(
         if symbolic || optional(document, font, b"Encoding")?.is_none() {
@@ -169,6 +180,7 @@ fn composite_mapping(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn crate::Provider>,
+    report: Report<'_>,
 ) -> ReadResult<Mapping> {
     let encoding = font
         .get(b"Encoding")
@@ -176,7 +188,7 @@ fn composite_mapping(
     // Predefined CMaps are static or provider-owned, never the font's.
     let shared = document.resolve(encoding)?.as_name().is_some();
     Ok(Mapping::Composite {
-        map: cmap::load(document, encoding, CMapRole::Encoding, provider)?,
+        map: cmap::load(document, encoding, CMapRole::Encoding, provider, report)?,
         shared,
     })
 }
@@ -187,6 +199,7 @@ fn simple_mapping(
     kind: FontKind,
     route: Route,
     builtin: Option<&encoding::Encoding>,
+    report: Report<'_>,
 ) -> ReadResult<SimpleMapping> {
     if kind == FontKind::TrueType && route == Route::Raw {
         return Ok(SimpleMapping::new(
@@ -199,7 +212,7 @@ fn simple_mapping(
         Some(builtin) if kind != FontKind::TrueType => builtin.clone(),
         _ => BaseEncoding::Standard.names(),
     };
-    let mut names = encoding::load(document, font.get(b"Encoding"), default)?;
+    let mut names = encoding::load(document, font.get(b"Encoding"), default, report)?;
     if kind == FontKind::TrueType
         && optional(document, font, b"Encoding")?
             .is_some_and(|value| value.as_dictionary().is_some())
@@ -217,7 +230,7 @@ fn simple_mapping(
     )?)
 }
 
-fn type3(document: &Document, font: &Dictionary) -> ReadResult<PdfFont> {
+fn type3(document: &Document, font: &Dictionary, report: Report<'_>) -> ReadResult<PdfFont> {
     let [a, b, c, d, e, f] = numbers(
         document,
         required(document, font, b"FontMatrix")?,
@@ -253,7 +266,12 @@ fn type3(document: &Document, font: &Dictionary) -> ReadResult<PdfFont> {
     if !encoding_dict.contains_key(b"Differences") {
         return Err(Error::syntax("Type3 Encoding missing Differences").into());
     }
-    let encoding = encoding::load(document, Some(encoding), std::array::from_fn(|_| None))?;
+    let encoding = encoding::load(
+        document,
+        Some(encoding),
+        std::array::from_fn(|_| None),
+        report,
+    )?;
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
         encoding,
         &document.limits(),
@@ -262,7 +280,7 @@ fn type3(document: &Document, font: &Dictionary) -> ReadResult<PdfFont> {
     Ok(PdfFont {
         kind: FontKind::Type3,
         writing_mode: WritingMode::Horizontal,
-        metrics: Metrics::simple(document, font, None, matrix.a)?,
+        metrics: Metrics::simple(document, font, None, matrix.a, report)?,
         source: Source::Type3 {
             procedures,
             resources,
@@ -279,11 +297,12 @@ pub(super) fn cid_map(
     document: &Document,
     metrics_font: &Dictionary,
     id: Option<ObjectId>,
+    report: Report<'_>,
 ) -> ReadResult<Option<CidToGidMap>> {
     Ok(if metrics_font.is_name(b"Subtype", b"CIDFontType2") {
         match optional(document, metrics_font, b"CIDToGIDMap")? {
             None => {
-                crate::report::Report::new(document).diagnostic(
+                report.diagnostic(
                     Diagnostic::new(
                         crate::repairs::CID_TO_GID_IDENTITY,
                         "embedded CIDFontType2 missing CIDToGIDMap; using Identity (9.7.4.1, Table 115)",
@@ -340,11 +359,29 @@ mod tests {
         let font: Dictionary = [(Name::new(b"Encoding"), Value::name(b"InvalidEncoding"))]
             .into_iter()
             .collect();
-        let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Raw, None)?;
+        let mapping = DiagnosticBatch::run(&document, |batch| {
+            simple_mapping(
+                &document,
+                &font,
+                FontKind::TrueType,
+                Route::Raw,
+                None,
+                Report::new(batch),
+            )
+        })?;
         assert!(mapping.names.iter().all(Option::is_none));
         assert!((0..=255).all(|code| mapping.unicode(code).is_none()));
         // An unknown encoding name is a reported repair: StandardEncoding applies.
-        let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None)?;
+        let mapping = DiagnosticBatch::run(&document, |batch| {
+            simple_mapping(
+                &document,
+                &font,
+                FontKind::TrueType,
+                Route::Named,
+                None,
+                Report::new(batch),
+            )
+        })?;
         assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         assert!(
             document
@@ -353,22 +390,43 @@ mod tests {
                 .any(|d| d.repair() == Some(crate::repairs::ENCODING_NAME))
         );
         let strict = open(pagura_core::Recovery::Strict)?;
-        let error = simple_mapping(&strict, &font, FontKind::TrueType, Route::Named, None)
-            .err()
-            .map(|error| error.as_error().unwrap().repair);
+        let error = DiagnosticBatch::run(&strict, |batch| {
+            simple_mapping(
+                &strict,
+                &font,
+                FontKind::TrueType,
+                Route::Named,
+                None,
+                Report::new(batch),
+            )
+        })
+        .err()
+        .map(|error| error.as_error().unwrap().repair);
         assert_eq!(error, Some(Some(crate::repairs::ENCODING_NAME)));
-        let mapping = simple_mapping(
-            &document,
-            &Dictionary::new(),
-            FontKind::TrueType,
-            Route::Raw,
-            None,
-        )?;
+        let mapping = DiagnosticBatch::run(&document, |batch| {
+            simple_mapping(
+                &document,
+                &Dictionary::new(),
+                FontKind::TrueType,
+                Route::Raw,
+                None,
+                Report::new(batch),
+            )
+        })?;
         assert!(mapping.names.iter().all(Option::is_none));
         let named: Dictionary = [(Name::new(b"Encoding"), Value::name(b"WinAnsiEncoding"))]
             .into_iter()
             .collect();
-        let mapping = simple_mapping(&document, &named, FontKind::TrueType, Route::Named, None)?;
+        let mapping = DiagnosticBatch::run(&document, |batch| {
+            simple_mapping(
+                &document,
+                &named,
+                FontKind::TrueType,
+                Route::Named,
+                None,
+                Report::new(batch),
+            )
+        })?;
         assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         Ok(())
     }

@@ -31,6 +31,8 @@ jobs:
         run: |
           cargo test -p pagura-content
           cargo test -p pagura-image source::
+      - name: Verify font binding and diagnostic publication
+        run: cargo test -p pagura-text
       - name: Verify public attachment metadata and image services
         run: cargo test -p pagura --test document_services
       - name: Verify shared glyph-store callers

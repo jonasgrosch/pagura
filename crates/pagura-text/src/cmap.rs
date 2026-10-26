@@ -608,6 +608,7 @@ pub(crate) fn load(
     value: &Value,
     role: CMapRole,
     provider: Option<&dyn crate::Provider>,
+    report: Report<'_>,
 ) -> ReadResult<Arc<CMap>> {
     load_inner(
         document,
@@ -616,6 +617,7 @@ pub(crate) fn load(
         provider,
         &mut Vec::new(),
         &mut Budget::new(&document.limits()),
+        report,
     )
 }
 
@@ -626,6 +628,7 @@ fn load_inner(
     provider: Option<&dyn crate::Provider>,
     path: &mut Vec<ObjectId>,
     budget: &mut Budget,
+    report: Report<'_>,
 ) -> ReadResult<Arc<CMap>> {
     if let Some(name) = document.resolve(value)?.as_name() {
         return Ok(predefined(name, role, provider)?);
@@ -650,15 +653,8 @@ fn load_inner(
         .bytes
         .charge(data.len())
         .map_err(|e| e.in_object(id))?;
-    let mut map = CMap::parse_reported(
-        &data,
-        Origin::Stream(id),
-        &limits,
-        role,
-        Report::new(document),
-        budget,
-    )
-    .map_err(|e| e.in_object(id))?;
+    let mut map = CMap::parse_reported(&data, Origin::Stream(id), &limits, role, report, budget)
+        .map_err(|e| e.in_object(id))?;
     if role == CMapRole::Encoding
         && let Some(value) = dict.get(b"WMode")
     {
@@ -690,7 +686,7 @@ fn load_inner(
             }
         }
         let shared = resolved.as_name().is_some();
-        let parent = load_inner(document, parent, role, provider, path, budget)?;
+        let parent = load_inner(document, parent, role, provider, path, budget, report)?;
         map.inherit(parent, shared);
     } else if map.use_name.is_some() {
         return Err(Error::syntax("usecmap missing UseCMap dictionary entry")
@@ -803,15 +799,17 @@ mod tests {
             &pagura_document::OpenOptions::default(),
         )?;
         let limits = document.limits();
-        let map = CMap::parse_reported(
-            b"1 begincodespacerange <00000000> <ffffffff> endcodespacerange \
+        let map = pagura_document::DiagnosticBatch::run(&document, |batch| {
+            Ok(CMap::parse_reported(
+                b"1 begincodespacerange <00000000> <ffffffff> endcodespacerange \
               1 beginbfrange <00000000> <000F423F> <0041> endbfrange",
-            Origin::Buffer,
-            &limits,
-            CMapRole::ToUnicode,
-            Report::new(&document),
-            &mut Budget::new(&limits),
-        )?;
+                Origin::Buffer,
+                &limits,
+                CMapRole::ToUnicode,
+                Report::new(batch),
+                &mut Budget::new(&limits),
+            )?)
+        })?;
         assert_eq!(map.unicode.len(), 3);
         assert!(map.heap_bytes() < 1024);
         let code = |value| Code { value, len: 4 };

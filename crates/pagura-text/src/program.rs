@@ -17,6 +17,7 @@ pub(crate) fn load(
     kind: FontKind,
     metrics_font: &Dictionary,
     rendering: bool,
+    report: Report<'_>,
 ) -> ReadResult<FontProgram> {
     let Some(key) = descriptor.program_key(document)? else {
         return Err(
@@ -28,7 +29,8 @@ pub(crate) fn load(
         .get(key)
         .and_then(Value::as_reference)
         .ok_or_else(|| Error::syntax("embedded font must be a stream reference"))?;
-    load_stream(document, id, key, kind, metrics_font, rendering).map_err(|e| e.in_object(id))
+    load_stream(document, id, key, kind, metrics_font, rendering, report)
+        .map_err(|e| e.in_object(id))
 }
 
 fn load_stream(
@@ -38,6 +40,7 @@ fn load_stream(
     kind: FontKind,
     metrics_font: &Dictionary,
     rendering: bool,
+    report: Report<'_>,
 ) -> ReadResult<FontProgram> {
     let object = document.object(id)?;
     let dictionary = object
@@ -54,7 +57,6 @@ fn load_stream(
         Some(data) => pagura_document::StreamData::from(data),
         None => document.stream_data_sized(object, declared_length(document, dictionary)?)?,
     };
-    let report = Report::new(document);
     // A prefix was checked against Length1 when it was decoded.
     if whole && let Some(problem) = length_problem(document, dictionary, key, format, data.len())? {
         // The decoded program describes its own extent; the Length entries

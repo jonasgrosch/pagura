@@ -6,10 +6,11 @@ use crate::{
     cid::Cid,
     cmap::{self, CMap, CMapRole, Code},
     objects::{optional, required},
+    report::Report,
 };
 use pagura_core::{Dictionary, Error, Position, Value};
-use pagura_document::Document;
 use pagura_document::source::{ReadFault, ReadResult};
+use pagura_document::{DiagnosticBatch, Document};
 use std::sync::Arc;
 
 /// The Unicode of a font's character codes (9.10.2): its `ToUnicode` CMap,
@@ -64,30 +65,34 @@ pub(super) fn load(
     dictionary: &Dictionary,
     provider: Option<&dyn crate::Provider>,
 ) -> ReadResult<FontUnicode> {
-    let to_unicode = to_unicode(document, dictionary, &font.mapping)?;
-    let collection = match &font.source {
-        Source::CidSubstitute { unicode, .. } => Some(Arc::clone(unicode)),
-        Source::Program { .. } if font.kind == FontKind::Type0 => {
-            let (descendant, _) = super::load::descendant(document, dictionary)?;
-            collection_unicode(document, descendant, &font.mapping, provider)?
-        }
-        Source::Program { .. } | Source::Type3 { .. } | Source::MetricsOnly => None,
-    };
-    Ok(FontUnicode::new(to_unicode, collection))
+    DiagnosticBatch::run(document, |batch| {
+        let report = Report::new(batch);
+        let to_unicode = to_unicode(document, dictionary, &font.mapping, report)?;
+        let collection = match &font.source {
+            Source::CidSubstitute { unicode, .. } => Some(Arc::clone(unicode)),
+            Source::Program { .. } if font.kind == FontKind::Type0 => {
+                let (descendant, _) = super::load::descendant(document, dictionary)?;
+                collection_unicode(document, descendant, &font.mapping, provider)?
+            }
+            Source::Program { .. } | Source::Type3 { .. } | Source::MetricsOnly => None,
+        };
+        Ok(FontUnicode::new(to_unicode, collection))
+    })
 }
 
 fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
+    report: Report<'_>,
 ) -> ReadResult<Option<Arc<CMap>>> {
     let Some(value) = font.get(b"ToUnicode") else {
         return Ok(None);
     };
-    match to_unicode_map(document, value, mapping) {
+    match to_unicode_map(document, value, mapping, report) {
         Ok(map) => Ok(map),
         Err(ReadFault::Invalid(error)) => {
-            crate::report::Report::new(document).discarded(error, value.as_reference())?;
+            report.discarded(error, value.as_reference())?;
             Ok(None)
         }
         Err(unavailable) => Err(unavailable),
@@ -100,8 +105,9 @@ pub(crate) fn to_unicode_map(
     document: &Document,
     value: &Value,
     mapping: &Mapping,
+    report: Report<'_>,
 ) -> ReadResult<Option<Arc<CMap>>> {
-    to_unicode_inner(document, value, mapping).map_err(|fault| {
+    to_unicode_inner(document, value, mapping, report).map_err(|fault| {
         fault.map_error(|mut error| {
             error
                 .repair
@@ -115,6 +121,7 @@ fn to_unicode_inner(
     document: &Document,
     value: &Value,
     mapping: &Mapping,
+    report: Report<'_>,
 ) -> ReadResult<Option<Arc<CMap>>> {
     // Null dictionary values are absent, including indirect or undefined ones
     // (7.3.9-7.3.10). They require no repair in either recovery mode.
@@ -124,14 +131,14 @@ fn to_unicode_inner(
     let id = value
         .as_reference()
         .ok_or_else(|| Error::syntax("ToUnicode must be a stream reference"))?;
-    let map = cmap::load(document, value, CMapRole::ToUnicode, None)?;
+    let map = cmap::load(document, value, CMapRole::ToUnicode, None, report)?;
     let start = Position::Stream {
         object: id,
         offset: 0,
     };
     let map = match mapping {
         Mapping::Simple(_) => map
-            .simple_compatible(document, start)
+            .simple_compatible(document, start, report)
             .map_err(|e| e.in_object(id))?
             .map_or(map, Arc::new),
         Mapping::Composite { map: encoding, .. } => {

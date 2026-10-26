@@ -1,18 +1,16 @@
 //! The one reporting path for font loading (ADR 0003; CONTRIBUTING 4).
 use crate::repairs::TOUNICODE_INVALID;
 use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Position, Recovery, Repair, Result};
-use pagura_document::Document;
+use pagura_document::DiagnosticBatch;
 
-/// Routes diagnostics through a sink in the document's recovery mode, one call
-/// at a time, so malformed maps cannot grow a temporary diagnostic vector
-/// beyond the document's bounded, deduplicating sink. Without a document
-/// (standalone CMap parsing) every repair is rejected as in strict mode.
+/// Routes reports into the font read attempt's bounded provisional sink.
+/// Standalone CMap parsing has no document and rejects every repair.
 #[derive(Clone, Copy)]
-pub(crate) struct Report<'a>(Option<&'a Document>);
+pub(crate) struct Report<'a>(Option<&'a DiagnosticBatch<'a>>);
 
 impl<'a> Report<'a> {
-    pub(crate) fn new(document: &'a Document) -> Self {
-        Self(Some(document))
+    pub(crate) fn new(batch: &'a DiagnosticBatch<'a>) -> Self {
+        Self(Some(batch))
     }
 
     pub(crate) fn strict() -> Self {
@@ -41,12 +39,10 @@ impl<'a> Report<'a> {
 
     /// Reports diagnostics collected by a nested parser.
     pub(crate) fn diagnostics(self, items: impl IntoIterator<Item = Diagnostic>) -> Result<()> {
-        let mut sink = Diagnostics::new(self.0.map_or(Recovery::Strict, Document::recovery));
-        sink.absorb(items)?;
-        if let Some(document) = self.0 {
-            document.report(sink.take());
+        match self.0 {
+            Some(batch) => batch.absorb(items),
+            None => Diagnostics::new(Recovery::Strict).absorb(items),
         }
-        Ok(())
     }
 
     /// Discards an unusable ToUnicode map in repair mode. Strict mode keeps
@@ -54,7 +50,7 @@ impl<'a> Report<'a> {
     pub(crate) fn discarded(self, error: Error, object: Option<ObjectId>) -> Result<()> {
         if self
             .0
-            .is_none_or(|document| document.recovery() == Recovery::Strict)
+            .is_none_or(|batch| batch.recovery() == Recovery::Strict)
         {
             return Err(error);
         }
