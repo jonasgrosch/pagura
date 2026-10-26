@@ -248,7 +248,7 @@ impl Views<'_> {
         let label = page.label(self.document);
         if let Some(labels) = labels {
             assert!(
-                label == labels.label(page.index()),
+                label == labels.label(page.index()).map_err(Into::into),
                 "page {} label differs between two reads",
                 page.index()
             );

@@ -242,7 +242,7 @@ pub fn describe(error: &Error) -> String {
 }
 
 /// A source read retains terminal PDF context or identifies its unmet range.
-pub fn describe_read(fault: &pagura_document::ReadFault) -> String {
+pub fn describe_read(fault: &pagura_document::source::ReadFault) -> String {
     fault
         .as_error()
         .map_or_else(|| format!("{fault:?}"), describe)

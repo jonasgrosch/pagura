@@ -165,7 +165,7 @@ fn measure(
     let describe = |e: pagura_core::Error| crate::report::describe(&e);
     let bytes = std::fs::read(corpora.join(&item.file)).map_err(|e| e.to_string())?;
     let document = Document::open(bytes, &OpenOptions::default()).map_err(describe)?;
-    let read = |fault: pagura_document::ReadFault| crate::report::describe_read(&fault);
+    let read = |fault: pagura_document::source::ReadFault| crate::report::describe_read(&fault);
     let page = document.page(item.page).map_err(read)?;
     let options = RenderOptions::from_dpi(f64::from(item.dpi));
     let rendered =

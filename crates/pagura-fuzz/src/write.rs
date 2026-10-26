@@ -49,7 +49,7 @@ pub fn run(data: &[u8]) {
                 let Some(data) = super::checked(source.raw_stream_data(object)) else {
                     continue;
                 };
-                Original::Stream(dictionary.clone(), data.to_vec())
+                Original::Stream(dictionary.clone(), data.bytes().to_vec())
             }
             _ => Original::Value(object.value().clone()),
         };
@@ -101,7 +101,7 @@ pub fn run(data: &[u8]) {
                     "{id}: stream dictionary {dictionary:?} read back as {actual:?}"
                 );
                 if let Some(read) = super::checked(copy.raw_stream_data(object)) {
-                    assert_eq!(read, data.as_slice(), "{id}: stream data changed");
+                    assert_eq!(read.bytes(), data.as_slice(), "{id}: stream data changed");
                 }
             }
         }

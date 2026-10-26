@@ -1,7 +1,8 @@
 //! The conformance fixtures' render cases, recorded as scenes.
 
 use pagura_core::{Error, Limits};
-use pagura_document::{Document, OpenOptions, ReadResult};
+use pagura_document::source::ReadResult;
+use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{Interpreter, Scene};
 use pagura_raster::{DeviceRect, Transform};
 use pagura_testkit::{Json, Manifest, workspace_root};

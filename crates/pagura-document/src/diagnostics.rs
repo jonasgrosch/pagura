@@ -255,7 +255,7 @@ mod tests {
             })
             .unwrap_err();
             assert!(matches!(waiting, crate::source::ReadFault::Unavailable(_)));
-            assert_eq!(document.diagnostics(), [dependency.clone()]);
+            assert_eq!(document.diagnostics(), std::slice::from_ref(&dependency));
             assert_eq!(document.suppressed_diagnostics(), 0);
         }
         source.supply(identity, 0, b"done").unwrap();
@@ -299,7 +299,7 @@ mod tests {
             source.materialize()
         })
         .unwrap_err();
-        assert!(document.diagnostics().is_empty());
+        assert_eq!(document.diagnostics(), [] as [Diagnostic; 0]);
         assert_eq!(document.suppressed_diagnostics(), 0);
         let terminal = Error::syntax("complete semantic rejection");
         let result: crate::source::ReadResult<()> = DiagnosticBatch::run(&document, |batch| {
@@ -332,6 +332,6 @@ mod tests {
             result.unwrap_err().as_error(),
             diagnostic.to_error().as_ref()
         );
-        assert!(strict.diagnostics().is_empty());
+        assert_eq!(strict.diagnostics(), [] as [Diagnostic; 0]);
     }
 }

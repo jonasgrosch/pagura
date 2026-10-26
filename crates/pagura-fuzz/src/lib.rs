@@ -107,7 +107,7 @@ fn recovery(strict: bool) -> Recovery {
 /// The value of a successful result. An error must be structured: it has a
 /// fixed message, and its feature and refused-repair tags follow the
 /// `area.item` convention, so callers can branch on them.
-fn checked<T, E: Into<ReadFault>>(result: std::result::Result<T, E>) -> Option<T> {
+fn checked<T, E: Into<ReadFault>>(result: Result<T, E>) -> Option<T> {
     match result {
         Ok(value) => Some(value),
         Err(error) => {
