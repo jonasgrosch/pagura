@@ -116,7 +116,7 @@ Owner: `references/requirements`, `docs`, `benchmarks`; depends on no new produc
 
 - **Source inventory complete at `19059e684`:** `benchmarks/capabilities.json`,
   the generated [review view](CAPABILITIES.md), and `tools/capabilities.py --check`
-  cover 43 capability families, all 90 reviewed literal tags, all 332 registered
+  cover 43 capability families, all 90 reviewed literal tags, all registered
   requirement IDs and all six baseline API inventories. There are 258 unprobed
   family cells. Schema 2 requires dispositions, source locators/hashes, ownership
   and complete surface states; it does not infer runtime support or N/A.
@@ -389,6 +389,17 @@ predeclared budgets; incomplete work cannot produce a successful partial page.
 Owner: `pagura-document`, `pagura-image`, `pagura-codec`, facade/CLI/host; the D02a
 read/extract/export APIs depend on G01 and D03 for encrypted attachments. D02b
 modification APIs follow E01/E02; E02 consumes D02a, so there is no dependency cycle.
+
+**File-view implementation started:** typed specifications, EmbeddedFiles name
+trees, catalog/page/object AF arrays, EF streams and RF related files now have
+bounded library/facade views. Fifty-one independently authored fixtures cover
+byte/Unicode names, source identity, payload filtering, absent/null/empty cases,
+malformed types, cycles, reported text/tree repairs, budgets and synthetic
+attachment authorization. EF/RF context selects attachment crypt filters even
+when the stream omits its optional Type; an explicit Identity filter retains
+its meaning. Hosted product checks are pending. Annotation discovery,
+collection/encrypted-payload models, validation, streaming, writes and
+CLI/host/viewer integration remain open; this does not complete D02.
 
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose

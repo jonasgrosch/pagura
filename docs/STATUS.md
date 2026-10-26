@@ -5,9 +5,9 @@ support. It is **not a complete PDF implementation**, and feature parity with
 PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
 Work spans M1–M7; none of those milestones is declared complete by this page.
 
-This inventory was reconciled against `render/one-pass` at
-`19059e68448288ccad84a3bc2f4c6c69c5142e2f`, the fetched head of PR #118.
-It describes that branch, including refactoring not yet merged into `main`.
+This inventory targets `render/one-pass`, including refactoring not yet merged
+into `main`. The [checked inventory](CAPABILITIES.md) records the current source
+audit revision and exact evidence hashes.
 **Implemented** below means an implementation and associated tests exist, within the stated
 limits. It does not mean those tests or all corpora were rerun for this audit.
 Library support, PDF integration and viewer support are listed separately where
@@ -15,7 +15,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 332 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and every registered requirement ID assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -45,7 +45,8 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Writing and editing | Deterministic new PDF 1.7 files; immutable transactions; classic/xref-stream append revisions; saved forms; no-op byte preservation and rollback | Full rewrite, freed objects, object-stream output, PDF 2.0 new-file header/ID generation, encryption-on-write, sanitizing redaction, undo/redo and general page-content/page-tree editing APIs. Modified saves require strict, unencrypted input; signed input defaults to refusal. |
 | Image output and cancellation | Public `RenderContext::render_bands` lends final premultiplied RGBA bands with a fallible consumer and between-band stop callback after preflight; the CLI streams PPM with bounded output storage. Library zlib compression and whole-buffer PNG encoding for eight-bit Gray/RGB/straight RGBA exist | Calls restart from the region's first row; persistent pause/resume, incremental PNG/DEFLATE, facade/CLI PNG export, async backpressure and public embedded-image extraction remain. Existing streamed PPM does not imply streamed PNG or progressive input. |
 | Browser and WASM host | Native/WASI session protocol, viewport generations, bounded render `Store` for scenes/images/fonts/glyph setups, continuous scrolling/zoom, password prompt, text/navigation and form editing | Range input and resumable host jobs, active-request cancellation, parallel scheduling, layer/overprint/print controls and broader browser/device/accessibility validation. Library band-stop support is not wired into active host requests; generation cancellation discards stale queued work. |
-| Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; typed attachment/associated-file, portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
+| Embedded and associated files | Typed file specifications, EmbeddedFiles name trees, catalog/page/object AF arrays, EF/RF streams and source parameters; lazy bounded payload decoding, including attachment crypt filters without a stream Type | Annotation discovery, collection/encrypted-payload models, conditional association/MIME/date validation, checksum verification, streaming extraction, writes and CLI/host/viewer integration. Paths and URLs remain inert. |
+| Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
 | Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
 ## Evidence and accuracy
