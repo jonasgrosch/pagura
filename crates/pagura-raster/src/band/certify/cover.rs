@@ -58,6 +58,13 @@ pub(crate) struct Covered {
     pub(crate) overlapping: bool,
 }
 
+impl Covered {
+    /// The bytes its pieces keep.
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.lines.capacity() * size_of::<Line>() + self.curves.capacity() * size_of::<Mono>()
+    }
+}
+
 /// The covered set of `spline`, whose monotone curves are `curves`, with
 /// only its pieces' storage left charged to `bytes`; winding as the spline
 /// does where `follow`, which needs one sign everywhere. `None` when the
@@ -75,9 +82,7 @@ pub(crate) fn covered(
         .as_ref()
         .ok()
         .and_then(Option::as_ref)
-        .map_or(0, |c| {
-            c.lines.capacity() * size_of::<Line>() + c.curves.capacity() * size_of::<Mono>()
-        });
+        .map_or(0, Covered::retained_bytes);
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }

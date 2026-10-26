@@ -22,7 +22,7 @@ use crate::geometry::{greater, lesser};
 use pagura_core::{Meter, Result};
 
 mod cover;
-pub(crate) use cover::covered;
+pub(crate) use cover::{Covered, covered};
 
 #[derive(Debug, Clone, Copy)]
 struct Chain {

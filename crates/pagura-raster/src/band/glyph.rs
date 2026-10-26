@@ -15,7 +15,7 @@
 //! execution, refining ambiguous pixels from the original controls. General
 //! cubics retain the canonical 1/256-pixel polygon.
 
-use super::certify::{covered, doubtful, spline_certified};
+use super::certify::{Covered, covered, doubtful, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
@@ -375,15 +375,19 @@ impl GlyphEdges {
         (outline, transform): (&Path, Transform),
         bytes: &mut Meter,
     ) -> Result<Option<Kind>> {
-        let union = covered(spline, &relative.curves, !points.is_empty(), bytes)?;
-        let union = union.filter(|union| {
+        let joins = |union: &Covered| {
             points.is_empty()
                 || ((union.sign < 0 || !union.overlapping)
                     && !(union.lines.is_empty() && union.curves.is_empty()))
-        });
-        let Some(union) = union else {
-            bytes.refund(points.capacity() * size_of::<Point>());
-            return Ok(None);
+        };
+        let union = match covered(spline, &relative.curves, !points.is_empty(), bytes)? {
+            Some(union) if joins(&union) => union,
+            rejected => {
+                // A rejected set's storage is dropped with it.
+                let retained = rejected.as_ref().map_or(0, Covered::retained_bytes);
+                bytes.refund(retained + points.capacity() * size_of::<Point>());
+                return Ok(None);
+            }
         };
         Ok(Some(Kind::Union {
             relative: Relative::parts(union.lines, union.curves),

@@ -401,10 +401,14 @@ fn point_cells_join_covered_sets_that_wind_as_they_do() {
             panic!("a covered set with its points");
         };
         assert_eq!(points.len(), 3);
-        // Wound +1 and overlapping, or both ways: the polygon keeps them.
+        // Wound +1 and overlapping, or both ways: the polygon keeps them,
+        // and a rejected set leaves none of its storage charged.
         for (first, second) in [(true, true), (false, true)] {
-            let edges = polygon_bytes(&dotted(&outline(first, second)), linear);
+            let path = dotted(&outline(first, second));
+            let edges = polygon_bytes(&path, linear);
             assert!(matches!(edges.kind, Kind::Polygon { .. }));
+            let polygon = polygon_edges(&path, linear, &Limits::default());
+            assert_eq!(edges.retained, polygon.retained + size_of::<GlyphEdges>());
         }
         // Wound +1 without overlapping: the set winds as the spline does.
         let mut apart = PathBuilder::new();
