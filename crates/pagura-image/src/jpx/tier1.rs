@@ -13,7 +13,6 @@ pub(super) struct Sample {
     // Plane + 1 is a visitation epoch; zero means no propagation pass visited it.
     visited_plane: u8,
     missing: u8,
-    neighbours: u8,
 }
 
 impl Sample {
@@ -45,8 +44,10 @@ impl Sample {
 const NEGATIVE: u8 = 1;
 const REFINED: u8 = 2;
 
-// D.3, Figure D.2: row-major neighbours, excluding the centre.
-const NEIGHBOURS: [(isize, isize, u8); 8] = [
+// D.3, Figure D.2: row-major neighbours, excluding the centre, and the
+// state bit of a sample whose neighbour there is significant.
+#[cfg(test)]
+const NEIGHBOURS: [(isize, isize, u16); 8] = [
     (-1, -1, 1),
     (0, -1, 2),
     (1, -1, 4),
@@ -57,116 +58,229 @@ const NEIGHBOURS: [(isize, isize, u8); 8] = [
     (1, 1, 128),
 ];
 
+/// State bits of a sample whose orthogonal neighbour is significant and
+/// negative, for sign coding (D.3.2): north, west, east and south.
+const NORTH_NEGATIVE: u16 = 1 << 8;
+const WEST_NEGATIVE: u16 = 1 << 9;
+const EAST_NEGATIVE: u16 = 1 << 10;
+const SOUTH_NEGATIVE: u16 = 1 << 11;
+
+/// The state bit of a significant sample.
+const SIGNIFICANT: u16 = 1 << 12;
+
+/// The bits of a sample's neighbours' significance.
+const NEIGHBOURHOOD: u16 = 0xff;
+
+/// The significance and sign bits of a sample's orthogonal neighbours.
+const SIGN_STATE: u16 =
+    2 | 8 | 16 | 64 | NORTH_NEGATIVE | WEST_NEGATIVE | EAST_NEGATIVE | SOUTH_NEGATIVE;
+
+/// Table D.1: the zero-coding context of each orientation (`2` codes as
+/// `0`) and neighbour significance.
+const ZERO_CONTEXTS: [[u8; 256]; 4] = {
+    let mut table = [[0; 256]; 4];
+    let mut orientation = 0;
+    while orientation < 4 {
+        let mut neighbours = 0;
+        while neighbours < 256 {
+            table[orientation][neighbours] = zero_context(orientation, neighbours);
+            neighbours += 1;
+        }
+        orientation += 1;
+    }
+    table
+};
+
+const fn zero_context(orientation: usize, neighbours: usize) -> u8 {
+    let mut h = (neighbours & 0b0001_1000).count_ones();
+    let mut v = (neighbours & 0b0100_0010).count_ones();
+    let d = (neighbours & 0b1010_0101).count_ones();
+    if orientation == 1 {
+        (h, v) = (v, h);
+    }
+    if orientation == 3 {
+        match (d, h + v) {
+            (0, 0) => 0,
+            (0, 1) => 1,
+            (0, _) => 2,
+            (1, 0) => 3,
+            (1, 1) => 4,
+            (1, _) => 5,
+            (2, 0) => 6,
+            (2, _) => 7,
+            _ => 8,
+        }
+    } else {
+        match (h, v, d) {
+            (0, 0, 0) => 0,
+            (0, 0, 1) => 1,
+            (0, 0, _) => 2,
+            (0, 1, _) => 3,
+            (0, _, _) => 4,
+            (1, 0, 0) => 5,
+            (1, 0, _) => 6,
+            (1, _, _) => 7,
+            _ => 8,
+        }
+    }
+}
+
+/// Tables D.2 and D.3: by [`SIGN_STATE`] bits, the sign context and the
+/// sign prediction XORed with the decoded bit, as `context << 1 | bit`.
+const SIGN_CONTEXTS: [u8; 4096] = {
+    let mut table = [0; 4096];
+    let mut state = 0;
+    while state < 4096 {
+        #[expect(clippy::cast_possible_truncation, reason = "states below 4096")]
+        let bits = state as u16;
+        table[state] = sign_context(bits);
+        state += 1;
+    }
+    table
+};
+
+const fn sign_context(state: u16) -> u8 {
+    const fn contribution(state: u16, significant: u16, negative: u16) -> i8 {
+        if state & significant == 0 {
+            0
+        } else if state & negative != 0 {
+            -1
+        } else {
+            1
+        }
+    }
+    let h = contribution(state, 8, WEST_NEGATIVE) + contribution(state, 16, EAST_NEGATIVE);
+    let v = contribution(state, 2, NORTH_NEGATIVE) + contribution(state, 64, SOUTH_NEGATIVE);
+    let (mut h, mut v) = (h.signum(), v.signum());
+    let prediction = h < 0 || (h == 0 && v < 0);
+    if prediction {
+        h = -h;
+        v = -v;
+    }
+    let context: u8 = match (h, v) {
+        (0, 0) => 9,
+        (0, _) => 10,
+        (_, -1) => 11,
+        (_, 0) => 12,
+        _ => 13,
+    };
+    context << 1 | prediction as u8
+}
+
+/// A coding pass's source of decisions: the arithmetic decoder, or raw
+/// bits that ignore the context (bypass, D.6).
+trait Bits {
+    const RAW: bool;
+    fn bit(&mut self, context: usize) -> Result<bool>;
+    /// Resets the contexts (D.4.2), where they exist.
+    fn reset(&mut self) {}
+}
+
+impl Bits for Decoder<'_> {
+    const RAW: bool = false;
+
+    #[inline]
+    fn bit(&mut self, context: usize) -> Result<bool> {
+        Decoder::bit(self, context)
+    }
+
+    fn reset(&mut self) {
+        Decoder::reset(self);
+    }
+}
+
+impl Bits for Raw<'_> {
+    const RAW: bool = true;
+
+    #[inline]
+    fn bit(&mut self, _: usize) -> Result<bool> {
+        Raw::bit(self)
+    }
+}
+
 struct Block {
     samples: Vec<Sample>,
+    /// Per sample, with a one-sample border, rows `width + 2` long: its own
+    /// significance ([`SIGNIFICANT`]), its neighbours' ([`NEIGHBOURS`]) and
+    /// its orthogonal neighbours' signs ([`SIGN_STATE`]). Significance is
+    /// monotonic (D.3), so a sample becoming significant updates its eight
+    /// neighbours once, rather than each context rescanning its
+    /// neighbourhood; the border takes the updates of neighbours outside
+    /// the block. A sample without significant neighbours has not been
+    /// visited by this plane's propagation pass either, since it would
+    /// have had them then; passes skip such samples from the state alone.
+    states: Vec<u16>,
     width: usize,
     height: usize,
-    orientation: u8,
+    orientation: usize,
     causal: bool,
     insignificant: usize,
 }
 
 impl Block {
-    fn update_neighbours(&mut self, x: usize, y: usize) {
-        // Significance is monotonic (D.3). Update the eight dependent contexts
-        // once, rather than rescanning their neighbourhoods on every pass.
-        for (dx, dy, mask) in NEIGHBOURS {
-            let Some(nx) = x.checked_add_signed(-dx).filter(|&n| n < self.width) else {
-                continue;
-            };
-            let Some(ny) = y.checked_add_signed(-dy).filter(|&n| n < self.height) else {
-                continue;
-            };
-            if !(self.causal && ny % 4 == 3 && dy == 1) {
-                self.samples[ny * self.width + nx].neighbours |= mask;
+    /// The state index of sample `(x, y)`.
+    #[inline]
+    fn state(&self, x: usize, y: usize) -> usize {
+        (y + 1) * (self.width + 2) + x + 1
+    }
+
+    /// Records sample `(x, y)` significant in its neighbours' states. In the
+    /// vertically causal mode (D.7) a stripe's last row does not see the
+    /// next stripe.
+    fn update_neighbours(&mut self, x: usize, y: usize, negative: bool) {
+        let stride = self.width + 2;
+        let at = self.state(x, y);
+        let sign = |bit: u16| if negative { bit } else { 0 };
+        let below = at + stride;
+        let above = at - stride;
+        let mut set = |index: usize, bits: u16| {
+            if let Some(state) = self.states.get_mut(index) {
+                *state |= bits;
             }
+        };
+        set(below + 1, 1);
+        set(below, 2 | sign(NORTH_NEGATIVE));
+        set(below - 1, 4);
+        set(at + 1, 8 | sign(WEST_NEGATIVE));
+        set(at - 1, 16 | sign(EAST_NEGATIVE));
+        if !(self.causal && y.is_multiple_of(4)) {
+            set(above + 1, 32);
+            set(above, 64 | sign(SOUTH_NEGATIVE));
+            set(above - 1, 128);
         }
     }
 
-    fn significance_context(&self, x: usize, y: usize) -> usize {
-        let neighbours = self.samples[y * self.width + x].neighbours;
-        let mut h = (neighbours & 0b0001_1000).count_ones();
-        let mut v = (neighbours & 0b0100_0010).count_ones();
-        let d = (neighbours & 0b1010_0101).count_ones();
-        if self.orientation == 1 {
-            std::mem::swap(&mut h, &mut v);
-        }
-        if self.orientation == 3 {
-            let hv = h + v;
-            match (d, hv) {
-                (0, 0) => 0,
-                (0, 1) => 1,
-                (0, _) => 2,
-                (1, 0) => 3,
-                (1, 1) => 4,
-                (1, _) => 5,
-                (2, 0) => 6,
-                (2, _) => 7,
-                _ => 8,
-            }
-        } else {
-            match (h, v, d) {
-                (0, 0, 0) => 0,
-                (0, 0, 1) => 1,
-                (0, 0, _) => 2,
-                (0, 1, _) => 3,
-                (0, _, _) => 4,
-                (1, 0, 0) => 5,
-                (1, 0, _) => 6,
-                (1, _, _) => 7,
-                _ => 8,
-            }
-        }
+    /// The state of sample `(x, y)`.
+    #[inline]
+    fn get(&self, x: usize, y: usize) -> u16 {
+        self.states.get(self.state(x, y)).copied().unwrap_or(0)
     }
 
-    fn sign(&self, decoder: &mut Entropy<'_>, x: usize, y: usize) -> Result<bool> {
-        if decoder.raw() {
+    /// Whether the four samples of stripe column `x` from row `stripe` are
+    /// all insignificant without significant neighbours.
+    #[inline]
+    fn quiet(&self, x: usize, stripe: usize) -> bool {
+        (stripe..stripe + 4).all(|y| self.get(x, y) & (SIGNIFICANT | NEIGHBOURHOOD) == 0)
+    }
+
+    /// The zero-coding context of a sample in `state`.
+    #[inline]
+    fn zero_context(&self, state: u16) -> usize {
+        usize::from(ZERO_CONTEXTS[self.orientation][usize::from(state.to_le_bytes()[0])])
+    }
+
+    fn sign<B: Bits>(&self, decoder: &mut B, x: usize, y: usize) -> Result<bool> {
+        if B::RAW {
             return decoder.bit(0);
         }
-        let mut h: i8 = 0;
-        let mut v: i8 = 0;
-        let neighbours = self.samples[y * self.width + x].neighbours;
-        for (dx, dy, mask) in NEIGHBOURS {
-            if dx != 0 && dy != 0 || neighbours & mask == 0 {
-                continue;
-            }
-            // A set context bit guarantees this neighbour is inside the block.
-            let nx = x
-                .checked_add_signed(dx)
-                .ok_or_else(|| syntax("JPEG 2000 neighbour overflow", 0))?;
-            let ny = y
-                .checked_add_signed(dy)
-                .ok_or_else(|| syntax("JPEG 2000 neighbour overflow", 0))?;
-            let sign = if self.samples[ny * self.width + nx].flags & NEGATIVE != 0 {
-                -1
-            } else {
-                1
-            };
-            if dy == 0 {
-                h += sign;
-            } else {
-                v += sign;
-            }
-        }
-        let (mut h, mut v) = (h.clamp(-1, 1), v.clamp(-1, 1));
-        let prediction = h < 0 || (h == 0 && v < 0);
-        if prediction {
-            h = -h;
-            v = -v;
-        }
-        let context = match (h, v) {
-            (0, 0) => 9,
-            (0, _) => 10,
-            (_, -1) => 11,
-            (_, 0) => 12,
-            _ => 13,
-        };
-        Ok(decoder.bit(context)? ^ prediction)
+        let state = self.states.get(self.state(x, y)).copied().unwrap_or(0);
+        let entry = SIGN_CONTEXTS[usize::from(state & SIGN_STATE)];
+        Ok(decoder.bit(usize::from(entry >> 1))? ^ (entry & 1 != 0))
     }
 
-    fn make_significant(
+    fn make_significant<B: Bits>(
         &mut self,
-        decoder: &mut Entropy<'_>,
+        decoder: &mut B,
         x: usize,
         y: usize,
         plane: u8,
@@ -177,27 +291,31 @@ impl Block {
         sample.flags = u8::from(negative) * NEGATIVE;
         sample.missing = plane;
         self.insignificant -= 1;
-        self.update_neighbours(x, y);
+        let at = self.state(x, y);
+        if let Some(state) = self.states.get_mut(at) {
+            *state |= SIGNIFICANT;
+        }
+        self.update_neighbours(x, y, negative);
         Ok(())
     }
 
-    fn propagation(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
+    fn propagation<B: Bits>(&mut self, decoder: &mut B, plane: u8) -> Result<()> {
         if self.insignificant == 0 {
             return Ok(());
         }
         for stripe in (0..self.height).step_by(4) {
+            let end = (stripe + 4).min(self.height);
             for x in 0..self.width {
-                for y in stripe..(stripe + 4).min(self.height) {
-                    let index = y * self.width + x;
-                    if self.samples[index].magnitude != 0 {
+                if end - stripe == 4 && self.quiet(x, stripe) {
+                    continue;
+                }
+                for y in stripe..end {
+                    let state = self.get(x, y);
+                    if state & SIGNIFICANT != 0 || state & NEIGHBOURHOOD == 0 {
                         continue;
                     }
-                    let context = self.significance_context(x, y);
-                    if context == 0 {
-                        continue;
-                    }
-                    self.samples[index].visited_plane = plane + 1;
-                    if decoder.bit(context)? {
+                    self.samples[y * self.width + x].visited_plane = plane + 1;
+                    if decoder.bit(self.zero_context(state))? {
                         self.make_significant(decoder, x, y, plane)?;
                     }
                 }
@@ -206,44 +324,43 @@ impl Block {
         Ok(())
     }
 
-    fn refinement(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
+    fn refinement<B: Bits>(&mut self, decoder: &mut B, plane: u8) -> Result<()> {
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 for y in stripe..(stripe + 4).min(self.height) {
+                    let state = self.get(x, y);
+                    if state & SIGNIFICANT == 0 {
+                        continue;
+                    }
                     let index = y * self.width + x;
                     let sample = self.samples[index];
-                    if sample.magnitude == 0 || sample.visited_plane == plane + 1 {
+                    if sample.visited_plane == plane + 1 {
                         continue;
                     }
                     let context = if sample.flags & REFINED != 0 {
                         16
                     } else {
-                        14 + usize::from(self.significance_context(x, y) != 0)
+                        14 + usize::from(state & NEIGHBOURHOOD != 0)
                     };
                     let value = decoder.bit(context)?;
-                    self.samples[index].magnitude |= u32::from(value) << plane;
-                    self.samples[index].flags |= REFINED;
-                    self.samples[index].missing = plane;
+                    let sample = &mut self.samples[index];
+                    sample.magnitude |= u32::from(value) << plane;
+                    sample.flags |= REFINED;
+                    sample.missing = plane;
                 }
             }
         }
         Ok(())
     }
 
-    fn cleanup(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
+    fn cleanup<B: Bits>(&mut self, decoder: &mut B, plane: u8) -> Result<()> {
         if self.insignificant == 0 {
             return Ok(());
         }
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 let end = (stripe + 4).min(self.height);
-                let run_mode = end - stripe == 4
-                    && (stripe..end).all(|y| {
-                        let s = self.samples[y * self.width + x];
-                        s.magnitude == 0
-                            && s.visited_plane != plane + 1
-                            && self.significance_context(x, y) == 0
-                    });
+                let run_mode = end - stripe == 4 && self.quiet(x, stripe);
                 let mut start = stripe;
                 if run_mode {
                     if !decoder.bit(17)? {
@@ -255,11 +372,14 @@ impl Block {
                     start += 1;
                 }
                 for y in start..end {
-                    let sample = self.samples[y * self.width + x];
-                    if sample.magnitude == 0
-                        && sample.visited_plane != plane + 1
-                        && decoder.bit(self.significance_context(x, y))?
+                    let state = self.get(x, y);
+                    if state & SIGNIFICANT != 0
+                        || state & NEIGHBOURHOOD != 0
+                            && self.samples[y * self.width + x].visited_plane == plane + 1
                     {
+                        continue;
+                    }
+                    if decoder.bit(self.zero_context(state))? {
                         self.make_significant(decoder, x, y, plane)?;
                     }
                 }
@@ -276,23 +396,6 @@ pub(super) struct Parameters {
     pub planes: u8,
     pub passes: usize,
     pub modes: u8,
-}
-
-enum Entropy<'a> {
-    Mq(Decoder<'a>),
-    Raw(Raw<'a>),
-}
-
-impl Entropy<'_> {
-    fn bit(&mut self, context: usize) -> Result<bool> {
-        match self {
-            Self::Mq(decoder) => decoder.bit(context),
-            Self::Raw(decoder) => decoder.bit(),
-        }
-    }
-    fn raw(&self) -> bool {
-        matches!(self, Self::Raw(_))
-    }
 }
 
 struct Raw<'a> {
@@ -384,11 +487,13 @@ pub(super) fn decode(
         return Err(syntax("invalid JPEG 2000 bit planes", base));
     }
     let count = p.width * p.height;
+    let bordered = (p.width + 2) * (p.height + 2);
     let mut block = Block {
         samples: budget.filled(count, Sample::default())?,
+        states: budget.filled(bordered, 0)?,
         width: p.width,
         height: p.height,
-        orientation: p.orientation,
+        orientation: usize::from(p.orientation & 3),
         causal: p.modes & segments::CAUSAL != 0,
         insignificant: count,
     };
@@ -411,18 +516,33 @@ fn decode_segment_inner(
     let terminated =
         end == usize::from(p.planes) * 3 - 2 || end == segments::end(segment.first, p.modes);
     let predictable = terminated && p.modes & segments::PREDICTABLE != 0;
-    let mut decoder = if segments::raw(segment.first, p.modes) {
-        Entropy::Raw(Raw {
+    if segments::raw(segment.first, p.modes) {
+        let mut decoder = Raw {
             data: &segment.data,
             offset: 0,
             base: 0,
             byte: 0,
             remaining: 0,
             synthetic: false,
-        })
+        };
+        passes(block, segment, p, (&mut decoder, contexts), budget)?;
+        decoder.finish(predictable)
     } else {
-        Entropy::Mq(Decoder::new(&segment.data, 0, *contexts, predictable)?)
-    };
+        let mut decoder = Decoder::new(&segment.data, 0, *contexts, predictable)?;
+        passes(block, segment, p, (&mut decoder, contexts), budget)?;
+        *contexts = decoder.contexts();
+        decoder.finish()
+    }
+}
+
+/// The segment's coding passes over `block`, decoded by one source.
+fn passes<B: Bits>(
+    block: &mut Block,
+    segment: &Segment,
+    p: &Parameters,
+    (decoder, contexts): (&mut B, &mut [Context; 19]),
+    budget: &mut Budget<'_>,
+) -> Result<()> {
     for pass in segment.first..segment.first + segment.passes {
         let plane = p.planes
             - 1
@@ -434,10 +554,10 @@ fn decode_segment_inner(
             budget.work(block.samples.len())?;
         }
         match pass % 3 {
-            1 => block.propagation(&mut decoder, plane)?,
-            2 => block.refinement(&mut decoder, plane)?,
+            1 => block.propagation(decoder, plane)?,
+            2 => block.refinement(decoder, plane)?,
             _ => {
-                block.cleanup(&mut decoder, plane)?;
+                block.cleanup(decoder, plane)?;
                 if p.modes & segments::SYMBOLS != 0 {
                     let mut symbol = 0;
                     for _ in 0..4 {
@@ -451,17 +571,8 @@ fn decode_segment_inner(
         }
         if p.modes & segments::RESET != 0 {
             *contexts = Decoder::initial_contexts();
-            if let Entropy::Mq(decoder) = &mut decoder {
-                decoder.reset();
-            }
+            decoder.reset();
         }
-    }
-    match decoder {
-        Entropy::Mq(decoder) => {
-            *contexts = decoder.contexts();
-            decoder.finish()?;
-        }
-        Entropy::Raw(decoder) => decoder.finish(predictable)?,
     }
     Ok(())
 }
@@ -487,8 +598,15 @@ fn decode_segment(
 
 #[cfg(test)]
 mod tests {
-    use super::{Block, NEIGHBOURS, Sample};
+    use super::{
+        Block, EAST_NEGATIVE, NEGATIVE, NEIGHBOURS, NORTH_NEGATIVE, SOUTH_NEGATIVE, Sample,
+        WEST_NEGATIVE,
+    };
 
+    /// Each sample's state holds exactly its in-block neighbours'
+    /// significance, and its orthogonal neighbours' negative signs, as a
+    /// scan of the neighbourhood finds them: at block edges and stripe
+    /// boundaries (D.3, D.7), including partial stripes.
     #[test]
     fn monotonic_contexts_match_current_neighbours_at_edges_and_stripes() {
         assert_eq!(size_of::<Sample>(), 8);
@@ -497,6 +615,7 @@ mod tests {
                 for causal in [false, true] {
                     let mut block = Block {
                         samples: vec![Sample::default(); width * height],
+                        states: vec![0; (width + 2) * (height + 2)],
                         width,
                         height,
                         orientation: 0,
@@ -504,10 +623,12 @@ mod tests {
                         insignificant: width * height,
                     };
                     // Insert in reverse scan order to exercise neighbours on both
-                    // sides of stripe boundaries (D.3, D.7), including partial stripes.
+                    // sides of stripe boundaries, with alternating signs.
                     for index in (0..width * height).rev() {
+                        let negative = index % 3 == 1;
                         block.samples[index].magnitude = 1;
-                        block.update_neighbours(index % width, index / width);
+                        block.samples[index].flags = u8::from(negative) * NEGATIVE;
+                        block.update_neighbours(index % width, index / width, negative);
                         for y in 0..height {
                             for x in 0..width {
                                 let mut expected = 0;
@@ -523,12 +644,23 @@ mod tests {
                                     else {
                                         continue;
                                     };
-                                    if block.samples[ny * width + nx].magnitude != 0 {
-                                        expected |= mask;
+                                    let neighbour = block.samples[ny * width + nx];
+                                    if neighbour.magnitude == 0 {
+                                        continue;
+                                    }
+                                    expected |= mask;
+                                    if neighbour.flags & NEGATIVE != 0 {
+                                        expected |= match (dx, dy) {
+                                            (0, -1) => NORTH_NEGATIVE,
+                                            (-1, 0) => WEST_NEGATIVE,
+                                            (1, 0) => EAST_NEGATIVE,
+                                            (0, 1) => SOUTH_NEGATIVE,
+                                            _ => 0,
+                                        };
                                     }
                                 }
                                 assert_eq!(
-                                    block.samples[y * width + x].neighbours,
+                                    block.states[block.state(x, y)],
                                     expected,
                                     "{width}x{height}, causal {causal}, insert {index}, at ({x}, {y})"
                                 );
