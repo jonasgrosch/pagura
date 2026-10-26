@@ -20,7 +20,9 @@ impl Geometry {
     }
 }
 
-/// Path takes precedence over Vertices, including malformed unused Vertices.
+/// Table 181's errata requires ignoring Vertices when Path is present,
+/// including malformed or unresolved unused entries. Required-key document
+/// conformance validation is separate from appearance generation.
 pub(super) fn read(document: &Document, annotation: &Dictionary) -> Result<Geometry> {
     if let Some(value) = optional(document, annotation, b"Path")? {
         return operators(document, value).map(Geometry::Operators);

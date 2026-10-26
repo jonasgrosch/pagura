@@ -112,6 +112,8 @@ def cases():
                    polygons=([(4, 4), (16, 16), (28, 4)], [(16, 16), (28, 28), (4, 28)]))
     yield rendered('path-lines', None, path=b'[[4 4] [28 4] [4 28]]')
     yield rendered('path-precedence', b'42', path=b'[[4 4] [28 4] [4 28]]')
+    yield rendered('path-ignored-coordinate', b'[4 /Unused]', path=b'[[4 4] [28 4] [4 28]]')
+    yield rendered('path-ignored-cycle', b'6 0 R', path=b'[[4 4] [28 4] [4 28]]', objects=(b'6 0 R',))
     yield rendered('null-path', path=b'null')
     yield rendered('plain-effect', extra=b' /BE << /S /S >> /LE 42')
     yield rendered('null-effect', extra=b' /BE null')

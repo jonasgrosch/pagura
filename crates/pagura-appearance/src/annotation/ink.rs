@@ -19,15 +19,13 @@ pub(super) fn generate(
     annotation: &Dictionary,
     rect: Rect,
 ) -> Result<Option<AppearanceStream>> {
-    // InkList remains required in Table 185. Validate it even when the
-    // optional Path supplies the geometry, but release its copied samples
-    // before allocating the path operators.
-    let paths = paths(document, annotation)?;
+    // Table 185's errata requires ignoring InkList when Path is present.
+    // Appearance generation is not required-key conformance validation:
+    // do not resolve or allocate unused legacy geometry.
     let geometry = if let Some(value) = optional(document, annotation, b"Path")? {
-        drop(paths);
         Geometry::Operators(path::operators(document, value)?)
     } else {
-        Geometry::Samples(paths)
+        Geometry::Samples(paths(document, annotation)?)
     };
     let border = Border::read(document, annotation)?;
     let color = color(document, annotation, b"C", Some(Color::black()))?;

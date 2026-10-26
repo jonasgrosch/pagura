@@ -149,5 +149,6 @@ def cases():
         yield Case('pdf2-' + name, source(width=0, extra=b' /Path ' + path), OPEN, (REQUIREMENT,),
                    'Path validates before zero-width suppression', extra={'render_error': 'syntax'})
     for name, ink in [('missing', None), ('null', b'null'), ('invalid', b'42')]:
-        yield Case('pdf2-inklist-' + name, source(ink, extra=b' /Path [[4 8] [28 8]]'), OPEN, (REQUIREMENT,),
-                   'InkList remains required and validates even with a usable optional Path', extra={'render_error': 'syntax'})
+        yield rendered('pdf2-inklist-' + name, ink, extra=b' /Path [[4 8] [28 8]]')
+    yield rendered('pdf2-ignored-coordinate', b'[[4 /Unused]]', extra=b' /Path [[4 8] [28 8]]')
+    yield rendered('pdf2-ignored-cycle', b'6 0 R', extra=b' /Path [[4 8] [28 8]]', objects=(b'6 0 R',))
