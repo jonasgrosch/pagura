@@ -232,21 +232,7 @@ fn parse_header(
                 budget.charge::<u8>(b.body.len())?;
                 header.depths = Some(fields.take(fields.remaining())?.to_vec());
             }
-            b"colr" => {
-                if fields.remaining() < 3 {
-                    return Err(syntax("short JP2 colour specification", b.position));
-                }
-                // A standalone JP2 reader follows T.800 I.3.3; PDF 7.4.9
-                // additionally requires choices after an unsupported profile.
-                if options.ignore_color
-                    || (selection == ColorSelection::First && !header.colors.is_empty())
-                {
-                    fields.take(fields.remaining())?;
-                } else {
-                    let choice = parse_color(&mut fields, budget, selection, ranked)?;
-                    budget.push(&mut header.colors, choice)?;
-                }
-            }
+            b"colr" => header.read_color(&mut fields, budget, options, selection, ranked)?,
             b"pclr" => {
                 if header.palette.is_some() {
                     return Err(syntax("repeated JP2 palette", b.position));
@@ -488,6 +474,28 @@ fn parse_resolution(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result
 }
 
 impl Header {
+    fn read_color(
+        &mut self,
+        fields: &mut Reader<'_>,
+        budget: &mut Budget<'_>,
+        options: &Options,
+        selection: ColorSelection,
+        ranked: bool,
+    ) -> Result<()> {
+        if fields.remaining() < 3 {
+            return Err(syntax("short JP2 colour specification", fields.position()));
+        }
+        // A standalone JP2 reader follows T.800 I.3.3; PDF 7.4.9
+        // additionally requires choices after an unsupported profile.
+        if options.ignore_color || (selection == ColorSelection::First && !self.colors.is_empty()) {
+            fields.take(fields.remaining())?;
+        } else {
+            let choice = parse_color(&mut fields, budget, selection, ranked)?;
+            budget.push(&mut self.colors, choice)?;
+        }
+        Ok(())
+    }
+
     fn check_image(&self, image: &JpxImage) -> Result<()> {
         if let Some((width, height, count, depth)) = self.dimensions {
             if (width, height, usize::from(count))
