@@ -1789,6 +1789,39 @@
         "rich_annotations/invalid-stream-utf16"
       ],
       "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Relative or nonzero unitless font-size, baseline-shift and paragraph measurements and adjoining nonzero paragraph margins are explicitly refused until independently validated. Absolute character/paragraph measurements use pt/in/cm/mm; unitless letter spacing uses inches, as specified by XFA chapter 2; relative letter spacing resolves em and percent against the final font metrics, with percent based on the space advance. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
+    },
+    {
+      "id": "content-static-annotation-placement",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.3 Table 167",
+        "12.5.5",
+        "12.5.6.16 Table 188",
+        "12.5.6.22 Tables 193 and 194",
+        "13.3"
+      ],
+      "status": "Primary-standard applicability reviewed; private independent display probes authored, not executed",
+      "rule": "Sound static drawing is distinct from playback. Speaker and Mic are recommended predefined icons and an absent Name defaults to Speaker; exact artwork is reader policy. Existing normal appearances provide authored drawing controls. On-screen Watermark FixedPrint uses MediaBox dimensions as media dimensions: translate Rect to the origin, apply Matrix, fit AP to the resulting upright enclosing rectangle and apply media-relative H/V displacement. Print and NoView distinguish the visible display control from unprobed print behavior.",
+      "tests": [
+        "annotation_display/ordinary-content",
+        "annotation_display/sound-default-missing-ap",
+        "annotation_display/sound-speaker-missing-ap",
+        "annotation_display/sound-mic-missing-ap",
+        "annotation_display/sound-speaker-stored",
+        "annotation_display/sound-mic-stored",
+        "annotation_display/sound-hidden-missing-ap",
+        "annotation_display/watermark-ordinary-72",
+        "annotation_display/watermark-ordinary-144",
+        "annotation_display/fixed-default-72",
+        "annotation_display/fixed-matrix-72",
+        "annotation_display/fixed-percent-72",
+        "annotation_display/fixed-percent-144",
+        "annotation_display/fixed-rotated-matrix-72",
+        "annotation_display/fixed-rotated-matrix-144",
+        "annotation_display/fixed-crop-72",
+        "annotation_display/fixed-print-only-display"
+      ],
+      "gaps": "No runtime or baseline-supported claim yet. Missing Sound AP records the current explicit Pagura refusal; it has no invented universal icon pixel oracle. Stored AP and ordinary-content controls distinguish annotation/configuration failure from artwork choice. Current baseline adapters use display only; PDF.js omits its HTML annotation layer and Quartz omits PDFKit, so these configurations cannot establish full-viewer icon support. Source/configuration identities and actual observations remain required. FixedPrint vectors use zero-origin MediaBox and unrotated pages; physical-media scaling, page/device rotation cancellation, shifted media origins, printing, tiling and n-up remain V05 contract/probe gaps."
     }
   ]
 }

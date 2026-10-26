@@ -1,0 +1,319 @@
+{
+  "schema": 2,
+  "area": "annotation_display",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "annotation_display/ordinary-content",
+      "kind": "pdf",
+      "description": "Ordinary content independently paints the same black/red regions as stored AP controls",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/ordinary-content.pdf",
+      "sha256": "9b99a0684deccafe20808c98b23796563964257c6d50f6c565754eaa75caf27c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/ordinary-content.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/sound-default-missing-ap",
+      "kind": "pdf",
+      "description": "Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-default-missing-ap.pdf",
+      "sha256": "a2c0e0bcab8b608b57cf654bc2a4d449f7e746d71190483286ca00f0d0e35785",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/sound-speaker-missing-ap",
+      "kind": "pdf",
+      "description": "Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-missing-ap.pdf",
+      "sha256": "e8f3038695f2cdc8b5bbc3f17fd9bc2754004869b91bcddef1fc5ad63d3a54fb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/sound-mic-missing-ap",
+      "kind": "pdf",
+      "description": "Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-missing-ap.pdf",
+      "sha256": "81ee10d49b29650505c6fe736d79710beeb5ad793fb4be75d1ee21296c97a722",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/sound-speaker-stored",
+      "kind": "pdf",
+      "description": "Stored Sound AP paints the authored regions; no activation or sound decoding is required",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-stored.pdf",
+      "sha256": "0b9ed7d0e130d8dbfca2215aaef9ebd95e71c27a42b016ce857e8ef9eb14ca8d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-stored.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/sound-mic-stored",
+      "kind": "pdf",
+      "description": "Stored Sound AP paints the authored regions; no activation or sound decoding is required",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-stored.pdf",
+      "sha256": "101846caa70b8e83cb47d69d46c48365627cb6bc6ccab18536d862449ac4413c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-stored.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/sound-hidden-missing-ap",
+      "kind": "pdf",
+      "description": "Hidden Sound has no displayed mark and requires no substitute artwork",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-hidden-missing-ap.pdf",
+      "sha256": "23fa70774608455801b62a44a78ad361feea31706324cd7b7138dae2e6777171",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-hidden-missing-ap.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/watermark-ordinary-72",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/watermark-ordinary-72.pdf",
+      "sha256": "3d16b57b7c0e5aa119c91f7bc7993f0dfd2f70bf93f60d13a9206b9c3c8f5689",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/watermark-ordinary-72.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/watermark-ordinary-144",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/watermark-ordinary-144.pdf",
+      "sha256": "3d16b57b7c0e5aa119c91f7bc7993f0dfd2f70bf93f60d13a9206b9c3c8f5689",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/watermark-ordinary-144.ppm",
+      "oracle_sha256": "69a651478d79edb231604f0d99c85248ed6b5806e32a4b4ec61398ecfc0157a0",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/fixed-default-72",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-default-72.pdf",
+      "sha256": "9d8a0cadde7db36e13939a9a5ceaccb2031e11f550fc3d71883a2b30b7db4376",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-default-72.ppm",
+      "oracle_sha256": "ace6f601241ed3289caa133ffbcd187eae47923c5810b74ac1ad464ac50450fa",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-matrix-72",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-matrix-72.pdf",
+      "sha256": "0c633f8b8514fdcc556a2c46796949c8d952ba2e0176768a84f9b613c93ec726",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-matrix-72.ppm",
+      "oracle_sha256": "03d3f583be73d5e154d873d086c42f2096827b200798ae34a8edacc8152ba447",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-percent-72",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-percent-72.pdf",
+      "sha256": "fcd3a78cd6b3d380f24cf63c7d34005a79780e1d03c3f1bed1d8de1319c89255",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-percent-72.ppm",
+      "oracle_sha256": "6da809d790c6f87ede7ab290fb4cdefb89ffb0816ad19202a4eaf048ba553c57",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-percent-144",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-percent-144.pdf",
+      "sha256": "fcd3a78cd6b3d380f24cf63c7d34005a79780e1d03c3f1bed1d8de1319c89255",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-percent-144.ppm",
+      "oracle_sha256": "c16725fa108c70f8942a179ee8b458fe93e0bf3c363c0ab75f2d5b196c5c5474",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/fixed-rotated-matrix-72",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-rotated-matrix-72.pdf",
+      "sha256": "0d3ee5cc286c36515da1e1da25da90594b342a27235d14b76c31be3cca646ccf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-rotated-matrix-72.ppm",
+      "oracle_sha256": "72d86ce827a65e3ec482250720f32c50609f0874a61a859b060f9f39aeb8bbc8",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-rotated-matrix-144",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-rotated-matrix-144.pdf",
+      "sha256": "0d3ee5cc286c36515da1e1da25da90594b342a27235d14b76c31be3cca646ccf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-rotated-matrix-144.ppm",
+      "oracle_sha256": "5c25472380d555cc6ff95ee727238a169a57b846dd9e47b84941a67818a12995",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/fixed-crop-72",
+      "kind": "pdf",
+      "description": "Display uses literal FixedPrint target coordinates and MediaBox-relative percentages; AP fitting uses the upright target",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-crop-72.pdf",
+      "sha256": "5b5ab654e31dfe2a73d5da0a4fb081f86888f1965028df0f7e0b064eda514c03",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-crop-72.ppm",
+      "oracle_sha256": "e92cb470e57b9632c4f82016b23c8c74432ddc2b31d8fb30aeabdfb85a3dc423",
+      "dpi": 72,
+      "width": 24,
+      "height": 20
+    },
+    {
+      "id": "annotation_display/fixed-print-only-display",
+      "kind": "pdf",
+      "description": "Print plus NoView is blank on display; print target is [16,6,24,10] on 32x24 media, currently unprobed",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-print-only-display.pdf",
+      "sha256": "5600a847fb5df16798e39f3676b8e465a691ab3eeb1f01ac4b5d9b69980a9a6f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-print-only-display.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    }
+  ]
+}
