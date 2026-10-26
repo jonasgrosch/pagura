@@ -288,3 +288,48 @@ fn adjusted_paths() -> Vec<(Path, bool)> {
     paths.push((dot.finish(), false));
     paths
 }
+
+#[test]
+fn assembled_outlines_keep_only_their_output_charged() {
+    // A closed star's spikes overlap, so its pieces are unproven: taken as
+    // they are, or replaced by the components where only proven pieces are.
+    let points: Vec<Point> = (0..80_u32)
+        .map(|i| {
+            let angle = std::f64::consts::TAU * f64::from(i) / 80.0;
+            let radius = if i % 2 == 0 { 200.0 } else { 20.0 };
+            Point::new(radius * angle.cos(), radius * angle.sin())
+        })
+        .collect();
+    let stroke = Stroke {
+        width: 30.0,
+        join: LineJoin::Round,
+        ..Stroke::default()
+    };
+    let pen = Pen {
+        radius: 15.0,
+        tolerance: TOLERANCE,
+    };
+    for (accept, taken) in [
+        (Tiling::Unproven, Tiling::Unproven),
+        (Tiling::Proven, Tiling::Components),
+    ] {
+        let runs = vec![Run {
+            points: points.clone(),
+            closed: true,
+            tangent: Point::new(1.0, 0.0),
+        }];
+        let mut bytes = crate::testing::bytes();
+        let (out, _, tiling) = assemble(
+            runs,
+            (pen, Transform::IDENTITY, false),
+            &stroke,
+            &Limits::default(),
+            accept,
+            |_| PathBuilder::new(),
+            &mut bytes,
+        )
+        .unwrap();
+        assert_eq!(tiling, taken);
+        assert_eq!(bytes.used(), out.heap_bytes(), "{accept:?}");
+    }
+}

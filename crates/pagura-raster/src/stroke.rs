@@ -452,6 +452,7 @@ fn assemble<O: Outline>(
     // the same set.
     if accept < Tiling::Components {
         let mut tiles = fresh(pen_transform);
+        let mut chains = tiling::Chains::default();
         let mut tiling = if tiling::apart(runs.iter(), pen.radius, stroke, bytes)? {
             Tiling::Proven
         } else {
@@ -467,7 +468,7 @@ fn assemble<O: Outline>(
                     Tiling::Proven
                 }
                 _ => {
-                    if tiling::append(&mut tiles, run, pen, stroke, limits, bytes)? {
+                    if tiling::append(&mut tiles, run, (pen, stroke), &mut chains, limits, bytes)? {
                         Tiling::Proven
                     } else {
                         Tiling::Unproven
@@ -476,6 +477,10 @@ fn assemble<O: Outline>(
             };
             tiling = tiling.max(built);
         }
+        // The chains stay charged across the runs, and no longer.
+        let released = chains.heap_bytes();
+        drop(chains);
+        bytes.refund(released);
         if tiling <= accept {
             return Ok((tiles, pen_transform, tiling));
         }
@@ -773,45 +778,48 @@ fn join(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<()> {
-    let Pen { radius, .. } = pen;
-    let [a, b] = tangents;
+    let before = bytes.used().saturating_sub(out.heap_bytes());
+    let result = (|| {
+        let mut points = Vec::new();
+        bytes.reserve(&mut points, 1)?;
+        points.push(point);
+        if join_into(point, tangents, pen, stroke, limits, &mut points, bytes)?.is_none() {
+            return Ok(());
+        }
+        polygon(out, &points, limits, bytes)
+    })();
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before.saturating_add(out.heap_bytes())),
+    );
+    result
+}
+
+/// Appends the join polygon's vertices at `point` other than the joint
+/// itself to `points`: from the end corner of the segment before, on the
+/// outer side, to the start corner of the one after. Returns whether they
+/// lie on the left of the segments, or `None` where no join is drawn.
+pub(crate) fn join_into(
+    point: Point,
+    [a, b]: [Point; 2],
+    pen: Pen,
+    stroke: &Stroke,
+    limits: &Limits,
+    points: &mut Vec<Point>,
+    bytes: &mut Meter,
+) -> Result<Option<bool>> {
+    let Pen { radius, tolerance } = pen;
     let cross = a.cross(b);
     if cross == 0.0 && (stroke.join != LineJoin::Round || a.dot(b) >= 0.0) {
-        return Ok(());
+        return Ok(None);
     }
     let side = if cross > 0.0 { -radius } else { radius };
     let n1 = a.perp() * side;
     let n2 = b.perp() * side;
     if stroke.join == LineJoin::Round {
-        return round_join(out, point, [n1, n2], pen, cross, limits, bytes);
-    }
-    let p1 = point + n1;
-    let p2 = point + n2;
-    let denominator = 1.0 + a.dot(b);
-    if stroke.join == LineJoin::Miter && denominator > 0.0 {
-        let m = (n1 + n2) / denominator;
-        if m.length() <= radius * stroke.miter_limit {
-            return polygon(out, &[point, p1, point + m, p2], limits, bytes);
-        }
-    }
-    polygon(out, &[point, p1, p2], limits, bytes)
-}
-
-fn round_join(
-    out: &mut impl Outline,
-    point: Point,
-    normals: [Point; 2],
-    pen: Pen,
-    cross: f64,
-    limits: &Limits,
-    bytes: &mut Meter,
-) -> Result<()> {
-    let before = bytes.used().saturating_sub(out.heap_bytes());
-    let result = (|| {
-        let Pen { radius, tolerance } = pen;
-        let [a, b] = normals;
-        let start = a.y.atan2(a.x);
-        let end = b.y.atan2(b.x);
+        let start = n1.y.atan2(n1.x);
+        let end = n2.y.atan2(n2.x);
         let angle = if cross > 0.0 {
             (end - start).rem_euclid(std::f64::consts::TAU)
         } else {
@@ -826,12 +834,11 @@ fn round_join(
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
-            reason = "integer count bounded by the u32-compatible path budget below"
+            reason = "integer count bounded by the u32-compatible path budget above"
         )]
         let count = count as u32;
-        let mut points = Vec::new();
-        bytes.reserve(&mut points, count as usize + 2)?;
-        points.extend([point, point + a]);
+        bytes.reserve_capacity(points, count as usize + 1)?;
+        points.push(point + n1);
         for i in 1..count {
             let angle = start + angle * f64::from(i) / f64::from(count);
             points.push(Point::new(
@@ -839,15 +846,20 @@ fn round_join(
                 point.y + radius * angle.sin(),
             ));
         }
-        points.push(point + b);
-        polygon(out, &points, limits, bytes)
-    })();
-    bytes.refund(
-        bytes
-            .used()
-            .saturating_sub(before.saturating_add(out.heap_bytes())),
-    );
-    result
+        points.push(point + n2);
+        return Ok(Some(cross <= 0.0));
+    }
+    bytes.reserve_capacity(points, 3)?;
+    points.push(point + n1);
+    let denominator = 1.0 + a.dot(b);
+    if stroke.join == LineJoin::Miter && denominator > 0.0 {
+        let m = (n1 + n2) / denominator;
+        if m.length() <= radius * stroke.miter_limit {
+            points.push(point + m);
+        }
+    }
+    points.push(point + n2);
+    Ok(Some(cross <= 0.0))
 }
 
 fn cap(
@@ -940,6 +952,27 @@ fn polygon(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<()> {
+    let Some(&first) = points.first() else {
+        return Ok(());
+    };
+    let area: f64 = points
+        .iter()
+        .zip(points.iter().skip(1).chain(std::iter::once(&first)))
+        .map(|(&a, &b)| (a - first).cross(b - first))
+        .sum();
+    // Every component polygon is positively oriented (module comment).
+    oriented(out, points, area < 0.0, limits, bytes)
+}
+
+/// Appends the closed polygon through `points`, reversed when `reversed`,
+/// within the outline budget and the coordinate range.
+fn oriented(
+    out: &mut impl Outline,
+    points: &[Point],
+    reversed: bool,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<()> {
     if out
         .len()
         .checked_add(points.len() + 1)
@@ -947,19 +980,13 @@ fn polygon(
     {
         return Err(Error::limit("stroke outline budget exceeded"));
     }
-    let Some(&first) = points.first() else {
+    if points.is_empty() {
         return Ok(());
-    };
+    }
     for &point in points {
         bounded(point)?;
     }
-    let area: f64 = points
-        .iter()
-        .zip(points.iter().skip(1).chain(std::iter::once(&first)))
-        .map(|(&a, &b)| (a - first).cross(b - first))
-        .sum();
-    // Every component polygon is positively oriented (module comment).
-    out.add_polygon(points, area < 0.0, limits, bytes)
+    out.add_polygon(points, reversed, limits, bytes)
 }
 
 #[cfg(test)]
