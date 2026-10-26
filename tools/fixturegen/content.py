@@ -922,6 +922,10 @@ def tiling_cases():
         ('tiling-negative-step',{'step':b'-2 -2'},motif),
         ('tiling-type-two',{'kind':2},motif),
         ('tiling-type-three',{'kind':3},motif),
+        # 8.7.3.1: constant spacing rounds a 1.6-unit lattice to 2 device
+        # pixels, scaling the 0.8-unit square to exactly one pixel.
+        ('tiling-constant-spacing',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f'},motif),
+        ('tiling-constant-spacing-faster',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f','kind':3},motif),
         ('tiling-underlying',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 1 re f'},motif),
         ('tiling-ignored-colour',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 rg /DeviceGray cs 0 sc /S sh 0 0 1 1 re f'},motif),
         ('tiling-ignored-inline',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'BI /W 1 /H 1 /CS /RGB /BPC 8 ID \0\0\xff EI 0 0 1 1 re f'},motif),
