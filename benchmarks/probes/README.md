@@ -226,7 +226,14 @@ they do not validate the later screen-placement batch or complete V01.
 The added 46 pixel controls and 12 refusal/error controls in
 [annotation_display.py](../../tools/fixturegen/annotation_display.py) distinguish
 ordinary page content, stored Sound appearances, ordinary Watermark appearances
-and `FixedPrint` screen placement. Their hosted results are pending. ISO 32000-2
+and `FixedPrint` screen placement. [Hosted run 40363840362](https://github.com/jonasgrosch/pagura/actions/runs/40363840362)
+at head `c5ddc1bf4d6e10ad82d3194ec3c905318871d72b`, measured merge
+`c7306bd759a249a8bc4e9d24d745ebaabcd22051`, passed all 352 Pagura controls in
+2,464 recorded cells. Combined artifact `12670780336` has SHA-256
+`d0a0013f560991bd63f263b8697ea93f81912bf99c5f50f124af8627ba02a1bf`;
+its report file SHA-256 is
+`acaa61e7febb2fe6a91442cc8a69a2459d10f3f794e2b782daf13ce3a97f326d`.
+This does not complete V01 or prove physical print behavior. ISO 32000-2
 12.5.6.22 explicitly uses MediaBox dimensions for screen display. The existing
 appearance fitter uses the upright box of the origin-translated Rect after the
 FixedPrint Matrix; the shared page-view mapping locates its media anchor and the
@@ -276,5 +283,26 @@ added to oracle pass/fail totals or accepted by the oracle-report combiner.
 Hosted actual images remain artifacts and never become product icon oracles.
 The capability workflow's manual `sound_observations` input runs just this
 diagnostic batch on explicit Ubuntu/macOS runners, without repeating the full
-platform, service or pixel-oracle suites. No Sound artwork decision has been
-made from the current unexecuted observation extension.
+platform, service or pixel-oracle suites.
+
+The Linux report from [run 40365811257](https://github.com/jonasgrosch/pagura/actions/runs/40365811257),
+head `52cbbce87b3d35d77757d2ea085daf0e04609258`, records identical ordinary and
+stored-AP controls across PDFium, MuPDF, pdf.js, Poppler, hayro and Pagura.
+MuPDF 1.28.5 and Poppler 24.02.0 draw distinct Speaker and Mic substitutes, with
+absent Name identical to Speaker; their extents and artwork differ. PDFium
+156.0.8076.0, pdf.js 6.4.299 Node canvas and hayro 0.8.0 produce blank missing-AP
+output under the recorded configurations. Pagura explicitly reports
+`annotation.appearance`. CoreGraphics is still pending in this checkpoint.
+Linux artifact `12669564145` has SHA-256
+`00adefa059f6a738fde18fd610c434e42abb783d9daf9a39310bf661ef629fc3`;
+its report file SHA-256 is
+`86bfaa8310e3b4d37afa2051dd7202416efbffcc991c1d0ed53969a30c317288`.
+Raw images are in artifact `12670491376`; they supply observations, never copied
+product artwork or independent icon expectations.
+
+The next diagnostic adds 26 matched Sound/Text missing/stored-AP views at
+72/144 DPI, Rotate0/90 and explicit NoZoom/NoRotate combinations. The original
+three subject PDFs and control hashes are unchanged. These raw views adjudicate
+the Text-like view rule in 12.5.6.16 against the explicit Text rule in 12.5.6.4;
+no Sound sizing or rotation behavior changes before those observations. The
+33-case diagnostic remains outside the 352-oracle manifest and its pass totals.

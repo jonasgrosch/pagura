@@ -1057,6 +1057,402 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/text-view-72-0-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-72-0-4-missing.pdf",
+      "sha256": "9194ea60f82722f2ed23cdcff42454840eaae188c261ed89526e8a5a64a23b81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/text-view-72-0-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-72-0-4-stored.pdf",
+      "sha256": "5fed9f288376748ffa0f6bd9470ae4d60eaf49a83ca14d924867362c94810e64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/sound-view-144-0-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-0-4-missing.pdf",
+      "sha256": "88f746e2dcb23510cdf3c5e68a3868026f37197d187d12a7cec133dab9b7d03e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-0-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-0-4-stored.pdf",
+      "sha256": "92fc8dff3af49b238670a4345fe462ea812cf5bee55d1348036139369c80441c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-0-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-0-4-missing.pdf",
+      "sha256": "9194ea60f82722f2ed23cdcff42454840eaae188c261ed89526e8a5a64a23b81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-0-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-0-4-stored.pdf",
+      "sha256": "5fed9f288376748ffa0f6bd9470ae4d60eaf49a83ca14d924867362c94810e64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-72-90-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-72-90-4-missing.pdf",
+      "sha256": "ee0929a4a0c4350168518e2ba1f26b7356cce0dc7d2678576f892e2d08b117f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/sound-view-72-90-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-72-90-4-stored.pdf",
+      "sha256": "7727e09095f41dfba1faf3f31f5ff2e080ccccde8e330efd00c10f5f8637cec5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/text-view-72-90-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-72-90-4-missing.pdf",
+      "sha256": "bebb58986185e5be7d3cc17039a44a3108500804c0fdde0dc7e81979dc804f74",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/text-view-72-90-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-72-90-4-stored.pdf",
+      "sha256": "4ae5faec5dad696837195bcd80efc72da22ffdf6041b7df195ed33e35dfad48e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-4-missing.pdf",
+      "sha256": "ee0929a4a0c4350168518e2ba1f26b7356cce0dc7d2678576f892e2d08b117f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-4-stored.pdf",
+      "sha256": "7727e09095f41dfba1faf3f31f5ff2e080ccccde8e330efd00c10f5f8637cec5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-4-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-4-missing.pdf",
+      "sha256": "bebb58986185e5be7d3cc17039a44a3108500804c0fdde0dc7e81979dc804f74",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-4-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-4-stored.pdf",
+      "sha256": "4ae5faec5dad696837195bcd80efc72da22ffdf6041b7df195ed33e35dfad48e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-12-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-12-missing.pdf",
+      "sha256": "a1b16c1e56d147a3241216656a86ed04994bc32d30687ddb801f4fc37c782b61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-12-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-12-stored.pdf",
+      "sha256": "c908a51f2a5468a21953bfd2bb6a10a1a9d247e7dd1bd8eff6690a741aff3ec6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-12-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-12-missing.pdf",
+      "sha256": "e693a67ba83d6c64abaded82d73004d6cc44195f4657a297ea2271689dd3b59c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-12-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-12-stored.pdf",
+      "sha256": "44f7d20f6b66ec52c2754b0b5aca9675a1bd9123cc00bc183fa91c095cd2540f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-20-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-20-missing.pdf",
+      "sha256": "6aab091280cc219a930bb721a27d065e17e4ac1adf3c2b651ea99f8e8e64a8f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-20-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-20-stored.pdf",
+      "sha256": "45e437394a47b47c0317925caa51c98020b4fef5b19035ef94f298e4c4846150",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-20-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-20-missing.pdf",
+      "sha256": "699fa9cc3b7be8a61db9d1fc33d0619f9aab2bf076fc81748cd237be5e5b6f51",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-20-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-20-stored.pdf",
+      "sha256": "5675ebd7918b5f76b088b97d07cbb4636613622aec5916957959a6503b302e4f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-28-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-28-missing.pdf",
+      "sha256": "64cb580321a661fe4f22b1a3972149cc11c2a42e681b8c9c0bb404109b488bd7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-view-144-90-28-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-view-144-90-28-stored.pdf",
+      "sha256": "9542788ef94feecb5a130a3da955fbc25f783bdcfc0bb1b90b764b80ac13d16a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-28-missing",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-28-missing.pdf",
+      "sha256": "057610359483baf1de8c29901f7a4704af4e3de838d9a7c8f8c8f48e8a6d4a59",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/text-view-144-90-28-stored",
+      "kind": "pdf",
+      "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/text-view-144-90-28-stored.pdf",
+      "sha256": "bf37ea3ebbd932ce1d47ddb3fd2bea91f634c0b4ee26f1ed66fa0d3972fdff4d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "dpi": 144
     }
   ]
 }

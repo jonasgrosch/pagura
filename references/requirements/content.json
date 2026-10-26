@@ -1803,7 +1803,7 @@
         "12.5.6.22 Tables 193 and 194",
         "13.3"
       ],
-      "status": "Primary-standard applicability reviewed; screen placement implemented with independent controls; hosted execution pending",
+      "status": "Primary-standard applicability reviewed; screen placement passes retained hosted controls; Sound view semantics under scoped baseline observation",
       "rule": "Sound static drawing is distinct from playback. Speaker and Mic are recommended predefined icons and an absent Name defaults to Speaker; exact artwork is reader policy. Existing normal appearances provide authored drawing controls without reading Sound payloads. On-screen Watermark FixedPrint uses the displayed MediaBox as media: translate Rect to the origin, apply Matrix, fit AP to the upright enclosing rectangle and apply media-relative H/V displacement. The existing NoRotate view cancels page rotation at the media anchor. Nonzero media origins are restored; CropBox clips the placed result. UserUnit remains the default user-space unit size and ordinary display zoom remains in force. Absent or null FixedPrint retains ordinary annotation placement. Type is required; Matrix and H/V default to identity and zero, including null optional entries. References use existing depth limits and all resulting coordinates must remain finite. Hidden and text-only requests do not read placement data.",
       "tests": [
         "annotation_display/ordinary-content",
@@ -1863,9 +1863,35 @@
         "annotation_display/fixed-horizontal-type",
         "annotation_display/fixed-vertical-type",
         "annotation_display/fixed-reference-limit",
-        "annotation_display/fixed-numeric-limit"
+        "annotation_display/fixed-numeric-limit",
+        "annotation_display/text-view-72-0-4-missing",
+        "annotation_display/text-view-72-0-4-stored",
+        "annotation_display/sound-view-144-0-4-missing",
+        "annotation_display/sound-view-144-0-4-stored",
+        "annotation_display/text-view-144-0-4-missing",
+        "annotation_display/text-view-144-0-4-stored",
+        "annotation_display/sound-view-72-90-4-missing",
+        "annotation_display/sound-view-72-90-4-stored",
+        "annotation_display/text-view-72-90-4-missing",
+        "annotation_display/text-view-72-90-4-stored",
+        "annotation_display/sound-view-144-90-4-missing",
+        "annotation_display/sound-view-144-90-4-stored",
+        "annotation_display/text-view-144-90-4-missing",
+        "annotation_display/text-view-144-90-4-stored",
+        "annotation_display/sound-view-144-90-12-missing",
+        "annotation_display/sound-view-144-90-12-stored",
+        "annotation_display/text-view-144-90-12-missing",
+        "annotation_display/text-view-144-90-12-stored",
+        "annotation_display/sound-view-144-90-20-missing",
+        "annotation_display/sound-view-144-90-20-stored",
+        "annotation_display/text-view-144-90-20-missing",
+        "annotation_display/text-view-144-90-20-stored",
+        "annotation_display/sound-view-144-90-28-missing",
+        "annotation_display/sound-view-144-90-28-stored",
+        "annotation_display/text-view-144-90-28-missing",
+        "annotation_display/text-view-144-90-28-stored"
       ],
-      "gaps": "The screen implementation and new literal pixel controls await their hosted run. Physical print media, fit-to-paper scaling, printer margins, tiling and n-up remain V05 adapter/contract gaps. Missing Sound AP retains the explicit Pagura refusal, with no invented universal icon oracle or playback. Stored AP and ordinary-content controls isolate annotation/configuration behavior. Current baseline adapters use display only; PDF.js omits its HTML annotation layer and Quartz omits PDFKit, so these configurations cannot establish full-viewer icon support. Exact baseline observations are required before choosing product substitute artwork; this requirement does not promote the V01 family."
+      "gaps": "FixedPrint physical print media, fit-to-paper scaling, printer margins, tiling and n-up remain V05 adapter/contract gaps. Missing Sound AP retains the explicit Pagura refusal pending a clean-room static fallback. Reader-chosen Speaker/Mic symbols have no universal pixel oracle or playback path. Matched missing/stored Sound and Text inputs at 72/144 DPI, Rotate0/90 and explicit NoZoom/NoRotate flags adjudicate the Sound clause's Text-like sizing rule before any product view behavior changes. Current baseline adapters use display only; PDF.js omits its HTML annotation layer and Quartz omits PDFKit, so these configurations cannot establish full-viewer icon support. This requirement does not promote the V01 family."
     }
   ]
 }

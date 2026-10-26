@@ -63,8 +63,14 @@ def sound_observations(data):
                'capability': 'annotations.appearances', 'operation': 'render',
                'fixture': 'annotation_display/sound-' + name + '-missing-ap',
                'oracle': None, 'expected': None} for name in ('default', 'speaker', 'mic')]
+    views = read_json(ROOT / 'corpus/manifests/annotation_display.json')['cases']
+    cases += [{'id': 'annotations.display.' + row['id'].split('/', 1)[1],
+               'capability': 'annotations.appearances', 'operation': 'render',
+               'fixture': row['id'], 'oracle': None, 'expected': None} for row in views
+              if row['id'].startswith(('annotation_display/sound-view-', 'annotation_display/text-view-'))]
     return {'schema': 1, 'cases': cases,
-            'scope': 'Raw static Sound drawing observations at 72 DPI with blank, ordinary-content and stored-AP controls. '
+            'scope': 'Raw static Sound drawing observations with matched Sound/Text missing/stored AP at 72/144 DPI, '
+                     'Rotate0/90 and explicit NoZoom/NoRotate flags, plus blank and ordinary-content controls. '
                      'Reader-chosen artwork has no universal pixel oracle. No pass/fail or capability promotion; '
                      'canvas-only configurations do not establish full-viewer support. No playback is requested.'}
 
@@ -202,8 +208,6 @@ def run(data, inventory, output, selected, images=None, *, observations=False):
     require(not any(os.environ.get(key) for key in ('PAGURA_HAYRO', 'PAGURA_QUARTZ', 'PAGURA_POPPLER')),
             'custom render executables require matching service/version identities')
     rows = fixtures(data, observations=True) if observations else validate_manifest(data, inventory)
-    if observations:
-        require(all(row['dpi'] == 72 for row in rows.values()), 'Sound observation scope requires 72 DPI controls')
     commands, services = engines(), service_commands()
     identities = {}
     for name in inventory['engines']:

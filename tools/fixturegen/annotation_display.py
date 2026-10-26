@@ -201,3 +201,21 @@ def cases():
         yield Case(name,source(**options),OPEN,(REQUIREMENT,),
                    'Existing reference depth and finite geometry limits reject hostile placement without new quotas',
                    extra={'render_error':'limit'})
+
+    # Raw baseline observations adjudicate the Sound clause's Text-like view
+    # rule. They do not prescribe another reader's icon size or artwork.
+    for dpi,rotation,flags in [(72,0,4),(144,0,4),(72,90,4),(144,90,4),
+                                (144,90,12),(144,90,20),(144,90,28)]:
+        for subtype in (b'Sound',b'Text'):
+            if subtype==b'Sound' and (dpi,rotation,flags)==(72,0,4):
+                continue  # Existing Speaker missing/stored controls are this pair.
+            for stored in (False,True):
+                name=(subtype.decode().lower()+f'-view-{dpi}-{rotation}-{flags}-'
+                      + ('stored' if stored else 'missing'))
+                expected=UNSUPPORTED if subtype==b'Sound' and not stored else OPEN
+                yield Case(name,source(subtype=subtype,stored=stored,flags=flags,
+                           entries=b'/Name /Speaker' if subtype==b'Sound' else b'/Name /Note',
+                           page=b'/Rotate %d' % rotation),expected,(REQUIREMENT,),
+                           'Raw matched Sound/Text view observation, without a universal reader-artwork oracle',
+                           feature='annotation.appearance' if expected==UNSUPPORTED else None,
+                           extra={'dpi':dpi})

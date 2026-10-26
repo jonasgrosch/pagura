@@ -120,13 +120,15 @@ class RenderProbeTests(unittest.TestCase):
     def test_reader_artwork_is_a_raw_observation_with_paired_controls(self):
         data = render.sound_observations(self.manifest)
         rows = render.fixtures(data, observations=True)
-        subjects = [case for case in data['cases'] if case['oracle'] is None]
+        subjects = [case for case in data['cases'] if case['fixture'].endswith('-missing-ap')]
         self.assertEqual(len(subjects), 3)
-        self.assertEqual(len(rows), 7)
+        self.assertEqual(len(rows), 33)
         for case in subjects:
             self.assertIsNone(case['expected'])
             self.assertNotIn('oracle', rows[case['id']])
             self.assertEqual(rows[case['id']]['dpi'], 72)
+        self.assertEqual(rows['annotations.display.sound-view-144-90-28-missing']['dpi'], 144)
+        self.assertEqual(rows['annotations.display.text-view-72-90-4-stored']['dpi'], 72)
         with self.assertRaises(ValueError):
             render.validate_manifest(data, self.inventory)
         with self.assertRaisesRegex(ValueError, 'report/manifest mismatch'):
