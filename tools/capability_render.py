@@ -14,33 +14,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from capabilities import ROOT, LEDGER, local_file, read_json, require
-from capability_probes import (ADAPTER_FILES, combine, observation_complete, public_identity,
-                               service_commands, service_identity, sha, validate_report)
+from capability_probes import (ADAPTER_FILES, combine, observation_complete,
+                               service_commands, service_identity, sha, validate_report,
+                               subject_identity, subject_inventory as render_inventory)
 from competitors import CACHE
-from benchkit.engines import command_for, engines, identify
+from benchkit.engines import command_for, engines
 from benchkit.images import normalize, verify_pixels
 
 MANIFEST = Path('benchmarks/probes/rendering.json')
 RENDER_ADAPTERS = [Path('benchmarks/adapters') / name for name in
                    ('python_engine.py', 'pdfjs.mjs', 'quartz.swift', 'hayro/src/main.rs')]
-
-
-def render_inventory(inventory):
-    """Keep the six baseline denominator intact and add the measured subject."""
-    require('pagura' not in inventory['engines'], 'subject is not a competitor baseline')
-    return {**inventory, 'engines': [*inventory['engines'], 'pagura']}
-
-
-def subject_identity(command):
-    """Hash the actual CLI; its version alone does not attest a build revision."""
-    identity = identify('pagura', command)
-    if identity['status'] == 'available':
-        identity['version'] = json.dumps({'engine': identity['version']})
-    result = public_identity(identity)
-    result['configuration'] = ('Pagura public CLI. The actual binary is hashed; '
-                               'the hosted workflow records its build command and default features. '
-                               'A separately supplied binary has no asserted build revision.')
-    return result
 
 
 def fixtures(data):

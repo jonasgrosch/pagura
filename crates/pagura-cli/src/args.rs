@@ -32,7 +32,8 @@ usage: pagura inspect [--strict] [--password TEXT] INPUT
 /// The rest of the help text, printed by `--help` after [`USAGE`].
 pub(crate) const HELP: &str = "\
 commands:
-  inspect     print one JSON line: page and object counts, size, diagnostics
+  inspect     print one JSON line: page/object counts, page geometry, size,
+              diagnostics
   metadata    print Info fields, document language and metadata stream identity
               as JSON; Info and XMP remain separate sources
   attachments print catalog EmbeddedFiles entries and EF payload keys as JSON;

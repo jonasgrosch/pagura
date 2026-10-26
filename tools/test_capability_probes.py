@@ -19,6 +19,35 @@ class ProbeTests(unittest.TestCase):
     def setUp(self):
         self.case = copy.deepcopy(self.manifest["cases"][0])
 
+    def test_subject_is_additive_and_its_failed_oracle_fails_the_job(self):
+        inventory = probes.subject_inventory(self.inventory)
+        self.assertNotIn("pagura", self.inventory["engines"])
+        self.assertEqual(inventory["engines"], [*self.inventory["engines"], "pagura"])
+        with self.assertRaisesRegex(ValueError, "lost a baseline"):
+            probes.validate_report(self.report(), self.manifest, inventory)
+        def observed(command, case, directory):
+            if case["oracle"] == "reject-invalid":
+                return {"outcome": "pass", "reason": "stub rejection"}
+            return {"outcome": "pass", "observed": case["expected"]}
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.json"
+            with patch.object(probes, "service_commands", return_value={"pagura": ["stub"]}), \
+                 patch.object(probes, "service_identity", return_value={"status": "available"}), \
+                 patch.object(probes, "invoke", side_effect=observed):
+                self.assertTrue(probes.run(self.manifest, inventory, output, ("pagura",)))
+                report = probes.read_json(output)
+                self.assertEqual(len(report["results"]), 70)
+                self.assertEqual(sum(row["outcome"] == "not-run" for row in report["results"]), 60)
+            with patch.object(probes, "service_commands", return_value={"pagura": ["stub"]}), \
+                 patch.object(probes, "service_identity", return_value={"status": "available"}), \
+                 patch.object(probes, "invoke", return_value={"outcome": "incorrect", "observed": None}):
+                self.assertFalse(probes.run(self.manifest, inventory, output, ("pagura",)))
+
+    def test_resource_limits_never_pass_an_invalid_input_control(self):
+        negative = next(row for row in self.manifest["cases"] if row["oracle"] == "reject-invalid")
+        for status in ("limit", "timeout"):
+            self.assertEqual(probes.adjudicate(negative, {"schema": 1, "status": status, "reason": "bounded"})["outcome"], status)
+
     def test_manifest_owns_operations_and_empty_and_invalid_controls(self):
         probes.validate_manifest(self.manifest, self.inventory)
         for removed in ("pages.invalid", "attachments.empty"):

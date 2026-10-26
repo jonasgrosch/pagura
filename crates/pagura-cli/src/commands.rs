@@ -90,14 +90,31 @@ fn licenses(out: &mut impl Write) -> std::io::Result<()> {
 
 fn inspect(source: &Source, out: &mut impl Write) -> Result<(), Failure> {
     let document = source.open()?;
-    let pages = document.page_count()?;
+    let pages = document.pages()?;
     write!(
         out,
-        "{{\"schema\":{},\"pages\":{pages},\"objects\":{},\"bytes\":{},",
+        "{{\"schema\":{},\"pages\":{},\"objects\":{},\"bytes\":{},\"page_geometry\":[",
         json::INSPECT_SCHEMA,
+        pages.len(),
         document.object_count(),
         document.original_bytes().len(),
     )?;
+    for (index, page) in pages.iter().enumerate() {
+        if index > 0 {
+            out.write_all(b",")?;
+        }
+        out.write_all(b"{\"media_box\":")?;
+        json::rectangle(out, page.media_box())?;
+        out.write_all(b",\"crop_box\":")?;
+        json::rectangle(out, page.crop_box())?;
+        write!(
+            out,
+            ",\"rotation\":{},\"user_unit\":{}}}",
+            page.rotation().degrees(),
+            page.user_unit(),
+        )?;
+    }
+    out.write_all(b"],")?;
     json::diagnostics(out, &document)?;
     writeln!(out, "}}")?;
     Ok(())

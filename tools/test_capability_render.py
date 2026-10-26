@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import capability_render as render
+import capability_probes as probes
 from capability_probes import pixel_pass
 
 
@@ -34,12 +35,12 @@ class RenderProbeTests(unittest.TestCase):
         identity = {'status': 'available', 'version': 'pagura 0.1.0 (safe Rust)',
                     'command': [str(render.ROOT / 'target/release/pagura')],
                     'artifacts': {str(render.ROOT / 'target/release/pagura'): 'a' * 64}}
-        with patch.object(render, 'identify', return_value=identity):
+        with patch.object(probes, 'identify', return_value=identity):
             actual = render.subject_identity(['stub'])
         self.assertEqual(actual['version'], {'engine': 'pagura 0.1.0 (safe Rust)'})
         self.assertEqual(actual['artifacts'], {str(Path('$REPO') / 'target/release/pagura'): 'a' * 64})
         self.assertNotIn('revision', actual)
-        with patch.object(render, 'identify', return_value={'status': 'unavailable', 'reason': '/private/path'}):
+        with patch.object(probes, 'identify', return_value={'status': 'unavailable', 'reason': '/private/path'}):
             actual = render.subject_identity(['stub'])
         self.assertEqual(actual['status'], 'unavailable')
         self.assertNotIn('/private/path', str(actual))

@@ -16,6 +16,18 @@ pub(crate) const TIMINGS_SCHEMA: u32 = 1;
 /// Schema of `microbench`.
 pub(crate) const MICROBENCH_SCHEMA: u32 = 2;
 
+/// Writes the finite coordinates of a normalized PDF rectangle.
+pub(crate) fn rectangle(out: &mut impl Write, rect: pagura::Rect) -> io::Result<()> {
+    write!(
+        out,
+        "[{},{},{},{}]",
+        rect.x0(),
+        rect.y0(),
+        rect.x1(),
+        rect.y1()
+    )
+}
+
 /// Writes `text` as a JSON string literal.
 pub(crate) fn string(out: &mut impl Write, text: &str) -> io::Result<()> {
     out.write_all(b"\"")?;

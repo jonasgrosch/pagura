@@ -11,6 +11,7 @@ import math
 import os
 import platform
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,8 +22,8 @@ from benchkit.engines import engines, identify
 
 MANIFEST = Path("benchmarks/probes/document-services.json")
 ADAPTER = Path("benchmarks/adapters/capability_python.py")
-SELECTED = ("pdfium", "mupdf")
-ADAPTER_FILES = [ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
+SELECTED = ("pdfium", "mupdf", "pagura")
+ADAPTER_FILES = [Path("benchmarks/adapters/capability_pagura.py"), ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
                  Path("benchmarks/adapters/capability_pdfjs_services.mjs"),
                  Path("benchmarks/adapters/capability_poppler.py"), Path("benchmarks/adapters/capability_quartz.swift"),
                  Path("benchmarks/adapters/hayro/src/bin/capabilities.rs")]
@@ -36,7 +37,7 @@ UNIMPLEMENTED = {
 OPERATIONS = {"pages": "document.structure", "metadata": "document.metadata",
               "attachments": "document.attachments", "text": "text.accessibility"}
 OUTCOMES = {"pass", "incorrect", "rejected", "unsupported", "timeout", "adapter-error",
-            "adapter-unavailable", "engine-unavailable", "not-run"}
+            "adapter-unavailable", "engine-unavailable", "not-run", "limit"}
 PAYLOAD = b"Synthetic attachment.\n"
 
 
@@ -132,7 +133,7 @@ def adjudicate(case, response):
             return {"outcome": "adapter-error", "reason": "invalid value envelope"}
         passed = case["oracle"] == "exact-json" and same_value(response["value"], case["expected"])
         return {"outcome": "pass" if passed else "incorrect", "observed": response["value"]}
-    if status in {"rejected", "adapter-error", "adapter-unavailable", "engine-unavailable"}:
+    if status in {"rejected", "adapter-error", "adapter-unavailable", "engine-unavailable", "timeout", "limit"}:
         if set(response) != {"schema", "status", "reason"} or not isinstance(response["reason"], str):
             return {"outcome": "adapter-error", "reason": "invalid error envelope"}
         passed = status == "rejected" and case["oracle"] == "reject-invalid"
@@ -191,9 +192,28 @@ def public_identity(identity):
     return result
 
 
+def subject_inventory(inventory):
+    """Keep all six competitor baselines and add the measured subject."""
+    require("pagura" not in inventory["engines"], "subject is not a competitor baseline")
+    return {**inventory, "engines": [*inventory["engines"], "pagura"]}
+
+
+def subject_identity(command):
+    """Hash the actual CLI; a version alone cannot attest its build revision."""
+    identity = identify("pagura", command)
+    if identity["status"] == "available":
+        identity["version"] = json.dumps({"engine": identity["version"]})
+    result = public_identity(identity)
+    result["configuration"] = ("Pagura public CLI. The actual binary is hashed; "
+                               "the hosted workflow records its build command and default features. "
+                               "A separately supplied binary has no asserted build revision.")
+    return result
+
+
 def service_commands():
     render = engines()
-    return {"pdfium": [render["pdfium"][0], str(ROOT / ADAPTER), "pdfium"],
+    return {"pagura": [sys.executable, str(ROOT / "benchmarks/adapters/capability_pagura.py"), render["pagura"][0]],
+            "pdfium": [render["pdfium"][0], str(ROOT / ADAPTER), "pdfium"],
             "mupdf": [render["mupdf"][0], str(ROOT / ADAPTER), "mupdf"],
             "pdfjs": [render["pdfjs"][0], str(ROOT / "benchmarks/adapters/capability_pdfjs.mjs")],
             "poppler": ["/usr/bin/python3", str(ROOT / "benchmarks/adapters/capability_poppler.py")],
@@ -202,6 +222,13 @@ def service_commands():
 
 
 def service_identity(name, command):
+    if name == "pagura":
+        result = subject_identity([command[-1]])
+        result["service_configuration"] = ("Default repair mode and empty password; Info Title/Author only; "
+                                            "crop/rotation/UserUnit page dimensions; first-page text; "
+                                            "catalog attachments prefer EF/UF when present, else EF/F. "
+                                            "No raw legacy filename encoding is guessed beyond ASCII.")
+        return result
     identity = identify(name, command)
     if name == "poppler" and identity["status"] == "available":
         # The OS package is not lock-pinned. Attest the actual GLib/core libraries
@@ -232,7 +259,7 @@ def observation_complete(engine, case, result):
     """
     if (engine, case["operation"]) in UNIMPLEMENTED:
         return result["outcome"] == "adapter-unavailable"
-    return result["outcome"] in {"pass", "incorrect", "rejected", "unsupported"}
+    return result["outcome"] in {"pass", "incorrect", "rejected", "unsupported", "limit"}
 
 
 def run(data, inventory, output, selected=SELECTED):
@@ -245,7 +272,8 @@ def run(data, inventory, output, selected=SELECTED):
                     Path("tools/benchkit/config.py"), Path("tools/competitors.py"), LEDGER, Path("uv.lock"),
                     Path("pyproject.toml"), Path(".python-version"), Path(".github/workflows/capabilities.yml"),
                     Path("benchmarks/node-package-lock.json"), Path("benchmarks/adapters/hayro/Cargo.lock"),
-                    Path("benchmarks/adapters/hayro/Cargo.toml"), Path("rust-toolchain.toml"), Path(".cargo/config.toml")]
+                    Path("benchmarks/adapters/hayro/Cargo.toml"), Path("rust-toolchain.toml"), Path(".cargo/config.toml"),
+                    Path("Cargo.toml"), Path("Cargo.lock"), Path("crates/pagura-cli/Cargo.toml")]
     report = {"schema": 1, "scope": data["scope"], "generated_at": datetime.now(timezone.utc).isoformat(),
               "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
               "workflow_run": os.environ.get("GITHUB_RUN_ID"), "selected_engines": list(selected),
@@ -277,6 +305,7 @@ def run(data, inventory, output, selected=SELECTED):
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     cases = {case["id"]: case for case in data["cases"]}
     return all(observation_complete(row["engine"], cases[row["case"]], row)
+               and (row["engine"] != "pagura" or row["outcome"] == "pass")
                for row in report["results"] if row["engine"] in selected)
 
 
@@ -357,7 +386,7 @@ def main():
     merge.add_argument("reports", type=Path, nargs="+")
     merge.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    data, inventory = read_json(ROOT / MANIFEST), read_json(ROOT / LEDGER)
+    data, inventory = read_json(ROOT / MANIFEST), subject_inventory(read_json(ROOT / LEDGER))
     validate_manifest(data, inventory)
     if args.command == "run":
         if not run(data, inventory, args.output, tuple(args.engines.split(","))):
@@ -367,9 +396,9 @@ def main():
         report = combine([read_json(path) for path in args.reports], data, inventory)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print("G01 combined all six baseline columns; per-cell outcomes retain adapter gaps and failures.")
+        print("G01 combined all six baselines plus Pagura; per-cell outcomes retain adapter gaps and failures.")
     else:
-        print(f"G01 manifest valid: {len(data['cases'])} cases, {len(inventory['engines'])} baseline columns; no engines invoked.")
+        print(f"G01 manifest valid: {len(data['cases'])} cases, {len(inventory['engines'])} engine columns (six baselines plus Pagura); no engines invoked.")
 
 
 if __name__ == "__main__":

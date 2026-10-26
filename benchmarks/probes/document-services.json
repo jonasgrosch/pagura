@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 document-service controls across six baseline public APIs, read-only synthetic PDFs. Per-fixture observations only; no family-level support, optional build, rendering, editing or release-parity verdict.",
+  "scope": "G01 document-service controls across Pagura and six baseline public APIs, read-only synthetic PDFs. Per-fixture observations only; no family-level support, optional build, rendering, editing or release-parity verdict.",
   "cases": [
     {
       "id": "pages.services",

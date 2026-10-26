@@ -66,6 +66,24 @@ fn service_report(
 }
 
 #[test]
+fn inspect_reports_inherited_boxes_and_rotation_without_rounding() {
+    for (name, rotation) in [("inherited-box.pdf", 0), ("rotate-90-blank.pdf", 90)] {
+        let report = service_report("inspect", "classic", name).unwrap();
+        let geometry = report
+            .get("page_geometry")
+            .and_then(Json::as_array)
+            .unwrap();
+        assert_eq!(geometry.len(), 1);
+        let page = &geometry[0];
+        let bounds = Json::parse("[0,0,64,64]").unwrap();
+        assert_eq!(page.get("media_box"), Some(&bounds));
+        assert_eq!(page.get("crop_box"), Some(&bounds));
+        assert_eq!(page.get("rotation").and_then(Json::as_u64), Some(rotation));
+        assert_eq!(page.get("user_unit").and_then(Json::as_u64), Some(1));
+    }
+}
+
+#[test]
 fn metadata_json_keeps_unicode_fields_and_stream_identity_separate() {
     let report = service_report("metadata", "metadata", "populated-flate.pdf").unwrap();
     assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
