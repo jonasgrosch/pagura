@@ -17,7 +17,7 @@
         "forms/text-password",
         "pagura-document forms::fill::tests"
       ],
-      "gaps": "Rich text, XFA and actions remain unsupported or inert; DoNotScroll is checked during appearance generation. Passwords remain in caller-owned memory."
+      "gaps": "Explicit rich replacement and common RV/DS layout/save are covered by content-rich-field-appearance. Plain Text replacement of RichText fields remains refused; XFA and actions remain unsupported or inert. DoNotScroll is checked during appearance generation. Passwords remain in caller-owned memory."
     },
     {
       "id": "forms-fill-button",

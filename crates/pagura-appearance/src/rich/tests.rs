@@ -213,3 +213,40 @@ fn small_rich_appearance_uses_the_shared_storage_allowance() {
     .unwrap();
     assert!(String::from_utf8_lossy(appearance.content()).contains("<41> Tj"));
 }
+
+#[test]
+fn field_plain_values_follow_the_same_entity_whitespace_and_paragraph_parser() {
+    let text = parse(
+        "<body><p>A&#x42;  C</p><p/><p>D<br/>E</p></body>",
+        base(),
+        &Limits::default(),
+    )
+    .unwrap();
+    let value = text
+        .value(
+            &Limits::default(),
+            &mut Meter::new(128, "test storage"),
+            &mut Meter::new(128, "test work"),
+        )
+        .unwrap();
+    assert_eq!(value, "AB C\n\nD\nE");
+    let error = text
+        .value(
+            &Limits {
+                string_bytes: 4,
+                ..Default::default()
+            },
+            &mut Meter::new(128, "test storage"),
+            &mut Meter::new(128, "test work"),
+        )
+        .unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    let error = text
+        .value(
+            &Limits::default(),
+            &mut Meter::new(4, "test storage"),
+            &mut Meter::new(128, "test work"),
+        )
+        .unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+}

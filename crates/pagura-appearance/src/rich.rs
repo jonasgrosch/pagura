@@ -1,4 +1,5 @@
-//! Bounded inert annotation rich text (12.5.6.6; XFA 3.3 chapters 5 and 27).
+//! Bounded inert annotation and field rich text (12.5.6.6, 12.7.4.3;
+//! XFA 3.3 chapters 5 and 27).
 //! XML/CSS select appearance data only. Font decoding is shared with forms;
 //! the result is ordinary PDF text and path operators for the one interpreter.
 
@@ -14,7 +15,15 @@ use pagura_core::{Diagnostics, Dictionary, Error, Meter, Result, Value, text_str
 use pagura_document::{Document, forms::Justification};
 use style::Style;
 
-pub(crate) use layout::Layout;
+pub(crate) use layout::{Layout, prepare as layout};
+pub(crate) use xml::Text;
+
+/// Field generation supplies its DR resources; annotations use their existing
+/// exact-name resource/provider policy. Both feed the same encoder and layout.
+pub(crate) struct Fonts<'a> {
+    pub(crate) source: &'a dyn FontSource,
+    pub(crate) resources: Option<&'a Dictionary>,
+}
 
 /// Prepares plain or rich annotation text using the common bounded layout.
 pub(crate) fn prepare(
@@ -37,30 +46,78 @@ pub(crate) fn prepare(
     };
     let limits = document.limits();
     let mut work = Meter::new(limits.operations, "rich text work budget exceeded");
+    let ds = if let Some(ds) = ds {
+        let bytes = ds
+            .as_string()
+            .ok_or(Error::syntax("rich text DS must be a text string"))?;
+        Some(decode(document, bytes, storage)?)
+    } else {
+        None
+    };
+    let parsed = if rc.is_some() {
+        let value = annotation
+            .get(b"RC")
+            .ok_or(Error::syntax("missing rich text content"))?;
+        let source = content(document, value, storage)?;
+        parse(
+            document,
+            &source,
+            ds.as_deref(),
+            appearance,
+            alignment,
+            storage,
+            &mut work,
+        )?
+    } else {
+        let text = contents(document, annotation, storage)?;
+        work.charge(text.len())?;
+        let base = base(appearance, alignment, ds.as_deref(), &mut work)?;
+        xml::Text::plain(&text, base, &limits, &mut work, storage)?
+    };
+    layout::prepare(
+        document,
+        parsed,
+        appearance,
+        width,
+        Fonts {
+            source: fonts,
+            resources: None,
+        },
+        storage,
+        &mut work,
+    )
+}
+
+/// The one XML/style parser for annotation RC and field RV, including edits.
+pub(crate) fn parse(
+    document: &Document,
+    source: &str,
+    default_style: Option<&str>,
+    appearance: &DefaultAppearance,
+    alignment: Justification,
+    storage: &mut Meter,
+    work: &mut Meter,
+) -> Result<Text> {
+    work.charge_product(source.len(), 4)?;
+    let base = base(appearance, alignment, default_style, work)?;
+    Text::parse(source, base, &document.limits(), work, storage)
+}
+
+fn base(
+    appearance: &DefaultAppearance,
+    alignment: Justification,
+    default_style: Option<&str>,
+    work: &mut Meter,
+) -> Result<Style> {
     let mut base = Style::new(appearance.font.clone(), appearance.size, alignment);
     base.leading = (appearance.leading > 0.0).then_some(appearance.leading);
     base.rise = appearance.rise;
     base.spacing = style::Spacing::Absolute(appearance.character_space);
-    if let Some(ds) = ds {
-        let bytes = ds
-            .as_string()
-            .ok_or(Error::syntax("rich text DS must be a text string"))?;
-        let css = decode(document, bytes, storage)?;
-        work.charge_product(css.len(), 4)?;
-        base.apply(&css)?;
+    if let Some(style) = default_style {
+        work.charge_product(style.len(), 4)?;
+        base.apply(style)?;
     }
-    let parsed = if rc.is_some() {
-        let source = rich_content(document, annotation, storage)?;
-        work.charge_product(source.len(), 4)?;
-        xml::Text::parse(&source, base, &limits, &mut work, storage)?
-    } else {
-        let text = contents(document, annotation, storage)?;
-        work.charge(text.len())?;
-        xml::Text::plain(&text, base, &limits, &mut work, storage)?
-    };
-    layout::prepare(
-        document, parsed, appearance, width, fonts, storage, &mut work,
-    )
+    Ok(base)
 }
 
 /// Shared PDF Contents decoding; unused Contents is never read when RC wins.
@@ -78,15 +135,8 @@ pub(crate) fn contents(
     decode(document, bytes, storage)
 }
 
-fn rich_content(
-    document: &Document,
-    annotation: &Dictionary,
-    storage: &mut Meter,
-) -> Result<String> {
+pub(crate) fn content(document: &Document, value: &Value, storage: &mut Meter) -> Result<String> {
     let limits = document.limits();
-    let value = annotation
-        .get(b"RC")
-        .ok_or(Error::syntax("missing rich text content"))?;
     if let Some(id) = value.as_reference() {
         let object = document.object(id)?;
         if object.is_stream() {
@@ -125,13 +175,14 @@ fn rich_content(
                 .map_err(|_| Error::syntax("rich text stream must contain XML UTF-8 or UTF-16"));
         }
     }
-    let bytes = document.resolve(value)?.as_string().ok_or(Error::syntax(
-        "rich text RC must be a text string or stream",
-    ))?;
+    let bytes = document
+        .resolve(value)?
+        .as_string()
+        .ok_or(Error::syntax("rich text must be a text string or stream"))?;
     decode(document, bytes, storage)
 }
 
-fn decode(document: &Document, bytes: &[u8], storage: &mut Meter) -> Result<String> {
+pub(crate) fn decode(document: &Document, bytes: &[u8], storage: &mut Meter) -> Result<String> {
     let limits = document.limits();
     storage.charge(bytes.len().saturating_mul(3).min(limits.string_bytes))?;
     let mut diagnostics = Diagnostics::new(document.recovery());

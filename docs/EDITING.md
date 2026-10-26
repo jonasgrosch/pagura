@@ -30,8 +30,25 @@ are retained. Missing checkbox/radio appearances generate both Off and on states
 using the same selection and artwork as preview. Default values, rollover/down appearances and unrelated dictionary
 entries survive. The existing appearance generator's font and feature limits
 apply. A failed save returns no partial output and leaves the filler available
-for correction. Password changes, nested direct field/widget identities and
-push buttons without stored artwork return explicit unsupported tags.
+for correction. Password changes and nested direct field/widget identities
+return explicit unsupported tags. Missing normal push artwork uses the shared
+caption/icon generator without creating a synthetic field value.
+
+RichText fields accept `FillValue::RichText { xml, default_style }`. The document
+layer retains bounded inert XML; appearance preparation validates XML, styles,
+single-line/MaxLen constraints and layout. `default_style: None` preserves the
+field's local DS; `Some("")` replaces it with an empty style. Saving uses the same
+parser to derive plain V, writes RV and any replacement DS, and regenerates the
+entire normal appearance as required by 12.7.4.3. It preserves DV, R/D and
+unrelated entries. An untouched stored appearance and a no-op save remain lazy;
+resetting a change restores the source, including its original RV/DS.
+
+The shared common rich subset uses reversible horizontal fonts from AcroForm DR.
+Plain `FillValue::Text` replacements of rich fields are refused to avoid silently
+discarding formatting. Advanced rich layout and zero-size DA without a positive
+DS/run size retain explicit limits. Password previews mask every character;
+password saves remain refused. Browser rich editing controls are separate from
+this library API.
 
 For lower-level edits, start `Transaction::new(&document)`, use
 `edit_dictionary(id, closure)`, `replace(id, object)` or `add(object)`, and call
@@ -74,8 +91,8 @@ such as a numeric sc used in an ICC colour space can display compatibly while
 unrelated form changes append without rewriting the original content stream.
 
 Fresh text, choice and toggle-button appearances honor quarter-turn MK R in the
-library and saved PDF. Updating a stored appearance retains its own Matrix and
-BBox, avoiding a second rotation.
+library and saved PDF. Updating a stored plain appearance retains its own Matrix
+and BBox. Rich regeneration replaces those entries and uses the widget's frame.
 
 The overlay follows CropBox, page Rotate, UserUnit and zoom; drafts survive page
 virtualization. Optional-content, NoZoom/NoRotate, ToggleNoView and rotated-MK

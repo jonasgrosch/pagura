@@ -2,10 +2,10 @@
 
 use super::style::{Spacing, Style};
 use super::xml::Text;
-use crate::fonts::{Encoding, FontSource, annotation_resources};
+use crate::fonts::{Encoding, annotation_resources};
 use crate::form::da::DefaultAppearance;
 use crate::program::Program;
-use pagura_core::{Dictionary, Error, Meter, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result};
 use pagura_document::{Document, forms::Justification};
 
 pub(crate) struct Layout {
@@ -36,12 +36,12 @@ struct Font {
     encoding: Encoding,
 }
 
-pub(super) fn prepare(
+pub(crate) fn prepare(
     document: &Document,
     text: Text,
     appearance: &DefaultAppearance,
     width: f64,
-    source: &dyn FontSource,
+    sources: super::Fonts<'_>,
     storage: &mut Meter,
     work: &mut Meter,
 ) -> Result<Layout> {
@@ -67,14 +67,18 @@ pub(super) fn prepare(
         } else {
             storage.charge(256 * 64)?;
             work.charge(256)?;
-            let resources = annotation_resources(document, family.as_bytes(), storage)?;
-            let entry = resources
-                .get(b"Font")
-                .and_then(Value::as_dictionary)
+            let annotation;
+            let resources = if let Some(resources) = sources.resources {
+                resources
+            } else {
+                annotation = annotation_resources(document, family.as_bytes(), storage)?;
+                &annotation
+            };
+            let entry = crate::values::optional_dictionary(document, resources, b"Font")?
                 .and_then(|fonts| fonts.get(family.as_bytes()))
                 .ok_or(Error::syntax("missing rich text font"))?;
             storage.charge(entry.retained_bytes())?;
-            let encoding = Encoding::load(document, &resources, family.as_bytes(), source)?;
+            let encoding = Encoding::load(document, resources, family.as_bytes(), sources.source)?;
             let index = fonts.len();
             storage.reserve_capacity(&mut fonts, 1)?;
             storage.charge(family.heap_bytes())?;
@@ -141,6 +145,60 @@ pub(super) fn prepare(
 }
 
 impl Layout {
+    /// Field positioning is reader policy over the same positioned glyphs:
+    /// multiline top alignment, single-line vertical centering and Comb cells.
+    pub(crate) fn write_field(
+        &mut self,
+        out: &mut Program,
+        area: Rect,
+        configuration: &crate::form::layout::TextLayout<'_>,
+        work: &mut Meter,
+    ) -> Result<()> {
+        work.charge(self.glyphs.len())?;
+        if configuration.no_scroll
+            && (self.width > area.width() + 1e-9 || self.height > area.height() + 1e-9)
+        {
+            return Err(Error::invalid_argument(
+                "DoNotScroll rich text does not fit its widget",
+            ));
+        }
+        let alignment = self
+            .text
+            .paragraphs
+            .first()
+            .map_or(configuration.quadding, |paragraph| {
+                self.text.styles[paragraph.style].alignment
+            });
+        let mut x = area.x0();
+        if let Some(cells) = configuration.comb {
+            let spare = cells
+                .checked_sub(self.glyphs.len())
+                .filter(|_| cells != 0)
+                .ok_or(Error::invalid_argument("rich text exceeds Comb cells"))?;
+            let offset = match alignment {
+                Justification::Left => 0,
+                Justification::Center => spare / 2,
+                Justification::Right => spare,
+            };
+            let cell = area.width() / cells as f64;
+            for (index, glyph) in self.glyphs.iter_mut().enumerate() {
+                glyph.x = (offset + index) as f64 * cell + (cell - glyph.advance) / 2.0;
+            }
+        } else if !configuration.multiline {
+            x += match alignment {
+                Justification::Left => 0.0,
+                Justification::Center => (area.width() - self.width) / 2.0,
+                Justification::Right => area.width() - self.width,
+            };
+        }
+        let y = if configuration.multiline {
+            area.y1()
+        } else {
+            area.y0() + (area.height() + self.height) / 2.0
+        };
+        self.write(out, (x, y), (1.0, 0.0))
+    }
+
     fn position(&mut self, width: f64, work: &mut Meter) -> Result<()> {
         let mut top = 0.0;
         let mut previous_bottom = 0.0;

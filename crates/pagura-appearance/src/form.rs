@@ -8,7 +8,8 @@
 //! descriptor ascent/descent (0.8/-0.2 em when absent) and two units of padding.
 //! Centered comb text stays on the cell grid; an odd spare cell goes at the right.
 //! Generated text starts from default text state before applying DA.
-//! Passwords use asterisks; no actions, rich text or XFA are evaluated.
+//! Passwords use asterisks. Rich RV/DS uses the same inert XML/CSS layout as
+//! annotations; no actions or XFA form programs are evaluated.
 
 mod buttons;
 mod choice;
@@ -31,10 +32,12 @@ use crate::program::Program;
 use crate::stream::{Appearance, AppearanceStream, form_dictionary};
 use crate::values::optional_dictionary;
 use da::DefaultAppearance;
-use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result, Value};
 use pagura_document::{
     Document,
-    forms::{Field, FieldKind, FilledField, FormFiller, Widget, WidgetField, WidgetState},
+    forms::{
+        Field, FieldKind, FilledField, FilledValue, FormFiller, Widget, WidgetField, WidgetState,
+    },
 };
 use pagura_text::Provider;
 use style::Style;
@@ -75,10 +78,12 @@ impl WidgetAppearance {
 /// with `provider` (ADR 0009) or only from the document for `None`.
 ///
 /// Unchanged fields retain AP unless NeedAppearances requests regeneration.
-/// Changed text/choice fields replace only the Tx section of an existing AP;
+/// Changed plain text/choice fields replace only the Tx section of an existing AP;
 /// existing resources win collisions with DR. Buttons always select an existing
 /// state when AP exists; only an absent AP permits a generated normal caption,
 /// mark or icon.
+/// RichText fields rebuild the entire normal appearance from RV/DS and DR,
+/// leaving unchanged stored appearances intact unless regeneration is requested.
 /// Other field types, such as signatures, keep AP. Without AP, they and any
 /// widget whose Rect has no area are hidden. No partial result is returned.
 /// Storage is separately capped by document_bytes.
@@ -86,7 +91,7 @@ impl WidgetAppearance {
 /// # Errors
 /// Returns positioned syntax, font, limit and unsupported-capability errors.
 /// Horizontal simple fonts with reversible single-character Unicode mappings
-/// are supported. Oblique text matrices, rich text, XFA,
+/// are supported. Oblique text matrices, advanced rich formatting, XFA,
 /// negative font sizes and appearance updates crossing
 /// text/graphics scopes or containing inline images remain explicit
 /// unsupported capabilities. DoNotScroll rejects text that will not visibly fit.
@@ -146,6 +151,49 @@ pub fn prepare_widget_with_policy(
 ) -> Result<Appearance> {
     let fonts = ProviderFonts::new(provider, &filler.document().limits());
     widget_appearance(filler, index, &fonts, policy)
+}
+
+/// Parses an explicit rich replacement into the plain V saved alongside RV.
+/// This uses the same inert parser, DS precedence and character constraints as
+/// appearance generation; it does not load fonts or render. The editing layer
+/// also prepares every requested appearance before committing any bytes.
+///
+/// # Errors
+/// InvalidArgument for a missing index/change, non-rich field, line breaks in a
+/// single-line field or excess MaxLen; selected XML/style syntax, unsupported
+/// rich-formatting and budget errors preserve their available source context.
+pub fn rich_text_value(filler: &FormFiller<'_>, index: usize) -> Result<String> {
+    let field = filler
+        .form()
+        .fields
+        .get(index)
+        .ok_or(Error::invalid_argument("field index is outside the form"))?;
+    if !matches!(
+        filler.get(index).map(FilledField::value),
+        Some(FilledValue::RichText { .. })
+    ) {
+        return Err(Error::invalid_argument("field has no rich replacement"));
+    }
+    let limits = filler.document().limits();
+    let input = variable::Inputs::edited(filler, index, field);
+    let parse = || {
+        let da = DefaultAppearance::parse(
+            input
+                .default_appearance
+                .ok_or(Error::syntax("variable text field has no DA"))?,
+            &limits,
+        )?;
+        variable::rich_text(
+            &input,
+            &da,
+            &mut Meter::new(limits.document_bytes, "rich field storage budget exceeded"),
+            &mut Meter::new(limits.operations, "rich field work budget exceeded"),
+        )
+        .map(|(_, value)| value)
+    };
+    parse()
+        .map_err(variable::rich_error)
+        .map_err(|error| error.at(field.position).in_object_opt(field.object))
 }
 
 /// Generates both normal states for a checkbox/radio widget without an AP.
@@ -306,16 +354,7 @@ impl Context<'_, '_> {
             state
         };
         Generation {
-            field: variable::Inputs {
-                document: self.document(),
-                kind: &self.field.kind,
-                flags: self.field.flags,
-                value: self.field.value.as_ref(),
-                change: self.filler.get(self.widget.field).map(FilledField::value),
-                dictionary: self.field.dictionary,
-                default_appearance: self.field.default_appearance,
-                justification: self.field.justification,
-            },
+            field: variable::Inputs::edited(self.filler, self.widget.field, self.field),
             widget: self.widget.dictionary,
             bounds: self.widget.rectangle,
             default_resources: self.filler.form().default_resources,
@@ -348,7 +387,9 @@ impl Generation<'_, '_> {
         }
         let document = self.field.document;
         let limits = document.limits();
-        let original_id = match original {
+        // Rich fields replace the entire appearance, not only an old Tx span
+        // (12.7.4.3). Old BBox/Matrix/resources/program data are not selected.
+        let original_id = match original.filter(|_| !self.field.is_rich()) {
             Some(Appearance::Existing(id)) => Some(*id),
             _ => None,
         };
@@ -385,7 +426,6 @@ impl Generation<'_, '_> {
         if self.policy == UpdatePolicy::PreserveExisting {
             supply_font(document, &mut resources, da.font.as_bytes())?;
         }
-        let font = Font::load(document, &resources, da.font.as_bytes(), self.fonts)?;
         let style = Style::read(document, self.widget)?;
         let frame = if old.is_none() {
             Some(crate::widget_rotation::frame(style.rotation, bbox)?)
@@ -405,7 +445,14 @@ impl Generation<'_, '_> {
             area.width(),
             area.height()
         ))?;
-        variable::write(&mut text, &self.field, area, &font, &da)?;
+        variable::write(
+            &mut text,
+            &self.field,
+            area,
+            self.fonts,
+            &da,
+            &mut resources,
+        )?;
         text.text("Q\nEMC\n")?;
         let text = text.finish();
         let content = if let Some(source) = source {
