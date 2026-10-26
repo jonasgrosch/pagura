@@ -470,30 +470,60 @@ pub(crate) fn point_spline(
         return Ok(None);
     }
     match spline_using(outline, linear, limits, bytes, PointContours::OmitExplicit)? {
-        Some((spline, Some(point))) => Ok(Some((spline, point))),
-        Some((spline, None)) => {
-            bytes.refund(spline.retained_bytes());
+        Some((spline, points)) if points.len() == 1 => {
+            bytes.refund(points.capacity() * size_of::<Point>());
+            Ok(Some((spline, points[0])))
+        }
+        Some((spline, points)) => {
+            bytes.refund(spline.retained_bytes() + points.capacity() * size_of::<Point>());
             Ok(None)
         }
         None => Ok(None),
     }
 }
 
+/// The pieces of an outline without its geometric points, and the points
+/// under `linear` as the polygon classifies them: the start of every
+/// contour all of whose controls repeat it. `None` where a contour repeats
+/// its start only once mapped, or a move follows a move, whose point only
+/// the polygon sees.
+///
+/// # Errors
+///
+/// As [`spline`].
+pub(crate) fn points_spline(
+    outline: &Path,
+    linear: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Option<(Spline, Vec<Point>)>> {
+    let segments = outline.segments();
+    if segments
+        .windows(2)
+        .any(|pair| matches!(pair, [Segment::MoveTo(_), Segment::MoveTo(_)]))
+    {
+        return Ok(None);
+    }
+    spline_using(outline, linear, limits, bytes, PointContours::OmitAll)
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PointContours {
     Keep,
+    /// Explicit closed moves left out, their points recorded.
     OmitExplicit,
+    /// Every degenerate contour left out, its point recorded.
+    OmitAll,
 }
 
-/// The pieces, and the one explicit closed move point omitted, if exactly
-/// one was.
+/// The pieces, and the points of the contours the mode leaves out.
 fn spline_using(
     outline: &Path,
     linear: Transform,
     limits: &Limits,
     bytes: &mut Meter,
     point_contours: PointContours,
-) -> Result<Option<(Spline, Option<Point>)>> {
+) -> Result<Option<(Spline, Vec<Point>)>> {
     if outline.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
@@ -506,14 +536,16 @@ fn spline_using(
         limits,
         bytes,
         point_contours,
-        omitted: (0, None),
+        points: Vec::new(),
     };
     let result = builder.path(outline, linear);
     let retained = result
         .as_ref()
         .ok()
         .and_then(Option::as_ref)
-        .map_or(0, |(spline, _)| spline.retained_bytes());
+        .map_or(0, |(spline, points)| {
+            spline.retained_bytes() + points.capacity() * size_of::<Point>()
+        });
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
 }
@@ -523,8 +555,8 @@ struct Builder<'a> {
     limits: &'a Limits,
     bytes: &'a mut Meter,
     point_contours: PointContours,
-    /// Explicit closed move points left out, and the first of them.
-    omitted: (usize, Option<Point>),
+    /// The points of the contours left out, in path order.
+    points: Vec<Point>,
 }
 
 impl Builder<'_> {
@@ -608,19 +640,21 @@ impl Builder<'_> {
         Ok(())
     }
 
-    fn path(
-        mut self,
-        path: &Path,
-        transform: Transform,
-    ) -> Result<Option<(Spline, Option<Point>)>> {
+    fn path(mut self, path: &Path, transform: Transform) -> Result<Option<(Spline, Vec<Point>)>> {
         if path.segments().len() > self.limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
         let mut start = None;
         let mut current = None;
         let mut source_current = None;
+        // The source start and current point as the polygon classifies
+        // points: a close returns to the start.
+        let (mut source_start, mut classified) = (None, None);
         let mut closed = false;
+        // Whether every source control, and every mapped one, repeats the
+        // contour's start, the latter as the polygon classifies points.
         let mut degenerate = true;
+        let mut mapped = true;
         let mut segments = 0;
         let map = |point: Point| -> Result<Point> {
             bounded(point)?;
@@ -634,15 +668,17 @@ impl Builder<'_> {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
                         && segments > 0
-                        && !self.finish(a, b, degenerate)?
+                        && (self.mismatched(degenerate, mapped)
+                            || !self.finish(a, b, degenerate)?)
                     {
                         return Ok(None);
                     }
                     source_current = Some(p);
+                    (source_start, classified) = (Some(p), Some(p));
                     let p = map(p)?;
                     start = Some(p);
                     current = Some(p);
-                    degenerate = true;
+                    (degenerate, mapped) = (true, true);
                     closed = false;
                     segments = 0;
                     self.begin()?;
@@ -652,11 +688,20 @@ impl Builder<'_> {
                         current.ok_or(Error::invalid_argument("segment has no current point"))?;
                     if closed {
                         start = Some(a);
-                        degenerate = true;
+                        (degenerate, mapped) = (true, true);
                         segments = 0;
                         closed = false;
                         self.begin()?;
                     }
+                    if self.point_contours == PointContours::OmitAll {
+                        mapped &= repeats(*segment, classified, start, transform);
+                    }
+                    classified = match *segment {
+                        Segment::LineTo(end)
+                        | Segment::CubicTo { end, .. }
+                        | Segment::QuadTo { end, .. } => Some(end),
+                        Segment::MoveTo(_) | Segment::Close => classified,
+                    };
                     let (source, end) =
                         self.draw(*segment, (a, source_current), &mut degenerate, map)?;
                     (source_current, current) = (source, Some(end));
@@ -666,19 +711,19 @@ impl Builder<'_> {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
                     {
+                        if self.mismatched(degenerate, mapped) {
+                            return Ok(None);
+                        }
                         if self.point_contours == PointContours::OmitExplicit
                             && degenerate
                             && segments == 0
                         {
-                            // This contour has emitted no piece. Keep no
-                            // empty start, only its point.
-                            self.spline.starts.pop();
-                            self.omitted.0 += 1;
-                            self.omitted.1.get_or_insert(a);
+                            self.omit(a)?;
                         } else if !self.finish(a, b, degenerate)? {
                             return Ok(None);
                         }
                         current = Some(a);
+                        classified = source_start;
                         closed = true;
                     }
                 }
@@ -687,15 +732,30 @@ impl Builder<'_> {
         if let (Some(a), Some(b)) = (start, current)
             && !closed
             && segments > 0
-            && !self.finish(a, b, degenerate)?
+            && (self.mismatched(degenerate, mapped) || !self.finish(a, b, degenerate)?)
         {
             return Ok(None);
         }
-        let point = self.omitted.1.filter(|_| self.omitted.0 == 1);
         Ok(
             (self.point_contours == PointContours::Keep || !self.spline.pieces.is_empty())
-                .then_some((self.spline, point)),
+                .then_some((self.spline, self.points)),
         )
+    }
+
+    /// Whether a contour repeats its start only once mapped, where the
+    /// mode leaves points out: the pieces would keep a contour the polygon
+    /// takes as a point.
+    fn mismatched(&self, degenerate: bool, mapped: bool) -> bool {
+        self.point_contours == PointContours::OmitAll && degenerate != mapped
+    }
+
+    /// Leaves out the contour just begun, which has emitted no piece, and
+    /// records its point.
+    fn omit(&mut self, point: Point) -> Result<()> {
+        self.spline.starts.pop();
+        self.bytes.reserve_capacity(&mut self.points, 1)?;
+        self.points.push(point);
+        Ok(())
     }
 
     /// Adds the pieces of a line or curve from the mapped point `a`, the
@@ -737,13 +797,33 @@ impl Builder<'_> {
     }
 
     /// Closes a contour; `false` for a geometric point, which keeps the
-    /// polygon's point rule.
+    /// polygon's point rule unless the mode leaves every one out.
     fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> Result<bool> {
         if degenerate {
+            if self.point_contours == PointContours::OmitAll {
+                self.omit(start)?;
+                return Ok(true);
+            }
             return Ok(false);
         }
         self.line(current, start)?;
         Ok(true)
+    }
+}
+
+/// Whether every mapped control of `segment`, drawn from the source point
+/// `from`, repeats the mapped contour start, as the polygon classifies a
+/// point: a quadratic by its elevated cubic's controls.
+fn repeats(segment: Segment, from: Option<Point>, start: Option<Point>, linear: Transform) -> bool {
+    let same = |p: Point| Some(p * linear) == start;
+    match segment {
+        Segment::LineTo(p) => same(p),
+        Segment::CubicTo { c1, c2, end } => [c1, c2, end].into_iter().all(same),
+        Segment::QuadTo { control, end } => from.is_some_and(|from| {
+            let [c1, c2] = Segment::elevated(from, control, end);
+            [c1, c2, end].into_iter().all(same)
+        }),
+        Segment::MoveTo(_) | Segment::Close => true,
     }
 }
 

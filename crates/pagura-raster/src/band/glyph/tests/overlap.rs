@@ -52,12 +52,15 @@ fn per_placement(outline: &Path, linear: [f64; 4], limits: &Limits) -> Arc<Glyph
     let Kind::Polygon { state, .. } = &mut edges.kind else {
         panic!("an uncertified polygon");
     };
-    let PolygonState::Resolved { source, .. } = state else {
-        panic!("resolved sides");
-    };
-    *state = PolygonState::Checked {
-        source: Some(Arc::clone(source)),
-    };
+    match state {
+        PolygonState::Resolved { source, .. } => {
+            *state = PolygonState::Checked {
+                source: Some(Arc::clone(source)),
+            };
+        }
+        PolygonState::Checked { source } => assert!(source.is_some()),
+        PolygonState::Certified { .. } => panic!("an uncertified polygon"),
+    }
     Arc::new(edges)
 }
 
@@ -340,4 +343,145 @@ fn chains_that_never_part_keep_the_polygon() {
             ..
         }
     ));
+}
+
+/// Places `outline` at fractional origins as prepared and through the
+/// per-placement polygon, which must give the same bytes, and returns the
+/// prepared edges.
+fn polygon_bytes(outline: &Path, linear: [f64; 4]) -> Arc<GlyphEdges> {
+    let limits = Limits::default();
+    let options = options(&limits);
+    let prep = Prep::new(&options, None);
+    let edges = Arc::new(GlyphEdges::new(outline, linear, &limits).unwrap());
+    let old = per_placement(outline, linear, &limits);
+    for fraction in [0.0, 0.125, 0.3, 0.5, 0.71, 0.97] {
+        let origin = Point::new(5.0 + fraction, 6.0 + (fraction * 7.0).fract());
+        let shape = place(&edges, origin, &prep).unwrap().unwrap();
+        let expected = place(&old, origin, &prep).unwrap().unwrap();
+        let (actual, work) = crate::testing::raster(&options.area, Some(&shape), None);
+        let (bytes, _) = crate::testing::raster(&options.area, Some(&expected), None);
+        assert_eq!(actual, bytes, "{linear:?} {origin:?}");
+        assert!(work <= shape.work());
+    }
+    edges
+}
+
+/// `outline`'s contours, then geometric points: an explicit closed move
+/// inside the shapes, a quadratic that never leaves its start outside them,
+/// and a final unclosed line back to its start on an edge.
+fn dotted(outline: &Path) -> Path {
+    let mut path = PathBuilder::new();
+    for segment in outline.segments() {
+        match *segment {
+            Segment::MoveTo(p) => path.move_to(p),
+            Segment::LineTo(p) => path.line_to(p).unwrap(),
+            Segment::QuadTo { control, end } => path.quad_to(control, end).unwrap(),
+            Segment::CubicTo { c1, c2, end } => path.cubic_to(c1, c2, end).unwrap(),
+            Segment::Close => path.close(),
+        };
+    }
+    path.move_to(Point::new(5.25, 5.5));
+    path.close();
+    let q = Point::new(11.6, 1.3);
+    path.move_to(q);
+    path.quad_to(q, q).unwrap();
+    path.close();
+    let r = Point::new(1.0, 4.0);
+    path.move_to(r);
+    path.line_to(r).unwrap();
+    path.finish()
+}
+
+#[test]
+fn point_cells_join_covered_sets_that_wind_as_they_do() {
+    for linear in [[1.0, 0.0, 0.0, 1.0], [1.5, 0.0, 0.25, 1.25]] {
+        // Blobs wound like the cells, -1: overlapping, kept as a set.
+        let edges = polygon_bytes(&dotted(&outline(false, false)), linear);
+        let Kind::Union { points, .. } = &edges.kind else {
+            panic!("a covered set with its points");
+        };
+        assert_eq!(points.len(), 3);
+        // Wound +1 and overlapping, or both ways: the polygon keeps them.
+        for (first, second) in [(true, true), (false, true)] {
+            let edges = polygon_bytes(&dotted(&outline(first, second)), linear);
+            assert!(matches!(edges.kind, Kind::Polygon { .. }));
+        }
+        // Wound +1 without overlapping: the set winds as the spline does.
+        let mut apart = PathBuilder::new();
+        blob(&mut apart, (3.0, 3.0, 2.5), true);
+        blob(&mut apart, (10.0, 8.0, 2.5), true);
+        let edges = polygon_bytes(&dotted(&apart.finish()), linear);
+        assert!(matches!(edges.kind, Kind::Union { .. }));
+    }
+}
+
+#[test]
+fn spline_points_are_the_polygons_points() {
+    let limits = Limits::default();
+    let points = |path: &Path, linear: Transform| {
+        let mut bytes = crate::testing::bytes();
+        let spline = curve::points_spline(path, linear, &limits, &mut bytes).unwrap();
+        let (_, polygon) = polygon(path, linear, &limits, &mut bytes).unwrap();
+        (spline.map(|(_, points)| points), polygon)
+    };
+    let square = |path: &mut PathBuilder| {
+        path.move_to(Point::new(0.0, 0.0));
+        path.line_to(Point::new(4.0, 0.0)).unwrap();
+        path.quad_to(Point::new(4.0, 4.0), Point::new(0.0, 4.0))
+            .unwrap();
+        path.close();
+    };
+    let linear = Transform::new(1.5, 0.25, -0.5, 1.25, 0.0, 0.0);
+    // Explicit closed moves, degenerate curves and lines, closed or not,
+    // and a trailing move, which is no point.
+    let mut path = PathBuilder::new();
+    square(&mut path);
+    path.move_to(Point::new(1.0, 1.0));
+    path.close();
+    path.move_to(Point::new(2.0, 1.0));
+    path.quad_to(Point::new(2.0, 1.0), Point::new(2.0, 1.0))
+        .unwrap();
+    path.close();
+    path.move_to(Point::new(3.0, 2.0));
+    path.line_to(Point::new(3.0, 2.0)).unwrap();
+    square(&mut path);
+    path.move_to(Point::new(5.0, 5.0));
+    let path = path.finish();
+    let (spline, polygon) = points(&path, linear);
+    assert_eq!(polygon.len(), 3);
+    assert_eq!(spline, Some(polygon));
+    // Contours reopened at their start after a close, by a line and by a
+    // curve: the pieces compare them with the last source point, the
+    // polygon with the start.
+    for curve in [false, true] {
+        let mut path = PathBuilder::new();
+        square(&mut path);
+        if curve {
+            path.quad_to(Point::new(0.0, 0.0), Point::new(0.0, 0.0))
+                .unwrap();
+        } else {
+            path.line_to(Point::new(0.0, 0.0)).unwrap();
+        }
+        path.move_to(Point::new(1.0, 1.0));
+        path.close();
+        let (spline, polygon) = points(&path.finish(), linear);
+        assert_eq!(polygon.len(), 2);
+        assert_eq!(spline, None);
+    }
+    // A move followed by a move, a point only the polygon sees.
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(1.0, 1.0));
+    square(&mut path);
+    assert_eq!(points(&path.finish(), linear).0, None);
+    // A side that collapses to a point only once mapped.
+    let mut path = PathBuilder::new();
+    square(&mut path);
+    path.move_to(Point::new(0.0, 1.0));
+    path.line_to(Point::new(2.0_f64.powi(-60), 1.0)).unwrap();
+    path.close();
+    let path = path.finish();
+    let shear = Transform::new(1.0, 0.0, 1.0, 1.0, 0.0, 0.0);
+    let (spline, polygon) = points(&path, shear);
+    assert_eq!(polygon.len(), 1);
+    assert_eq!(spline, None);
 }
