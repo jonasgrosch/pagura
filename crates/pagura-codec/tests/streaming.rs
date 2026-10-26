@@ -26,7 +26,7 @@ fn streamed(input: &[u8], dimensions: (u32, u32), options: Options, split: usize
     )
     .unwrap();
     let admitted = encoder.retained_bytes();
-    let (mut position, mut bytes) = (0, Vec::new());
+    let (mut position, mut bytes) = (0_usize, Vec::new());
     loop {
         match encoder.advance().unwrap() {
             EncodingOutput::Chunk(chunk) => bytes.extend_from_slice(chunk.bytes()),

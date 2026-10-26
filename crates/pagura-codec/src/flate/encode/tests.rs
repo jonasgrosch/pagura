@@ -8,7 +8,7 @@ fn chunks(input: &[u8], level: Level, split: usize) -> Vec<u8> {
     let mut bytes = Meter::new(2 * 1024 * 1024, "test scratch");
     let mut encoder = Compressor::new(input.len(), level, &mut bytes).unwrap();
     let admitted = bytes.used();
-    let (mut position, mut output) = (0, Vec::new());
+    let (mut position, mut output) = (0_usize, Vec::new());
     loop {
         let end = position.saturating_add(split).min(input.len());
         position += encoder.push(&input[position..end]).unwrap();
