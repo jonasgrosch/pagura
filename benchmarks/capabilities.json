@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "7ef79e2b679e05429367225761ff6ae544744d2a",
+  "audited_revision": "9657b4c380cd749e7469fb286fac8e9e93d0df3a",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -62,7 +62,7 @@
     "crates/pagura-core/src/syntax.rs": "ba59c9d5ddd4813b1885c93a30a4586d9a007d8fef70b7637888f9c2cc11d912",
     "crates/pagura-core/src/syntax/direct.rs": "d5d927d5cf97282fefd984916baa17b8a0cace89a028f4fb65695e4ea2da9b83",
     "crates/pagura-core/src/syntax/window.rs": "123a89bc0bf8428613cd0bea6b2816080009058cf61125ea582910472f9e8ef2",
-    "crates/pagura-core/tests/windows.rs": "e89453378e9354ed94aae183c38cd699597f5e5cb3c080ea9616104d5f1a7021",
+    "crates/pagura-core/tests/windows.rs": "dd3cae760fd83054bb3309ed8e8b19b3b18b5e907b74e41f6b0a7f9bc44ccc8b",
     "crates/pagura-crypto/src/hash/md5.rs": "b73634cbd9549de7c1893096b2fe61bb2e1fd4b238cab05a2509008925a64af0",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
