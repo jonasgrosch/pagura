@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct. Legacy post4 cmap admission and format8 numeric-code groups have paired controls. Supplementary numeric codes are isolated from literal-byte fallback; no UTF-16 stream-decoding or family-conformance claim. CFF2 FontDICT probes use current context-specific ignored-operator semantics; preserved legacy and omitted-Top observations remain explicitly separate.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct. Legacy post4 cmap admission and format8 numeric-code groups have paired controls. Supplementary numeric codes are isolated from literal-byte fallback; no UTF-16 stream-decoding or family-conformance claim. CFF2 FontDICT probes use current context-specific ignored-operator semantics; preserved legacy and omitted-Top observations remain explicitly separate. Type 1 sbw controls retain complete glyph metrics while checking PDF-owned advances in ordinary and rotated text.",
   "cases": [
     {
       "id": "control.blank",
@@ -441,6 +441,84 @@
         "width": 64,
         "height": 64,
         "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-horizontal-control-normal",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-horizontal-control-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6d6a45d06d68226bfb18796ee325b0cd799bc7d77b0dde9e1dfb25ea1fdfc7b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-horizontal-control-rotated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-horizontal-control-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-up-normal",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-up-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6d6a45d06d68226bfb18796ee325b0cd799bc7d77b0dde9e1dfb25ea1fdfc7b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-up-rotated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-up-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-down-normal",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-down-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6d6a45d06d68226bfb18796ee325b0cd799bc7d77b0dde9e1dfb25ea1fdfc7b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-down-rotated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-down-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
         "tolerance": 0
       }
     }

@@ -996,7 +996,8 @@
         "expectations": "Repeated unknown operators and non-matrix arity do not taint the following Private pair. Literal controls retain number syntax, 513/514 operand limits, duplicate known-operator rejection and exact 7/6 work and 1/0 entry boundaries. The original cff2-font-dict-matrix bytes are unchanged; the formerly Unsupported vector now expects its independent untransformed 200x400 outline. Nine diagnostic PDFs/oracles are preserved exactly; no tolerance changes.",
         "diagnostic": "Run40397598168 at fdfc47c1e82c700057ea5d23999e1d024ec1fa6d, Ubuntu12 cases/84 cells: Pagura passes8 controls and refuses4 matrix subjects. Hayro passes the paired CID no-matrix control, but applies the legacy matrix for explicit Top.001/FD2 and omitted Top/FD.002, producing the separately authored20x40 rectangle rather than current-rule10x20. Other baselines fail the paired CFF2 control, so their matrix cells do not establish format-specific gaps. MuPDF and PDF.js pass the explicit-Top CFF1 control. The omitted-Top CFF1 observation is unresolved and excluded from acceptance; no CFF1 product change is made.",
         "artifacts": "Linux report artifact12687168595 ZIP SHA256 763a9df7cff0b36950ebcb6ee43a15efbc987f0d0f94c25c97131b6649c8f8c0; report SHA256 ea7a6a90c330062312b7aa3da5f1a6987b4e26098dcca590df6a033d30982369. Pixel artifact12686938657 ZIP SHA256 b3844355c64d922806e3f7fbfc6dad4bee198f3410276b1bbeb164303f6c10d6. The historical run and all its hypotheses remain unchanged.",
-        "scope": "Current and historical CFF2 share a version2 header, so automatic selection cannot satisfy both interpretations of the same bytes. A legacy policy remains open; this implementation does not claim legacy matrix parity. Other TopDICT/PrivateDICT operator-validation obligations are outside this change. Current implementation and 34 integrated rendering controls await hosted acceptance."
+        "scope": "Current and historical CFF2 share a version2 header, so automatic selection cannot satisfy both interpretations of the same bytes. A legacy policy remains open; this implementation does not claim legacy matrix parity. Other TopDICT/PrivateDICT operator-validation obligations are outside this change. All 34 integrated rendering controls pass in run40403532318 at95249301d; full functional validation is still pending on macOS/Windows after Ubuntu passed.",
+        "acceptance": "Run40403532318 measures merge2f89cbc28efafa544ce6c0a50ea2552886b724b4: 34/34 Pagura observations, 238 total cells. Combined artifact12690375705 ZIP SHA256 a1b179444cdc51d405f656c682c70fbfc00825e7fa136325cd62ceafc5c0f826; report SHA256 760e50b5a5d106b05f5e72d884f0744464c69641b3cb1051a62087128b5a86a5. This is scoped render acceptance, not full CFF2 conformance or legacy matrix parity."
       }
     },
     {
@@ -1058,9 +1059,26 @@
         "font/review-type1-length-65535",
         "font/review-type1-length-65536",
         "font/review-type1-close-line",
-        "font/review-type1-setcurrentpoint"
+        "font/review-type1-setcurrentpoint",
+        "font/type1-advance-horizontal",
+        "font/type1-advance-up",
+        "font/type1-advance-down",
+        "font/type1-advance-vertical",
+        "font/type1-advance-negative",
+        "font/type1-advance-duplicate",
+        "font/type1-advance-arity",
+        "font/type1-advance-nonfinite",
+        "font/type1-advance-width-only",
+        "font/type1-advance-seac",
+        "font/type1-advance-seac-y-mismatch",
+        "font_formats/type1-advance-horizontal-control-normal",
+        "font_formats/type1-advance-horizontal-control-rotated",
+        "font_formats/type1-advance-up-normal",
+        "font_formats/type1-advance-up-rotated",
+        "font_formats/type1-advance-down-normal",
+        "font_formats/type1-advance-down-rotated"
       ],
-      "gaps": "Static extraction is not complete PostScript execution or structural validation. Hybrid/synthetic programs and nonhorizontal sbw advances are explicitly unsupported. PFB packaging and lenIV -1 require the unavailable TN 5040/5015.",
+      "gaps": "Static extraction is not complete PostScript execution or structural validation. Hybrid/synthetic programs remain explicitly unsupported. PFB packaging and lenIV -1 require the unavailable TN 5040/5015.",
       "tables": [
         "124",
         "125"
@@ -1132,12 +1150,29 @@
           "item": "sbw",
           "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
           "locator": "6.1-6.4",
-          "rule": "sbx,sby,wx,wy set the bearing and advance; nonhorizontal advances are explicitly unsupported by this API.",
-          "verdict": "agrees for unhinted outlines",
-          "implementation": "agrees for unhinted outlines",
-          "expectations": "Independent generated vectors agree with this rule.",
+          "rule": "sbx,sby set the current point and sidebearing; wx,wy form the complete advance vector. Width-only API returns its horizontal component; seac must match both base advance components and its bearing.",
+          "verdict": "implemented; new vector and PDF controls await hosted acceptance",
+          "implementation": "The existing Type 1 glyph state retains a Point advance. hsbw uses (wx,0); sbw uses (wx,wy). Existing finite-operand, arity, duplicate-width and work/entry checks are unchanged. No new parser or public metric API; PDF text layout retains its dictionary widths.",
+          "expectations": "Eleven original native vectors cover both signs, a vertical vector, duplicate/invalid widths, width-only stopping and seac y agreement. Six complete embedded-font PDFs pair horizontal/up/down advances at ordinary and rotated text matrices; independent rectangles check two PDF-spaced glyphs. Existing 331 native records and 34 render controls are unchanged.",
           "vectors": [
-            "font/review-type1-sbw"
+            "font/review-type1-sbw",
+            "font/type1-advance-horizontal",
+            "font/type1-advance-up",
+            "font/type1-advance-down",
+            "font/type1-advance-vertical",
+            "font/type1-advance-negative",
+            "font/type1-advance-duplicate",
+            "font/type1-advance-arity",
+            "font/type1-advance-nonfinite",
+            "font/type1-advance-width-only",
+            "font/type1-advance-seac",
+            "font/type1-advance-seac-y-mismatch",
+            "font_formats/type1-advance-horizontal-control-normal",
+            "font_formats/type1-advance-horizontal-control-rotated",
+            "font_formats/type1-advance-up-normal",
+            "font_formats/type1-advance-up-rotated",
+            "font_formats/type1-advance-down-normal",
+            "font_formats/type1-advance-down-rotated"
           ]
         },
         {

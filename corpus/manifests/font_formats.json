@@ -563,6 +563,126 @@
       "width": 64,
       "height": 64,
       "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-horizontal-control-normal",
+      "kind": "pdf",
+      "description": "type1 advance horizontal control normal",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-horizontal-control-normal.pdf",
+      "sha256": "cdd9129de8024bcec536794c37b465692eb81955f3ec76e18e02bad865911169",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-horizontal-control-normal.ppm",
+      "oracle_sha256": "ed079e9b457a909fc81077f8ce4484b3b03e0af6c4158a0ffbf4aa24d9037d7e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-horizontal-control-rotated",
+      "kind": "pdf",
+      "description": "type1 advance horizontal control rotated",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-horizontal-control-rotated.pdf",
+      "sha256": "89664187a1e362b4cc3513a39ff48670ffac6f72876898258bad403ba7895291",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-horizontal-control-rotated.ppm",
+      "oracle_sha256": "9d5c76d3772783df77f61dd9d1269c9502267423b4549b3a3530a868274f4663",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-up-normal",
+      "kind": "pdf",
+      "description": "type1 advance up normal",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-up-normal.pdf",
+      "sha256": "294398843ad3325704129aafe5924bdfb999c63787328318ec6547ea2ce83f56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-up-normal.ppm",
+      "oracle_sha256": "ed079e9b457a909fc81077f8ce4484b3b03e0af6c4158a0ffbf4aa24d9037d7e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-up-rotated",
+      "kind": "pdf",
+      "description": "type1 advance up rotated",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-up-rotated.pdf",
+      "sha256": "14a1278538315ad1767cfd4a809044ce59b32e3cf2d30626ef2d6aa68f488c56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-up-rotated.ppm",
+      "oracle_sha256": "9d5c76d3772783df77f61dd9d1269c9502267423b4549b3a3530a868274f4663",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-down-normal",
+      "kind": "pdf",
+      "description": "type1 advance down normal",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-down-normal.pdf",
+      "sha256": "a83ecd776940a268508b08b91b1cd9cee93b89c39a6af91a26287962fb107152",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-down-normal.ppm",
+      "oracle_sha256": "ed079e9b457a909fc81077f8ce4484b3b03e0af6c4158a0ffbf4aa24d9037d7e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-down-rotated",
+      "kind": "pdf",
+      "description": "type1 advance down rotated",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-down-rotated.pdf",
+      "sha256": "80451a107208795889383b0491fdb63a3f9d163ba82d361c5ec4d971502c6551",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-down-rotated.ppm",
+      "oracle_sha256": "9d5c76d3772783df77f61dd9d1269c9502267423b4549b3a3530a868274f4663",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
     }
   ]
 }

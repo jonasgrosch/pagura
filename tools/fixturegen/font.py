@@ -535,6 +535,7 @@ def cases():
     yield from glyph_name_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
+    yield from type1_advance_cases()
 
 
 def metadata_font(charset_kind=0, encoding_kind=0, charset_format=0):
@@ -953,7 +954,8 @@ def recovery_cases():
 
 
 def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
-                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A", notdef_last=False):
+                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A", notdef_last=False,
+                 glyphs=None, font_name=None):
     """Type 1 2.4/7.3/10.3: explicit procedures and length-delimited cipher bytes."""
     reader, define, put = aliases
     bodies = [b"string currentfile exch readstring pop", b"def" if short else b"noaccess def",
@@ -967,32 +969,72 @@ def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
                             for name,body in zip(aliases,bodies))
     clear = (b"%!PS-AdobeFont-1.0: Static 1.0\n/FontType 1 def\n"
              b"/FontMatrix [0.001 0 0 0.001 0 0] def\n/Encoding StandardEncoding def\n")
+    if font_name is not None:
+        # Complete, independently constructed font dictionary for PDF controls
+        # (Type 1 chapters 2/5/10); existing parser-only vectors retain their bytes.
+        clear = (b"%!PS-AdobeFont-1.0: " + font_name + b" 1.0\n12 dict begin\n"
+                 b"/FontType 1 def\n/FontName /" + font_name + b" def\n/PaintType 0 def\n"
+                 b"/FontBBox [-100 -100 1000 1000] def\n"
+                 b"/FontMatrix [0.001 0 0 0.001 0 0] def\n/Encoding StandardEncoding def\n")
     if clear_definitions:
         clear += b"userdict begin\n"+declarations+b"end\n"
-    clear += b"currentfile eexec\n"
+    clear += (b"currentdict end\n" if font_name is not None else b"") + b"currentfile eexec\n"
     private = b"dup /Private 8 dict dup begin\n"
     if not clear_definitions:
         private += declarations
+    if font_name is not None:
+        private += b"/BlueValues [] def\n/MinFeature [16 16] def\n/password 5839 def\n"
     private += b"/lenIV 4 def\n/Subrs "+str(subrs).encode()+b" array\n"
     line = (operands(100,0)+b"\x05"+operands(0,200)+b"\x05"+operands(-100,0)+b"\x05\x0b")
     for i in range(subrs):
         cipher = encrypt(bytes(4)+(line if i==0 else b"\x0b"),4330)
         private += b"dup "+str(i).encode()+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+put+b"\n"
-    private += define+b"\n2 index /CharStrings "+(b"4" if duplicate==b"" else b"3" if duplicate is not None else b"2")+b" dict dup begin\n"
     width = operands(0,600)+b"\x0d"
-    glyphs = [(b".notdef",width+b"\x0e"),
-              (glyph_name,width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
+    glyphs = list(glyphs) if glyphs is not None else [
+        (b".notdef",width+b"\x0e"),
+        (glyph_name,width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
     if notdef_last:
         glyphs.reverse()
     if duplicate is not None:
         if duplicate==b"":
             glyphs.append((b"",width+b"\x0e"))
         glyphs.append((duplicate,operands(0,800)+b"\x0d\x0e"))
+    private += define+b"\n2 index /CharStrings "+str(len(glyphs)).encode()+b" dict dup begin\n"
     for name, program in glyphs:
         cipher = encrypt(bytes(4)+program,4330)
         private += b"/"+name+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+define+b"\n"
-    private += b"end end readonly put noaccess put\ncurrentfile closefile\n"
+    private += b"end end readonly put noaccess put\n"
+    if font_name is not None:
+        private += b"dup /FontName get exch definefont pop\n"
+    private += b"currentfile closefile\n"
     return clear+encrypt(bytes(4)+private,55665)
+
+
+def type1_advance_cases():
+    """Type 1 6.4: sbw retains both advance components; PDF uses its own widths."""
+    end, sbw = b"\x0e", b"\x0c\x07"
+    move, line = operands(0,0)+b"\x15", operands(12,0)+b"\x05"
+    def emit(name, program, expected, extra=()):
+        glyphs = [(b'.notdef',operands(0,600)+b'\x0d\x0e'),(b'A',program),*extra]
+        return vector('type1-advance-'+name,static_type1(glyphs=glyphs,font_name=b'Advance'),
+                      expected,'font-type1','type1')
+    for name, wx, wy in [('horizontal',600,0),('up',600,200),('down',600,-200),
+                         ('vertical',0,600),('negative',-300,200)]:
+        yield emit(name,operands(3,4,wx,wy)+sbw+move+line+end,
+                   f'advance 1 {wx}\noutline 1\nm 3 4\nl 15 4\nh\n')
+    valid = operands(3,4,600,200)+sbw
+    for name, program in [('duplicate',valid+valid+end),('arity',operands(3,4,600)+sbw+end),
+                          ('nonfinite',operands(3,4,600,1,0)+b'\x0c\x0c'+sbw+end)]:
+        yield emit(name,program,'outline-error 1\n')
+    # Width-only access intentionally stops before later malformed drawing.
+    yield emit('width-only',valid+b'\x05'+end,'advance 1 600\noutline-error 1\n')
+    base = operands(20,40,600,200)+sbw+move+line+end
+    accent = operands(10,50,0,0)+sbw+move+line+end
+    for name, wy in [('seac',200),('seac-y-mismatch',201)]:
+        composite = operands(20,40,600,wy)+sbw+operands(10,30,200,65,194)+b'\x0c\x06'
+        expected = ('advance 2 600\noutline 2\nm 20 40\nl 32 40\nh\nm 40 250\nl 52 250\nh\n'
+                    if wy==200 else 'advance 2 600\noutline-error 2\n')
+        yield emit(name,base,expected,[(b'Aacute',composite),(b'acute',accent)])
 
 
 def static_font_cases():

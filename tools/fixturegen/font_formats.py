@@ -4,7 +4,7 @@ OpenType post versions 2.0/2.5 and PDF 9.6.5.4. Version 2.5 uses the
 historical 0x00025000 tag and signed offsets into standard Macintosh names.
 These original fonts share outlines, metrics and cmap bytes within each pair.
 """
-from .font import cff_font, truetype, u16, u32
+from .font import cff_font, operands, static_type1, truetype, u16, u32
 from .paint import BLACK, FONT, case
 from .pdf import stream
 from .text import text_cmap_records
@@ -137,6 +137,29 @@ def cff_matrix_cases():
                    rectangles=[((4, 4, width, height), BLACK)], requirement='font-cff', size=64)
 
 
+def type1_advance_cases():
+    # Glyph coordinates and font-space width are independent of PDF text
+    # positioning (Type 1 6.4; PDF 9.4.4/9.6.2). Both glyphs stay on the same
+    # PDF baseline even when sbw's second advance component is nonzero.
+    path = (operands(0,0)+b'\x15'+operands(100,0)+b'\x05'
+            +operands(0,200)+b'\x05'+operands(-100,0)+b'\x05\x09\x0e')
+    for name, wy in [('horizontal-control',0),('up',200),('down',-200)]:
+        glyphs = [(b'.notdef',operands(0,600)+b'\x0d\x0e'),
+                  (b'A',operands(20,40,600,wy)+b'\x0c\x07'+path)]
+        program = static_type1(glyphs=glyphs,font_name=b'Advance')
+        length1 = program.index(b'currentfile eexec\n')+len(b'currentfile eexec\n')
+        font = (b'<< /Type /Font /Subtype /Type1 /BaseFont /Advance /FirstChar 65 /LastChar 65 '
+                b'/Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>')
+        descriptor = (b'<< /Type /FontDescriptor /FontName /Advance /Flags 32 /FontBBox [-100 -100 1000 1000] '
+                      b'/ItalicAngle 0 /Ascent 1000 /Descent -100 /CapHeight 240 /StemV 50 /FontFile 7 0 R >>')
+        objects = [font,descriptor,stream(program,b'/Length1 %d /Length2 %d /Length3 0' % (length1,len(program)-length1))]
+        for rotation, matrix, rectangles in [
+            ('normal',b'1 0 0 1 4 4',[((5,6,5,10),BLACK),((35,6,5,10),BLACK)]),
+            ('rotated',b'0 1 -1 0 60 4',[((48,5,10,5),BLACK),((48,35,10,5),BLACK)])]:
+            yield case('type1-advance-'+name+'-'+rotation,b'BT /F 50 Tf '+matrix+b' Tm (AA) Tj ET',
+                       objects,FONT,rectangles,requirement='font-type1',size=64)
+
+
 def cases():
     # GID 1 is the existing independent 100 x 200 unit rectangle. At 100 pt,
     # its visible area is 10 x 20 pixels, independently of the 600-unit advance.
@@ -154,3 +177,4 @@ def cases():
                        requirement=REQUIREMENT)
     yield from cmap_cases()
     yield from cff_matrix_cases()
+    yield from type1_advance_cases()

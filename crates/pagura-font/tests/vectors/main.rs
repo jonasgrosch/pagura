@@ -784,6 +784,25 @@ fn primary_text_type1_vectors_0() {
 }
 
 #[test]
+fn type1_advance_vectors_preserve_bearings_and_complete_composite_metrics() {
+    for name in [
+        "horizontal",
+        "up",
+        "down",
+        "vertical",
+        "negative",
+        "duplicate",
+        "arity",
+        "nonfinite",
+        "width-only",
+        "seac",
+        "seac-y-mismatch",
+    ] {
+        vector(&format!("type1-advance-{name}"), FontFormat::Type1);
+    }
+}
+
+#[test]
 fn indexed_program_names_preserve_aliases_charsets_and_notdef_order() {
     for (name, format) in [
         ("post-alias", FontFormat::TrueType),

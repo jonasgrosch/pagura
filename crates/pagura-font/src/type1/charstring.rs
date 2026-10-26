@@ -5,8 +5,8 @@ use crate::budget::Work;
 use crate::cff::strings;
 use crate::charstring::{Flow, Operands, integer, shared_number};
 use crate::outline::{Pen, finite};
-use crate::read::{syntax, unsupported};
-use crate::{GlyphId, features, repairs};
+use crate::read::syntax;
+use crate::{GlyphId, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Position, Result};
@@ -39,10 +39,10 @@ enum Mode {
     Width,
 }
 
-/// One glyph's outline, advance width and side-bearing point.
+/// One glyph's outline, complete advance vector and side-bearing point.
 struct Glyph {
     path: Path,
-    width: f64,
+    width: Point,
     bearing: Point,
 }
 
@@ -68,7 +68,7 @@ struct State {
     results: Operands<MAX_OPERANDS>,
     pen: Pen,
     point: Point,
-    width: Option<f64>,
+    width: Option<Point>,
     bearing: Point,
     seac: Option<Seac>,
     flex: Option<Flex>,
@@ -87,7 +87,7 @@ pub(super) fn outline(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Resu
 }
 
 pub(super) fn advance(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Result<f64> {
-    run(font, glyph, Mode::Width, work).map(|g| g.width)
+    run(font, glyph, Mode::Width, work).map(|g| g.width.x)
 }
 
 fn run(font: &Type1, glyph: GlyphId, mode: Mode, work: &mut Work<'_>) -> Result<Glyph> {
@@ -254,7 +254,7 @@ impl Run<'_, '_> {
                     let &[sbx, wx] = s.operands.exactly(2, at)? else {
                         return Err(syntax(at, "invalid Type 1 operand count"));
                     };
-                    s.set_width(Point::new(sbx, 0.0), wx, at)?;
+                    s.set_width(Point::new(sbx, 0.0), Point::new(wx, 0.0), at)?;
                 }
                 Operator::Endchar => {
                     s.operands.exactly(0, at)?;
@@ -309,17 +309,7 @@ impl Run<'_, '_> {
                 let &[sbx, sby, wx, wy] = s.operands.exactly(4, at)? else {
                     return Err(syntax(at, "invalid Type 1 operand count"));
                 };
-                if s.width.is_some() {
-                    return Err(syntax(at, "duplicate Type 1 width"));
-                }
-                if wy != 0.0 {
-                    return Err(unsupported(
-                        features::TYPE1_POSTSCRIPT,
-                        at,
-                        "nonhorizontal Type 1 advance is not implemented",
-                    ));
-                }
-                s.set_width(Point::new(sbx, sby), wx, at)?;
+                s.set_width(Point::new(sbx, sby), Point::new(wx, wy), at)?;
             }
             Escape::Div => {
                 let b = s.operands.pop(at)?;
@@ -344,7 +334,7 @@ impl Run<'_, '_> {
 }
 
 impl State {
-    fn set_width(&mut self, bearing: Point, width: f64, at: Position) -> Result<()> {
+    fn set_width(&mut self, bearing: Point, width: Point, at: Position) -> Result<()> {
         if self.width.is_some() {
             return Err(syntax(at, "duplicate Type 1 width"));
         }
