@@ -40,7 +40,7 @@
     "crates/pagura-color/src/function/calculator/check.rs": "42eca4b64aa07d0f6a5fec0177bde1890195e7d67625366b5326603198dd493d",
     "crates/pagura-color/src/icc.rs": "ed05e2a69ba236e9206e2a0c6bf165d86010c0fd22a0aa1dd6e1b87a36eb96a5",
     "crates/pagura-color/src/space.rs": "f2701dff5339c5aa6ff3a05eecae4dfe2e33f8949c5684858664d95348747019",
-    "crates/pagura-color/src/space/retained.rs": "51148ba1ef7ae3f229a1615bb1382d2b1dab8202862a9ceddf3490ff8790f309",
+    "crates/pagura-color/src/space/retained.rs": "7547bc9face6ede46693a540566cddff4b8dcb148a18fbc2e4eecab0ec5e001a",
     "crates/pagura-color/tests/sycc.rs": "ebd03c04b7b8a9c4cab1e452ff07e6771fefa4fd3cec4c0edfea5702a97df2b2",
     "crates/pagura-core/src/error.rs": "c43b6a9db6cc264930a0fc4639d602fcc5ab39415965b948df2dff5f3b58fe9a",
     "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",

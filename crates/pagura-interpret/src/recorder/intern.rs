@@ -27,6 +27,8 @@ pub(super) struct Interner {
     paint_ids: FastMap<usize, PaintId>,
     pens: Vec<Arc<Pen>>,
     pen_ids: FastMap<usize, PenId>,
+    /// The ICC profiles of the recorded colour spaces, charged once each.
+    pub(super) profiles: owned::Profiles,
 }
 
 /// A composite state by value; functions by identity, which the interned
@@ -121,7 +123,8 @@ impl Interner {
             + bytes.map_bytes(&self.paint_ids)?
             + bytes.map_bytes(&self.pen_ids)?
             + self.clip_arcs.capacity() * size_of::<Arc<Clip>>()
-            + self.clip_arcs.len() * (owned::ARC + size_of::<Clip>());
+            + self.clip_arcs.len() * (owned::ARC + size_of::<Clip>())
+            + self.profiles.index_bytes(bytes)?;
         let Self {
             clips,
             states,
@@ -133,9 +136,10 @@ impl Interner {
             solid_ids,
             paint_ids,
             pen_ids,
+            profiles,
         } = self;
         drop((
-            clip_ids, clip_arcs, state_ids, solid_ids, paint_ids, pen_ids,
+            clip_ids, clip_arcs, state_ids, solid_ids, paint_ids, pen_ids, profiles,
         ));
         bytes.refund(released);
         Ok((clips, states, paints, pens))
@@ -180,6 +184,7 @@ impl Interner {
             return Ok(id);
         }
         bytes.charge(owned::paint(paint))?;
+        self.profiles.charge(owned::paint_space(paint), bytes)?;
         let id = PaintId(index(self.paints.len())?);
         bytes.reserve_capacity(&mut self.paints, 1)?;
         match &solid {

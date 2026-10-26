@@ -1,6 +1,8 @@
 //! Retained resolved colour-space ownership, including shared child roots.
 
 use super::{ColorSpace, Colorant};
+use crate::icc::Profile;
+use std::sync::Arc;
 
 const ARC: usize = 2 * size_of::<usize>();
 
@@ -92,6 +94,27 @@ impl ColorSpace {
             current = next;
         }
     }
+
+    /// The ICC profiles along this space and its chain of child spaces,
+    /// each of which [`Self::retained_bytes`] counts with its Arc counter.
+    pub fn profiles(&self) -> impl Iterator<Item = &Arc<Profile>> {
+        std::iter::successors(Some(self), |space| match space {
+            Self::Icc(space) => Some(space.alternate.as_ref()),
+            Self::Indexed(space) => Some(space.base.as_ref()),
+            Self::Separation(space) => Some(space.alternate.as_ref()),
+            Self::DeviceN(space) => Some(space.alternate.as_ref()),
+            Self::Pattern(base) => base.as_deref(),
+            Self::DeviceGray
+            | Self::DeviceRgb
+            | Self::DeviceCmyk
+            | Self::Sycc
+            | Self::Calibrated(_) => None,
+        })
+        .filter_map(|space| match space {
+            Self::Icc(space) => space.profile.as_ref(),
+            _ => None,
+        })
+    }
 }
 
 fn name(colorant: &Colorant) -> usize {
@@ -107,6 +130,36 @@ mod tests {
     use crate::{DeviceN, ExponentialFunction, Function, Indexed};
     use pagura_core::Name;
     use std::sync::Arc;
+
+    #[test]
+    fn profiles_are_found_along_the_chain() {
+        let bytes = pagura_testkit::fixture("color", "sampled-rgb.icc");
+        let profile = Arc::new(
+            Profile::parse(&bytes, 3, &pagura_core::Limits::default())
+                .unwrap()
+                .unwrap(),
+        );
+        let icc = Arc::new(ColorSpace::Icc(Arc::new(crate::IccSpace {
+            profile: Some(Arc::clone(&profile)),
+            alternate: Arc::new(ColorSpace::DeviceRgb),
+            components: 3,
+            range: [[0.0, 1.0]; 4],
+            object: None,
+        })));
+        let indexed = ColorSpace::Indexed(Arc::new(Indexed {
+            base: Arc::clone(&icc),
+            high: 0,
+            lookup: vec![0; 3].into(),
+        }));
+        let pattern = ColorSpace::Pattern(Some(Arc::new(indexed.clone())));
+        for space in [icc.as_ref(), &indexed, &pattern] {
+            let found: Vec<_> = space.profiles().collect();
+            assert_eq!(found.len(), 1);
+            assert!(Arc::ptr_eq(found[0], &profile));
+        }
+        assert_eq!(ColorSpace::DeviceRgb.profiles().count(), 0);
+        assert_eq!(ColorSpace::Pattern(None).profiles().count(), 0);
+    }
 
     #[test]
     fn indexed_and_devicen_owners_include_tables_spare_capacity_and_long_names() {
