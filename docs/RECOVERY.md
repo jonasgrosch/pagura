@@ -12,6 +12,9 @@ Informational diagnostics (`DiagnosticKind::Information`, ADR 0003/0009):
 `font.substituted` reports permitted non-embedded font substitution;
 `font.cid-glyph-missing` reports incomplete substitute coverage once per font,
 keeping the PDF advance while an unavailable glyph paints nothing.
+`pages.contents-undefined` reports a page whose `/Contents` refers to an
+undefined object: the reference is null (7.3.10), so the page renders without
+content instead of failing, and the report keeps that page from looking complete.
 `form.appearance-kept` reports keeping an untouched field's valid stored
 appearance when generating a replacement is unsupported. These information
 diagnostics are permitted in Strict and Repair modes and are not applied

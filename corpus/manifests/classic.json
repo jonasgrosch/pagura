@@ -254,6 +254,9 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
+      "information": [
+        "pages.contents-undefined"
+      ],
       "oracle": "corpus/generated/classic/undefined-contents-is-null.ppm",
       "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
       "dpi": 72,

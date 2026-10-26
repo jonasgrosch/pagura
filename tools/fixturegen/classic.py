@@ -71,7 +71,7 @@ def cases():
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << >> /Contents 99 0 R >>",
     ]), RENDER, BASE + ("undefined-reference-null",),
         "Contents refers to an object that does not exist: null, so the page has no content (Table 31)",
-        oracle=opaque_rectangles(64, 64, []))
+        oracle=opaque_rectangles(64, 64, []), information=("pages.contents-undefined",))
     trailing = render("trailing-bytes", "data after the final %%EOF is a reported repair",
                       [b"0 g 0 0 8 8 re f\n"], [((0, 0, 8, 8), BLACK)], tail=b"garbage\n",
                       requirements=("recovery-reported",))
