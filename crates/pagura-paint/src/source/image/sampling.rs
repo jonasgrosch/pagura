@@ -76,6 +76,16 @@ impl Scratch {
             Self::Contour(_) => {}
         }
     }
+
+    /// Reads rows of texels converted the `kind` way from now on, keeping
+    /// the rows of others apart. Only nearest samples, which only
+    /// separable plans hold rows of, convert other than exactly: upright
+    /// bilinear rows are always exact.
+    pub(super) fn select(&mut self, kind: u8) {
+        if let Self::Separable(scratch) = self {
+            scratch.select(kind);
+        }
+    }
 }
 
 impl Sampling {

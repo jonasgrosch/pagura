@@ -160,7 +160,8 @@ pub(super) trait Rows {
 /// Runs of background (`false`) and other samples of a row.
 pub(super) type Runs = Vec<(usize, usize, bool)>;
 
-/// Source rows kept between spans, by row, over the samples they hold.
+/// Source rows kept between spans, by row, over the samples they hold,
+/// and by how their values were made.
 #[derive(Debug)]
 pub(super) struct RowCache<V> {
     entries: Vec<Kept<V>>,
@@ -168,6 +169,8 @@ pub(super) struct RowCache<V> {
     next: usize,
     /// Scratch of the rows being filled.
     runs: Runs,
+    /// How the rows read now are made; rows kept otherwise serve none.
+    kind: u8,
 }
 
 impl<V> Default for RowCache<V> {
@@ -176,16 +179,19 @@ impl<V> Default for RowCache<V> {
             entries: Vec::new(),
             next: 0,
             runs: Vec::new(),
+            kind: 0,
         }
     }
 }
 
-/// One kept row: values of samples `first..end` of row `row`.
+/// One kept row: values of samples `first..end` of row `row`, made the
+/// `kind` way.
 #[derive(Debug)]
 struct Kept<V> {
     row: usize,
     first: usize,
     end: usize,
+    kind: u8,
     values: Vec<V>,
 }
 
@@ -199,17 +205,16 @@ impl<V: Copy + Default> RowCache<V> {
         n: usize,
         fill: impl FnOnce(&mut [V], &mut Runs) -> bool,
     ) -> &[V] {
-        let found = self
-            .entries
-            .iter()
-            .position(|kept| kept.row == y && kept.first <= first && end <= kept.end);
+        let found = self.entries.iter().position(|kept| {
+            kept.row == y && kept.kind == self.kind && kept.first <= first && end <= kept.end
+        });
         let index = found.unwrap_or_else(|| {
             let index = self.next % self.entries.len().max(1);
             self.next = index + 1;
             if let Some(kept) = self.entries.get_mut(index) {
                 // Filling writes every value.
                 if fill(grown(&mut kept.values, (end - first) * n), &mut self.runs) {
-                    (kept.row, kept.first, kept.end) = (y, first, end);
+                    (kept.row, kept.first, kept.end, kept.kind) = (y, first, end, self.kind);
                 } else {
                     // A row that cannot be read is not kept.
                     kept.values.clear();
@@ -334,6 +339,7 @@ impl Layout {
                 row: usize::MAX,
                 first: 0,
                 end: 0,
+                kind: 0,
                 values: allocate(source)?,
             });
         }
@@ -342,6 +348,7 @@ impl Layout {
                 entries,
                 next: 0,
                 runs: allocate(self.columns.saturating_add(1))?,
+                kind: 0,
             },
             sums: allocate(source)?,
             gathered: allocate(output)?,
@@ -381,6 +388,12 @@ impl Scratch {
         }
         clear(&mut self.codes.cache.entries);
         clear(&mut self.texels.cache.entries);
+    }
+
+    /// Reads texel rows made the `kind` way from now on; rows kept of
+    /// another kind stay, and serve again when it returns.
+    pub(super) fn select(&mut self, kind: u8) {
+        self.texels.cache.kind = kind;
     }
 }
 
