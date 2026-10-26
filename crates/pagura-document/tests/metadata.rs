@@ -100,6 +100,8 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
                 .unwrap()
                 .information()
                 .unwrap_err()
+                .as_error()
+                .unwrap()
                 .kind,
             ErrorKind::Syntax
         );
@@ -108,12 +110,17 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
         .unwrap()
         .information()
         .unwrap_err();
-    assert_eq!(field_error.object, Some(ObjectId::new(8, 0)));
+    assert_eq!(
+        field_error.as_error().unwrap().object,
+        Some(ObjectId::new(8, 0))
+    );
     assert_eq!(
         open("info-cycle", &OpenOptions::default())
             .unwrap()
             .information()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Cycle
     );
@@ -122,6 +129,8 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
             .unwrap()
             .language()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Syntax
     );
@@ -136,6 +145,8 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
                 .unwrap()
                 .metadata()
                 .unwrap_err()
+                .as_error()
+                .unwrap()
                 .kind,
             ErrorKind::Syntax
         );
@@ -145,6 +156,8 @@ fn malformed_types_and_cycles_fail_at_the_lazy_view_boundary() {
             .unwrap()
             .metadata()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Cycle
     );
@@ -160,7 +173,10 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
         .unwrap()
         .information()
         .unwrap_err();
-    assert_eq!(error.repair, Some(pagura_core::repairs::INVALID_TEXT));
+    assert_eq!(
+        error.as_error().unwrap().repair,
+        Some(pagura_core::repairs::INVALID_TEXT)
+    );
     let document = open("invalid-text", &OpenOptions::default()).unwrap();
     assert_eq!(
         document.information().unwrap().unwrap().title.as_deref(),
@@ -170,7 +186,7 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
         document
             .diagnostics()
             .iter()
-            .any(|d| d.repair() == error.repair)
+            .any(|d| d.repair() == error.as_error().unwrap().repair)
     );
     for limits in [
         Limits {
@@ -190,7 +206,10 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
             },
         )
         .unwrap();
-        assert_eq!(document.information().unwrap_err().kind, ErrorKind::Limit);
+        assert_eq!(
+            document.information().unwrap_err().as_error().unwrap().kind,
+            ErrorKind::Limit
+        );
     }
     let document = open(
         "populated-flate",
@@ -210,6 +229,8 @@ fn text_recovery_and_resource_limits_are_not_silent_successes() {
             .unwrap()
             .data()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );

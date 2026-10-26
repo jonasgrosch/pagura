@@ -2,7 +2,7 @@
 use crate::{
     FontKind, descriptor::Descriptor, features, objects::optional, repairs, report::Report,
 };
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
 use pagura_document::source::ReadResult;
@@ -81,7 +81,7 @@ fn load_stream(
             .into_iter()
             .map(|diagnostic| diagnostic.within(start).in_object(id)),
     )?;
-    result.map_err(|error| error.within(start))
+    Ok(result.map_err(|error| error.within(start))?)
 }
 
 /// The program length a font stream's `Length1` to `Length3` declare, as an
@@ -284,7 +284,8 @@ fn format(
         },
         _ => None,
     };
-    result.ok_or_else(|| Error::syntax("font program binding disagrees with PDF font subtype"))
+    Ok(result
+        .ok_or_else(|| Error::syntax("font program binding disagrees with PDF font subtype"))?)
 }
 
 #[cfg(test)]

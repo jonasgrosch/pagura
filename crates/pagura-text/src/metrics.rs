@@ -179,11 +179,16 @@ impl Metrics {
     }
 }
 
-fn code(document: &Document, font: &Dictionary, key: &[u8], message: &'static str) -> Result<u8> {
+fn code(
+    document: &Document,
+    font: &Dictionary,
+    key: &[u8],
+    message: &'static str,
+) -> ReadResult<u8> {
     optional(document, font, key)?
         .and_then(Value::as_integer)
         .and_then(|value| u8::try_from(value).ok())
-        .ok_or(Error::syntax(message))
+        .ok_or_else(|| Error::syntax(message).into())
 }
 
 struct Budget {
@@ -347,7 +352,7 @@ fn cid(document: &Document, value: &Value) -> ReadResult<Cid> {
         .resolve(value)?
         .as_integer()
         .and_then(Cid::from_integer)
-        .ok_or(Error::syntax("CID outside 16-bit range"))
+        .ok_or_else(|| Error::syntax("CID outside 16-bit range").into())
 }
 
 fn scaled(document: &Document, value: &Value, scale: f64) -> ReadResult<f64> {

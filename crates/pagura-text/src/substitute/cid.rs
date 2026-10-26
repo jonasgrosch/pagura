@@ -7,7 +7,7 @@ use crate::{
     metrics::Metrics,
     report::Report,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Result};
+use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId};
 use pagura_document::Document;
 use pagura_document::source::ReadResult;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
@@ -20,7 +20,7 @@ pub(crate) fn load(
     provider: &dyn Provider,
 ) -> ReadResult<PdfFont> {
     let Mapping::Composite { map, .. } = &mapping else {
-        return Err(unavailable());
+        return Err(unavailable().into());
     };
     if map.mode == WritingMode::Vertical {
         return Err(Error::unsupported(

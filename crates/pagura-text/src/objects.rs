@@ -18,7 +18,8 @@ pub(crate) fn required<'a>(
     dict: &'a Dictionary,
     key: &[u8],
 ) -> ReadResult<&'a Value> {
-    optional(document, dict, key)?.ok_or_else(|| Error::syntax("missing required font entry"))
+    Ok(optional(document, dict, key)?
+        .ok_or_else(|| Error::syntax("missing required font entry"))?)
 }
 pub(crate) fn array(value: &Value) -> Result<&[Value]> {
     value
@@ -51,7 +52,7 @@ pub(crate) fn number(
     default: f64,
 ) -> ReadResult<f64> {
     optional(document, dict, key)?.map_or(Ok(default), |v| {
-        v.as_number()
-            .ok_or_else(|| Error::syntax("font entry is not a finite number"))
+        Ok(v.as_number()
+            .ok_or_else(|| Error::syntax("font entry is not a finite number"))?)
     })
 }

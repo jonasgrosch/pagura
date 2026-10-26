@@ -10,7 +10,7 @@ use crate::{
     objects::{array, numbers, optional, required},
     selection::Route,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Value};
 use pagura_document::Document;
 use pagura_document::source::ReadResult;
 use pagura_raster::Transform;
@@ -162,7 +162,7 @@ fn kind(document: &Document, font: &Dictionary) -> ReadResult<FontKind> {
     required(document, font, b"Subtype")?
         .as_name()
         .and_then(|name| FontKind::from_subtype(name.as_bytes()))
-        .ok_or(Error::syntax("invalid font Subtype"))
+        .ok_or_else(|| Error::syntax("invalid font Subtype").into())
 }
 
 fn composite_mapping(
@@ -189,7 +189,11 @@ fn simple_mapping(
     builtin: Option<&encoding::Encoding>,
 ) -> ReadResult<SimpleMapping> {
     if kind == FontKind::TrueType && route == Route::Raw {
-        return SimpleMapping::new(std::array::from_fn(|_| None), &document.limits(), b"");
+        return Ok(SimpleMapping::new(
+            std::array::from_fn(|_| None),
+            &document.limits(),
+            b"",
+        )?);
     }
     let default = match builtin {
         Some(builtin) if kind != FontKind::TrueType => builtin.clone(),
@@ -206,11 +210,11 @@ fn simple_mapping(
             }
         }
     }
-    SimpleMapping::new(
+    Ok(SimpleMapping::new(
         names,
         &document.limits(),
         encoding::font_name(document, font)?,
-    )
+    )?)
 }
 
 fn type3(document: &Document, font: &Dictionary) -> ReadResult<PdfFont> {

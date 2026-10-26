@@ -7,7 +7,7 @@ use crate::{
     cmap::{self, CMap, CMapRole, Code},
     objects::{optional, required},
 };
-use pagura_core::{Dictionary, Error, Position, Result, Value};
+use pagura_core::{Dictionary, Error, Position, Value};
 use pagura_document::Document;
 use pagura_document::source::{ReadFault, ReadResult};
 use std::sync::Arc;
@@ -155,7 +155,7 @@ fn collection_unicode(
     let Some((registry, ordering)) = collection(document, font, mapping)? else {
         return Ok(None);
     };
-    provider.cid_to_unicode(registry, ordering)
+    Ok(provider.cid_to_unicode(registry, ordering)?)
 }
 
 fn collection<'a>(

@@ -10,7 +10,7 @@ use crate::{
     report::Report,
     selection::Route,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Position, Result};
+use pagura_core::{Diagnostic, Dictionary, Error, Position};
 use pagura_document::Document;
 use pagura_document::source::ReadResult;
 use std::sync::Arc;
@@ -38,7 +38,7 @@ pub(crate) fn load(
     position: Position,
 ) -> ReadResult<PdfFont> {
     if !matches!(kind, FontKind::Type1 | FontKind::TrueType) {
-        return Err(unavailable());
+        return Err(unavailable().into());
     }
     let base = required(document, font, b"BaseFont")?
         .as_name()
@@ -49,13 +49,13 @@ pub(crate) fn load(
         .transpose()?;
     let symbolic = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
     if symbolic && !standard.is_some_and(Standard14::is_symbolic) {
-        return Err(unavailable());
+        return Err(unavailable().into());
     }
     let selected = match standard {
         Some(face) => face,
         None => match (descriptor, flags) {
             (Some(descriptor), Some(flags)) => closest(document, descriptor, flags)?,
-            _ => return Err(unavailable()),
+            _ => return Err(unavailable().into()),
         },
     };
     let data = provider
@@ -147,7 +147,7 @@ fn closest(
     flags: FontFlags,
 ) -> ReadResult<Standard14> {
     if flags.contains(FontFlags::SYMBOLIC) {
-        return Err(unavailable());
+        return Err(unavailable().into());
     }
     let italic = flags.contains(FontFlags::ITALIC)
         || number(document, descriptor.dictionary, b"ItalicAngle", 0.0)? != 0.0;

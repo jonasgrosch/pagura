@@ -628,7 +628,7 @@ fn load_inner(
     budget: &mut Budget,
 ) -> ReadResult<Arc<CMap>> {
     if let Some(name) = document.resolve(value)?.as_name() {
-        return predefined(name, role, provider);
+        return Ok(predefined(name, role, provider)?);
     }
     let id = value
         .as_reference()

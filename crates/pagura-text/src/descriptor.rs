@@ -1,6 +1,6 @@
 //! Font descriptors (9.8): flags and embedded font programs.
 use crate::{objects::optional, repairs, report::Report};
-use pagura_core::{Diagnostic, Dictionary, ObjectId, Position, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, ObjectId, Position, Value};
 use pagura_document::Document;
 use pagura_document::source::ReadResult;
 

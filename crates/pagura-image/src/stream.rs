@@ -1,5 +1,5 @@
 //! Narrow parameter recovery before image dispatch (7.3.8.1 Table 5, 7.4.1).
-use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Position, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Position, Value};
 use pagura_document::source::{ReadFault, ReadResult};
 use pagura_document::{Document, ImageStream, IndirectObject};
 

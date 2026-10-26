@@ -6,7 +6,7 @@ use super::SourceMask;
 use crate::jpx_image::Jpx;
 use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameters as p, stream};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Value};
 use pagura_document::source::ReadResult;
 use pagura_document::{Document, IndirectObject, StreamData};
 use std::borrow::Cow;
@@ -355,12 +355,12 @@ fn decode_array(document: &Document, value: &Value, components: u8) -> ReadResul
     }
     decode
         .iter()
-        .map(|v| {
-            document
+        .map(|v| -> ReadResult<f64> {
+            Ok(document
                 .resolve(v)?
                 .as_number()
                 .filter(|v| v.is_finite())
-                .ok_or(Error::syntax("invalid Decode value"))
+                .ok_or(Error::syntax("invalid Decode value"))?)
         })
         .collect()
 }
@@ -380,11 +380,11 @@ fn matte(document: &Document, object: pagura_core::ObjectId) -> ReadResult<Optio
         .as_array()
         .ok_or(Error::syntax("invalid image Matte"))?
         .iter()
-        .map(|v| {
-            document
+        .map(|v| -> ReadResult<f64> {
+            Ok(document
                 .resolve(v)?
                 .as_number()
-                .ok_or(Error::syntax("invalid Matte component"))
+                .ok_or(Error::syntax("invalid Matte component"))?)
         })
         .collect::<ReadResult<Vec<_>>>()
         .map(Some)

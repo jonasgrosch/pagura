@@ -1,6 +1,6 @@
 //! Mask identity, precedence and colour-key validation (8.9.6).
 use crate::MaskKind;
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
 use pagura_document::Document;
 use pagura_document::source::ReadResult;
 
@@ -78,8 +78,8 @@ pub(crate) fn read_for(
         for (component, pair) in ranges.as_chunks::<2>().0.iter().enumerate() {
             let bits = bits(component).ok_or(Error::syntax("missing image component precision"))?;
             let max = u16::MAX >> (16 - bits);
-            let sample = |v| {
-                u16::try_from(
+            let sample = |v| -> ReadResult<u16> {
+                Ok(u16::try_from(
                     document
                         .resolve(v)?
                         .as_integer()
@@ -87,7 +87,7 @@ pub(crate) fn read_for(
                 )
                 .ok()
                 .filter(|&v| v <= max)
-                .ok_or(Error::syntax("colour key out of range"))
+                .ok_or(Error::syntax("colour key out of range"))?)
             };
             let (low, high) = (sample(&pair[0])?, sample(&pair[1])?);
             if low > high {
