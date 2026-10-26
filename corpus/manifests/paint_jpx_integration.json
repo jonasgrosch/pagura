@@ -255,6 +255,21 @@
       "render_error": "syntax"
     },
     {
+      "id": "paint_jpx_integration/signed-icc-sample-boundary",
+      "kind": "pdf",
+      "description": "Malformed or unavailable metadata remains explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-icc-sample-boundary.pdf",
+      "sha256": "7e128a3fd95447ab57b41231014e17d93bc23c918a4bbc04ed6b7ef2cc898746",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.JPX-colour"
+    },
+    {
       "id": "paint_jpx_integration/explicit-overrides-all-candidates",
       "kind": "pdf",
       "description": "explicit overrides all candidates",

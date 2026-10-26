@@ -724,7 +724,8 @@
         "paint_jpx_integration/lab-input-16",
         "paint_jpx_integration/lab-alpha-1",
         "paint_jpx_integration/lab-alpha-2",
-        "paint_jpx_integration/premultiplied-inverted-decode"
+        "paint_jpx_integration/premultiplied-inverted-decode",
+        "paint_jpx_integration/signed-icc-sample-boundary"
       ],
       "review": [
         {

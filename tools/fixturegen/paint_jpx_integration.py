@@ -91,6 +91,7 @@ def profile_choices():
                b'<< /XObject << /I 5 0 R >> >>', rectangles, requirement=ICC, tolerance=1)
     yield bad_image('malformed-selected-profile', container(planes, [colr(3, b'broken', 3), colr(2, exact, 2)]))
     yield bad_image('invalid-jpx-approximation', container(planes, [colr(2, exact, 0, 0)]))
+    yield bad_image('signed-icc-sample-boundary', encoded(planes, exact, signed=True), error='image.JPX-colour')
     yield image_case('explicit-overrides-all-candidates', container(planes, [colr(3, b'broken', 3), colr(1, struct.pack('>I', 19), 2)]),
                      b'/Filter /JPXDecode /ColorSpace /DeviceRGB', [], 3, 1, colors=samples, requirement=ICC)
 
