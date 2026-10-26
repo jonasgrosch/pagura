@@ -9,6 +9,7 @@ import struct
 from dataclasses import replace
 
 from . import jpx, jpx_layout_probe as layout
+from .model import Vector
 
 AREA = 'jpx_fragment_probe'
 REQUIREMENT = 'jpx-pdf-contract'
@@ -109,8 +110,8 @@ def cases():
                                         'evidence_scope': 'Independent internal-fragment diagnostic; runtime evidence is separate'})
 
     for name, spans in [
-        ('fragment-offset-outside', [(2**64 - 1, 1)]),
-        ('fragment-extent-outside', [(12, 2**32 - 1)]),
+        ('fragment-offset-outside', [(4096, 1)]),
+        ('fragment-extent-outside', [(12, 4096)]),
     ]:
         data = prefix(header, (13,)) + jpx.box(b'ftbl', fragment_list(spans))
         yield jpx.rejection(name, data, (REQUIREMENT,),
@@ -121,3 +122,7 @@ def cases():
     data = prefix(header, (13,)) + jpx.box(b'ftbl', truncated)
     yield jpx.rejection('fragment-count-truncated', data, (REQUIREMENT,),
                         'T.801 Table M.17: NF equals the number of complete fourteen-byte records')
+    data = prefix(header, (13,)) + jpx.box(b'ftbl', fragment_list([(2**64 - 1, 1)]))
+    yield Vector('fragment-offset-overflow', {'.jpx': data, '.error': b'limit\n'}, (REQUIREMENT,),
+                 'CONTRIBUTING offset policy: address-space narrowing or OFF+LEN overflow is Limit',
+                 extra={'error': 'limit'})

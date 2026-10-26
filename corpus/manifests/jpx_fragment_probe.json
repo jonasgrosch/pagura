@@ -594,7 +594,7 @@
         },
         ".jpx": {
           "path": "corpus/generated/jpx_fragment_probe/fragment-offset-outside.jpx",
-          "sha256": "1c270d1cd45f6ffc8439baec9f0cd2ac3fe4c27a507eba6f94b9fbd2f4f3f249"
+          "sha256": "7bec2350f420a51b1dedee50aedbb0edd41e77f30fabbc4ecf1f4ce4f03dd4f8"
         }
       },
       "error": "syntax"
@@ -613,7 +613,7 @@
         },
         ".jpx": {
           "path": "corpus/generated/jpx_fragment_probe/fragment-extent-outside.jpx",
-          "sha256": "06296056ae9c36b71490231689c7baed48ac883e286051cee3f4df4727e19d08"
+          "sha256": "2fd79ec34e4e223c16e74470447b55d152df100e3203ec276963d0683b2891a0"
         }
       },
       "error": "syntax"
@@ -636,6 +636,25 @@
         }
       },
       "error": "syntax"
+    },
+    {
+      "id": "jpx_fragment_probe/fragment-offset-overflow",
+      "kind": "vector",
+      "description": "CONTRIBUTING offset policy: address-space narrowing or OFF+LEN overflow is Limit",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-offset-overflow.error",
+          "sha256": "26cf4afeefce254d72e986b71559c81f546b01de5856e1b8a1be11d8ad3216b8"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_fragment_probe/fragment-offset-overflow.jpx",
+          "sha256": "1c270d1cd45f6ffc8439baec9f0cd2ac3fe4c27a507eba6f94b9fbd2f4f3f249"
+        }
+      },
+      "error": "limit"
     }
   ]
 }

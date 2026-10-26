@@ -1518,7 +1518,8 @@
         "jpx_fragment_probe/later-image-fragments-rgb-control",
         "jpx_fragment_probe/fragment-offset-outside",
         "jpx_fragment_probe/fragment-extent-outside",
-        "jpx_fragment_probe/fragment-count-truncated"
+        "jpx_fragment_probe/fragment-count-truncated",
+        "jpx_fragment_probe/fragment-offset-overflow"
       ],
       "comparisons": {
         "pdfium": "unprobed",

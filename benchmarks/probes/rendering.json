@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Private R02/R03 diagnostic: six ordered in-file JPX fragment/reference subjects, each with unchanged-codestream JP2, flat-jpxb and RGB controls, plus blank/rectangle. Product remains identical to 20011ead5. T.801 M.9.2.5/.6/.7 and M.11.3/.3.1/.4/.9, corrected Cor.4 reader requirements. No external data providers, engine-derived expectations, timing or family support claims. Three malformed vectors are outside the rendering denominator. The retained PR full manifest must not be replaced by this reduced diagnostic.",
+  "scope": "Private R02/R03 diagnostic: six ordered in-file JPX fragment/reference subjects, each with unchanged-codestream JP2, flat-jpxb and RGB controls, plus blank/rectangle. Product remains identical to 20011ead5. T.801 M.9.2.5/.6/.7 and M.11.3/.3.1/.4/.9, corrected Cor.4 reader requirements. No external data providers, engine-derived expectations, timing or family support claims. Three malformed vectors and one arithmetic/address-space Limit boundary are outside the rendering denominator. The retained PR full manifest must not be replaced by this reduced diagnostic.",
   "cases": [
     {
       "id": "control.blank",
