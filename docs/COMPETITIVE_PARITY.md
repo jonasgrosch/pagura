@@ -429,7 +429,7 @@ attachment authorization. EF/RF context selects attachment crypt filters even
 when the stream omits its optional Type; an explicit Identity filter retains
 its meaning. Hosted library checks passed in
 [run 40263961382](https://github.com/jonasgrosch/pagura/actions/runs/40263961382).
-Annotation discovery, collection/encrypted-payload models, semantic validation,
+CLI/host/viewer annotation selection, collection/encrypted-payload models, semantic validation,
 streaming, writes and CLI/host AF/RF selection remain open; this does not complete D02.
 
 **Metadata implementation started:** `8b328025a502cd9b7a3c5c61f2bac94aea12f5a9` adds typed Info strings and
@@ -477,13 +477,25 @@ selection/authentication, native/WASI/client parity and stale dialog callbacks.
 These host/viewer checks are pending hosted validation. Streaming and
 semantic/date/MIME/profile validation remain open.
 
+**Attachment annotation views:** `Page::attachment_annotations` discovers page
+FileAttachment entries separately from catalog EmbeddedFiles and AF views. It
+preserves original indexes, resolved annotation/FS/payload identities, normalized
+geometry, Contents text and declared/default icon names. FS/Desc does not replace
+annotation Contents. Thirty-six independent fixtures cover page-only attachments,
+reference/geometry indirection, external files, duplicates, malformed/late failures,
+reported Unicode repair, budgets, compressed and encrypted payloads. Discovery
+keeps payload decoding and authorization lazy; no file is activated. Library/facade
+source checks pass, while hosted runtime checks are pending. CLI/host/viewer
+annotation selection and icon appearance/activation remain separate work.
+
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
 existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are
 consumed and converted to straight RGBA in place. CLI `render`/`convert` accepts
 `--format png` and optional `--transparent`; default PPM behavior is preserved.
 Independent Python decoding checks pixels, CRC/chunk framing and zlib completion;
-API tests cover caller budgets and in-place conversion. Hosted runtime checks
-are pending. This is whole-buffer output; incremental PNG/DEFLATE, persistent
+API tests cover caller budgets and in-place conversion. Hosted Linux/macOS/Windows
+checks pass at `2b314bc5c` in
+[run 40271087997](https://github.com/jonasgrosch/pagura/actions/runs/40271087997). This is whole-buffer output; incremental PNG/DEFLATE, persistent
 jobs, ancillary color metadata and backpressure remain open. Host/viewer export
 is covered by the next slice.
 

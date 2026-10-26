@@ -117,7 +117,9 @@ integration. Milestone numbers are outcomes, not completion claims.
   viewer controls add bounded catalog reads and explicit byte downloads; hosted
   Linux/macOS/Windows checks passed. Library/CLI and protocol 1.10/viewer size and checksum checks now
   distinguish absent declarations, matches and mismatches; their hosted checks
-  are pending. Annotation discovery, AF/RF host selection, streaming,
+  are pending. Library page attachment-annotation discovery now has source identity,
+  geometry and lazy file handles; its hosted checks are pending. Annotation
+  CLI/host/viewer selection, AF/RF host selection, streaming,
   attachment writes, metadata validation/writes, portfolios
   and remaining export APIs remain D02 work; whole-buffer PNG is connected to the
   facade, CLI, protocol 1.9 and an explicit viewer download with disposable form
