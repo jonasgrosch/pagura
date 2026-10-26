@@ -1,6 +1,6 @@
 //! Independent literal syntax at nonzero source offsets, including sparse holes.
 
-use pagura_core::syntax::Parser;
+use pagura_core::syntax::{ParseFault, Parser, WindowInput};
 use pagura_core::{ErrorKind, Limits, Name, Position, Recovery, Result, Value};
 use pagura_document::source::{
     ByteRange, ByteSource, CompleteBytes, LoadingLimits, ReadFault, SourceIdentity, SourceLimits,
@@ -24,13 +24,23 @@ fn reader(source: Arc<dyn ByteSource>, at: u64) -> Result<Window> {
     Window::new(source, at, Limits::default(), LoadingLimits::default())
 }
 
+// Free functions quantify the lease lifetime; an inherent Parser method item
+// fixes its input lifetime before the source window invokes it.
+fn value(parser: &mut Parser<'_, WindowInput>) -> std::result::Result<Value, ParseFault> {
+    parser.parse()
+}
+
+fn unsigned(parser: &mut Parser<'_, WindowInput>) -> std::result::Result<u64, ParseFault> {
+    parser.unsigned()
+}
+
 #[test]
 fn complete_and_sparse_windows_finish_before_unrelated_missing_bytes() {
     let literal = b"<< /N /A#20B /S (text) /V [true false null] >>";
     let source = sparse(1024).unwrap();
     source.supply(ID, 311, literal).unwrap();
     let mut window = reader(source.clone(), 311).unwrap();
-    let parsed = window.read(Parser::parse).unwrap();
+    let parsed = window.read(value).unwrap();
     let dictionary = parsed.value.as_dictionary().unwrap();
     assert_eq!(dictionary.get(b"N"), Some(&Value::Name(Name::new(b"A B"))));
     assert_eq!(dictionary.get(b"S"), Some(&Value::String(b"text".to_vec())));
@@ -61,7 +71,7 @@ fn complete_and_sparse_windows_finish_before_unrelated_missing_bytes() {
     .unwrap();
     let other = reader(Arc::new(complete), 311)
         .unwrap()
-        .read(Parser::parse)
+        .read(value)
         .unwrap();
     assert_eq!(other.value, parsed.value);
     assert_eq!(other.offset, parsed.offset);
@@ -120,14 +130,14 @@ fn malformed_available_prefix_is_terminal_even_when_later_bytes_are_missing() {
     let source = sparse(512).unwrap();
     source.supply(ID, 103, b"12x").unwrap();
     let mut window = reader(source.clone(), 103).unwrap();
-    let Err(ReadFault::Invalid(error)) = window.read(Parser::unsigned) else {
+    let Err(ReadFault::Invalid(error)) = window.read(unsigned) else {
         panic!("invalid unsigned token")
     };
     assert_eq!(error.kind, ErrorKind::Syntax);
     assert_eq!(error.position, Position::File(106));
     let work = window.work();
     source.supply(ID, 106, b" ").unwrap();
-    let Err(ReadFault::Invalid(again)) = window.read(Parser::unsigned) else {
+    let Err(ReadFault::Invalid(again)) = window.read(unsigned) else {
         panic!("terminal result")
     };
     assert_eq!(again, error);
@@ -139,7 +149,7 @@ fn malformed_available_prefix_is_terminal_even_when_later_bytes_are_missing() {
 fn complete_eof_and_extendable_boundary_have_distinct_meanings() {
     let truncated = sparse(5).unwrap();
     truncated.supply(ID, 2, b"(ab").unwrap();
-    let Err(ReadFault::Invalid(error)) = reader(truncated, 2).unwrap().read(Parser::parse) else {
+    let Err(ReadFault::Invalid(error)) = reader(truncated, 2).unwrap().read(value) else {
         panic!("truncated literal at EOF")
     };
     assert_eq!(error.kind, ErrorKind::Syntax);
@@ -148,13 +158,13 @@ fn complete_eof_and_extendable_boundary_have_distinct_meanings() {
     let source = sparse(6).unwrap();
     source.supply(ID, 2, b"(ab").unwrap();
     let mut window = reader(source.clone(), 2).unwrap();
-    let Err(ReadFault::Unavailable(missing)) = window.read(Parser::parse) else {
+    let Err(ReadFault::Unavailable(missing)) = window.read(value) else {
         panic!("literal can be extended")
     };
     assert_eq!(missing.ranges(), &[ByteRange::new(5, 6).unwrap()]);
     source.supply(ID, 5, b")").unwrap();
     assert_eq!(
-        window.read(Parser::parse).unwrap().value,
+        window.read(value).unwrap().value,
         Value::String(b"ab".to_vec())
     );
 }
@@ -176,7 +186,7 @@ fn window_growth_and_repeated_units_share_one_cumulative_work_budget() {
     );
     let mut window = reader(source.clone(), 0).unwrap();
     assert_eq!(
-        window.read(Parser::parse).unwrap().value,
+        window.read(value).unwrap().value,
         Value::String(vec![b'x'; 300])
     );
     assert_eq!(window.offset(), 302);
@@ -193,10 +203,10 @@ fn window_growth_and_repeated_units_share_one_cumulative_work_budget() {
     ] {
         let mut bounded = Window::new(source.clone(), 0, Limits::default(), loading).unwrap();
         assert!(
-            matches!(bounded.read(Parser::parse), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Limit)
+            matches!(bounded.read(value), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Limit)
         );
         let work = bounded.work();
-        assert!(bounded.read(Parser::parse).is_err());
+        assert!(bounded.read(value).is_err());
         assert_eq!(bounded.work(), work);
     }
 
@@ -213,12 +223,12 @@ fn window_growth_and_repeated_units_share_one_cumulative_work_budget() {
     )
     .unwrap();
     assert_eq!(
-        window.read(Parser::parse).unwrap().value,
+        window.read(value).unwrap().value,
         Value::String(b"a".to_vec())
     );
     assert_eq!(window.offset(), 3);
     assert!(
-        matches!(window.read(Parser::parse), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Limit)
+        matches!(window.read(value), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Limit)
     );
     assert_eq!(window.offset(), 3);
 }
@@ -229,10 +239,7 @@ fn unchanged_availability_does_not_hide_source_closure_or_conflicting_supply() {
         let source = sparse(8).unwrap();
         source.supply(ID, 0, b"(ab").unwrap();
         let mut window = reader(source.clone(), 0).unwrap();
-        assert!(matches!(
-            window.read(Parser::parse),
-            Err(ReadFault::Unavailable(_))
-        ));
+        assert!(matches!(window.read(value), Err(ReadFault::Unavailable(_))));
         let generation = source.generation();
         let work = window.work();
         if conflict {
@@ -242,7 +249,7 @@ fn unchanged_availability_does_not_hide_source_closure_or_conflicting_supply() {
         }
         assert_eq!(source.generation(), generation);
         assert!(
-            matches!(window.read(Parser::parse), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::InvalidArgument)
+            matches!(window.read(value), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::InvalidArgument)
         );
         assert_eq!(window.work(), work);
     }
@@ -263,10 +270,7 @@ fn declared_length_and_window_positions_obey_the_same_target_size_boundary() {
     let source = Arc::new(source.unwrap());
     source.supply(ID, length - 4, b"true").unwrap();
     let mut window = Window::new(source, length - 4, limits, LoadingLimits::default()).unwrap();
-    assert_eq!(
-        window.read(Parser::parse).unwrap().value,
-        Value::Boolean(true)
-    );
+    assert_eq!(window.read(value).unwrap().value, Value::Boolean(true));
     assert_eq!(window.offset(), length);
     assert!(window.work() < 10);
 
