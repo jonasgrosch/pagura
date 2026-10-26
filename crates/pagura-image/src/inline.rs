@@ -48,6 +48,54 @@ fn expand_space(value: &Value) -> Value {
 
 pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
     let dict = expanded(dictionary)?;
+    framed_length(&dict, content, None)
+}
+
+pub(crate) fn data_length_with_resources(
+    document: &pagura_document::Document,
+    resources: &Dictionary,
+    dictionary: &Dictionary,
+    content: &[u8],
+) -> Result<usize> {
+    let mut dict = expanded(dictionary)?;
+    let components = if p::boolean(&dict, b"ImageMask", false)? {
+        Some(1)
+    } else {
+        super::filter_rules::inline_space(dict.get(b"ColorSpace"))?;
+        resolve_named_space(document, resources, &mut dict)?;
+        dict.get(b"ColorSpace")
+            .map(|value| p::resolve_space(document, value).map(|(_, count)| count))
+            .transpose()?
+    };
+    framed_length(&dict, content, components)
+}
+
+/// Resolve one named resource, retaining the definition for the image
+/// reader. Only the top-level resource may be a name (8.6.3, 8.9.7).
+pub(crate) fn resolve_named_space(
+    document: &pagura_document::Document,
+    resources: &Dictionary,
+    dictionary: &mut Dictionary,
+) -> Result<()> {
+    if let Some(Value::Name(name)) = dictionary.get(b"ColorSpace")
+        && !matches!(
+            name.as_bytes(),
+            b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK"
+        )
+    {
+        let spaces = resources
+            .get(b"ColorSpace")
+            .ok_or(Error::syntax("missing inline colour resource"))?;
+        let space = document
+            .resolve_dictionary(spaces)?
+            .get(name.as_bytes())
+            .ok_or(Error::syntax("undefined inline colour space"))?;
+        dictionary.insert(Name::new(b"ColorSpace"), document.resolve(space)?.clone());
+    }
+    Ok(())
+}
+
+fn framed_length(dict: &Dictionary, content: &[u8], components: Option<u8>) -> Result<usize> {
     if let Some(value) = dict.get(b"Length") {
         let last_filter = match dict.get(b"Filter") {
             Some(Value::Array(filters)) => filters.last(),
@@ -82,7 +130,8 @@ pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
     {
         let (width, height) = p::dimensions(&dict)?;
         let stencil = p::boolean(&dict, b"ImageMask", false)?;
-        if !stencil
+        if components.is_none()
+            && !stencil
             && dict
                 .get(b"ColorSpace")
                 .and_then(Value::as_name)
@@ -95,7 +144,9 @@ pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
                 "inline image Length requires resource colour-space resolution",
             ));
         }
-        let n = if stencil {
+        let n = if let Some(count) = components {
+            count
+        } else if stencil {
             1
         } else {
             p::components(

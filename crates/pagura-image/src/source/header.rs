@@ -137,21 +137,7 @@ pub(crate) fn inline<'a>(
     }
     filter_rules::inline_space(dict.get(b"ColorSpace"))?;
     filter_rules::validate(document, &dict, true, diagnostics)?;
-    if let Some(Value::Name(name)) = dict.get(b"ColorSpace")
-        && !matches!(
-            name.as_bytes(),
-            b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK"
-        )
-    {
-        let spaces = resources
-            .get(b"ColorSpace")
-            .ok_or(Error::syntax("missing inline colour resource"))?;
-        let space = document
-            .resolve_dictionary(spaces)?
-            .get(name.as_bytes())
-            .ok_or(Error::syntax("undefined inline colour space"))?;
-        dict.insert(Name::new(b"ColorSpace"), document.resolve(space)?.clone());
-    }
+    inline::resolve_named_space(document, resources, &mut dict)?;
     let (width, height) = p::dimensions(&dict)?;
     p::budget(width, height, 1, 1, &document.limits())?;
     let mut chain = FilterChain::from_entries(dict.get(b"Filter"), dict.get(b"DecodeParms"))?;

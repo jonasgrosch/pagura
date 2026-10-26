@@ -138,6 +138,15 @@ fn space_name(kind: &ImageKind) -> &str {
             color_space: Some(Value::Array(array)),
         } => std::str::from_utf8(array[0].as_name().unwrap().as_bytes()).unwrap(),
         ImageKind::EmbeddedColor {
+            color: jpx::JpxColor::Enumerated(16),
+        } => "DeviceRGB",
+        ImageKind::EmbeddedColor {
+            color: jpx::JpxColor::Enumerated(17),
+        } => "DeviceGray",
+        ImageKind::EmbeddedColor {
+            color: jpx::JpxColor::Enumerated(12),
+        } => "DeviceCMYK",
+        ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Icc(_),
         } => "icc",
         ImageKind::EmbeddedColor {

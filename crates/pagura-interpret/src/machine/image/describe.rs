@@ -4,11 +4,9 @@
 
 use super::super::Machine;
 use crate::device::Device;
-use crate::features;
 use crate::model::{Image, ImageMask};
 use pagura_color::{ColorSpace, Components, Intent, MAX_COMPONENTS};
 use pagura_core::{Dictionary, Error, ObjectId, Result};
-use pagura_image::jpx::JpxColor;
 use pagura_image::{ImageId, ImageKind, ImageSource, SourceMask};
 use std::sync::Arc;
 
@@ -20,6 +18,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         source: ImageSource,
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
+        inherited_intent: Intent,
     ) -> Result<Arc<Image>> {
         let components = usize::from(source.components());
         if components == 0 || components > MAX_COMPONENTS {
@@ -27,31 +26,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 "image component count exceeds painter capacity",
             ));
         }
-        let space = self.image_space(&source, resources)?;
-        if let Some(space) = &space
-            && (matches!(space.as_ref(), ColorSpace::Pattern(_))
-                || space.components() != components)
-        {
-            return Err(Error::syntax("image colour space component mismatch"));
-        }
-        let mask = match source.mask() {
-            SourceMask::Soft { object, matte } => {
-                let mask = self.xobject_image(*object, resources, stack)?;
-                let matte = matte
-                    .as_deref()
-                    .map(|matte| check_matte(matte, space.as_deref(), &source, &mask))
-                    .transpose()?;
-                ImageMask::Soft { mask, matte }
-            }
-            SourceMask::Stencil(object) => {
-                ImageMask::Stencil(self.xobject_image(*object, resources, stack)?)
-            }
-            SourceMask::ColorKey(keys) => ImageMask::ColorKey(keys.clone().into()),
-            SourceMask::Embedded { .. } => ImageMask::Embedded,
-            _ => ImageMask::None,
-        };
-        let decode = decode(&source, space.as_deref())?;
-        let intent = if space.is_some() {
+        let intent = if !matches!(source.kind(), ImageKind::Stencil { .. }) {
             source
                 .intent()
                 .filter(|value| !value.is_null())
@@ -65,6 +40,34 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         } else {
             None
         };
+        let effective_intent = intent.unwrap_or(inherited_intent);
+        let space = self.image_space(&source, resources, effective_intent)?;
+        if let Some(space) = &space
+            && (matches!(space.as_ref(), ColorSpace::Pattern(_))
+                || space.components() != components)
+        {
+            return Err(Error::syntax("image colour space component mismatch"));
+        }
+        let mask = match source.mask() {
+            SourceMask::Soft { object, matte } => {
+                let mask = self.xobject_image(*object, resources, stack, effective_intent)?;
+                let matte = matte
+                    .as_deref()
+                    .map(|matte| check_matte(matte, space.as_deref(), &source, &mask))
+                    .transpose()?;
+                ImageMask::Soft { mask, matte }
+            }
+            SourceMask::Stencil(object) => ImageMask::Stencil(self.xobject_image(
+                *object,
+                resources,
+                stack,
+                effective_intent,
+            )?),
+            SourceMask::ColorKey(keys) => ImageMask::ColorKey(keys.clone().into()),
+            SourceMask::Embedded { .. } => ImageMask::Embedded,
+            _ => ImageMask::None,
+        };
+        let decode = decode(&source, space.as_deref())?;
         Ok(Arc::new(Image {
             interpolate: source.interpolate(),
             source: Arc::new(source),
@@ -82,39 +85,20 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         &mut self,
         source: &ImageSource,
         resources: &Dictionary,
+        intent: Intent,
     ) -> Result<Option<Arc<ColorSpace>>> {
         match source.kind() {
             ImageKind::Color {
                 color_space: Some(value),
             } => self.session.colors.resolve(resources, value).map(Some),
-            ImageKind::EmbeddedColor {
-                color: JpxColor::Icc(data),
-            } => {
+            ImageKind::EmbeddedColor { color } => {
                 let ImageId::Object(id) = source.id() else {
                     return Err(Error::syntax("JPXDecode is forbidden in inline images"));
                 };
                 self.session
                     .colors
-                    .embedded_icc(id, data, source.components())
+                    .embedded_jpx(id, color, source.components(), intent)
                     .map(Some)
-            }
-            ImageKind::EmbeddedColor {
-                color: JpxColor::Enumerated(18),
-            } if (0..3).all(|index| source.component_bits(index) == Some(8)) => {
-                Ok(Some(Arc::new(ColorSpace::Sycc)))
-            }
-            ImageKind::EmbeddedColor { color } => {
-                let name: &[u8] = match (color, source.components()) {
-                    (JpxColor::Enumerated(16), 3) => b"DeviceRGB",
-                    (JpxColor::Enumerated(17), 1) => b"DeviceGray",
-                    _ => {
-                        return Err(Error::unsupported(
-                            features::XOBJECT_JPX_COLOR,
-                            "embedded JPX colour interpretation is not implemented",
-                        ));
-                    }
-                };
-                self.session.colors.named(resources, name).map(Some)
             }
             ImageKind::Stencil { .. } => Ok(None),
             ImageKind::Color { color_space: None } => {

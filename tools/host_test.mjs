@@ -140,6 +140,10 @@ async function main() {
   const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/classic.json'), 'utf8'));
   const recovery = JSON.parse(await readFile(join(root, 'corpus/manifests/recovery.json'), 'utf8'));
   manifest.cases.push(...recovery.cases.filter((entry) => entry.id.startsWith('recovery/type3-empty-bounds-')));
+  for (const area of ['paint_jpx', 'paint_jpx_native', 'paint_jpx_integration']) {
+    const images = JSON.parse(await readFile(join(root, `corpus/manifests/${area}.json`), 'utf8'));
+    manifest.cases.push(...images.cases);
+  }
   const scratch = await mkdtemp(join(tmpdir(), 'pagura-host-'));
   const files = [];
   const wasiRun = async (input, name) => {

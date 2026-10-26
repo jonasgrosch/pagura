@@ -32,10 +32,7 @@ pub(super) fn discard_opacity(
                     + 3 * size_of::<usize>(),
             )?)
         });
-    let profile_bytes = match &decoded.image.color {
-        jpx::JpxColor::Icc(profile) => profile.len(),
-        _ => 0,
-    };
+    let profile_bytes = decoded.image.color.retained_bytes();
     if bytes
         .and_then(|n| n.checked_add(profile_bytes))
         .is_none_or(|n| n > limits.decoded_bytes)

@@ -4,7 +4,8 @@ use pagura_core::{Error, Result};
 
 use super::io::{Budget, Reader, area, syntax};
 use super::{
-    Decoded, JpxColor, JpxComponent, JpxImage, Opacity, OpacityKind, Options, unsupported,
+    ColorSelection, ColorSpecification, Decoded, JpxColor, JpxComponent, JpxImage, Opacity,
+    OpacityKind, Options, unsupported,
 };
 
 struct BoxData<'a> {
@@ -49,10 +50,11 @@ fn next_box<'a>(reader: &mut Reader<'a>, budget: &mut Budget<'_>) -> Result<BoxD
 pub(super) struct Header {
     dimensions: Option<(u32, u32, u16, u8)>,
     depths: Option<Vec<u8>>,
-    color: Option<JpxColor>,
+    colors: Vec<ColorSpecification>,
     palette: Option<Palette>,
     mapping: Option<Vec<(u16, u8, u8)>>,
     channels: Option<Vec<(u16, u16, u16)>>,
+    ignore_opacity: bool,
 }
 
 struct Palette {
@@ -65,6 +67,7 @@ pub(super) fn parse<'a>(
     data: &'a [u8],
     budget: &mut Budget<'_>,
     options: &Options,
+    selection: ColorSelection,
 ) -> Result<(&'a [u8], usize, Header)> {
     let mut reader = Reader::new(data, 0);
     let signature = next_box(&mut reader, budget)?;
@@ -99,7 +102,14 @@ pub(super) fn parse<'a>(
                 if header.is_some() || codestream.is_some() {
                     return Err(syntax("misplaced or repeated JP2 header", b.position));
                 }
-                header = Some(parse_header(b.body, b.position, budget, options)?);
+                header = Some(parse_header(
+                    b.body,
+                    b.position,
+                    budget,
+                    options,
+                    selection,
+                    file_type.body.get(..4) == Some(b"jpx "),
+                )?);
             }
             b"jp2c" => {
                 if header.is_none() {
@@ -161,9 +171,14 @@ fn parse_header(
     base: usize,
     budget: &mut Budget<'_>,
     options: &Options,
+    selection: ColorSelection,
+    ranked: bool,
 ) -> Result<Header> {
     let mut reader = Reader::new(data, base);
-    let mut header = Header::default();
+    let mut header = Header {
+        ignore_opacity: options.ignore_opacity,
+        ..Header::default()
+    };
     let mut color_seen = false;
     let mut color_ended = false;
     let mut resolution_seen = false;
@@ -209,11 +224,15 @@ fn parse_header(
                 if fields.remaining() < 3 {
                     return Err(syntax("short JP2 colour specification", b.position));
                 }
-                // T.800 I.3.3: the first JP2 method is authoritative; others are ignored.
-                if options.ignore_color || header.color.is_some() {
+                // A standalone JP2 reader follows T.800 I.3.3; PDF 7.4.9
+                // additionally requires choices after an unsupported profile.
+                if options.ignore_color
+                    || (selection == ColorSelection::First && !header.colors.is_empty())
+                {
                     fields.take(fields.remaining())?;
                 } else {
-                    header.color = Some(parse_color(&mut fields, budget)?);
+                    let choice = parse_color(&mut fields, budget, selection, ranked)?;
+                    budget.push(&mut header.colors, choice)?;
                 }
             }
             b"pclr" => {
@@ -236,10 +255,7 @@ fn parse_header(
                     return Err(syntax("repeated JP2 channel definition", b.position));
                 }
                 channels_seen = true;
-                let channels = read_channels(&mut fields, budget)?;
-                if !options.ignore_opacity {
-                    header.channels = Some(channels);
-                }
+                header.channels = Some(read_channels(&mut fields, budget)?);
             }
             b"res " => {
                 if resolution_seen {
@@ -306,10 +322,22 @@ fn read_dimensions(fields: &mut Reader<'_>, budget: &Budget<'_>) -> Result<(u32,
     Ok((width, height, components, depth))
 }
 
-fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxColor> {
+fn parse_color(
+    fields: &mut Reader<'_>,
+    budget: &mut Budget<'_>,
+    selection: ColorSelection,
+    ranked: bool,
+) -> Result<ColorSpecification> {
     let method = fields.u8()?;
-    fields.take(2)?; // I.5.3.3: readers ignore PREC and APPROX.
-    match method {
+    let precedence = i8::from_be_bytes([fields.u8()?]);
+    let approximation = fields.u8()?;
+    if ranked && selection == ColorSelection::Pdf && !(1..=4).contains(&approximation) {
+        return Err(syntax(
+            "invalid JPX colour approximation",
+            fields.position() - 1,
+        ));
+    }
+    let color = match method {
         1 => {
             let color = fields.u32()?;
             // PDF 7.4.9 excludes this enumerated space even from the baseline set.
@@ -319,7 +347,7 @@ fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxCo
                     fields.position() - 4,
                 ));
             }
-            Ok(JpxColor::Enumerated(color))
+            JpxColor::Enumerated(color)
         }
         2 | 3 => {
             let bytes = fields.take(fields.remaining())?;
@@ -333,13 +361,30 @@ fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxCo
                 return Err(syntax("invalid JP2 ICC profile header", profile.base));
             }
             budget.charge::<u8>(bytes.len())?;
-            Ok(JpxColor::Icc(bytes.to_vec()))
+            JpxColor::Icc(bytes.to_vec())
         }
-        _ => Err(unsupported(
-            "vendor JPX colour spaces are not implemented",
-            fields.position(),
-        )),
-    }
+        _ if selection == ColorSelection::Pdf => {
+            let bytes = fields.take(fields.remaining())?;
+            budget.charge::<u8>(bytes.len())?;
+            JpxColor::Other {
+                method,
+                data: bytes.to_vec(),
+            }
+        }
+        _ => {
+            return Err(unsupported(
+                "vendor JPX colour spaces are not implemented",
+                fields.position(),
+            ));
+        }
+    };
+    // T.800 I.5.3.3 reserves these fields in JP2 and requires readers to
+    // ignore them. T.801 M.11.7.2 gives them meaning for JPX-branded files.
+    Ok(ColorSpecification {
+        precedence: if ranked { precedence } else { 0 },
+        approximation: if ranked { approximation } else { 0 },
+        color,
+    })
 }
 
 fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Palette> {
@@ -463,7 +508,7 @@ impl Header {
 
     /// PDF 7.4.9: an explicit Indexed space interprets the stored indices.
     /// Applying the container's palette too would expand those indices twice.
-    pub fn use_pdf_palette(&mut self) -> Result<()> {
+    pub fn use_pdf_palette(&mut self, budget: &mut Budget<'_>) -> Result<()> {
         if self.palette.is_some() != self.mapping.is_some() {
             return Err(syntax("JP2 palette and mapping disagree", 0));
         }
@@ -472,19 +517,78 @@ impl Header {
             // Keep cdef so apply_channels can validate and reorder them.
             return Ok(());
         }
-        if self
-            .channels
+        let mapping = self
+            .mapping
             .as_ref()
-            .is_some_and(|channels| channels.iter().any(|&(_, kind, _)| matches!(kind, 1 | 2)))
-        {
-            return Err(Error::unsupported(
-                crate::features::JPX_SAMPLE_LAYOUT,
-                "Indexed JPX container-palette opacity requires channel mapping",
-            ));
+            .ok_or_else(|| syntax("missing JP2 mapping", 0))?;
+        let palette = self
+            .palette
+            .as_ref()
+            .ok_or_else(|| syntax("missing JP2 palette", 0))?;
+        let mut types = budget.filled(mapping.len(), None)?;
+        for &(channel, kind, association) in self.channels.iter().flatten() {
+            let slot = types
+                .get_mut(usize::from(channel))
+                .ok_or_else(|| syntax("JP2 channel index out of range", 0))?;
+            if slot.replace((kind, association)).is_some() {
+                return Err(syntax("repeated Indexed JPX channel definition", 0));
+            }
         }
-        self.palette = None;
-        self.mapping = None;
-        self.channels = None;
+        let mut index = None;
+        let mut opacity = None;
+        for (channel, &(component, kind, column)) in mapping.iter().enumerate() {
+            budget.work(1)?;
+            if self
+                .dimensions
+                .is_none_or(|(_, _, count, _)| component >= count)
+                || !matches!((kind, column), (0, 0) | (1, _))
+                || (kind == 1 && usize::from(column) >= palette.depths.len())
+            {
+                return Err(syntax("invalid Indexed JPX component mapping", 0));
+            }
+            match types[channel] {
+                Some((opacity_kind @ (1 | 2), association)) => {
+                    if !self.ignore_opacity
+                        && (association != 0
+                            || opacity.replace((mapping[channel], opacity_kind)).is_some())
+                    {
+                        return Err(Error::unsupported(
+                            crate::features::JPX_SAMPLE_LAYOUT,
+                            "Indexed JPX requires one whole-image opacity channel",
+                        ));
+                    }
+                }
+                Some((0, 1..=65534)) | None
+                    if self.channels.is_none() || types[channel].is_some() =>
+                {
+                    if index
+                        .replace(component)
+                        .is_some_and(|previous| previous != component)
+                    {
+                        return Err(Error::unsupported(
+                            crate::features::JPX_SAMPLE_LAYOUT,
+                            "Indexed JPX colour channels require one source index component",
+                        ));
+                    }
+                }
+                Some((0 | 65535, _)) | None => {
+                    return Err(Error::unsupported(
+                        crate::features::JPX_SAMPLE_LAYOUT,
+                        "Indexed JPX requires complete colour channel definitions",
+                    ));
+                }
+                _ => return Err(syntax("invalid JP2 channel type", 0)),
+            }
+        }
+        let index = index.ok_or_else(|| syntax("Indexed JPX has no index component", 0))?;
+        let mut mapping = budget.filled(1 + usize::from(opacity.is_some()), (index, 0, 0))?;
+        let mut channels = budget.filled(mapping.len(), (0, 0, 1))?;
+        if let Some((alpha, kind)) = opacity {
+            mapping[1] = alpha;
+            channels[1] = (1, kind, 0);
+        }
+        self.mapping = Some(mapping);
+        self.channels = Some(channels);
         Ok(())
     }
 
@@ -564,7 +668,7 @@ impl Header {
             decoded.component_geometry = geometry;
             origins = mapped_origins;
         }
-        if let Some(channels) = self.channels {
+        if let Some(channels) = self.channels.filter(|_| !self.ignore_opacity) {
             decoded.opacity = apply_channels(
                 image,
                 &channels,
@@ -573,7 +677,23 @@ impl Header {
                 budget,
             )?;
         }
-        image.color = self.color.unwrap_or(JpxColor::Unspecified);
+        let mut colors = self.colors;
+        image.color = match colors.len() {
+            0 => JpxColor::Unspecified,
+            1 => colors.remove(0).color,
+            _ => {
+                budget.work(
+                    colors
+                        .len()
+                        .saturating_mul(super::io::usize_from(colors.len().ilog2() + 1)?),
+                )?;
+                budget.charge::<ColorSpecification>(colors.len())?;
+                colors.sort_by_key(|choice| {
+                    (std::cmp::Reverse(choice.precedence), choice.approximation)
+                });
+                JpxColor::Alternatives(colors)
+            }
+        };
         Ok(())
     }
 }

@@ -112,9 +112,11 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     let id = ObjectId::new(4, 0);
     let store = Store::new(1 << 20);
     let mut colors = Colors::new(&document, Some(&store));
-    let space = colors.embedded_icc(id, &data, 3).unwrap();
+    let color = pagura_image::jpx::JpxColor::Icc(data.clone());
+    let intent = pagura_color::Intent::Relative;
+    let space = colors.embedded_jpx(id, &color, 3, intent).unwrap();
     let other = Colors::new(&document, Some(&store))
-        .embedded_icc(id, &data, 3)
+        .embedded_jpx(id, &color, 3, intent)
         .unwrap();
     let (ColorSpace::Icc(first), ColorSpace::Icc(second)) = (space.as_ref(), other.as_ref()) else {
         panic!("embedded ICC did not produce an ICC space");
@@ -126,12 +128,17 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     assert_eq!(first.object, Some(id));
     assert_eq!(first.range, [[0.0, 1.0]; 4]);
     assert!(matches!(
-        colors.embedded_icc(id, &data, 1).unwrap_err().kind,
+        colors.embedded_jpx(id, &color, 1, intent).unwrap_err().kind,
         ErrorKind::Syntax
     ));
     assert!(matches!(
         colors
-            .embedded_icc(ObjectId::new(5, 0), b"broken", 3)
+            .embedded_jpx(
+                ObjectId::new(5, 0),
+                &pagura_image::jpx::JpxColor::Icc(b"broken".to_vec()),
+                3,
+                intent
+            )
             .unwrap_err()
             .kind,
         ErrorKind::Syntax
@@ -160,8 +167,39 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
         )
         .unwrap();
         let error = Colors::new(&bounded, None)
-            .embedded_icc(id, &data, 3)
+            .embedded_jpx(id, &color, 3, intent)
             .unwrap_err();
         assert!(matches!(error.kind, ErrorKind::Limit), "{error}");
+    }
+}
+
+#[test]
+fn jpx_candidates_and_intents_do_not_alias_in_profile_caches() {
+    use pagura_color::Intent;
+    use pagura_core::ObjectId;
+    use pagura_image::ImageSource;
+    let document = Document::open(
+        pagura_testkit::fixture("paint_jpx_integration", "selected-transform-relative.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let id = ObjectId::new(5, 0);
+    let source = ImageSource::from_xobject(&document, document.object(id).unwrap()).unwrap();
+    let pagura_image::ImageKind::EmbeddedColor { color } = source.kind() else {
+        panic!("missing colour choices")
+    };
+    let store = Store::new(1 << 20);
+    for intent in [
+        Intent::Relative,
+        Intent::Perceptual,
+        Intent::Relative,
+        Intent::Absolute,
+    ] {
+        let mut colors = Colors::new(&document, Some(&store));
+        let space = colors.embedded_jpx(id, color, 3, intent).unwrap();
+        assert_eq!(
+            matches!(space.as_ref(), ColorSpace::Icc(_)),
+            intent == Intent::Perceptual
+        );
     }
 }

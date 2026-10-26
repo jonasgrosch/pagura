@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 /// A rendering intent (8.6.5.8, Table 69). The standard closes the set; an
 /// unknown name selects relative colorimetric.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Intent {
     /// Perceptual.
     Perceptual,
@@ -188,14 +188,18 @@ impl Profile {
     }
 
     /// Checks that `intent` selects a supported forward transform, so that
-    /// [`Self::convert_total`] converts as [`Self::convert`] does.
-    pub(crate) fn check(&self, intent: Intent) -> Result<()> {
+    /// conversion can be prepared without evaluating any samples.
+    ///
+    /// # Errors
+    /// Returns `Unsupported` for an unavailable selected transform and
+    /// `Syntax` when no forward transform applies.
+    pub fn check_forward(&self, intent: Intent) -> Result<()> {
         self.forward(intent).map(|_| ())
     }
 
     /// Converts as [`Self::convert`] does, with undefined curve arithmetic
     /// giving 0 instead of an error; black when the intent's transform is
-    /// unsupported, which [`Self::check`] rules out.
+    /// unsupported, which [`Self::check_forward`] rules out.
     pub(crate) fn convert_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
         self.linear_total(inputs, intent).map(cie::encode)
     }

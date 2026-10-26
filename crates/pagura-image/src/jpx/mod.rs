@@ -47,6 +47,52 @@ pub enum JpxColor {
     Enumerated(u32),
     /// A restricted or full ICC profile (`colr` methods 2 and 3).
     Icc(Vec<u8>),
+    /// A method whose colour interpretation is unavailable. Its payload
+    /// remains available to callers (T.801 M.11.7.2).
+    Other {
+        /// The `colr` specification method.
+        method: u8,
+        /// Method-specific bytes after the three-byte header.
+        data: Vec<u8>,
+    },
+    /// PDF colour choices in precedence/approximation order (7.4.9).
+    /// A standalone JP2 decode retains the first specification instead.
+    Alternatives(Vec<ColorSpecification>),
+}
+
+/// One embedded colour specification and its selection metadata
+/// (T.801 M.11.7.2). Equal priorities retain their file order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ColorSpecification {
+    /// Signed precedence; higher values are preferred.
+    pub precedence: i8,
+    /// Approximation quality; lower values are preferred. JP2 uses zero.
+    pub approximation: u8,
+    /// Colour interpretation. Parser-produced alternatives never nest.
+    pub color: JpxColor,
+}
+
+impl JpxColor {
+    /// Heap storage retained by the colour metadata.
+    pub fn retained_bytes(&self) -> usize {
+        match self {
+            Self::Icc(data) | Self::Other { data, .. } => data.capacity(),
+            Self::Alternatives(choices) => choices.iter().fold(
+                choices
+                    .capacity()
+                    .saturating_mul(size_of::<ColorSpecification>()),
+                |total, choice| total.saturating_add(choice.color.retained_bytes()),
+            ),
+            Self::Unspecified | Self::Enumerated(_) => 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ColorSelection {
+    First,
+    Pdf,
 }
 
 /// One decoded component.
@@ -174,7 +220,14 @@ pub fn decode_with_diagnostics(
     options: &Options,
     diagnostics: &mut pagura_core::Diagnostics,
 ) -> Result<Decoded> {
-    decode_pdf(data, limits, options, diagnostics, false)
+    decode_selected(
+        data,
+        limits,
+        options,
+        diagnostics,
+        false,
+        ColorSelection::First,
+    )
 }
 
 pub(crate) fn decode_pdf(
@@ -184,12 +237,30 @@ pub(crate) fn decode_pdf(
     diagnostics: &mut pagura_core::Diagnostics,
     indexed: bool,
 ) -> Result<Decoded> {
+    decode_selected(
+        data,
+        limits,
+        options,
+        diagnostics,
+        indexed,
+        ColorSelection::Pdf,
+    )
+}
+
+fn decode_selected(
+    data: &[u8],
+    limits: &Limits,
+    options: &Options,
+    diagnostics: &mut pagura_core::Diagnostics,
+    indexed: bool,
+    selection: ColorSelection,
+) -> Result<Decoded> {
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG 2000 input budget exceeded").at(Position::Buffer(0)));
     }
     let mut budget = io::Budget::new(limits);
     budget.diagnostics = pagura_core::Diagnostics::new(diagnostics.mode());
-    let result = decode_bounded(data, &mut budget, options, indexed)
+    let result = decode_bounded(data, &mut budget, options, indexed, selection)
         .map_err(|error| error.at(Position::Buffer(0)));
     diagnostics.absorb(budget.diagnostics.take())?;
     result
@@ -226,9 +297,9 @@ fn describe_bounded(
     if data.starts_with(&[255, 79]) {
         return codestream::describe(data, 0, budget);
     }
-    let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+    let (stream, base, mut header) = boxes::parse(data, budget, options, ColorSelection::Pdf)?;
     if indexed {
-        header.use_pdf_palette()?;
+        header.use_pdf_palette(budget)?;
     }
     let mut decoded = codestream::describe(stream, base, budget)?;
     header.apply(&mut decoded, budget)?;
@@ -240,13 +311,14 @@ fn decode_bounded(
     budget: &mut io::Budget<'_>,
     options: &Options,
     indexed: bool,
+    selection: ColorSelection,
 ) -> Result<Decoded> {
     if data.starts_with(&[255, 79]) {
         codestream::decode(data, 0, budget)
     } else {
-        let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+        let (stream, base, mut header) = boxes::parse(data, budget, options, selection)?;
         if indexed {
-            header.use_pdf_palette()?;
+            header.use_pdf_palette(budget)?;
         }
         let mut decoded = codestream::decode(stream, base, budget)?;
         header.apply(&mut decoded, budget)?;

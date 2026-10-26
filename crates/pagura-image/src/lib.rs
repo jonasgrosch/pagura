@@ -247,6 +247,24 @@ pub fn inline_data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
         .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
 }
 
+/// Frames inline sample data using the page's colour-space resources
+/// (8.9.7). Unfiltered data is sized from dimensions, per-row padding and
+/// the resolved component count; embedded `EI` bytes are ordinary samples.
+/// This reads only colour metadata and never scans or decodes unfiltered data.
+///
+/// # Errors
+/// Returns the errors of [`inline_data_length`] and document resolution;
+/// undefined resources, invalid component counts and truncation are errors.
+pub fn inline_data_length_with_resources(
+    document: &pagura_document::Document,
+    resources: &Dictionary,
+    dictionary: &Dictionary,
+    content: &[u8],
+) -> Result<usize> {
+    inline::data_length_with_resources(document, resources, dictionary, content)
+        .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
+}
+
 #[cfg(test)]
 mod tests;
 

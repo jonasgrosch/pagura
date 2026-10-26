@@ -58,7 +58,7 @@ impl Jpx {
         diagnostics: &mut pagura_core::Diagnostics,
     ) -> Result<()> {
         let mut decoded = jpx::decode_pdf(data, limits, &self.options, diagnostics, self.indexed)?;
-        if self.mode == 0 {
+        if self.mode == 0 && !(self.indexed && decoded.image.components.len() == 1) {
             super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
         }
         adapt(decoded, self.mode, image, limits)
@@ -75,7 +75,7 @@ impl Jpx {
         mode: Recovery,
     ) -> Result<Description> {
         let mut decoded = jpx::describe_pdf(data, limits, &self.options, mode, self.indexed)?;
-        if self.mode == 0 {
+        if self.mode == 0 && !(self.indexed && decoded.image.components.len() == 1) {
             super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
         }
         let jpx::Decoded {
@@ -339,9 +339,7 @@ fn storage_bytes(
                 .ok_or(Error::limit("JPX alpha storage overflow"))?,
         )?;
     }
-    if let jpx::JpxColor::Icc(profile) = &decoded.color {
-        bytes = add(bytes, profile.len())?;
-    }
+    bytes = add(bytes, decoded.color.retained_bytes())?;
     // Ignoring opacity drops its samples, but truncating the component lists
     // retains their backing allocations. Charge their capacities until drop.
     let component_bytes = decoded
@@ -421,41 +419,52 @@ fn interleave(
 }
 
 fn embedded_space(color: jpx::JpxColor, count: u8, signed: bool) -> Result<ImageKind> {
-    let space = match (&color, count) {
-        (jpx::JpxColor::Enumerated(18), _) if signed => {
-            return Err(Error::syntax("JPX sYCC requires unsigned colour channels"));
+    validate_color(&color, count, signed)?;
+    Ok(ImageKind::EmbeddedColor { color })
+}
+
+fn validate_color(color: &jpx::JpxColor, count: u8, signed: bool) -> Result<()> {
+    match color {
+        jpx::JpxColor::Alternatives(choices) => {
+            for choice in choices {
+                validate_color(&choice.color, count, signed)?;
+            }
         }
-        (jpx::JpxColor::Enumerated(17), 1) => Some(b"DeviceGray".as_slice()),
-        (jpx::JpxColor::Enumerated(16), 3) => Some(b"DeviceRGB".as_slice()),
-        (jpx::JpxColor::Enumerated(12), 4) => Some(b"DeviceCMYK".as_slice()),
-        (jpx::JpxColor::Enumerated(12 | 16 | 17), _) => {
+        jpx::JpxColor::Enumerated(16..=18) if signed => {
+            return Err(Error::syntax(
+                "JPX sRGB, grayscale and sYCC require unsigned colour channels",
+            ));
+        }
+        jpx::JpxColor::Enumerated(12) if count != 4 => {
             return Err(Error::syntax(
                 "JPX colour space disagrees with channel count",
             ));
         }
-        (jpx::JpxColor::Enumerated(19), _) => {
-            return Err(Error::syntax("CIEJab is forbidden for PDF JPX images"));
-        }
-        (jpx::JpxColor::Enumerated(18), 3) | (jpx::JpxColor::Icc(_), _) => None,
-        (jpx::JpxColor::Enumerated(18), _) => {
-            return Err(Error::syntax("JPX sYCC requires three colour channels"));
-        }
-        (jpx::JpxColor::Enumerated(_), _) => {
-            return Err(Error::unsupported(
-                features::JPX_COLOUR,
-                "JPX enumerated colour space is not implemented",
+        jpx::JpxColor::Enumerated(16 | 18) if count != 3 => {
+            return Err(Error::syntax(
+                "JPX colour space disagrees with channel count",
             ));
         }
-        (jpx::JpxColor::Unspecified, _) => {
+        jpx::JpxColor::Enumerated(17) if count != 1 => {
+            return Err(Error::syntax(
+                "JPX colour space disagrees with channel count",
+            ));
+        }
+        jpx::JpxColor::Enumerated(19) => {
+            return Err(Error::syntax("CIEJab is forbidden for PDF JPX images"));
+        }
+        jpx::JpxColor::Icc(_) if signed => {
+            return Err(Error::unsupported(
+                features::JPX_COLOUR,
+                "signed JPX ICC input has no standardized sample interpretation",
+            ));
+        }
+        jpx::JpxColor::Unspecified => {
             return Err(Error::syntax(
                 "JPX without dictionary ColorSpace requires container colour information",
             ));
         }
-    };
-    Ok(space.map_or_else(
-        || ImageKind::EmbeddedColor { color },
-        |space| ImageKind::Color {
-            color_space: Some(Value::name(space)),
-        },
-    ))
+        _ => {}
+    }
+    Ok(())
 }

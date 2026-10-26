@@ -169,11 +169,27 @@ pub(crate) fn resolve_space(document: &Document, space: &Value) -> Result<(Value
         if family == b"ICCBased" {
             let profile = array.get(1).ok_or(Error::syntax("missing ICC profile"))?;
             let dict = document.resolve_dictionary(profile)?;
-            let n = u8::try_from(integer(dict, b"N", 0)?)
+            let count = dict
+                .get(b"N")
+                .map(|value| document.resolve(value))
+                .transpose()?
+                .and_then(Value::as_integer)
+                .ok_or(Error::syntax("invalid ICC component count"))?;
+            let n = u8::try_from(count)
                 .ok()
                 .filter(|n| matches!(n, 1 | 3 | 4))
                 .ok_or(Error::syntax("invalid ICC component count"))?;
             return Ok((space.clone(), n));
+        }
+        if family == b"DeviceN" {
+            let names = array.get(1).ok_or(Error::syntax("missing DeviceN names"))?;
+            let count = document
+                .resolve(names)?
+                .as_array()
+                .and_then(|names| u8::try_from(names.len()).ok())
+                .filter(|&count| count > 0)
+                .ok_or(Error::syntax("invalid DeviceN components"))?;
+            return Ok((space.clone(), count));
         }
     }
     Ok((space.clone(), components(space)?))

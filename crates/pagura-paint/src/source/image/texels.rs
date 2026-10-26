@@ -157,13 +157,30 @@ impl Colors {
     /// The texel of one sample's `codes`.
     fn texel(&self, codes: &[u16], extra: Extra, out: &mut [f64]) {
         let mut values = [0.0; MAX_COMPONENTS];
+        let embedded = self
+            .embedded
+            .zip(extra.embedded)
+            .map(|((maximum, premultiplied), code)| (f64::from(code) / maximum, premultiplied));
         for (((value, &code), &[low, high]), &maximum) in values
             .iter_mut()
             .zip(codes)
             .zip(&self.decode)
             .zip(&self.maxima)
         {
-            *value = low + f64::from(code) / maximum * (high - low);
+            let mut normalized = f64::from(code) / maximum;
+            // T.800 I.5.3.6, I-5 multiplies stored samples. Undo it before
+            // range interpretation, especially the offset Lab a/b channels.
+            // Indexed images instead contain indices into preblended colours.
+            if self.lookup.is_none()
+                && let Some((opacity, true)) = embedded
+            {
+                normalized = if opacity > 0.0 {
+                    normalized / opacity
+                } else {
+                    0.0
+                };
+            }
+            *value = low + normalized * (high - low);
         }
         let count = match &self.lookup {
             Some(lookup) => lookup.expand(&mut values),
@@ -181,13 +198,12 @@ impl Colors {
             shape = 0.0;
             alpha = 0.0;
         }
-        if let (Some((maximum, premultiplied)), Some(code)) = (self.embedded, extra.embedded) {
-            let opacity = f64::from(code) / maximum;
+        if let Some((opacity, premultiplied)) = embedded {
             alpha *= opacity;
             if self.alpha_is_shape {
                 shape *= opacity;
             }
-            if premultiplied {
+            if premultiplied && self.lookup.is_some() {
                 for value in values.iter_mut().take(count) {
                     *value = if opacity > 0.0 { *value / opacity } else { 0.0 };
                 }

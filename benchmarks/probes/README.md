@@ -171,3 +171,22 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
   bind current results to each scoped capability subvariant. A successful basic
   fixture never closes an entire [capability family](../../docs/CAPABILITIES.md)
   or a release gate.
+
+## R02 image integration controls
+
+The image bundle adds 198 controls to the six existing graphics/image
+controls: unsigned 1–16-bit and mixed-precision sYCC, embedded ICC, native-size
+sampling, matching ordinary RGB/soft-mask images, ranked profile choices,
+physical Lab input, palette-backed PDF Indexed opacity, masks/groups/interpolation
+and resource-aware inline framing. The 204-case inventory therefore has 1,428
+observations across Pagura and six baselines. These are scoped controls, not
+family support verdicts; full functional native/WASI checks and comparative
+results for this source revision are pending hosted execution.
+
+The existing PR182 precision fixtures and PR187 matched controls retain their
+original pixels and tolerances. New integration expectations use the primary
+formulae recorded in [the lane notes](../../docs/plans/jpx-parity-progress.md).
+Profile-selection controls distinguish malformed metadata from unavailable
+profiles/transforms. Future signatures test fallback policy rather than claiming
+that an unknown extension is valid current ICC conformance. The repository
+contains no third-party implementation or licensed standard text.
