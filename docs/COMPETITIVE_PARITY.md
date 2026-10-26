@@ -381,8 +381,8 @@ existing bounded mark builder and annotation clip; absent/null/None endings and
 zero/null leaders are accepted. The initial 41 controls include 22 independent
 pixel expectations for two resolutions, dashes, diagonals, rotation, clipping,
 opacity, indirection and stored appearance precedence. Hosted validation is pending.
-The ending increment below adds standard endings; nonzero leaders/extensions/
-offsets and captions still refuse explicitly and remain the next increments.
+The increments below add standard endings and leaders; captions remain an
+explicit refusal. The existing corpus now contains 26 independent pixel expectations.
 
 **Line/PolyLine endings implemented:** all ten Table 179 styles resolve through
 LE, including indirect names. Endpoint orientation follows source derivatives,
@@ -396,6 +396,19 @@ subtypes, mixed styles, direction, rotation, clipping, opacity, indirection and
 straight-cubic Path endpoints. Hosted validation is pending. The existing Line
 arrow and zero-width PolyLine arrow controls now render without PDF byte changes.
 
+**Line leaders implemented:** signed LL, nonnegative LLO and LLE translate the
+line proper from the source leader endpoints as Figure 80 specifies. Leader
+extensions project beyond the line proper; endings follow its translated
+endpoints. Without LL, L names the line proper and LLO has no leader to offset.
+Fixed stack geometry validates finite arithmetic before empty output; body and
+leaders share one stroke, opacity and dash pattern. Twenty-seven controls contain
+21 literal rectangle-union pixel expectations, covering both signs, vertical and
+reversed direction, rotation, clipping, coincident endpoints, dashes, opacity,
+indirection and ending integration. Numeric overflow and content-budget controls
+are also registered. Hosted validation is pending; diagonal and caption
+interactions still need further evidence. The three former leader refusals now
+render with unchanged PDF bytes.
+
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path
 and uses nonzero IC fill; PolyLine remains open. Path overrides Vertices, with
@@ -407,7 +420,7 @@ closed/open geometry, winding, two resolutions, rotation, opacity, indirection
 and malformed data. Native/WASI/client, partial-tile and viewer checks pass at
 `0e2c68e0e` in [run 40289812941](https://github.com/jonasgrosch/pagura/actions/runs/40289812941).
 Two further controls check ignored malformed and cyclic Vertices under the
-current Table 181 errata, bringing the corpus to 47 controls / 29 pixel oracles;
+current Table 181 errata, bringing the corpus to 47 controls / 30 pixel oracles with the ending increment;
 their hosted validation is pending. Standard endings are now implemented above;
 cloudy borders remain an explicit gap.
 

@@ -70,10 +70,11 @@ def cases():
                         ('endings-type', b'/LE 42'), ('endings-count', b'/LE [/None]'), ('ending-type', b'/LE [/None 42]')]:
         yield Case(name, source(extra=extra), OPEN, (REQUIREMENT,),
                    'Line parameter types, cardinality and sign restrictions are validated', extra={'render_error': 'syntax'})
-    for name, extra in [('leader', b'/LL 4'), ('extension', b'/LL 0 /LLE 2'), ('offset', b'/LLO 2'),
-                        ('caption', b'/Cap true')]:
-        yield Case(name, source(extra=extra), UNSUPPORTED, (REQUIREMENT,),
-                   'Leader, caption and non-None ending synthesis remain explicit', feature='annotation.appearance')
+    yield Case('caption', source(extra=b'/Cap true'), UNSUPPORTED, (REQUIREMENT,),
+               'Caption synthesis remains explicit',feature='annotation.appearance')
+    yield rendered('leader',extra=b'/LL 4',regions=[(4,11,28,13),(3,8,5,12),(27,8,29,12)])
+    yield rendered('extension',extra=b'/LL 0 /LLE 2',regions=[(4,7,28,9),(3,8,5,10),(27,8,29,10)])
+    yield rendered('offset',extra=b'/LLO 2')
 
     yield Case('arrow', source(extra=b'/LE [/None /OpenArrow]'), RENDER, (REQUIREMENT, 'content-line-endings'),
                'Analytic arrow outline replaces the old explicit refusal without changing the PDF bytes',

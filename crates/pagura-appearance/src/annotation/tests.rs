@@ -267,6 +267,7 @@ fn content_and_storage_budgets_bound_generation() {
         b"<< /Subtype /Text >>".as_slice(),
         b"<< /Subtype /Circle >>",
         b"<< /Subtype /Line /L [0 0 8 8] >>",
+        b"<< /Subtype /Line /L [0 0 8 8] /LL 4 /LLO 2 /LLE 1 >>",
         b"<< /Subtype /Line /L [0 0 8 8] /BS << /W 0 >> /LE [/Circle /Square] /IC [1 0 0] >>",
     ] {
         let error =
@@ -687,4 +688,50 @@ fn polyline_endings_follow_curve_derivatives_through_repeated_controls() {
                 .ends_with("5 8 m\n11 8 l\n13 8 m\n19 8 l\nS\n")
         );
     }
+}
+
+#[test]
+fn line_leaders_reject_numeric_overflow_before_empty_output() {
+    let document = document();
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    for key in [b"LL".as_slice(), b"LLE", b"LLO"] {
+        for value in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+            let mut annotation =
+                dictionary(b"<< /Subtype /Line /L [8 8 24 8] /LL 4 /BS << /W 0 >> >>");
+            annotation.insert(pagura_core::Name::new(key), Value::Real(value));
+            assert_eq!(
+                annotation_appearance(&document, &annotation, area)
+                    .unwrap_err()
+                    .kind,
+                ErrorKind::Limit,
+            );
+        }
+    }
+    for key in [b"LLE".as_slice(), b"LLO"] {
+        let mut annotation = dictionary(b"<< /Subtype /Line /L [8 8 24 8] /BS << /W 0 >> >>");
+        annotation.insert(pagura_core::Name::new(b"LL"), Value::Real(f64::MAX));
+        annotation.insert(pagura_core::Name::new(key), Value::Real(f64::MAX));
+        assert_eq!(
+            annotation_appearance(&document, &annotation, area)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit,
+        );
+    }
+    let mut annotation = dictionary(b"<< /Subtype /Line /LL 4 /BS << /W 0 >> >>");
+    annotation.insert(
+        pagura_core::Name::new(b"L"),
+        Value::Array(vec![
+            Value::Real(-f64::MAX),
+            Value::Integer(8),
+            Value::Real(f64::MAX),
+            Value::Integer(8),
+        ]),
+    );
+    assert_eq!(
+        annotation_appearance(&document, &annotation, area)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Limit,
+    );
 }

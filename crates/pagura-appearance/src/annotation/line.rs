@@ -1,5 +1,7 @@
 //! Straight line annotations (12.5.6.7, Table 178).
 
+mod leader;
+
 use super::border::Border;
 use super::ending::{self, Endpoint};
 use super::marks::{Color, Marks, Pen, Subpath, color};
@@ -25,14 +27,24 @@ pub(super) fn generate(
         (number(document, x1)?, number(document, y1)?),
     ];
     let endings = ending::read(document, annotation)?;
-    no_leaders_or_caption(document, annotation)?;
+    let layout = leader::Layout::read(document, annotation, points)?;
+    no_caption(document, annotation)?;
     let border = Border::read(document, annotation)?;
     let mut marks = Marks::new(document, annotation);
     if border.width != 0.0
         && let Some(color) = color(document, annotation, b"C", Some(Color::black()))?
     {
+        let mut paths = [
+            Subpath::Polyline(&layout.line),
+            Subpath::Polyline(&[]),
+            Subpath::Polyline(&[]),
+        ];
+        if let Some(leaders) = &layout.leaders {
+            paths[1] = Subpath::Polyline(&leaders[0]);
+            paths[2] = Subpath::Polyline(&leaders[1]);
+        }
         marks.stroke(
-            &[Subpath::Polyline(&points)],
+            &paths,
             &color,
             Pen {
                 width: border.width,
@@ -47,8 +59,8 @@ pub(super) fn generate(
             &mut marks,
             endings,
             [
-                Endpoint::new(points[0], points[1])?,
-                Endpoint::new(points[1], points[0])?,
+                Endpoint::new(layout.line[0], layout.line[1])?,
+                Endpoint::new(layout.line[1], layout.line[0])?,
             ],
             &border,
         )?;
@@ -56,30 +68,7 @@ pub(super) fn generate(
     marks.finish(rect)
 }
 
-fn no_leaders_or_caption(document: &Document, annotation: &Dictionary) -> Result<()> {
-    let leader = optional(document, annotation, b"LL")?;
-    let extension = optional(document, annotation, b"LLE")?;
-    if extension.is_some() && leader.is_none() {
-        return Err(Error::syntax("line LLE requires LL"));
-    }
-    for (value, signed) in [
-        (leader, true),
-        (extension, false),
-        (optional(document, annotation, b"LLO")?, false),
-    ] {
-        if let Some(value) = value {
-            let value = number(document, value)?;
-            if !signed && value < 0.0 {
-                return Err(Error::syntax("line extension/offset must be nonnegative"));
-            }
-            if value != 0.0 {
-                return Err(Error::unsupported(
-                    features::ANNOTATION_APPEARANCE,
-                    "line leader generation is not implemented",
-                ));
-            }
-        }
-    }
+fn no_caption(document: &Document, annotation: &Dictionary) -> Result<()> {
     if let Some(value) = optional(document, annotation, b"Cap")? {
         let caption = value
             .as_bool()

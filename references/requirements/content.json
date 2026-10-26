@@ -1013,7 +1013,7 @@
         "polygon_annotations/path-ignored-coordinate",
         "polygon_annotations/path-ignored-cycle"
       ],
-      "gaps": "Cloudy/relief/rounded borders and non-None polyline endings remain explicit. Independent expectations use convex clipping, literal stroke-region unions and closed-form quadratic integrals; no product or competitor path evaluator generates expected pixels.",
+      "gaps": "Cloudy/relief/rounded borders remain explicit; standard polyline endings are covered by content-line-endings. Independent expectations use convex clipping, literal stroke-region unions and closed-form quadratic integrals; no product or competitor path evaluator generates expected pixels.",
       "external_primary_review": [
         {
           "reference": "ref-e94148e56a97",
@@ -1031,8 +1031,8 @@
         "12.5.5",
         "12.5.6.7 Tables 178 and 179"
       ],
-      "rule": "Line L contains four finite coordinates in default user space; indirect arrays and numbers resolve. Reader policy strokes the segment with butt caps, C, CA and BS width/dash inside the original annotation BBox. Geometry validates before zero-width or empty-color suppression. Stored appearances retain precedence. All standard endings are provided by content-line-endings; null/zero leaders are accepted. LLE requires LL; extension/offset values are nonnegative and Cap is boolean. Caption-only properties are ignored when Cap is false. Generated content remains bounded.",
-      "status": "Line implementation with 41 authored controls and 23 independent pixel expectations; hosted validation pending",
+      "rule": "Line L contains four finite coordinates in default user space; indirect arrays and numbers resolve. Reader policy strokes the segment with butt caps, C, CA and BS width/dash inside the original annotation BBox. Geometry validates before zero-width or empty-color suppression. Stored appearances retain precedence. All standard endings are provided by content-line-endings; leader geometry is provided by content-line-leaders. LLE requires LL; extension/offset values are nonnegative and Cap is boolean. Caption-only properties are ignored when Cap is false. Generated content remains bounded.",
+      "status": "Line implementation with 41 authored controls and 26 independent pixel expectations; hosted validation pending",
       "tests": [
         "pagura-appearance annotation::tests::line_coordinates_resolve_indirectly_and_reject_nonfinite_values",
         "line_annotations/horizontal-72",
@@ -1077,7 +1077,7 @@
         "line_annotations/caption",
         "line_annotations/arrow"
       ],
-      "gaps": "Nonzero leader lines/extensions/offsets and captions remain explicit refusals. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
+      "gaps": "Captions remain explicit refusals. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
     },
     {
       "id": "content-line-endings",
@@ -1146,7 +1146,7 @@
         "line_annotations/arrow",
         "polygon_annotations/arrow"
       ],
-      "gaps": "Line leaders and captions, FreeText callout synthesis, interaction and broader degenerate/overlapping ending combinations remain open. Artwork dimensions and mark order are reader choices; competing artwork is not a feature defect.",
+      "gaps": "Line captions, FreeText callout synthesis, interaction and broader degenerate/overlapping ending combinations remain open. Artwork dimensions and mark order are reader choices; competing artwork is not a feature defect.",
       "external_primary_review": [
         {
           "reference": "ref-e94148e56a97",
@@ -1155,6 +1155,48 @@
           "reason": "Current errata explicitly includes interior color for RClosedArrow. Shape dimensions and solid ending outlines are documented reader policy."
         }
       ]
+    },
+    {
+      "id": "content-line-leaders",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.7 Table 178",
+        "12.5.6.7 Figure 80"
+      ],
+      "rule": "When LL is present, L identifies the source leader endpoints. The line proper is displaced perpendicular to L by abs(LL)+LLO; the sign of LL selects the side. Leader strokes start LLO from the source endpoints and extend LLE beyond the line proper. LLE requires LL; LLE and LLO are nonnegative, and all coordinates and arithmetic must remain finite. Without LL, L remains the line proper and LLO has no leader to offset. Reader policy uses +x for directionless L, the positive side for zero LL, one shared stroke for the body and leaders with the BS dash pattern, and ending marks anchored to the translated line. Fixed stack geometry and bounded content retain the original annotation clip.",
+      "status": "implemented with 27 authored controls and 21 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::line_leaders_reject_numeric_overflow_before_empty_output",
+        "pagura-appearance annotation::tests::content_and_storage_budgets_bound_generation",
+        "leader_annotations/positive-72",
+        "leader_annotations/negative-72",
+        "leader_annotations/vertical-72",
+        "leader_annotations/positive-144",
+        "leader_annotations/negative-144",
+        "leader_annotations/vertical-144",
+        "leader_annotations/reversed",
+        "leader_annotations/rotated",
+        "leader_annotations/opacity",
+        "leader_annotations/coincident",
+        "leader_annotations/clipped",
+        "leader_annotations/zero-width",
+        "leader_annotations/no-color",
+        "leader_annotations/offset-absent",
+        "leader_annotations/extension-absent",
+        "leader_annotations/only-extension",
+        "leader_annotations/only-offset",
+        "leader_annotations/offset-without-leader",
+        "leader_annotations/indirect",
+        "leader_annotations/dashes",
+        "leader_annotations/butt-endings",
+        "leader_annotations/length-type",
+        "leader_annotations/extension-type",
+        "leader_annotations/offset-type",
+        "leader_annotations/negative-extension",
+        "leader_annotations/negative-offset",
+        "leader_annotations/missing-length"
+      ],
+      "gaps": "Line captions remain explicit. Independent expected regions are literal rectangles with exact union coverage; these controls do not establish broader diagonal or caption interaction parity."
     }
   ]
 }
