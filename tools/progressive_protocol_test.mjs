@@ -178,6 +178,18 @@ async function ignoredProviderCancellation() {
   assert.equal(pending.io.active, 1);
 }
 
+async function invalidRegistrationReleasesProvider() {
+  let registrations = 0;
+  const driver = new ProgressiveDriver({ createSource() { registrations++; } });
+  for (const change of [{ length: '4' }, { length: Number.MAX_SAFE_INTEGER + 1 }, { length: -1 }, { version: new Uint8Array(31) }, { read: null }]) {
+    let closed = 0;
+    await assert.rejects(driver.register({ length: 4n, version, read() {}, close() { closed++; }, ...change }));
+    assert.equal(closed, 1);
+  }
+  assert.equal(registrations, 0); assert.equal(driver.registrations, 0);
+  await driver.close();
+}
+
 layouts();
 await serialClient();
 await sharedDemandAndOutput();
@@ -185,4 +197,5 @@ await cancellationAndShutdown();
 await malformedRangesAndQueuedCancellation();
 await cancelledRangeCanBeRequestedAgain();
 await ignoredProviderCancellation();
+await invalidRegistrationReleasesProvider();
 console.log('Progressive protocol and browser ownership controls passed.');

@@ -64,10 +64,11 @@ export class ProgressiveDriver {
     this.closing = new Set(); this.closeFailure = null;
   }
   async register({ length, version, read, signal, close = () => {} }) {
-    length = exact(length);
-    if (length < 0n || length > BigInt(MAX_FILE) || !(version instanceof Uint8Array) || version.length !== 32 || typeof read !== 'function' || typeof close !== 'function') throw new Error('Invalid immutable source registration');
+    if (typeof close !== 'function') throw new Error('Invalid source cleanup callback');
     let admitted = false, counted = false;
     try {
+      length = exact(length);
+      if (length < 0n || length > BigInt(MAX_FILE) || !(version instanceof Uint8Array) || version.length !== 32 || typeof read !== 'function') throw new Error('Invalid immutable source registration');
       check(signal);
       if (this.closed) throw new Error('Progressive driver closed');
       if (this.sources.size + this.registrations + this.closing.size >= this.sourceLimit) throw new Error('Source registry budget exceeded');
