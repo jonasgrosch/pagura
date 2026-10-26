@@ -58,7 +58,7 @@ fn admitted_source_document_uses_the_existing_render_context_and_checks_cached_s
     source.close();
     assert_eq!(
         context.scene(page).unwrap_err(),
-        source.check().unwrap_err()
+        source.check().unwrap_err().into()
     );
     assert!(matches!(job.advance().unwrap(), Opening::Complete));
     drop(first);

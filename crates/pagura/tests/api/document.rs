@@ -34,8 +34,8 @@ fn objects_are_cached_and_wrong_generations_do_not_resolve() {
     let again = document.object(ObjectId::new(1, 0)).unwrap();
     assert!(std::ptr::eq(first, again));
     let error = document.object(ObjectId::new(1, 1)).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::MissingObject);
-    assert_eq!(error.object, Some(ObjectId::new(1, 1)));
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::MissingObject);
+    assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(1, 1)));
 }
 
 #[test]
@@ -55,13 +55,19 @@ fn inheritance_normalization_and_limits() {
         ..OpenOptions::default()
     };
     let limited = Document::open(fixture("classic", "rectangle.pdf"), &options).unwrap();
-    assert_eq!(limited.pages().unwrap_err().kind, ErrorKind::Limit);
+    assert_eq!(
+        limited.pages().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
 }
 
 #[test]
 fn invalid_rotation_is_a_syntax_error() {
     let document = open(fixture("classic", "rotate-not-multiple-of-90.pdf")).unwrap();
-    assert_eq!(document.pages().unwrap_err().kind, ErrorKind::Syntax);
+    assert_eq!(
+        document.pages().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Syntax
+    );
 }
 
 #[test]
@@ -89,6 +95,7 @@ fn corrupt_offsets_and_truncated_tails_are_strict_errors_and_reported_repairs() 
     // deceptively successful partial render.
     assert!(
         open(bytes[..bytes.len() / 2].to_vec())
+            .map_err(pagura::ReadFault::from)
             .and_then(|document| {
                 pagura::render_page(
                     &document,
@@ -117,7 +124,10 @@ fn repeated_page_nodes_are_rejected() {
     let at = data.windows(12).position(|x| x == b"/Kids [3 0 R").unwrap();
     data[at + 7] = b'2';
     let document = open(data).unwrap();
-    assert_eq!(document.pages().unwrap_err().kind, ErrorKind::Cycle);
+    assert_eq!(
+        document.pages().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Cycle
+    );
 }
 
 #[test]

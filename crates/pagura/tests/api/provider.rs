@@ -36,11 +36,11 @@ fn explicit_absence_of_font_data_stays_unsupported() {
         let page = context.document().page(0).unwrap();
         let error = context.scene(page).unwrap_err();
         assert!(
-            matches!(error.kind, ErrorKind::Unsupported(_)),
+            matches!(error.as_error().unwrap().kind, ErrorKind::Unsupported(_)),
             "{name}: {error}"
         );
         assert_eq!(
-            error.feature().unwrap().as_str(),
+            error.as_error().unwrap().feature().unwrap().as_str(),
             if name == "bundled-cjk-cmap" {
                 "font.predefined-cmap"
             } else {
@@ -118,7 +118,12 @@ fn context_rejects_foreign_pages() {
     let cloned = context.document().page(0).unwrap().clone();
     context.scene(&cloned).unwrap();
     assert_eq!(
-        context.scene(b.page(0).unwrap()).unwrap_err().kind,
+        context
+            .scene(b.page(0).unwrap())
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::InvalidArgument
     );
 }
@@ -247,7 +252,10 @@ fn unusable_glyphs_report_repairs_without_losing_advances() {
     )
     .unwrap();
     let error = pagura::record_page(&strict, strict.page(0).unwrap()).unwrap_err();
-    assert_eq!(error.repair.unwrap().as_str(), "font.glyph-data");
+    assert_eq!(
+        error.as_error().unwrap().repair.unwrap().as_str(),
+        "font.glyph-data"
+    );
 }
 
 #[test]

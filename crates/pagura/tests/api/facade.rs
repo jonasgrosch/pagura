@@ -81,10 +81,17 @@ fn a_facade_only_provider_matches_the_default() {
         (Ok(custom), Ok(default)) => assert_eq!(custom.data(), default.data()),
         (Err(custom), Err(default)) => {
             assert_eq!(
-                custom.feature().map(pagura::Feature::as_str),
+                custom
+                    .as_error()
+                    .unwrap()
+                    .feature()
+                    .map(pagura::Feature::as_str),
                 Some("font.non-embedded")
             );
-            assert_eq!(custom.feature(), default.feature());
+            assert_eq!(
+                custom.as_error().unwrap().feature(),
+                default.as_error().unwrap().feature()
+            );
         }
         (custom, default) => panic!("custom {custom:?}, default {default:?}"),
     }

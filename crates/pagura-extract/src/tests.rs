@@ -240,8 +240,7 @@ fn retained_bytes_include_long_names_empty_arc_paths_and_shared_glyph_text() -> 
 }
 
 #[test]
-fn structure_work_budget_and_document_identity_are_enforced()
--> pagura_document::source::ReadResult<()> {
+fn structure_work_budget_and_document_identity_are_enforced() -> ReadResult<()> {
     use pagura_document::{Document, OpenOptions};
     let bytes = pagura_testkit::fixture("text", "tagged-nested-order.pdf");
     let doc = Document::open(bytes.clone(), &OpenOptions::default())?;

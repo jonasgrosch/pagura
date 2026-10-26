@@ -37,8 +37,12 @@ fn descriptor_vectors_render_exact_pixels_and_text() {
         let result = pagura_render::record_page(&strict, strict.page(0).unwrap(), None);
         if repaired {
             let error = result.unwrap_err();
-            assert_eq!(error.repair, Some(DESCRIPTOR_FLAGS), "{name}: {error}");
-            assert_eq!(error.object, Some(DESCRIPTOR), "{name}");
+            assert_eq!(
+                error.as_error().unwrap().repair,
+                Some(DESCRIPTOR_FLAGS),
+                "{name}: {error}"
+            );
+            assert_eq!(error.as_error().unwrap().object, Some(DESCRIPTOR), "{name}");
         } else {
             result.unwrap();
         }

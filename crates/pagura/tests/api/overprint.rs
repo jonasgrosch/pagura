@@ -7,7 +7,7 @@ use pagura_testkit::{assert_bytes_eq, fixture};
 use std::sync::Arc;
 
 /// A context for an overprint fixture and its first page's scene.
-fn recorded(name: &str) -> pagura::Result<(RenderContext, Arc<pagura::Scene>)> {
+fn recorded(name: &str) -> pagura::ReadResult<(RenderContext, Arc<pagura::Scene>)> {
     let document = open(fixture("overprint", &format!("{name}.pdf")))?;
     let context = pagura::render_context(Arc::new(document));
     let scene = context.scene(context.document().page(0)?)?;

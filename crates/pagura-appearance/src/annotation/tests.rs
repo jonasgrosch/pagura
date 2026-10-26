@@ -242,8 +242,14 @@ fn rectangles_without_area_get_no_appearance_after_validation() {
         let flat = generate(text, line).unwrap_err();
         let full = generate(text, rect(2.0, 2.0, 9.0, 9.0)).unwrap_err();
         assert_eq!(
-            (flat.kind, flat.message),
-            (full.kind, full.message),
+            (
+                flat.as_error().unwrap().kind,
+                flat.as_error().unwrap().message
+            ),
+            (
+                full.as_error().unwrap().kind,
+                full.as_error().unwrap().message
+            ),
             "{}",
             String::from_utf8_lossy(text)
         );

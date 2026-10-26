@@ -176,6 +176,8 @@ fn rollback_failed_sets_and_dangling_references_are_atomic() {
         transaction
             .commit(&SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::MissingObject
     );
@@ -249,6 +251,8 @@ fn modified_repair_mode_and_encrypted_sources_are_refused_but_noop_is_exact() {
         transaction
             .commit(&SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Unsupported(features::REPAIRED)
     );
@@ -272,6 +276,8 @@ fn modified_repair_mode_and_encrypted_sources_are_refused_but_noop_is_exact() {
         transaction
             .commit(&SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Unsupported(features::ENCRYPTED)
     );
@@ -298,6 +304,8 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
         transaction
             .commit(&SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -321,6 +329,8 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
         transaction
             .commit(&SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -349,6 +359,8 @@ fn signatures_require_explicit_policy_and_original_signed_bytes_survive() {
         transaction
             .commit(&SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Unsupported(features::SIGNED)
     );
@@ -462,6 +474,8 @@ fn password_and_missing_button_state_appearances_fail_atomically() {
     assert_eq!(
         save_filled_form(&filler, &SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Unsupported(features::PASSWORD)
     );
@@ -480,6 +494,8 @@ fn password_and_missing_button_state_appearances_fail_atomically() {
     assert_eq!(
         save_filled_form(&filler, &SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Unsupported(features::BUTTON_APPEARANCE)
     );
@@ -541,6 +557,8 @@ fn nested_direct_fields_never_replace_the_enclosing_form() {
     assert_eq!(
         save_filled_form(&filler, &SaveOptions::default())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Unsupported(features::DIRECT_FIELD)
     );
@@ -632,7 +650,10 @@ fn hybrid_overrides_and_the_new_xref_stream_are_charged_before_save() {
             .unwrap();
         let result = transaction.commit(&SaveOptions::default());
         if objects < 16 {
-            assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
+            assert_eq!(
+                result.unwrap_err().as_error().unwrap().kind,
+                ErrorKind::Limit
+            );
         } else {
             let reopened = Document::open(
                 result.unwrap(),

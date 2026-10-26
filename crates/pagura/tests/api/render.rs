@@ -53,7 +53,11 @@ fn unsupported_features_are_tagged_errors_not_partial_images() {
         )
         .unwrap_err();
         assert_eq!(
-            error.feature().map(pagura::Feature::as_str),
+            error
+                .as_error()
+                .unwrap()
+                .feature()
+                .map(pagura::Feature::as_str),
             Some(feature.as_str()),
             "{}: {error}",
             path.display()
@@ -82,7 +86,7 @@ fn tiles_assemble_into_the_full_page() {
         height: 64,
     };
     let error = pagura::render_tile(&document, page, &options, outside).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::InvalidArgument);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::InvalidArgument);
 }
 
 #[test]
@@ -97,7 +101,7 @@ fn pixel_budget_and_invalid_scale_are_enforced() {
     let document = Document::open(fixture("classic", "rectangle.pdf"), &options).unwrap();
     let page = document.page(0).unwrap();
     let error = pagura::render_page(&document, page, &RenderOptions::default()).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
     let error = pagura::render_page(&document, page, &RenderOptions::from_dpi(0.0)).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::InvalidArgument);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::InvalidArgument);
 }

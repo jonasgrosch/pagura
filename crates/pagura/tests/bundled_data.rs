@@ -71,11 +71,11 @@ fn open_with(name: &str, options: &OpenOptions) -> Result<Document> {
 }
 
 /// The font dictionary every bundled-data fixture places in object 4.
-fn font(document: &Document) -> Result<&Dictionary> {
+fn font(document: &Document) -> pagura::ReadResult<&Dictionary> {
     document
         .object(ObjectId::new(4, 0))?
         .dictionary()
-        .ok_or_else(|| Error::syntax("missing font dictionary"))
+        .ok_or_else(|| Error::syntax("missing font dictionary").into())
 }
 
 fn near(actual: f64, expected: f64) {
@@ -90,7 +90,7 @@ fn information(document: &Document, tag: &'static str) -> bool {
 }
 
 #[test]
-fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
+fn standard_fonts_use_afm_widths_and_substitute_outlines() -> pagura::ReadResult<()> {
     let provider = Bundled::default();
     for name in names("bundled-standard-inventory")? {
         let base = fixture("text", &format!("{name}.base"));
@@ -128,7 +128,7 @@ fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
                 matrix,
             } = &glyph.shape
             else {
-                return Err(Error::syntax("missing substitute outlines"));
+                return Err((Error::syntax("missing substitute outlines")).into());
             };
             assert_eq!(glyph.0, integer(&values[3])?, "{name}");
             assert_eq!(*matrix, program.font_matrix());
@@ -139,7 +139,8 @@ fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
 }
 
 #[test]
-fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> Result<()> {
+fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> pagura::ReadResult<()>
+{
     let provider = Bundled::default();
     for name in names("bundled-substitute-inventory")? {
         let document = open(&name)?;
@@ -151,7 +152,7 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
         near(glyphs[0].advance, number(&values[1])?);
         assert_eq!(glyphs[0].unicode.as_deref(), text(&values[2]));
         let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
-            return Err(Error::syntax("missing substitute outline"));
+            return Err((Error::syntax("missing substitute outline")).into());
         };
         assert_eq!(glyph.0, integer(&values[3])?);
         let base = fixture("text", &format!("{name}.base"));
@@ -176,6 +177,8 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
         assert_eq!(
             PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
                 .unwrap_err()
+                .as_error()
+                .unwrap()
                 .kind,
             ErrorKind::Unsupported(features::NON_EMBEDDED)
         );
@@ -200,7 +203,7 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
 }
 
 #[test]
-fn predefined_cmap_bindings_decode_embedded_glyphs() -> Result<()> {
+fn predefined_cmap_bindings_decode_embedded_glyphs() -> pagura::ReadResult<()> {
     let provider = Bundled::default();
     for name in names("bundled-cmap-inventory")? {
         let cmap_name = fixture("text", &format!("{name}.cmap"));
@@ -222,7 +225,7 @@ fn predefined_cmap_bindings_decode_embedded_glyphs() -> Result<()> {
             assert_eq!(Some(glyph.word_space), values[3].as_bool());
             assert_eq!(glyph.unicode.as_deref(), text(&values[4]), "{name}");
             let GlyphShape::Outline { glyph: id, .. } = glyph.shape else {
-                return Err(Error::syntax("missing embedded outline"));
+                return Err((Error::syntax("missing embedded outline")).into());
             };
             assert_eq!(id.0, integer(&values[5])?);
             if let Some(metrics) = glyph.vertical {
@@ -237,14 +240,14 @@ fn predefined_cmap_bindings_decode_embedded_glyphs() -> Result<()> {
 }
 
 #[test]
-fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<()> {
+fn embedded_programs_take_precedence_and_do_not_report_substitution() -> pagura::ReadResult<()> {
     let provider = Bundled::default();
     let document = open("tt-unicode-priority")?;
     let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
     let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
     let glyphs = loaded.decode(b"A", Some(&unicode))?;
     let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
-        return Err(Error::syntax("missing embedded program"));
+        return Err((Error::syntax("missing embedded program")).into());
     };
     assert_eq!(program.glyph_count(), 5);
     assert_eq!(glyph.0, 1);
@@ -254,6 +257,8 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
     assert_eq!(
         PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Syntax
     );
@@ -261,7 +266,7 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
 }
 
 #[test]
-fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<()> {
+fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> pagura::ReadResult<()> {
     let provider = Bundled::default();
     for name in [
         "substitute-Symbol-charset",
@@ -289,7 +294,7 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
                 matrix,
             } = &glyph.shape
             else {
-                return Err(Error::syntax("missing symbol outline"));
+                return Err((Error::syntax("missing symbol outline")).into());
             };
             assert_eq!(glyph.0, integer(&values[3])?, "{name}");
             let glyph_name = text(&values[1]).ok_or_else(|| Error::syntax("missing glyph name"))?;
@@ -316,7 +321,7 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
 
 #[cfg(not(feature = "cjk-fonts"))]
 #[test]
-fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> {
+fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> pagura::ReadResult<()> {
     let provider = Bundled::default();
     for ordering in ["Japan1", "GB1", "CNS1", "Korea1"] {
         let document = open(&format!("substitute-cid-{ordering}-CIDFontType2"))?;
@@ -356,7 +361,7 @@ mod cjk {
         Ok(())
     }
 
-    fn check(provider: &Bundled, name: &str) -> Result<()> {
+    fn check(provider: &Bundled, name: &str) -> pagura::ReadResult<()> {
         for recovery in [Recovery::Strict, Recovery::Repair] {
             let document = open_with(
                 name,
@@ -389,7 +394,7 @@ mod cjk {
                         matrix,
                     } = &glyph.shape
                     else {
-                        return Err(Error::syntax("missing CJK outline"));
+                        return Err((Error::syntax("missing CJK outline")).into());
                     };
                     assert!(Arc::ptr_eq(selected, &program));
                     assert_eq!(glyph.0, integer(&values[4])?);
@@ -416,7 +421,7 @@ mod cjk {
     }
 
     #[test]
-    fn vertical_substitutes_remain_explicit() -> Result<()> {
+    fn vertical_substitutes_remain_explicit() -> pagura::ReadResult<()> {
         let provider = Bundled::default();
         for name in [
             "substitute-cid-Japan1-vertical",
@@ -429,7 +434,7 @@ mod cjk {
             let error = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
                 .unwrap_err();
             assert_eq!(
-                error.kind,
+                error.as_error().unwrap().kind,
                 ErrorKind::Unsupported(features::CID_SUBSTITUTE_VERTICAL)
             );
             assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
@@ -438,7 +443,8 @@ mod cjk {
     }
 
     #[test]
-    fn collection_mismatches_and_unknown_identity_fonts_are_not_guessed() -> Result<()> {
+    fn collection_mismatches_and_unknown_identity_fonts_are_not_guessed() -> pagura::ReadResult<()>
+    {
         let provider = Bundled::default();
         for (name, kind) in [
             ("substitute-cid-mismatched-collection", ErrorKind::Syntax),
@@ -450,7 +456,7 @@ mod cjk {
             let document = open(name)?;
             let error = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
                 .unwrap_err();
-            assert_eq!(error.kind, kind);
+            assert_eq!(error.as_error().unwrap().kind, kind);
             assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
         }
         Ok(())

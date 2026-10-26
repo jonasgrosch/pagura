@@ -67,7 +67,12 @@ fn exact_scopes_and_duplicate_related_names_select_independent_bytes() {
             },
         ] {
             assert_eq!(
-                document.file_payload(scope, 0, payload).unwrap_err().kind,
+                document
+                    .file_payload(scope, 0, payload)
+                    .unwrap_err()
+                    .as_error()
+                    .unwrap()
+                    .kind,
                 ErrorKind::InvalidArgument
             );
         }
@@ -86,6 +91,8 @@ fn exact_scopes_and_duplicate_related_names_select_independent_bytes() {
                 FilePayload::Embedded(b"F")
             )
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::InvalidArgument
     );
@@ -324,9 +331,17 @@ fn authentication_creates_a_fresh_snapshot_and_failure_preserves_the_source() {
             .file_payload(FileScope::Catalog, 0, FilePayload::Embedded(b"F"))
             .unwrap()
     };
-    assert_eq!(selected().data().unwrap_err().kind, ErrorKind::Password);
     assert_eq!(
-        document.reauthenticate(b"incorrect").unwrap_err().kind,
+        selected().data().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Password
+    );
+    assert_eq!(
+        document
+            .reauthenticate(b"incorrect")
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Password
     );
     let authenticated = document.reauthenticate(b"attachment").unwrap();
@@ -339,7 +354,10 @@ fn authentication_creates_a_fresh_snapshot_and_failure_preserves_the_source() {
             .as_ref(),
         b"attached file bytes"
     );
-    assert_eq!(selected().data().unwrap_err().kind, ErrorKind::Password);
+    assert_eq!(
+        selected().data().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Password
+    );
     assert_eq!(authenticated.original_bytes(), source.as_slice());
 }
 
@@ -364,6 +382,8 @@ fn discovery_and_decode_limits_are_independent() {
             .unwrap()
             .transfer(ImageTransferMode::Encoded)
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -378,5 +398,8 @@ fn discovery_and_decode_limits_are_independent() {
         },
     )
     .unwrap();
-    assert_eq!(document.collection().unwrap_err().kind, ErrorKind::Limit);
+    assert_eq!(
+        document.collection().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
 }

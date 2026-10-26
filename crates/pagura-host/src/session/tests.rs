@@ -330,6 +330,8 @@ fn generations_skip_before_recording_and_tiles_share_one_scene() {
         session
             .execute(request(&invalid_scale))
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .position,
         Position::Buffer(17)
     );

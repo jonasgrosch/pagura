@@ -5,7 +5,7 @@ use crate::args::Source;
 use crate::failure::Failure;
 use crate::json;
 use pagura::provider::{Provider, default_provider};
-use pagura::{Document, Recovery, RenderContext, RenderOptions};
+use pagura::{Document, ReadFault, ReadResult, Recovery, RenderContext, RenderOptions};
 use std::hint::black_box;
 use std::io::{self, Write};
 use std::sync::Arc;
@@ -42,12 +42,14 @@ pub(crate) fn run(
     let provider = default_provider(source.options(Recovery::Repair).limits);
     let audited = source
         .open_bytes(Arc::clone(&bytes), Recovery::Strict)
+        .map_err(ReadFault::from)
         .and_then(|document| {
             document.pages()?;
             Ok(document)
         });
     let (document, mut strict) = match audited {
         Ok(document) => (document, true),
+        Err(fault) if fault.as_error().is_none() => return open_failure(out, &fault.into()),
         Err(_) => match source.open_bytes(Arc::clone(&bytes), Recovery::Repair) {
             Ok(document) => (document, false),
             Err(error) => return open_failure(out, &error.into()),
@@ -69,13 +71,17 @@ pub(crate) fn run(
         .unwrap_or(0)
         .min(max_pages.unwrap_or(usize::MAX));
     for index in 0..limit {
-        let render = |context: &RenderContext| {
+        let render = |context: &RenderContext| -> ReadResult<pagura::Pixmap> {
             let page = context.document().page(index)?;
             let scene = context.record(page)?;
-            context.render_scene(&scene, options, None)
+            Ok(context.render_scene(&scene, options, None)?)
         };
         let mut rendered = render(&context);
-        if strict && rendered.as_ref().is_err_and(|error| error.repair.is_some()) {
+        if strict
+            && rendered
+                .as_ref()
+                .is_err_and(|fault| fault.as_error().is_some_and(|error| error.repair.is_some()))
+        {
             let diagnostics = context.document().diagnostics();
             let document = match source.open_bytes(Arc::clone(&bytes), Recovery::Repair) {
                 Ok(document) => document,
