@@ -23,6 +23,59 @@ EXPECTED = {"name": "probe.txt", "sha256": "bb0530979076ce983311c32a3cbf23448fb4
 
 
 class AttachmentAdapterTests(unittest.TestCase):
+    def test_mupdf_catalog_uses_engine_name_tree_loader_and_exact_native_file_handles(self):
+        files = [{"UF": "probe.txt", "F": "legacy.bin"}, {"UF": "", "F": "ignored.bin"}, {"F": "fallback.txt"}]
+        document = object()
+        raw = SimpleNamespace(
+            pdf_open_document=Mock(return_value=document), pdf_new_name=Mock(return_value="EmbeddedFiles-name"),
+            pdf_load_name_tree=Mock(return_value=files), pdf_dict_len=len,
+            pdf_dict_get_val=lambda tree, index: tree[index], pdf_is_embedded_file=Mock(return_value=True),
+            pdf_dict_gets=lambda file, key: file.get(key), pdf_is_null=lambda item: item is None,
+            pdf_to_text_string=lambda item: item, pdf_load_embedded_file_contents=Mock(return_value=PAYLOAD),
+            fz_buffer_extract=lambda item: item)
+        result = bindings.mupdf_catalog(raw, "synthetic.pdf")
+        raw.pdf_open_document.assert_called_once_with("synthetic.pdf")
+        raw.pdf_load_name_tree.assert_called_once_with(document, "EmbeddedFiles-name")
+        self.assertEqual(result, {"status": "ok", "value": [
+            {"name": "", "sha256": EXPECTED["sha256"]},
+            {"name": "fallback.txt", "sha256": EXPECTED["sha256"]}, EXPECTED]})
+        self.assertEqual([call.args[0] for call in raw.pdf_load_embedded_file_contents.call_args_list], files)
+        # The catalog operation cannot silently return the high-level binding's
+        # empty list or fall back to page annotation enumeration.
+        backend = SimpleNamespace(mupdf=raw, open=Mock(side_effect=AssertionError("wrong API")))
+        with patch.dict("sys.modules", {"pymupdf": backend}):
+            self.assertEqual(bindings.probe("mupdf", "attachments", "synthetic.pdf"), result)
+        backend.open.assert_not_called()
+        raw.pdf_dict_len = lambda tree: 0
+        self.assertEqual(bindings.mupdf_catalog(raw, "empty.pdf"), {"status": "ok", "value": []})
+
+    def test_mupdf_native_catalog_preserves_failure_and_resource_boundaries(self):
+        raw = SimpleNamespace(pdf_open_document=Mock(side_effect=ValueError("private path")))
+        self.assertEqual(bindings.mupdf_catalog(raw, "invalid.pdf"), {"status": "rejected", "reason": "ValueError"})
+        self.assertEqual(bindings.mupdf_catalog(SimpleNamespace(), "source.pdf")["status"], "adapter-unavailable")
+        raw.pdf_open_document = Mock(return_value=object())
+        self.assertEqual(bindings.mupdf_catalog(raw, "source.pdf")["status"], "adapter-unavailable")
+        raw.pdf_new_name = lambda name: name
+        raw.pdf_load_name_tree = lambda document, which: []
+        raw.pdf_dict_len = lambda tree: 1025
+        self.assertEqual(bindings.mupdf_catalog(raw, "source.pdf")["status"], "limit")
+        raw.pdf_dict_len = lambda tree: -1
+        self.assertEqual(bindings.mupdf_catalog(raw, "source.pdf"), {"status": "adapter-error", "reason": "ValueError"})
+        raw.pdf_dict_len = lambda tree: 1
+        raw.pdf_dict_get_val = lambda tree, index: "spec"
+        raw.pdf_is_embedded_file = lambda file: False
+        self.assertEqual(bindings.mupdf_catalog(raw, "source.pdf")["status"], "adapter-error")
+        raw.pdf_is_embedded_file = lambda file: True
+        raw.pdf_dict_gets = lambda file, key: "probe.txt"
+        raw.pdf_is_null = lambda item: False
+        raw.pdf_to_text_string = lambda item: item
+        raw.pdf_load_embedded_file_contents = lambda file: b"bytes"
+        raw.fz_buffer_extract = lambda item: item
+        with patch.object(bindings, "MAX_PAYLOAD", 4):
+            self.assertEqual(bindings.mupdf_catalog(raw, "source.pdf")["status"], "limit")
+        raw.pdf_load_embedded_file_contents = Mock(side_effect=RuntimeError("private payload"))
+        self.assertEqual(bindings.mupdf_catalog(raw, "source.pdf"), {"status": "adapter-error", "reason": "RuntimeError"})
+
     def test_pdfium_filters_subtypes_preserves_duplicates_and_closes_borrowed_handles(self):
         page = Mock()
         raw = SimpleNamespace(FPDFPage_GetAnnotCount=Mock(return_value=3),

@@ -262,7 +262,7 @@ def service_identity(name, command):
     result = public_identity(identity)
     result["configuration"] = {
         "pdfium": "Pinned default pypdfium2 wheel; optional V8/XFA builds are not probed.",
-        "mupdf": "Pinned default PyMuPDF wheel; optional providers are not probed.",
+        "mupdf": "Pinned default PyMuPDF wheel; catalog attachments use the public native MuPDF name-tree loader and embedded-file API, while page annotations retain PyMuPDF handles. Optional providers are not probed.",
         "pdfjs": "Pinned pdfjs-dist Node legacy build; eval disabled; browser behavior is not probed.",
         "poppler": "Hosted Ubuntu GLib/GI packages; actual version and native hashes recorded, not lock-pinned.",
         "hayro": "Pinned standalone hayro default features; public pages, ASCII Info and object/stream APIs. Catalog name trees and first-page FileAttachment annotations stay separate; EF/UF is preferred, else EF/F. ASCII filenames only; 128 files, 1024 traversal items/slots and 64 KiB aggregate decoded-output adapter bounds. Stream decoding completes before the output bound.",

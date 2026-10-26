@@ -171,8 +171,7 @@ measured merge revision `c17d3b41a0ed0816b151a0a9380355ce75484be4`: 142 passing
 cells, four explicit text adapter gaps and one incorrect observation. Pagura,
 PDFium, pdf.js and Poppler pass all 21 cases. Hayro and CoreGraphics each pass
 19, with two text gaps apiece. MuPDF passes 20; its binding returns no catalog
-attachments for the nested name-tree control. This remains a binding/API
-adjudication item, not a claim that the engine lacks that feature. All compressed
+attachments for the nested name-tree control. The revised adapter now calls MuPDF's native name-tree and embedded-file APIs directly; its hosted result is pending. This remains a binding/API adjudication item, not a claim that the engine lacks that feature. All compressed
 catalog/page payload controls pass. Later source changes need their own validation.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.

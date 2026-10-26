@@ -15,7 +15,7 @@ Pagura is an additional measured subject, never a replacement baseline.
 |---|---|---|---|
 | Pagura (subject) | CLI inspect, metadata, attachments, extract-attachment and text | Object-local metadata/AF/RF and broader operation configurations remain open | Ubuntu, pinned Rust, default features |
 | PDFium | Pages, metadata, catalog/page attachments, text | Optional V8/XFA builds not covered | Ubuntu, locked pypdfium2 wheel |
-| MuPDF | Pages, metadata, catalog/page attachments, text | Optional providers not covered | Ubuntu, locked PyMuPDF wheel |
+| MuPDF | Pages, metadata, native catalog name-tree/stream APIs, PyMuPDF page attachments, text | Optional providers not covered | Ubuntu, locked PyMuPDF wheel |
 | pdf.js | Pages, metadata, catalog/page attachments, text | Browser configuration not covered | Ubuntu, locked Node legacy build; eval disabled |
 | Poppler | Pages, metadata, catalog/page attachments, text | Other bindings/configurations not covered | Ubuntu, OS GLib/GI packages |
 | hayro | Pages, ASCII Info metadata, catalog/page attachments via public objects/streams | Text reconstruction not implemented in this adapter; attachment filenames limited to ASCII | Ubuntu, locked standalone Rust workspace |
@@ -220,6 +220,15 @@ observation across 147 cells. Pagura, PDFium, pdf.js and Poppler each pass all
 passes 20; its `Document.embfile_names()` adapter returns an empty list for the
 nested name-tree control. That disagreement requires binding/API adjudication;
 it does not establish that the MuPDF engine lacks nested attachment support.
+A follow-up adapter now uses MuPDF's public `pdf_load_name_tree` and
+`pdf_load_embedded_file_contents` APIs for catalog enumeration and decoding,
+instead of `Document.embfile_names()`. The binding owns the native document,
+objects and buffers for the duration of the operation. This uses the engine's
+name-tree traversal directly; no PDF traversal/parser is copied into the adapter.
+Filename selection preserves present UF (including an empty string), otherwise F.
+Count and decoded-payload limits, load rejections and adapter failures stay distinct.
+The revised adapter awaits hosted execution before adjudicating the earlier result.
+
 Compressed catalog and page payload controls pass for every engine. Broader
 attachment encodings, password/configuration combinations, current-head reruns
 and performance remain separate work.

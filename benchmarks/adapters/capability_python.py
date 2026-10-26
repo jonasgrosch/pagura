@@ -65,6 +65,46 @@ def mupdf_annotations(document, backend):
     return sorted(result, key=lambda row: row["name"])
 
 
+def mupdf_catalog(raw, source):
+    """Use the public MuPDF name-tree loader, including non-leaf roots.
+
+    These class-aware bindings own their native handles; all objects remain
+    local to this operation, with the document alive through stream extraction.
+    No PDF syntax or name-tree traversal is reimplemented in this adapter.
+    """
+    try:
+        document = raw.pdf_open_document(source)
+    except AttributeError:
+        return {"status": "adapter-unavailable", "reason": "binding lacks the public native PDF opener"}
+    except Exception as error:
+        return {"status": "rejected", "reason": type(error).__name__}
+    try:
+        tree = raw.pdf_load_name_tree(document, raw.pdf_new_name("EmbeddedFiles"))
+        count = raw.pdf_dict_len(tree)
+        if type(count) is not int or count < 0:
+            raise ValueError("invalid native name-tree size")
+        if count > MAX_ATTACHMENTS:
+            raise ProbeLimit("catalog attachment count exceeds adapter bound")
+        result = []
+        for index in range(count):
+            spec = raw.pdf_dict_get_val(tree, index)
+            if not raw.pdf_is_embedded_file(spec):
+                raise ValueError("catalog entry is not an embedded file")
+            name = raw.pdf_dict_gets(spec, "UF")
+            if raw.pdf_is_null(name):
+                name = raw.pdf_dict_gets(spec, "F")
+            name = raw.pdf_to_text_string(name)
+            buffer = raw.pdf_load_embedded_file_contents(spec)
+            result.append(attachment_value(name, raw.fz_buffer_extract(buffer)))
+        return {"status": "ok", "value": sorted(result, key=lambda row: row["name"])}
+    except AttributeError:
+        return {"status": "adapter-unavailable", "reason": "binding lacks the public native attachment API"}
+    except ProbeLimit as error:
+        return {"status": "limit", "reason": str(error)}
+    except Exception as error:
+        return {"status": "adapter-error", "reason": type(error).__name__}
+
+
 def pdfium(document, operation):
     if operation == "pages":
         return {"count": len(document), "sizes": [list(document.get_page_size(i)) for i in range(len(document))]}
@@ -97,9 +137,6 @@ def mupdf(document, operation):
         return {"count": document.page_count, "sizes": [[page.rect.width, page.rect.height] for page in document]}
     if operation == "metadata":
         return {key: document.metadata.get(key.lower(), "") or "" for key in ("Title", "Author")}
-    if operation == "attachments":
-        return sorted([{"name": name, "sha256": hashlib.sha256(document.embfile_get(name)).hexdigest()}
-                       for name in document.embfile_names()], key=lambda row: row["name"])
     if operation == "text":
         return document[0].get_text().replace("\r\n", "\n").strip("\n")
     if operation == "annotation-attachments":
@@ -115,6 +152,8 @@ def probe(engine, operation, source):
             opener, reader = backend.PdfDocument, pdfium
         elif engine == "mupdf":
             import pymupdf as backend  # pyright: ignore[reportMissingImports]
+            if operation == "attachments":
+                return mupdf_catalog(backend.mupdf, source)
             opener, reader = backend.open, mupdf
         else:
             return {"status": "adapter-error", "reason": "unknown engine"}
