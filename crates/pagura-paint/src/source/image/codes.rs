@@ -815,20 +815,18 @@ impl<'a> Grid<'a> {
         cache: &'s mut RowCache<u8>,
     ) -> &'s [u8] {
         if let Some(maximum) = complement {
-            let pairs = |out: &mut [u8], code: &dyn Fn(usize) -> u8| {
-                for (x, pair) in (x0..x1).zip(out.as_chunks_mut::<2>().0) {
-                    let code = code(x);
-                    pair.copy_from_slice(&[code, maximum.saturating_sub(code)]);
-                }
-                true
-            };
+            let pair = |code: u8| [code, maximum.saturating_sub(code)];
             return match self {
                 Self::Bytes { bytes, width } => cache.get((y, (x0, x1)), 2, |out, _| {
-                    pairs(out, &|x| bytes.get(y * width + x).copied().unwrap_or(0))
+                    for (x, out) in (x0..x1).zip(out.as_chunks_mut::<2>().0) {
+                        *out = pair(bytes.get(y * width + x).copied().unwrap_or(0));
+                    }
+                    true
                 }),
                 Self::Packed(packed) => cache.get((y, (x0, x1)), 2, |out, _| {
                     let row = packed.row(y).unwrap_or(&[]);
-                    pairs(out, &|x| bit(row, x))
+                    unpack(row, (x0, x1), out.as_chunks_mut::<2>().0, pair);
+                    true
                 }),
                 Self::Planar(..) => &[],
             };
@@ -840,7 +838,7 @@ impl<'a> Grid<'a> {
             }
             Self::Packed(packed) => cache.get((y, (x0, x1)), 1, |out, _| {
                 packed.row(y).is_some_and(|row| {
-                    unpack(row, (x0, x1), out);
+                    unpack(row, (x0, x1), out, |code| code);
                     true
                 })
             }),
@@ -851,21 +849,24 @@ impl<'a> Grid<'a> {
     }
 }
 
-/// Samples `x0..x1` of a packed row as one code per byte in `out`.
-fn unpack(row: &[u8], (x0, x1): (usize, usize), out: &mut [u8]) {
+/// Samples `x0..x1` of a packed row in `out`, each as `code` gives it from
+/// its code; a sample past the row's bytes has code 0.
+fn unpack<T>(row: &[u8], (x0, x1): (usize, usize), out: &mut [T], code: impl Fn(u8) -> T) {
     let head = x0.next_multiple_of(8).min(x1);
     let whole = (x1 - head) / 8;
     let (start, middle) = out.split_at_mut(head - x0);
     for (x, out) in (x0..).zip(start) {
-        *out = bit(row, x);
+        *out = code(bit(row, x));
     }
     let (middle, tail) = middle.split_at_mut(whole * 8);
     let bytes = row.get(head / 8..).unwrap_or(&[]);
-    for (out, &byte) in middle.as_chunks_mut::<8>().0.iter_mut().zip(bytes) {
-        *out = UNPACKED[usize::from(byte)].to_ne_bytes();
+    let (present, missing) = middle.split_at_mut(8 * whole.min(bytes.len()));
+    for (out, &byte) in present.as_chunks_mut::<8>().0.iter_mut().zip(bytes) {
+        *out = UNPACKED[usize::from(byte)].to_ne_bytes().map(&code);
     }
+    missing.fill_with(|| code(0));
     for (x, out) in (head + whole * 8..).zip(tail) {
-        *out = bit(row, x);
+        *out = code(bit(row, x));
     }
 }
 
