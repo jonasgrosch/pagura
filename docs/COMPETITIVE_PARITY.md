@@ -530,8 +530,10 @@ separately, starts on the current page and offers explicit page selection,
 downloads and parameter checks. Original slots/EF keys and fixed download names
 are preserved. Annotation Contents and file descriptions remain separate inert
 labels. Page changes invalidate old lists and decode callbacks; page-listing
-errors preserve independent document controls. New UI race/selection checks
-pass in the hosted browser shim; real-browser interaction validation remains open. Icon activation,
+errors preserve independent document controls. UI race/selection and the full
+hosted functional matrix pass at `dde52cd7f` in
+[run 40279713761](https://github.com/jonasgrosch/pagura/actions/runs/40279713761);
+real-browser interaction validation remains open. Icon activation,
 AF/RF selection and attachment-only password reauthentication remain open.
 
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
