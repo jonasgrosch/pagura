@@ -2,10 +2,13 @@
 
 Status: proposed implementation plan, reconciled against `render/one-pass` at
 `19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
-The documentation reconciliation is delivered. G00 has started with the
-[checked capability inventory](CAPABILITIES.md); its call-site adjudication,
-exhaustive API inventory and all runtime comparisons remain open. Other packages
-below are pending. Component names identify ownership, not assigned people.
+The documentation reconciliation and G00 source inventory are delivered: 90 tag
+candidates reviewed, 335 registered requirements assigned, and six baseline API
+catalogs reconciled across 43 capability families in the
+[checked capability inventory](CAPABILITIES.md). G01 runtime probes are in
+progress; later packages remain open. Component names identify ownership, not
+assigned people. The follow-up starts from `render/one-pass` at
+`7c03b656d1e1093c6951e80ec2fc189b5b1bf90a`, which includes the G00/initial G01 merge.
 [STATUS.md](STATUS.md) records what exists now.
 
 ## Baseline and consolidation
@@ -153,10 +156,18 @@ been exercised. Later discoveries reopen the inventory and relevant package.
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
 **Started:** the [document-service probe slice](../benchmarks/probes/README.md)
-adds nine independent populated/empty/rejection controls for PDFium and MuPDF,
-54 explicit case/engine cells, identity/source/fixture hashes, and hosted CI.
-The other four adapters and the wider operation matrix remain open. These
+adds ten independent populated/empty/rejection controls, 60 explicit case/engine
+cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
+six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstruction
+and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
+operation/configuration matrix and Pagura document-service observations remain open. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
+The initial render slice adds six independent pixel oracles and 42 case/engine
+cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
+The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
+these are observations pending sampling/colour/alpha adjudication, not established
+competitor defects. The Pagura-inclusive hosted probe run recorded all six subject cases passing. The separate R02 changes need their own expanded probes after
+consolidation onto the shared target.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
@@ -567,9 +578,9 @@ performance superiority remain separate claims.
 Start with these reviewable changes; each includes fixtures and its ledger/status
 update. Reorder later display work using G01's measured failure frequencies.
 
-1. G00 schema and checked inventory view are started. Next: adjudicate the
-   candidate call sites and expand/reconcile the API and requirement inventory.
-   No product behaviour changes; classify actual refusals and integration gaps.
+1. G00 is complete for the reviewed source scope. Keep the checked inventory
+   current as packages land, and reopen it when new call sites or API families
+   are discovered. Source classifications do not establish runtime parity.
 2. G01 adapter controls and current corpus baseline. Publish reproducible summaries
    and the ordered queue of valid missing features, not a single success percentage.
 3. R02 embedded ICC/sYCC interpretation and colour precedence, using existing
