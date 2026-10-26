@@ -884,7 +884,7 @@ fn curve_length(points: [Point; 4], precision: f64, depth: usize, work: &mut Met
     let lower = (points[3] - points[0]).length();
     let upper: f64 = points.windows(2).map(|p| (p[1] - p[0]).length()).sum();
     if upper - lower <= 2.0 * precision {
-        return Ok((lower + upper) * 0.5);
+        return Ok(f64::midpoint(lower, upper));
     }
     if depth == 64 {
         return Err(Error::limit("dash curve length below numeric resolution"));
@@ -917,7 +917,7 @@ fn curve_sample(
         for depth in 0..64 {
             work.charge(1)?;
             let upper: f64 = piece.windows(2).map(|p| (p[1] - p[0]).length()).sum();
-            t = (lo + hi) * 0.5;
+            t = f64::midpoint(lo, hi);
             if upper <= precision {
                 break;
             }
