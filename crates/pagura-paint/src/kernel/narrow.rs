@@ -2,11 +2,14 @@
 //! once per store of an opaque colour at a coverage byte; a dynamic store
 //! (any other opacity, or a child's result) is evaluated in f64 and rounded
 //! once to the buffer's format; F32 mark stores evaluate `x += a·(t − x)`.
-//! Colours are premultiplied with the background embedded.
+//! Results of other blend modes store as dynamic stores too. Colours are
+//! premultiplied with the background embedded.
 
 use pagura_core::convert::{round_f32_u8, round_u8, round_u16};
+use pagura_interpret::BlendMode;
 
 use super::Colors;
+use crate::blend::{Blend, BlendVisitor, with_blend};
 
 /// `floor(x / 255)` for `x ≤ 255 · 65535 + 127` without a division:
 /// `y = 257 x`, then `(y + (y >> 16) + 1) >> 16`. Every intermediate stays
@@ -293,6 +296,106 @@ fn dynamic<T: Copy>(
                 .zip(alpha)
             {
                 store(pixel, targets(color, scale), a);
+            }
+        }
+    }
+}
+
+/// A dynamic store of `mode` into N16 words: with backdrop alpha `β` and
+/// straight backdrop `b = x/β`, `(1 − a)·x + a·((65535 − β)·c + β·B(b, c))`
+/// (11.3.6) evaluated in f64 and rounded once to the nearest word. Over an
+/// opaque backdrop that is `(1 − a)·x + a·65535·B(x/65535, c)`.
+pub(crate) fn blend_n16(
+    pixels: &mut [[u16; 4]],
+    colors: &Colors<'_>,
+    alpha: &[f64],
+    mode: BlendMode,
+) {
+    let round = round_u16;
+    with_blend(
+        mode,
+        Blended {
+            pixels,
+            colors,
+            alpha,
+            scale: 65535.0,
+            round,
+            widen: f64::from,
+        },
+    );
+}
+
+/// [`blend_n16`] into F32 levels, rounded once to f32.
+pub(crate) fn blend_f32(
+    pixels: &mut [[f32; 4]],
+    colors: &Colors<'_>,
+    alpha: &[f64],
+    mode: BlendMode,
+) {
+    let round = single;
+    with_blend(
+        mode,
+        Blended {
+            pixels,
+            colors,
+            alpha,
+            scale: 255.0,
+            round,
+            widen: f64::from,
+        },
+    );
+}
+
+/// A dynamic store of a blend mode, instantiated per mode.
+struct Blended<'a, T, R, W> {
+    pixels: &'a mut [[T; 4]],
+    colors: &'a Colors<'a>,
+    alpha: &'a [f64],
+    scale: f64,
+    round: R,
+    widen: W,
+}
+
+impl<T: Copy, R: Fn(f64) -> T, W: Fn(T) -> f64> BlendVisitor for Blended<'_, T, R, W> {
+    type Output = ();
+
+    fn visit<B: Blend>(self) {
+        let Self {
+            pixels,
+            colors,
+            alpha,
+            scale,
+            round,
+            widen,
+        } = self;
+        let store = |pixel: &mut [T; 4], color: &[f64], a: f64| {
+            if a == 0.0 {
+                return;
+            }
+            let [r, g, b, back] = pixel.map(&widen);
+            let source = [0, 1, 2, 3].map(|i| color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0));
+            let straight = |x: f64| if back > 0.0 { (x / back).min(1.0) } else { 0.0 };
+            let blended = B::process(&[r, g, b, 0.0].map(straight), &source, 3);
+            for (i, x) in [r, g, b].into_iter().enumerate() {
+                let result = (scale - back) * source[i] + back * blended[i];
+                pixel[i] = round((1.0 - a) * x + a * result);
+            }
+            pixel[3] = round((1.0 - a) * back + a * scale);
+        };
+        match *colors {
+            Colors::Constant(color) => {
+                for (pixel, &a) in pixels.iter_mut().zip(alpha) {
+                    store(pixel, color, a);
+                }
+            }
+            Colors::Strided { values, stride } => {
+                for ((pixel, color), &a) in pixels
+                    .iter_mut()
+                    .zip(values.chunks(stride.max(1)))
+                    .zip(alpha)
+                {
+                    store(pixel, color, a);
+                }
             }
         }
     }
@@ -727,6 +830,87 @@ mod tests {
         assert_eq!(level(1.0), 255.0);
         let inexact = level(0.123);
         assert_eq!(inexact.to_bits() & 1, 1);
+    }
+
+    #[test]
+    fn blend_stores_round_the_compositing_formula_once() {
+        let modes = [
+            BlendMode::Normal,
+            BlendMode::Multiply,
+            BlendMode::Screen,
+            BlendMode::Darken,
+            BlendMode::Lighten,
+            BlendMode::Difference,
+            BlendMode::Exclusion,
+        ];
+        // B(b, s) of Table 134, written out again.
+        let blend = |mode: BlendMode, b: f64, s: f64| match mode {
+            BlendMode::Multiply => b * s,
+            BlendMode::Screen => b + s - b * s,
+            BlendMode::Darken => b.min(s),
+            BlendMode::Lighten => b.max(s),
+            BlendMode::Difference => (b - s).abs(),
+            BlendMode::Exclusion => b + s - 2.0 * b * s,
+            _ => s,
+        };
+        let colors = [0.0, 0.2, 0.5, 0.73, 1.0];
+        for mode in modes {
+            for back in [65535_u16, 40000, 1] {
+                for &c in &colors {
+                    for a in [0.0, 0.15, 0.5, 0.999, 1.0] {
+                        let x = [0_u16, 12345, 32768, back];
+                        let mut words = x.map(|w| [w.min(back), w.min(back), w.min(back), back]);
+                        let alphas = [a; 4];
+                        let source = [c, 1.0 - c, c / 2.0];
+                        blend_n16(&mut words, &Colors::Constant(&source), &alphas, mode);
+                        let mut levels = x.map(|w| {
+                            let l = f32::from(w.min(back)) / 257.0;
+                            [l, l, l, f32::from(back) / 257.0]
+                        });
+                        let start = levels;
+                        blend_f32(&mut levels, &Colors::Constant(&source), &alphas, mode);
+                        for (k, &w) in x.iter().enumerate() {
+                            let beta = f64::from(back) / 65535.0;
+                            let premultiplied = f64::from(w.min(back)) / 65535.0;
+                            for i in 0..3 {
+                                // (1 − a) Cb + (1 − β) a c + a β B(cb, c) (11.3.6).
+                                let cb = premultiplied / beta;
+                                let exact = (1.0 - a) * premultiplied
+                                    + (1.0 - beta) * a * source[i]
+                                    + a * beta * blend(mode, cb, source[i]);
+                                let word = f64::from(words[k][i]);
+                                assert!(
+                                    (word - 65535.0 * exact).abs() <= 0.5 + 1e-6,
+                                    "{mode:?} {w} {back} {c} {a}: {word}"
+                                );
+                                let level = f64::from(levels[k][i]);
+                                let from = f64::from(start[k][i]) / 255.0;
+                                let beta = f64::from(start[k][3]) / 255.0;
+                                let exact = (1.0 - a) * from
+                                    + (1.0 - beta) * a * source[i]
+                                    + a * beta * blend(mode, from / beta, source[i]);
+                                assert!(
+                                    (level - 255.0 * exact).abs() <= 1e-4,
+                                    "{mode:?} {w} {back} {c} {a}: {level}"
+                                );
+                            }
+                            // An opaque backdrop stays opaque.
+                            if back == u16::MAX {
+                                assert_eq!(words[k][3], u16::MAX);
+                                assert_eq!(levels[k][3], 255.0);
+                            }
+                        }
+                        // Normal is the dynamic store.
+                        if mode == BlendMode::Normal {
+                            let mut normal =
+                                x.map(|w| [w.min(back), w.min(back), w.min(back), back]);
+                            dynamic_n16(&mut normal, &Colors::Constant(&source), &alphas);
+                            assert_eq!(normal, words);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]

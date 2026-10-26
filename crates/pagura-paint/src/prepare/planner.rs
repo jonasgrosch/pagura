@@ -201,6 +201,7 @@ impl<'s> Planner<'s> {
                 transform: request.transform,
                 pixels: request.page,
                 user_unit: scene.page.user_unit,
+                opaque: request.background.a == u8::MAX,
             },
             &mut budget.bytes,
         )?;

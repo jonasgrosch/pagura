@@ -29,6 +29,7 @@ use crate::prepare::Shapes;
 use crate::source::{Pixels, Precision, Source, SpanColors};
 use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
+use pagura_interpret::BlendMode;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, RowOut, Span};
 use std::ops::Range;
 
@@ -56,7 +57,7 @@ impl<'a> Direct<'a> {
         if mark.records
             || frame.knockout
             || compositing.mask.is_some()
-            || compositing.blend != pagura_interpret::BlendMode::Normal
+            || compositing.blend != BlendMode::Normal
             || compositing.overprint != 0
         {
             return None;
@@ -461,7 +462,7 @@ impl<'a> Executor<'a> {
             && paint_alpha.is_none_or(kernel::full)
             && compositing.alpha == 1.0
             && mask.is_none()
-            && compositing.blend == pagura_interpret::BlendMode::Normal
+            && compositing.blend == BlendMode::Normal
             && preserve == 0
             && let Colors::Strided { values, stride: 3 } = colors
             && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
@@ -589,7 +590,7 @@ fn paint_words(
         && mark.boundary == Boundary::Absent
         && compositing.alpha == 1.0
         && compositing.mask.is_none()
-        && compositing.blend == pagura_interpret::BlendMode::Normal
+        && compositing.blend == BlendMode::Normal
         && compositing.overprint == 0
         && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
             paint.words(Pixels::new(x, y, len), scratch, pixels)
@@ -1166,7 +1167,7 @@ pub(crate) fn store(
         }
         Buffer::Levels(offset) => {
             if let Some(pixels) = target.levels.get_mut(offset + start..offset + start + len) {
-                levels(pixels, colors, sources.alpha, kind);
+                levels(pixels, (colors, sources.alpha), mode.blend, kind);
             }
         }
         Buffer::Page => {
@@ -1265,6 +1266,9 @@ fn page(
                     Store::Mark(Some((source, coverage))) => {
                         kernel::store_n16(pixels, source, coverage);
                     }
+                    _ if mode.blend != BlendMode::Normal => {
+                        kernel::blend_n16(pixels, colors, sources.alpha, mode.blend);
+                    }
                     Store::Mark(None) | Store::Result => {
                         kernel::dynamic_n16(pixels, colors, sources.alpha);
                     }
@@ -1273,14 +1277,20 @@ fn page(
         }
         PageBuffer::F32(values) => {
             if let Some(pixels) = values.get_mut(start..start + len) {
-                levels(pixels, colors, sources.alpha, kind);
+                levels(pixels, (colors, sources.alpha), mode.blend, kind);
             }
         }
     }
 }
 
-fn levels(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64], kind: Store<'_>) {
+fn levels(
+    pixels: &mut [[f32; 4]],
+    (colors, alpha): (&Colors<'_>, &[f64]),
+    blend: BlendMode,
+    kind: Store<'_>,
+) {
     match kind {
+        _ if blend != BlendMode::Normal => kernel::blend_f32(pixels, colors, alpha, blend),
         Store::Mark(_) => kernel::store_f32(pixels, colors, alpha),
         Store::Result => kernel::dynamic_f32(pixels, colors, alpha),
     }

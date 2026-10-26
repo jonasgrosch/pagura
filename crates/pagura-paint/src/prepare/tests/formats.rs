@@ -331,3 +331,110 @@ fn knockout_groups_of_opaque_members_fold_with_their_plain_groups() {
     b.rect(group, [2.75, 1.5, 6.0, 4.0], c, mark(multiply));
     check(&b);
 }
+
+#[test]
+fn non_amplifying_group_results_store_narrow_over_the_opaque_page() {
+    // A page of opaque colour with a translucent group of `mode` over it,
+    // as a highlighter mark is.
+    let page = |mode: BlendMode| {
+        let mut b = Build::new(8.0, 6.0);
+        let back = b.rgb([0.9, 0.8, 0.3]);
+        let ink = b.rgb([0.2, 0.4, 0.7]);
+        let red = b.rgb([0.8, 0.1, 0.1]);
+        let group = b.state(|s| {
+            s.alpha = 0.15;
+            s.blend = mode;
+        });
+        b.rect(PAGE, [0.0, 0.0, 8.0, 6.0], back, mark(StateId(0)));
+        b.rect(PAGE, [1.25, 0.5, 5.5, 2.75], ink, mark(StateId(0)));
+        let highlight = b.transparency(PAGE, GroupAttributes::default(), mark(group));
+        b.rect(highlight, [0.5, 1.5, 6.25, 4.5], red, mark(StateId(0)));
+        b.rect(highlight, [3.0, 2.25, 7.5, 5.5], ink, mark(StateId(0)));
+        (b, highlight)
+    };
+    for mode in [
+        BlendMode::Multiply,
+        BlendMode::Screen,
+        BlendMode::Darken,
+        BlendMode::Lighten,
+        BlendMode::Exclusion,
+    ] {
+        let (b, _) = page(mode);
+        assert_eq!(formats(&b), [Format::N16, Format::F32], "{mode:?}");
+        check(&b);
+    }
+    // Difference's result moves twice as much with the group's alpha as
+    // Normal's, beyond the bound a child's result is counted with.
+    for mode in [
+        BlendMode::Difference,
+        BlendMode::ColorDodge,
+        BlendMode::ColorBurn,
+        BlendMode::Overlay,
+        BlendMode::HardLight,
+        BlendMode::SoftLight,
+        BlendMode::Hue,
+        BlendMode::Luminosity,
+    ] {
+        let (b, _) = page(mode);
+        assert_eq!(formats(&b), [Format::F64, Format::F64], "{mode:?}");
+        check(&b);
+    }
+    // Over a transparent background the backdrop alpha varies.
+    let (mut b, _) = page(BlendMode::Multiply);
+    b.background.a = 0;
+    assert_eq!(formats(&b), [Format::F64, Format::F64]);
+    check(&b);
+    // Into a group buffer, whose alpha varies, the result stays F64; the
+    // page takes that group's Normal result.
+    let mut b = Build::new(8.0, 6.0);
+    let red = b.rgb([0.8, 0.1, 0.1]);
+    let multiply = b.state(|s| {
+        s.alpha = 0.5;
+        s.blend = BlendMode::Multiply;
+    });
+    let isolated = GroupAttributes {
+        isolated: true,
+        ..GroupAttributes::default()
+    };
+    let outer = b.transparency(PAGE, isolated, mark(StateId(0)));
+    b.rect(outer, [0.5, 0.5, 6.0, 4.0], red, mark(StateId(0)));
+    let inner = b.transparency(outer, isolated, mark(multiply));
+    b.rect(inner, [2.0, 1.0, 7.5, 5.5], red, mark(StateId(0)));
+    assert_eq!(formats(&b), [Format::N16, Format::F64, Format::F64]);
+    check(&b);
+    // Under a soft mask, and many deep, overlapping and translucent: F32,
+    // within a level at every pixel.
+    let (mut b, highlight) = page(BlendMode::Multiply);
+    let ink = b.rgb([0.2, 0.4, 0.7]);
+    let (mask, mask_group) = b.mask(MaskKind::Luminosity, GroupAttributes::default(), None);
+    b.rect(mask_group, [1.0, 1.0, 7.0, 5.0], ink, mark(StateId(0)));
+    let masked = b.state(|s| {
+        s.alpha = 0.6;
+        s.blend = BlendMode::Multiply;
+        s.soft_mask = Some(mask);
+    });
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(highlight, [0.25, 0.25, 4.0, 3.0], ink, mark(half));
+    for i in 0..60_u32 {
+        let modes = [BlendMode::Multiply, BlendMode::Screen, BlendMode::Exclusion];
+        let state = if i % 7 == 0 {
+            masked
+        } else {
+            b.state(|s| {
+                s.alpha = 0.05 + 0.9 * f64::from(i % 11) / 10.0;
+                s.blend = modes[usize::try_from(i % 3).unwrap_or(0)];
+            })
+        };
+        let color = b.rgb([
+            f64::from(i % 5) / 4.0,
+            f64::from(i % 3) / 2.0,
+            f64::from(i % 7) / 6.0,
+        ]);
+        let group = b.transparency(PAGE, GroupAttributes::default(), mark(state));
+        let x = 0.125 * f64::from(i % 9);
+        b.rect(group, [x, 0.375, x + 5.5, 5.75], color, mark(StateId(0)));
+    }
+    let found = formats(&b);
+    assert_eq!(found[0], Format::F32);
+    check(&b);
+}

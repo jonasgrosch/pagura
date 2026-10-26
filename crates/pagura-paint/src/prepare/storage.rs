@@ -93,6 +93,8 @@ pub(crate) struct Inputs {
     pub(crate) pixels: DeviceRect,
     /// `UserUnit`, for fixed views.
     pub(crate) user_unit: f64,
+    /// The background is opaque, so the page's alpha stays 1.
+    pub(crate) opaque: bool,
 }
 
 /// Surveys `scene`.
@@ -680,7 +682,8 @@ impl Survey<'_> {
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
-        target.forced |= state.blend != BlendMode::Normal;
+        let opaque = target.page && self.inputs.opaque;
+        target.forced |= state.blend != BlendMode::Normal && !(opaque && as_normal(state.blend));
         target.transfer |= transfer;
         target.opaque_members &= pending;
         target.later_opaque &= pending;
@@ -809,6 +812,15 @@ struct Stores<'h> {
     alpha_shape: bool,
 }
 
+/// Whether a group result of `mode` stores into the opaque page within
+/// Normal's bounds (ADR 0004 §6): at backdrop alpha 1, the result of a
+/// separable mode that does not amplify moves by at most as much as the
+/// backdrop does, and no more than Normal's with the group's colour, alpha
+/// and mask, but for Difference's, which moves twice as much with alpha.
+fn as_normal(mode: BlendMode) -> bool {
+    !mode.amplifies() && mode != BlendMode::Difference
+}
+
 /// Whether a store of `kind` under `state` is dynamic (ADR 0004 §6): all
 /// but opaque constant colours that only coverage reduces.
 fn dynamic(kind: Kind, state: &Composite) -> bool {
@@ -834,6 +846,7 @@ mod tests {
             transform: build.transform(),
             pixels: build.page(),
             user_unit: build.scene.page.user_unit,
+            opaque: true,
         }
     }
 
