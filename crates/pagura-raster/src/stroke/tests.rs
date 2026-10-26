@@ -159,7 +159,7 @@ fn mapped_pieces_are_the_polygon_of_their_path() {
                     let expected = Polygon::from_lines(&outline, pen, &limits, &mut bytes)
                         .unwrap()
                         .unwrap();
-                    let (polygon, mapped) =
+                    let (polygon, mapped, _) =
                         polygon_pieces(path, transform, &stroke, &limits, options, &mut bytes)
                             .unwrap();
                     assert_eq!(mapped, tiling);
@@ -238,7 +238,7 @@ fn adjusted_pieces_cover_the_fitted_components() {
                         && cap != LineCap::Round
                     {
                         let mut bytes = crate::testing::bytes();
-                        let (_, tiling) = adjusted_polygon_pieces(
+                        let (_, tiling, _) = adjusted_polygon_pieces(
                             path,
                             transform,
                             &stroke,
@@ -319,7 +319,7 @@ fn assembled_outlines_keep_only_their_output_charged() {
             tangent: Point::new(1.0, 0.0),
         }];
         let mut bytes = crate::testing::bytes();
-        let (out, _, tiling) = assemble(
+        let stroked = assemble(
             runs,
             (pen, Transform::IDENTITY, false),
             &stroke,
@@ -329,8 +329,8 @@ fn assembled_outlines_keep_only_their_output_charged() {
             &mut bytes,
         )
         .unwrap();
-        assert_eq!(tiling, taken);
-        assert_eq!(bytes.used(), out.heap_bytes(), "{accept:?}");
+        assert_eq!(stroked.tiling, taken);
+        assert_eq!(bytes.used(), stroked.heap_bytes(), "{accept:?}");
     }
 }
 

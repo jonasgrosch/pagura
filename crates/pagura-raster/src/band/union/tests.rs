@@ -202,7 +202,7 @@ fn chunk_boundary_verticals_keep_half_open_ownership_when_reversed() {
     for (x, kept) in [(-0.5, false), (0.0, true), (0.5, true), (1.0, false)] {
         for (a, b) in [(0.0, 1.0), (1.0, 0.0)] {
             let piece = Piece::new(line(x, a, x, b), 0.0, 0).unwrap();
-            let actual = clip(piece, piece.ends(), (0.0, 1.0));
+            let actual = clip(piece, piece.ends(), (0.0, 1.0), (true, false));
             assert_eq!(actual.is_some(), kept, "x{x}, direction{a}->{b}");
             if let Some(clipped) = actual {
                 assert_eq!((clipped.lo, clipped.hi), (0.0, 1.0));
@@ -677,4 +677,296 @@ fn swaps_inside_the_union_keep_every_side() {
         swapped += taken;
     }
     assert!(swapped > 100_000, "{swapped}");
+}
+
+/// The sides of row `top..top + 1` under the nonzero rule, with the column
+/// ranges `proven` passed over, and the work they took.
+fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>, usize) {
+    let mut out = Vec::new();
+    let mut work = Meter::new(usize::MAX, "work");
+    let mut bytes = Meter::new(usize::MAX, "bytes");
+    let meters = Meters {
+        work: &mut work,
+        bytes: &mut bytes,
+    };
+    Resolver::default()
+        .row_proven(
+            pieces,
+            &[FillRule::NonZero],
+            top,
+            proven,
+            (&mut out, meters),
+        )
+        .unwrap();
+    (out, work.used())
+}
+
+/// The covered area of cell `[column, column + 1]` of row `top..top + 1`
+/// that `sides` bound: each side covers what lies right of it within the
+/// cell, a left one running down, a right one up.
+fn cell_area(sides: &[Line], column: f64) -> f64 {
+    let mut area = 0.0;
+    for s in sides {
+        let (sign, upper, lower) = if s.a.y < s.b.y {
+            (1.0, s.a, s.b)
+        } else {
+            (-1.0, s.b, s.a)
+        };
+        if upper.y == lower.y {
+            continue;
+        }
+        // Width of the cell right of the side, at height `y`.
+        let x = |y: f64| upper.x + (lower.x - upper.x) * (y - upper.y) / (lower.y - upper.y);
+        let width = |y: f64| (column + 1.0 - x(y)).clamp(0.0, 1.0);
+        let mut heights = vec![upper.y, lower.y];
+        for edge in [column, column + 1.0] {
+            if (upper.x - edge) * (lower.x - edge) < 0.0 {
+                heights
+                    .push(upper.y + (edge - upper.x) * (lower.y - upper.y) / (lower.x - upper.x));
+            }
+        }
+        heights.sort_by(f64::total_cmp);
+        for h in heights.windows(2) {
+            area += sign * (h[1] - h[0]) * (width(h[0]) + width(h[1])) / 2.0;
+        }
+    }
+    area
+}
+
+/// Asserts that `sides` and `full` cover each cell of row `top..top + 1`
+/// alike, but for rounding.
+fn same_cells(sides: &[Line], full: &[Line], top: f64, case: &str) {
+    let (lo, hi) = full
+        .iter()
+        .chain(sides)
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), l| {
+            (lo.min(l.a.x.min(l.b.x)), hi.max(l.a.x.max(l.b.x)))
+        });
+    let mut column = lo.floor() - 1.0;
+    while column <= hi + 1.0 {
+        let (a, b) = (cell_area(sides, column), cell_area(full, column));
+        assert!(
+            (a - b).abs() <= 1e-9,
+            "{case} top {top} column {column}: {a} {b}"
+        );
+        column += 1.0;
+    }
+}
+
+/// Whether the cells from column `first` to `last` of row `top..top + 1`
+/// are covered throughout, as the full sweep's `sides` of `pieces` show:
+/// no side among them, and covered between every two heights a side ends
+/// at.
+fn covered_cells(pieces: &[Piece], sides: &[Line], top: f64, (first, last): (f64, f64)) -> bool {
+    let (left, right) = (first, last + 1.0);
+    if sides
+        .iter()
+        .any(|s| s.a.y != s.b.y && s.a.x.max(s.b.x) > left && s.a.x.min(s.b.x) < right)
+    {
+        return false;
+    }
+    let mut heights: Vec<f64> = [top, top + 1.0]
+        .into_iter()
+        .chain(sides.iter().flat_map(|s| [s.a.y, s.b.y]))
+        .chain(pieces.iter().flat_map(|p| [p.lo, p.hi]))
+        .collect();
+    heights.sort_by(f64::total_cmp);
+    heights.dedup();
+    let x = f64::midpoint(left, right);
+    heights.windows(2).all(|h| {
+        let y = f64::midpoint(h[0], h[1]);
+        let winding: i64 = pieces
+            .iter()
+            .filter(|p| p.lo <= y && y < p.hi && p.line.x(y) < x)
+            .map(|p| i64::from(p.direction))
+            .sum();
+        winding != 0
+    })
+}
+
+/// The ranges to pass over in row `top..top + 1` of `pieces`: the runs of
+/// cells the full sweep leaves covered.
+fn oracle_ranges(pieces: &[Piece], full: &[Line], top: f64) -> Vec<(f64, f64)> {
+    let (lo, hi) = pieces
+        .iter()
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
+            let (a, b) = p.ends();
+            (lo.min(a.min(b)), hi.max(a.max(b)))
+        });
+    let mut ranges = Vec::new();
+    let mut run: Option<(f64, f64)> = None;
+    let mut c = lo.floor() - 1.0;
+    while c <= hi.ceil() + 1.0 {
+        if covered_cells(pieces, full, top, (c, c)) {
+            run = Some(run.map_or((c, c), |(first, _)| (first, c)));
+        } else if let Some((first, last)) = run.take() {
+            ranges.push((first, last + 1.0));
+        }
+        c += 1.0;
+    }
+    if let Some((first, last)) = run {
+        ranges.push((first, last + 1.0));
+    }
+    ranges
+}
+
+/// Fans, doubled fans and random polygons with the ranges a full sweep
+/// leaves covered passed over: the sides are the full sweep's, bit for bit,
+/// and the passes cost less than the sweeps they replace.
+#[test]
+fn proven_chunks_keep_every_side() {
+    let mut rng = Lcg(2_030);
+    let (mut passed, mut fast_work, mut full_work) = (0, 0, 0);
+    for case in 0..300_usize {
+        let mut lines = Vec::new();
+        for _ in 0..=case % 3 {
+            let centre = (rng.grid(0.0, 64, 8), rng.grid(-0.5, 17, 8));
+            let count = 8 + rng.next() % 40;
+            let r = rng.grid(4.0, 96, 4);
+            let around = r * f64::from(1 + rng.next() % 8) / 64.0;
+            lines.extend(fan(centre, around, (count, r), rng.grid(0.0, 64, 8)));
+        }
+        if case % 7 == 1 {
+            lines.extend_from_within(..);
+        }
+        if case % 3 == 0 {
+            lines.extend(random_lines(&mut rng, 1 + case % 8, 1));
+        }
+        let pieces = pieces(&lines);
+        let (full, work) = proven_sides(&pieces, 0.0, &[]);
+        let mut ranges = oracle_ranges(&pieces, &full, 0.0);
+        // Some rows pass over only some of their ranges.
+        if case % 4 == 3 {
+            ranges.retain(|_| rng.next().is_multiple_of(2));
+        }
+        let (sides, used) = proven_sides(&pieces, 0.0, &ranges);
+        same_cells(&sides, &full, 0.0, &format!("case {case} {ranges:?}"));
+        passed += ranges.len();
+        if !ranges.is_empty() {
+            fast_work += used;
+            full_work += work;
+        }
+    }
+    assert!(passed > 100, "{passed}");
+    assert!(fast_work < full_work, "{fast_work} {full_work}");
+}
+
+/// Case `case` of strokes of short segments around a wobbly circle, whole
+/// or in part: its path, stroke and conformal map.
+fn fan_stroke(
+    rng: &mut Lcg,
+    case: usize,
+) -> (crate::Path, crate::stroke::Stroke, crate::Transform) {
+    use crate::stroke::{LineCap, LineJoin, Stroke};
+    use crate::{PathBuilder, Transform};
+    let closed = case.is_multiple_of(2);
+    let count = 6 + rng.next() % 50;
+    let around = rng.grid(0.25, 64, 4);
+    let span = if closed { 1.0 } else { rng.grid(0.25, 8, 4) };
+    let centre = (rng.grid(4.0, 64, 4), rng.grid(4.0, 64, 4));
+    let wobble = rng.grid(0.0, 4, 8);
+    let mut builder = PathBuilder::new();
+    for k in 0..count {
+        let t = std::f64::consts::TAU * span * f64::from(k) / f64::from(count);
+        let r = around * (1.0 + wobble * (3.0 * t).sin());
+        let p = Point::new(centre.0 + r * t.cos(), centre.1 + r * t.sin());
+        if k == 0 {
+            builder.move_to(p);
+        } else {
+            builder.line_to(p).unwrap();
+        }
+        // Reversals, which a miter or bevel does not join.
+        if case % 9 == 4 && k == count / 2 {
+            builder.line_to(Point::new(p.x + 3.0, p.y)).unwrap();
+            builder.line_to(p).unwrap();
+        }
+    }
+    if closed {
+        builder.close();
+    }
+    let stroke = Stroke {
+        width: [2.0, 3.0, 6.0, 12.0, 24.0, 42.0][case % 6],
+        cap: [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare][case / 6 % 3],
+        join: [LineJoin::Round, LineJoin::Miter, LineJoin::Bevel][case / 18 % 3],
+        miter_limit: [1.0, 1.5, 4.0, 10.0][rng.next() as usize % 4],
+        dash_array: if case % 5 == 3 {
+            vec![5.0, 2.0]
+        } else {
+            Vec::new()
+        },
+        dash_phase: 0.0,
+    };
+    let angle = rng.grid(0.0, 64, 10);
+    let scale = rng.grid(0.5, 4, 2);
+    let (cos, sin) = (scale * angle.cos(), scale * angle.sin());
+    let transform = if case % 4 == 1 {
+        Transform::new(cos, sin, sin, -cos, 100.0, 100.0)
+    } else {
+        Transform::new(cos, sin, -sin, cos, 0.0, 0.0)
+    };
+    (builder.finish(), stroke, transform)
+}
+
+/// Strokes of short segments under round, mitred and bevelled joins and
+/// every cap, open and closed, dashed or not, under conformal maps: every
+/// cell their spine proves the full sweep leaves covered, and passing over
+/// those cells leaves every side as it was.
+#[test]
+fn spines_prove_only_covered_cells_and_keep_every_side() {
+    use crate::stroke::{Tiling, polygon_pieces};
+    let mut rng = Lcg(2_031);
+    let limits = pagura_core::Limits::default();
+    let (mut strokes, mut proven) = (0, 0.0);
+    for case in 0..240_usize {
+        let (path, stroke, transform) = fan_stroke(&mut rng, case);
+        let mut bytes = Meter::new(usize::MAX, "bytes");
+        let (polygon, tiling, spine) = polygon_pieces(
+            &path,
+            transform,
+            &stroke,
+            &limits,
+            (Tiling::Unproven, crate::flatten::TOLERANCE),
+            &mut bytes,
+        )
+        .unwrap();
+        let Some(spine) = spine else {
+            continue;
+        };
+        assert_eq!(tiling, Tiling::Unproven);
+        strokes += 1;
+        let lines = crate::band::edges::lines(&polygon, &mut bytes).unwrap();
+        let (lo, hi) = lines
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), l| {
+                (lo.min(l.a.y.min(l.b.y)), hi.max(l.a.y.max(l.b.y)))
+            });
+        let mut cover = spine.cover(None);
+        let mut work = Meter::new(usize::MAX, "work");
+        let mut top = lo.floor();
+        while top < hi {
+            let pieces: Vec<Piece> = lines
+                .iter()
+                .filter_map(|&l| Piece::new(l, top, 0))
+                .collect();
+            let mut ranges = Vec::new();
+            cover
+                .row(top, usize::MAX, &mut ranges, (&mut work, &mut bytes))
+                .unwrap();
+            if !ranges.is_empty() {
+                let (full, _) = proven_sides(&pieces, top, &[]);
+                for &(left, right) in &ranges {
+                    assert!(
+                        covered_cells(&pieces, &full, top, (left, right - 1.0)),
+                        "case {case} row {top}: {left}..{right} {stroke:?}"
+                    );
+                    proven += right - left;
+                }
+                let (sides, _) = proven_sides(&pieces, top, &ranges);
+                same_cells(&sides, &full, top, &format!("case {case} row {top}"));
+            }
+            top += 1.0;
+        }
+    }
+    assert!(strokes > 100, "{strokes}");
+    assert!(proven > 10_000.0, "{proven}");
 }
