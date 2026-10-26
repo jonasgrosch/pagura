@@ -146,6 +146,7 @@ fn run(
         adobe_reported: false,
     };
     let mut offset = 2;
+    let mut lines = None;
     loop {
         let at = offset;
         let marker = marker(data, &mut offset)?;
@@ -164,8 +165,10 @@ fn run(
                 if decoder.frame.is_some() {
                     return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
+                lines = first_scan_lines(data, offset, &mut decoder.work, limits)?;
+                let height = lines.as_ref().map(|value| value.height);
                 let frame = if let Some(native) = native {
-                    let mut frame = Frame::header(payload, marker, limits)?;
+                    let mut frame = Frame::header(payload, marker, height, limits)?;
                     deferred::prepare(
                         &mut frame,
                         (decoder.adobe, color_transform),
@@ -174,7 +177,7 @@ fn run(
                     )?;
                     frame
                 } else {
-                    Frame::parse(payload, marker, limits)?
+                    Frame::parse(payload, marker, height, limits)?
                 };
                 decoder.frame = Some(frame);
                 Ok(())
@@ -201,27 +204,44 @@ fn run(
                 offset = decoder.scan(payload, data, offset, limits, diagnostics)?;
                 Ok(())
             }
-            0xee if payload.starts_with(b"Adobe") => {
-                if payload.len() < 12 || payload[11] > 2 {
-                    return Err(Error::syntax("invalid Adobe JPEG marker").at(Position::Buffer(at)));
+            0xdc => {
+                if lines.take().is_none_or(|value| value.position != at) {
+                    return Err(
+                        Error::syntax("misplaced or repeated JPEG DNL").at(Position::Buffer(at))
+                    );
                 }
-                if payload.len() > 12 && !decoder.adobe_reported {
-                    diagnostics.repair(
-                        Diagnostic::new(
-                            tags::ADOBE_MARKER,
-                            "extended Adobe JPEG marker uses its known prefix (7.4.8, Table 13)",
-                        )
-                        .at(Position::Buffer(at)),
-                    )?;
-                    decoder.adobe_reported = true;
-                }
-                decoder.adobe = Some(payload[11]);
                 Ok(())
             }
+            0xee if payload.starts_with(b"Adobe") => decoder.adobe_marker(payload, at, diagnostics),
             0xe0..=0xef | 0xfe => Ok(()),
             _ => Err(Error::syntax("invalid or unsupported JPEG marker")),
         };
         result.map_err(|e| e.at(Position::Buffer(at)))?;
+    }
+}
+
+impl Decoder {
+    fn adobe_marker(
+        &mut self,
+        payload: &[u8],
+        at: usize,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<()> {
+        if payload.len() < 12 || payload[11] > 2 {
+            return Err(Error::syntax("invalid Adobe JPEG marker").at(Position::Buffer(at)));
+        }
+        if payload.len() > 12 && !self.adobe_reported {
+            diagnostics.repair(
+                Diagnostic::new(
+                    tags::ADOBE_MARKER,
+                    "extended Adobe JPEG marker uses its known prefix (7.4.8, Table 13)",
+                )
+                .at(Position::Buffer(at)),
+            )?;
+            self.adobe_reported = true;
+        }
+        self.adobe = Some(payload[11]);
+        Ok(())
     }
 }
 
@@ -292,6 +312,70 @@ fn segment<'a>(data: &'a [u8], offset: &mut usize) -> Result<&'a [u8]> {
     Ok(payload)
 }
 
+struct Lines {
+    height: u16,
+    position: usize,
+}
+
+/// T.81 B.2.5 permits DNL to replace even a nonzero SOF height. Locate the
+/// first scan's terminator before allocating planes; entropy is not decoded
+/// or copied here. The normal decoder then verifies its complete MCU rows.
+fn first_scan_lines(
+    data: &[u8],
+    mut offset: usize,
+    work: &mut usize,
+    limits: &Limits,
+) -> Result<Option<Lines>> {
+    loop {
+        let start = offset;
+        let next = scan::entropy_marker(data, start, work, limits.operations)?;
+        if next.start != start {
+            return Err(
+                Error::syntax("expected JPEG marker before first scan").at(Position::Buffer(start))
+            );
+        }
+        offset = next.end;
+        let code = next.code;
+        if matches!(code, 0xd9 | 0xc0..=0xc3 | 0xc9 | 0xca) {
+            return Ok(None);
+        }
+        if matches!(code, 0xd0..=0xd8 | 0xdc | 0x01) {
+            return Err(Error::syntax("unexpected JPEG marker before first scan")
+                .at(Position::Buffer(start)));
+        }
+        scan::charge(work, 2, limits.operations)?;
+        segment(data, &mut offset)?;
+        if code == 0xda {
+            break;
+        }
+    }
+    loop {
+        let next = scan::entropy_marker(data, offset, work, limits.operations)?;
+        if (0xd0..=0xd7).contains(&next.code) {
+            offset = next.end;
+            continue;
+        }
+        if next.code != 0xdc {
+            return Ok(None);
+        }
+        let mut end = next.end;
+        scan::charge(work, 4, limits.operations)?;
+        let payload = segment(data, &mut end)?;
+        let bytes = payload
+            .get(..2)
+            .ok_or_else(|| Error::syntax("truncated JPEG DNL").at(Position::Buffer(next.start)))?;
+        let height = u16::from_be_bytes([bytes[0], bytes[1]]);
+        if height == 0 {
+            return Err(Error::syntax("zero JPEG DNL height").at(Position::Buffer(next.start)));
+        }
+        // B.1.1.4 permits additional marker-segment bytes; Ld >= 4 in B.10.
+        return Ok(Some(Lines {
+            height,
+            position: next.start,
+        }));
+    }
+}
+
 /// Locates the JPEG EOI without interpreting pixels; segment lengths protect
 /// marker-like bytes in APP payloads, and scan stuffing protects entropy data.
 pub(crate) fn data_length(data: &[u8]) -> Result<usize> {
@@ -300,20 +384,16 @@ pub(crate) fn data_length(data: &[u8]) -> Result<usize> {
     }
     let mut offset = 2;
     let mut scan = false;
+    let mut work = 0;
     loop {
         if scan {
             loop {
-                let byte = *data
-                    .get(offset)
-                    .ok_or(Error::syntax("truncated inline JPEG scan"))?;
-                if byte != 255 {
-                    offset += 1;
+                let next = scan::entropy_marker(data, offset, &mut work, usize::MAX)?;
+                if (0xd0..=0xd7).contains(&next.code) {
+                    offset = next.end;
                     continue;
                 }
-                if matches!(data.get(offset + 1), Some(0 | 0xd0..=0xd7)) {
-                    offset += 2;
-                    continue;
-                }
+                offset = next.start;
                 break;
             }
         }

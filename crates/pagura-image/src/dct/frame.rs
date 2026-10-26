@@ -132,8 +132,13 @@ pub(super) struct Frame {
 }
 impl Frame {
     /// Parses a frame header and allocates its components' storage.
-    pub(super) fn parse(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
-        let mut frame = Self::header(data, process, limits)?;
+    pub(super) fn parse(
+        data: &[u8],
+        process: u8,
+        height: Option<u16>,
+        limits: &Limits,
+    ) -> Result<Self> {
+        let mut frame = Self::header(data, process, height, limits)?;
         for c in &mut frame.components {
             c.storage = Storage::new(c.stride * c.rows, frame.process, frame.precision);
         }
@@ -141,23 +146,25 @@ impl Frame {
     }
 
     /// Parses a frame header; its components hold no storage yet.
-    pub(super) fn header(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
+    pub(super) fn header(
+        data: &[u8],
+        process: u8,
+        height: Option<u16>,
+        limits: &Limits,
+    ) -> Result<Self> {
         let process = Process::try_from(process)?;
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
         process.validate_precision(data[0])?;
-        let height = u32::from(u16::from_be_bytes([data[1], data[2]]));
+        let height = u32::from(height.unwrap_or_else(|| u16::from_be_bytes([data[1], data[2]])));
         let width = u32::from(u16::from_be_bytes([data[3], data[4]]));
         let n = data[5];
         if width == 0 || n == 0 || data.len() != 6 + usize::from(n) * 3 {
             return Err(Error::syntax("invalid JPEG frame dimensions or components"));
         }
         if height == 0 {
-            return Err(Error::unsupported(
-                crate::features::JPEG_PROCESS,
-                "JPEG height deferred to DNL is unsupported",
-            ));
+            return Err(Error::syntax("zero JPEG height without first-scan DNL"));
         }
         if !matches!(n, 1 | 3 | 4) {
             return Err(Error::unsupported(

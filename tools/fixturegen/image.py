@@ -433,6 +433,9 @@ def eob_jpeg(run_count=4, restart=0):
 
 
 def cases():
+    yield from dnl_cases()
+    from .jpx import marker_render_cases
+    yield from marker_render_cases()
     from . import jpeg as jpeg_models
     yield from jpeg_models.cases()
     yield from uncompressed_fax_cases()
@@ -1197,3 +1200,86 @@ def uncompressed_fax_render_cases():
         control = image_case(name+'-rgb-control',bytes(v for c in colors for v in c),
                              b'/BitsPerComponent 8 /ColorSpace /DeviceRGB',[],width,height,**settings)
         yield replace(control,extra={**control.extra,'control_of':'image/'+name})
+
+
+def dnl_frame(progressive=False):
+    """One literal DC-zero/EOB MCU, advertised as an 8x8 sample grid."""
+    raw, _ = constant_jpeg(progressive=progressive)
+    data = bytearray(raw)
+    sof = data.index(b"\xff\xc2" if progressive else b"\xff\xc0")
+    data[sof + 5:sof + 9] = struct.pack(">HH", 8, 8)
+    return bytes(data), sof
+
+
+def dnl_streams():
+    baseline, sof = dnl_frame()
+    for name, initial in [("deferred", 0), ("same-height", 8), ("redefined", 16)]:
+        data = bytearray(baseline)
+        data[sof + 5:sof + 7] = struct.pack(">H", initial)
+        data[-2:-2] = segment(0xdc, struct.pack(">H", 8))
+        yield "jpeg-dnl-" + name, bytes(data)
+    progressive, sof = dnl_frame(progressive=True)
+    data = bytearray(progressive)
+    data[sof + 5:sof + 7] = b"\0\0"
+    second_scan = data.index(b"\xff\xda", data.index(b"\xff\xda") + 2)
+    data[second_scan:second_scan] = segment(0xdc, struct.pack(">H", 8))
+    yield "jpeg-dnl-progressive", bytes(data)
+
+
+def dnl_cases():
+    # T.81 B.2.5/Table B.10: DNL follows the first complete MCU row. The
+    # literal zero coefficient yields 128, independently of either decoder.
+    from .paint import image_case
+    streams = list(dnl_streams())
+    samples = [128] * 64
+    for name, data in streams:
+        yield vector(name.replace("jpeg-dnl-", "jpeg-dnl-vector-"), "dct", data, bytes(samples), width=8, height=8, components=1)
+    controls = [("jpeg-dnl-baseline-control", dnl_frame()[0]),
+                ("jpeg-dnl-progressive-control", dnl_frame(progressive=True)[0])]
+    for name, data in streams + controls:
+        yield image_case(name, data, b"/ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode",
+                         samples, 8, 8, matrix=(8, 0, 0, 8, 2, 2), requirement="image-dct")
+    yield image_case("jpeg-dnl-rgb-control", bytes([128]) * 192,
+                     b"/ColorSpace /DeviceRGB /BitsPerComponent 8", samples, 8, 8,
+                     matrix=(8, 0, 0, 8, 2, 2), requirement="image-dct")
+    data = streams[0][1]
+    # B.1.1.4 and Table B.10 allow Ld > 4; extension bytes are not pixels.
+    yield vector("jpeg-dnl-extension", "dct", data[:-8] + segment(0xdc, b"\0\x08extra") + data[-2:],
+                 bytes(samples), width=8, height=8, components=1)
+    baseline, sof = dnl_frame()
+    absent = bytearray(baseline); absent[sof + 5:sof + 7] = b"\0\0"
+    progressive, _ = dnl_frame(progressive=True)
+    first_scan = baseline.index(b"\xff\xda")
+    dnl = segment(0xdc, b"\0\x08")
+    invalid = {
+        "missing": bytes(absent),
+        "zero": data[:-8] + segment(0xdc, b"\0\0") + data[-2:],
+        "short": data[:-8] + segment(0xdc, b"\x08") + data[-2:],
+        "excess-rows": data[:-8] + segment(0xdc, b"\0\x10") + data[-2:],
+        "before-scan": baseline[:first_scan] + dnl + baseline[first_scan:],
+        "duplicate": data[:-2] + dnl + data[-2:],
+        "after-second-scan": progressive[:-2] + dnl + progressive[-2:],
+    }
+    for name, encoded in invalid.items():
+        yield vector("jpeg-dnl-" + name, "dct", encoded, outcome="syntax")
+    # A marker-looking comment payload cannot replace the actual first-scan DNL.
+    commented = data[:first_scan] + segment(0xfe, b"x\xff\xdc\0\4\0\x10") + data[first_scan:]
+    yield vector("jpeg-dnl-comment", "dct", commented, bytes(samples), width=8, height=8, components=1)
+    restarted, expected = constant_jpeg(restart=True)
+    restart_frame = bytearray(restarted)
+    sof = restart_frame.index(b"\xff\xc0")
+    restart_frame[sof + 5:sof + 7] = b"\0\0"
+    restart_frame[-2:-2] = segment(0xdc, b"\0\1")
+    yield vector("jpeg-dnl-restart", "dct", bytes(restart_frame), bytes(expected),
+                 width=16, height=1, components=1)
+    from .jpeg import lossless_jpeg
+    lossless, expected, width, height = lossless_jpeg(restart_rows=1)
+    lossless_frame = bytearray(lossless)
+    sof = lossless_frame.index(b"\xff\xc3")
+    lossless_frame[sof + 5:sof + 7] = b"\0\0"
+    lossless_frame[-2:-2] = segment(0xdc, struct.pack(">H", height))
+    yield vector("jpeg-dnl-lossless", "dct", bytes(lossless_frame), expected,
+                 width=width, height=height, components=1)
+    yield Vector("inline-jpeg-dnl", {".dict": b"<< /W 8 /H 8 /BPC 8 /CS /G /F /DCT >>",
+                 ".in": data, ".out": bytes(samples), ".params": b"kind=inline\noutcome=valid\n"},
+                 ("image-inline", "image-dct"), "DNL marker frames an inline JPEG before its EOI")

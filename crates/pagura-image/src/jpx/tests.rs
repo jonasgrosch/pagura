@@ -127,7 +127,7 @@ fn malformed_inputs_have_positions() -> Result<(), Box<dyn std::error::Error>> {
         }
         checked += 1;
     }
-    assert_eq!(checked, 41);
+    assert_eq!(checked, 66);
     Ok(())
 }
 

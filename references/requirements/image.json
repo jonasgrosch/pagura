@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "image",
-  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions. Additional wrapper rules checked against the same local ISO text: 7.3.8.1 Table 5 and 8.9.7 Tables 91-92 permit an empty inline Filter array; 7.4.6 Table 11 fixes the encoded fax row width, and 8.9.5.1 Table 87 fixes the image sample grid. Mismatched fax widths use an explicit reported recovery rather than an ISO-defined correction.",
+  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116 remains pending; the JPX/paint registries record the subsequently reviewed baseline-container, colour-selection and ICC subsets and their remaining boundaries. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions. Additional wrapper rules checked against the same local ISO text: 7.3.8.1 Table 5 and 8.9.7 Tables 91-92 permit an empty inline Filter array; 7.4.6 Table 11 fixes the encoded fax row width, and 8.9.5.1 Table 87 fixes the image sample grid. Mismatched fax widths use an explicit reported recovery rather than an ISO-defined correction.",
   "requirements": [
     {
       "id": "image-samples",
@@ -192,7 +192,21 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura-image tests::independent_vectors"
+        "pagura-image tests::independent_vectors",
+        "image/jpeg-dnl-vector-deferred",
+        "image/jpeg-dnl-vector-same-height",
+        "image/jpeg-dnl-vector-redefined",
+        "image/jpeg-dnl-vector-progressive",
+        "image/jpeg-dnl-extension",
+        "image/jpeg-dnl-comment",
+        "image/jpeg-dnl-missing",
+        "image/jpeg-dnl-after-second-scan",
+        "image/jpeg-dnl-duplicate",
+        "image/inline-jpeg-dnl",
+        "pagura-image tests/jpeg_integration.rs::dnl_resolves_height_before_allocation_and_uses_exact_work_limits",
+        "pagura-image tests/jpeg_integration.rs::dnl_samples_reach_both_pdf_image_layouts",
+        "image/jpeg-dnl-restart",
+        "image/jpeg-dnl-lossless"
       ],
       "gaps": "Arithmetic lossless/hierarchical coding unsupported; Huffman lossless is a separately reviewed compatibility extension (image-jpeg-lossless); nearest chroma expansion. Twelve-bit reduction is explicit reader policy; see image-jpeg-12bit.",
       "review": [
@@ -225,11 +239,17 @@
           "status": "pending primary-text review",
           "behaviour": "Exact APP14 marker rules and four-component JPEG conventions.",
           "evidence": "Synthetic independently written Python encoder and calculated pixels; no external differential run or externally sourced known-answer data in this change."
+        },
+        {
+          "standard": "ITU-T T.81 (1992) / ISO/IEC 10918-1",
+          "status": "DNL primary review; current implementation hosted acceptance pending",
+          "behaviour": "B.2.5/Table B.10 and E.2.4 define/redefine Y at the end of the first scan, after complete MCU rows; DNL is required for SOF Y=0. B.1.1.4 permits marker-segment extension bytes.",
+          "evidence": "Four baseline/progressive subjects retain the exact 128-valued oracle and PDF bytes from diagnostic 9e97615f228fb3f5cb0ea76f14ddf20872659a51, run40368464986. MuPDF passes all four and the unchanged JPEG/RGB pairs. Shared bounded entropy framing resolves height before allocation; malformed positions/counts and 81/80-operation, 384/383-byte and 64/63-pixel controls are independent of product output."
         }
       ],
       "choices": [
         "Nearest-neighbour chroma expansion and one-level IDCT oracle tolerance are implementation choices, not ISO-verified JPEG accuracy claims.",
-        "For twelve-bit JPEG, native samples are rounded and clamped before discarding the four low bits; the colour transform operates on byte samples. PDF BitsPerComponent remains 8."
+        "For twelve-bit JPEG, reconstruct and clamp native samples, apply colour conversion at native precision, then scale the full 0..4095 range once to bytes; PDF BitsPerComponent remains 8. See image-jpeg-12bit for this reader policy."
       ],
       "verdict": "ISO wrapper rules agree; T.81 padding/framing reviewed; other JPEG and Adobe-specific rules remain pending."
     },
@@ -368,7 +388,8 @@
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors",
-        "pagura-image pdf_tests::alpha_precision_premultiplication_and_live_storage_are_preserved"
+        "pagura-image pdf_tests::alpha_precision_premultiplication_and_live_storage_are_preserved",
+        "pagura-image tests/jpx_integration.rs::main_header_markers_and_jpxb_requirements_preserve_public_samples"
       ],
       "review": [
         {
@@ -420,7 +441,7 @@
           "evidence": "Independent JPX metadata/sample, colour-profile, palette/opacity, cache and native-size pixel controls; exact source/run/baseline evidence is retained in benchmarks/probes/README.md."
         }
       ],
-      "gaps": "Precision above sixteen bits, general JPX Part 2 codestream/layering features and signed ICC combinations outside the restricted Gray/RGB matrix/TRC policy remain open. PDF colour ranking, supported-candidate fallback, sYCC and ICC painting are implemented by the shared JPX metadata and colour owners; see jpx-boxes, jpx-pdf-contract and paint-jpx-icc for exact boundaries and independent controls.",
+      "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable. General signed Lab/LUT combinations remain outside the restricted-TRC clipping rule.",
       "choices": [
         "Preserve embedded colour profiles and non-device enumerated spaces for painting; mixed sample precision uses a zero common-precision sentinel with per-component accessors."
       ],
@@ -916,7 +937,7 @@
         "image/jpeg-lossless-huffman-ycbcr",
         "image/jpeg-lossless-huffman-ycbcr-rgb-control"
       ],
-      "gaps": "Arithmetic lossless, hierarchical processes and deferred DNL height remain Unsupported. Lossless JPEG is a compatibility extension beyond PDF 7.4.8 required baseline/progressive byte processes. Pinned PDFium accepts the three diagnostic 8-bit Huffman controls; no tested baseline passes the two 16-bit or five arithmetic subjects. Poppler paired controls fail, so its subjects remain unadjudicated. See benchmarks/probes/README.md for exact diagnostic source/run/artifact identities.",
+      "gaps": "Arithmetic lossless and hierarchical processes remain explicit compatibility boundaries. Shared frame/scan handling implements DNL before allocation; its current checkpoint acceptance is pending. Lossless JPEG is a compatibility extension beyond PDF 7.4.8 required baseline/progressive byte processes. Pinned PDFium accepts the three diagnostic 8-bit Huffman controls; no tested baseline passes the two 16-bit or five arithmetic subjects. Poppler paired controls fail, so its subjects remain unadjudicated. See benchmarks/probes/README.md for exact diagnostic source/run/artifact identities.",
       "review": [
         {
           "locator": "T.81 H.1.1, H.1.2/Table H.1-H.3 and H.2",
@@ -944,7 +965,7 @@
         "T.4 (07/2003)4.2.1.3.3, Table4 notes2-4, Table 5",
         "T.6 (11/1988)2.3.1/Table4,2.4.1.3"
       ],
-      "status": "implemented subset",
+      "status": "Implemented; full three-OS, native/WASI/browser and 260-control hosted acceptance passed at 6e87a6030ae206322aa813388b41e18363d5af81; exact reports are in benchmarks/probes/README.md.",
       "tests": [
         "pagura-image tests::independent_vectors",
         "pagura-image bitonal_integration::bitonal_extensions_reach_the_pdf_image_api",

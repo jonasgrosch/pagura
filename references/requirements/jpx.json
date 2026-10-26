@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jpx",
-  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. The standalone decoder preserves colour descriptions without conversion. PDF colour selection additionally reviews T.801 M.11.7.2/Table M.23; forward ICC and sYCC interpretation are reviewed separately under the paint-jpx requirements. General Part 2 codestream, layering and additional colour-model semantics remain separate work. Coding-pass prefix reconstruction is additionally verified against D.2.1/D.3, E-6-E-8 and H.1, with packet-boundary incomplete final volumes under B.10/B.12.3; no physical missing-byte repair is implied.",
+  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. The standalone decoder preserves colour descriptions without conversion. PDF colour selection additionally reviews T.801 M.11.7.2/Table M.23; forward ICC and sYCC interpretation are reviewed separately under the paint-jpx requirements. The bounded jpxb container and corrected reader requirements are additionally reviewed against T.801:2002 plus Cor3/Cor4. Other permitted baseline codestream/layout/colour semantics remain work; PDF-prohibited composition/animation and CIEJab are separately classified below. Coding-pass prefix reconstruction is additionally verified against D.2.1/D.3, E-6-E-8 and H.1, with packet-boundary incomplete final volumes under B.10/B.12.3; no physical missing-byte repair is implied.",
   "requirements": [
     {
       "id": "jpx-part1",
@@ -47,7 +47,7 @@
         "jpx/pdf-depth-17",
         "jpx/model-column"
       ],
-      "gaps": "Samples above 16 bits and coded magnitudes above 30 bits are explicitly Unsupported. Coding-pass prefixes are supported; see jpx-partial-quality.",
+      "gaps": "PDF 7.4.9 permits 1\u201338 bits; samples 17\u201338 and coded magnitudes above 30 bits remain explicit implementation limits. Coding-pass prefixes are supported; see jpx-partial-quality.",
       "pdf_review": {
         "rule": "PDF allows different per-component depths from 1 through 38; JPEG 2000 algorithms are delegated to the external format standard.",
         "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
@@ -235,7 +235,7 @@
         "jpx/tile-part-index-255",
         "jpx/tile-part-count"
       ],
-      "gaps": "Extended capability/profile-specific machinery, PLM and CRG remain explicitly unsupported. Tile and allocation/work caps are project policy.",
+      "gaps": "Extended capability/profile machinery and nonzero CRG registration remain explicit. Main-header PLM and identity CRG are implemented with structural checks; tile and allocation/work caps are project policy.",
       "pdf_review": {
         "rule": "PDF describes tiled and progressive JPEG 2000 data but does not define tile or tile-part marker mechanics.",
         "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
@@ -305,7 +305,7 @@
         "7.4.9"
       ],
       "codec_reference": "ITU-T T.800 (06/2019), I.3.1-I.3.5, I.4, I.5.1-I.5.4, I.8",
-      "status": "Corrected / partial: Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override.",
+      "status": "Corrected / partial: Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override. The same parser now admits jpx/jpxb-only MinV1 containers with corrected reader requirements and the supported first-image box subset; current checkpoint hosted acceptance is pending.",
       "tests": [
         "jpx/final-box",
         "jpx/bit-depth-box",
@@ -325,9 +325,30 @@
         "jpx/resolution-repeat",
         "paint_jpx_integration/precedence-signed",
         "paint_jpx_integration/approximation-quality",
-        "paint_jpx_integration/stable-equal-priority"
+        "paint_jpx_integration/stable-equal-priority",
+        "jpx/jpxb-only",
+        "jpx/jpxb-jp2-control",
+        "jpx/jpxb-alternative-feature",
+        "jpx/jpxb-nondisplay-feature",
+        "jpx/jpxb-required-unknown",
+        "jpx/jpxb-required-conjunction",
+        "jpx/jpxb-required-vendor",
+        "jpx/jpxb-deprecated-no-grant",
+        "jpx/jpxb-requirements-missing",
+        "jpx/jpxb-requirements-duplicate",
+        "jpx/jpxb-requirements-short",
+        "jpx/jpxb-requirements-mask-length",
+        "jpx/jpxb-requirements-extra",
+        "jpx/jpxb-layout-jpch",
+        "jpx/jpxb-layout-jplh",
+        "jpx/jpxb-layout-ftbl",
+        "jpx/jpxb-layout-cref",
+        "jpx/jpxb-mask-2",
+        "jpx/jpxb-mask-4",
+        "jpx/jpxb-mask-8",
+        "jpx/jpxb-legacy-jp2-unknown"
       ],
-      "gaps": "General JPX Part 2 codestream/layering and additional colour models remain open. Standalone JP2 uses the first colr; PDF retains ranked candidates for the existing ICC parser and colour resolver. Per-colour, unspecified and multiple-description cdef layouts remain explicit Unsupported boundaries.",
+      "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable. Legacy JP2-compatible selection is preserved; standalone JP2 uses its first colr and PDF retains ranked candidates.",
       "pdf_review": {
         "rule": "PDF requires full JPX packaging and baseline features, excludes colour 19, permits CMYK 12, and defers dictionary colour and opacity use to the stated image entries.",
         "verdict": "PDF rule checked; corrected / partial for the supported Part 1 subset; see codec_review and gaps",
@@ -349,15 +370,20 @@
         "implementation_expectations": "Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override."
       },
       "external_review": {
-        "status": "reviewed selection subset; broader extensions remain open",
-        "standard": "ITU-T T.801 (08/2023) / ISO/IEC 15444-2",
+        "status": "reviewed baseline applicability, reader requirements and named layout/colour definitions; further implementation boundaries remain open",
+        "standard": "ITU-T T.801 (08/2002), integrating Amendment1/Cor1/Cor2, plus Cor3 (01/2005) and Cor4 (05/2006); ISO/IEC 15444-2:2004 as cited by PDF",
         "clauses": [
-          "M.3.1",
+          "M.6.3",
+          "M.8",
+          "M.9.2.1-M.9.2.8",
+          "M.11.1/Tables M.14-M.15",
           "M.11.7.2",
-          "Table M.23"
+          "M.11.7.4.1",
+          "M.11.7.6",
+          "Cor4 items1-4,9-12"
         ],
-        "depends_on": "General JPX Part 2 codestream and layering features remain outside this integration. Full-profile transforms use the separately reviewed ICC parser.",
-        "evidence": "Independent colour precedence, approximation, stable-order and unavailable-profile controls in paint_jpx_integration; see paint-jpx-icc for conversion and signed-profile boundaries."
+        "depends_on": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
+        "evidence": "Official freely available primary PDFs remain outside Git. Base text SHA256 f5ded73512767d40efde175cd21ba4f7ba9db760a73c8c042d6d11edc8d782f9; Cor3 7d99a1bec0bc84e362f39ce8a049f21983cca69889d07e5564a6c067c687861c; Cor4 734fa98de2f58848df3f69b3ea8a4ce534f005acea5600d59ac8992b98c176a5. The base PDF labels itself ISO15444-2:2003; the official catalogue and corrigenda identify the 2004 edition. This is no claim of reviewing every later Part2 amendment. Original jpxb/RGB/JP2 pairs from run40368464986 are preserved byte-for-byte; unknown required DCM features and unimplemented first-image metadata cannot be bypassed by a brand. Supported feature masks are ORed, then all DCM bits required; FUAM-only unknown metadata is not a display obligation. Deprecated masks grant no capabilities."
       }
     },
     {
@@ -477,7 +503,7 @@
         "jpx/pdf-colour-12",
         "jpx/pdf-depth-17"
       ],
-      "gaps": "General JPX Part 2 codestream and layering remain R03. The image facade enforces PDF dictionaries and applies palette/channel selection from the same bounded metadata parser; the interpreter selects forward colour transforms.",
+      "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
       "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.2, G.4, I.5.3.6, Table I.16, Table I.17",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
@@ -501,7 +527,7 @@
           "M.11.7.2",
           "Table M.23"
         ],
-        "depends_on": "General Part 2 codestream/layering and additional colour definitions remain separate.",
+        "depends_on": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
         "evidence": "Public image-source tests and independent colour/palette/mask/inline controls; full functional verification remains bound to hosted source revisions."
       }
     },
@@ -749,8 +775,8 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 (06/2019), A.1.1-A.1.3, A.4.1-A.4.4, A.5.1, A.6.1-A.6.6, A.7.1, A.7.3-A.7.5, A.8.1, A.8.2, A.9.2",
-      "status": "Corrected / partial: Reviewed every parsed marker; corrected marker-order assumptions, reserved no-parameter skipping, unused exponent bits, optional SOP, POC uniqueness and TPsot range; comments and pointer entries get structural range/length checks.",
+      "codec_reference": "ITU-T T.800 (06/2019), A.1.1-A.1.3, A.4.1-A.4.4, A.5.1, A.6.1-A.6.6, A.7.1-A.7.5, A.8.1, A.8.2, A.9.1-A.9.2",
+      "status": "Corrected / partial: Existing marker-order, reserved-bit and pointer checks are extended with PLM and identity CRG. PLM shares indexed fragment assembly and PLT variable-length syntax; Nplm byte lists may continue across markers, but individual packet lengths must end within a marker. CRG is unique/main-header-only with exactly one pair per component; nonzero offsets remain Unsupported. Hosted acceptance pending for this checkpoint.",
       "tests": [
         "jpx/marker-order",
         "jpx/reserved-markers",
@@ -761,9 +787,25 @@
         "jpx/tlm-empty",
         "jpx/comment-registration",
         "jpx/tile-part-index-255",
-        "jpx/tile-part-count"
+        "jpx/tile-part-count",
+        "jpx/jpx-plm",
+        "jpx/jpx-crg-zero",
+        "jpx/jpx-plm-crg-zero",
+        "jpx/plm-continuation",
+        "jpx/plm-physical-order",
+        "jpx/plm-split-length",
+        "jpx/plm-truncated-length",
+        "jpx/plm-overflow-length",
+        "jpx/plm-duplicate-index",
+        "jpx/plm-incomplete-list",
+        "jpx/crg-short",
+        "jpx/crg-extra",
+        "jpx/crg-duplicate",
+        "jpx/crg-nonzero",
+        "jpx/main-marker-in-tile-87",
+        "jpx/main-marker-in-tile-99"
       ],
-      "gaps": "CAP, PRF, PLM, CRG and unsupported capability/profile machinery return Unsupported. TLM/PLT are structurally checked but consistency with all decoded byte lengths is not fully validated.",
+      "gaps": "CAP, PRF, nonzero CRG and unsupported capability/profile machinery remain explicit. TLM/PLM/PLT are structurally checked but consistency with every decoded byte length is not fully validated.",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
         "source": "text/itu-t800-2019.txt",
@@ -776,11 +818,13 @@
           "A.7.3-A.7.5",
           "A.8.1",
           "A.8.2",
-          "A.9.2"
+          "A.9.2",
+          "A.7.2/Tables A.35-A.36",
+          "A.9.1/Table A.42"
         ],
         "rule": "Marker placement, length, scope and component/default inheritance are explicit; no-parameter reserved markers and unused bits have prescribed reader handling.",
         "verdict": "Corrected / partial",
-        "implementation_expectations": "Reviewed every parsed marker; corrected marker-order assumptions, reserved no-parameter skipping, unused exponent bits, optional SOP, POC uniqueness and TPsot range; comments and pointer entries get structural range/length checks."
+        "implementation_expectations": "Reviewed every parsed marker; corrected marker-order assumptions, reserved no-parameter skipping, unused exponent bits, optional SOP, POC uniqueness and TPsot range; comments and pointer entries get structural range/length checks. PLM counts eight-bit Nplm byte extents after ordering fragments by Zplm; packet-boundary checks retain source positions. Zero CRG is an exact identity registration, not a general CRG rendering policy."
       }
     },
     {
@@ -828,7 +872,7 @@
         "jpx/palette-opacity-origin",
         "jpx/opacity-signed"
       ],
-      "gaps": "Only one whole-image unsigned opacity channel is represented. Per-colour, multiple or unspecified channel associations remain explicit Unsupported; unpremultiplication belongs to painting.",
+      "gaps": "One whole-image unsigned opacity channel is the PDF 7.4.9 contract. Used per-colour/multiple opacity is prohibited; unspecified ordinary colour associations and general standalone JPX layouts remain explicit boundaries. Unpremultiplication belongs to painting.",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
         "source": "text/itu-t800-2019.txt",

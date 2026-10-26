@@ -3,6 +3,33 @@ use pagura_core::{ErrorKind, Limits, Position};
 use pagura_testkit::fixture;
 
 #[test]
+fn first_scan_framing_shares_inline_stuffing_restart_and_work_rules() {
+    let data = [1, 255, 0, 0xdc, 255, 255, 0xd0];
+    let mut work = 0;
+    let marker = super::scan::entropy_marker(&data, 0, &mut work, 7).unwrap();
+    assert_eq!((marker.start, marker.end, marker.code), (4, 7, 0xd0));
+    assert_eq!(work, 7);
+    assert_eq!(
+        super::scan::entropy_marker(&data, 0, &mut 0, 6)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Limit
+    );
+    assert_eq!(
+        super::scan::entropy_marker(&[255, 255, 0], 0, &mut 0, 10)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Syntax
+    );
+    for name in ["deferred", "progressive"] {
+        let data = fixture("image", &format!("jpeg-dnl-vector-{name}.in"));
+        let mut content = data.clone();
+        content.extend_from_slice(b" EI q 1 0 0 1 0 0 cm");
+        assert_eq!(super::data_length(&content).unwrap(), data.len());
+    }
+}
+
+#[test]
 fn arithmetic_and_twelve_bit_mutations_remain_bounded() {
     let limits = Limits {
         pixels: 4096,

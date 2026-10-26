@@ -20,6 +20,31 @@ fn source(document: &Document) -> pagura_core::Result<ImageSource> {
 }
 
 #[test]
+fn main_header_markers_and_jpxb_requirements_preserve_public_samples() {
+    let expected: Vec<_> = [0, 64, 128, 255, 255, 128, 64, 0].repeat(8);
+    for name in [
+        "jpx-plm",
+        "jpx-crg-zero",
+        "jpx-plm-crg-zero",
+        "jpxb-only",
+        "jpxb-jp2-control",
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("image", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let image = source(&document)
+            .unwrap()
+            .decode(&DecodeRequest::FULL, &document.limits(), Recovery::Strict)
+            .unwrap()
+            .image;
+        assert_eq!((image.width, image.height), (8, 8));
+        assert_eq!(image.samples, Samples::Bytes(expected.clone()), "{name}");
+    }
+}
+
+#[test]
 fn ranked_candidates_remain_visible_without_decoding() {
     let document = document("precedence-signed", Limits::default()).unwrap();
     let source = source(&document).unwrap();

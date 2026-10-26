@@ -229,8 +229,9 @@ Mixed signed/unsigned palette channels, opacity modes and candidate fallback
 have independent controls and public raw-sample tests. The reference renderer
 separately unassociates stored samples before Decode/range mapping; the fixed
 `lab-alpha-2` and `premultiplied-inverted-decode` oracles expose ordering mistakes.
-No tolerance was relaxed. Precision above sixteen bits, broader Part 2 models
-and layering remain R03. Native/WASI/browser and current implementation acceptance
+No tolerance was relaxed. Precision 17–38 and permitted JPX baseline models
+and first-image metadata remain R03. PDF 7.4.9 prohibits multilayer composition
+and animation; it does not exclude every Part 2 tool. Native/WASI/browser and current implementation acceptance
 remain tied to hosted results for the published source revision (ADR 0031).
 
 ## R03 lossless JPEG compatibility controls
@@ -287,13 +288,24 @@ general lossless, arithmetic or high-precision baseline-support verdict.
 
 ## R03 bitonal extensions
 
-The next batch adds eight subjects with eight ordinary RGB controls: CCITT
+The accepted bitonal checkpoint adds eight subjects with eight ordinary RGB controls: CCITT
 uncompressed continuation and resumed run coding, plus JBIG2 extended adaptive
-templates, typical prediction and unknown-length framing. The inventory now
-contains 260 render cases and 1,820 observation cells. All new pixels come from
+templates, typical prediction and unknown-length framing. That checkpoint contains
+260 render cases and 1,820 observation cells. All new pixels come from
 literal bit patterns or original geometric bitmaps at native pixel size; paired
-controls have identical PPM oracles and zero tolerance. No baseline support is
-inferred before execution, and current-head hosted acceptance is pending.
+controls have identical PPM oracles and zero tolerance. Its acceptance is bound to
+`6e87a6030ae206322aa813388b41e18363d5af81`: all twelve retained PR gates pass,
+including three-OS [functional run 40364384706](https://github.com/jonasgrosch/pagura/actions/runs/40364384706),
+[editing run 40364384681](https://github.com/jonasgrosch/pagura/actions/runs/40364384681)
+and [capability run 40364384650](https://github.com/jonasgrosch/pagura/actions/runs/40364384650).
+The combined report has 260/260 Pagura passes, measured at merge
+`c231a3e06676d6ab97837a553923fe2bc372c184`. Artifact 12670344135 ZIP SHA-256 is
+`02bcad88b4fd2856d979287ed890f904af9dbd109819d7610f187c471cd2a386`; report
+SHA-256 is `a1dcb4632eb15780ae337d7c514f76f08a75f7f9985ddd68a4f8bb76a450f8d3`.
+PDFium, MuPDF, PDF.js, hayro and Quartz differ on all eight new subjects while
+their eight RGB pairs pass. Poppler controls fail, leaving its subjects
+unadjudicated. These scoped negative observations do not establish whole-family
+absence, and these green results do not certify later source changes.
 
 The 65 fax vectors cover every T.4 Table 5 / T.6 Table 4 literal and exit, both
 run colours, 1-D/mixed/2-D coding, words spanning several T.6 rows, byte alignment,
@@ -312,3 +324,80 @@ The [requirements](../../references/requirements/jbig2.json) record the source
 hashes and the decision to follow the explicit twelve-pair layout; no unspecified
 bytes or alternate layout are guessed. Unknown-height allocation uses the actual
 row count, and the original exact budgets are extended to the 65,536 contexts.
+
+
+## R03 JPEG/JPX marker and baseline-container controls
+
+The fourteen image inputs from diagnostic `9e97615f228fb3f5cb0ea76f14ddf20872659a51`,
+[run 40368464986](https://github.com/jonasgrosch/pagura/actions/runs/40368464986),
+are preserved byte-for-byte under `image/` with identical PPM oracles and tolerance
+zero. The integrated inventory has 274 cases / 1,918 cells; acceptance of this
+implementation checkpoint remains pending. The original diagnostic inventory
+had those fourteen image cases plus blank/rectangle controls, for 112 cells.
+Its eight Pagura subject failures remain `adapter-error`, as recorded by the
+then-current harness; source review separately identified the relevant refusal
+and framing paths. Historical outcomes are not rewritten.
+
+| Subject | Pinned baselines matching the exact RGB oracle and applicable control |
+| --- | --- |
+| DNL with deferred Y=0; progressive DNL | MuPDF 1.28.5 |
+| DNL with unchanged Y=8 | PDFium 156.0.8076.0, MuPDF 1.28.5, PDF.js 6.4.299, Quartz macOS 26.6.2 |
+| DNL redefining Y=16 to 8 | PDFium, MuPDF, Quartz |
+| PLM alone; PLM plus zero CRG | PDFium, MuPDF, PDF.js, Quartz |
+| Zero CRG alone | PDFium, MuPDF, PDF.js, hayro 0.8.0, Quartz |
+| jpx/jpxb-only with corrected rreq | PDFium, MuPDF, PDF.js, hayro |
+
+MuPDF matches the literal oracle with zero maximum channel error on all fourteen
+image subjects/controls. Poppler 24.02.0 fails the image controls, so its image
+subjects remain unadjudicated. Quartz fails jpxb-only while the otherwise
+identical jp2-compatible control passes. The Linux report artifact 12670429976
+has report SHA-256
+`47625b91b84a3c5078ccd470f8d7f23b400f47549431390b272c8dd5f43c3dcc`;
+macOS artifact 12670534766 has report SHA-256
+`86836e090fe43fdc59ce3c12180578cb5175e884505f9aa62093fd6e030a73ca`.
+The unchanged engine identities and per-case outcomes remain in those reports.
+
+T.81 B.2.5/Table B.10 and E.2.4 permit DNL to replace a nonzero SOF height at the
+end of the first complete scan. Shared entropy framing discovers that height
+before any sample allocation, then the existing decoder validates the MCU rows.
+This adds one first-scan framing traversal to ordinary JPEGs; there is no second
+pixel decode or preflight entropy copy. Every inspected byte is charged. The
+literal lossless control's work rises from 22 to 60: 4 SOS/length bytes plus 34
+entropy-through-EOI bytes, followed by its unchanged 20 sample units and 2 end-marker
+inspections. The DNL constant control requires 81 operations, 384 live bytes and 64
+pixels; one-short bounds refuse it. The ordinary-JPEG timing cost requires a
+paired hosted measurement and is not described as a performance improvement.
+
+PLM uses the existing indexed-fragment owner and PLT length syntax. T.800 A.7.2
+allows an Nplm byte list to span markers, while each packet length must finish
+inside one marker. Continuation, reversed physical fragment order, malformed
+variable integers and exact byte work limits are independent controls. A.9.1's
+zero CRG offsets are an identity; nonzero registration remains explicitly
+unsupported pending its own rendering evidence.
+
+The same box parser admits a bounded jpx/jpxb-only subset: MinV 1, one immediately
+following rreq, supported Display Contents alternatives, and existing first-image
+metadata. Unknown required standard/vendor features, unsupported layout boxes,
+and malformed masks are refused. FUAM-only unknown metadata does not itself
+prevent display. Legacy jp2-compatible behaviour remains unchanged. The
+[JPX requirements](../../references/requirements/jpx.json) cite the official
+[T.801:2002 edition](https://www.itu.int/rec/T-REC-T.801-200208-S),
+[Cor3](https://www.itu.int/rec/T-REC-T.801-200501-S!Cor3) and
+[Cor4](https://www.itu.int/rec/T-REC-T.801-200605-S!Cor4), with exact cached-text
+hashes and the dated-edition distinction. No primary text is redistributed.
+
+Remaining applicable work includes 17–38-bit components, nonzero CRG, early packed
+headers, first-image jpch/jplh/opct metadata, ordered in-file fragments and
+cross-references, CIELab 14/default or explicit parameters, e-sRGB 20, ROMM-RGB 21,
+e-sYCC 24, and the restricted baseline array/nonlinear transforms. PDF 7.4.9 excludes
+CIEJab 19, multilayer composition/animation and used per-colour/multiple opacity;
+chroma-key metadata is ignored. These boundaries do not erase the permitted
+Part 2 obligations. Undefined CCITT selectors and unknown necessary JBIG2
+extension identifiers remain explicit boundaries until a concrete applicable
+extension is established. All six engine-family ledger cells remain unprobed.
+
+The shared refusal-classification correction from 703d6c4deeba0afc76932793df966be0f3976f77
+uses the existing `explicit_refusal` owner from the appearance workstream.
+A named backend/CLI refusal is recorded as such; arbitrary nonzero exits stay
+unclassified. Negative controls cover both cases without changing pixel acceptance
+or historic diagnostic rows.

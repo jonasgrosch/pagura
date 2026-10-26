@@ -766,7 +766,7 @@
           "verdict": "Independent native-size Gray/RGB controls at 8 and 16 bits have identical-profile unsigned JPX and plain RGB counterparts. Mixed signed/unsigned palette precision, SMaskInData 0/1/2, restricted-candidate fallback and refusal of undefined signed device fallback add integration controls. The original general-signed boundary fixture now uses a valid full Lab profile, keeping its Unsupported expectation; no valid restricted-TRC case is mislabeled as invalid."
         }
       ],
-      "gaps": "General signed Lab/LUT and other nonrestricted ICC profile combinations remain outside the defined clipping policy; they are explicit Unsupported unless a later restricted candidate applies. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles use T.800 Table I.9 clipping. General Part 2 colour models and decoder extensions remain R03; competitive observations require individual adjudication."
+      "gaps": "General signed Lab/LUT and nonrestricted ICC combinations remain outside the T.800 Table I.9 restricted XYZ Gray/RGB matrix/TRC clipping rule; they remain Unsupported unless a later restricted candidate applies. Permitted JPX baseline colour definitions and restricted codestream transforms remain R03; PDF excludes CIEJab19. Scoped baseline observations do not establish family parity."
     },
     {
       "id": "paint-jpx-sycc",
@@ -968,7 +968,7 @@
           "verdict": "Independent first/last, direct/palette, 8/16-bit opacity and mode 0/1/2 sample and pixel fixtures authored."
         }
       ],
-      "gaps": "Ambiguous palettes with multiple independent source index components and forbidden per-colour/multiple opacity remain explicit errors. Broader decoder layouts remain R03."
+      "gaps": "Ambiguous palettes with multiple independent index sources remain explicit layout boundaries. PDF 7.4.9 prohibits used per-colour/multiple opacity and multilayer composition/animation; these do not create PDF parity obligations. Other permitted baseline layouts remain R03."
     },
     {
       "id": "paint-jpx-interactions",

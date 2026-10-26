@@ -444,6 +444,7 @@ mod tests {
                                 0,
                             ],
                             0xc0,
+                            None,
                             &limits,
                         )
                         .unwrap();
@@ -604,12 +605,14 @@ mod tests {
         let mut frame = super::Frame::parse(
             &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
             0xc2,
+            None,
             &limits,
         )
         .unwrap();
         let mut sequential = super::Frame::parse(
             &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
             0xc0,
+            None,
             &limits,
         )
         .unwrap();

@@ -717,6 +717,7 @@ def rejection(name, data, requirements, rule):
 
 
 def cases():
+    yield from marker_cases()
     width, height = 8, 8
     gray = [(x*37+y*13) % 256 for y in range(height) for x in range(width)]
     rgb = [gray, [(v+71) % 256 for v in gray], [255-v for v in gray]]
@@ -1149,3 +1150,128 @@ def cases():
                                 "ppm-index":("jpx-packed-headers",),"ppt-index":("jpx-packed-headers",),
                                 "packed-conflict":("jpx-packed-headers",),"ppm-unused":("jpx-packed-headers",)}
         yield Vector(name,{".jpx": data, ".error": b"syntax\n"},("jpx-hostile",)+feature_requirements.get(name,()),"Malformed JPEG 2000 input",extra={"error": "syntax"})
+
+
+def packet_length(value):
+    result = [value & 127]
+    value >>= 7
+    while value:
+        result.insert(0, 128 | (value & 127))
+        value >>= 7
+    return bytes(result)
+
+
+def baseline_container(raw, *, compatibility=b"jpx jpxb", requirements=None, extra=b""):
+    # T.801 M.8/M.9.2, corrected by Cor.4: MinV=1; feature5 is the
+    # unrestricted Part1 codestream. DCM/FUAM both require its one mask bit.
+    if requirements is None:
+        requirements = struct.pack(">BBBHHBH", 1, 1, 1, 1, 5, 1, 0)
+    signature = box(b"jP  ", b"\r\n\x87\n")
+    header = box(b"ihdr", struct.pack(">IIH4B", 8, 8, 1, 7, 7, 0, 0))
+    header += box(b"colr", b"\x01\x00\x01" + struct.pack(">I", 17))
+    return (signature + box(b"ftyp", b"jpx " + struct.pack(">I", 1) + compatibility)
+            + box(b"rreq", requirements) + box(b"jp2h", header) + extra + box(b"jp2c", raw))
+
+
+def marker_streams():
+    samples = [0, 64, 128, 255, 255, 128, 64, 0] * 8
+    raw = codestream([samples], 8, 8)
+    sot = raw.index(b"\xff\x90")
+    sod = raw.index(b"\xff\x93")
+    length = packet_length(len(raw) - sod - 4)
+    plm = marker(0x57, b"\0" + bytes([len(length)]) + length)
+    crg = marker(0x63, struct.pack(">HH", 0, 0))
+    for name, markers in [("plm", plm), ("crg-zero", crg), ("plm-crg-zero", plm + crg)]:
+        yield "jpx-" + name, jp2(raw[:sot] + markers + raw[sot:], 8, 8, 1), samples
+    yield "jpx-marker-codec-control", jp2(raw, 8, 8, 1), samples
+    yield "jpxb-only", baseline_container(raw), samples
+    yield "jpxb-jp2-control", baseline_container(raw, compatibility=b"jpx jpxbjp2 "), samples
+
+
+def marker_render_cases():
+    from .paint import image_case
+    for name, data, samples in marker_streams():
+        yield image_case(name, data, b"/ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /JPXDecode",
+                         samples, 8, 8, matrix=(8, 0, 0, 8, 2, 2),
+                         requirement="jpx-boxes" if name.startswith("jpxb-") else "jpx-marker-syntax")
+    samples = [0, 64, 128, 255, 255, 128, 64, 0] * 8
+    yield image_case("jpx-marker-rgb-control", bytes(v for sample in samples for v in (sample,) * 3),
+                     b"/ColorSpace /DeviceRGB /BitsPerComponent 8", samples, 8, 8,
+                     matrix=(8, 0, 0, 8, 2, 2), requirement="jpx-marker-syntax")
+
+
+def marker_cases():
+    for name, data, samples in marker_streams():
+        yield vector(name, data, [samples], 8, 8, ("jpx-boxes", "jpx-marker-syntax"))
+    samples = [0, 64, 128, 255, 255, 128, 64, 0] * 8
+    raw = codestream([samples], 8, 8, layers=2)
+    sot, sod = raw.index(b"\xff\x90"), raw.index(b"\xff\x93")
+    # Layer0 is one empty packet (byte 00); layer1 carries the real packet.
+    length = packet_length(len(raw) - sod - 5)
+    first = marker(0x57, bytes([0, 1 + len(length), 1]))
+    last = marker(0x57, b"\1" + length)
+    for name, markers in [("plm-continuation", first + last),
+                          ("plm-physical-order", last + first)]:
+        encoded = raw[:sot] + markers + raw[sot:]
+        encoded = tile_header_marker(encoded, 0x58, b"\0\1" + length)
+        yield vector(name, encoded, [samples], 8, 8, ("jpx-marker-syntax",))
+    invalid_markers = {
+        "plm-duplicate-index": first + first + last,
+        "plm-incomplete-list": first,
+        "plm-truncated-length": marker(0x57, b"\0\1\x80"),
+        "plm-split-length": marker(0x57, b"\0\2\x81") + marker(0x57, b"\1\0"),
+        "plm-overflow-length": marker(0x57, b"\0\5\xff\xff\xff\xff\x7f"),
+        "plm-empty": marker(0x57, b"\0"),
+        "crg-short": marker(0x63, b"\0\0"),
+        "crg-extra": marker(0x63, bytes(8)),
+        "crg-duplicate": marker(0x63, bytes(4)) * 2,
+    }
+    for name, addition in invalid_markers.items():
+        yield rejection(name, raw[:sot] + addition + raw[sot:], ("jpx-marker-syntax",),
+                        "T.800 A.7.2/A.9.1 field extent, index and marker-boundary constraints")
+    for code in (0x57, 0x63):
+        yield rejection(f"main-marker-in-tile-{code}", tile_header_marker(raw, code, bytes(4)),
+                        ("jpx-marker-syntax",), "PLM and CRG belong only to the main header")
+    # A nonzero registration is defined, but needs a separately evidenced
+    # rendering policy; it is not silently treated as an identity offset.
+    yield Vector("crg-nonzero", {".jpx": raw[:sot] + marker(0x63, b"\0\1\0\0") + raw[sot:],
+                 ".error": b"unsupported\n"}, ("jpx-marker-syntax",),
+                 "T.800 A.9.1 nonzero rendering registration remains explicit", extra={"error": "unsupported"})
+    raw = codestream([samples], 8, 8)
+    for name, requirements in [
+        ("jpxb-alternative-feature", struct.pack(">BBBHHBHBH", 1, 1, 1, 2, 5, 1, 65000, 1, 0)),
+        ("jpxb-nondisplay-feature", struct.pack(">BBBHHBHBH", 1, 3, 1, 2, 5, 1, 65000, 2, 0)),
+    ]:
+        yield vector(name, baseline_container(raw, requirements=requirements), [samples], 8, 8, ("jpx-boxes",))
+    for size in (2, 4, 8):
+        mask = b"\x80" + bytes(size - 1)
+        requirements = bytes([size]) + mask * 2 + b"\0\1\0\5" + mask + b"\0\0"
+        yield vector(f"jpxb-mask-{size}", baseline_container(raw, requirements=requirements),
+                     [samples], 8, 8, ("jpx-boxes",))
+    unknown = struct.pack(">BBBHHBH", 1, 1, 1, 1, 65000, 1, 0)
+    yield vector("jpxb-legacy-jp2-unknown", baseline_container(raw, requirements=unknown,
+                 compatibility=b"jpx jpxbjp2 "), [samples], 8, 8, ("jpx-boxes",))
+    for name, requirements in [
+        ("jpxb-required-unknown", struct.pack(">BBBHHBH", 1, 1, 1, 1, 65000, 1, 0)),
+        ("jpxb-required-conjunction", struct.pack(">BBBHHBHBH", 1, 3, 3, 2, 5, 1, 65000, 2, 0)),
+        ("jpxb-required-vendor", bytes([1, 1, 1]) + struct.pack(">HH", 0, 1) + bytes(16) + b"\1"),
+        ("jpxb-deprecated-no-grant", struct.pack(">BBBHHBH", 1, 1, 1, 1, 1, 1, 0)),
+    ]:
+        yield Vector(name, {".jpx": baseline_container(raw, requirements=requirements), ".error": b"unsupported\n"},
+                     ("jpx-boxes",), "Required display expressions cannot be granted by unknown/deprecated features",
+                     extra={"error": "unsupported"})
+    container = baseline_container(raw)
+    rreq = container.index(b"rreq") - 4
+    rreq_end = rreq + struct.unpack_from(">I", container, rreq)[0]
+    for name, data in [
+        ("jpxb-requirements-missing", container[:rreq] + container[rreq_end:]),
+        ("jpxb-requirements-duplicate", container[:rreq_end] + container[rreq:rreq_end] + container[rreq_end:]),
+        ("jpxb-requirements-short", baseline_container(raw, requirements=b"\1\1")),
+        ("jpxb-requirements-mask-length", baseline_container(raw, requirements=bytes([3]) + bytes(10))),
+        ("jpxb-requirements-extra", baseline_container(raw, requirements=bytes([1, 0, 0, 0, 0, 0, 0, 0]))),
+    ]:
+        yield rejection(name, data, ("jpx-boxes",), "T.801 M.11.1 exact box position and field extent")
+    for kind in (b"jpch", b"jplh", b"ftbl", b"cref"):
+        yield Vector("jpxb-layout-" + kind.decode(), {".jpx": baseline_container(raw, extra=box(kind, b"")),
+                     ".error": b"unsupported\n"}, ("jpx-boxes",),
+                     "A baseline brand and mask do not bypass first-image metadata semantics", extra={"error": "unsupported"})

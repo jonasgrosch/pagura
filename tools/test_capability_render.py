@@ -97,5 +97,32 @@ class RenderProbeTests(unittest.TestCase):
                 self.assertEqual(render.invoke(['stub'], row, directory)['outcome'], 'engine-unavailable')
 
 
+    def test_rendering_never_infers_a_refusal_from_an_arbitrary_error(self):
+        row = render.validate_manifest(self.manifest, self.inventory)['control.rectangle']
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            def run(stdout=b'', stderr=b''):
+                def stub(command, **kwargs):
+                    kwargs['stdout'].write(stdout)
+                    kwargs['stderr'].write(stderr)
+                    return subprocess.CompletedProcess(command, 1)
+                return stub
+            for engine, stdout, stderr, outcome in [
+                ('pagura', b'', b'pagura: unsupported [annotation.appearance]: missing', 'unsupported'),
+                ('pdfium', b'{"schema":1,"status":"unsupported","feature":"sound.icon"}', b'', 'unsupported'),
+                ('pdfium', b'', b'unsupported sound', 'adapter-error'),
+                ('pdfium', b'{"schema":true,"status":"unsupported","feature":"sound.icon"}', b'', 'adapter-error'),
+                ('pagura', b'', b'could not open the document', 'adapter-error'),
+                ('pdfium', b'', b'pagura: unsupported [annotation.appearance]: missing', 'adapter-error'),
+                ('pagura', b'', b'pagura: unsupported [invalid tag]: missing', 'adapter-error'),
+            ]:
+                with self.subTest(engine=engine, outcome=outcome), patch.object(
+                        render.subprocess, 'run', side_effect=run(stdout, stderr)):
+                    result = render.invoke(['stub'], row, directory, engine=engine)
+                    self.assertEqual(result['outcome'], outcome)
+                    self.assertNotIn('pixel_comparison', result)
+                    self.assertNotIn('observed', result)
+
+
 if __name__ == '__main__':
     unittest.main()

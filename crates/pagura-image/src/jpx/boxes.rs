@@ -1,4 +1,4 @@
-//! JP2 fields, T.800 I.4–I.5 and PDF 7.4.9; Part 2 extensions need T.801.
+//! JP2/JPX fields, T.800 I.4–I.5, T.801 M.8/M.11 and PDF 7.4.9.
 
 use pagura_core::{Error, Result};
 
@@ -55,6 +55,7 @@ pub(super) struct Header {
     mapping: Option<Vec<(u16, u8, u8)>>,
     channels: Option<Vec<(u16, u16, u16)>>,
     channels_use: ChannelsUse,
+    baseline_color: bool,
 }
 
 #[derive(Default, PartialEq, Eq)]
@@ -71,6 +72,91 @@ struct Palette {
     values: Vec<u16>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FileType {
+    Jp2,
+    JpxCompatible,
+    JpxBaseline,
+}
+
+fn file_type(box_data: &BoxData<'_>, budget: &mut Budget<'_>) -> Result<FileType> {
+    let body = box_data.body;
+    if box_data.kind != b"ftyp" || body.len() < 12 || !body.len().is_multiple_of(4) {
+        return Err(syntax("invalid JP2 file type box", box_data.position));
+    }
+    budget.work(body.len() / 4)?;
+    let brands = body[8..].as_chunks::<4>().0;
+    if brands.contains(b"jp2 ") {
+        return Ok(if body.get(..4) == Some(b"jpx ") {
+            FileType::JpxCompatible
+        } else {
+            FileType::Jp2
+        });
+    }
+    // T.801 M.8/M.9.2 and Cor.4 item 1: the baseline reader label is
+    // additional to jpx compatibility, and the corrected minor version is 1.
+    if body.get(..4) == Some(b"jpx ")
+        && brands.contains(b"jpx ")
+        && brands.contains(b"jpxb")
+        && body.get(4..8) == Some(&[0, 0, 0, 1])
+    {
+        return Ok(FileType::JpxBaseline);
+    }
+    Err(unsupported(
+        "JPX file extensions are not implemented",
+        box_data.position,
+    ))
+}
+
+/// Corrected T.801 M.6.3/M.11.1 and Cor.4 Table M.14. Display Contents is
+/// a conjunction of alternatives: OR the masks of supported features, then
+/// require every DCM bit. FUAM can additionally require non-display metadata.
+fn reader_requirements(box_data: &BoxData<'_>, budget: &mut Budget<'_>) -> Result<()> {
+    if box_data.kind != b"rreq" {
+        return Err(syntax(
+            "JPX reader requirements must follow file type",
+            box_data.position,
+        ));
+    }
+    budget.work(box_data.body.len())?;
+    let mut fields = Reader::new(box_data.body, box_data.position);
+    let length = usize::from(fields.u8()?);
+    if !matches!(length, 1 | 2 | 4 | 8) {
+        return Err(syntax("invalid JPX requirements mask length", fields.base));
+    }
+    fields.take(length)?; // FUAM; displaying a PDF does not require editing all metadata.
+    let display = fields.take(length)?;
+    let mut supported = [0_u8; 8];
+    for _ in 0..fields.u16()? {
+        let feature = fields.u16()?;
+        let mask = fields.take(length)?;
+        // Part 1 profiles, the two cdef opacity types, and PDF's CMYK space.
+        // The codestream and header decoders still enforce their actual
+        // precision/layout limits; declaring a feature cannot bypass them.
+        // Deprecated flags contribute nothing (Cor.4 item 2).
+        if matches!(feature, 4 | 5 | 9 | 10 | 55) {
+            for (byte, &value) in supported.iter_mut().zip(mask) {
+                *byte |= value;
+            }
+        }
+    }
+    for _ in 0..fields.u16()? {
+        fields.take(16 + length)?; // Unknown vendor UUID and mask grant no capability.
+    }
+    fields.finish()?;
+    if display
+        .iter()
+        .zip(supported)
+        .any(|(&required, have)| required & !have != 0)
+    {
+        return Err(unsupported(
+            "JPX required display feature is not implemented",
+            fields.base,
+        ));
+    }
+    Ok(())
+}
+
 pub(super) fn parse<'a>(
     data: &'a [u8],
     budget: &mut Budget<'_>,
@@ -82,24 +168,9 @@ pub(super) fn parse<'a>(
     if signature.kind != b"jP  " || signature.body != [13, 10, 135, 10] || signature.position != 8 {
         return Err(syntax("invalid JP2 signature", 0));
     }
-    let file_type = next_box(&mut reader, budget)?;
-    if file_type.kind != b"ftyp"
-        || file_type.body.len() < 12
-        || !file_type.body.len().is_multiple_of(4)
-    {
-        return Err(syntax("invalid JP2 file type box", file_type.position));
-    }
-    budget.work(file_type.body.len() / 4)?;
-    if !file_type.body[8..]
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .any(|brand| brand == b"jp2 ")
-    {
-        return Err(unsupported(
-            "JPX file extensions are not implemented",
-            file_type.position,
-        ));
+    let format = file_type(&next_box(&mut reader, budget)?, budget)?;
+    if format == FileType::JpxBaseline {
+        reader_requirements(&next_box(&mut reader, budget)?, budget)?;
     }
     let mut header = None;
     let mut codestream = None;
@@ -111,12 +182,7 @@ pub(super) fn parse<'a>(
                     return Err(syntax("misplaced or repeated JP2 header", b.position));
                 }
                 header = Some(parse_header(
-                    b.body,
-                    b.position,
-                    budget,
-                    options,
-                    selection,
-                    file_type.body.get(..4) == Some(b"jpx "),
+                    b.body, b.position, budget, options, selection, format,
                 )?);
             }
             b"jp2c" => {
@@ -130,6 +196,18 @@ pub(super) fn parse<'a>(
             b"cmap" => misplaced_mapping(&b, header.as_mut(), codestream.is_some(), budget)?,
             b"jP  " | b"ftyp" => {
                 return Err(syntax("repeated JP2 signature or file type", b.position));
+            }
+            b"rreq" if format == FileType::JpxBaseline => {
+                return Err(syntax("repeated JPX reader requirements", b.position));
+            }
+            b"jp2i" | b"xml " | b"uuid" | b"uinf" | b"free" => {}
+            _ if format == FileType::JpxBaseline => {
+                // First-image jpch/jplh, fragment/cross-reference tables and
+                // other layouts need their own semantics, even with DCM=0.
+                return Err(unsupported(
+                    "JPX first-image layout is not implemented",
+                    b.position,
+                ));
             }
             _ => {} // Unknown length-delimited metadata is skipped; T.800 I.8 permits unknown metadata.
         }
@@ -180,7 +258,7 @@ fn parse_header(
     budget: &mut Budget<'_>,
     options: &Options,
     selection: ColorSelection,
-    ranked: bool,
+    format: FileType,
 ) -> Result<Header> {
     let mut reader = Reader::new(data, base);
     let mut header = Header {
@@ -194,7 +272,6 @@ fn parse_header(
     let mut color_seen = false;
     let mut color_ended = false;
     let mut resolution_seen = false;
-    let mut channels_seen = false;
     while reader.remaining() != 0 {
         let b = next_box(&mut reader, budget)?;
         if b.to_end {
@@ -232,7 +309,7 @@ fn parse_header(
                 budget.charge::<u8>(b.body.len())?;
                 header.depths = Some(fields.take(fields.remaining())?.to_vec());
             }
-            b"colr" => header.read_color(&mut fields, budget, options, selection, ranked)?,
+            b"colr" => header.read_color(&mut fields, budget, options, selection, format)?,
             b"pclr" => {
                 if header.palette.is_some() {
                     return Err(syntax("repeated JP2 palette", b.position));
@@ -249,10 +326,9 @@ fn parse_header(
                 header.mapping = Some(read_mapping(&mut fields, budget)?);
             }
             b"cdef" => {
-                if channels_seen {
+                if header.channels.is_some() {
                     return Err(syntax("repeated JP2 channel definition", b.position));
                 }
-                channels_seen = true;
                 header.channels = Some(read_channels(&mut fields, budget)?);
             }
             b"res " => {
@@ -261,6 +337,12 @@ fn parse_header(
                 }
                 resolution_seen = true;
                 parse_resolution(b.body, b.position, budget)?;
+            }
+            _ if format == FileType::JpxBaseline => {
+                return Err(unsupported(
+                    "JPX image-header extension is not implemented",
+                    b.position,
+                ));
             }
             _ => {
                 continue;
@@ -271,7 +353,10 @@ fn parse_header(
             fields.finish()?;
         }
     }
-    if header.dimensions.is_none() || !color_seen {
+    if header.dimensions.is_none()
+        || !color_seen
+        || (format == FileType::JpxBaseline && !header.baseline_color)
+    {
         return Err(syntax("incomplete JP2 header", base));
     }
     Ok(header)
@@ -324,11 +409,12 @@ fn parse_color(
     fields: &mut Reader<'_>,
     budget: &mut Budget<'_>,
     selection: ColorSelection,
-    ranked: bool,
+    format: FileType,
 ) -> Result<ColorSpecification> {
     let method = fields.u8()?;
     let precedence = i8::from_be_bytes([fields.u8()?]);
     let approximation = fields.u8()?;
+    let ranked = format != FileType::Jp2;
     if ranked && selection == ColorSelection::Pdf && !(1..=4).contains(&approximation) {
         return Err(syntax(
             "invalid JPX colour approximation",
@@ -480,17 +566,27 @@ impl Header {
         budget: &mut Budget<'_>,
         options: &Options,
         selection: ColorSelection,
-        ranked: bool,
+        format: FileType,
     ) -> Result<()> {
         if fields.remaining() < 3 {
             return Err(syntax("short JP2 colour specification", fields.position()));
+        }
+        if format == FileType::JpxBaseline {
+            let approximation = fields.data[fields.offset + 2];
+            if !(1..=4).contains(&approximation) {
+                return Err(syntax(
+                    "invalid JPX colour approximation",
+                    fields.position() + 2,
+                ));
+            }
+            self.baseline_color |= approximation <= 3;
         }
         // A standalone JP2 reader follows T.800 I.3.3; PDF 7.4.9
         // additionally requires choices after an unsupported profile.
         if options.ignore_color || (selection == ColorSelection::First && !self.colors.is_empty()) {
             fields.take(fields.remaining())?;
         } else {
-            let choice = parse_color(fields, budget, selection, ranked)?;
+            let choice = parse_color(fields, budget, selection, format)?;
             budget.push(&mut self.colors, choice)?;
         }
         Ok(())
@@ -745,4 +841,37 @@ fn check_depth(depth: u8, component: &JpxComponent) -> Result<()> {
         return Err(syntax("JP2 bit depth disagrees with codestream", 0));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BoxData, Budget, reader_requirements};
+    use pagura_core::{ErrorKind, Limits};
+
+    #[test]
+    fn reader_expression_inspects_exactly_its_bounded_body() {
+        // ML=1, FUAM=DCM=1, one standard feature (5, mask1), no vendor UUIDs.
+        let fields = [1, 1, 1, 0, 1, 0, 5, 1, 0, 0];
+        let box_data = BoxData {
+            kind: b"rreq",
+            body: &fields,
+            position: 40,
+            to_end: false,
+        };
+        let limits = Limits {
+            operations: 10,
+            ..Limits::default()
+        };
+        reader_requirements(&box_data, &mut Budget::new(&limits)).unwrap();
+        let limited = Limits {
+            operations: 9,
+            ..limits
+        };
+        assert_eq!(
+            reader_requirements(&box_data, &mut Budget::new(&limited))
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+    }
 }

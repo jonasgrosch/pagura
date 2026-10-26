@@ -2763,7 +2763,7 @@
         "T.88 (08/2018)6.2.2/Table 2,6.2.5.2-7,Figures3(b)/7/8,Table 5",
         "T.88 (08/2018)7.2.7,7.4.6.2-4,Figures48/50"
       ],
-      "status": "implemented",
+      "status": "Implemented; full three-OS, native/WASI/browser and 260-control hosted acceptance passed at 6e87a6030ae206322aa813388b41e18363d5af81. The explicit 24-byte layout versus contradictory 32-byte sentence remains documented below.",
       "description": "Extended generic template 0 moves twelve of the existing sixteen context positions. Context identity and typical prediction do not change when a pixel moves; out-of-bitmap pixels are zero.",
       "gaps": "Hosted acceptance pending. T.88:2018 7.4.6.3 calls the field 32 bytes, but Figure 50 and the explicit byte 0..23 list define twelve signed X/Y pairs. The decoder follows that explicit 24-byte layout. It does not skip eight unspecified bytes or guess a second layout. The official ITU catalogue listed no later correction when reviewed; this is a documented resolution of contradictory primary text, not an unqualified conformance claim.",
       "tests": [

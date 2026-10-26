@@ -624,21 +624,32 @@ fn latch_quant(
     Ok(())
 }
 
-/// T.81 B.2.1 fixes the final segment's MCU count. Extra complete bytes can
-/// be discarded only immediately before EOI; byte stuffing is still obeyed.
-fn scan_end(
+#[derive(Debug)]
+pub(super) struct EntropyMarker {
+    pub start: usize,
+    pub end: usize,
+    pub code: u8,
+}
+
+pub(super) fn charge(work: &mut usize, count: usize, cap: usize) -> Result<()> {
+    *work = work
+        .checked_add(count)
+        .filter(|&w| w <= cap)
+        .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+    Ok(())
+}
+
+/// Shared T.81 B.1.1.5 framing for DNL discovery, scan completion and inline
+/// boundaries. Charge each inspected byte once, including stuffing and fill.
+pub(super) fn entropy_marker(
     data: &[u8],
     start: usize,
     work: &mut usize,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<usize> {
+    cap: usize,
+) -> Result<EntropyMarker> {
     let mut offset = start;
     loop {
-        *work = work
-            .checked_add(1)
-            .filter(|&w| w <= limits.operations)
-            .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+        charge(work, 1, cap)?;
         let byte = data.get(offset).ok_or_else(|| {
             Error::syntax("missing JPEG scan terminator").at(Position::Buffer(offset))
         })?;
@@ -646,45 +657,17 @@ fn scan_end(
             let marker = offset;
             while data.get(offset) == Some(&255) {
                 offset += 1;
-                *work = work
-                    .checked_add(1)
-                    .filter(|&w| w <= limits.operations)
-                    .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+                charge(work, 1, cap)?;
             }
             let code = data.get(offset).ok_or_else(|| {
                 Error::syntax("truncated JPEG scan marker").at(Position::Buffer(marker))
             })?;
             if *code != 0 {
-                if marker == start
-                    && (0xd0..=0xd7).contains(code)
-                    && data.get(offset + 1..offset + 3) == Some(&[255, 217])
-                {
-                    diagnostics.repair(
-                        Diagnostic::new(
-                            super::tags::TRAILING_RESTART,
-                            "JPEG restart marker after final MCU ignored (T.81 B.2.1, B.2.4.4)",
-                        )
-                        .at(Position::Buffer(marker)),
-                    )?;
-                    return Ok(offset + 1);
-                }
-                if marker == start {
-                    return Ok(marker);
-                }
-                if *code != 0xd9 {
-                    return Err(
-                        Error::syntax("extra JPEG entropy data before another marker")
-                            .at(Position::Buffer(start)),
-                    );
-                }
-                diagnostics.repair(
-                    Diagnostic::new(
-                        super::tags::ENTROPY_EXCESS,
-                        "extra JPEG entropy bytes before final EOI ignored (T.81 B.2.1)",
-                    )
-                    .at(Position::Buffer(start)),
-                )?;
-                return Ok(marker);
+                return Ok(EntropyMarker {
+                    start: marker,
+                    end: offset + 1,
+                    code: *code,
+                });
             }
             // Only FF 00 is a stuffed data byte; FF FF 00 is malformed.
             if offset != marker + 1 {
@@ -695,6 +678,47 @@ fn scan_end(
         }
         offset += 1;
     }
+}
+
+/// T.81 B.2.1 fixes the final segment's MCU count. Extra complete bytes can
+/// be discarded only immediately before EOI; byte stuffing is still obeyed.
+fn scan_end(
+    data: &[u8],
+    start: usize,
+    work: &mut usize,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<usize> {
+    let next = entropy_marker(data, start, work, limits.operations)?;
+    if next.start == start {
+        if (0xd0..=0xd7).contains(&next.code)
+            && data.get(next.end..next.end + 2) == Some(&[255, 217])
+        {
+            diagnostics.repair(
+                Diagnostic::new(
+                    super::tags::TRAILING_RESTART,
+                    "JPEG restart marker after final MCU ignored (T.81 B.2.1, B.2.4.4)",
+                )
+                .at(Position::Buffer(start)),
+            )?;
+            return Ok(next.end);
+        }
+        return Ok(start);
+    }
+    if next.code != 0xd9 {
+        return Err(
+            Error::syntax("extra JPEG entropy data before another marker")
+                .at(Position::Buffer(start)),
+        );
+    }
+    diagnostics.repair(
+        Diagnostic::new(
+            super::tags::ENTROPY_EXCESS,
+            "extra JPEG entropy bytes before final EOI ignored (T.81 B.2.1)",
+        )
+        .at(Position::Buffer(start)),
+    )?;
+    Ok(next.start)
 }
 
 /// Decodes one Huffman-coded block, by the register decoder where it

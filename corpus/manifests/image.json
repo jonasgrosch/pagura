@@ -5,6 +5,643 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "image/jpeg-dnl-vector-deferred",
+      "kind": "vector",
+      "description": "jpeg dnl vector deferred",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-deferred.in",
+          "sha256": "5745307b7dcfa14eb934bb02623c20d0ea4185a02e63e77f9d27fb71d994874f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-deferred.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-deferred.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-vector-same-height",
+      "kind": "vector",
+      "description": "jpeg dnl vector same height",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-same-height.in",
+          "sha256": "fc6223c6c4c04b0e9a27404ab3aa0011d2072f74a440024104631bf9fbd7c64b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-same-height.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-same-height.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-vector-redefined",
+      "kind": "vector",
+      "description": "jpeg dnl vector redefined",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-redefined.in",
+          "sha256": "fbade671661f3a7243a763099cfa9be27c1fb27dfcce20f1d496f5015aaf6209"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-redefined.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-redefined.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-vector-progressive",
+      "kind": "vector",
+      "description": "jpeg dnl vector progressive",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-progressive.in",
+          "sha256": "f41774af6391158651c06c8f04f8b17a12dbce9abf1cb0b36f382304aeaa1f53"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-progressive.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-vector-progressive.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-deferred",
+      "kind": "pdf",
+      "description": "jpeg dnl deferred",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-deferred.pdf",
+      "sha256": "4b6d971ed8c7c88c58e74a0195fb68a06728ab2b91bd1cead27b53a424d6b358",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-deferred.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-same-height",
+      "kind": "pdf",
+      "description": "jpeg dnl same height",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-same-height.pdf",
+      "sha256": "e1fae0de0cf021ff25274b07ed8a7682884df4158006ebb3b120dba1e1d9ac5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-same-height.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-redefined",
+      "kind": "pdf",
+      "description": "jpeg dnl redefined",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-redefined.pdf",
+      "sha256": "c1376c313f146e159e82fedd8dc29f0d3e7223b2a624973465404d4610833f54",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-redefined.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-progressive",
+      "kind": "pdf",
+      "description": "jpeg dnl progressive",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-progressive.pdf",
+      "sha256": "0c9f707fbe6c878e5fdee1e577ba2b6bf6daf1f12d948fff22bc81d07cc0ad18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-progressive.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-baseline-control",
+      "kind": "pdf",
+      "description": "jpeg dnl baseline control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-baseline-control.pdf",
+      "sha256": "f7c8b746dd6d91e38910378221e28139550baa062a772e9483b5c4c071223a89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-baseline-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-progressive-control",
+      "kind": "pdf",
+      "description": "jpeg dnl progressive control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-progressive-control.pdf",
+      "sha256": "88f3d16ae8a0b3537a048411ceb2b204dcd3130d3829b8c3dbcf20c526899b93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-progressive-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg dnl rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image/jpeg-dnl-rgb-control.pdf",
+      "sha256": "189333d3e688c1b774a5e2f2739bf2803bf1779758451da80467ca77b0f0c32d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-dnl-rgb-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-dnl-extension",
+      "kind": "vector",
+      "description": "jpeg dnl extension",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-extension.in",
+          "sha256": "d0c0c81a1dbadf3640b9a5cff13c5b40d019ac33ae3196695f2f04741da0804c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-extension.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-extension.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-missing",
+      "kind": "vector",
+      "description": "jpeg dnl missing",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-missing.in",
+          "sha256": "3b4df6fd7cf99c126ba5b5b3c3c3ca6750203c5e843a920f2c7f3f583382e604"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-missing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-missing.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-zero",
+      "kind": "vector",
+      "description": "jpeg dnl zero",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-zero.in",
+          "sha256": "aa5bc21dfb1b2be2828296fa2af984db4de4856de08f4ada0218aa7f703f0b22"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-zero.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-zero.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-short",
+      "kind": "vector",
+      "description": "jpeg dnl short",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-short.in",
+          "sha256": "ef2f1b8dd2dc4db5a5bb1195214a324afa4b8f6e7ec93e50aef8f87ca67474b2"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-short.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-short.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-excess-rows",
+      "kind": "vector",
+      "description": "jpeg dnl excess rows",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-excess-rows.in",
+          "sha256": "16ba1d528bb455ca00cc5656b69c16d76486832665b87b82f4b9ae956cf17b3c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-excess-rows.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-excess-rows.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-before-scan",
+      "kind": "vector",
+      "description": "jpeg dnl before scan",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-before-scan.in",
+          "sha256": "c202d8cbec1911b391d10214c10fe4347d2bdc268f9ac3e80c558cf12316ddc7"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-before-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-before-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-duplicate",
+      "kind": "vector",
+      "description": "jpeg dnl duplicate",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-duplicate.in",
+          "sha256": "7e1f5c7c9ed886e864ba3c21274b673fb4589d0c3329e290f7dbf3005752b2aa"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-duplicate.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-duplicate.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-after-second-scan",
+      "kind": "vector",
+      "description": "jpeg dnl after second scan",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-after-second-scan.in",
+          "sha256": "567b618159ecedc555234f579c60f6de3f4dc50080ae0d54ddbb2d0b3934c1bd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-after-second-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-after-second-scan.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-comment",
+      "kind": "vector",
+      "description": "jpeg dnl comment",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-comment.in",
+          "sha256": "a1654d43b4d94988b7beeff35bdd3be873415479a2c085d5ef7b13629bcb0f42"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-comment.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-comment.params",
+          "sha256": "6524c2caca92b55de4413d632e121fc530c3ec6cff508e55ed1568f3cb9b9bb6"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-restart",
+      "kind": "vector",
+      "description": "jpeg dnl restart",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-restart.in",
+          "sha256": "d0ec1df67d8ed28e6d6febe192a24d8a81daa817968f0bbd78a1abd0976d30fe"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-restart.out",
+          "sha256": "4e972baaee2ad54f78153134ef6484cd1a8e383d21582a21a481d4d214161916"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-restart.params",
+          "sha256": "977d259cfd4c593df63debb69f01c0d5cf0ba33993a667e8b394bf89216a3d10"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-dnl-lossless",
+      "kind": "vector",
+      "description": "jpeg dnl lossless",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-dnl-lossless.in",
+          "sha256": "e6c828050a60e3f616835ffbdf5e222e41bf496b421be20985b451dd02cc2c73"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-dnl-lossless.out",
+          "sha256": "f1d1e10b3313a2564d5c091547a1adc27d54e530e8a649a5d338f5b97cdb77e5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-dnl-lossless.params",
+          "sha256": "e59406a249b9e462c0275679e49b3fbee6415f77e988f62dfdcb06bfc16ec56d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-jpeg-dnl",
+      "kind": "vector",
+      "description": "DNL marker frames an inline JPEG before its EOI",
+      "requirements": [
+        "image-inline",
+        "image-dct"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.dict",
+          "sha256": "b65c7b9be64e14cb3a50b8a5634587d946da09be45c504605edea4ef214adcfd"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.in",
+          "sha256": "5745307b7dcfa14eb934bb02623c20d0ea4185a02e63e77f9d27fb71d994874f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-jpeg-dnl.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-plm",
+      "kind": "pdf",
+      "description": "jpx plm",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-plm.pdf",
+      "sha256": "b5c778beb9b7980e5c0e24157fbb7ca9cdb50bcb0dcfcd9202e848cb2518b025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-plm.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-crg-zero",
+      "kind": "pdf",
+      "description": "jpx crg zero",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-crg-zero.pdf",
+      "sha256": "6ee6c2fa8a40eeae0fa163b36d8f82ebcc0f46c2caf7939e2b92591e2e59feb1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-crg-zero.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-plm-crg-zero",
+      "kind": "pdf",
+      "description": "jpx plm crg zero",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-plm-crg-zero.pdf",
+      "sha256": "e470d6c712b4d16fc9a0e7f152549346959791c03ad71ccf9d10c6105f703553",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-plm-crg-zero.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-marker-codec-control",
+      "kind": "pdf",
+      "description": "jpx marker codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-marker-codec-control.pdf",
+      "sha256": "2d31463c880e828b9b345d72000a0b9904b18439cd5ab87829f08fcc9922b365",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-marker-codec-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpxb-only",
+      "kind": "pdf",
+      "description": "jpxb only",
+      "expected": "render",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "path": "corpus/generated/image/jpxb-only.pdf",
+      "sha256": "0976245b1fa1e852b643ed331cfb3c821d166788411bc0354d4f617222a9d79d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpxb-only.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpxb-jp2-control",
+      "kind": "pdf",
+      "description": "jpxb jp2 control",
+      "expected": "render",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "path": "corpus/generated/image/jpxb-jp2-control.pdf",
+      "sha256": "aa30f77de7c2ca532a55d596b7a7429e7331a7deead719bde9981c5ef5df8109",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpxb-jp2-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpx-marker-rgb-control",
+      "kind": "pdf",
+      "description": "jpx marker rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image/jpx-marker-rgb-control.pdf",
+      "sha256": "5bce1255f932c2d23cb3aad20610d506c537c31802a4d6c5806ad8501680eb30",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpx-marker-rgb-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
       "id": "image/jpeg-arithmetic-sequential",
       "kind": "vector",
       "description": "jpeg arithmetic sequential",

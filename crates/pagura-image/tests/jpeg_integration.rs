@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Public lossless JPEG compatibility and bounded PDF image decoding.
+//! Public JPEG DNL/lossless compatibility and bounded PDF image decoding.
 
 use pagura_core::{ErrorKind, Limits, ObjectId, Position, Recovery};
 use pagura_document::{Document, OpenOptions};
@@ -46,9 +46,11 @@ fn lossless_sample_storage_and_work_have_exact_boundaries() {
     // Twenty u16 native samples coexist with twenty interleaved u16
     // samples and twenty output bytes. Each sample is one entropy data unit;
     // the shared scan terminator additionally inspects FF and D9 (two units).
+    // First-scan DNL discovery inspects SOS/length (4 bytes) and its entropy
+    // through EOI (34 bytes). It allocates no plane or entropy copy.
     let limits = Limits {
         decoded_bytes: 100,
-        operations: 22,
+        operations: 60,
         pixels: 20,
         ..Limits::default()
     };
@@ -62,7 +64,7 @@ fn lossless_sample_storage_and_work_have_exact_boundaries() {
             ..limits
         },
         Limits {
-            operations: 21,
+            operations: 59,
             ..limits
         },
         Limits {
@@ -73,6 +75,72 @@ fn lossless_sample_storage_and_work_have_exact_boundaries() {
         let error = dct::decode(&data, Some(0), &limited).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
         assert!(matches!(error.position, Position::Buffer(_)));
+    }
+}
+
+#[test]
+fn dnl_resolves_height_before_allocation_and_uses_exact_work_limits() {
+    // DHT and SOS marker/length fields: 4+4 bytes; entropy and DNL marker:
+    // 1+2; Ld and NL: 4. Decoding one DCT block costs 64 plus the final
+    // two-byte marker inspection: 15+64+2=81 operations, 384 live bytes.
+    let limits = Limits {
+        decoded_bytes: 384,
+        operations: 81,
+        pixels: 64,
+        ..Limits::default()
+    };
+    for name in ["deferred", "same-height", "redefined"] {
+        let data = fixture("image", &format!("jpeg-dnl-vector-{name}.in"));
+        let decoded = dct::decode(&data, Some(0), &limits).unwrap();
+        assert_eq!((decoded.width, decoded.height), (8, 8));
+        assert_eq!(decoded.samples, [128; 64]);
+        for limited in [
+            Limits {
+                decoded_bytes: 383,
+                ..limits
+            },
+            Limits {
+                operations: 80,
+                ..limits
+            },
+            Limits {
+                pixels: 63,
+                ..limits
+            },
+        ] {
+            assert_eq!(
+                dct::decode(&data, Some(0), &limited).unwrap_err().kind,
+                ErrorKind::Limit
+            );
+        }
+    }
+}
+
+#[test]
+fn dnl_samples_reach_both_pdf_image_layouts() {
+    for name in ["deferred", "same-height", "redefined", "progressive"] {
+        let document = Document::open(
+            fixture("image", &format!("jpeg-dnl-{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let source =
+            ImageSource::from_xobject(&document, document.object(ObjectId::new(5, 0)).unwrap())
+                .unwrap();
+        for layout in [
+            pagura_image::Layout::Interleaved,
+            pagura_image::Layout::Native,
+        ] {
+            let decoded = source
+                .decode(
+                    &DecodeRequest::new(pagura_image::Reduce::Full, None, layout),
+                    &document.limits(),
+                    Recovery::Strict,
+                )
+                .unwrap();
+            assert_eq!((decoded.image.width, decoded.image.height), (8, 8));
+            assert_eq!(decoded.image.samples, Samples::Bytes(vec![128; 64]));
+        }
     }
 }
 
