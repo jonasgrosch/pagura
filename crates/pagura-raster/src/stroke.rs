@@ -278,6 +278,51 @@ pub(crate) fn polygon_pieces(
     .map(|(mapped, _, tiling)| (mapped.finish(), tiling))
 }
 
+/// [`polygon_pieces`] of an automatically grid-fitted stroke (10.7.5): the
+/// fitted runs of [`crate::adjust`] as pieces where they tile.
+pub(crate) fn adjusted_polygon_pieces(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    accept: Tiling,
+    bytes: &mut Meter,
+) -> Result<(Polygon, Tiling)> {
+    let before = bytes.used();
+    let result = crate::adjust::runs(path, transform, stroke, limits, bytes).and_then(
+        |(runs, pen, pen_transform)| {
+            assemble(
+                runs,
+                (
+                    pen,
+                    pen_transform,
+                    conformal(pen_transform) && undashed_miter(stroke),
+                ),
+                stroke,
+                limits,
+                accept,
+                Mapped::new,
+                bytes,
+            )
+        },
+    );
+    let retained = result.as_ref().map_or(0, |(out, _, _)| out.heap_bytes());
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result.map(|(mapped, _, tiling)| (mapped.finish(), tiling))
+}
+
+/// Whether `transform` maps circles to circles.
+fn conformal(transform: Transform) -> bool {
+    (transform.a == transform.d && transform.b == -transform.c)
+        || (transform.a == -transform.d && transform.b == transform.c)
+}
+
+/// Whether a closed run's convex boundaries may serve as its pieces: an
+/// undashed miter stroke (under a conformal pen).
+fn undashed_miter(stroke: &Stroke) -> bool {
+    stroke.dash_array.is_empty() && stroke.join == LineJoin::Miter
+}
+
 fn outline_with<O: Outline>(
     path: &Path,
     transform: Transform,
@@ -336,16 +381,12 @@ fn construct<O: Outline>(
     };
     // A closed run's convex boundaries serve as its pieces only for undashed
     // miter strokes whose pen maps circles to circles.
-    let boundaries_allowed = stroke.dash_array.is_empty()
-        && stroke.join == LineJoin::Miter
-        && ((transform.a == transform.d && transform.b == -transform.c)
-            || (transform.a == -transform.d && transform.b == transform.c));
+    let boundaries_allowed = undashed_miter(stroke) && conformal(transform);
     let pen = Pen { radius, tolerance };
     let mut runs = Vec::new();
     let contour_bytes = contours
         .capacity()
         .saturating_mul(size_of::<crate::flatten::Polyline>());
-    let mut cleanup_work = 0;
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             let released = contour.points.capacity().saturating_mul(size_of::<Point>());
@@ -356,48 +397,76 @@ fn construct<O: Outline>(
         let dashed = dash(contour.points, contour.closed, stroke, limits, bytes)?;
         let dashed_bytes = dashed.capacity().saturating_mul(size_of::<Run>());
         for run in dashed {
-            let mut run = if hairline {
+            let run = if hairline {
                 run.transformed(transform)
             } else {
                 run
             };
-            let boundary = if boundaries_allowed {
-                closed_boundary(
-                    &mut run,
-                    pen,
-                    stroke.miter_limit,
-                    limits,
-                    &mut cleanup_work,
-                    bytes,
-                )?
-            } else {
-                None
-            };
             bytes.reserve_capacity(&mut runs, 1)?;
-            runs.push((run, boundary));
+            runs.push(run);
         }
         bytes.refund(dashed_bytes);
     }
     bytes.refund(contour_bytes);
+    assemble(
+        runs,
+        (pen, pen_transform, boundaries_allowed),
+        stroke,
+        limits,
+        accept,
+        fresh,
+        bytes,
+    )
+}
+
+/// The outline of `runs`, stroked with `pen` in construction space, in
+/// `fresh(t)` for `t` the transform to device space: pieces where every run
+/// admits them at least as well as `accept`, else components, and how far
+/// its pieces tile. Closed runs take their convex boundaries as pieces where
+/// `boundaries` allows.
+fn assemble<O: Outline>(
+    mut runs: Vec<Run>,
+    (pen, pen_transform, boundaries): (Pen, Transform, bool),
+    stroke: &Stroke,
+    limits: &Limits,
+    accept: Tiling,
+    fresh: impl Fn(Transform) -> O,
+    bytes: &mut Meter,
+) -> Result<(O, Transform, Tiling)> {
+    let mut cleanup_work = 0;
+    let mut closed = Vec::new();
+    if boundaries {
+        bytes.reserve_capacity(&mut closed, runs.len())?;
+        for run in &mut runs {
+            closed.push(closed_boundary(
+                run,
+                pen,
+                stroke.miter_limit,
+                limits,
+                &mut cleanup_work,
+                bytes,
+            )?);
+        }
+    }
     // Pieces replace the components when every run admits them; they cover
     // the same set.
     if accept < Tiling::Components {
         let mut tiles = fresh(pen_transform);
-        let mut tiling = if tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke, bytes)? {
+        let mut tiling = if tiling::apart(runs.iter(), pen.radius, stroke, bytes)? {
             Tiling::Proven
         } else {
             Tiling::Unproven
         };
-        for (run, boundary) in &runs {
+        for (i, run) in runs.iter().enumerate() {
             if tiling > accept {
                 break;
             }
-            let built = match boundary {
-                Some(contours) => {
+            let built = match closed.get(i) {
+                Some(Some(contours)) => {
                     convex::append(&mut tiles, contours, limits, bytes)?;
                     Tiling::Proven
                 }
-                None => {
+                _ => {
                     if tiling::append(&mut tiles, run, pen, stroke, limits, bytes)? {
                         Tiling::Proven
                     } else {
@@ -415,7 +484,7 @@ fn construct<O: Outline>(
         bytes.refund(released);
     }
     let mut components = fresh(pen_transform);
-    for (run, _) in &runs {
+    for run in &runs {
         draw(&mut components, run, pen, stroke, limits, bytes)?;
     }
     Ok((components, pen_transform, Tiling::Components))

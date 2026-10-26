@@ -96,7 +96,7 @@ pub(super) fn append(
             },
         };
         let segments = segments(&points, joints, bytes)?;
-        let turns = turns(&segments, joints, radius, stroke.cap, bytes)?;
+        let turns = turns(&segments, joints, radius, bytes)?;
         let tiles = !turns.iter().any(|j| matches!(j, Joint::Overlap))
             && advances(&segments, joints.closed);
         let caps = if tiles && !run.closed && stroke.cap == LineCap::Round {
@@ -322,15 +322,12 @@ fn advances(segments: &[(Point, f64)], closed: bool) -> bool {
     true
 }
 
-/// The joint at each point: a turn where its inner miter point lies within
-/// both of its segments, else an overlap. Beside a butt end nothing covers
-/// what the neighbouring segment's quadrilateral reaches past it, so the end
-/// segment must hold that too.
+/// The joint at each point: a turn where its inner miter point and the
+/// corners it cuts lie within both of its segments' pieces, else an overlap.
 fn turns(
     segments: &[(Point, f64)],
     joints: Joints,
     radius: f64,
-    cap: LineCap,
     bytes: &mut Meter,
 ) -> Result<Vec<Joint>> {
     let count = if joints.closed {
@@ -379,29 +376,33 @@ fn turns(
             span: radius * turn.abs(),
         }));
     }
-    // Each side of a segment must hold the inner reach of both its joints;
-    // where it cannot, both overlap instead, which only lowers what the
-    // segments beside them must hold.
-    let last = joints.segments - 1;
+    // A turn cuts the quadrilaterals on either side at its inner miter
+    // point, which reaches into each segment by the turn's reach, and leaves
+    // to the segment the corner the other quadrilateral loses there: the
+    // triangle of the joint, the inner miter point and that quadrilateral's
+    // inner corner, which reaches back along the segment by the turn's span
+    // and, past a right angle, across to its outer side. Each side of a
+    // segment must hold both inner miters, and each corner without reaching
+    // past its other joint. A corner then lies within the segment's piece,
+    // or behind the inner miter line of a turn the same way at the other
+    // joint, where the piece beyond takes it, no deeper than that turn's own
+    // span, which that piece holds in turn. Where a side cannot, the turns
+    // there overlap instead, which only lowers what the segments beside them
+    // must hold.
     for (i, &(_, length)) in segments.iter().enumerate() {
-        let butt = cap == LineCap::Butt && !joints.closed && (i == 0 || i == last);
         let ends = [i, joints.after(i)];
         for left in [false, true] {
-            let need: f64 = ends
-                .iter()
-                .filter_map(|&j| turns[j].turn())
-                .filter(|turn| turn.left == left)
-                .map(|turn| {
-                    if butt {
-                        turn.reach.max(turn.span)
-                    } else {
-                        turn.reach
-                    }
-                })
-                .sum();
-            if need > length {
-                for &j in &ends {
-                    if turns[j].turn().is_some_and(|turn| turn.left == left) {
+            // How far an end's inner miter reaches into this side, and how
+            // far back its cut corner reaches.
+            let cuts = ends.map(|j| match turns[j].turn() {
+                Some(turn) if turn.left == left => (turn.reach, turn.reach.max(turn.span)),
+                Some(turn) if turn.reach > turn.span => (0.0, turn.span),
+                _ => (0.0, 0.0),
+            });
+            let [(reach0, corner0), (reach1, corner1)] = cuts;
+            if (reach0 + reach1).max(corner0).max(corner1) > length {
+                for (&j, &(_, corner)) in ends.iter().zip(&cuts) {
+                    if corner > 0.0 {
                         turns[j] = Joint::Overlap;
                     }
                 }
@@ -1100,6 +1101,169 @@ mod tests {
         };
         if let Some(difference) = pieces_match_the_union(&path, &stroke) {
             assert!(difference <= 1, "{difference}");
+        }
+    }
+
+    /// The largest difference of the exact union of a stroke's pieces,
+    /// proven to tile or not, from the components' exact union.
+    fn pieces_union_difference(path: &Path, transform: Transform, stroke: &Stroke) -> u8 {
+        let limits = Limits::default();
+        let (components, pen) = crate::stroke_outline(path, transform, stroke, &limits).unwrap();
+        let (tiles, tiled_pen, _) = pieces(
+            path,
+            transform,
+            stroke,
+            &limits,
+            (Tiling::Unproven, TOLERANCE),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
+        largest_difference(&exact(&tiles, tiled_pen), &exact(&components, pen))
+    }
+
+    #[test]
+    fn turns_beside_a_reversal_keep_their_cut_corners() {
+        // Up, a little left, back right a little further, then a turn of 49
+        // degrees: the corner the last quadrilateral loses at that turn
+        // reaches back past the reversal, where nothing else covers it.
+        let path = polyline(
+            &[
+                (14.47, 18.0),
+                (14.47, 15.68),
+                (14.33, 15.68),
+                (14.61, 15.68),
+                (15.03, 15.2),
+                (15.59, 12.5),
+            ],
+            false,
+        );
+        for scale in [1.0, 2.0, 4.0] {
+            let transform = Transform::translate(-14.0, -15.0)
+                .then(Transform::scale(scale, scale))
+                .then(Transform::translate(14.0, 15.0));
+            for join in [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel] {
+                let stroke = Stroke {
+                    width: 1.0,
+                    join,
+                    ..Stroke::default()
+                };
+                let difference = pieces_union_difference(&path, transform, &stroke);
+                assert!(difference <= 1, "{scale} {join:?}: {difference}");
+            }
+        }
+    }
+
+    #[test]
+    fn seeded_pieces_cover_the_union_proven_or_not() {
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut bits = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let mut next = || (bits() >> 11) as f64 / (1u64 << 53) as f64;
+        for case in 0..1500 {
+            let width = 0.5 + 8.0 * next();
+            let mut points = vec![(8.0 + 32.0 * next(), 8.0 + 32.0 * next())];
+            for _ in 0..3 + usize::from(next() < 0.5) * 2 {
+                let &(x, y) = points.last().unwrap();
+                let (dx, dy) = match points.len() {
+                    1 => (1.0, 0.0),
+                    n => (x - points[n - 2].0, y - points[n - 2].1),
+                };
+                let heading = dy.atan2(dx);
+                // Hops shorter than the pen beside turns of any angle, and
+                // straight reversals.
+                let turn = if next() < 0.25 {
+                    std::f64::consts::PI
+                } else {
+                    (next() - 0.5) * 2.0 * std::f64::consts::PI
+                };
+                let length = width * (0.05 + 1.5 * next());
+                let (x, y) = (
+                    x + length * (heading + turn).cos(),
+                    y + length * (heading + turn).sin(),
+                );
+                points.push((x.clamp(2.0, 46.0), y.clamp(2.0, 46.0)));
+            }
+            let path = polyline(&points, case % 7 == 3);
+            let stroke = Stroke {
+                width,
+                cap: [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare][case % 3],
+                join: [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel][(case / 3) % 3],
+                ..Stroke::default()
+            };
+            let difference = pieces_union_difference(&path, Transform::IDENTITY, &stroke);
+            assert!(
+                difference <= 1,
+                "{case} {points:?} {stroke:?}: {difference}"
+            );
+        }
+    }
+
+    #[test]
+    fn seeded_bends_into_breaks_cover_the_union() {
+        // Short segments bending one way, then a reversal, a turn the other
+        // way or an end: the corners the bend's turns cut stay covered
+        // whether or not the pieces are proven to tile.
+        let mut state = 0x9e37_79b9_6c07_8965_u64;
+        let mut bits = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let mut next = || (bits() >> 11) as f64 / (1u64 << 53) as f64;
+        for case in 0..3000 {
+            let width = 0.5 + 6.0 * next();
+            let mut points = vec![(10.0 + 20.0 * next(), 10.0 + 20.0 * next())];
+            let mut heading = next() * std::f64::consts::TAU;
+            let mut sign = if next() < 0.5 { 1.0 } else { -1.0 };
+            let segments = 2 + usize::from(next() < 0.5) + usize::from(next() < 0.5) * 3;
+            for k in 0..segments {
+                if k + 1 == segments && next() < 0.6 {
+                    heading += if next() < 0.5 {
+                        std::f64::consts::PI
+                    } else {
+                        -sign * (0.2 + 1.5 * next())
+                    };
+                } else if k > 0 {
+                    if case % 5 == 4 && next() < 0.3 {
+                        sign = -sign;
+                    }
+                    heading += sign * (0.05 + 1.2 * next());
+                }
+                let length = width * (0.025 + 1.25 * next());
+                let &(x, y) = points.last().unwrap();
+                points.push((
+                    (x + length * heading.cos()).clamp(2.0, 46.0),
+                    (y + length * heading.sin()).clamp(2.0, 46.0),
+                ));
+            }
+            if next() < 0.5 {
+                points.reverse();
+            }
+            let path = polyline(&points, case % 7 == 6);
+            let stroke = Stroke {
+                width,
+                cap: [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare][case % 3],
+                join: [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel][(case / 3) % 3],
+                ..Stroke::default()
+            };
+            let difference = pieces_union_difference(&path, Transform::IDENTITY, &stroke);
+            assert!(
+                difference <= 1,
+                "{case} {points:?} {stroke:?}: {difference}"
+            );
         }
     }
 

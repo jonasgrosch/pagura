@@ -281,18 +281,14 @@ impl Shape {
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
         let (mut polygon, tiling) = match adjustment {
-            Adjustment::Adjusted => {
-                let (outline, t) =
-                    crate::adjust::outline(&path, device, stroke, limits, &mut bytes)?;
-                let polygon = match Polygon::from_lines(&outline, t, limits, &mut bytes)? {
-                    Some(polygon) => polygon,
-                    None => Polygon::from_path(&outline, t, limits, &mut bytes)?,
-                };
-                let released = outline.retained_bytes();
-                drop(outline);
-                bytes.refund(released);
-                (polygon, Tiling::Components)
-            }
+            Adjustment::Adjusted => crate::stroke::adjusted_polygon_pieces(
+                &path,
+                device,
+                stroke,
+                limits,
+                Tiling::Unproven,
+                &mut bytes,
+            )?,
             Adjustment::None => crate::stroke::polygon_pieces(
                 &path,
                 device,
