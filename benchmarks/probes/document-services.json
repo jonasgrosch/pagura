@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Initial G01 document-service controls: PDFium and MuPDF default pinned Python bindings, read-only synthetic PDFs. No family-level support, optional build, rendering, editing or release-parity verdict.",
+  "scope": "G01 document-service controls across six baseline public APIs, read-only synthetic PDFs. Per-fixture observations only; no family-level support, optional build, rendering, editing or release-parity verdict.",
   "cases": [
     {
       "id": "pages.services",
@@ -76,6 +76,19 @@
       "fixture": "empty",
       "oracle": "exact-json",
       "expected": []
+    },
+    {
+      "id": "attachments.complete-ef",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "complete-ef",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
     },
     {
       "id": "text.services",

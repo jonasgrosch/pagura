@@ -73,6 +73,17 @@ def probe(engine, operation, source):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[2] == "--version":
+        if sys.argv[1] == "pdfium":
+            import pypdfium2 as binding  # pyright: ignore[reportMissingImports]
+            version = {"wrapper": str(binding.PYPDFIUM_INFO), "engine": str(binding.PDFIUM_INFO)}
+        elif sys.argv[1] == "mupdf":
+            import pymupdf as binding  # pyright: ignore[reportMissingImports]
+            version = {"wrapper": binding.VersionBind, "engine": binding.VersionFitz}
+        else:
+            raise SystemExit("unknown engine")
+        print(json.dumps(version))
+        raise SystemExit
     if len(sys.argv) != 4:
         raise SystemExit("expected ENGINE OPERATION SYNTHETIC_PDF")
     print(json.dumps({"schema": 1, **probe(*sys.argv[1:])}, sort_keys=True))

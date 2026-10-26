@@ -48,46 +48,57 @@ def native_rustflags(channel, env):
     return host, repository_rustflags(toolchain, host, env)
 
 
-def setup():
+def setup(selected=None):
+    defaults = {"pdfium", "mupdf", "pdfjs", "hayro"} | ({"quartz"} if platform.system() == "Darwin" else set())
+    selected = set(selected) if selected is not None else defaults
+    if not selected or not selected <= {"pdfium", "mupdf", "pdfjs", "hayro", "quartz"}:
+        raise ValueError("unknown or empty competitor selection")
+    if "quartz" in selected and platform.system() != "Darwin":
+        raise ValueError("CoreGraphics requires macOS")
     CACHE.mkdir(parents=True, exist_ok=True)
-    # uv.lock pins every transitive wheel by hash and .python-version the interpreter.
-    uv = shutil.which("uv")
-    if uv is None:
-        raise RuntimeError("uv is required: https://docs.astral.sh/uv/getting-started/installation/")
-    run([uv, "sync", "--locked", "--only-group", "bench"],
-        env={**os.environ, "UV_PROJECT_ENVIRONMENT": str(CACHE / "venv")})
-    node = CACHE / "node"
-    node.mkdir(exist_ok=True)
-    lock = ROOT / "benchmarks/node-package-lock.json"
-    package = ROOT / "benchmarks/node-package.json"
-    if package.exists() and lock.exists():
-        shutil.copyfile(package, node / "package.json")
-        shutil.copyfile(lock, node / "package-lock.json")
-        run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], node)
-    else:
-        raise RuntimeError("Missing reviewed Node dependency lock")
-    # Copy only our adapter and lock: Cargo never writes registry/build data in-tree.
-    adapter = CACHE / "hayro-adapter"
-    (adapter / "src").mkdir(parents=True, exist_ok=True)
-    for relative in ("Cargo.toml", "Cargo.lock", "src/main.rs"):
-        shutil.copyfile(ROOT / "benchmarks/adapters/hayro" / relative, adapter / relative)
-    shutil.copyfile(ROOT / "rust-toolchain.toml", adapter / "rust-toolchain.toml")
-    channel = tomllib.loads((ROOT / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
-    # Pagura's native flags, passed explicitly: they replace inherited RUSTFLAGS, and the
-    # isolated CARGO_HOME and out-of-tree adapter keep every other Cargo configuration away.
-    env = {key: value for key, value in os.environ.items() if key not in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS")}
-    host, flags = native_rustflags(channel, env)
-    run(["cargo", "+" + channel, "build", "--release", "--locked", "--manifest-path",
-         adapter / "Cargo.toml", "--target-dir", CACHE / "hayro-target"], cwd=adapter,
-        env={**env, "CARGO_HOME": str(CACHE / "cargo-home"), "CARGO_ENCODED_RUSTFLAGS": "\x1f".join(flags)})
-    (CACHE / HAYRO_BUILD).write_text(json.dumps({"host": host, "rustflags": flags, "rustflags_source": ".cargo/config.toml"}) + "\n")
-    if platform.system() == "Darwin":
+    if selected & {"pdfium", "mupdf"}:
+        # uv.lock pins every transitive wheel by hash and .python-version the interpreter.
+        uv = shutil.which("uv")
+        if uv is None:
+            raise RuntimeError("uv is required: https://docs.astral.sh/uv/getting-started/installation/")
+        run([uv, "sync", "--locked", "--only-group", "bench"],
+            env={**os.environ, "UV_PROJECT_ENVIRONMENT": str(CACHE / "venv")})
+    if "pdfjs" in selected:
+        node = CACHE / "node"
+        node.mkdir(exist_ok=True)
+        lock = ROOT / "benchmarks/node-package-lock.json"
+        package = ROOT / "benchmarks/node-package.json"
+        if package.exists() and lock.exists():
+            shutil.copyfile(package, node / "package.json")
+            shutil.copyfile(lock, node / "package-lock.json")
+            run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], node)
+        else:
+            raise RuntimeError("Missing reviewed Node dependency lock")
+    if "hayro" in selected:
+        # Copy only our adapter and lock: Cargo never writes registry/build data in-tree.
+        adapter = CACHE / "hayro-adapter"
+        (adapter / "src/bin").mkdir(parents=True, exist_ok=True)
+        for relative in ("Cargo.toml", "Cargo.lock", "src/main.rs", "src/bin/capabilities.rs"):
+            shutil.copyfile(ROOT / "benchmarks/adapters/hayro" / relative, adapter / relative)
+        shutil.copyfile(ROOT / "rust-toolchain.toml", adapter / "rust-toolchain.toml")
+        channel = tomllib.loads((ROOT / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
+        # Pagura's native flags, passed explicitly: they replace inherited RUSTFLAGS, and the
+        # isolated CARGO_HOME and out-of-tree adapter keep every other Cargo configuration away.
+        env = {key: value for key, value in os.environ.items() if key not in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS")}
+        host, flags = native_rustflags(channel, env)
+        run(["cargo", "+" + channel, "build", "--release", "--locked", "--manifest-path",
+             adapter / "Cargo.toml", "--target-dir", CACHE / "hayro-target"], cwd=adapter,
+            env={**env, "CARGO_HOME": str(CACHE / "cargo-home"), "CARGO_ENCODED_RUSTFLAGS": "\x1f".join(flags)})
+        (CACHE / HAYRO_BUILD).write_text(json.dumps({"host": host, "rustflags": flags, "rustflags_source": ".cargo/config.toml"}) + "\n")
+    if "quartz" in selected:
         run(["swiftc", "-O", ROOT / "benchmarks/adapters/quartz.swift", "-o", CACHE / "quartz"])
+        run(["swiftc", "-O", ROOT / "benchmarks/adapters/capability_quartz.swift", "-o", CACHE / "capability-quartz"])
     print("Competitors installed locally. Poppler must be supplied by your OS; Adobe needs a licensed adapter.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["setup"])
-    parser.parse_args()
-    setup()
+    parser.add_argument("--engines", help="comma-separated engines to install; Poppler is supplied by the OS")
+    args = parser.parse_args()
+    setup(args.engines.split(",") if args.engines is not None else None)
