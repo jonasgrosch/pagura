@@ -50,7 +50,7 @@ fn missing_object_terminators_require_a_following_structural_token() {
             let mut parser = Parser::new(&bytes, Origin::File, limits);
             parser.parse().unwrap();
             let mut diagnostics = Diagnostics::new(recovery);
-            let result = end(&mut parser, &limits, ObjectId::new(1, 0), &mut diagnostics);
+            let result = end(&mut parser, ObjectId::new(1, 0), &mut diagnostics);
             if recovery == Recovery::Strict {
                 let error = result.unwrap_err();
                 assert_eq!(error.repair, Some(repairs::OBJECT_END));
@@ -75,7 +75,7 @@ fn missing_object_terminators_require_a_following_structural_token() {
         parser.parse().unwrap();
         let mut diagnostics = Diagnostics::new(Recovery::Repair);
         assert_eq!(
-            end(&mut parser, &limits, ObjectId::new(1, 0), &mut diagnostics)
+            end(&mut parser, ObjectId::new(1, 0), &mut diagnostics)
                 .unwrap_err()
                 .kind,
             ErrorKind::Syntax

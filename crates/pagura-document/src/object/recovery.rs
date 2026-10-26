@@ -126,8 +126,10 @@ pub(super) fn stream_extent(
 ) -> std::result::Result<Range<usize>, ParseFault<NeedData>> {
     let start = crate::stream::start(parser, repairs, Some(id))?;
     let length = stream_length(document, id, dictionary, path).map_err(ParseFault::from)?;
-    let end = length.and_then(|length| start.checked_add(length));
-    if let Some(end) = end.filter(|&end| end <= document.source_len().saturating_sub(origin)) {
+    let end = length
+        .and_then(|length| start.checked_add(length))
+        .filter(|&end| end <= document.source_len().saturating_sub(origin));
+    if let Some(end) = end {
         parser.has_bytes(end)?;
         parser.seek(end).map_err(|fault| {
             <WindowInput<NeedData> as ParseMode>::map_error(fault, |error| error.in_object(id))

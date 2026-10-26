@@ -38,10 +38,10 @@ pub(crate) fn raw(document: &Document, object: &IndirectObject) -> ReadResult<By
             .in_object(object.id())
             .into());
     }
-    Ok(document.bytes.lease(ByteRange::new(
+    document.bytes.lease(ByteRange::new(
         usize_to_u64(range.start),
         usize_to_u64(range.end),
-    )?)?)
+    )?)
 }
 
 /// `size` is the expected decoded length, an allocation hint only.
