@@ -56,7 +56,7 @@ pub use text_device::TextDevice;
 use machine::{Inputs, Machine};
 use pagura_core::{Error, ObjectId, Rect, Store};
 use pagura_document::source::ReadResult;
-use pagura_document::{Document, Page};
+use pagura_document::{DiagnosticBatch, Document, Page};
 
 /// The shared inputs of interpreting pages of one document.
 #[derive(Clone, Copy)]
@@ -126,8 +126,10 @@ impl<'a> Interpreter<'a> {
     /// Returns positioned `Syntax` errors, `Limit` errors for budgets,
     /// stable `Unsupported` tags and the device's errors; repairs of
     /// malformed content are reported to the document, or are the error in
-    /// strict recovery. A failed interpretation leaves the device with a
-    /// partial page, which devices discard. `InvalidArgument` when a form
+    /// strict recovery. Reports from an attempt waiting for source bytes are
+    /// discarded; completed cached dependencies retain their own reports.
+    /// A failed interpretation leaves the device with a partial page, which
+    /// devices discard. `InvalidArgument` when a form
     /// filler belongs to another document.
     pub fn run<D: Device + ?Sized>(&self, page: &Page, device: &mut D) -> ReadResult<()> {
         if self
@@ -137,17 +139,24 @@ impl<'a> Interpreter<'a> {
             return Err(Error::invalid_argument("page does not belong to form document").into());
         }
         self.document.check_page(page)?;
-        let inputs = self.inputs(Some(page.resources()));
-        let mut machine = Machine::new(&inputs, device)?;
-        machine.page(page).map_err(|e| e.in_object(page.id()))
+        DiagnosticBatch::run(self.document, |diagnostics| {
+            let inputs = self.inputs(Some(page.resources()), diagnostics);
+            let mut machine = Machine::new(&inputs, device)?;
+            machine.page(page).map_err(|e| e.in_object(page.id()))
+        })
     }
 
-    fn inputs<'p>(&self, page_resources: Option<&'p pagura_core::Dictionary>) -> Inputs<'p>
+    fn inputs<'p>(
+        &self,
+        page_resources: Option<&'p pagura_core::Dictionary>,
+        diagnostics: &'p DiagnosticBatch<'p>,
+    ) -> Inputs<'p>
     where
         'a: 'p,
     {
         Inputs {
             document: self.document,
+            diagnostics,
             provider: self.provider,
             store: self.store,
             filler: self.filler,
@@ -200,9 +209,11 @@ impl<'a> Interpreter<'a> {
     ) -> ReadResult<pagura_extract::PositionedText> {
         self.document.check_page(page)?;
         let mut device = TextDevice::new(self.document.limits());
-        let inputs = self.inputs(None);
-        let mut machine = Machine::new(&inputs, &mut device)?;
-        machine.appearance_text(appearance, rect, page.resources())?;
-        Ok(device.finish()?)
+        DiagnosticBatch::run(self.document, |diagnostics| {
+            let inputs = self.inputs(None, diagnostics);
+            let mut machine = Machine::new(&inputs, &mut device)?;
+            machine.appearance_text(appearance, rect, page.resources())?;
+            Ok(device.finish()?)
+        })
     }
 }

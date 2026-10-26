@@ -182,7 +182,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         if let Position::Stream { object, .. } = self.position {
             diagnostic = diagnostic.in_object(object);
         }
-        self.document().repair(diagnostic)
+        self.session.diagnostics.record(diagnostic)
     }
 }
 

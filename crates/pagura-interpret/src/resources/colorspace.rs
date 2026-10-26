@@ -13,8 +13,8 @@ use pagura_color::{
     cie::Calibrated,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Result, Store, Value};
-use pagura_document::Document;
 use pagura_document::source::{ReadFault, ReadResult};
+use pagura_document::{DiagnosticBatch, Document};
 use std::sync::Arc;
 
 pub(crate) use icc::Profiles;
@@ -30,6 +30,7 @@ const MAX_COLORANTS: usize = 32;
 #[derive(Debug)]
 pub(crate) struct Colors<'a> {
     document: &'a Document,
+    diagnostics: &'a DiagnosticBatch<'a>,
     profiles: Profiles<'a>,
     gray: Arc<ColorSpace>,
     rgb: Arc<ColorSpace>,
@@ -46,9 +47,14 @@ enum Defaults {
 }
 
 impl<'a> Colors<'a> {
-    pub(crate) fn new(document: &'a Document, store: Option<&'a Store>) -> Self {
+    pub(crate) fn new(
+        document: &'a Document,
+        store: Option<&'a Store>,
+        diagnostics: &'a DiagnosticBatch<'a>,
+    ) -> Self {
         Self {
             document,
+            diagnostics,
             profiles: Profiles::new(document, store),
             gray: Arc::new(ColorSpace::DeviceGray),
             rgb: Arc::new(ColorSpace::DeviceRgb),
@@ -466,7 +472,7 @@ impl<'a> Colors<'a> {
             return Err(Error::syntax("Indexed lookup has wrong length").into());
         }
         if table.len() > required {
-            document.repair(
+            self.diagnostics.record(
                 Diagnostic::new(repairs::INDEXED_EXCESS, "Indexed lookup has wrong length")
                     .in_object_opt(lookup_id),
             )?;

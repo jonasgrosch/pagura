@@ -92,7 +92,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             let Position::Stream { object, .. } = position else {
                 return Err(Error::syntax("Type3 metrics have no stream context"));
             };
-            self.session.document.repair(
+            self.session.diagnostics.record(
                 Diagnostic::new(
                     repairs::TYPE3_WIDTH,
                     "d0/d1 metrics disagree with Widths or declare a vertical advance; Widths retained",
@@ -170,7 +170,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     .in_object(id)
                     .into());
             }
-            document.repair(
+            self.session.diagnostics.record(
                 Diagnostic::new(
                     pagura_text::repairs::TYPE3_EMPTY_BOUNDS,
                     "reversed d1 bounds ignored for an empty Type3 glyph; Widths retained",

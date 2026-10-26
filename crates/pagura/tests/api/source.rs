@@ -1,3 +1,5 @@
+mod diagnostics;
+
 use pagura::source::{ByteRange, ByteSource, ReadFault, SourceIdentity, SourceLimits, SparseBytes};
 
 #[test]

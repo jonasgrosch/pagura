@@ -238,7 +238,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 object,
                 offset: 0,
             });
-            return Ok(document.repair(
+            return Ok(self.session.diagnostics.record(
                 Diagnostic::new(
                     repairs::APPEARANCE_EMPTY,
                     "zero-sized appearance or annotation rectangle; appearance skipped",

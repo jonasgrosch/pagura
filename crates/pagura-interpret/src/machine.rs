@@ -31,20 +31,22 @@ use pagura_core::{
     Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
 };
 use pagura_document::source::ReadResult;
-use pagura_document::{Document, Page};
+use pagura_document::{DiagnosticBatch, Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};
 use state::Graphics;
 use std::collections::HashMap;
 use std::sync::Arc;
 use text::{Procedure, TextObject};
 
-/// What one interpretation shares across its content sequences.
+/// What one interpretation shares across its content sequences. Its diagnostic
+/// batch is borrowed only during this call, never retained by a cache or job.
 pub(crate) struct Session<'a> {
     pub(crate) document: &'a Document,
+    pub(crate) diagnostics: &'a DiagnosticBatch<'a>,
     pub(crate) limits: Limits,
     pub(crate) needs: Needs,
     pub(crate) filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
-    pub(crate) visibility: Visibility,
+    pub(crate) visibility: Visibility<'a>,
     pub(crate) colors: Colors<'a>,
     pub(crate) fonts: Fonts<'a>,
     /// Content tokens, glyphs and inline-image entries (`operations`).
@@ -180,6 +182,7 @@ impl<D: Device + ?Sized> std::fmt::Debug for Machine<'_, '_, D> {
 /// The inputs of one interpretation.
 pub(crate) struct Inputs<'a> {
     pub(crate) document: &'a Document,
+    pub(crate) diagnostics: &'a DiagnosticBatch<'a>,
     pub(crate) provider: Option<&'a dyn pagura_text::Provider>,
     pub(crate) store: Option<&'a Store>,
     pub(crate) filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
@@ -201,11 +204,12 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         Ok(Self {
             session: Session {
                 document,
+                diagnostics: inputs.diagnostics,
                 limits,
                 needs,
                 filler: inputs.filler,
-                visibility: Visibility::new(document)?,
-                colors: Colors::new(document, inputs.store),
+                visibility: Visibility::new(document, inputs.diagnostics)?,
+                colors: Colors::new(document, inputs.store, inputs.diagnostics),
                 fonts: Fonts::new(document, inputs.provider, inputs.store, needs.text),
                 tokens: Meter::new(limits.operations, "content operation budget exceeded"),
                 page_resources: inputs.page_resources,
@@ -335,7 +339,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             let Position::Stream { object, .. } = located.position else {
                 return Err(located.into());
             };
-            self.document().repair(
+            self.session.diagnostics.record(
                 Diagnostic::new(
                     repairs::GRAPHICS_UNCLOSED,
                     "unmatched q states discarded at end of content sequence (7.8.2, 8.4.2)",
@@ -475,7 +479,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         if let Position::Stream { object, .. } = self.position {
             diagnostic = diagnostic.in_object(object);
         }
-        self.document().repair(diagnostic)
+        self.session.diagnostics.record(diagnostic)
     }
 
     /// The decoded content of the stream `object`, read once per

@@ -2,12 +2,13 @@
 
 use crate::{features, repairs};
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
-use pagura_document::Document;
 use pagura_document::source::ReadResult;
+use pagura_document::{DiagnosticBatch, Document};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug, Default)]
-pub(crate) struct Visibility {
+#[derive(Debug)]
+pub(crate) struct Visibility<'a> {
+    diagnostics: &'a DiagnosticBatch<'a>,
     configuration: Configuration,
     groups: BTreeMap<ObjectId, bool>,
     applicable: BTreeSet<ObjectId>,
@@ -21,44 +22,52 @@ enum Configuration {
     Active,
 }
 
-impl Visibility {
-    pub(crate) fn new(document: &Document) -> ReadResult<Self> {
-        Self::read(document).map_err(|error| {
+impl<'a> Visibility<'a> {
+    pub(crate) fn new(
+        document: &Document,
+        diagnostics: &'a DiagnosticBatch<'a>,
+    ) -> ReadResult<Self> {
+        let mut visibility = Self {
+            diagnostics,
+            configuration: Configuration::Absent,
+            groups: BTreeMap::new(),
+            applicable: BTreeSet::new(),
+        };
+        visibility.read(document).map_err(|error| {
             document
                 .trailer()
                 .get(b"Root")
                 .and_then(Value::as_reference)
                 .map_or(error.clone(), |id| error.in_object(id))
-        })
+        })?;
+        Ok(visibility)
     }
-    fn read(document: &Document) -> ReadResult<Self> {
+    fn read(&mut self, document: &Document) -> ReadResult<()> {
         let Some(properties) = document.catalog()?.get(b"OCProperties") else {
-            return Ok(Self::default());
+            return Ok(());
         };
         let properties = document.resolve_dictionary(properties)?;
         let Some(configuration) = properties.get(b"D") else {
             configuration_repair(
                 document,
+                self.diagnostics,
                 repairs::OPTIONAL_CONFIG,
                 "OCProperties has no default configuration",
             )?;
-            return Ok(Self {
-                configuration: Configuration::Ignored,
-                ..Self::default()
-            });
+            self.configuration = Configuration::Ignored;
+            return Ok(());
         };
         let configuration = document.resolve_dictionary(configuration)?;
         validate_default(document, configuration)?;
         let Some(values) = properties.get(b"OCGs") else {
             configuration_repair(
                 document,
+                self.diagnostics,
                 repairs::OPTIONAL_GROUPS,
                 "OCProperties has no OCGs array",
             )?;
-            return Ok(Self {
-                configuration: Configuration::Ignored,
-                ..Self::default()
-            });
+            self.configuration = Configuration::Ignored;
+            return Ok(());
         };
         let values = document
             .resolve(values)?
@@ -99,13 +108,10 @@ impl Visibility {
             }
             *group = state;
         }
-        let mut visibility = Self {
-            configuration: Configuration::Active,
-            groups,
-            applicable,
-        };
-        visibility.apply_usage(document, configuration)?;
-        Ok(visibility)
+        self.configuration = Configuration::Active;
+        self.groups = groups;
+        self.applicable = applicable;
+        self.apply_usage(document, configuration)
     }
 
     /// View is the engine's initial viewing event. Export/Print applications
@@ -217,7 +223,7 @@ impl Visibility {
             if let Some(id) = value.as_reference() {
                 diagnostic = diagnostic.in_object(id);
             }
-            document.repair(diagnostic)?;
+            self.diagnostics.record(diagnostic)?;
             return Ok(true);
         }
         if self.configuration == Configuration::Ignored {
@@ -342,7 +348,7 @@ impl Visibility {
         if let Some(&state) = self.groups.get(&id) {
             return Ok(self.applicable.contains(&id).then_some(state));
         }
-        document.repair(
+        self.diagnostics.record(
             pagura_core::Diagnostic::new(
                 repairs::OPTIONAL_GROUP,
                 "undefined optional content group",
@@ -355,6 +361,7 @@ impl Visibility {
 
 fn configuration_repair(
     document: &Document,
+    diagnostics: &DiagnosticBatch<'_>,
     tag: pagura_core::Repair,
     message: &'static str,
 ) -> Result<()> {
@@ -366,7 +373,7 @@ fn configuration_repair(
     {
         diagnostic = diagnostic.in_object(id);
     }
-    document.repair(diagnostic)
+    diagnostics.record(diagnostic)
 }
 
 fn list(
