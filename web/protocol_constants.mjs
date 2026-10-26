@@ -16,6 +16,7 @@ export const Version = Object.freeze({
   V1_7: 0x00010007,
   V1_8: 0x00010008,
   V1_9: 0x00010009,
+  V1_10: 0x0001000a,
 });
 
 /** Request kind bytes. */
@@ -46,6 +47,7 @@ export const RequestKind = Object.freeze({
   MetadataBytes: 24,
   AttachmentBytes: 25,
   PagePng: 26,
+  AttachmentCheck: 27,
 });
 
 /** Response kind bytes. */
@@ -76,6 +78,7 @@ export const ResponseKind = Object.freeze({
   MetadataBytes: 152,
   AttachmentBytes: 153,
   PagePng: 154,
+  AttachmentCheck: 155,
   Error: 255,
 });
 
@@ -83,6 +86,13 @@ export const ResponseKind = Object.freeze({
 export const PngBackground = Object.freeze({
   White: 0,
   Transparent: 1,
+});
+
+/** Attachment parameter observations (1.10). */
+export const AttachmentCheckStatus = Object.freeze({
+  NotDeclared: 0,
+  Matches: 1,
+  Mismatch: 2,
 });
 
 /** Explicit embedded-file filename keys (1.8). */

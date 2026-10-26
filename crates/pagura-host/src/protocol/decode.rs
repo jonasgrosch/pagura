@@ -76,6 +76,11 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
         RequestKind::MetadataBytes => {
             Request::Reading(reading::Request::MetadataBytes(reader.field(Reader::u32)?))
         }
+        RequestKind::AttachmentCheck => Request::Reading(reading::Request::AttachmentCheck {
+            document: reader.field(Reader::u32)?,
+            index: reader.field(Reader::u32)?,
+            key: reader.field(Reader::code)?,
+        }),
         RequestKind::AttachmentBytes => Request::Reading(reading::Request::AttachmentBytes {
             document: reader.field(Reader::u32)?,
             index: reader.field(Reader::u32)?,

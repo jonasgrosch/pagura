@@ -237,6 +237,11 @@ impl Session {
             reading::Request::MetadataBytes(handle) => {
                 reading::metadata_bytes(self.documents.document(handle)?, cap)
             }
+            reading::Request::AttachmentCheck {
+                document,
+                index,
+                key,
+            } => reading::attachment_check(self.documents.document(document)?, index, key, cap),
             reading::Request::AttachmentBytes {
                 document,
                 index,

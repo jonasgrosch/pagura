@@ -13,8 +13,9 @@ mod encode;
 mod javascript;
 
 pub use codes::{
-    ActionCode, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle,
-    PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
+    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode,
+    OpenFlags, OutlineStyle, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags,
+    TileStatus, Version,
 };
 pub(crate) use decode::Reader;
 pub use decode::decode;

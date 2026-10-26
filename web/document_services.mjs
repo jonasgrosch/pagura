@@ -1,4 +1,4 @@
-import { AttachmentKey } from './protocol_constants.mjs';
+import { AttachmentCheckStatus, AttachmentKey } from './protocol_constants.mjs';
 
 const keyNames = { [AttachmentKey.File]: 'F', [AttachmentKey.Unicode]: 'UF', [AttachmentKey.Dos]: 'DOS', [AttachmentKey.Mac]: 'Mac', [AttachmentKey.Unix]: 'Unix' };
 function byteName(bytes) {
@@ -38,7 +38,7 @@ export class DocumentServices {
   }
   node(tag, text) { const node = this.document.createElement(tag); node.textContent = text; return node; }
   async show() {
-    const snapshot = this.state(); if (snapshot.handle === null) return;
+    const snapshot = { ...this.state() }; if (snapshot.handle === null) return;
     const serial = ++this.serial; this.buttons = []; this.message.textContent = '';
     this.info.replaceChildren(this.node('p', 'Loading properties…')); this.files.replaceChildren(this.node('p', 'Loading attachments…'));
     if (!this.dialog.open) this.dialog.showModal();
@@ -71,6 +71,11 @@ export class DocumentServices {
         const group = this.document.createElement('div');
         group.append(this.button(label, snapshot, serial, () => snapshot.client.attachmentBytes(snapshot.handle, file.index, payload.key), `attachment-${file.index + 1}-${name}.bin`));
         if (payload.declaredSize !== null) group.append(this.node('span', ` ${payload.declaredSize} bytes (declared)`));
+        const result = this.node('p', 'Size and checksum have not been checked.');
+        const check = this.node('button', file.payloads.length === 1 ? 'Check size and checksum' : `Check ${name} size and checksum`);
+        check.type = 'button'; this.buttons.push(check);
+        check.addEventListener('click', () => { void this.check(snapshot, serial, file.index, payload.key, result); });
+        group.append(check, result);
         item.append(group);
       }
       if (!file.payloads.length) item.append(this.node('p', 'No embedded payload.'));
@@ -90,5 +95,25 @@ export class DocumentServices {
       this.download(bytes, name, this.document); this.message.textContent = 'Download started.';
     } catch (error) { if (this.current(snapshot, serial)) this.message.textContent = `Download unavailable: ${error}`; }
     finally { if (this.current(snapshot, serial)) this.buttons.forEach(button => { button.disabled = false; }); }
+  }
+  async check(snapshot, serial, index, key, result) {
+    if (!this.current(snapshot, serial) || this.buttons.some(button => button.disabled)) return;
+    this.buttons.forEach(button => { button.disabled = true; });
+    this.message.textContent = 'Checking attachment…'; result.textContent = 'Checking size and checksum…';
+    try {
+      const checked = await snapshot.client.attachmentCheck(snapshot.handle, index, key);
+      if (!this.current(snapshot, serial)) return;
+      const label = value => {
+        if (value === AttachmentCheckStatus.NotDeclared) return 'not declared';
+        if (value === AttachmentCheckStatus.Matches) return 'matches';
+        if (value === AttachmentCheckStatus.Mismatch) return 'does not match';
+        throw new Error('Unknown attachment check result');
+      };
+      result.textContent = `${checked.decodedSize} decoded bytes. Declared size: ${label(checked.size)}. Declared checksum: ${label(checked.checksum)}. This checks declarations, not file safety or authenticity.`;
+      this.message.textContent = checked.size === AttachmentCheckStatus.Mismatch || checked.checksum === AttachmentCheckStatus.Mismatch
+        ? 'Attachment declarations do not match its decoded bytes.' : 'Attachment check completed.';
+    } catch (error) {
+      if (this.current(snapshot, serial)) { result.textContent = `Check unavailable: ${error}`; this.message.textContent = 'Attachment check failed.'; }
+    } finally { if (this.current(snapshot, serial)) this.buttons.forEach(button => { button.disabled = false; }); }
   }
 }

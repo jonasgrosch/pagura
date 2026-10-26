@@ -8,7 +8,9 @@ mod services;
 mod text;
 
 pub(crate) use navigation::{labels, links, outlines};
-pub(crate) use services::{attachment_bytes, attachments, metadata, metadata_bytes};
+pub(crate) use services::{
+    attachment_bytes, attachment_check, attachments, metadata, metadata_bytes,
+};
 pub(crate) use text::{page_text, search};
 
 use crate::protocol::{
@@ -98,7 +100,7 @@ impl Search<'_> {
     }
 }
 
-/// Requests added by protocol 1.2, 1.3 and 1.8.
+/// Requests added by protocol 1.2, 1.3, 1.8 and 1.10.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
@@ -122,7 +124,16 @@ pub enum Request<'a> {
     Attachments(Field<u32>),
     /// Inert metadata-stream bytes, separately requested (1.8).
     MetadataBytes(Field<u32>),
-    /// Explicit embedded-file selection; no filename or URL is followed (1.8).
+    /// Explicit size/checksum check; the complete authorized payload is decoded (1.10).
+    AttachmentCheck {
+        /// Session-local document handle.
+        document: Field<u32>,
+        /// Zero-based catalog EmbeddedFiles index.
+        index: Field<u32>,
+        /// Exact EF key, with no fallback.
+        key: Field<AttachmentKey>,
+    },
+    /// Explicit embedded-file bytes (1.8).
     AttachmentBytes {
         /// Session-local document handle.
         document: Field<u32>,
@@ -148,6 +159,7 @@ impl Request<'_> {
             Self::Attachments(_) => RequestKind::Attachments,
             Self::MetadataBytes(_) => RequestKind::MetadataBytes,
             Self::AttachmentBytes { .. } => RequestKind::AttachmentBytes,
+            Self::AttachmentCheck { .. } => RequestKind::AttachmentCheck,
         }
     }
 }

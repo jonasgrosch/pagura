@@ -3,9 +3,9 @@
 //! limits. No source-controlled name becomes a path, URL or executable content.
 
 use super::{MAX_ATTACHMENTS, Response};
-use crate::protocol::{AttachmentKey, Field, ResponseKind};
+use crate::protocol::{AttachmentCheckStatus, AttachmentKey, Field, ResponseKind};
 use crate::wire::Writer;
-use pagura::files::{FileSpecification, Relationship};
+use pagura::files::{EmbeddedFile, FileSpecification, NamedFile, ParameterCheck, Relationship};
 use pagura::metadata::Trapped;
 use pagura::{Document, Error, Name, ObjectId, Result};
 
@@ -105,21 +105,62 @@ pub(crate) fn attachment_bytes(
     cap: usize,
 ) -> Result<Response> {
     let files = document.embedded_files()?;
+    let file = attachment(&files, index, key)?;
+    let mut out = Writer::new(cap);
+    blob(&mut out, &file.data()?)?;
+    Ok(Response::new(ResponseKind::AttachmentBytes, out))
+}
+
+pub(crate) fn attachment_check(
+    document: &Document,
+    index: Field<u32>,
+    key: Field<AttachmentKey>,
+    cap: usize,
+) -> Result<Response> {
+    let files = document.embedded_files()?;
+    let file = attachment(&files, index, key)?;
+    // Object id (6), decoded size (8) and two observations (2). Refuse an
+    // undersized response budget before decoding, without implying a check.
+    if cap < 16 {
+        return Err(Error::limit("attachment check response budget exceeded"));
+    }
+    let checked = file.check_parameters()?;
+    let mut out = Writer::new(cap);
+    out.object(file.object())?;
+    out.u64(checked.decoded_size)?;
+    out.u8(check_status(checked.size)?.code())?;
+    out.u8(check_status(checked.checksum)?.code())?;
+    Ok(Response::new(ResponseKind::AttachmentCheck, out))
+}
+
+fn check_status(value: ParameterCheck) -> Result<AttachmentCheckStatus> {
+    match value {
+        ParameterCheck::NotDeclared => Ok(AttachmentCheckStatus::NotDeclared),
+        ParameterCheck::Matches => Ok(AttachmentCheckStatus::Matches),
+        ParameterCheck::Mismatch => Ok(AttachmentCheckStatus::Mismatch),
+        _ => Err(Error::invalid_argument(
+            "unsupported attachment check result",
+        )),
+    }
+}
+
+fn attachment<'a, 'document>(
+    files: &'a [NamedFile<'document>],
+    index: Field<u32>,
+    key: Field<AttachmentKey>,
+) -> Result<&'a EmbeddedFile<'document>> {
     let file = files.get(index.index()?).ok_or_else(|| {
         Error::invalid_argument("attachment index outside catalog name tree").at(index.position())
     })?;
-    let entry = file
-        .specification
+    file.specification
         .embedded
         .iter()
         .find(|entry| entry.key.as_bytes() == key.get().pdf_name())
+        .map(|entry| &entry.file)
         .ok_or_else(|| {
             Error::invalid_argument("attachment has no payload for this filename key")
                 .at(key.position())
-        })?;
-    let mut out = Writer::new(cap);
-    blob(&mut out, &entry.file.data()?)?;
-    Ok(Response::new(ResponseKind::AttachmentBytes, out))
+        })
 }
 
 fn relationship_name(relationship: Relationship<'_>) -> Option<&[u8]> {

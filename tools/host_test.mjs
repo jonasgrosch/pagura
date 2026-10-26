@@ -1,3 +1,4 @@
+import { testAttachmentChecks, testAttachmentCheckView } from './attachment_checks_test.mjs';
 import { testPngExport, testPngExportView } from './png_export_test.mjs';
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
@@ -227,6 +228,8 @@ async function main() {
     await testReading(client, root, native, wasiRun);
     await testDocumentServices(client, root, native, wasiRun);
     await testDocumentServicesView();
+    await testAttachmentChecks(client, root, native, wasiRun);
+    await testAttachmentCheckView();
     await testPngExport(client, root, native, wasiRun);
     await testPngExportView();
     await testTwoPages(client, root, native, wasiRun);

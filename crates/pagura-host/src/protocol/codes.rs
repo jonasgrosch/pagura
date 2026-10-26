@@ -82,11 +82,24 @@ wire_codes! {
     V1_8 = 0x0001_0008,
     /// Complete PNG page export.
     V1_9 = 0x0001_0009,
+    /// Explicit attachment size and checksum comparisons.
+    V1_10 = 0x0001_000a,
+}
+
+wire_codes! {
+    /// Observation from an explicit attachment parameter check (1.10).
+    pub enum AttachmentCheckStatus: u8, unknown = Error::syntax("unknown attachment check status");
+    /// No declaration is present.
+    NotDeclared = 0,
+    /// The declaration matches decoded bytes.
+    Matches = 1,
+    /// The declaration differs from decoded bytes.
+    Mismatch = 2,
 }
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_9;
+    pub const LATEST: Self = Self::V1_10;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -101,6 +114,7 @@ impl Version {
             Self::V1_7 => "form text styles require protocol 1.7",
             Self::V1_8 => "document services require protocol 1.8",
             Self::V1_9 => "PNG export requires protocol 1.9",
+            Self::V1_10 => "attachment checks require protocol 1.10",
         })
     }
 }
@@ -160,6 +174,8 @@ wire_codes! {
     AttachmentBytes = 25,
     /// Complete PNG page image (1.9).
     PagePng = 26,
+    /// Check the selected attachment parameters against decoded bytes (1.10).
+    AttachmentCheck = 27,
 }
 
 impl RequestKind {
@@ -185,6 +201,7 @@ impl RequestKind {
             Self::FormWidgets => Version::V1_6,
             Self::FormStyles => Version::V1_7,
             Self::PagePng => Version::V1_9,
+            Self::AttachmentCheck => Version::V1_10,
             Self::Metadata | Self::Attachments | Self::MetadataBytes | Self::AttachmentBytes => {
                 Version::V1_8
             }
@@ -220,6 +237,7 @@ impl RequestKind {
             Self::MetadataBytes => ResponseKind::MetadataBytes,
             Self::AttachmentBytes => ResponseKind::AttachmentBytes,
             Self::PagePng => ResponseKind::PagePng,
+            Self::AttachmentCheck => ResponseKind::AttachmentCheck,
         }
     }
 }
@@ -279,6 +297,8 @@ wire_codes! {
     AttachmentBytes = 153,
     /// Complete PNG page image (1.9).
     PagePng = 154,
+    /// Completed size and checksum observations (1.10).
+    AttachmentCheck = 155,
     /// A structured failure.
     Error = 255,
 }

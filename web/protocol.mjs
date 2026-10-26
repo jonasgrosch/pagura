@@ -13,6 +13,7 @@ export const VERSION_1_6 = Version.V1_6;
 export const VERSION_1_7 = Version.V1_7;
 export const VERSION_1_8 = Version.V1_8;
 export const VERSION_1_9 = Version.V1_9;
+export const VERSION_1_10 = Version.V1_10;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -107,7 +108,7 @@ export function decodeResponse(body) {
     case ResponseKind.Stats: value = { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32() }; break;
     case ResponseKind.PageText: case ResponseKind.Search: case ResponseKind.Links: case ResponseKind.Outlines: case ResponseKind.Labels: case ResponseKind.ReadingStats: case ResponseKind.Bounds: value = decodeReading(kind, r); break;
     case ResponseKind.FormFields: value = decodeFields(r); break;
-    case ResponseKind.Metadata: case ResponseKind.Attachments: case ResponseKind.MetadataBytes: case ResponseKind.AttachmentBytes: value = decodeDocumentService(kind, r); break;
+    case ResponseKind.Metadata: case ResponseKind.Attachments: case ResponseKind.MetadataBytes: case ResponseKind.AttachmentBytes: case ResponseKind.AttachmentCheck: value = decodeDocumentService(kind, r); break;
     case ResponseKind.FormStyles: value = decodeStyles(r); break;
     case ResponseKind.FormWidgets: value = decodeWidgets(r); break;
     case ResponseKind.PagePng: value = r.take(r.u32()); break;
@@ -154,7 +155,7 @@ export function encodeRequest(kind, id, values = {}) {
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
   const reading = kind >= RequestKind.PageText && kind <= RequestKind.Bounds;
-  if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes) {
+  if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes || kind === RequestKind.AttachmentCheck) {
     const payload = reading ? encodeReading(kind, values) : encodeDocumentService(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
     view.setUint32(0, payload.length + 5, true); bytes[4] = kind; view.setUint32(5, id, true); bytes.set(payload, 9); return bytes;
   }

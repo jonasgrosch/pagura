@@ -262,6 +262,19 @@
       ],
       "gaps": "Whole-buffer synchronous output only; no active-request cancellation, backpressure, PNG color/profile metadata or viewer rotation transform. Real-browser verification remains pending.",
       "rule": "The shared renderer and public PNG encoder preserve ordinary page semantics. Pixel/decoded-byte preflight and stream/frame limits remain distinct. Viewer exports copy click-time form values through a temporary handle and discard stale results; they do not adopt or erase drafts."
+    },
+    {
+      "id": "host-attachment-checks",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "protocol 1.10 and explicit viewer checks implemented; hosted validation pending",
+      "tests": [
+        "pagura-host/tests/attachment_checks.rs",
+        "tools/attachment_checks_test.mjs",
+        "pagura-host protocol::tests::protocol_constants"
+      ],
+      "gaps": "Synchronous whole-buffer decoding; no streaming, active cancellation, attachment-only viewer password prompt, semantic validation or authenticity result.",
+      "rule": "Kind 27 selects the exact catalog index and EF key. Success 155 carries object identity, exact decoded u64 size and distinct not-declared/matches/mismatch statuses. Resource and authorization failures cannot produce a completed observation. A 16-byte reading payload is required before decoding. Viewer checks are explicit, do not download bytes and discard stale results."
     }
   ]
 }

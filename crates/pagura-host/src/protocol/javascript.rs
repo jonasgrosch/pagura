@@ -1,8 +1,9 @@
 //! The wire constants as an ECMAScript module (`web/protocol_constants.mjs`).
 
 use super::{
-    ActionCode, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle,
-    PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
+    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode,
+    OpenFlags, OutlineStyle, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags,
+    TileStatus, Version,
 };
 use crate::SessionLimits;
 use crate::editing;
@@ -73,7 +74,7 @@ fn write_module(out: &mut String) -> fmt::Result {
     Ok(())
 }
 
-fn tables() -> [Item<Vec<(&'static str, String)>>; 14] {
+fn tables() -> [Item<Vec<(&'static str, String)>>; 15] {
     let versions = Version::ALL
         .iter()
         .map(|version| (version.name(), format!("{:#010x}", version.code())))
@@ -90,6 +91,11 @@ fn tables() -> [Item<Vec<(&'static str, String)>>; 14] {
             "PngBackground",
             "Background of an exported PNG page (1.9).",
             codes!(PngBackground),
+        ),
+        (
+            "AttachmentCheckStatus",
+            "Attachment parameter observations (1.10).",
+            codes!(AttachmentCheckStatus),
         ),
         (
             "AttachmentKey",

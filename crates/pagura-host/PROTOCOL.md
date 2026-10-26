@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.9
+# Pagura session protocol v1 through v1.10
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -17,8 +17,8 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-`hello(65540)` (0x00010004) for v1.4, through `hello(65545)`
-(0x00010009) for v1.9. Versions 1.5–1.7 add the form operations below.
+`hello(65540)` (0x00010004) for v1.4, through `hello(65546)`
+(0x0001000a) for v1.10. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -540,7 +540,7 @@ whole surface plus encoder scratch, then complete encoded bytes and the outgoing
 frame. It is synchronous: incremental output, active-request cancellation and
 host backpressure remain separate work.
 
-The browser client defaults to 1.9 and exposes `pagePng(handle, page, scale,
+The browser client defaults to 1.10 and exposes `pagePng(handle, page, scale,
 background)`. More → Export page PNG lets the user choose a page, 1–2400 DPI and
 a white or transparent background. Downloads use fixed `page-NNNN.png` names and
 `image/png`; object URLs are revoked. Current form values are copied at the click
@@ -554,3 +554,41 @@ Evidence: public Rust wire/version/budget tests, Python PNG/CRC/zlib pixel decod
 against independent page oracles, native/WASI/client byte parity, and viewer
 option/snapshot/race/cleanup tests. These checks are authored; hosted runtime
 validation and real-browser interaction verification are pending.
+
+## Version 1.10: attachment parameter checks
+
+`hello(65546)` adds request 27 `attachment_check`: `u32 handle,index` followed
+by `u8 filename_key`, using the same catalog order and exact EF keys as request
+25. Older negotiated versions return operational InvalidArgument and remain
+usable. Malformed keys, truncation or trailing bytes are terminal syntax errors.
+Absent handles, indexes or EF keys are operational errors, without fallback.
+
+Success 155 contains `object` (`u32 number | u16 generation`), `u64 decoded_size`,
+`u8 size_status`, `u8 checksum_status`. `AttachmentCheckStatus` values are 0
+not-declared, 1 matches and 2 mismatch; other values are invalid. The JavaScript
+client returns `{ object, decodedSize, size, checksum }` with an exact BigInt
+size. The payload is exactly 16 bytes, the body 21 and framed response 25.
+A completed mismatch is a successful observation, not a protocol error.
+
+Checks use `EmbeddedFile::check_parameters`: complete authorized decoding under
+the document's stream limits, then Size and Table 45 MD5 comparisons. Missing
+declarations still require successful decoding. The reading-response cap must
+allow 16 bytes before decoding starts; decoding/scratch budgets are independent.
+No payload bytes are returned or retained in the result. Password, unsupported
+filter, malformed content and resource failures produce errors, not observations.
+The source is unchanged. Checking is synchronous and whole-buffer; declarations
+are not evidence of authenticity, MIME correctness or content safety.
+
+`Client.attachmentCheck(handle,index,key)` exposes the command. Properties and
+attachments offers an explicit Check size and checksum button for each EF
+payload. Listing or downloading does not implicitly check. The result shows the
+actual size, both observations and any operation failure. It never downloads a
+payload. One dialog operation is pending at a time; close, document/epoch/client
+changes and recovery invalidate results and callbacks. This discards a stale
+response; it does not interrupt the synchronous host command.
+
+Evidence: literal request/response and malformed-code tests, old-version checks,
+exact response/decode budgets, attachment authorization and selection failures,
+independent compressed fixture observations, native/WASI/client parity, exact
+BigInt values and viewer missing/mismatch/error/duplicate/stale-state tests.
+Hosted verification is pending; real-browser interaction remains to be checked.
