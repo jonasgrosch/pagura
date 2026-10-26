@@ -23,7 +23,7 @@ pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
 pub(crate) const RENDER_BYTES: &str = "render memory budget exceeded";
 
 /// One mark's geometry in device space, restricted to an [`Area`] and binned
-/// by band: a fill, a stroke outline (as pieces that meet without
+/// by band: a fill, a stroke outline (of pieces that meet without
 /// overlapping where that is exact), or a glyph placement.
 #[derive(Debug)]
 pub struct Shape {
@@ -280,7 +280,7 @@ impl Shape {
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
-        let (mut polygon, tiling) = match adjustment {
+        let (polygon, tiling) = match adjustment {
             Adjustment::Adjusted => crate::stroke::adjusted_polygon_pieces(
                 &path,
                 device,
@@ -303,12 +303,9 @@ impl Shape {
         bytes.refund(released);
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
-            Tiling::Unproven => {
-                polygon.cancel_shared(&mut bytes)?;
-                // Even without shared edges, only the slabs where pieces
-                // overlap need the union resolver.
-                Winding::Check(0.0)
-            }
+            // Only the slabs where the outline may overlap itself need the
+            // union resolver.
+            Tiling::Unproven => Winding::Check(0.0),
             Tiling::Components => Winding::Unknown,
         };
         Self::polygon(
