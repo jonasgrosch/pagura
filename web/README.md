@@ -406,3 +406,21 @@ intercepts no uploads or cross-origin requests, and stores no PDF contents.
 Local servers already providing isolation skip registration. HTTPS and service
 workers are required on static hosts; unsupported browsers show an error rather
 than repeatedly reloading. Pages is static hosting, not a document backend.
+
+## Properties and attachments
+
+Open **More → Properties and attachments** to inspect declared Info fields and
+document language, or list the catalog attachments. Protocol 1.8 reads these
+without decoding metadata/attachment payloads. Download buttons request exact
+bytes separately; no XML, URLs or embedded content execute. Where a specification
+has several EF payloads, each button selects its displayed filename key explicitly.
+Downloads use `metadata.xmp` or `attachment-N-KEY.bin` and an octet-stream MIME type.
+Closing the dialog, opening a new PDF or restarting the host cancels stale results.
+
+The listing cap is 1024 attachments, and each response is at most 32 MiB. Decoding
+is separately bounded by document stream limits; this is complete-buffer output,
+not streaming. AF/RF and annotation discovery, attachment-only password prompts,
+metadata validation and editing remain open. Dates and sizes are declarations,
+not normalized timestamps or verified lengths. Host/native/WASI and viewer tests
+are in `tools/document_services_test.mjs`, `tools/document_services_view_test.mjs`
+and `crates/pagura-host/tests/document_services.rs`; initial hosted checks are pending.

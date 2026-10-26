@@ -113,8 +113,10 @@ integration. Milestone numbers are outcomes, not completion claims.
   JavaScript engine. Broader script parity remains V03's explicit ADR decision.
 - **Document services and profiles:** typed metadata/file/attachment reads and lazy
   embedded payload extraction are implemented in the library. CLI catalog listings
-  and explicit-file metadata/attachment extraction are available. Annotation
-  discovery, streaming/host extraction, attachment writes, metadata validation/writes, portfolios
+  and explicit-file metadata/attachment extraction are available. Protocol 1.8 and
+  viewer controls add bounded catalog reads and explicit byte downloads; hosted
+  validation is pending. Annotation discovery, AF/RF host selection, streaming,
+  attachment writes, metadata validation/writes, portfolios
   and export APIs remain D02 work; public-key security and encrypted history (D03), and
   version/profile validation (C01). Recognizing a version or PDF/X declaration
   does not establish conformance.

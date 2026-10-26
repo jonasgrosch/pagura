@@ -437,8 +437,8 @@ handles through the library/facade. Independent fixtures cover Unicode,
 absence/null/empty distinctions, source identity, compressed packets, malformed
 types, cycles, reported text repair, limits and inert XML bytes. The library
 change passed hosted Linux/macOS/Windows checks in
-[run 40262084291](https://github.com/jonasgrosch/pagura/actions/runs/40262084291). XMP/schema and date/language validation, reconciliation, writes and
-host/viewer integration remain open; this does not complete D02.
+[run 40262084291](https://github.com/jonasgrosch/pagura/actions/runs/40262084291). XMP/schema and date/language validation, reconciliation and writes remain open;
+this does not complete D02. The host/viewer read slice is described below.
 
 **CLI read/extract slice:** `a5149dd59de0d2b0cb3fc9894529ac7997571c1d` adds
 versioned metadata/catalog attachment JSON and explicit-file packet/payload
@@ -446,8 +446,19 @@ extraction through the public facade. Unicode filenames and raw name/path bytes
 remain separate; no document filename becomes an output path. Decoding and
 authorization finish before creating a new destination; existing files are never
 overwritten. [CLI documentation](CLI.md) defines the schemas and selection rules.
-Independent command tests are authored; hosted verification is pending. Object-local
-metadata, AF/RF selection, streaming, writes and host/viewer workflows remain open.
+CLI checks passed on hosted Linux/macOS/Windows at `f1ab906ef` in
+[run 40265512835](https://github.com/jonasgrosch/pagura/actions/runs/40265512835).
+
+**Host/viewer read slice:** `ec6745e062c746dd94741dd826545c15a04e17cb` adds protocol 1.8
+metadata records, catalog attachment listings and separate byte requests. All
+responses use the reading-response budget; document view/stream limits bound
+preparation separately. Listings never decode payloads. The viewer uses inert
+text, exact declared sizes and explicit downloads with fixed names; stale
+document/dialog requests cannot download. Native/WASI/client tests cover exact
+independent fixture bytes, old versions, malformed requests, authorization and
+limits; UI tests cover inert labels, failures and races. Hosted checks are pending.
+Object-local metadata, CLI/host AF/RF selection, attachment-only viewer password
+reauthentication, streaming, validation and writes remain open.
 
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose
