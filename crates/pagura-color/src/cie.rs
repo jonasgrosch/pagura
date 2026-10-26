@@ -10,8 +10,8 @@ use crate::affine::{Affine, Undecided};
 use crate::features;
 use pagura_core::{Error, Result};
 
-pub use bounds::encode_bounds;
 pub(crate) use bounds::{MARGIN, power_bounds, power_cubic};
+pub use bounds::{encode_bounds, encode_estimate};
 
 /// A 3×3 matrix applied to column vectors, row by row.
 pub type Matrix = [[f64; 3]; 3];

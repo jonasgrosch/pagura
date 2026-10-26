@@ -34,7 +34,7 @@ pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
     ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels,
+    SampleTexels, Strategy, TableTexels, TexelMode,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -609,7 +609,13 @@ impl ImageSampler {
         let stride = lanes + usize::from(fused);
         let mut storage = std::mem::take(&mut scratch.summed);
         let summed = scratch::grown(&mut storage, len * stride);
-        prepared.texels((plan, paint), pixels, scratch, lanes, summed);
+        let mode = prepared.texel_mode(paint, pixels);
+        // Rows held for texels converted otherwise must not serve these.
+        if scratch.mode != mode {
+            scratch.plan.reset();
+            scratch.mode = mode;
+        }
+        prepared.texels((plan, paint), pixels, scratch, (lanes, mode), summed);
         let straight = Straight {
             summed,
             stride,
@@ -765,7 +771,13 @@ impl Prepared {
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);
         let values = scratch::grown(&mut storage, len * lanes);
-        self.texels((plan, paint), pixels, scratch, lanes, values);
+        self.texels(
+            (plan, paint),
+            pixels,
+            scratch,
+            (lanes, TexelMode::Exact),
+            values,
+        );
         let texels = values.as_chunks::<5>().0;
         // A footprint that misses the image leaves its pixel transparent.
         let opaque = texels.iter().all(|texel| texel[3] == 1.0);
@@ -784,12 +796,32 @@ impl Prepared {
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.
+    /// How the span's texels convert: each to a value of the same F32
+    /// level as its exact colour where only those levels are kept
+    /// ([`crate::source::Precision::Level`]) and every pixel copies one
+    /// opaque texel unmasked (nearest samples of an opaque memoized image
+    /// without a mask), as its colour; otherwise exactly.
+    fn texel_mode(&self, paint: &Paint, pixels: Pixels<'_>) -> TexelMode {
+        let copies = pixels.precision == crate::source::Precision::Level
+            && self.mask.is_none()
+            && self.geometry.mode() == Mode::Nearest
+            && paint.opaque(&self.image.image);
+        match paint {
+            Paint::Colors(paint)
+                if copies && matches!(paint.1, Strategy::Memo(_)) && paint.0.convert.rounds() =>
+            {
+                TexelMode::Rounded
+            }
+            _ => TexelMode::Exact,
+        }
+    }
+
     fn texels(
         &self,
         (plan, paint): (&Sampling, &Paint),
         pixels: Pixels<'_>,
         scratch: &mut ImageScratch,
-        lanes: usize,
+        (lanes, mode): (usize, TexelMode),
         out: &mut [f64],
     ) {
         let ImageScratch {
@@ -829,7 +861,10 @@ impl Prepared {
                         .as_deref_mut()
                         .and_then(|memo| MemoTexels::new(image, colors, mask, memo))
                     {
-                        Some(texels) => self.sample(plan, pixels, &mut buffers, &texels, out),
+                        Some(texels) => {
+                            let texels = texels.converting(mode);
+                            self.sample(plan, pixels, &mut buffers, &texels, out);
+                        }
                         None => self.general(plan, pixels, &mut buffers, colors, out),
                     }
                 }

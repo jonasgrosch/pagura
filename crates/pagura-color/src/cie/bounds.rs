@@ -38,6 +38,35 @@ pub fn encode_bounds(v: f64) -> Option<[f64; 2]> {
     power_bounds(v, MARGIN)
 }
 
+/// Bounds `[low, high]` of [`encode`]`(v)` as [`encode_bounds`] gives, from
+/// the estimate alone, without checking it: its error is bounded ahead of
+/// time, which makes these bounds cheaper and no wider.
+///
+/// The estimate `p` of `v^(5/12)` is within `2^-40.5` of it: the series
+/// leaves out terms below `|(5/12 choose 4)|·|x|^4 / (1 − |x|) < 2^-40.59`
+/// for `|x| ≤ 2^-9`; the tables' entries are within `2^-51` of their values
+/// (verified for every entry by the tests), `x` within `2u`, and evaluating
+/// the series and the product rounds six more times. With `powf` within
+/// `2^-44 + 2^-52` of `v^(5/12)` (see the module), `powf / p` lies within
+/// `ε < 2^-40.35` of 1. The margin `2^-40` exceeds `ε + u`, so
+/// `affine(p · (1 ∓ 2^-40))`, whose factors are exact, hold the exact
+/// path's value.
+#[inline]
+pub fn encode_estimate(v: f64) -> Option<[f64; 2]> {
+    if v <= LINEAR_LIMIT || v == 1.0 {
+        let exact = if v == 1.0 { affine(1.0) } else { encode(v) };
+        return Some([exact, exact]);
+    }
+    let p = estimate(v)?;
+    Some([
+        affine(p * (1.0 - ESTIMATE_MARGIN)),
+        affine(p * (1.0 + ESTIMATE_MARGIN)),
+    ])
+}
+
+/// [`encode_estimate`]'s relative margin around the estimate.
+const ESTIMATE_MARGIN: f64 = 1.0 / (1_u64 << 40) as f64;
+
 /// Bounds `[low, high]` of `affine(powf(w, 1/2.4))`, the power branch of
 /// [`encode`], for every linear value `w` whose power `w^(5/12)` lies
 /// within relative distance `spread` of `v^(5/12)`, where
@@ -311,6 +340,54 @@ mod tests {
             cubics > 15_000 && narrow * 2 > cubics,
             "{cubics} cubics, {narrow} narrow"
         );
+    }
+
+    /// `a · b` as a double-double `(high, low)`.
+    fn product((ah, al): (f64, f64), (bh, bl): (f64, f64)) -> (f64, f64) {
+        let high = ah * bh;
+        let low = ah.mul_add(bh, -high) + (ah * bl + al * bh);
+        let sum = high + low;
+        (sum, low - (sum - high))
+    }
+
+    /// `x^n` as a double-double.
+    fn power_dd(x: f64, n: u32) -> (f64, f64) {
+        (1..n).fold((x, 0.0), |p, _| product(p, (x, 0.0)))
+    }
+
+    /// Every table entry is within `2^-51` of its value, as the error
+    /// argument of [`encode_estimate`] needs: `y^12 / x^5` within `12·2^-51`
+    /// of 1 in double-double arithmetic, whose own error is below `2^-90`,
+    /// and each reciprocal correctly rounded.
+    #[test]
+    fn table_entries_are_within_two_units() {
+        let close = |x: f64, y: f64| {
+            let (y12, x5) = (power_dd(y, 12), power_dd(x, 5));
+            let ratio = (y12.0 - x5.0 + (y12.1 - x5.1)) / x5.0;
+            ratio.abs() <= 12.0 / (1_u64 << 51) as f64
+        };
+        for (i, &scale) in SCALES.iter().enumerate() {
+            let x = 1.0 / (1_u64 << (9 - i)) as f64;
+            assert!(close(x, scale), "scale {i}");
+        }
+        let count = SEGMENTS.len();
+        for (i, &(inverse, root)) in SEGMENTS.iter().enumerate() {
+            let centre = 1.0 + (i as f64 + 0.5) / count as f64;
+            assert!(close(centre, root), "segment {i}");
+            let unit = product((centre, 0.0), (inverse, 0.0));
+            let error = (unit.0 - 1.0 + unit.1).abs();
+            assert!(error <= 1.0 / (1_u64 << 53) as f64, "inverse {i}");
+        }
+    }
+
+    #[test]
+    fn estimated_bounds_hold_the_encoded_value_and_are_tight() {
+        for v in values() {
+            let [low, high] = encode_estimate(v).unwrap_or_else(|| panic!("{v} not bounded"));
+            let exact = encode(v);
+            assert!(low <= exact && exact <= high, "{v}: {low} {exact} {high}");
+            assert!(high - low <= high * 5e-12, "{v}: {low} {high}");
+        }
     }
 
     #[test]

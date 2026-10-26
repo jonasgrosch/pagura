@@ -278,6 +278,22 @@ impl Plan {
         spots.fill(1.0);
     }
 
+    /// Whether [`Self::convert_rounded`] may write other values than
+    /// [`Self::convert`]: a conversion from a CIE-based or ICC source that
+    /// ends in encoded sRGB written as RGB, without any step before it.
+    pub(super) fn rounds(&self) -> bool {
+        match &self.kind {
+            Kind::Chain(chain) if self.lookup.is_none() && chain.steps.is_empty() => matches!(
+                &chain.terminal,
+                Terminal::Rgb {
+                    source: Source::Calibrated(_) | Source::Icc { .. },
+                    encode: Encode::Rgb,
+                }
+            ),
+            _ => false,
+        }
+    }
+
     /// Converts colours of `count` components each into `output`,
     /// `channels` values each, as [`Self::convert`] does colour by colour,
     /// or with `round` as [`Self::convert_rounded`] does. An ICC conversion
@@ -533,9 +549,9 @@ fn enclose_clip(
 
 /// The encoding of linear value `v`, or where `round` of it is all that
 /// matters, a value that rounds alike, found without the transfer function's
-/// power where its bounds decide the rounding.
+/// power where its bounds ([`cie::encode_estimate`]) decide the rounding.
 fn encode_rounded(v: f64, round: &impl Fn(f64) -> u32) -> f64 {
-    match cie::encode_bounds(v) {
+    match cie::encode_estimate(v) {
         Some([low, high]) if round(low) == round(high) => low,
         _ => cie::encode(v),
     }

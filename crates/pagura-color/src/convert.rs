@@ -251,6 +251,12 @@ impl Converter {
         self.plan.painted()
     }
 
+    /// Whether [`Self::convert_rounded`] may write other values than
+    /// [`Self::convert`]: where it bounds the transfer function's power.
+    pub fn rounds(&self) -> bool {
+        self.plan.rounds()
+    }
+
     /// Converts colours of `count` components each into `output`,
     /// [`Target::channels`] values each, as [`Self::convert`] does colour
     /// by colour.
