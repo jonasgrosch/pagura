@@ -7020,6 +7020,69 @@
       "button_display": "same"
     },
     {
+      "id": "annotation_display/button-normal-check-separate-save-generated",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-check-separate-save-generated.pdf",
+      "sha256": "b9c83093f26a9318b56cfbe2819d6604c61b61006e90af4c9f35af2af14d5d36",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-check-separate-save-generated.ppm",
+      "oracle_sha256": "4ef747bc6c0df96e9ae370246c90fbbaea903ee48a71f1e1f392df8a96da7350",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-push-inherited-save-generated",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-push-inherited-save-generated.pdf",
+      "sha256": "dca33434dd50188991bdf3bfb03e38c5525aff427385ac2c83320afca17cb17e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-push-inherited-save-generated.ppm",
+      "oracle_sha256": "e11eff5cb26a174defef926e33243391ed8b20640f41fbfefb682b3f4e56a7b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-push-action-inert",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-push-action-inert.pdf",
+      "sha256": "9a53225205852553ecadae3e5b4e8aa8d70d487cfb44de7e79a7a41456437457",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-push-action-inert.ppm",
+      "oracle_sha256": "e11eff5cb26a174defef926e33243391ed8b20640f41fbfefb682b3f4e56a7b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
       "id": "annotation_display/button-normal-anamorphic-mixed-B",
       "kind": "pdf",
       "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
@@ -7121,6 +7184,267 @@
       "width": 64,
       "height": 48,
       "tolerance": 1
+    },
+    {
+      "id": "annotation_display/button-normal-opt-radio-0",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-radio-0.pdf",
+      "sha256": "03981b00e46d1c19eae34f32e428799e52c844062e4bc5b4f2d7be18bc843327",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-radio-0.ppm",
+      "oracle_sha256": "0c417a0e45d6f3771d2262155f896c7d02c8c1ca6fe9aa279731945869cd11dd",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-radio-1",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-radio-1.pdf",
+      "sha256": "cd433dc2d8c79182c80aa11e48eeba4bb142250696e260960e833c068f9b896c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-radio-1.ppm",
+      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-unison-0",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-unison-0.pdf",
+      "sha256": "f6d2fedc971ad0ecf5d46994bf8be379196f4efb7789d3af8ac0062246caddb1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-unison-0.ppm",
+      "oracle_sha256": "0c417a0e45d6f3771d2262155f896c7d02c8c1ca6fe9aa279731945869cd11dd",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-unison-1",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-unison-1.pdf",
+      "sha256": "7eea9fcb2ffc12c231b3364e184c3f379cc39e33e8b04bd014c93a7499c5723d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-unison-1.ppm",
+      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-check-0",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-check-0.pdf",
+      "sha256": "25ff356a112dbc1887a71a68cc20acba9692120ac8d86441d8b190e8a037d0c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-check-0.ppm",
+      "oracle_sha256": "0c417a0e45d6f3771d2262155f896c7d02c8c1ca6fe9aa279731945869cd11dd",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-check-1",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-check-1.pdf",
+      "sha256": "e393412c14a70c633601496b7fcd62d6043a87d9a23514762ca79442bde87131",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-check-1.ppm",
+      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-null-as",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-null-as.pdf",
+      "sha256": "dccad4d93de6eccafe94133b0123a36382d1983321c01f5bc42acb167f6623ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-null-as.ppm",
+      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-stored-control",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-stored-control.pdf",
+      "sha256": "6423293a228803fd2ee58a9ff9f2432e015eb123c4068d07ef588d67b86e3bbd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-stored-control.ppm",
+      "oracle_sha256": "c4d1484d38d7e1bb396c0ab5fe0666ceb444c0021658afc395dbcf176e256ae6",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-unison-shared-state",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-unison-shared-state.pdf",
+      "sha256": "16bde9706a72840ed8c20c181121f106e44187a55f390f86cff6f1e0a407ad36",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-unison-shared-state.ppm",
+      "oracle_sha256": "2f8ea25088712e6ccd40b04c9db62685b0f8a4f2477c262fa0f543e727759aae",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-opt-check-shared-state",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-opt-check-shared-state.pdf",
+      "sha256": "2e163b9b290260860f0cf41ad2e0ab426abe6861ead515838339d205ab4fe67d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-opt-check-shared-state.ppm",
+      "oracle_sha256": "2f8ea25088712e6ccd40b04c9db62685b0f8a4f2477c262fa0f543e727759aae",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-normal-radio-unidentified",
+      "kind": "pdf",
+      "description": "Exclusive radio group has no AS/Opt evidence identifying the selected child; explicit edits can resolve it",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-radio-unidentified.pdf",
+      "sha256": "762b4edecde9f5fe4a19487a7d269a03f111003e18650634be4298ed7cc1a010",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/button-normal-radio-unidentified-off",
+      "kind": "pdf",
+      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-normal-radio-unidentified-off.pdf",
+      "sha256": "7bd2e16dd4bebcd3503ba37fe3a0c88828830ca6f0650b6b0240e5420863a4e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-normal-radio-unidentified-off.ppm",
+      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "button_display": "same"
+    },
+    {
+      "id": "annotation_display/button-invalid-opt-count",
+      "kind": "pdf",
+      "description": "Opt requires one export per widget; a missing-AS source display validates the existing membership",
+      "expected": "open",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-invalid-opt-count.pdf",
+      "sha256": "501bc30fd76d2c87a1088976f3d3ea2113ea97ce94e6d8fcac5129d760f7b979",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "annotation_display/button-invalid-position-range",
@@ -7346,330 +7670,6 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "syntax"
-    },
-    {
-      "id": "annotation_display/button-normal-check-separate-save-generated",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-check-separate-save-generated.pdf",
-      "sha256": "b9c83093f26a9318b56cfbe2819d6604c61b61006e90af4c9f35af2af14d5d36",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-check-separate-save-generated.ppm",
-      "oracle_sha256": "4ef747bc6c0df96e9ae370246c90fbbaea903ee48a71f1e1f392df8a96da7350",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-push-inherited-save-generated",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-push-inherited-save-generated.pdf",
-      "sha256": "dca33434dd50188991bdf3bfb03e38c5525aff427385ac2c83320afca17cb17e",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-push-inherited-save-generated.ppm",
-      "oracle_sha256": "e11eff5cb26a174defef926e33243391ed8b20640f41fbfefb682b3f4e56a7b8",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-push-action-inert",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-push-action-inert.pdf",
-      "sha256": "9a53225205852553ecadae3e5b4e8aa8d70d487cfb44de7e79a7a41456437457",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-push-action-inert.ppm",
-      "oracle_sha256": "e11eff5cb26a174defef926e33243391ed8b20640f41fbfefb682b3f4e56a7b8",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-radio-0",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-radio-0.pdf",
-      "sha256": "03981b00e46d1c19eae34f32e428799e52c844062e4bc5b4f2d7be18bc843327",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-radio-0.ppm",
-      "oracle_sha256": "0c417a0e45d6f3771d2262155f896c7d02c8c1ca6fe9aa279731945869cd11dd",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-radio-1",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-radio-1.pdf",
-      "sha256": "cd433dc2d8c79182c80aa11e48eeba4bb142250696e260960e833c068f9b896c",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-radio-1.ppm",
-      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-unison-0",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-unison-0.pdf",
-      "sha256": "f6d2fedc971ad0ecf5d46994bf8be379196f4efb7789d3af8ac0062246caddb1",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-unison-0.ppm",
-      "oracle_sha256": "0c417a0e45d6f3771d2262155f896c7d02c8c1ca6fe9aa279731945869cd11dd",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-unison-1",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-unison-1.pdf",
-      "sha256": "7eea9fcb2ffc12c231b3364e184c3f379cc39e33e8b04bd014c93a7499c5723d",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-unison-1.ppm",
-      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-check-0",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-check-0.pdf",
-      "sha256": "25ff356a112dbc1887a71a68cc20acba9692120ac8d86441d8b190e8a037d0c4",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-check-0.ppm",
-      "oracle_sha256": "0c417a0e45d6f3771d2262155f896c7d02c8c1ca6fe9aa279731945869cd11dd",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-check-1",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-check-1.pdf",
-      "sha256": "e393412c14a70c633601496b7fcd62d6043a87d9a23514762ca79442bde87131",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-check-1.ppm",
-      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-null-as",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-null-as.pdf",
-      "sha256": "dccad4d93de6eccafe94133b0123a36382d1983321c01f5bc42acb167f6623ef",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-null-as.ppm",
-      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-stored-control",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-stored-control.pdf",
-      "sha256": "6423293a228803fd2ee58a9ff9f2432e015eb123c4068d07ef588d67b86e3bbd",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-stored-control.ppm",
-      "oracle_sha256": "2d922f6dd95f8adf415f0c7172ff02ab580c5fdf9c1c4f70e22b2d551f60c43f",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-unison-shared-state",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-unison-shared-state.pdf",
-      "sha256": "16bde9706a72840ed8c20c181121f106e44187a55f390f86cff6f1e0a407ad36",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-unison-shared-state.ppm",
-      "oracle_sha256": "2f8ea25088712e6ccd40b04c9db62685b0f8a4f2477c262fa0f543e727759aae",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-normal-opt-check-shared-state",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-opt-check-shared-state.pdf",
-      "sha256": "2e163b9b290260860f0cf41ad2e0ab426abe6861ead515838339d205ab4fe67d",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-opt-check-shared-state.ppm",
-      "oracle_sha256": "2f8ea25088712e6ccd40b04c9db62685b0f8a4f2477c262fa0f543e727759aae",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
-    },
-    {
-      "id": "annotation_display/button-invalid-opt-count",
-      "kind": "pdf",
-      "description": "Opt requires one export per widget; a missing-AS source display validates the existing membership",
-      "expected": "open",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-invalid-opt-count.pdf",
-      "sha256": "501bc30fd76d2c87a1088976f3d3ea2113ea97ce94e6d8fcac5129d760f7b979",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
-    },
-    {
-      "id": "annotation_display/button-normal-radio-unidentified",
-      "kind": "pdf",
-      "description": "Exclusive radio group has no AS/Opt evidence identifying the selected child; explicit edits can resolve it",
-      "expected": "unsupported",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-radio-unidentified.pdf",
-      "sha256": "762b4edecde9f5fe4a19487a7d269a03f111003e18650634be4298ed7cc1a010",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
-    },
-    {
-      "id": "annotation_display/button-normal-radio-unidentified-off",
-      "kind": "pdf",
-      "description": "Independent normal button geometry; stored source, untouched preview and incremental save retain one contract",
-      "expected": "render",
-      "requirements": [
-        "content-normal-button-display"
-      ],
-      "path": "corpus/generated/annotation_display/button-normal-radio-unidentified-off.pdf",
-      "sha256": "7bd2e16dd4bebcd3503ba37fe3a0c88828830ca6f0650b6b0240e5420863a4e9",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "oracle": "corpus/generated/annotation_display/button-normal-radio-unidentified-off.ppm",
-      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "tolerance": 1,
-      "button_display": "same"
     }
   ]
 }
