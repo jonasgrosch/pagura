@@ -328,6 +328,8 @@ fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> pagura::Rea
         assert_eq!(
             PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
                 .unwrap_err()
+                .as_error()
+                .unwrap()
                 .kind,
             ErrorKind::Unsupported(features::NON_EMBEDDED)
         );
@@ -342,13 +344,14 @@ mod cjk {
         Bundled, NO_DIAGNOSTICS, PdfFont, Provider, font, information, integer, near, number, open,
         open_with, row, rows, text,
     };
-    use pagura::{Error, ErrorKind, OpenOptions, Recovery, Result};
+    use pagura::{Error, ErrorKind, OpenOptions, Recovery};
     use pagura_testkit::fixture;
     use pagura_text::{GlyphShape, features};
     use std::sync::Arc;
 
     #[test]
-    fn collection_substitutes_match_regional_unicode_cmaps_and_pdf_metrics() -> Result<()> {
+    fn collection_substitutes_match_regional_unicode_cmaps_and_pdf_metrics()
+    -> pagura::ReadResult<()> {
         let provider = Bundled::default();
         for ordering in ["Japan1", "GB1", "CNS1", "Korea1"] {
             for suffix in ["CIDFontType0", "CIDFontType2", "tounicode"] {
