@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "039bb88a57800be2744933687cf20ed91eb6c2a1",
+  "audited_revision": "77f9c7f2d511d2e92de32256416d95dbfa50294b",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -13,7 +13,7 @@
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
-    "corpus/manifests/font_formats.json": "09e016169a508b08cef822200e5a71514c282c22fe762d0ef803e62ff4479f9b",
+    "corpus/manifests/font_formats.json": "7ceaa75c78f66e269981b9e19a43cc1cf70cc4cff7ea40f3ae052473291bc8b9",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
@@ -175,7 +175,7 @@
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
-    "references/requirements/font.json": "5110b04bc1b4101b75d7e10f71835f1506e57229b0bef95bd4bd1857f4042305",
+    "references/requirements/font.json": "6c960fdd742413d66a759e7926b16145d5234b171d1083258a0e83de742b339e",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
