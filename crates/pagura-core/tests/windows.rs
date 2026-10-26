@@ -28,7 +28,7 @@ fn every_split_of_nested_object_waits_until_its_structure_completes() {
     assert_eq!(dictionary.get(b"S"), Some(&Value::String(b"x(y)".to_vec())));
     assert_eq!(dictionary.get(b"H"), Some(&Value::String(vec![0x4f, 0x0a])));
     assert_eq!(parsed.offset, bytes.len());
-    assert!(parsed.diagnostics.is_empty());
+    assert_eq!(parsed.diagnostics, []);
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn incomplete_name_escape_cannot_publish_a_repair_or_strict_refusal() {
         panic!("complete escaped name")
     };
     assert_eq!(parsed.value, Value::Name(Name::new(b"A ")));
-    assert!(parsed.diagnostics.is_empty());
+    assert_eq!(parsed.diagnostics, []);
     assert!(parse(b"/A#2", InputEnd::Complete, Recovery::Strict).is_err());
 }
 
