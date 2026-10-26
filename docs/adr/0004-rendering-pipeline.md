@@ -117,39 +117,35 @@ the contract and is closer to the oracle at every such pixel. A result beyond
 one level of its oracle is a correctness change and needs its own decision. A
 mechanism admitted under this rule records its bound here.
 
-#### Axial row sources
+#### Certified axial row sources
 
-An axial shading feeding F32 levels may evaluate its certified ramp's
-polynomial directly, within 2^-30 of the exact source value. This applies
-only to one sample per pixel, one function input, no background, bounding
-box or pattern boundary, and a ramp with at most four channels. Every other
-case retains exact conversion.
+An axial shading feeding F32 levels may evaluate its ramp's polynomial
+along a row and retain the result only when the whole enclosure has the
+same stored F32 level as exact conversion. This applies to one sample per
+pixel, one function input, no background, bounding box or pattern boundary,
+and a ramp with at most four channels. Every other case keeps exact
+conversion.
 
-The parameter is affine in the device column: `t0 + column * step`, anchored
-at column zero. Its error bound is computed over fixed 128-column chunks
-of the device grid, independently of span and tile boundaries. With unit
-roundoff u, magnitude bound M at the chunk's far end and parameter step b,
-`32u (M + |t0| + far |b|)` bounds its distance from the exact path's
-parameter. Mapping the domain adds `4u (|d0| + |d1-d0|)` and scales the
-parameter bound by `|d1-d0|`; the result is enlarged by a factor 1 + 10^-6.
-Neither parameter evaluation nor polynomial admission depends on how a
-caller partitions a row.
+The parameter is affine along a span. With unit roundoff u, magnitude
+bound M at its far end and parameter step b, `32u (M + |t0| + far |b|)`
+bounds its distance from the exact path's parameter. Mapping the domain
+adds `4u (|d0| + |d1-d0|)` and scales the parameter bound by `|d1-d0|`;
+the result is enlarged by a factor 1 + 10^-6.
 
-For a ramp piece with polynomial enclosure radius R and slope bound S,
-the written value differs from exact conversion by at most `2R + S E`,
-where E bounds the input error. The piece admits only errors strictly below
-`(2^-30 - 2R) / S`, rounded down, and only inputs whose error interval stays
-inside the piece. This includes a power's cubic only where its enclosure
-qualifies. Uncertain extension boundaries, piece ends, steep pieces and
-unavailable enclosures use exact conversion. No error is accumulated by
-repeated parameter additions.
+For a ramp piece with enclosure radius R and slope bound S, the polynomial
+value differs from exact conversion by at most `2R + S E`, where E bounds
+the input error. A piece admits only errors strictly below
+`(2^-30 - 2R) / S`, rounded down, and inputs whose whole error interval
+stays inside the piece. This includes a power's cubic only where its
+enclosure qualifies. Both ends of the resulting value interval, the
+polynomial value plus or minus 2^-30, must encode to the same F32 level.
+Constant terms are already exact. Otherwise the sample uses exact
+conversion, as it does at uncertain extension boundaries and piece ends.
 
-The source perturbation is below 255 * 2^-30 levels. Normal source-over
-weights source perturbations by a convex combination, so this bound does
-not grow with the number of stores in one buffer. It is covered by the
-2^-12 source-evaluation margin of F32 admission; children pass their bounds
-to their parents as described in section 6. Buffers feeding amplifying
-operations remain F64 and do not use this path.
+The 2^-30 quantity bounds an intermediate enclosure; no output error is
+spent. The final level certificate preserves bytes when a row is split,
+when a small region does not build a ramp, or when storage or work admission
+changes the available pieces.
 
 ### 4. Coverage and glyphs
 

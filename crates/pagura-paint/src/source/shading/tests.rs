@@ -241,15 +241,14 @@ fn compare_grid(
                     source.span(x0, y, (x1 - x0) as usize, precision, out);
                 }
             }
-            // Colours kept to F32 levels store the levels of the exact ones,
-            // or where a row approximates them, lie within `APPROXIMATE` of
-            // them.
+            // Every path preserves the F32 levels of the exact colours,
+            // including rows whose polynomials first enclose them.
             assert_eq!(levels.colors.len(), out.colors.len(), "{context} row {y}");
             for (i, (&kept, &exact)) in levels.colors.iter().zip(&out.colors).enumerate() {
                 let level = |v: f64| crate::kernel::level(v).to_bits();
-                assert!(
-                    level(kept) == level(exact)
-                        || (kept - exact).abs() <= pagura_color::APPROXIMATE,
+                assert_eq!(
+                    level(kept),
+                    level(exact),
                     "{context} row {y} value {i}: {kept} against {exact}"
                 );
             }

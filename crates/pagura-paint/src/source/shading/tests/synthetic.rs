@@ -857,16 +857,17 @@ fn approximated_rows_stay_within_their_bound() {
                     same || (k - e).abs() <= pagura_color::APPROXIMATE,
                     "case {case} row {y} value {i}: {k} against {e}"
                 );
+                assert!(same, "case {case} row {y} value {i}: ramp admission");
                 approximated += usize::from(!same);
                 values += 1;
             }
         }
     }
     // Many pixels were approximated (stitching of unsupported exponents and
-    // extended stretches stay exact), and levels moved for some values.
+    // extended stretches stay exact), and every stored level remains exact.
     let pixels = APPROXIMATED.with(std::cell::Cell::get) - before;
     assert!(
-        pixels > 100_000 && approximated > 0,
+        pixels > 100_000 && approximated == 0,
         "{pixels} approximated pixels, {approximated} of {values} values moved"
     );
 }

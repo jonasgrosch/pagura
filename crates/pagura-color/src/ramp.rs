@@ -93,6 +93,16 @@ impl Piece<'_> {
             *out = horner(term.k, x - term.centre);
         }
     }
+
+    /// Whether each evaluated value rounds as every exact value in its
+    /// enclosure does. `round` is nondecreasing. Constant terms are exact;
+    /// the other terms use the bound admitted by [`Ramp::piece`].
+    #[inline]
+    pub fn certifies(&self, output: &[f64], round: impl Fn(f64) -> u32) -> bool {
+        output.iter().zip(self.terms).all(|(&value, term)| {
+            term.radius == 0.0 || round(value - APPROXIMATE) == round(value + APPROXIMATE)
+        })
+    }
 }
 
 /// One channel on one piece: within `radius` of the cubic `k₀ + k₁·τ +
