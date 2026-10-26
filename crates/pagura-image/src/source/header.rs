@@ -6,7 +6,7 @@ use super::SourceMask;
 use crate::jpx_image::Jpx;
 use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameters as p, stream};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Position, Result, Value};
 use pagura_document::{Document, IndirectObject};
 use std::borrow::Cow;
 use std::sync::Arc;

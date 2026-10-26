@@ -128,8 +128,8 @@ fn framed_length(dict: &Dictionary, content: &[u8], components: Option<u8>) -> R
         .get(b"Filter")
         .is_none_or(|value| value.is_null() || value.as_array().is_some_and(<[_]>::is_empty))
     {
-        let (width, height) = p::dimensions(&dict)?;
-        let stencil = p::boolean(&dict, b"ImageMask", false)?;
+        let (width, height) = p::dimensions(dict)?;
+        let stencil = p::boolean(dict, b"ImageMask", false)?;
         if components.is_none()
             && !stencil
             && dict
@@ -154,7 +154,7 @@ fn framed_length(dict: &Dictionary, content: &[u8], components: Option<u8>) -> R
                     .ok_or(Error::syntax("missing inline ColorSpace"))?,
             )?
         };
-        let bits = p::integer(&dict, b"BitsPerComponent", i64::from(stencil))?;
+        let bits = p::integer(dict, b"BitsPerComponent", i64::from(stencil))?;
         if !matches!(bits, 1 | 2 | 4 | 8 | 16) {
             return Err(Error::syntax("invalid inline BitsPerComponent"));
         }
@@ -168,10 +168,10 @@ fn framed_length(dict: &Dictionary, content: &[u8], components: Option<u8>) -> R
             .ok_or(Error::syntax("truncated inline image data"))?;
         return Ok(length);
     }
-    if let Some(length) = filter_boundary(&dict, content)? {
+    if let Some(length) = filter_boundary(dict, content)? {
         return Ok(length);
     }
-    filtered_length(&dict, content)
+    filtered_length(dict, content)
 }
 
 fn filtered_length(dict: &Dictionary, content: &[u8]) -> Result<usize> {

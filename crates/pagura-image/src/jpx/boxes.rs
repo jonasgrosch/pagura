@@ -605,81 +605,19 @@ impl Header {
     }
 
     pub fn apply(self, decoded: &mut Decoded, budget: &mut Budget<'_>) -> Result<()> {
-        let image = &mut decoded.image;
-        self.check_image(image)?;
-        if self.palette.is_some() != self.mapping.is_some() {
-            return Err(syntax("JP2 palette and mapping disagree", 0));
-        }
-        let mapping = self.mapping;
-        let mut origins = budget.filled(image.components.len(), (0_usize, None))?;
-        for (index, source) in origins.iter_mut().enumerate() {
-            source.0 = index;
-        }
-        if let Some(mapping) = mapping {
-            budget.charge::<JpxComponent>(mapping.len())?;
-            let mut components = Vec::with_capacity(mapping.len());
-            let mut geometry = Vec::new();
-            let mut mapped_origins = Vec::new();
-            for (component, kind, column) in mapping {
-                let source = image
-                    .components
-                    .get(usize::from(component))
-                    .ok_or_else(|| syntax("JP2 mapping references missing component", 0))?;
-                budget.push(
-                    &mut geometry,
-                    decoded.component_geometry[usize::from(component)],
-                )?;
-                budget.push(
-                    &mut mapped_origins,
-                    (
-                        usize::from(component),
-                        if kind == 1 { Some(column) } else { None },
-                    ),
-                )?;
-                let mut result = JpxComponent {
-                    bits: source.bits,
-                    signed: source.signed,
-                    width: source.width,
-                    height: source.height,
-                    samples: budget.filled(source.samples.len(), 0)?,
-                };
-                match kind {
-                    0 if column == 0 => result.samples.copy_from_slice(&source.samples),
-                    1 => {
-                        let palette = self
-                            .palette
-                            .as_ref()
-                            .ok_or_else(|| syntax("missing JP2 palette", 0))?;
-                        let column = usize::from(column);
-                        let &depth = palette
-                            .depths
-                            .get(column)
-                            .ok_or_else(|| syntax("JP2 palette column out of range", 0))?;
-                        result.bits = (depth & 127) + 1;
-                        result.signed = depth & 128 != 0;
-                        budget.work(source.samples.len())?;
-                        for (out, &index) in result.samples.iter_mut().zip(&source.samples) {
-                            let signed_index = i32::from(index)
-                                - if source.signed {
-                                    1_i32 << (source.bits - 1)
-                                } else {
-                                    0
-                                };
-                            // I.5.3.4 leaves out-of-table lookup unspecified; choose endpoint clamping.
-                            let index = usize::try_from(signed_index)
-                                .unwrap_or(0)
-                                .min(palette.entries - 1);
-                            *out = palette.values[index * palette.depths.len() + column];
-                        }
-                    }
-                    _ => return Err(syntax("invalid JP2 mapping type or palette column", 0)),
+        self.check_image(&decoded.image)?;
+        let origins = match (self.mapping, self.palette) {
+            (Some(mapping), Some(palette)) => palette.apply(decoded, mapping, budget)?,
+            (None, None) => {
+                let mut origins = budget.filled(decoded.image.components.len(), (0_usize, None))?;
+                for (index, source) in origins.iter_mut().enumerate() {
+                    source.0 = index;
                 }
-                components.push(result);
+                origins
             }
-            image.components = components;
-            decoded.component_geometry = geometry;
-            origins = mapped_origins;
-        }
+            _ => return Err(syntax("JP2 palette and mapping disagree", 0)),
+        };
+        let image = &mut decoded.image;
         if let Some(channels) = self.channels {
             match self.channels_use {
                 ChannelsUse::Apply => {
@@ -720,6 +658,77 @@ impl Header {
             }
         };
         Ok(())
+    }
+}
+
+impl Palette {
+    fn apply(
+        &self,
+        decoded: &mut Decoded,
+        mapping: Vec<(u16, u8, u8)>,
+        budget: &mut Budget<'_>,
+    ) -> Result<Vec<(usize, Option<u8>)>> {
+        let image = &mut decoded.image;
+        budget.charge::<JpxComponent>(mapping.len())?;
+        let mut components = Vec::with_capacity(mapping.len());
+        let mut geometry = Vec::new();
+        let mut mapped_origins = Vec::new();
+        for (component, kind, column) in mapping {
+            let source = image
+                .components
+                .get(usize::from(component))
+                .ok_or_else(|| syntax("JP2 mapping references missing component", 0))?;
+            budget.push(
+                &mut geometry,
+                decoded.component_geometry[usize::from(component)],
+            )?;
+            budget.push(
+                &mut mapped_origins,
+                (
+                    usize::from(component),
+                    if kind == 1 { Some(column) } else { None },
+                ),
+            )?;
+            let mut result = JpxComponent {
+                bits: source.bits,
+                signed: source.signed,
+                width: source.width,
+                height: source.height,
+                samples: budget.filled(source.samples.len(), 0)?,
+            };
+            match kind {
+                0 if column == 0 => result.samples.copy_from_slice(&source.samples),
+                1 => {
+                    let palette = self;
+                    let column = usize::from(column);
+                    let &depth = palette
+                        .depths
+                        .get(column)
+                        .ok_or_else(|| syntax("JP2 palette column out of range", 0))?;
+                    result.bits = (depth & 127) + 1;
+                    result.signed = depth & 128 != 0;
+                    budget.work(source.samples.len())?;
+                    for (out, &index) in result.samples.iter_mut().zip(&source.samples) {
+                        let signed_index = i32::from(index)
+                            - if source.signed {
+                                1_i32 << (source.bits - 1)
+                            } else {
+                                0
+                            };
+                        // I.5.3.4 leaves out-of-table lookup unspecified; choose endpoint clamping.
+                        let index = usize::try_from(signed_index)
+                            .unwrap_or(0)
+                            .min(palette.entries - 1);
+                        *out = palette.values[index * palette.depths.len() + column];
+                    }
+                }
+                _ => return Err(syntax("invalid JP2 mapping type or palette column", 0)),
+            }
+            components.push(result);
+        }
+        image.components = components;
+        decoded.component_geometry = geometry;
+        Ok(mapped_origins)
     }
 }
 
