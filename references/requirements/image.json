@@ -242,9 +242,9 @@
         },
         {
           "standard": "ITU-T T.81 (1992) / ISO/IEC 10918-1",
-          "status": "DNL primary review; current implementation hosted acceptance pending",
+          "status": "DNL primary review; 20cf hosted acceptance passed; performance-base integration awaits fresh gates",
           "behaviour": "B.2.5/Table B.10 and E.2.4 define/redefine Y at the end of the first scan, after complete MCU rows; DNL is required for SOF Y=0. B.1.1.4 permits marker-segment extension bytes.",
-          "evidence": "Four baseline/progressive subjects retain the exact 128-valued oracle and PDF bytes from diagnostic 9e97615f228fb3f5cb0ea76f14ddf20872659a51, run40368464986. MuPDF passes all four and the unchanged JPEG/RGB pairs. Shared bounded entropy framing resolves height before allocation; malformed positions/counts and 81/80-operation, 384/383-byte and 64/63-pixel controls are independent of product output."
+          "evidence": "Four baseline/progressive subjects retain the exact 128-valued oracle and PDF bytes from diagnostic 9e97615f228fb3f5cb0ea76f14ddf20872659a51, run 40368464986. MuPDF passes all four and the unchanged JPEG/RGB pairs. Shared bounded entropy framing resolves height before allocation; malformed positions/counts and 81/80-operation and 64/63-pixel controls are independent of product output. Merging performance base 9f9801a754203009a314644ba22afbfdc4f3e58b retains sequential sample planes without coefficient overcharging: admission is 128 + 8*(6*sizeof(i16)+sizeof((usize,u8,u8))) bytes, 352 on a 64-bit host, with a one-short refusal. The DCT row allowance is conservative for grayscale; lossless scalar word output still needs exactly 100/99 bytes and 60/59 operations."
         }
       ],
       "choices": [
@@ -937,7 +937,7 @@
         "image/jpeg-lossless-huffman-ycbcr",
         "image/jpeg-lossless-huffman-ycbcr-rgb-control"
       ],
-      "gaps": "Arithmetic lossless and hierarchical processes remain explicit compatibility boundaries. Shared frame/scan handling implements DNL before allocation; its current checkpoint acceptance is pending. Lossless JPEG is a compatibility extension beyond PDF 7.4.8 required baseline/progressive byte processes. Pinned PDFium accepts the three diagnostic 8-bit Huffman controls; no tested baseline passes the two 16-bit or five arithmetic subjects. Poppler paired controls fail, so its subjects remain unadjudicated. See benchmarks/probes/README.md for exact diagnostic source/run/artifact identities.",
+      "gaps": "Arithmetic lossless and hierarchical processes remain explicit compatibility boundaries. Shared frame/scan handling implements DNL before allocation; 20cf hosted acceptance passed, while the performance-base integration awaits fresh gates. Lossless JPEG is a compatibility extension beyond PDF 7.4.8 required baseline/progressive byte processes. Pinned PDFium accepts the three diagnostic 8-bit Huffman controls; no tested baseline passes the two 16-bit or five arithmetic subjects. Poppler paired controls fail, so its subjects remain unadjudicated. See benchmarks/probes/README.md for exact diagnostic source/run/artifact identities.",
       "review": [
         {
           "locator": "T.81 H.1.1, H.1.2/Table H.1-H.3 and H.2",

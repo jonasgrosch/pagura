@@ -172,7 +172,7 @@ fn context<'a>(
         composite,
         store,
         limits,
-        region: pagura_raster::DeviceRect {
+        region: DeviceRect {
             x0: 0,
             y0: 0,
             x1: u32::MAX,
@@ -193,6 +193,7 @@ fn random_shadings_match_the_previous_sampling() {
         failed: 0,
         aligned: 0,
         shadings: 0,
+        certified: 0,
     };
     for case in 0..400 {
         let parsed = shading(&mut rng);
@@ -200,18 +201,9 @@ fn random_shadings_match_the_previous_sampling() {
         let converter = Converter::new(&parsed.space, &target, &composite.conversion).unwrap();
         for antialias in [false, true] {
             for usage in [Use::Operator, Use::Pattern] {
-                let source = ShadingSource::new(
-                    &parts(&parsed, antialias),
-                    transform,
-                    &context,
-                    usage,
-                    (
-                        &mut Meter::new(limits.render_bytes, "test bytes"),
-                        &mut Meter::new(usize::MAX, "test functions"),
-                    ),
-                )
-                .unwrap();
+                let source = prepared(&parts(&parsed, antialias), transform, &context, usage);
                 aligned += usize::from(source.aligned.is_some());
+                counts.certified += usize::from(source.colors.certified());
                 let old = Oracle {
                     parsed: &parsed,
                     converter: &converter,
@@ -230,9 +222,10 @@ fn random_shadings_match_the_previous_sampling() {
         }
     }
     assert!(
-        aligned > 150 && counts.pixels > 1_000_000,
-        "{aligned} {}",
-        counts.pixels
+        aligned > 150 && counts.pixels > 1_000_000 && counts.certified > 100,
+        "{aligned} {} {}",
+        counts.pixels,
+        counts.certified
     );
 }
 
@@ -388,12 +381,137 @@ fn function_work_is_reserved_per_sample() {
         )
         .unwrap()
     };
+    let mut bytes = Meter::new(limits.render_bytes, "test bytes");
     let mut meter = Meter::new(usize::MAX, "function work");
-    prepare().reserve(1000, &mut meter).unwrap();
+    prepare()
+        .reserve((1000, context.region), (&mut bytes, &mut meter))
+        .unwrap();
     assert_eq!(meter.used(), 1000 * 4 * cost);
     let mut tight = Meter::new(1000 * 4 * cost - 1, "function work");
-    let error = prepare().reserve(1000, &mut tight).unwrap_err();
+    let error = prepare()
+        .reserve((1000, context.region), (&mut bytes, &mut tight))
+        .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn refused_ramp_storage_keeps_attempted_function_work() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let function = Function::sampled(
+        SampledFunction {
+            domain: vec![[0.0, 1.0]],
+            range: vec![[0.0, 1.0]; 3],
+            size: vec![64],
+            bits_per_sample: 8,
+            order: 1,
+            encode: Some(vec![[63.0, 0.0]]),
+            decode: None,
+            samples: (0..192).map(|v| v as u8).collect::<Vec<_>>().into(),
+        },
+        &limits,
+    )
+    .unwrap();
+    let mut parsed = shading(&mut Rng(7));
+    parsed.space = Arc::new(ColorSpace::DeviceRgb);
+    parsed.function = Some(ShadingFunction::Single(Arc::new(function)));
+    let build = |max| {
+        let mut colors = Colors::new(
+            &parts(&parsed, false),
+            &context,
+            &mut Meter::new(usize::MAX, "color bytes"),
+        )
+        .unwrap();
+        let mut bytes = Meter::new(max, "ramp bytes");
+        let mut functions = Meter::new(usize::MAX, "ramp work");
+        colors.certify([0.0, 1.0], 64 * 32, (&mut bytes, &mut functions));
+        (colors.certified(), bytes.used(), functions.used())
+    };
+    let (mut low, mut high) = (0, 1 << 20);
+    assert!(build(high).0);
+    while low + 1 < high {
+        let mid = low + (high - low) / 2;
+        if build(mid).0 {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    let (certified, bytes, work) = build(low);
+    assert!(!certified && bytes == 0);
+    assert!(
+        work > 0,
+        "failed construction must still charge function work"
+    );
+}
+
+#[test]
+fn aligned_reservations_cover_every_evaluated_pixel() {
+    let mut rng = Rng(0xa119);
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let (mut columns, mut smaller) = (0, 0);
+    for _ in 0..400 {
+        let parsed = shading(&mut rng);
+        let transform = transform(&mut rng);
+        for antialias in [false, true] {
+            let source = ShadingSource::new(
+                &parts(&parsed, antialias),
+                transform,
+                &context,
+                Use::Operator,
+                (
+                    &mut Meter::new(limits.render_bytes, "test bytes"),
+                    &mut Meter::new(usize::MAX, "test functions"),
+                ),
+            )
+            .unwrap();
+            let (Geometry::Axial(axial), Some(aligned)) = (&*source.geometry, &source.aligned)
+            else {
+                continue;
+            };
+            // A sparse mark on a huge region must not scan its unused
+            // columns. The full pixel reservation remains conservative.
+            let huge = DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: u32::MAX,
+                y1: 1,
+            };
+            for pixels in [0, 1, 31, 1024] {
+                assert_eq!(aligned.evaluated(&source, axial, huge, pixels), pixels);
+                let empty = DeviceRect { y1: 0, ..huge };
+                assert_eq!(aligned.evaluated(&source, axial, empty, pixels), 0);
+            }
+            for _ in 0..8 {
+                let (x0, y0) = (rng.below(48) as u32, rng.below(48) as u32);
+                let region = DeviceRect {
+                    x0,
+                    y0,
+                    x1: x0 + 1 + rng.below(40) as u32,
+                    y1: y0 + 1 + rng.below(40) as u32,
+                };
+                let area = (region.width() * region.height()) as usize;
+                let reserved = aligned.evaluated(&source, axial, region, area);
+                let evaluated = (region.y0..region.y1)
+                    .flat_map(|y| (region.x0..region.x1).map(move |x| (x, y)))
+                    .filter(|&pixel| aligned.evaluates(&source, axial, pixel))
+                    .count();
+                assert!(
+                    evaluated <= reserved,
+                    "{evaluated} > {reserved} in {region:?}"
+                );
+                columns += usize::from(aligned.pixels() > 2);
+                smaller += usize::from(reserved < area);
+            }
+        }
+    }
+    assert!(
+        columns > 100 && smaller > 100,
+        "{columns} column regions, {smaller} smaller"
+    );
 }
 
 #[test]
@@ -563,4 +681,75 @@ fn axial_span_timing() {
             );
         }
     }
+}
+
+/// A column table holds only the columns of the region a mark paints in,
+/// and spans inside and outside it take the colours an unclipped table
+/// gives, bit for bit.
+#[test]
+fn aligned_tables_hold_the_painted_columns() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let wide = context(&target, &composite, &store, &limits);
+    let narrow = PaintContext {
+        region: DeviceRect {
+            x0: 300,
+            y0: 0,
+            x1: 340,
+            y1: 64,
+        },
+        ..context(&target, &composite, &store, &limits)
+    };
+    let mut rng = Rng(0xc0_1e);
+    let mut tables = 0;
+    for case in 0..40 {
+        let mut parsed = shading(&mut rng);
+        parsed.kind = ShadingKind::Axial {
+            start: Point::new(rng.quarter(0.0, 200.0), 0.0),
+            end: Point::new(rng.quarter(400.0, 900.0), 0.0),
+            domain: [0.0, 1.0],
+            extend: [rng.below(2) == 0, rng.below(2) == 0],
+        };
+        parsed.bbox = None;
+        parsed.background = None;
+        let parts = parts(&parsed, false);
+        let source = |context: &PaintContext<'_>| {
+            let mut bytes = Meter::new(8 << 20, "shading test");
+            let mut functions = Meter::new(usize::MAX, "test functions");
+            ShadingSource::new(
+                &parts,
+                Transform::IDENTITY,
+                context,
+                Use::Operator,
+                (&mut bytes, &mut functions),
+            )
+            .unwrap()
+        };
+        let (all, some) = (source(&wide), source(&narrow));
+        let (Some(full), Some(clipped)) = (&all.aligned, &some.aligned) else {
+            continue;
+        };
+        if full.pixels() > 2 {
+            tables += 1;
+            assert!(
+                clipped.pixels() <= 2 + 40,
+                "case {case}: {} pixels",
+                clipped.pixels()
+            );
+        }
+        let (mut want, mut got) = (SpanColors::default(), SpanColors::default());
+        for (x, len) in [(0, 1000), (290, 60), (320, 5)] {
+            for precision in [Precision::Exact, Precision::Level] {
+                all.span(x, 7, len, precision, &mut want);
+                some.span(x, 7, len, precision, &mut got);
+                assert_eq!(
+                    want.colors.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    got.colors.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    "case {case} span {x}+{len}"
+                );
+                assert_eq!(want.alpha, got.alpha, "case {case} span {x}+{len}");
+            }
+        }
+    }
+    assert!(tables > 10, "{tables} tables");
 }

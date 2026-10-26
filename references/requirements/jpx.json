@@ -503,7 +503,7 @@
         "jpx/pdf-colour-12",
         "jpx/pdf-depth-17"
       ],
-      "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
+      "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions including enumerated CIELab 14 and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
       "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.2, G.4, I.5.3.6, Table I.16, Table I.17",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
@@ -521,14 +521,24 @@
         "implementation_expectations": "The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged."
       },
       "external_review": {
-        "status": "reviewed PDF selection subset; full Part 2 remains open",
-        "standard": "ITU-T T.801 (08/2023) / ISO/IEC 15444-2",
+        "status": "reviewed PDF selection and enumerated CIELab primary rules; bounded diagnostic measured; CIELab implementation and other Part 2 remain open",
+        "standard": "ITU-T T.801 (08/2002), integrating Amendment 1/Cor1/Cor2, with Cor3 (01/2005) and Cor4 (05/2006); ISO/IEC 15444-2:2004 as referenced by PDF",
         "clauses": [
           "M.11.7.2",
-          "Table M.23"
+          "Table M.23",
+          "M.9.2.4",
+          "M.11.7.4.1",
+          "Equation M-18",
+          "Table M.29",
+          "Table M.30",
+          "Cor4 Table M.14"
         ],
         "depends_on": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
-        "evidence": "Public image-source tests and independent colour/palette/mask/inline controls; full functional verification remains bound to hosted source revisions."
+        "evidence": "Private source ee7f1aecf197bf55602f22f2101d4d9dc3fffc23, run 40380351282: six D50 subjects with unchanged-codec/RGB/PDF Lab controls, plus blank/rectangle, give 26 cases and 182 observed cells. All 36 baseline subject cells are incorrect. MuPDF passes all paired controls but fails all six subjects; other engines have scoped control failures described with exact identities and report/pixel artifact hashes in benchmarks/probes/README.md. Pagura explicitly refuses six subjects and passes all 20 controls. Six malformed-length and five sign/illuminant/zero-range vectors were not executed. No matched passing baseline was established; PDF 7.4.9/T.801 M.9.2.4 still make enumerated CIELab applicable. Oracles and tolerances remain unchanged, and no family comparison is promoted.",
+        "source": "text/itu-t801-2002.txt; text/itu-t801-2005-cor3.txt; text/itu-t801-2006-cor4.txt; exact hashes in jpx-boxes.external_review",
+        "lab_parameters": "Enumerated 14 uses unsigned N with physical value (N-O)*R/(2^bits-1), independently per colour channel. Absent EP uses R=(100,170,200), O=(0,2^(Na-1),3*2^(Nb-3)), D50. Nonempty EP is seven unsigned 32-bit fields: RL,OL,RA,OA,RB,OB,IL. The explicit-default control preserves those values while exercising the 28-byte EP form. This is distinct from ICC Lab encoding.",
+        "lab_illuminants": "T.4 (07/2003) E.6.4 defines D50 XYZ=(96.422,100,82.521); text/itu-t4-2003.txt SHA256 3abe7b9dd5582d75c9bc841f6e7d68d11dbc9a9218156086403802b9bfaf3093. T.801 Table M.29 also defines other illuminant codes and CT temperatures, which are not invalid merely because this probe establishes only D50. Unassigned IL has no guessed D50 replacement.",
+        "lab_boundaries": "The six render subjects cover unsigned 8/16-bit and 8/12/16-bit palette output; they do not narrow PDF's 1-38-bit domain. Signed Lab is outside the unsigned M-18 mapping and has no guessed pixel oracle. Table M.30 lists zero ranges while M-18 division becomes degenerate; zero range remains explicitly unadjudicated. Partial/excess EP lengths are malformed, not omitted defaults."
       }
     },
     {

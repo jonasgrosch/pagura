@@ -9,7 +9,8 @@
 //! space one per channel (that conversion is the identity with clipping,
 //! 10.4.2), and images of up to four components of at most eight bits a
 //! bounded memo by sample tuple, with opacity codes for embedded alpha
-//! and Matte removal.
+//! and Matte removal. A large image of few colour tuples is indexed
+//! instead: a table per distinct tuple and each sample's index into it.
 
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
@@ -125,6 +126,18 @@ pub(super) struct Colors {
     pub(super) convert: Converter,
 }
 
+/// How texels convert their colours.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) enum TexelMode {
+    /// Exactly ([`Converter::convert`]).
+    #[default]
+    Exact,
+    /// To values whose F32 levels ([`crate::kernel::level`]) are those of
+    /// the exact ones ([`Converter::convert_rounded`]), for texels each
+    /// pixel copies as its colour.
+    Rounded,
+}
+
 /// Per-sample inputs other than the codes: embedded opacity and the soft
 /// mask's opacity at the same sample, for Matte removal.
 #[derive(Debug, Clone, Copy, Default)]
@@ -156,6 +169,11 @@ impl Colors {
 
     /// The texel of one sample's `codes`.
     fn texel(&self, codes: &[u16], extra: Extra, out: &mut [f64]) {
+        self.texel_with(codes, extra, TexelMode::Exact, out);
+    }
+
+    /// [`Self::texel`] by `mode`.
+    fn texel_with(&self, codes: &[u16], extra: Extra, mode: TexelMode, out: &mut [f64]) {
         let mut values = [0.0; MAX_COMPONENTS];
         let embedded = self
             .embedded
@@ -220,7 +238,12 @@ impl Colors {
         }
         let channels = self.convert.target().channels();
         let (color, rest) = out.split_at_mut(channels);
-        self.convert.convert(&values[..count], color);
+        match mode {
+            TexelMode::Exact => self.convert.convert(&values[..count], color),
+            TexelMode::Rounded => self.convert.convert_rounded(&values[..count], color, |v| {
+                crate::kernel::level(v).to_bits()
+            }),
+        };
         for value in color.iter_mut() {
             *value *= alpha;
         }
@@ -325,6 +348,8 @@ pub(super) enum Strategy {
     /// mask's opacity code where a Matte is removed and the embedded
     /// opacity code), kept in a memo.
     Memo(MemoLayout),
+    /// Each sample's index into a table per distinct colour tuple.
+    Indexed(Palette),
     /// Every texel computed from its sample.
     General,
 }
@@ -405,6 +430,7 @@ impl Strategy {
     pub(super) fn bytes(&self) -> usize {
         match self {
             Self::Table(table, _) => table.capacity() * size_of::<f64>(),
+            Self::Indexed(palette) => palette.bytes(),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
             Self::Memo(_) | Self::General => 0,
         }
@@ -427,6 +453,15 @@ pub(super) struct ByteCodes<'a>(pub(super) &'a [u8]);
 impl Codes for ByteCodes<'_> {
     fn code(&self, index: usize) -> u16 {
         u16::from(self.0.get(index).copied().unwrap_or(0))
+    }
+}
+
+/// Codes stored one per word.
+pub(super) struct WordCodes<'a>(pub(super) &'a [u16]);
+
+impl Codes for WordCodes<'_> {
+    fn code(&self, index: usize) -> u16 {
+        self.0.get(index).copied().unwrap_or(0)
     }
 }
 
@@ -806,8 +841,15 @@ impl<'a> SampleKeys<'a> {
     /// Each sample costs one work unit and each probe one more; a sample
     /// equal to the one before it is not probed, so a run of equal samples
     /// is passed at once and charged with its first sample's probes.
-    fn distinct(&self, work: &mut Meter, bytes: &mut Meter) -> Result<Option<usize>> {
-        const COUNT: usize = 2048;
+    /// Keys of colour codes alone are also indexed into `indexed`, when
+    /// given, as they are counted.
+    fn distinct(
+        &self,
+        work: &mut Meter,
+        bytes: &mut Meter,
+        mut indexed: Option<&mut Indexed>,
+    ) -> Result<Option<usize>> {
+        const COUNT: usize = DISTINCT;
         const EMPTY: u64 = u64::MAX;
         let mut slots = Vec::new();
         bytes.reserve(&mut slots, COUNT * 2)?;
@@ -815,6 +857,29 @@ impl<'a> SampleKeys<'a> {
         let result = (|| {
             work.charge(COUNT * 2)?;
             slots.resize(COUNT * 2, EMPTY);
+            let allowance = work.remaining();
+            let index = indexed.as_deref_mut();
+            let plain = match self.components {
+                1 => self.plain_distinct::<1>(&mut slots, allowance, index),
+                2 => self.plain_distinct::<2>(&mut slots, allowance, index),
+                3 => self.plain_distinct::<3>(&mut slots, allowance, index),
+                4 => self.plain_distinct::<4>(&mut slots, allowance, index),
+                _ => None,
+            };
+            match plain {
+                Some(Scan::Complete(distinct, spent)) => {
+                    work.charge(spent)?;
+                    return Ok(distinct);
+                }
+                Some(Scan::Exhausted) => {
+                    // Every remaining unit was spent. Do not restart the
+                    // same scan with an unchanged meter in the generic path.
+                    work.charge(allowance)?;
+                    work.charge(1)?;
+                    return Ok(None);
+                }
+                None => {}
+            }
             let mut distinct = 0;
             let mut index = 0;
             while index < self.count {
@@ -848,6 +913,92 @@ impl<'a> SampleKeys<'a> {
         drop(slots);
         bytes.refund(allocated);
         result
+    }
+
+    /// What [`Self::distinct`] finds and the work its scan charges, for
+    /// keys of `N` colour codes alone that every sample holds, without
+    /// charging it: one key test a sample and the probes of each run's
+    /// first, as the scan visits them. The caller has paid for clearing
+    /// `slots`. `None` where this scan cannot handle the samples, before
+    /// visiting any; exhaustion is reported separately, with all of
+    /// `allowance` spent. Pushes each sample's index onto `indexed`, when
+    /// given, and each new key in order.
+    fn plain_distinct<const N: usize>(
+        &self,
+        slots: &mut [u64],
+        allowance: usize,
+        indexed: Option<&mut Indexed>,
+    ) -> Option<Scan> {
+        match indexed {
+            Some(indexed) => self.plain_scan::<N, true>(slots, allowance, indexed),
+            None => self.plain_scan::<N, false>(slots, allowance, &mut Indexed::default()),
+        }
+    }
+
+    /// [`Self::plain_distinct`], indexing into `indexed` when `INDEX`. Out
+    /// of line, so that its loop keeps its state in registers.
+    #[inline(never)]
+    fn plain_scan<const N: usize, const INDEX: bool>(
+        &self,
+        slots: &mut [u64],
+        allowance: usize,
+        indexed: &mut Indexed,
+    ) -> Option<Scan> {
+        const EMPTY: u64 = u64::MAX;
+        if self.matte.is_some() || self.embedded.is_some() {
+            return None;
+        }
+        let codes = self.colors.get(..self.count.checked_mul(N)?)?;
+        let mask = slots.len() - 1;
+        // Each slot's key index, in order of first use.
+        let mut ids = [0u16; 2 * DISTINCT];
+        // Every sample costs one unit. Each probe reduces the number of
+        // samples the remaining allowance can pay for, including equal
+        // samples after a run's first probe.
+        let mut visits = allowance;
+        let mut distinct = 0u16;
+        let (mut previous, mut id) = (EMPTY, 0);
+        for (index, codes) in codes.as_chunks::<N>().0.iter().enumerate() {
+            if index == visits {
+                return Some(Scan::Exhausted);
+            }
+            let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
+            if key != previous {
+                previous = key;
+                let mut slot = hash_slot(key, mask);
+                loop {
+                    if index + 1 == visits {
+                        return Some(Scan::Exhausted);
+                    }
+                    visits -= 1;
+                    let held = slots[slot];
+                    if held == key {
+                        break;
+                    }
+                    if held == EMPTY {
+                        if usize::from(distinct) == DISTINCT {
+                            return Some(Scan::Complete(None, index + 1 + (allowance - visits)));
+                        }
+                        slots[slot] = key;
+                        ids[slot] = distinct;
+                        if INDEX {
+                            indexed.keys.push(key);
+                        }
+                        distinct += 1;
+                        break;
+                    }
+                    slot = (slot + 1) & mask;
+                }
+                id = ids[slot];
+            }
+            if INDEX {
+                indexed.indexes.push(id);
+            }
+        }
+        Some(Scan::Complete(
+            Some(usize::from(distinct)),
+            self.count + (allowance - visits),
+        ))
     }
 
     /// The first sample from `from` on whose key is not `key`, the key of
@@ -892,6 +1043,115 @@ fn unchanged(codes: &[u8], start: usize, stride: usize, len: usize) -> bool {
     match (codes.get(start..start + len), earlier) {
         (Some(a), Some(b)) => a.iter().zip(b).fold(0, |differ, (x, y)| differ | (x ^ y)) == 0,
         _ => false,
+    }
+}
+
+/// The most distinct keys capacity discovery counts.
+const DISTINCT: usize = 2048;
+
+/// A supported plain scan either finishes or spends its entire allowance.
+#[derive(Debug, PartialEq, Eq)]
+enum Scan {
+    Complete(Option<usize>, usize),
+    Exhausted,
+}
+
+/// A source's distinct keys of colour codes alone, in order of first use,
+/// and each sample's index among them: the source as an indexed image.
+#[derive(Debug, Default)]
+pub(super) struct Indexed {
+    keys: Vec<u64>,
+    indexes: Vec<u16>,
+}
+
+impl Indexed {
+    /// Room to index `samples`, where their keys are at most four colour
+    /// codes alone and `bytes` keeps the scan's table and as many bytes as
+    /// the index takes unused besides.
+    fn reserve(samples: &SampleKeys<'_>, bytes: &mut Meter) -> Result<Option<Self>> {
+        let size = samples
+            .count
+            .saturating_mul(size_of::<u16>())
+            .saturating_add(DISTINCT * size_of::<u64>());
+        let scan = 2 * DISTINCT * size_of::<u64>();
+        if samples.matte.is_some()
+            || samples.embedded.is_some()
+            || samples.components > 4
+            || size.saturating_mul(2).saturating_add(scan) > bytes.remaining()
+        {
+            return Ok(None);
+        }
+        let mut indexed = Self::default();
+        bytes.reserve(&mut indexed.keys, DISTINCT)?;
+        bytes.reserve(&mut indexed.indexes, samples.count)?;
+        Ok(Some(indexed))
+    }
+
+    /// The bytes held.
+    fn bytes(&self) -> usize {
+        self.keys.capacity() * size_of::<u64>() + self.indexes.capacity() * size_of::<u16>()
+    }
+
+    /// The strategy of this source of `components` codes a sample: its
+    /// indexes and one texel per key, converted by `colors` as
+    /// [`MemoTexels`] converts a sample of that key.
+    pub(super) fn strategy(
+        self,
+        (colors, components, opaque): (&Colors, usize, bool),
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Strategy> {
+        let lanes = colors.lanes();
+        let Self { keys, indexes } = self;
+        functions.charge_product(keys.len(), colors.convert.cost())?;
+        let mut table = super::reserved(keys.len() * lanes, bytes)?;
+        table.resize(keys.len() * lanes, 0.0);
+        // A key holds its codes in its last bytes, the first one highest.
+        let components = components.min(size_of::<u64>());
+        for (&key, texel) in keys.iter().zip(table.chunks_exact_mut(lanes)) {
+            let mut codes = [0u16; MAX_COMPONENTS];
+            let held = &key.to_be_bytes()[size_of::<u64>() - components..];
+            for (code, &byte) in codes.iter_mut().zip(held) {
+                *code = u16::from(byte);
+            }
+            colors.texel(&codes[..components], Extra::default(), texel);
+        }
+        // Nearest samples of opaque RGB texels store as their entry's words.
+        let mut words = Vec::new();
+        if opaque && lanes == 5 {
+            words = super::reserved(keys.len(), bytes)?;
+            words.extend(table.chunks_exact(lanes).map(|texel| {
+                let word = crate::kernel::opaque_word;
+                [word(texel[0]), word(texel[1]), word(texel[2]), u16::MAX]
+            }));
+        }
+        bytes.refund(keys.capacity() * size_of::<u64>());
+        Ok(Strategy::Indexed(Palette {
+            indexes,
+            table,
+            words,
+            opaque,
+        }))
+    }
+}
+
+/// An indexed source: each sample's index, the texel of each index (every
+/// lane), and for opaque RGB texels the N16 words a store at full opacity
+/// writes for them.
+#[derive(Debug)]
+pub(super) struct Palette {
+    pub(super) indexes: Vec<u16>,
+    pub(super) table: Vec<f64>,
+    pub(super) words: Vec<[u16; 4]>,
+    /// Whether every texel has alpha and shape 1.
+    pub(super) opaque: bool,
+}
+
+impl Palette {
+    fn bytes(&self) -> usize {
+        self.indexes.capacity() * size_of::<u16>()
+            + self.table.capacity() * size_of::<f64>()
+            + self.words.capacity() * size_of::<[u16; 4]>()
     }
 }
 
@@ -942,6 +1202,8 @@ pub(super) struct Memo {
     state: MemoState,
     /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
+    /// How the texels held were converted.
+    mode: TexelMode,
 }
 
 /// A free slot: no key is negative.
@@ -1016,24 +1278,45 @@ impl MemoLayout {
         slots.saturating_mul(1 + self.held)
     }
 
-    /// Tightens only a source proven to have few distinct sample keys.
+    /// Retains at most `reads` keys: a source drawn small, or mostly
+    /// outside the region, reads fewer texels than its samples, and each
+    /// read adds at most one key. What the memo holds never changes a
+    /// value, so this sizes its table alone.
+    pub(super) fn bound(&mut self, reads: usize) {
+        self.limit = self.limit.min(reads.max(1));
+    }
+
+    /// Tightens only a source proven to have few distinct sample keys. One
+    /// whose keys are its colour codes alone is returned indexed instead,
+    /// where its indexes fit `bytes`.
     pub(super) fn fit(
         &mut self,
         image: &DecodedImage,
         mask: Option<&DecodedImage>,
         work: &mut Meter,
         bytes: &mut Meter,
-    ) -> Result<()> {
-        if let Some(samples) = SampleKeys::new(self.key, image, mask) {
-            // The pixel count already bounds small sources; discovering
-            // their keys would spend more temporary storage than it saves.
-            if samples.count <= 2048 {
-                self.limit = self.limit.min(samples.count.max(1));
-            } else if let Some(count) = samples.distinct(work, bytes)? {
-                self.limit = self.limit.min(count.max(1));
-            }
+    ) -> Result<Option<Indexed>> {
+        let Some(samples) = SampleKeys::new(self.key, image, mask) else {
+            return Ok(None);
+        };
+        // The pixel count already bounds small sources; discovering their
+        // keys would spend more temporary storage than it saves.
+        if samples.count <= 2048 {
+            self.limit = self.limit.min(samples.count.max(1));
+            return Ok(None);
         }
-        Ok(())
+        let mut indexed = Indexed::reserve(&samples, bytes)?;
+        let found = samples.distinct(work, bytes, indexed.as_mut());
+        let complete = indexed.take_if(|indexed| {
+            matches!(found, Ok(Some(_))) && indexed.indexes.len() == samples.count
+        });
+        if let Some(unused) = indexed {
+            bytes.refund(unused.bytes());
+        }
+        if let Some(count) = found? {
+            self.limit = self.limit.min(count.max(1));
+        }
+        Ok(complete)
     }
 
     /// Allocates the full fixed table after its bytes have been charged.
@@ -1045,6 +1328,7 @@ impl MemoLayout {
             slots,
             state: self.state(),
             spare: [0.0; MAX_LANES],
+            mode: TexelMode::Exact,
         })
     }
 }
@@ -1062,10 +1346,11 @@ impl Memo {
     }
 
     /// The `held` values of the texel of `key`, converted by `convert` into
-    /// a texel of every lane unless held.
+    /// a texel of every lane unless held. `held` is the layout's, passed by
+    /// callers that know it as a constant.
     #[inline]
-    fn get(&mut self, key: u64, convert: impl FnOnce(&mut [f64])) -> &[f64] {
-        let held = self.layout.held;
+    fn get(&mut self, key: u64, held: usize, convert: impl FnOnce(&mut [f64])) -> &[f64] {
+        debug_assert_eq!(held, self.layout.held);
         let stride = 1 + held;
         #[expect(
             clippy::cast_precision_loss,
@@ -1117,6 +1402,7 @@ pub(super) struct MemoTexels<'a> {
     /// a Matte is removed.
     matte: Option<&'a Opacity>,
     memo: RefCell<&'a mut Memo>,
+    mode: TexelMode,
 }
 
 impl<'a> MemoTexels<'a> {
@@ -1135,7 +1421,19 @@ impl<'a> MemoTexels<'a> {
             colors,
             matte,
             memo: RefCell::new(memo),
+            mode: TexelMode::Exact,
         })
+    }
+
+    /// These texels converted by `mode`; a memo holding texels converted
+    /// otherwise is emptied first.
+    pub(super) fn converting(mut self, mode: TexelMode) -> Self {
+        let memo = self.memo.get_mut();
+        if memo.mode != mode {
+            memo.reset();
+            memo.mode = mode;
+        }
+        Self { mode, ..self }
     }
 
     /// The texel of sample `index`, written into `out` (its held values).
@@ -1143,10 +1441,48 @@ impl<'a> MemoTexels<'a> {
     fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
         let components = memo.layout.key.components;
         let key = self.samples.get(index);
-        let values = memo.get(key, |texel| self.convert(index, components, texel));
+        let held = memo.layout.held;
+        let values = memo.get(key, held, |texel| self.convert(index, components, texel));
         for (out, &value) in out.iter_mut().zip(values) {
             *out = value;
         }
+    }
+
+    /// [`Texels::row`] from sample `start` on into `out`, `H` held values a
+    /// texel, for keys of `N` colour codes alone: one lookup per run of
+    /// equal keys, with fixed-size keys and copies. False, with nothing
+    /// written, where the samples are not all present.
+    #[inline]
+    fn plain_row<const N: usize, const H: usize>(
+        &self,
+        memo: &mut Memo,
+        start: usize,
+        out: &mut [f64],
+    ) -> bool {
+        let (texels, rest) = out.as_chunks_mut::<H>();
+        let count = texels.len();
+        let codes = start
+            .checked_mul(N)
+            .zip(start.checked_add(count).and_then(|end| end.checked_mul(N)))
+            .and_then(|(first, end)| self.samples.colors.get(first..end));
+        let Some(codes) = codes.filter(|_| rest.is_empty()) else {
+            return false;
+        };
+        // No key is all ones: keys have at most 48 bits.
+        let mut previous = u64::MAX;
+        let mut last = [0.0; H];
+        for ((index, codes), texel) in (start..).zip(codes.as_chunks::<N>().0).zip(texels) {
+            let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
+            if key != previous {
+                previous = key;
+                let held = memo.get(key, H, |texel| self.convert(index, N, texel));
+                if let Some(held) = held.first_chunk::<H>() {
+                    last = *held;
+                }
+            }
+            *texel = last;
+        }
+        true
     }
 
     /// Converts sample `index` into a texel of every lane.
@@ -1170,8 +1506,12 @@ impl<'a> MemoTexels<'a> {
                 opacity.code(u16::from(mask.get(index).copied().unwrap_or(0)))
             }),
         };
-        self.colors
-            .texel(&codes[..components.min(MAX_COMPONENTS)], extra, texel);
+        self.colors.texel_with(
+            &codes[..components.min(MAX_COMPONENTS)],
+            extra,
+            self.mode,
+            texel,
+        );
     }
 }
 
@@ -1189,10 +1529,12 @@ impl Texels for MemoTexels<'_> {
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
-        let mut texel = [0.0; MAX_LANES];
-        let texel = &mut texel[..sum.len()];
-        self.write(&mut self.memo.borrow_mut(), index, texel);
-        for (sum, value) in sum.iter_mut().zip(texel.iter()) {
+        let mut memo = self.memo.borrow_mut();
+        let components = memo.layout.key.components;
+        let key = self.samples.get(index);
+        let held = memo.layout.held;
+        let values = memo.get(key, held, |texel| self.convert(index, components, texel));
+        for (sum, value) in sum.iter_mut().zip(values) {
             *sum += value * weight;
         }
     }
@@ -1205,12 +1547,26 @@ impl Texels for MemoTexels<'_> {
         let mut memo = self.memo.borrow_mut();
         let start = sample_index(u64::from(row) * u64::from(width) + u64::from(first));
         let components = memo.layout.key.components;
+        let held = memo.layout.held;
+        let plain =
+            stride == held && self.samples.matte.is_none() && self.samples.embedded.is_none();
+        if plain
+            && match (components, held) {
+                (3, 3) => self.plain_row::<3, 3>(&mut memo, start, out),
+                (3, 4) => self.plain_row::<3, 4>(&mut memo, start, out),
+                (4, 3) => self.plain_row::<4, 3>(&mut memo, start, out),
+                (4, 4) => self.plain_row::<4, 4>(&mut memo, start, out),
+                _ => false,
+            }
+        {
+            return;
+        }
         let mut previous = None;
         let mut last = [0.0; MAX_LANES];
         for (index, values) in (start..start + count).zip(out.chunks_exact_mut(stride)) {
             let key = self.samples.get(index);
             if previous != Some(key) {
-                let held = memo.get(key, |texel| self.convert(index, components, texel));
+                let held = memo.get(key, held, |texel| self.convert(index, components, texel));
                 copy_values(&mut last, held);
                 previous = Some(key);
             }
@@ -1221,7 +1577,7 @@ impl Texels for MemoTexels<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Key, MemoLayout, SampleKeys};
+    use super::{Indexed, Key, MemoLayout, SampleKeys};
     use pagura_core::Meter;
 
     #[test]
@@ -1268,17 +1624,17 @@ mod tests {
         let mut work = Meter::new(100_000, "test");
         let mut bytes = Meter::new(32_768 + 7, "test");
         bytes.charge(7).unwrap();
-        assert_eq!(keys.distinct(&mut work, &mut bytes).unwrap(), Some(6));
+        assert_eq!(keys.distinct(&mut work, &mut bytes, None).unwrap(), Some(6));
         assert!(work.used() >= keys.count);
         assert_eq!(bytes.used(), 7);
 
         let mut tiny = Meter::new(0, "test");
-        assert!(keys.distinct(&mut tiny, &mut bytes).is_err());
+        assert!(keys.distinct(&mut tiny, &mut bytes, None).is_err());
         assert_eq!(tiny.used(), 0);
         assert_eq!(bytes.used(), 7);
         let mut tiny = Meter::new(32_767, "test");
         let before = work.used();
-        assert!(keys.distinct(&mut work, &mut tiny).is_err());
+        assert!(keys.distinct(&mut work, &mut tiny, None).is_err());
         assert_eq!(work.used(), before);
     }
 
@@ -1323,7 +1679,9 @@ mod tests {
         let mut bytes = Meter::new(usize::MAX, "sample bytes");
         bytes.charge(7).unwrap();
         assert_eq!(
-            keys.distinct(&mut work, &mut bytes).unwrap_err().message,
+            keys.distinct(&mut work, &mut bytes, None)
+                .unwrap_err()
+                .message,
             "sample work"
         );
         assert_eq!(work.used(), 4099);
@@ -1383,23 +1741,107 @@ mod tests {
             }
             colors.truncate(count * components - short * components);
             matte.truncate(count - short / 2);
-            let keys = SampleKeys {
-                components,
-                count,
-                colors: &colors,
-                matte: Some(&matte),
-                embedded: (components == 2).then_some(&matte[..count / 3]),
-            };
-            let (mut expected, mut skipped) = (Meter::new(1 << 30, "t"), Meter::new(1 << 30, "t"));
-            let found = keys.distinct(&mut skipped, &mut Meter::new(1 << 20, "t"));
-            assert_eq!(found.unwrap(), sampled(&keys, &mut expected));
-            assert_eq!(skipped.used(), expected.used());
-            let mut tight = Meter::new(expected.used() - 1, "t");
-            assert!(
-                keys.distinct(&mut tight, &mut Meter::new(1 << 20, "t"))
-                    .is_err()
-            );
+            for plain in [false, true] {
+                let keys = SampleKeys {
+                    components,
+                    count,
+                    colors: &colors,
+                    matte: (!plain).then_some(&matte),
+                    embedded: (components == 2 && !plain).then_some(&matte[..count / 3]),
+                };
+                let mut bytes = Meter::new(1 << 20, "t");
+                let (mut expected, mut skipped) =
+                    (Meter::new(1 << 30, "t"), Meter::new(1 << 30, "t"));
+                let mut indexed = Indexed::reserve(&keys, &mut bytes).unwrap();
+                assert_eq!(indexed.is_some(), plain);
+                let found = keys.distinct(&mut skipped, &mut bytes, indexed.as_mut());
+                let found = found.unwrap();
+                assert_eq!(found, sampled(&keys, &mut expected));
+                assert_eq!(skipped.used(), expected.used());
+                // Indexing every sample present finds the same keys.
+                if let Some(indexed) = indexed.filter(|i| i.indexes.len() == count) {
+                    assert_eq!(Some(indexed.keys.len()), found);
+                    for (index, &id) in indexed.indexes.iter().enumerate() {
+                        assert_eq!(indexed.keys[usize::from(id)], keys.get(index));
+                    }
+                }
+                let mut tight = Meter::new(expected.used() - 1, "t");
+                assert!(
+                    keys.distinct(&mut tight, &mut Meter::new(1 << 20, "t"), None)
+                        .is_err()
+                );
+            }
         }
+    }
+
+    /// The plain scan stops within its allowance: a long run of equal
+    /// samples is not walked to its end, and a chain of colliding keys
+    /// stops at the probe that exceeds it.
+    #[test]
+    fn plain_capacity_discovery_does_no_work_past_its_allowance() {
+        let fixed = 2 * super::DISTINCT;
+        let colors = vec![9; 1_000_000];
+        let keys = SampleKeys {
+            components: 1,
+            count: colors.len(),
+            colors: &colors,
+            matte: None,
+            embedded: None,
+        };
+        let mut indexed = Indexed::default();
+        let mut slots = vec![u64::MAX; fixed];
+        assert_eq!(
+            keys.plain_scan::<1, true>(&mut slots, 3, &mut indexed),
+            Some(super::Scan::Exhausted)
+        );
+        assert_eq!(indexed.indexes.len(), 2);
+        let mut work = Meter::new(fixed + 3, "scan work");
+        let mut bytes = Meter::new(1 << 20, "scan bytes");
+        assert_eq!(
+            keys.distinct(&mut work, &mut bytes, None).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+        assert_eq!(work.used(), fixed + 3);
+        assert_eq!(bytes.used(), 0);
+
+        // Keys of three codes that share a slot: inserting the `k`th one
+        // probes `k - 1` slots.
+        let target = super::hash_slot(0, fixed - 1);
+        let colliding: Vec<u32> = (0..1 << 24)
+            .filter(|&v| super::hash_slot(u64::from(v), fixed - 1) == target)
+            .take(64)
+            .collect();
+        let colors: Vec<u8> = colliding
+            .iter()
+            .flat_map(|v| v.to_be_bytes()[1..].to_vec())
+            .collect();
+        let keys = SampleKeys {
+            components: 3,
+            count: colliding.len(),
+            colors: &colors,
+            matte: None,
+            embedded: None,
+        };
+        // Each key costs its sample, its run and its probes: 63 keys fit,
+        // the last one's chain does not.
+        let allowance = (0..63).map(|k| 2 + k).sum::<usize>() + 2 + 62;
+        let mut indexed = Indexed::default();
+        let mut slots = vec![u64::MAX; fixed];
+        assert_eq!(
+            keys.plain_scan::<3, true>(&mut slots, allowance, &mut indexed),
+            Some(super::Scan::Exhausted)
+        );
+        assert_eq!(indexed.keys.len(), 63);
+        let mut work = Meter::new(fixed + allowance, "scan work");
+        assert_eq!(
+            keys.distinct(&mut work, &mut bytes, None).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+        assert_eq!(work.used(), fixed + allowance);
+        assert_eq!(bytes.used(), 0);
+        let mut slots = vec![u64::MAX; fixed];
+        let found = keys.plain_scan::<3, false>(&mut slots, allowance + 1, &mut Indexed::default());
+        assert_eq!(found, Some(super::Scan::Complete(Some(64), allowance + 1)));
     }
 
     /// The memo reserves less than eight bytes a sample of its image, and
@@ -1412,6 +1854,12 @@ mod tests {
             embedded: false,
         };
         assert!(MemoLayout::new(key, (3, true), 1_000_000, false).bytes() <= 8_000_000);
+        // A large source drawn into few pixels keeps a table for its reads.
+        let mut drawn = MemoLayout::new(key, (3, true), 15_000_000, false);
+        assert!(drawn.bytes() > 60_000_000);
+        drawn.bound(5_712 * 4);
+        assert_eq!(drawn.limit, 5_712 * 4);
+        assert!(drawn.bytes() < 3_000_000);
         assert!(MemoLayout::new(key, (4, true), 64, false).bytes() <= (8 << 12) * 5 * 8);
         let mut memo = MemoLayout::new(key, (3, true), 0, false).make().unwrap();
         let texel = |key: u64| {
@@ -1421,7 +1869,7 @@ mod tests {
         };
         for round in 0..2 {
             for k in 0..10_000u64 {
-                let held = memo.get(k, |out| out[..3].copy_from_slice(&texel(k)));
+                let held = memo.get(k, 3, |out| out[..3].copy_from_slice(&texel(k)));
                 assert_eq!(held, texel(k), "key {k} round {round}");
             }
         }
@@ -1433,7 +1881,7 @@ mod tests {
             .unwrap();
         let mut converted = 0;
         for _ in 0..3 {
-            let held = memo.get(replacement, |out| {
+            let held = memo.get(replacement, 3, |out| {
                 converted += 1;
                 out[..3].copy_from_slice(&texel(replacement));
             });
@@ -1459,7 +1907,7 @@ mod tests {
         for key in 0..128u32 {
             let expected = [f64::from(key); 3];
             for _ in 0..2 {
-                let held = memo.get(u64::from(key), |out| {
+                let held = memo.get(u64::from(key), 3, |out| {
                     converted += 1;
                     out[..3].copy_from_slice(&expected);
                 });
@@ -1501,7 +1949,7 @@ mod tests {
             for &key in &keys {
                 let expected = [f64::from(key); 3];
                 assert_eq!(
-                    memo.get(u64::from(key), |out| {
+                    memo.get(u64::from(key), 3, |out| {
                         converted += 1;
                         out[..3].copy_from_slice(&expected);
                     }),
@@ -1539,7 +1987,7 @@ mod tests {
         for round in 0..2 {
             for k in keys.clone() {
                 for _ in 0..2 {
-                    let held = memo.get(k, |out| {
+                    let held = memo.get(k, 3, |out| {
                         converted += 1;
                         out[..3].copy_from_slice(&texel(k));
                     });

@@ -211,9 +211,9 @@ fn point_cells_keep_the_true_curve_across_origins_clips_and_bands() {
         for reversed in [false, true] {
             let path = pointed_curve(&points, reversed);
             let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-            if points.len() > 1 {
-                assert!(!edges.curved());
-            }
+            // One explicit point keeps a certified curve's point cell;
+            // several keep the curve's covered set with their cells.
+            assert!(edges.curved());
             for origin in [
                 Point::new(-1.000_000_1, -2.0),
                 Point::new(-0.999_999_9, -1.999_999_9),

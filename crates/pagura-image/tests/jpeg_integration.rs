@@ -82,9 +82,13 @@ fn lossless_sample_storage_and_work_have_exact_boundaries() {
 fn dnl_resolves_height_before_allocation_and_uses_exact_work_limits() {
     // DHT and SOS marker/length fields: 4+4 bytes; entropy and DNL marker:
     // 1+2; Ld and NL: 4. Decoding one DCT block costs 64 plus the final
-    // two-byte marker inspection: 15+64+2=81 operations, 384 live bytes.
+    // two-byte marker inspection: 15+64+2=81 operations. Admission includes
+    // 64 native and 64 output bytes, plus the DCT conversion-row allowance:
+    // six i16 rows and one (index, two bytes) tie row. This conservative
+    // allowance is retained even though grayscale does not allocate the rows.
+    let bytes = 128 + 8 * (6 * size_of::<i16>() + size_of::<(usize, u8, u8)>());
     let limits = Limits {
-        decoded_bytes: 384,
+        decoded_bytes: bytes,
         operations: 81,
         pixels: 64,
         ..Limits::default()
@@ -96,7 +100,7 @@ fn dnl_resolves_height_before_allocation_and_uses_exact_work_limits() {
         assert_eq!(decoded.samples, [128; 64]);
         for limited in [
             Limits {
-                decoded_bytes: 383,
+                decoded_bytes: bytes - 1,
                 ..limits
             },
             Limits {

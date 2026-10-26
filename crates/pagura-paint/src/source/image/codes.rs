@@ -55,12 +55,16 @@ impl Affine {
     /// the product unless that does not multiply back to the code, and
     /// then the quotient, so that a level of 255 such as `k + 1/2` from an
     /// exact average reaches storage exact, and with it its rounding.
+    /// Averages take either about equally often, so both are computed and
+    /// one selected, rather than branching.
     #[inline]
     fn apply(self, code: f64) -> f64 {
         let value = code * self.slope;
         match self.unit {
-            Some(maximum) if value * maximum != code => code / maximum,
-            Some(_) => value,
+            Some(maximum) => {
+                let quotient = code / maximum;
+                std::hint::select_unpredictable(value * maximum != code, quotient, value)
+            }
             None => self.zero + value,
         }
     }

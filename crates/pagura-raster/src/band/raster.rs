@@ -774,8 +774,8 @@ impl Items<'_> {
                 let Some(relative) = glyph.edges.relative() else {
                     unreachable!("a relative glyph source");
                 };
-                // A placement with a point cell visits every item.
-                let point = glyph.edges.point().map(|_| glyph);
+                // A placement with point cells visits every item.
+                let point = (!glyph.edges.points().is_empty()).then_some(glyph);
                 debug_assert!(point.is_none() || glyph.strips.is_none());
                 let lines = Lines::Slice {
                     lines: &relative.lines,
@@ -812,7 +812,9 @@ impl Items<'_> {
             list.strip(window.start / STRIP).len()
         } else {
             let lines = match &self.lines {
-                Lines::Slice { lines, point } => lines.len() + 2 * usize::from(point.is_some()),
+                Lines::Slice { lines, point } => {
+                    lines.len() + point.map_or(0, |glyph| 2 * glyph.edges.points().len())
+                }
                 Lines::Polygon(view) => view.raw_count().unwrap_or(usize::MAX),
             };
             lines + self.curves.len()
@@ -894,25 +896,24 @@ impl Items<'_> {
             point: Some(glyph), ..
         } = &self.lines
         {
-            work += 2;
-            let Some(point) = glyph.edges.point() else {
-                unreachable!("a point cell with its point");
-            };
-            let [right, left] = point_sides(point + glyph.origin);
             let rows = cells.rows();
             let scan = f64::from(u32::try_from(glyph.scan.0).unwrap_or(u32::MAX));
-            // A whole cell outside the global scan contributes no carry.
-            // Within that scan, keep both sides even left of the output
-            // region: its prefix arithmetic is shared with a full render.
-            if right.a.y >= f64::from(rows.start)
-                && right.a.y < f64::from(rows.end)
-                && right.a.x > scan
-                && cells.reaches(left.a.x)
-            {
-                for line in [right, left] {
-                    // These are absolute canonical endpoints. Adding an
-                    // origin or a default zero again changes their bits.
-                    work += Self::line(cells, line);
+            for &point in glyph.edges.points() {
+                work += 2;
+                let [right, left] = point_sides(point + glyph.origin);
+                // A whole cell outside the global scan contributes no carry.
+                // Within that scan, keep both sides even left of the output
+                // region: its prefix arithmetic is shared with a full render.
+                if right.a.y >= f64::from(rows.start)
+                    && right.a.y < f64::from(rows.end)
+                    && right.a.x > scan
+                    && cells.reaches(left.a.x)
+                {
+                    for line in [right, left] {
+                        // These are absolute canonical endpoints. Adding an
+                        // origin or a default zero again changes their bits.
+                        work += Self::line(cells, line);
+                    }
                 }
             }
         }

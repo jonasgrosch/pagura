@@ -38,6 +38,7 @@ mod edges;
 mod glyph;
 mod raster;
 mod rect;
+mod repeat;
 mod row;
 mod shape;
 mod union;
@@ -47,6 +48,7 @@ pub use coverage::{BandCoverage, Capacity, CoverageRow, RowOut, Span};
 pub(crate) use edges::{Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
+pub use repeat::StrokeTemplates;
 pub use shape::Shape;
 pub(crate) use shape::{RASTER_WORK, RENDER_BYTES};
 

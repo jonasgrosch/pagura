@@ -23,6 +23,8 @@ pub(crate) struct Scratch {
     pub(super) memo: Option<Box<texels::Memo>>,
     pub(super) summed: Vec<f64>,
     pub(super) fused: Vec<f64>,
+    /// How the texels of the rows `plan` holds were converted.
+    pub(super) mode: texels::TexelMode,
 }
 
 impl Layout {
@@ -51,6 +53,7 @@ impl Layout {
                 .transpose()?,
             summed: allocate(self.summed)?,
             fused: allocate(self.fused)?,
+            mode: texels::TexelMode::Exact,
         })
     }
 }
@@ -72,12 +75,19 @@ impl Scratch {
 
     /// Invalidates source-dependent caches between renders.
     pub(crate) fn reset(&mut self) {
+        self.switch();
+        if let Some(memo) = &mut self.memo {
+            memo.reset();
+        }
+    }
+
+    /// Invalidates the caches of one placement before another draw of the
+    /// same image takes this storage; their texels, and so the memo, are
+    /// the same.
+    pub(crate) fn switch(&mut self) {
         self.plan.reset();
         if let Some(mask) = &mut self.mask {
             mask.reset();
-        }
-        if let Some(memo) = &mut self.memo {
-            memo.reset();
         }
     }
 }

@@ -340,6 +340,16 @@ and report SHA-256
 This rendering result is separate from full product acceptance. The original
 missing-DNL test now asserts Syntax: T.81 B.2.5 requires DNL for SOF Y=0, so its
 absence is malformed rather than an unimplemented process.
+The corrected checkpoint `20cf20993f229ce589366ceacf9f14446293df00` passes all
+three OS jobs in [functional run 40378326876](https://github.com/jonasgrosch/pagura/actions/runs/40378326876),
+[editing run 40378333349](https://github.com/jonasgrosch/pagura/actions/runs/40378333349),
+and all 274 Pagura controls in [capability run 40378339724](https://github.com/jonasgrosch/pagura/actions/runs/40378339724).
+Its artifact `12678465710` has ZIP SHA-256
+`0752e6672392e2afcc63fa092d8465f4e908a8faf1487d312c37d50eecdb35dd`
+and report SHA-256
+`55ea413098f3a1a54c26502ab9c74dceb255c750eda5b1f2f5010f95e9942a1e`.
+These are historical results after integration of performance base
+`9f9801a754203009a314644ba22afbfdc4f3e58b`; that integration needs fresh hosted gates.
 The original diagnostic inventory had those fourteen image cases plus
 blank/rectangle controls, for 112 cells.
 Its eight Pagura subject failures remain `adapter-error`, as recorded by the
@@ -372,8 +382,14 @@ This adds one first-scan framing traversal to ordinary JPEGs; there is no second
 pixel decode or preflight entropy copy. Every inspected byte is charged. The
 literal lossless control's work rises from 22 to 60: 4 SOS/length bytes plus 34
 entropy-through-EOI bytes, followed by its unchanged 20 sample units and 2 end-marker
-inspections. The DNL constant control requires 81 operations, 384 live bytes and 64
-pixels; one-short bounds refuse it.
+inspections. The DNL constant control requires 81 operations and 64 pixels.
+After the performance-base merge its byte admission is 128 plane/output bytes
+plus `8*(6*sizeof(i16)+sizeof((usize,u8,u8)))` for the DCT conversion-row
+allowance: 352 bytes on a 64-bit host, with a one-short refusal. This is a
+conservative admission bound, not the live row allocation of a gray image.
+Sequential DCT frames no longer reserve nonexistent coefficient planes; the
+lossless scalar word path retains its exact 100/99-byte control without a row
+allowance. The pixel oracles and 81/80 and 60/59 work boundaries are unchanged.
 
 The bounded [Ubuntu measurement](https://github.com/jonasgrosch/pagura/actions/runs/40375650525)
 compared subject `c04da5c605d84c7e66c7de3582f28abc61738a97` with baseline
@@ -435,3 +451,49 @@ uses the existing `explicit_refusal` owner from the appearance workstream.
 A named backend/CLI refusal is recorded as such; arbitrary nonzero exits stay
 unclassified. Negative controls cover both cases without changing pixel acceptance
 or historic diagnostic rows.
+
+## R03 enumerated CIELab diagnostic
+
+The private source checkpoint
+[`ee7f1aecf197bf55602f22f2101d4d9dc3fffc23`](https://github.com/jonasgrosch/pagura/tree/ee7f1aecf197bf55602f22f2101d4d9dc3fffc23/tools/fixturegen/jpx_lab_probe.py)
+keeps product code identical to `20cf20993f229ce589366ceacf9f14446293df00`.
+[Run 40380351282](https://github.com/jonasgrosch/pagura/actions/runs/40380351282)
+measured six D50 enumerated-14 subjects: default/explicit-default 8-bit,
+default 16-bit, explicit custom ranges at 8/16 bits, and mixed 8/12/16-bit
+palette output. Each has an unchanged-codestream sRGB control, an independently
+calculated RGB control, and a PDF Lab control. With blank/rectangle controls,
+these are 26 cases and 182 observed cells. The six malformed-length and five
+sign/illuminant/zero-range vectors were not executed or counted in that total.
+
+The [JPX requirements](../../references/requirements/jpx.json) record T.801
+M.11.7.4.1/M-18 default and explicit R/O mappings, Cor4 features 56/57, and the
+primary D50 white point. Oracles and tolerances were frozen before execution.
+All 36 baseline subject cells are `incorrect`; Pagura reports six explicit
+`filter.JPXDecode` refusals and passes all 20 controls. MuPDF passes every paired
+control, but its five direct Lab subjects have the same RGB digests as their
+codec controls; its palette result is grayscale. This is a scoped negative
+result, not a family support verdict. Baseline CIELab remains a normative PDF
+7.4.9/T.801 M.9.2.4 obligation and an open Pagura gap.
+
+| Pinned baseline | Subject/control adjudication |
+| --- | --- |
+| MuPDF 1.28.5, wrapper 2.0 | All 18 paired controls pass; six subjects fail with maximum channel error 160–167. |
+| PDFium 156.0.8076.0, pypdfium2 5.14.0 | Direct subjects match their sRGB codec-control digests; PDF Lab controls and the palette codec control fail. |
+| PDF.js 6.4.299, Node 26.8.1, canvas 1.0.11 | Subjects match their codec-control digests; PDF Lab controls fail. |
+| hayro 0.8.0 | Direct subject pixels differ from both codec controls and RGB oracles; palette codec and four PDF Lab controls fail. |
+| Poppler 24.02.0, PyGObject 3.48.2 | RGB/codec controls fail; subjects remain unadjudicated against those pairs. |
+| Quartz macOS 26.6.2 build 25G83 | jpxb codec and PDF Lab controls fail; subjects remain unadjudicated against those pairs. |
+
+Pagura binary SHA-256 is
+`22b78813c9cece861ba6428a7dcb30a724d3812f5cdb6c980479d8324c50bb2f`.
+The Linux render job fails on the expected refusals; macOS completes its
+observations. All inventory jobs pass; combined-report jobs are skipped. The
+platform reports retain their original outcomes and other-platform `not-run`
+rows. No diagnostic result is promoted into an integrated acceptance control.
+
+| Artifact | ID | SHA-256 of ZIP | SHA-256 of report |
+| --- | --- | --- | --- |
+| Ubuntu report | 12678907140 | `c7c8eb68ff7c16e5cff26b7689c2a90c3ec3fd298b125f192d718c291ede5ba3` | `21e66b279dabb2cddd86a5bee819bb165a70ab69af993ecad6596ff3afaede55` |
+| macOS report | 12677922030 | `8aa365172ca2abf724443c4807adced87122e141eb08dc2eb5fe27cad56c3cc5` | `de5ec5fcd6226887adb32649f2fbd619ac706d48447f89f6054151c3b395c7d3` |
+| Ubuntu pixels | 12679126815 | `7f80445c28fdf91028d682eb5fc721c343411e3bb8619e88ab6ad16b014cb25e` | — |
+| macOS pixels | 12678112882 | `b4199b530e637c32da343f91fb246add18805e6c7545dcf2a3c0536cd5970764` | — |

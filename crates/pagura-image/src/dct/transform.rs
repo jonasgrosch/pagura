@@ -11,6 +11,7 @@ use pagura_core::{
     Error, Limits, Result,
     convert::{round_u8, round_u16},
 };
+pub(super) use rgb::ROW_BYTES;
 use rgb::{Offsets, Rgb};
 
 // T.81 Figure A.6 diagonal coefficient order, independent of any encoder.

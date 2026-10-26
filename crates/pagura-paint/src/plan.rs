@@ -4,7 +4,7 @@
 //! preparation, read-only during execution.
 
 use crate::format::Format;
-use crate::source::Source;
+use crate::source::{ScratchLayout, Source};
 use pagura_color::{Converter, Encoder, Function, MAX_COMPONENTS, Process};
 use pagura_core::{Error, Name, Position, Result};
 use pagura_interpret::{BlendMode, MaskKind};
@@ -67,6 +67,8 @@ pub(crate) struct Plan {
     pub(crate) masks: Vec<MaskPlan>,
     /// Prepared paints.
     pub(crate) paints: Vec<Source>,
+    /// The execution storage the paints take turns with.
+    pub(crate) slots: Slots,
     /// Process conversions of group results.
     pub(crate) conversions: Vec<Conversion>,
     /// Output.
@@ -189,6 +191,8 @@ pub(crate) struct Mark {
     pub(crate) cover: Cover,
     /// Index into [`Plan::paints`].
     pub(crate) paint: u32,
+    /// Index into the workspace's paint storage ([`Slots`]).
+    pub(crate) scratch: u32,
     /// Compositing.
     pub(crate) compositing: Compositing,
     /// The transfer selection it records (11.7.5.2); 0 is the default.
@@ -201,6 +205,19 @@ pub(crate) struct Mark {
     /// The N16 words of an opaque constant colour that only coverage
     /// reduces, encoded once (ADR 0004 §5).
     pub(crate) words: Option<[u16; 4]>,
+}
+
+/// The execution storage of a plan's paints. Draws of one image under one
+/// graphics state into one target convert texels alike, so they share
+/// storage and its colour memo; paints without storage share an empty one.
+#[derive(Debug, Default)]
+pub(crate) struct Slots {
+    /// Per paint, its storage.
+    pub(crate) of: Vec<u32>,
+    /// Per storage, its capacities; `None` for the empty one.
+    pub(crate) layouts: Vec<Option<ScratchLayout>>,
+    /// The empty storage, once a paint needs it.
+    pub(crate) empty: Option<u32>,
 }
 
 /// The outline coverage a shading pattern mixes its `Background` by.

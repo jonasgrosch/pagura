@@ -34,7 +34,7 @@ pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
     ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels,
+    SampleTexels, Strategy, TableTexels, TexelMode, WordCodes,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -109,6 +109,7 @@ impl Paint {
         match self {
             Self::Colors(paint) => match &paint.1 {
                 Strategy::Table(_, opaque) => *opaque,
+                Strategy::Indexed(palette) => palette.opaque,
                 Strategy::Rgb(_) => matches!(image.samples, Samples::Bytes(_)),
                 Strategy::Memo(layout) => layout.opaque(),
                 Strategy::General => false,
@@ -165,7 +166,14 @@ impl Plan {
         if let Paint::Colors(paint) = &mut paint
             && let Strategy::Memo(layout) = &mut paint.1
         {
-            layout.fit(image, mask.map(|mask| &mask.image.image), work, bytes)?;
+            // The memo holds at most a key per texel read.
+            layout.bound(pixels.saturating_mul(geometry.cost()));
+            let opaque = layout.opaque();
+            let mask = mask.map(|mask| &mask.image.image);
+            if let Some(indexed) = layout.fit(image, mask, work, bytes)? {
+                let source = (&paint.0, usize::from(image.components), opaque);
+                paint.1 = indexed.strategy(source, bytes, functions)?;
+            }
         }
         // Keep work and function admission before stencil recolouring, as
         // when the caller applied its solid colour after preparation.
@@ -551,6 +559,12 @@ impl ImageSampler {
                 _ => false,
             },
             Plan::Texels { sampling, paint } => {
+                if let (Sampling::Separable(plan), Paint::Colors(colors)) = (sampling, paint)
+                    && let Strategy::Indexed(palette) = &colors.1
+                    && let Some(words) = prepared.palette_words(plan, palette, pixels, out)
+                {
+                    return words;
+                }
                 prepared.texel_words((sampling, paint), pixels, scratch, out)
             }
         }
@@ -609,7 +623,13 @@ impl ImageSampler {
         let stride = lanes + usize::from(fused);
         let mut storage = std::mem::take(&mut scratch.summed);
         let summed = scratch::grown(&mut storage, len * stride);
-        prepared.texels((plan, paint), pixels, scratch, lanes, summed);
+        let mode = prepared.texel_mode(paint, pixels);
+        // Rows held for texels converted otherwise must not serve these.
+        if scratch.mode != mode {
+            scratch.plan.reset();
+            scratch.mode = mode;
+        }
+        prepared.texels((plan, paint), pixels, scratch, (lanes, mode), summed);
         let straight = Straight {
             summed,
             stride,
@@ -747,6 +767,22 @@ impl Prepared {
         }
     }
 
+    /// [`ImageSampler::words`] of nearest samples of an image indexed into
+    /// `palette` under `plan`, or `None` where the placement or palette
+    /// does not allow them. Out of line, so that the path of other sources
+    /// stays as it was.
+    #[inline(never)]
+    fn palette_words(
+        &self,
+        plan: &separable::Separable,
+        palette: &texels::Palette,
+        pixels: Pixels<'_>,
+        out: &mut [[u16; 4]],
+    ) -> Option<bool> {
+        let (row, cells) = plan.nearest_samples(pixels)?;
+        entry_words(palette, (row, self.image.image.width), cells, out).then_some(true)
+    }
+
     /// [`ImageSampler::words`] of opaque texels sampled nearest or
     /// averaged: the texels, then, where every pixel's alpha is 1, their
     /// words. Bilinear weights need not sum to exactly 1, so those pixels
@@ -765,7 +801,13 @@ impl Prepared {
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);
         let values = scratch::grown(&mut storage, len * lanes);
-        self.texels((plan, paint), pixels, scratch, lanes, values);
+        self.texels(
+            (plan, paint),
+            pixels,
+            scratch,
+            (lanes, TexelMode::Exact),
+            values,
+        );
         let texels = values.as_chunks::<5>().0;
         // A footprint that misses the image leaves its pixel transparent.
         let opaque = texels.iter().all(|texel| texel[3] == 1.0);
@@ -784,12 +826,32 @@ impl Prepared {
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.
+    /// How the span's texels convert: each to a value of the same F32
+    /// level as its exact colour where only those levels are kept
+    /// ([`crate::source::Precision::Level`]) and every pixel copies one
+    /// opaque texel unmasked (nearest samples of an opaque memoized image
+    /// without a mask), as its colour; otherwise exactly.
+    fn texel_mode(&self, paint: &Paint, pixels: Pixels<'_>) -> TexelMode {
+        let copies = pixels.precision == crate::source::Precision::Level
+            && self.mask.is_none()
+            && self.geometry.mode() == Mode::Nearest
+            && paint.opaque(&self.image.image);
+        match paint {
+            Paint::Colors(paint)
+                if copies && matches!(paint.1, Strategy::Memo(_)) && paint.0.convert.rounds() =>
+            {
+                TexelMode::Rounded
+            }
+            _ => TexelMode::Exact,
+        }
+    }
+
     fn texels(
         &self,
         (plan, paint): (&Sampling, &Paint),
         pixels: Pixels<'_>,
         scratch: &mut ImageScratch,
-        lanes: usize,
+        (lanes, mode): (usize, TexelMode),
         out: &mut [f64],
     ) {
         let ImageScratch {
@@ -807,6 +869,15 @@ impl Prepared {
             Paint::Colors(paint) => match &paint.1 {
                 Strategy::Table(table, opaque) => {
                     self.table(plan, pixels, &mut buffers, (table, lanes, *opaque), out);
+                }
+                Strategy::Indexed(palette) => {
+                    let texels = TableTexels {
+                        codes: WordCodes(&palette.indexes),
+                        table: &palette.table,
+                        lanes,
+                        opaque: palette.opaque,
+                    };
+                    self.sample(plan, pixels, &mut buffers, &texels, out);
                 }
                 Strategy::Rgb(tables) => {
                     if let Samples::Bytes(bytes) = &image.samples {
@@ -829,7 +900,10 @@ impl Prepared {
                         .as_deref_mut()
                         .and_then(|memo| MemoTexels::new(image, colors, mask, memo))
                     {
-                        Some(texels) => self.sample(plan, pixels, &mut buffers, &texels, out),
+                        Some(texels) => {
+                            let texels = texels.converting(mode);
+                            self.sample(plan, pixels, &mut buffers, &texels, out);
+                        }
                         None => self.general(plan, pixels, &mut buffers, colors, out),
                     }
                 }
@@ -887,6 +961,40 @@ impl Prepared {
             Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
         }
     }
+}
+
+/// Writes the words of nearest samples `cells` of source row `row` of an
+/// image `width` samples wide through their palette entries: the words
+/// [`Prepared::texel_words`] writes for those entries' texels. False,
+/// with nothing written, where the palette has no words or a sample is
+/// missing.
+fn entry_words(
+    palette: &texels::Palette,
+    (row, width): (usize, u32),
+    cells: &[u32],
+    out: &mut [[u16; 4]],
+) -> bool {
+    let width = usize::try_from(width).unwrap_or(usize::MAX);
+    let line = row
+        .checked_mul(width)
+        .and_then(|start| palette.indexes.get(start..start.checked_add(width)?));
+    let Some(line) = line.filter(|_| cells.len() == out.len() && !palette.words.is_empty()) else {
+        return false;
+    };
+    if cells
+        .iter()
+        .any(|&cell| separable::index(cell) >= line.len())
+    {
+        return false;
+    }
+    // Every index names an entry, which has its words.
+    for (pixel, &cell) in out.iter_mut().zip(cells) {
+        let id = line
+            .get(separable::index(cell))
+            .map_or(0, |&id| usize::from(id));
+        *pixel = palette.words.get(id).copied().unwrap_or_default();
+    }
+    true
 }
 
 /// The image decoded for painting through the store: one-bit samples
@@ -1181,7 +1289,7 @@ fn fast_lanes(
                 codes::Lanes::single(table, lanes, codes, *opaque, bytes)
             }
             Strategy::Rgb(tables) => codes::Lanes::rgb(tables, bytes),
-            Strategy::Memo(_) | Strategy::General => Ok(None),
+            Strategy::Memo(_) | Strategy::Indexed(..) | Strategy::General => Ok(None),
         },
     }
 }

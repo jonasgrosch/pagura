@@ -213,25 +213,28 @@ impl Frame {
         let unit = process.unit();
         let mcu_cols = (width as usize).div_ceil(unit * max_h);
         let mcu_rows = (height as usize).div_ceil(unit * max_v);
-        // Coefficients coexist with native planes and expanded samples. For
-        // P=12 the latter coexist with the final byte buffer as well.
-        // Sequential frames store native samples instead of coefficients;
-        // they keep this bound.
+        // Progressive coefficients coexist with native planes and expanded
+        // samples; sequential/lossless scans write the native planes directly.
+        // Word samples also coexist with the final byte output. DCT frames
+        // retain the conversion-row allowance; lossless output uses scalar
+        // word conversion and never allocates those rows.
         let words = data[0] > 8 || process.is_lossless();
+        let plane_bytes = u64::from(words) + 1;
+        let per_sample = if process.is_progressive() {
+            4 + plane_bytes
+        } else {
+            plane_bytes
+        };
         let mut memory =
             u64::from(width) * u64::from(height) * u64::from(n) * if words { 3 } else { 1 };
+        if !process.is_lossless() {
+            memory += u64::from(width) * super::transform::ROW_BYTES as u64;
+        }
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;
-            let sample_bytes = if process.is_lossless() {
-                2
-            } else if words {
-                6
-            } else {
-                5
-            };
             memory = memory
-                .checked_add(c.stride as u64 * c.rows as u64 * (unit * unit) as u64 * sample_bytes)
+                .checked_add(c.stride as u64 * c.rows as u64 * (unit * unit) as u64 * per_sample)
                 .ok_or(Error::limit("JPEG allocation overflow"))?;
         }
         if memory > limits.decoded_bytes as u64 {
