@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -42,7 +42,7 @@
       }
     },
     {
-      "id": "jpx.rgb",
+      "id": "jpx.gray",
       "capability": "images.jpx-colour",
       "operation": "render",
       "fixture": "paint/image-jpx",

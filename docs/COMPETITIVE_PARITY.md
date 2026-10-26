@@ -160,12 +160,13 @@ adds ten independent populated/empty/rejection controls, 60 explicit case/engine
 cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
 six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstruction
 and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
-operation/configuration matrix and Pagura observations remain open. These
+operation/configuration matrix and Pagura document-service observations remain open. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
-The initial render slice adds six independent pixel oracles and 36 case/engine
-cells for empty/populated controls, fractional geometry and JPX colour/alpha.
-It retains wrong pixels as measured failures; hosted execution of this slice
-is pending. The separate R02 changes need their own expanded probes after
+The initial render slice adds six independent pixel oracles and 42 case/engine
+cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
+The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
+these are observations pending sampling/colour/alpha adjudication, not established
+competitor defects. The subsequent Pagura-inclusive run remains pending. The separate R02 changes need their own expanded probes after
 consolidation onto the shared target.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer

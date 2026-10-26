@@ -18,6 +18,9 @@ on:
       - 'benchmarks/node-package*.json'
       - 'rust-toolchain.toml'
       - '.cargo/config.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/**'
       - '.python-version'
       - 'references/requirements/**'
       - 'corpus/manifests/classic.json'
@@ -66,9 +69,11 @@ jobs:
           - os: ubuntu-latest
             install: pdfium,mupdf,pdfjs,hayro
             engines: pdfium,mupdf,pdfjs,poppler,hayro
+            render_engines: pdfium,mupdf,pdfjs,poppler,hayro,pagura
           - os: macos-latest
             install: quartz
             engines: quartz
+            render_engines: quartz
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
@@ -91,6 +96,9 @@ jobs:
       - name: Install Poppler GLib public API
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y python3-gi gir1.2-poppler-0.18 poppler-utils
+      - name: Build the Pagura subject with default features
+        if: runner.os == 'Linux'
+        run: cargo build --release --locked --offline --bin pagura
       - name: Install isolated competitor adapters
         env:
           PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
@@ -108,7 +116,7 @@ jobs:
       - name: Probe independent render oracles
         env:
           PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
-        run: python tools/capability_render.py run --engines "${{ matrix.engines }}" --output "$RUNNER_TEMP/render-report.json" --images "$RUNNER_TEMP/render-images"
+        run: python tools/capability_render.py run --engines "${{ matrix.render_engines }}" --output "$RUNNER_TEMP/render-report.json" --images "$RUNNER_TEMP/render-images"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -152,7 +160,7 @@ jobs:
         with:
           pattern: capability-rendering-*
           path: ${{ runner.temp }}/render-inputs
-      - name: Require one source revision and all six render baselines
+      - name: Require one source revision, all six render baselines and Pagura
         run: python tools/capability_render.py combine "$RUNNER_TEMP"/render-inputs/*/render-report.json --output "$RUNNER_TEMP/render-report.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

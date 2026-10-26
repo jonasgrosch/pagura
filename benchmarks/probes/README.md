@@ -5,8 +5,10 @@ embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
 The companion [render manifest](rendering.json) adds six independent pixel
-oracles: blank and rectangle controls, fractional geometry, JPX RGB and straight/
-premultiplied JPX alpha. Its 36 cells use all six existing public render adapters.
+oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
+premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
+existing public render adapters. The ledger retains six competitor columns;
+Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
 |---|---|---|---|
@@ -58,7 +60,8 @@ python tools/capability_render.py check
 # Hosted Ubuntu, after installing the OS Poppler GLib/GI packages:
 python tools/competitors.py setup --engines pdfium,mupdf,pdfjs,hayro
 python tools/capability_probes.py run --engines pdfium,mupdf,pdfjs,poppler,hayro --output /tmp/linux.json
-python tools/capability_render.py run --engines pdfium,mupdf,pdfjs,poppler,hayro --output /tmp/render-linux.json
+cargo build --release --locked --offline --bin pagura
+python tools/capability_render.py run --engines pdfium,mupdf,pdfjs,poppler,hayro,pagura --output /tmp/render-linux.json
 # Hosted macOS:
 python tools/competitors.py setup --engines quartz
 python tools/capability_probes.py run --engines quartz --output /tmp/mac.json
@@ -78,7 +81,10 @@ an asserted lock pin. Workspace/cache paths become placeholders. Native
 diagnostics retain byte counts and hashes rather than raw logs.
 
 `capability-rendering-<os>` and `capability-rendering` retain the pixel observations
-separately. The exact PDF/oracle bytes and normalized RGB identities are hashed.
+separately. Joining requires all six baselines plus Pagura. The CLI version and
+actual Pagura binary hash are recorded; the hosted workflow builds default
+features from its checkout using the pinned toolchain. Outside that workflow,
+a pre-existing binary has no asserted source revision. The exact PDF/oracle bytes and normalized RGB identities are hashed.
 P6/PAM/RGBA adapter output is normalized to RGB over white without resizing,
 alignment or inferred tolerance. Every pixel must meet the fixture's existing
 per-channel bound at the recorded dimensions. There is no majority-vote oracle.
@@ -105,7 +111,9 @@ Competitor differences are evidence, so they stay visible without failing the
 measuring tool. Broken/unavailable adapters, engine installations and timeouts
 fail the workflow. The seven explicitly unimplemented case/engine cells stay
 visible too. CI success therefore cannot establish engine correctness or release
-readiness; Pagura correctness gates must still require its independent oracles.
+readiness. The added Pagura column must pass every selected independent oracle
+for its job to succeed; a measured Pagura disagreement remains in the report
+and fails this check.
 
 Harness controls check wrong values, boolean/numeric confusion, rejection
 evidence, invalid envelopes, missing/duplicate cells, unattested passes, malformed
@@ -129,10 +137,31 @@ The initial expanded reports predate this fix and do not establish a pdf.js
 defect. Only reports with the corrected adapter/source hashes are usable for
 this comparison. Raw reports remain in CI artifacts, outside Git.
 
+## Initial rendering observations
+
+[Hosted run 40256476588](https://github.com/jonasgrosch/pagura/actions/runs/40256476588)
+measured the six controls against all six baselines at merge revision
+`dfccec8472a614ef49a2e8a0264e37cdfb7c0a69`: 20 pixel-oracle passes and 16
+incorrect observations. Both empty/integer-rectangle controls passed everywhere.
+pdf.js met all six bounds; the other disagreements involve fractional coverage,
+grayscale resampling or embedded alpha. This run predates the Pagura column.
+The JPX grayscale control was mislabeled `jpx.rgb` in those reports; its fixture
+and oracle bytes have not changed.
+
+The actual normalized image hashes repeat across the two hosted runs
+40256137477 and 40256476588. Sample inspection is consistent with resampling differences in
+the grayscale/straight-alpha images, opaque partial-alpha samples in the hayro/PDFium
+premultiplied-alpha output, and non-neutral colour in Poppler's red-alpha input.
+These observations still need matched uncompressed controls and explicit
+sampling/configuration adjudication; they do not establish competitor defects.
+No oracle or tolerance was changed after measurement. Reproduce from the
+reports' exact source, native-artifact and fixture hashes, not the current branch.
+
 ## Next G01 increments
 
-- Add Pagura observations through its actual public surfaces, including explicit
-  missing typed metadata/attachment APIs, before claiming comparative parity.
+- Extend Pagura observations beyond rendering through its actual public surfaces,
+  including explicit missing typed metadata/attachment APIs, before claiming
+  comparative parity.
 - Resolve the remaining hayro/CoreGraphics adapter gaps against their public API
   contracts; do not implement a substitute engine and attribute its capabilities
   to the baseline.

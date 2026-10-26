@@ -14,15 +14,33 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from capabilities import ROOT, LEDGER, local_file, read_json, require
-from capability_probes import (ADAPTER_FILES, combine, observation_complete, service_commands,
-                               service_identity, sha, validate_report)
+from capability_probes import (ADAPTER_FILES, combine, observation_complete, public_identity,
+                               service_commands, service_identity, sha, validate_report)
 from competitors import CACHE
-from benchkit.engines import command_for, engines
+from benchkit.engines import command_for, engines, identify
 from benchkit.images import normalize, verify_pixels
 
 MANIFEST = Path('benchmarks/probes/rendering.json')
 RENDER_ADAPTERS = [Path('benchmarks/adapters') / name for name in
                    ('python_engine.py', 'pdfjs.mjs', 'quartz.swift', 'hayro/src/main.rs')]
+
+
+def render_inventory(inventory):
+    """Keep the six baseline denominator intact and add the measured subject."""
+    require('pagura' not in inventory['engines'], 'subject is not a competitor baseline')
+    return {**inventory, 'engines': [*inventory['engines'], 'pagura']}
+
+
+def subject_identity(command):
+    """Hash the actual CLI; its version alone does not attest a build revision."""
+    identity = identify('pagura', command)
+    if identity['status'] == 'available':
+        identity['version'] = json.dumps({'engine': identity['version']})
+    result = public_identity(identity)
+    result['configuration'] = ('Pagura public CLI. The actual binary is hashed; '
+                               'the hosted workflow records its build command and default features. '
+                               'A separately supplied binary has no asserted build revision.')
+    return result
 
 
 def fixtures(data):
@@ -114,7 +132,8 @@ def run(data, inventory, output, selected, images=None):
         if name not in selected:
             identities[name] = {'status': 'not-run', 'reason': 'engine assigned to another hosted platform/job'}
             continue
-        identity: dict = service_identity(name, services[name])
+        identity: dict = (subject_identity(commands[name]) if name == 'pagura'
+                          else service_identity(name, services[name]))
         if identity['status'] == 'available':
             def locator(value):
                 return value.replace(str(ROOT), '$REPO').replace(str(CACHE), '$COMPETITORS')
@@ -132,7 +151,8 @@ def run(data, inventory, output, selected, images=None):
                                                        'benchkit/engines.py', 'benchkit/images.py', 'benchkit/config.py')],
                     Path('uv.lock'), Path('pyproject.toml'), Path('.python-version'), Path('.github/workflows/capabilities.yml'),
                     Path('benchmarks/node-package-lock.json'), Path('benchmarks/adapters/hayro/Cargo.lock'),
-                    Path('benchmarks/adapters/hayro/Cargo.toml'), Path('rust-toolchain.toml'), Path('.cargo/config.toml')]
+                    Path('benchmarks/adapters/hayro/Cargo.toml'), Path('rust-toolchain.toml'), Path('.cargo/config.toml'),
+                    Path('Cargo.toml'), Path('Cargo.lock'), Path('crates/pagura-cli/Cargo.toml')]
     source_files.extend(Path('corpus/manifests') / (row['fixture'].split('/')[0] + '.json') for row in data['cases'])
     report = {'schema': 1, 'scope': data['scope'], 'generated_at': datetime.now(timezone.utc).isoformat(),
               'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
@@ -141,6 +161,8 @@ def run(data, inventory, output, selected, images=None):
               'environment': {'system': platform.system(), 'release': platform.release(), 'machine': platform.machine(), 'python': platform.python_version()},
               'source_sha256': {path.as_posix(): sha((ROOT / path).read_bytes()) for path in sorted(set(source_files))},
               'engines': identities, 'cases': data['cases'], 'fixtures': {}, 'results': []}
+    if images is not None:
+        report['command'].extend(['--images', '$IMAGES'])
     for case in data['cases']:
         row = rows[case['id']]
         report['fixtures'][case['fixture']] = {field: row[field] for field in ('path', 'sha256', 'oracle', 'oracle_sha256', 'dpi')}
@@ -172,6 +194,7 @@ def run(data, inventory, output, selected, images=None):
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     cases = {row['id']: row for row in data['cases']}
     return all(observation_complete(row['engine'], cases[row['case']], row)
+               and (row['engine'] != 'pagura' or row['outcome'] == 'pass')
                for row in report['results'] if row['engine'] in selected)
 
 
@@ -180,10 +203,10 @@ def main():
     parser.add_argument('command', choices=['check', 'run', 'combine'])
     parser.add_argument('reports', type=Path, nargs='*')
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--engines', default='pdfium,mupdf,pdfjs,poppler,hayro')
+    parser.add_argument('--engines', default='pdfium,mupdf,pdfjs,poppler,hayro,pagura')
     parser.add_argument('--images', type=Path, help='retain synthetic actual/oracle PPMs outside Git for adjudication')
     args = parser.parse_args()
-    data, inventory = read_json(ROOT / MANIFEST), read_json(ROOT / LEDGER)
+    data, inventory = read_json(ROOT / MANIFEST), render_inventory(read_json(ROOT / LEDGER))
     validate_manifest(data, inventory)
     if args.command == 'check':
         print(f"G01 render manifest valid: {len(data['cases'])} independent pixel oracles; no engines invoked.")
@@ -192,7 +215,7 @@ def main():
     if args.command == 'run':
         require(not args.reports, 'run does not accept report inputs')
         if not run(data, inventory, args.output, tuple(args.engines.split(',')), args.images):
-            parser.exit(1, 'G01 render observations incomplete; inspect saved diagnostics and outcomes.\n')
+            parser.exit(1, 'G01 render observations incomplete or Pagura missed its oracle; inspect saved outcomes.\n')
     else:
         report = combine([read_json(path) for path in args.reports], data, inventory)
         args.output.parent.mkdir(parents=True, exist_ok=True)

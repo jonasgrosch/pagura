@@ -16,6 +16,34 @@ class RenderProbeTests(unittest.TestCase):
         cls.manifest = render.read_json(render.ROOT / render.MANIFEST)
         cls.inventory = render.read_json(render.ROOT / render.LEDGER)
 
+    def test_subject_is_additive_and_all_seven_columns_are_required(self):
+        inventory = render.render_inventory(self.inventory)
+        self.assertNotIn('pagura', self.inventory['engines'])
+        self.assertEqual(len(inventory['engines']), len(self.inventory['engines']) + 1)
+        self.assertEqual(inventory['engines'][:-1], self.inventory['engines'])
+        with self.assertRaisesRegex(ValueError, 'not a competitor'):
+            render.render_inventory(inventory)
+        # A report that omits the subject cannot be silently reused as a
+        # comparison against it, even when all six competitors were measured.
+        report = {'schema': 1, 'cases': self.manifest['cases'],
+                  'engines': dict.fromkeys(self.inventory['engines'], {'status': 'available'})}
+        with self.assertRaisesRegex(ValueError, 'lost a baseline'):
+            render.validate_report(report, self.manifest, inventory)
+
+    def test_subject_identity_never_guesses_binary_revision_or_prints_raw_errors(self):
+        identity = {'status': 'available', 'version': 'pagura 0.1.0 (safe Rust)',
+                    'command': [str(render.ROOT / 'target/release/pagura')],
+                    'artifacts': {str(render.ROOT / 'target/release/pagura'): 'a' * 64}}
+        with patch.object(render, 'identify', return_value=identity):
+            actual = render.subject_identity(['stub'])
+        self.assertEqual(actual['version'], {'engine': 'pagura 0.1.0 (safe Rust)'})
+        self.assertEqual(actual['artifacts'], {'$REPO/target/release/pagura': 'a' * 64})
+        self.assertNotIn('revision', actual)
+        with patch.object(render, 'identify', return_value={'status': 'unavailable', 'reason': '/private/path'}):
+            actual = render.subject_identity(['stub'])
+        self.assertEqual(actual['status'], 'unavailable')
+        self.assertNotIn('/private/path', str(actual))
+
     def test_manifest_cannot_change_tolerance_or_drop_empty_control(self):
         render.validate_manifest(self.manifest, self.inventory)
         changed = copy.deepcopy(self.manifest)
