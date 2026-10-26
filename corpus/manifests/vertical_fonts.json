@@ -1,0 +1,560 @@
+{
+  "schema": 2,
+  "area": "vertical_fonts",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "vertical_fonts/pdf-mode-0",
+      "kind": "vector",
+      "description": "Provider Unicode A selects shape while ToUnicode extracts Z; PDF owns all horizontal/vertical metrics",
+      "requirements": [
+        "font-vertical-substitution",
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/vertical_fonts/pdf-mode-0.pdf",
+          "sha256": "43b569248cf2cbeee5e84e906890dbd175ce9acfe3ee5cdeb1bba7912f03c4b2"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/pdf-mode-1",
+      "kind": "vector",
+      "description": "Provider Unicode A selects shape while ToUnicode extracts Z; PDF owns all horizontal/vertical metrics",
+      "requirements": [
+        "font-vertical-substitution",
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/vertical_fonts/pdf-mode-1.pdf",
+          "sha256": "b968f60f3c4348e19bbe0884a965178e4bac0a4a9c6303ba34441b68029c3ac2"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/unused-vert-offset",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/unused-vert-offset.font",
+          "sha256": "8f3e56611a4392024c3c12cc288a20032aee34f8ba27cb6afce42462bb0de6c2"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/unused-vert-offset.map",
+          "sha256": "a3955196e6aa8c62ff82774d24ac6fe6d6695ea3fcc754a9392593df1d8d084d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/unused-vert-entries",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/unused-vert-entries.font",
+          "sha256": "6c521487ba2b2c314622d233b58ccc2ddad23cfd6453b60718ffb4f161e6e728"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/unused-vert-entries.map",
+          "sha256": "a3955196e6aa8c62ff82774d24ac6fe6d6695ea3fcc754a9392593df1d8d084d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/unused-default-script",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/unused-default-script.font",
+          "sha256": "f2f13eeb6342df3d24cea80f4588e4687ddbe16eea13bf206d647d879d49c1b2"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/unused-default-script.map",
+          "sha256": "a3955196e6aa8c62ff82774d24ac6fe6d6695ea3fcc754a9392593df1d8d084d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/single-delta",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/single-delta.font",
+          "sha256": "f0708228cadd811f7a36572406f81a8fb394f218666836649b9e7577fdc96587"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/single-delta.map",
+          "sha256": "a3955196e6aa8c62ff82774d24ac6fe6d6695ea3fcc754a9392593df1d8d084d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/single-ranges",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/single-ranges.font",
+          "sha256": "e584d42aa893243ee0ebfed13bc5ebc7bc0a230880b9bd3fedcd1c225a9b5b0d"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/single-ranges.map",
+          "sha256": "db31ed094d9ee2c3e3ec35d54cdbcc70c2781a8201ca1ac9b3021e7b6aa07900"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/extension",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/extension.font",
+          "sha256": "ee8643813720b7f9b2024d809494dd55558935b90b3d29c79ed8cc2c32af2cc3"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/extension.map",
+          "sha256": "f58221fd305425b608f546b337b88ff9950e56b900ecdd71fe4f18566a97432d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/lookup-order",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/lookup-order.font",
+          "sha256": "ae667e2b75587105e190506cb92b99cb80c6f85bd32504558897814e8b199441"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/lookup-order.map",
+          "sha256": "14afabd409c4e7eb85bb81b6c9fac5fb596ff141ee8174de67b55398bf692ab7"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/first-subtable",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/first-subtable.font",
+          "sha256": "c32a7f521a78dcc109b9730d06d27a1cfdf3ebe6a181ba62665bcb521c0d88b4"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/first-subtable.map",
+          "sha256": "a3955196e6aa8c62ff82774d24ac6fe6d6695ea3fcc754a9392593df1d8d084d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/vrt2-preferred",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/vrt2-preferred.font",
+          "sha256": "0d85c944b2a5df41327327993233c16490070f12260393bb847357cd290e4b48"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/vrt2-preferred.map",
+          "sha256": "7cffef30ccd169f40c94fdfd9b2e6e55c9a808e77e9381f86ca496ef2347d62e"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/default-script",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/default-script.font",
+          "sha256": "a6faf1e662857ad01c54c9516bfb30b499f62a4f743d6e6120b230a365707b0a"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/default-script.map",
+          "sha256": "a3955196e6aa8c62ff82774d24ac6fe6d6695ea3fcc754a9392593df1d8d084d"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/named-language",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/named-language.font",
+          "sha256": "cc9d496c48f7a44b79fd1eadd2e4a52151b2eec36ca8b62a2ccaa9959036e368"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/named-language.map",
+          "sha256": "0ea137faf2357df7218ea5c7adbc1e2b005c945b803976514e46bd14543d82b6"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/missing-feature",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/missing-feature.font",
+          "sha256": "9938f4d00c6430e2ff37fd3f9731347778c1152012deb352b2870ddd82760c2a"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/missing-feature.map",
+          "sha256": "fcf33dfbe13c2354bf0e1b063f9fb422747a46cee00b7420bceff2b81457b345"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/missing-script",
+      "kind": "vector",
+      "description": "Literal five-glyph map after selecting hani/JAN; PDF metrics and cmap are untouched",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/missing-script.font",
+          "sha256": "e10d2af8a809454304ac251893430c4fc192cc2402977f04d950aa11803d98ba"
+        },
+        ".map": {
+          "path": "corpus/generated/vertical_fonts/missing-script.map",
+          "sha256": "fcf33dfbe13c2354bf0e1b063f9fb422747a46cee00b7420bceff2b81457b345"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/coverage-order",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/coverage-order.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/coverage-order.font",
+          "sha256": "14b11649a641be7cb5aa66efca74940e1aa72c18554a00c9e3c604b04aae0806"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/coverage-range-index",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/coverage-range-index.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/coverage-range-index.font",
+          "sha256": "a532e84771329116ba49ed4c6ed5b8f46f77f6767b709b37693a8376690156be"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/coverage-count",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/coverage-count.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/coverage-count.font",
+          "sha256": "a3adc7ef2337915d72ab90a80d4bb84380183404d0f21aae3a8ae24e178751dd"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/output-range",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/output-range.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/output-range.font",
+          "sha256": "21dfeb37a373783ce363d576753f3ea1ae59387583872e1002aea3efdcdf3b6c"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/coverage-range",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/coverage-range.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/coverage-range.font",
+          "sha256": "1f885e60c63bf95e99df3db20e0f9319c78f3d83a36556f9627a1ba15e795fda"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/null-coverage",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/null-coverage.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/null-coverage.font",
+          "sha256": "35d089019c5dcfe6ac7bfd1b410255d68fec8ed4b284ac7aff4c37031d73cb66"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/lookup-index",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/lookup-index.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/lookup-index.font",
+          "sha256": "57f1e381cc0c431040557c74760fdaf0c12d3701e951148cdb8722a6bb3ead3a"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/feature-index",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/feature-index.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/feature-index.font",
+          "sha256": "78ebca31058e81b6565af326c02ce3ee88786bafff49c84b29e783d0ee44677e"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/reserved-flags",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/reserved-flags.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/reserved-flags.font",
+          "sha256": "59ffd59002d2b32317ef0d8a86f2f43af806ccbbce02911f9edc5718f905efc3"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/filtering",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/filtering.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/filtering.font",
+          "sha256": "843bce8134313ee4312ef39943875b59b71b1ca8c33bee69dde0e2a368b4f6f8"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/contextual",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/contextual.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/contextual.font",
+          "sha256": "0e4785b3c85c86c287d3d6355c6a8af59af11c2ddd31af56333a6706ccd0881a"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/variable-feature",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/variable-feature.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/variable-feature.font",
+          "sha256": "a818964040bdfa78ffd0cbab4ebbbc9cbc5fd159014729e5b3bd94c4527ae893"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/extension-kind-0",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-0.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-0.font",
+          "sha256": "68b53b17d4860f714a82dba81cdb05f72a87d5f3dd76e018fbabef26e0a83779"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/extension-kind-7",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-7.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-7.font",
+          "sha256": "99d7606ec833e9d69c015308f0a2cf603318409181cae310ac61266f14a66e9a"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/extension-kind-9",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-9.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-9.font",
+          "sha256": "d044cfd36194621db606d80321c73332e27383efabe9c865df733548c68788f0"
+        }
+      }
+    },
+    {
+      "id": "vertical_fonts/extension-kind-5",
+      "kind": "vector",
+      "description": "Selected GSUB errors remain explicit; an ordinary horizontal font parse ignores the unused layout table",
+      "requirements": [
+        "font-vertical-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-5.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".font": {
+          "path": "corpus/generated/vertical_fonts/extension-kind-5.font",
+          "sha256": "91ada275a92497acdfc81a0fcf295b558a5f61db264bdc53e13af91b96f57b29"
+        }
+      }
+    }
+  ]
+}

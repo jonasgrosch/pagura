@@ -84,6 +84,8 @@ pub(crate) enum Source {
         program: Arc<FontProgram>,
         /// The collection's Unicode, which selects the glyphs.
         unicode: Arc<CidToUnicode>,
+        /// Precompiled vertical forms; PDF metrics remain independent.
+        vertical: Option<pagura_font::VerticalSubstitution>,
     },
     Type3 {
         procedures: BTreeMap<Name, ObjectId>,

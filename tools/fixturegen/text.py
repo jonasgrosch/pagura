@@ -914,8 +914,8 @@ def cid_substitute_cases(data, lock):
         yield Vector(name,{".pdf":cid_substitute_document(ordering,b"/"+cmap_name.encode(),descendant=widths+b" /CIDToGIDMap /Identity",unicode_map=tu),".input":b"".join(c.to_bytes(2,'big') for c in samples),".out":expected(changed),".collection":ordering.encode()},
                      ("text-cid-substitution",),"ToUnicode affects extraction only and an external font ignores CIDToGIDMap",{"driver":"bundled-cid"})
         name="substitute-cid-"+ordering+"-vertical"
-        yield Vector(name,{".pdf":cid_substitute_document(ordering,b"/"+(prefixes[ordering]+"-UCS2-V").encode()),".error":b"font.cid-substitute-vertical\n"},
-                     ("text-cid-substitution",),"Vertical substitute glyph forms remain explicitly unsupported",{"driver":"bundled-cid-error"})
+        yield Vector(name,{".pdf":cid_substitute_document(ordering,b"/"+(prefixes[ordering]+"-UCS2-V").encode()),".mode":b"vertical\n"},
+                     ("text-cid-substitution",),"Vertical collection substitutes use GSUB forms and retain PDF metrics",{"driver":"bundled-cid-vertical"})
     # Unknown Unicode CID and a known Unicode value absent from the JP subset.
     ordering="Japan1"
     unicode=bundled_unicode(folders[ordering]/"cid2unicode.txt")
@@ -934,8 +934,8 @@ def cid_substitute_cases(data, lock):
         yield Vector(name,{".pdf":cid_substitute_document(ordering,encoding),".error":error+b"\n"},
                      ("text-cid-substitution",),"Incompatible or unknown character collections never select guessed glyphs",{"driver":"bundled-cid-error"})
     cmap=b"/WMode 1 def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> 1 endcidchar"
-    yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".error":b"font.cid-substitute-vertical\n"},
-                 ("text-cid-substitution",),"Embedded CMap WMode 1 also rejects horizontal-only substitution",{"driver":"bundled-cid-error"})
+    yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".mode":b"vertical\n"},
+                 ("text-cid-substitution",),"Embedded CMap WMode 1 selects provider vertical forms",{"driver":"bundled-cid-vertical"})
     # Table 121: Symbolic and Nonsymbolic both set (36) contradict each other,
     # which is a descriptor repair even when a substitute ignores the flags.
     yield Vector("repair-cid-substitute-flags",{".pdf":cid_substitute_document("Japan1",b"/Identity-H",flags=36),".repair":b"font.descriptor-flags\n"},

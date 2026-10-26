@@ -62,6 +62,13 @@ pub enum FontFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GlyphId(pub u32);
 
+/// Compiled single-glyph alternates for one OpenType script/language's vertical feature.
+/// Unselected features and PDF advances are not part of this map.
+#[derive(Debug)]
+pub struct VerticalSubstitution {
+    pairs: Vec<(u16, u16)>,
+}
+
 /// A TrueType `cmap` subtable selection (platform, encoding).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -414,6 +421,31 @@ impl FontProgram {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.code(&self.data, subtable, code),
             Program::Cff(_) | Program::Type1(_) => None,
+        }
+    }
+
+    /// Compiles this script/language's OpenType `vrt2`, or `vert` when `vrt2`
+    /// is absent. Missing scripts fall back to `DFLT`; missing languages use
+    /// the selected script's default. Returns `None` without an applicable
+    /// feature. Only explicit callers apply this map: embedded PDF CIDs/GIDs
+    /// and ordinary horizontal glyph lookup remain unchanged.
+    ///
+    /// # Errors
+    /// Returns `Syntax` for malformed selected GSUB data, `Unsupported` for
+    /// contextual/filtering or variable feature selection, and `Limit` when
+    /// the program's font work/entry budgets are exhausted.
+    pub fn vertical_substitution(
+        &self,
+        script: [u8; 4],
+        language: Option<[u8; 4]>,
+    ) -> Result<Option<VerticalSubstitution>> {
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(self.budget, &mut diagnostics);
+        match self.parsed.as_ref() {
+            Program::Sfnt(program) => {
+                program.vertical_substitution(&self.data, script, language, &mut work)
+            }
+            Program::Cff(_) | Program::Type1(_) => Ok(None),
         }
     }
 

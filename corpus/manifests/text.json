@@ -8319,21 +8319,21 @@
     {
       "id": "text/substitute-cid-Japan1-vertical",
       "kind": "vector",
-      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "description": "Vertical collection substitutes use GSUB forms and retain PDF metrics",
       "requirements": [
         "text-cid-substitution"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/substitute-cid-Japan1-vertical.error",
-          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        ".mode": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-vertical.mode",
+          "sha256": "b9a305fe7d56a5cb1e8118d10e7f99d2de45fcb4684cab3cd93bd7a9f37ee5a7"
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-cid-Japan1-vertical.pdf",
           "sha256": "7e0792b2b102edf2813524ee808de29fef1acb79f0ed27d4e16e8589a7c5e7e9"
         }
       },
-      "driver": "bundled-cid-error"
+      "driver": "bundled-cid-vertical"
     },
     {
       "id": "text/substitute-cid-GB1-CIDFontType0",
@@ -8419,21 +8419,21 @@
     {
       "id": "text/substitute-cid-GB1-vertical",
       "kind": "vector",
-      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "description": "Vertical collection substitutes use GSUB forms and retain PDF metrics",
       "requirements": [
         "text-cid-substitution"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/substitute-cid-GB1-vertical.error",
-          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        ".mode": {
+          "path": "corpus/generated/text/substitute-cid-GB1-vertical.mode",
+          "sha256": "b9a305fe7d56a5cb1e8118d10e7f99d2de45fcb4684cab3cd93bd7a9f37ee5a7"
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-cid-GB1-vertical.pdf",
           "sha256": "c1bc088d7b972832195bc13236d80e21437d0a6a297ba8c80671cbee89b1e71c"
         }
       },
-      "driver": "bundled-cid-error"
+      "driver": "bundled-cid-vertical"
     },
     {
       "id": "text/substitute-cid-CNS1-CIDFontType0",
@@ -8519,21 +8519,21 @@
     {
       "id": "text/substitute-cid-CNS1-vertical",
       "kind": "vector",
-      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "description": "Vertical collection substitutes use GSUB forms and retain PDF metrics",
       "requirements": [
         "text-cid-substitution"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/substitute-cid-CNS1-vertical.error",
-          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        ".mode": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-vertical.mode",
+          "sha256": "b9a305fe7d56a5cb1e8118d10e7f99d2de45fcb4684cab3cd93bd7a9f37ee5a7"
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-cid-CNS1-vertical.pdf",
           "sha256": "c9cb0cb02d97446222c467609d991c097f0d12d06c85a9aa63ca135d38366367"
         }
       },
-      "driver": "bundled-cid-error"
+      "driver": "bundled-cid-vertical"
     },
     {
       "id": "text/substitute-cid-Korea1-CIDFontType0",
@@ -8619,21 +8619,21 @@
     {
       "id": "text/substitute-cid-Korea1-vertical",
       "kind": "vector",
-      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "description": "Vertical collection substitutes use GSUB forms and retain PDF metrics",
       "requirements": [
         "text-cid-substitution"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/substitute-cid-Korea1-vertical.error",
-          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        ".mode": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-vertical.mode",
+          "sha256": "b9a305fe7d56a5cb1e8118d10e7f99d2de45fcb4684cab3cd93bd7a9f37ee5a7"
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-cid-Korea1-vertical.pdf",
           "sha256": "2d49c07653807fb99daf44bd6deac7229db7fe6a1ee4ce701bf959a260f401d9"
         }
       },
-      "driver": "bundled-cid-error"
+      "driver": "bundled-cid-vertical"
     },
     {
       "id": "text/substitute-cid-missing-unicode",
@@ -8730,21 +8730,21 @@
     {
       "id": "text/substitute-cid-wmode",
       "kind": "vector",
-      "description": "Embedded CMap WMode 1 also rejects horizontal-only substitution",
+      "description": "Embedded CMap WMode 1 selects provider vertical forms",
       "requirements": [
         "text-cid-substitution"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/substitute-cid-wmode.error",
-          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        ".mode": {
+          "path": "corpus/generated/text/substitute-cid-wmode.mode",
+          "sha256": "b9a305fe7d56a5cb1e8118d10e7f99d2de45fcb4684cab3cd93bd7a9f37ee5a7"
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-cid-wmode.pdf",
           "sha256": "17194546b5a6c81308be79f529f4aea3fbaff372b1ab2aba80f92b02730415bb"
         }
       },
-      "driver": "bundled-cid-error"
+      "driver": "bundled-cid-vertical"
     },
     {
       "id": "text/repair-cid-substitute-flags",

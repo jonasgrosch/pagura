@@ -2096,6 +2096,84 @@
         "implementation": "Only the optional positioned-text recorder performs fallback. Existing Unicode, including an explicit empty string, is retained. Otherwise an outline glyph can supply a program name to the same AGL converter the text decoder already uses. No recovered text is passed back to glyph selection, metrics or painting. Name-processing work and retained output bytes are separately bounded. Composite collection mappings retain priority before program-name fallback. AGL and ZapfDingbats names are separate lists. The latter is used only for a recognized ZapfDingbats/Dingbats base font, including recognized subset/style names; other fonts and absent base names get AGL alone. This policy also applies to encoding-name conversion. ToUnicode remains authoritative.",
         "expectations": "Independent pairs cover both-set and valid Symbolic flags with and without post names, AGL suffix/component and supplementary-scalar rules, authoritative ToUnicode, authoritative encoding names and unknown names. Exact pixels and glyph IDs remain fixed; decoded glyph text and positioned fallback text are checked separately. Independent a12/a19 vectors cover ordinary and Dingbats fonts on raw and named routes. Annex D.6 gives the hand and check-mark identities; those names are absent from the local AGL. All vectors retain exact rectangle pixels and metrics."
       }
+    },
+    {
+      "id": "font-vertical-substitution",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.4.3",
+        "9.7.5"
+      ],
+      "status": "Selected OpenType vertical single substitutions for external CID provider fonts; PDF metrics and extraction stay independent. Hosted acceptance pending.",
+      "tests": [
+        "vertical_fonts/pdf-mode-0",
+        "vertical_fonts/pdf-mode-1",
+        "vertical_fonts/unused-vert-offset",
+        "vertical_fonts/unused-vert-entries",
+        "vertical_fonts/unused-default-script",
+        "vertical_fonts/single-delta",
+        "vertical_fonts/single-ranges",
+        "vertical_fonts/extension",
+        "vertical_fonts/lookup-order",
+        "vertical_fonts/first-subtable",
+        "vertical_fonts/vrt2-preferred",
+        "vertical_fonts/default-script",
+        "vertical_fonts/named-language",
+        "vertical_fonts/missing-feature",
+        "vertical_fonts/missing-script",
+        "vertical_fonts/coverage-order",
+        "vertical_fonts/coverage-range-index",
+        "vertical_fonts/coverage-count",
+        "vertical_fonts/output-range",
+        "vertical_fonts/coverage-range",
+        "vertical_fonts/null-coverage",
+        "vertical_fonts/lookup-index",
+        "vertical_fonts/feature-index",
+        "vertical_fonts/reserved-flags",
+        "vertical_fonts/filtering",
+        "vertical_fonts/contextual",
+        "vertical_fonts/variable-feature",
+        "vertical_fonts/extension-kind-0",
+        "vertical_fonts/extension-kind-7",
+        "vertical_fonts/extension-kind-9",
+        "vertical_fonts/extension-kind-5"
+      ],
+      "verification": {
+        "primary_text": "Microsoft OpenType 1.9.1 GSUB, OpenType Layout Common Table Formats, registered vert/vrt2 features; PDF 2.0 EC3 9.7.4.3 and 9.7.5.",
+        "sources": [
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/gsub",
+            "locators": [
+              "GSUB versions 1.0/1.1",
+              "LookupType 1 formats 1/2",
+              "LookupType 7 extension"
+            ]
+          },
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/chapter2",
+            "locators": [
+              "ScriptList and Script",
+              "LangSys",
+              "FeatureList and Feature",
+              "LookupList and Lookup",
+              "Coverage formats 1/2"
+            ]
+          },
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/features_uz",
+            "locators": [
+              "vert",
+              "vrt2"
+            ]
+          }
+        ],
+        "rule": "Select the script and language feature indices, prefer vrt2 to vert, apply deduplicated lookups in LookupList order and the first matching subtable per lookup. Single substitutions change glyph identities, never PDF W/W2/DW/DW2 or ToUnicode.",
+        "implementation": "The existing sfnt owner lazily reads selected GSUB type 1 or type 7-to-1 lookups. FontProgram compiles a bounded immutable map, and PdfFont owns it only for external vertical CID substitutes.",
+        "expectations": "Original synthetic sfnt/GSUB bytes have literal glyph maps, an independent horizontal/vertical PDF metric and extraction pair, malformed tables, truncated selected tables and exact work/entry bounds. Existing bundled Adobe collection fixtures retain PDF bytes.",
+        "choices": "For Adobe collections, the provider policy requests hani with JAN/ZHS/ZHT/KOR by collection and falls back to DFLT/default LangSys when absent. This is a substitution policy, not general script shaping or an embedded CID/GID rewrite.",
+        "outside": "GDEF-dependent lookup filters, contextual/multiple/alternate/ligature substitutions, nonzero FeatureVariations, arbitrary shaping and unsupported provider/collection coverage. Other TrueType/OpenType primary-format review remains pending.",
+        "verdict": "Primary-defined selected layout subset implemented; no runtime or competitive-family acceptance claimed before hosted checks."
+      }
     }
   ]
 }

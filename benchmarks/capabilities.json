@@ -374,17 +374,20 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected OpenType vert/vrt2 single substitutions are implemented with hosted acceptance pending.",
       "remaining": "Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
         "crates/pagura-font/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-font/src/sfnt/vertical.rs"
       ],
       "tests": [
-        "crates/pagura-font/tests/vectors/static_fonts.rs"
+        "crates/pagura-font/tests/vectors/static_fonts.rs",
+        "crates/pagura-font/tests/vertical.rs",
+        "crates/pagura-font/src/sfnt/vertical/tests.rs"
       ],
       "requirements": [
         "font-bounds",
@@ -423,7 +426,8 @@
         "text-truetype-fallback",
         "text-truetype-selection",
         "text-type3",
-        "text-unicode"
+        "text-unicode",
+        "font-vertical-substitution"
       ],
       "fixtures": [],
       "comparisons": {
@@ -450,21 +454,29 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works.",
-      "remaining": "Vertical substituted glyph forms/metrics and unavailable provider/collection coverage.",
+      "implemented": "Provider-backed horizontal substitution and selected vertical vert/vrt2 forms for Adobe collections, preserving PDF W/W2/DW/DW2 and independent extraction; hosted vertical acceptance pending. Embedded vertical text works.",
+      "remaining": "GDEF-dependent or other vertical lookup types, feature variations, missing applicable provider features and unavailable collection coverage; competitive family unprobed.",
       "sources": [
         "crates/pagura-text/src/substitute/cid.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-text/src/font/shape.rs",
+        "crates/pagura-text/src/memory.rs"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-text/tests/vertical_substitution.rs",
+        "crates/pagura/tests/bundled_data.rs"
+      ],
       "requirements": [
         "paint-bundled-cjk-substitute",
         "text-cid-substitution",
         "text-font-substitution"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "vertical_fonts/pdf-mode-0",
+        "vertical_fonts/pdf-mode-1"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -2671,7 +2683,7 @@
       ],
       "review": "gap",
       "capability": "fonts.cid-substitution",
-      "rationale": "Vertical CID substitution is missing. Embedded vertical font handling is a different, implemented path.",
+      "rationale": "The provider font has no applicable vertical glyph feature. Selected vert/vrt2 single substitution is implemented; embedded vertical font handling remains separate.",
       "evidence": [
         {
           "path": "crates/pagura-text/src/substitute/cid.rs",

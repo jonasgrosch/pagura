@@ -22,9 +22,14 @@ impl PdfFont {
     ) -> GlyphShape {
         match &self.source {
             Source::MetricsOnly => GlyphShape::Blank,
-            Source::CidSubstitute { program, unicode } => Cid::try_from(selector)
+            Source::CidSubstitute {
+                program,
+                unicode,
+                vertical,
+            } => Cid::try_from(selector)
                 .ok()
                 .and_then(|cid| crate::substitute::cid::glyph(program, Some(unicode), cid))
+                .map(|glyph| vertical.as_ref().map_or(glyph, |map| map.apply(glyph)))
                 .map_or(GlyphShape::Blank, |glyph| GlyphShape::Outline {
                     program: Arc::clone(program),
                     glyph,

@@ -11,7 +11,10 @@ The requirement registry records a rule, locator, implementation verdict and
 independent vectors for each operator and format item. These are reviews of
 the supported behavior, not complete font or PostScript conformance claims.
 
-The TrueType Reference Manual, OpenType/ISO 14496-22 (including CFF2),
+Selected OpenType GSUB layout and `vert`/`vrt2` behavior have also been reviewed
+against Microsoft's primary specification, as recorded by
+`font-vertical-substitution`. The other TrueType Reference Manual and
+OpenType/ISO 14496-22 formats (including CFF2),
 TN 5015 supplements such as Type 1 lenIV -1, and TN 5040 PFB packaging remain
 **pending primary-text review** because their texts are unavailable. The
 Type 1 book verifies binary/hex eexec, both ciphers, and lenIV 4/0/1.
@@ -35,6 +38,17 @@ The generic reader permits cmap-free TrueType for CID use. The PDF font loader
 must enforce simple/CID-specific cmap rules, Type 1 binary eexec and Length1/2/3,
 stream subtype compatibility and subset naming. Hex PFA/PFB fixture success
 is not a claim that these wrappers are permitted PDF embeddings.
+
+`vertical_substitution(script, language)` reads selected GSUB tables lazily and
+returns an owned glyph map. It supports single substitution formats 1/2,
+coverage formats 1/2 and extension-wrapped single substitutions. Script and
+language selection precede `vrt2`/`vert` preference; lookup order and first-match
+subtable precedence are preserved. The stored `font_work` and `font_entries`
+budgets bound compilation; the map reports retained bytes. This does not shape
+strings, alter advances, or affect embedded PDF CID/GID selection. GDEF lookup
+filters, other substitution types and feature variations remain explicit gaps.
+Synthetic glyph-map, malformed-input and resource-bound controls are authored;
+hosted runtime acceptance is pending.
 
 Implemented formats:
 

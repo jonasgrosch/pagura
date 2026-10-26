@@ -1331,7 +1331,9 @@
         "text/substitute-cid-missing-glyph",
         "text/substitute-cid-mismatched-collection",
         "text/substitute-cid-identity-unknown",
-        "text/substitute-cid-wmode"
+        "text/substitute-cid-wmode",
+        "vertical_fonts/pdf-mode-0",
+        "vertical_fonts/pdf-mode-1"
       ],
       "gaps": "Primary OpenType cmap binary-format review remains pending; independent Python format 4/12 decoding and pinned program data are the current evidence.",
       "verification": {
@@ -1340,7 +1342,7 @@
         "expectations": "AFM widths and names, independently parsed CFF charsets or regional OTF cmap glyph IDs, and independent collection Unicode projection; no Rust output",
         "verdict": "ISO subset agrees; substitution selection is documented policy",
         "choices": [
-          "Horizontal collection CIDs project through the provider Unicode table and regional substitute Unicode cmap, preferring Windows full Unicode, Windows BMP, then platform Unicode. Multi-scalar values and missing Unicode/glyphs draw no mark and preserve CID widths. A bounded load-time reachable-CID check reports incomplete coverage once per descendant, including notdef. Vertical substitutes fail font.cid-substitute-vertical; embedded vertical fonts remain supported. Shared provider programs and tables are excluded from per-font retained estimates."
+          "Collection CIDs project through the provider Unicode table and regional substitute Unicode cmap, preferring Windows full Unicode, Windows BMP, then platform Unicode. Multi-scalar values and missing Unicode/glyphs draw no mark and preserve CID widths. A bounded load-time reachable-CID check reports incomplete coverage once per descendant, including notdef. Vertical substitutes apply the selected vert/vrt2 map from the font program; PDF W/W2/DW/DW2 and extraction ToUnicode remain independent. Missing applicable vertical features fail font.cid-substitute-vertical. Shared provider programs/tables are excluded from per-font retained estimates; the owned vertical map is included."
         ]
       }
     },

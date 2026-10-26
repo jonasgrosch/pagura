@@ -416,7 +416,7 @@ mod cjk {
     }
 
     #[test]
-    fn vertical_substitutes_remain_explicit() -> Result<()> {
+    fn vertical_substitutes_use_font_forms_and_pdf_writing_mode() -> Result<()> {
         let provider = Bundled::default();
         for name in [
             "substitute-cid-Japan1-vertical",
@@ -426,13 +426,43 @@ mod cjk {
             "substitute-cid-wmode",
         ] {
             let document = open(name)?;
-            let error = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
-                .unwrap_err();
-            assert_eq!(
-                error.kind,
-                ErrorKind::Unsupported(features::CID_SUBSTITUTE_VERTICAL)
-            );
-            assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
+            let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+            assert_eq!(loaded.writing_mode(), pagura_text::WritingMode::Vertical);
+            assert!(information(
+                &document,
+                pagura_text::information::SUBSTITUTED
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn bundled_vertical_parentheses_select_unicode_presentation_forms() -> Result<()> {
+        let provider = Bundled::default();
+        for (ordering, language) in [
+            ("Japan1", *b"JAN "),
+            ("GB1", *b"ZHS "),
+            ("CNS1", *b"ZHT "),
+            ("Korea1", *b"KOR "),
+        ] {
+            let program = provider
+                .cid_font(b"Adobe", ordering.as_bytes())?
+                .ok_or_else(|| Error::syntax("missing CJK program"))?;
+            let vertical = program
+                .vertical_substitution(*b"hani", Some(language))?
+                .ok_or_else(|| Error::syntax("missing vertical forms"))?;
+            // The independent Unicode presentation-form identities name these
+            // outlines without deriving an expectation from the GSUB table.
+            for (ordinary, presentation) in [(0xff08, 0xfe35), (0xff09, 0xfe36)] {
+                let glyph = program
+                    .glyph_for_code(pagura_font::CmapSubtable::WindowsUnicode, ordinary)
+                    .ok_or_else(|| Error::syntax("missing ordinary parenthesis"))?;
+                let expected = program
+                    .glyph_for_code(pagura_font::CmapSubtable::WindowsUnicode, presentation)
+                    .ok_or_else(|| Error::syntax("missing vertical parenthesis"))?;
+                assert_ne!(glyph, expected, "{ordering}");
+                assert_eq!(vertical.apply(glyph), expected, "{ordering}");
+            }
         }
         Ok(())
     }
