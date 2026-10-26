@@ -42,7 +42,7 @@ pub(super) fn generate(
         let mk = document.resolve_dictionary(mk)?;
         characteristics(&mut marks, document, annotation, mk, rect)?;
     }
-    marks.finish(rect)
+    Ok(marks.finish(rect)?)
 }
 
 /// Table 189: absent BG and BC mean no background and no border. DA's
@@ -56,12 +56,12 @@ fn characteristics(
 ) -> ReadResult<()> {
     let rotation = mk
         .get(b"R")
-        .map(|value| {
+        .map(|value| -> ReadResult<i64> {
             document
                 .resolve(value)?
                 .as_integer()
                 .filter(|n| n % 90 == 0)
-                .ok_or(Error::syntax("widget rotation must be a multiple of 90"))
+                .ok_or_else(|| Error::syntax("widget rotation must be a multiple of 90").into())
         })
         .transpose()?
         .unwrap_or(0)
@@ -110,7 +110,7 @@ fn characteristics(
         width: border.width,
         dash: &border.dash,
     };
-    marks.stroke(&[path], &color, pen)
+    Ok(marks.stroke(&[path], &color, pen)?)
 }
 
 /// The value of `key` in the field dictionary or its nearest ancestor that

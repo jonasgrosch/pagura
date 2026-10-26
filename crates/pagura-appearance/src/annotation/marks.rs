@@ -120,7 +120,7 @@ impl<'a> Marks<'a> {
     }
 
     /// Fills `path` with the nonzero winding rule.
-    pub(super) fn fill(&mut self, path: &[Subpath<'_>], color: &Color) -> Result<()> {
+    pub(super) fn fill(&mut self, path: &[Subpath<'_>], color: &Color) -> ReadResult<()> {
         self.opacity(Paint::Fill)?;
         self.color(color, Paint::Fill)?;
         self.path(path)?;
@@ -134,14 +134,14 @@ impl<'a> Marks<'a> {
         path: &[Subpath<'_>],
         color: &Color,
         pen: Pen<'_>,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         self.opacity(Paint::Stroke)?;
         // A dash array the stroke could not follow (8.4.3.6) fails here, not
         // when the content is drawn.
         if pen.dash.iter().any(|v| *v < 0.0)
             || !pen.dash.is_empty() && pen.dash.iter().all(|v| *v == 0.0)
         {
-            return Err(Error::syntax("invalid annotation dash pattern"));
+            return Err(Error::syntax("invalid annotation dash pattern").into());
         }
         self.color(color, Paint::Stroke)?;
         self.numbers(&[pen.width])?;
@@ -174,7 +174,7 @@ impl<'a> Marks<'a> {
     }
 
     /// Sets the opacity of `paint` before its first mark, unless it is 1.
-    fn opacity(&mut self, paint: Paint) -> Result<()> {
+    fn opacity(&mut self, paint: Paint) -> ReadResult<()> {
         let stroke = self.stroke_alpha()?;
         if paint == Paint::Fill && self.fill_alpha.is_none() {
             let alpha = scalar(self.document, self.annotation, b"ca")?
@@ -187,7 +187,7 @@ impl<'a> Marks<'a> {
     }
 
     /// The stroke opacity, `CA`, read and set before the first mark.
-    fn stroke_alpha(&mut self) -> Result<f64> {
+    fn stroke_alpha(&mut self) -> ReadResult<f64> {
         if let Some(alpha) = self.stroke_alpha {
             return Ok(alpha);
         }
@@ -269,15 +269,15 @@ pub(super) fn scalar(
     dictionary: &Dictionary,
     key: &[u8],
 ) -> ReadResult<Option<f64>> {
-    dictionary
+    Ok(dictionary
         .get(key)
-        .map(|value| {
+        .map(|value| -> ReadResult<f64> {
             document
                 .resolve(value)?
                 .as_number()
-                .ok_or(Error::syntax("annotation parameter must be numeric"))
+                .ok_or_else(|| Error::syntax("annotation parameter must be numeric").into())
         })
-        .transpose()
+        .transpose()?)
 }
 
 #[cfg(test)]

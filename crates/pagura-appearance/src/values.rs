@@ -24,13 +24,13 @@ pub(crate) fn optional_dictionary<'a>(
     dictionary: &'a Dictionary,
     key: &[u8],
 ) -> ReadResult<Option<&'a Dictionary>> {
-    optional(document, dictionary, key)?
+    Ok(optional(document, dictionary, key)?
         .map(|value| {
             value
                 .as_dictionary()
                 .ok_or(Error::syntax("form appearance entry must be a dictionary"))
         })
-        .transpose()
+        .transpose()?)
 }
 
 /// Resolves one finite number.

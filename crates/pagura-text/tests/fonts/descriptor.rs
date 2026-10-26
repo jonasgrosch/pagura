@@ -52,7 +52,8 @@ impl Vector {
 const DESCRIPTOR: ObjectId = ObjectId::new(6, 0);
 
 #[test]
-fn contradictory_or_missing_flags_are_repaired_and_valid_pairs_kept() -> Result<()> {
+fn contradictory_or_missing_flags_are_repaired_and_valid_pairs_kept()
+-> pagura_document::source::ReadResult<()> {
     let vectors = Vector::all();
     assert_eq!(vectors.len(), 30);
     for vector in vectors {
@@ -61,8 +62,12 @@ fn contradictory_or_missing_flags_are_repaired_and_valid_pairs_kept() -> Result<
         let font = strict.object(ObjectId::new(5, 0))?.dictionary().unwrap();
         match PdfFont::load(&strict, font) {
             Err(error) if vector.repaired => {
-                assert_eq!(error.repair, Some(repairs::DESCRIPTOR_FLAGS), "{name}");
-                assert_eq!(error.object, Some(DESCRIPTOR), "{name}");
+                assert_eq!(
+                    error.as_error().unwrap().repair,
+                    Some(repairs::DESCRIPTOR_FLAGS),
+                    "{name}"
+                );
+                assert_eq!(error.as_error().unwrap().object, Some(DESCRIPTOR), "{name}");
             }
             Ok(_) if !vector.repaired => {}
             other => panic!("{name}: {other:?}"),

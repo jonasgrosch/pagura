@@ -12,7 +12,7 @@ use pagura_testkit::fixture;
 use pagura_text::{FontKind, GlyphShape, PdfFont, WritingMode, repairs};
 
 #[test]
-fn only_outline_fonts_expose_their_program() -> Result<()> {
+fn only_outline_fonts_expose_their_program() -> pagura_document::source::ReadResult<()> {
     let type3 = open("type3-differences", Recovery::Repair)?;
     assert!(
         PdfFont::load(&type3, dictionary(&type3)?)?
@@ -33,7 +33,7 @@ fn only_outline_fonts_expose_their_program() -> Result<()> {
 }
 
 #[test]
-fn type3_decoding_vectors() -> Result<()> {
+fn type3_decoding_vectors() -> pagura_document::source::ReadResult<()> {
     for name in [
         "type3-differences",
         "type3-undefined",
@@ -93,7 +93,7 @@ fn type3_decoding_vectors() -> Result<()> {
 }
 
 #[test]
-fn font_stream_length_faults_are_reported_repairs() -> Result<()> {
+fn font_stream_length_faults_are_reported_repairs() -> pagura_document::source::ReadResult<()> {
     for name in [
         "binding-length1",
         "binding-cff-length",
@@ -125,7 +125,7 @@ fn font_stream_length_faults_are_reported_repairs() -> Result<()> {
 }
 
 #[test]
-fn font_error_vectors() -> Result<()> {
+fn font_error_vectors() -> pagura_document::source::ReadResult<()> {
     for name in [
         "nonembedded-type1",
         "nonembedded-mmtype1",
@@ -202,7 +202,7 @@ fn check_program_vector(name: &str) -> Result<()> {
 }
 
 #[test]
-fn embedded_program_vectors() -> Result<()> {
+fn embedded_program_vectors() -> pagura_document::source::ReadResult<()> {
     for name in [
         "tt-mac-by-name",
         "tt-symbol-encoding-ignored",

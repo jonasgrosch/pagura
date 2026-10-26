@@ -308,7 +308,7 @@ impl Context<'_, '_> {
             dictionary.remove(key);
         }
         dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
-        AppearanceStream::new(document, dictionary, content).map(Appearance::Generated)
+        Ok(AppearanceStream::new(document, dictionary, content).map(Appearance::Generated)?)
     }
 }
 

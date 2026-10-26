@@ -118,12 +118,12 @@ pub(super) fn list(
 /// TI, the first visible option (Table 234).
 fn top_index(document: &Document, field: &Field<'_>) -> ReadResult<usize> {
     Ok(optional(document, field.dictionary, b"TI")?
-        .map(|value| {
+        .map(|value| -> ReadResult<usize> {
             document
                 .resolve(value)?
                 .as_integer()
                 .and_then(|n| usize::try_from(n).ok())
-                .ok_or(Error::syntax("choice TI must be a nonnegative integer"))
+                .ok_or_else(|| Error::syntax("choice TI must be a nonnegative integer").into())
         })
         .transpose()?
         .unwrap_or(0))

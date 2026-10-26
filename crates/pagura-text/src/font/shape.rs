@@ -150,7 +150,7 @@ mod tests {
     use pagura_testkit::fixture;
 
     #[test]
-    fn cid_to_gid_vector_and_identity() -> Result<()> {
+    fn cid_to_gid_vector_and_identity() -> pagura_document::source::ReadResult<()> {
         let document = Document::open(fixture("text", "cid-to-gid.pdf"), &OpenOptions::default())?;
         let dict = document
             .object(ObjectId::new(4, 0))?

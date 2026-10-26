@@ -1,6 +1,6 @@
 //! Role maps and the two standard namespaces (14.7.3; 14.8.6; Annex M).
 use super::Budget;
-use pagura_core::{Dictionary, Error, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Value};
 use pagura_document::Document;
 use pagura_document::source::ReadResult;
 use std::collections::BTreeSet;
@@ -30,8 +30,9 @@ impl<'a> Types<'a> {
         let namespaces = super::entry(doc, root, b"Namespaces")?
             .map(|v| {
                 doc.resolve(v).and_then(|v| {
-                    v.as_array()
-                        .ok_or(Error::syntax("structure Namespaces must be an array"))
+                    v.as_array().ok_or_else(|| {
+                        Error::syntax("structure Namespaces must be an array").into()
+                    })
                 })
             })
             .transpose()?

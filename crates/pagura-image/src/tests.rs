@@ -3,14 +3,17 @@ use crate::{
     DecodeRequest, DecodedImage, ImageId, ImageKind, ImageSource, MaskKind, Samples, ccitt, dct,
     inline_data_length,
 };
-use pagura_core::{Dictionary, ErrorKind, Limits, Name, ObjectId, Recovery, Result, Value};
+use pagura_core::{Dictionary, ErrorKind, Limits, Name, ObjectId, Recovery, Value};
 use pagura_document::{Document, IndirectObject, OpenOptions};
 use pagura_testkit::{fixture, fixture_path};
 use std::collections::BTreeMap;
 
 /// Decodes an image XObject through its source as painting does, every
 /// sample exactly, and reports the decode's repairs to `document`.
-pub(crate) fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
+pub(crate) fn decode_xobject(
+    document: &Document,
+    image: &IndirectObject,
+) -> pagura_document::source::ReadResult<DecodedImage> {
     let source = ImageSource::from_xobject(document, image)?;
     let decoded = source.decode(
         &DecodeRequest::FULL,
@@ -27,7 +30,7 @@ pub(crate) fn decode_inline(
     resources: &Dictionary,
     dictionary: &Dictionary,
     data: &[u8],
-) -> Result<DecodedImage> {
+) -> pagura_document::source::ReadResult<DecodedImage> {
     let id = ImageId::Inline {
         stream: None,
         offset: 0,

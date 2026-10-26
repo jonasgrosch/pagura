@@ -326,7 +326,8 @@ mod tests {
     use pagura_testkit::fixture;
 
     #[test]
-    fn symbolic_truetype_ignores_encoding_and_nonsymbolic_uses_names() -> Result<()> {
+    fn symbolic_truetype_ignores_encoding_and_nonsymbolic_uses_names()
+    -> pagura_document::source::ReadResult<()> {
         let open = |recovery| {
             Document::open(
                 fixture("text", "type3-differences.pdf"),
@@ -355,7 +356,7 @@ mod tests {
         let strict = open(pagura_core::Recovery::Strict)?;
         let error = simple_mapping(&strict, &font, FontKind::TrueType, Route::Named, None)
             .err()
-            .map(|error| error.repair);
+            .map(|error| error.as_error().unwrap().repair);
         assert_eq!(error, Some(Some(crate::repairs::ENCODING_NAME)));
         let mapping = simple_mapping(
             &document,

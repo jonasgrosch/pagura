@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 //! Inspects navigation data without activating targets.
 //! Usage: cargo run --release -p pagura-document --example navigation -- FILE
-use pagura_core::{Error, Result, Value};
+use pagura_core::{Error, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, OpenOptions};
 use std::sync::Arc;
 
@@ -12,7 +13,7 @@ struct Stats {
     errors: usize,
     present: bool,
 }
-fn inspect(bytes: Arc<[u8]>, kind: &str) -> Result<Stats> {
+fn inspect(bytes: Arc<[u8]>, kind: &str) -> ReadResult<Stats> {
     // Each view gets a fresh document so diagnostic deduplication across views
     // cannot hide that both required the same repair. Source bytes are shared.
     let doc = Document::open(bytes, &OpenOptions::default())?;
@@ -49,13 +50,19 @@ fn inspect(bytes: Arc<[u8]>, kind: &str) -> Result<Stats> {
                     Ok(links) => stats.items += links.len(),
                     Err(error) => {
                         stats.errors += 1;
-                        eprintln!("links\t{}\t{}", error.kind.name(), error);
+                        eprintln!(
+                            "links\t{}\t{}",
+                            error
+                                .as_error()
+                                .map_or("unavailable", |error| error.kind.name()),
+                            error
+                        );
                     }
                 }
             }
             Ok(stats.items)
         }
-        _ => Err(Error::syntax("unknown navigation view")),
+        _ => Err(Error::syntax("unknown navigation view").into()),
     };
     match result {
         Ok(items) => {
@@ -66,7 +73,13 @@ fn inspect(bytes: Arc<[u8]>, kind: &str) -> Result<Stats> {
         }
         Err(error) => {
             stats.errors += 1;
-            eprintln!("{kind}\t{}\t{}", error.kind.name(), error);
+            eprintln!(
+                "{kind}\t{}\t{}",
+                error
+                    .as_error()
+                    .map_or("unavailable", |error| error.kind.name()),
+                error
+            );
         }
     }
     stats.repairs = doc
@@ -94,7 +107,13 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let outlines = inspect(bytes.clone(), "outlines")?;
     let destinations = inspect(bytes.clone(), "destinations")?;
     let links = inspect(bytes, "links").unwrap_or_else(|error| {
-        eprintln!("pages\t{}\t{}", error.kind.name(), error);
+        eprintln!(
+            "pages\t{}\t{}",
+            error
+                .as_error()
+                .map_or("unavailable", |error| error.kind.name()),
+            error
+        );
         Stats {
             errors: 1,
             ..Stats::default()

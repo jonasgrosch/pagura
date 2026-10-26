@@ -71,7 +71,7 @@ pub(super) fn generate(
         };
         marks.stroke(&[path], &color, pen)?;
     }
-    marks.finish(rect)
+    Ok(marks.finish(rect)?)
 }
 
 /// An annotation border: BS, else Border, else solid and 1 unit wide

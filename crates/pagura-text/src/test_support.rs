@@ -24,11 +24,11 @@ pub(crate) fn expected(name: &str) -> Result<Vec<Value>> {
 }
 
 /// The font dictionary every vector stores as object 4.
-pub(crate) fn dictionary(document: &Document) -> Result<&Dictionary> {
+pub(crate) fn dictionary(document: &Document) -> pagura_document::source::ReadResult<&Dictionary> {
     document
         .object(ObjectId::new(4, 0))?
         .dictionary()
-        .ok_or_else(|| Error::syntax("expected dictionary"))
+        .ok_or_else(|| Error::syntax("expected dictionary").into())
 }
 
 pub(crate) fn rows(value: &Value) -> Result<&[Value]> {

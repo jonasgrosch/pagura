@@ -8,7 +8,7 @@ use pagura_testkit::fixture;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-fn load(name: &str) -> Result<(Document, Dictionary)> {
+fn load(name: &str) -> pagura_document::source::ReadResult<(Document, Dictionary)> {
     let document = Document::open(
         fixture("text", &format!("{name}.pdf")),
         &OpenOptions::default(),
@@ -22,7 +22,7 @@ fn load(name: &str) -> Result<(Document, Dictionary)> {
 }
 
 #[test]
-fn loaded_kinds_include_owned_tables_and_programs() -> Result<()> {
+fn loaded_kinds_include_owned_tables_and_programs() -> pagura_document::source::ReadResult<()> {
     for name in [
         "tt-unicode-priority",
         "embedded-cff",
@@ -44,7 +44,8 @@ fn loaded_kinds_include_owned_tables_and_programs() -> Result<()> {
 }
 
 #[test]
-fn owned_unicode_and_type3_resources_increase_the_estimate() -> Result<()> {
+fn owned_unicode_and_type3_resources_increase_the_estimate()
+-> pagura_document::source::ReadResult<()> {
     let (document, mut dict) = load("type3-differences")?;
     let base = PdfFont::load(&document, &dict)?.retained_bytes();
     let mut resources = document
@@ -107,7 +108,8 @@ fn provider(program: Arc<FontProgram>) -> Result<Data> {
 }
 
 #[test]
-fn substituted_programs_and_predefined_maps_belong_to_the_provider() -> Result<()> {
+fn substituted_programs_and_predefined_maps_belong_to_the_provider()
+-> pagura_document::source::ReadResult<()> {
     let (document, dict) = load("tt-unicode-priority")?;
     let embedded = PdfFont::load(&document, &dict)?;
     let font::Source::Program { program, .. } = &embedded.source else {
@@ -160,7 +162,7 @@ fn arithmetic_saturates() {
 }
 
 #[test]
-fn cid_to_gid_maps_are_owned_storage() -> Result<()> {
+fn cid_to_gid_maps_are_owned_storage() -> pagura_document::source::ReadResult<()> {
     let (document, dict) = load("embedded-cid-variable-codes")?;
     let mut font = PdfFont::load(&document, &dict)?;
     let before = font.retained_bytes();
@@ -173,7 +175,8 @@ fn cid_to_gid_maps_are_owned_storage() -> Result<()> {
 }
 
 #[test]
-fn embedded_program_storage_uses_the_programs_retained_accounting() -> Result<()> {
+fn embedded_program_storage_uses_the_programs_retained_accounting()
+-> pagura_document::source::ReadResult<()> {
     for name in [
         "tt-unicode-priority",
         "embedded-cff",

@@ -44,7 +44,7 @@ pub(super) fn check_mark(
     }
     let mut dictionary = form_dictionary(bbox);
     dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
-    AppearanceStream::new(document, dictionary, content.finish()).map(Appearance::Generated)
+    Ok(AppearanceStream::new(document, dictionary, content.finish()).map(Appearance::Generated)?)
 }
 
 /// A font dictionary with the standard ZapfDingbats font as `/ZaDb`.

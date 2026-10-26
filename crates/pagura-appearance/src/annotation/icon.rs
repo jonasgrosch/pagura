@@ -49,7 +49,7 @@ pub(super) fn generate(
         dash: &[],
     };
     marks.stroke(&path, &Color::black(), pen)?;
-    marks.finish(rect)
+    Ok(marks.finish(rect)?)
 }
 
 /// The lines drawn inside the frame of icon `name`.

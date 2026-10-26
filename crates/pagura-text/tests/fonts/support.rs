@@ -19,11 +19,11 @@ pub(crate) fn open(name: &str, recovery: Recovery) -> Result<Document> {
 }
 
 /// The font dictionary every vector stores as object 4.
-pub(crate) fn dictionary(document: &Document) -> Result<&Dictionary> {
+pub(crate) fn dictionary(document: &Document) -> pagura_document::source::ReadResult<&Dictionary> {
     document
         .object(ObjectId::new(4, 0))?
         .dictionary()
-        .ok_or_else(|| Error::syntax("missing fixture font"))
+        .ok_or_else(|| Error::syntax("missing fixture font").into())
 }
 
 /// Loads `font` with `provider`, and its Unicode, as text extraction does.
@@ -31,7 +31,7 @@ pub(crate) fn load_text(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn Provider>,
-) -> Result<(PdfFont, FontUnicode)> {
+) -> pagura_document::source::ReadResult<(PdfFont, FontUnicode)> {
     let loaded = PdfFont::load_with_provider(document, font, provider)?;
     let unicode = loaded.unicode(document, font, provider)?;
     Ok((loaded, unicode))
@@ -84,10 +84,14 @@ pub(crate) fn lines(name: &str, suffix: &str) -> Result<Vec<String>> {
 }
 
 /// The error of a call that must fail.
-pub(crate) fn rejected<T>(result: Result<T>) -> Result<Error> {
-    result
-        .err()
-        .ok_or_else(|| Error::syntax("expected a rejection"))
+pub(crate) fn rejected<T>(
+    result: pagura_document::source::ReadResult<T>,
+) -> pagura_document::source::ReadResult<Error> {
+    match result {
+        Err(pagura_document::source::ReadFault::Invalid(error)) => Ok(error),
+        Err(fault) => Err(fault),
+        Ok(_) => Err(Error::syntax("expected a rejection").into()),
+    }
 }
 
 /// Decodes `text/<name>.input` and checks each glyph against the oracle

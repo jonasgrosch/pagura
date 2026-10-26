@@ -40,7 +40,8 @@ fn check_strict_rejection(document: &Document, error: &Error, name: &str) -> Res
 }
 
 #[test]
-fn extraction_repairs_reject_font_loading_in_strict_mode() -> Result<()> {
+fn extraction_repairs_reject_font_loading_in_strict_mode() -> pagura_document::source::ReadResult<()>
+{
     for name in [
         "repair-tounicode-simple",
         "repair-tounicode-mixed-sources",
@@ -95,7 +96,8 @@ fn extraction_repairs_reject_font_loading_in_strict_mode() -> Result<()> {
 }
 
 #[test]
-fn painting_critical_repairs_require_permission_and_preserve_exact_glyphs() -> Result<()> {
+fn painting_critical_repairs_require_permission_and_preserve_exact_glyphs()
+-> pagura_document::source::ReadResult<()> {
     for name in [
         "repair-cmap-block-count",
         "repair-cmap-codespace",
@@ -124,7 +126,7 @@ fn painting_critical_repairs_require_permission_and_preserve_exact_glyphs() -> R
 }
 
 #[test]
-fn oversized_cmap_blocks_remain_bounded() -> Result<()> {
+fn oversized_cmap_blocks_remain_bounded() -> pagura_document::source::ReadResult<()> {
     let document = Document::open(
         fixture("text", "repair-cmap-block-count.pdf"),
         &OpenOptions {
@@ -141,7 +143,8 @@ fn oversized_cmap_blocks_remain_bounded() -> Result<()> {
 }
 
 #[test]
-fn repeated_unicode_faults_use_bounded_document_diagnostics() -> Result<()> {
+fn repeated_unicode_faults_use_bounded_document_diagnostics()
+-> pagura_document::source::ReadResult<()> {
     let name = "repair-tounicode-diagnostic-cap";
     let document = open(name, Recovery::Repair)?;
     let (font, unicode) = load_text(&document, dictionary(&document)?, None)?;
@@ -161,7 +164,7 @@ fn repeated_unicode_faults_use_bounded_document_diagnostics() -> Result<()> {
 }
 
 #[test]
-fn null_unicode_entries_are_absent_without_repairs() -> Result<()> {
+fn null_unicode_entries_are_absent_without_repairs() -> pagura_document::source::ReadResult<()> {
     for name in [
         "tounicode-null-direct",
         "tounicode-null-indirect",
@@ -181,7 +184,7 @@ fn null_unicode_entries_are_absent_without_repairs() -> Result<()> {
 }
 
 #[test]
-fn simple_font_dictionary_faults_are_reported_repairs() -> Result<()> {
+fn simple_font_dictionary_faults_are_reported_repairs() -> pagura_document::source::ReadResult<()> {
     for (name, tag) in [
         ("repair-widths-short", repairs::WIDTHS_LENGTH),
         ("repair-widths-long", repairs::WIDTHS_LENGTH),

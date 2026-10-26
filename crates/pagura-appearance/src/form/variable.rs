@@ -51,7 +51,7 @@ pub(super) fn write(
     };
     out.text("BT\n")?;
     layout::write(out, font, da, area, &text, &filler.document().limits())?;
-    out.text("ET\n")
+    Ok(out.text("ET\n")?)
 }
 
 /// A text field's value and layout flags (Table 228).

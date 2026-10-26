@@ -202,7 +202,7 @@ fn logical_text(
 ) -> ReadResult<LogicalText> {
     let mut plan = tree::read(document, root, page.id(), budget)?;
     content::resolve(&mut plan, document, root, page, text, budget)?;
-    copy::export(text, &plan, budget)
+    Ok(copy::export(text, &plan, budget)?)
 }
 
 // Null-valued dictionary entries are absent, including indirect null (7.3.9).
@@ -241,8 +241,9 @@ fn name<'a>(
     entry(doc, dictionary, key)?
         .map(|v| {
             doc.resolve(v).and_then(|v| {
-                v.as_name()
-                    .ok_or(Error::syntax("structure name property has the wrong type"))
+                v.as_name().ok_or_else(|| {
+                    Error::syntax("structure name property has the wrong type").into()
+                })
             })
         })
         .transpose()

@@ -57,7 +57,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Err(error) => {
-            println!("form-error\t{}\t{}", error.kind.name(), error);
+            println!(
+                "form-error\t{}\t{}",
+                error
+                    .as_error()
+                    .map_or("unavailable", |error| error.kind.name()),
+                error
+            );
         }
     }
     for d in document

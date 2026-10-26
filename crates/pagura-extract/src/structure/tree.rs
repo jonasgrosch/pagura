@@ -201,7 +201,7 @@ fn content(
             .transpose()?
             .and_then(Value::as_integer)
             .ok_or(Error::syntax("MCR MCID must be an integer"))?;
-        marked(plan, parent, pg, container, mcid, page, budget)
+        Ok(marked(plan, parent, pg, container, mcid, page, budget)?)
     } else {
         let object = dictionary
             .get(b"Obj")
@@ -271,15 +271,15 @@ fn property(
     object: Option<ObjectId>,
     key: &[u8],
 ) -> ReadResult<Option<String>> {
-    super::entry(doc, dictionary, key)?
-        .map(|v| {
+    Ok(super::entry(doc, dictionary, key)?
+        .map(|v| -> ReadResult<String> {
             let bytes = doc
                 .resolve(v)?
                 .as_string()
                 .ok_or(Error::syntax("structure replacement must be a text string"))?;
-            super::text_string(doc, bytes, object)
+            Ok(super::text_string(doc, bytes, object)?)
         })
-        .transpose()
+        .transpose()?)
 }
 
 pub(super) fn tagged(doc: &Document) -> ReadResult<bool> {
@@ -291,7 +291,7 @@ pub(super) fn tagged(doc: &Document) -> ReadResult<bool> {
         .map(|v| {
             doc.resolve(v).and_then(|v| {
                 v.as_bool()
-                    .ok_or(Error::syntax("MarkInfo Marked must be boolean"))
+                    .ok_or_else(|| Error::syntax("MarkInfo Marked must be boolean").into())
             })
         })
         .transpose()

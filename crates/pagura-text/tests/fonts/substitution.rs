@@ -98,7 +98,8 @@ fn afm_characters(afm: &str) -> Result<Vec<(Option<u8>, Name, f64)>> {
 }
 
 #[test]
-fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags() -> Result<()> {
+fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags()
+-> pagura_document::source::ReadResult<()> {
     for value in values("substitution-recovery-inventory", "out")? {
         let name = value
             .as_array()
@@ -204,7 +205,8 @@ fn check_substituted(name: &str, (font, unicode): &(PdfFont, FontUnicode)) -> Re
 }
 
 #[test]
-fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -> Result<()> {
+fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes()
+-> pagura_document::source::ReadResult<()> {
     for value in values("substitute-style-inventory", "out")? {
         let name = value
             .as_array()
@@ -251,7 +253,8 @@ fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -
 }
 
 #[test]
-fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
+fn substituted_fonts_reject_malformed_unicode_in_strict_mode()
+-> pagura_document::source::ReadResult<()> {
     for name in ["strict-substitution-simple", "strict-substitution-cid"] {
         for recovery in [Recovery::Strict, Recovery::Repair] {
             let document = Document::open(
@@ -321,7 +324,7 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
 }
 
 #[test]
-fn null_or_dangling_font_files_still_use_the_provider() -> Result<()> {
+fn null_or_dangling_font_files_still_use_the_provider() -> pagura_document::source::ReadResult<()> {
     // A FontFile entry that is null or refers to a missing object embeds
     // nothing (7.3.9, 7.3.10), so the provider's substitute applies.
     let name = "substitute-style-bold-weight";
@@ -347,13 +350,17 @@ fn null_or_dangling_font_files_still_use_the_provider() -> Result<()> {
         let error = PdfFont::load(&document, &font)
             .err()
             .ok_or_else(|| Error::syntax("expected a missing program"))?;
-        assert_eq!(error.feature(), Some(features::NON_EMBEDDED));
+        assert_eq!(
+            error.as_error().unwrap().feature(),
+            Some(features::NON_EMBEDDED)
+        );
     }
     Ok(())
 }
 
 #[test]
-fn substituted_cid_fonts_still_repair_contradictory_descriptor_flags() -> Result<()> {
+fn substituted_cid_fonts_still_repair_contradictory_descriptor_flags()
+-> pagura_document::source::ReadResult<()> {
     // The CID substitute never reads the flags, but Symbolic and Nonsymbolic
     // both set is still the descriptor's repair (9.8.2, Table 121).
     let name = "repair-cid-substitute-flags";
