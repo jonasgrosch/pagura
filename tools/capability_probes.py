@@ -51,9 +51,9 @@ def fixture(variant: str) -> bytes:
     """
     if variant == "invalid":
         return b"This is intentionally not a PDF.\n"
-    if variant not in ("services", "empty"):
+    if variant not in ("services", "complete-ef", "empty"):
         raise ValueError("unknown synthetic variant")
-    full = variant == "services"
+    full = variant != "empty"
     content = b"BT /F1 12 Tf 20 50 Td (Parity probe) Tj ET\n" if full else b""
     def stream(value: bytes, extra: bytes = b"") -> bytes:
         return b"<< /Length " + str(len(value)).encode() + extra + b" >>\nstream\n" + value + b"\nendstream"
@@ -65,7 +65,8 @@ def fixture(variant: str) -> bytes:
     ]
     if full:
         objects += [b"<< /Title (Capability probe) /Author (Pagura fixtures) >>",
-                    b"<< /Type /Filespec /F (probe.txt) /UF (probe.txt) /EF << /F 8 0 R >> >>",
+                    b"<< /Type /Filespec /F (probe.txt) /UF (probe.txt) /EF << /F 8 0 R" +
+                    (b" /UF 8 0 R" if variant == "complete-ef" else b"") + b" >> >>",
                     stream(PAYLOAD, b" /Type /EmbeddedFile /Subtype /text#2Fplain")]
     output = bytearray(b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
     offsets = [0]
@@ -95,7 +96,7 @@ def validate_manifest(data, inventory):
         require(isinstance(row["id"], str) and row["id"] not in seen, "duplicate probe case")
         seen.add(row["id"])
         require(row["capability"] in identities and OPERATIONS.get(row["operation"]) == row["capability"], "unassigned probe operation")
-        require(row["fixture"] in {"services", "empty", "invalid"}, "unknown probe fixture")
+        require(row["fixture"] in {"services", "complete-ef", "empty", "invalid"}, "unknown probe fixture")
         require(row["oracle"] in {"exact-json", "reject-invalid"}, "unknown probe oracle")
         require((row["oracle"] == "reject-invalid") == (row["fixture"] == "invalid"), "invalid rejection control")
         require(row["oracle"] != "reject-invalid" or row["expected"] is None, "rejection control must have no value")
@@ -221,8 +222,16 @@ def service_identity(name, command):
     return result
 
 
-def expected_cell(engine, case):
-    return "adapter-unavailable" if (engine, case["operation"]) in UNIMPLEMENTED else "pass"
+def observation_complete(engine, case, result):
+    """CI checks the measuring tool, not whether every competitor is correct.
+
+    Wrong values and explicit refusals are usable observations, still reported
+    as failures to meet the independent oracle. An adapter/build failure or a
+    timeout cannot establish such an observation and fails the workflow.
+    """
+    if (engine, case["operation"]) in UNIMPLEMENTED:
+        return result["outcome"] == "adapter-unavailable"
+    return result["outcome"] in {"pass", "incorrect", "rejected", "unsupported"}
 
 
 def run(data, inventory, output, selected=SELECTED):
@@ -266,7 +275,7 @@ def run(data, inventory, output, selected=SELECTED):
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     cases = {case["id"]: case for case in data["cases"]}
-    return all(row["outcome"] == expected_cell(row["engine"], cases[row["case"]])
+    return all(observation_complete(row["engine"], cases[row["case"]], row)
                for row in report["results"] if row["engine"] in selected)
 
 
@@ -332,8 +341,8 @@ def main():
     validate_manifest(data, inventory)
     if args.command == "run":
         if not run(data, inventory, args.output, tuple(args.engines.split(","))):
-            parser.exit(1, "G01 selected probes failed or could not execute; inspect the saved report.\n")
-        print("G01 implemented adapter paths passed; explicit adapter gaps and unselected engines remain visible. Family parity remains unprobed.")
+            parser.exit(1, "G01 could not establish all implemented observations; inspect the saved report.\n")
+        print("G01 observations recorded. Incorrect/refused results and explicit adapter gaps remain in the report; CI success is not engine correctness or parity.")
     elif args.command == "combine":
         report = combine([read_json(path) for path in args.reports], data, inventory)
         args.output.parent.mkdir(parents=True, exist_ok=True)

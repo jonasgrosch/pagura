@@ -3,7 +3,7 @@
 The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
-G01 remains open: these nine cases do not establish family or product parity.
+G01 remains open: these ten cases do not establish family or product parity.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
 |---|---|---|---|
@@ -63,7 +63,7 @@ python tools/capability_probes.py combine /tmp/linux.json /tmp/mac.json --output
 
 Each platform publishes `capability-document-services-<os>`, even when a probe
 fails. After successful platform jobs, `capability-document-services` combines
-all 54 cells, requiring disjoint engine selections and identical revision,
+all 60 cells, requiring disjoint engine selections and identical revision,
 workflow-run, source and fixture hashes. Reports record environment, adapter,
 manifest, lock and native binary identities. Python/pdf.js/hayro dependencies
 are pinned; Poppler and CoreGraphics use the actual recorded OS versions, not
@@ -75,15 +75,32 @@ invalid-input control. A wrong result is `incorrect`; a rejection of valid input
 is `rejected`. `unsupported` requires a named explicit backend refusal; the
 adapters do not invent one from exceptions. Timeout, adapter errors, absent
 adapter paths and unavailable engine installations remain distinct outcomes.
-The implemented adapter paths must pass for CI to succeed. The six explicitly
-unimplemented case/engine cells remain visible; they cannot establish release
-readiness. An unexpected API absence on an implemented path fails the job.
+CI requires a completed observation on each implemented adapter path: `pass`,
+`incorrect`, a valid-input rejection or a named explicit unsupported result.
+Competitor differences are evidence, so they stay visible without failing the
+measuring tool. Broken/unavailable adapters, engine installations and timeouts
+fail the workflow. The seven explicitly unimplemented case/engine cells stay
+visible too. CI success therefore cannot establish engine correctness or release
+readiness; Pagura correctness gates must still require its independent oracles.
 
 Harness controls check wrong values, boolean/numeric confusion, rejection
 evidence, invalid envelopes, missing/duplicate cells, unattested passes, malformed
 output, timeouts and missing executables. Report joining also rejects mixed
 revisions, fixtures, source hashes or workflow runs and incomplete/overlapping
 engine coverage. These controls use stubs, not competitor libraries.
+
+## Observed attachment difference
+
+The first expanded hosted run ([40251755232](https://github.com/jonasgrosch/pagura/actions/runs/40251755232))
+recorded `incorrect` for pdf.js 6.4.299 on `attachments.services`: it returned an
+empty list for a Filespec containing F/UF filenames with only an EF/F stream.
+PDFium 156.0.8076.0, MuPDF 1.28.5 and Poppler 24.02.0 returned the authored name and
+payload hash. ISO 32000-2 7.7.4 Table 32 and 7.11.3 Table 43 permit an EmbeddedFiles
+entry whose EF dictionary has F or UF; the expected embedded payload is retained.
+The companion `attachments.complete-ef` case supplies both EF keys for the same
+stream to isolate the API difference. Its results must be measured separately.
+No engine-specific result changes the expected attachment or turns a mismatch
+into a pass. Raw reports remain in CI artifacts, outside Git.
 
 ## Next G01 increments
 

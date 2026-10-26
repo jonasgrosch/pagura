@@ -72,6 +72,8 @@ class ProbeTests(unittest.TestCase):
             offset = int(entry[:10])
             self.assertTrue(content[offset:].startswith(f"{index} 0 obj\n".encode()))
         self.assertIn(b"(Parity probe)", content)
+        self.assertNotIn(b"/UF 8 0 R", content)
+        self.assertIn(b"/UF 8 0 R", probes.fixture("complete-ef"))
         self.assertNotIn(b"/EmbeddedFiles", probes.fixture("empty"))
         self.assertFalse(probes.fixture("invalid").startswith(b"%PDF"))
 
@@ -113,13 +115,16 @@ class ProbeTests(unittest.TestCase):
         negative["reason"] = "EngineOpenError"
         probes.validate_report(report, self.manifest, self.inventory)
 
-    def test_known_adapter_gaps_are_narrow_and_cannot_hide_other_failures(self):
+    def test_measurement_gate_preserves_competitor_differences_but_fails_broken_adapters(self):
         for engine in self.inventory["engines"]:
             for case in self.manifest["cases"]:
-                expected = "adapter-unavailable" if (engine, case["operation"]) in probes.UNIMPLEMENTED else "pass"
-                self.assertEqual(probes.expected_cell(engine, case), expected)
-        self.assertEqual(sum(probes.expected_cell(e, c) == "adapter-unavailable"
-                             for e in self.inventory["engines"] for c in self.manifest["cases"]), 6)
+                gap = (engine, case["operation"]) in probes.UNIMPLEMENTED
+                for outcome in probes.OUTCOMES:
+                    expected = outcome == "adapter-unavailable" if gap else outcome in {"pass", "incorrect", "rejected", "unsupported"}
+                    self.assertEqual(probes.observation_complete(engine, case, {"outcome": outcome}), expected)
+        wrong = probes.adjudicate(self.case, {"schema": 1, "status": "ok", "value": []})
+        self.assertTrue(probes.observation_complete("pdfjs", self.case, wrong))
+        self.assertEqual(wrong["outcome"], "incorrect")
 
     def split_reports(self):
         reports = []
@@ -135,7 +140,7 @@ class ProbeTests(unittest.TestCase):
     def test_combination_requires_same_evidence_and_complete_disjoint_engines(self):
         reports = self.split_reports()
         combined = probes.combine(reports, self.manifest, self.inventory)
-        self.assertEqual(len(combined["results"]), 54)
+        self.assertEqual(len(combined["results"]), len(self.manifest["cases"]) * len(self.inventory["engines"]))
         self.assertNotIn("not-run", {row["outcome"] for row in combined["results"]})
         for field in ("revision", "source_sha256", "fixtures", "workflow_run"):
             broken = copy.deepcopy(reports)

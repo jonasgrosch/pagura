@@ -156,7 +156,7 @@ been exercised. Later discoveries reopen the inventory and relevant package.
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
 **Started:** the [document-service probe slice](../benchmarks/probes/README.md)
-adds nine independent populated/empty/rejection controls, 54 explicit case/engine
+adds ten independent populated/empty/rejection controls, 60 explicit case/engine
 cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
 six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstruction
 and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
