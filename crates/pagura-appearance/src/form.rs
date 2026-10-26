@@ -273,7 +273,7 @@ impl Context<'_, '_> {
             &limits,
         )?;
         if self.policy == UpdatePolicy::PreserveExisting {
-            compatibility::supply_font(document, &mut resources, da.font.as_bytes())?;
+            supply_font(document, &mut resources, da.font.as_bytes())?;
         }
         let font = Font::load(document, &resources, da.font.as_bytes(), self.fonts)?;
         let style = Style::read(document, self.widget.dictionary)?;
