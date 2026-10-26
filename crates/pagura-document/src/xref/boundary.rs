@@ -55,7 +55,9 @@ pub(super) fn parse_header<M: ParseMode>(
         )?;
     }
     let line = offset + HEADER_LENGTH;
-    if !matches!(bytes.get(line), Some(b'\r' | b'\n')) {
+    if matches!(bytes.get(line), Some(b'\r' | b'\n')) {
+        parser.seek(line + 1)?;
+    } else {
         let suffix = bytes
             .get(line..)
             .ok_or(Error::syntax("truncated PDF header"))?;
@@ -77,8 +79,6 @@ pub(super) fn parse_header<M: ParseMode>(
             .at(Position::File(line)),
         )?;
         parser.seek(line + end + 1)?;
-    } else {
-        parser.seek(line + 1)?;
     }
     Ok(offset)
 }
