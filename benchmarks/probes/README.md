@@ -174,11 +174,13 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
 
 ## R02 image integration controls
 
-The image bundle adds 198 controls to the six existing graphics/image
+The image bundle adds 214 controls to the six existing graphics/image
 controls: unsigned 1–16-bit and mixed-precision sYCC, embedded ICC, native-size
 sampling, matching ordinary RGB/soft-mask images, ranked profile choices,
 physical Lab input, palette-backed PDF Indexed opacity, masks/groups/interpolation
-and resource-aware inline framing. The 204-case inventory therefore has 1,428
+and resource-aware inline framing. Signed restricted Gray/RGB TRC controls add full-precision negative clipping,
+matched unsigned and RGB pairs, mixed signed palette channels and profile
+fallback. The 220-case inventory therefore has 1,540
 observations across Pagura and six baselines. These are scoped controls, not
 family support verdicts; full functional native/WASI checks and comparative
 results for this source revision are pending hosted execution.

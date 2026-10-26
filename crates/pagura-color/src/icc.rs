@@ -74,6 +74,7 @@ pub struct Profile {
     transforms: [Option<Arc<Forward>>; 3],
     model: Option<Forward>,
     lab_input: bool,
+    input_display: bool,
     white: [f64; 3],
 }
 #[derive(Debug, Clone)]
@@ -165,12 +166,23 @@ impl Profile {
             transforms,
             model,
             lab_input: profile.bytes(16, 4)? == b"Lab ",
+            input_display: matches!(profile.bytes(12, 4)?, b"scnr" | b"mntr"),
             white,
         }))
     }
     /// Whether the profile's data colour space is CIELAB.
     pub fn lab_input(&self) -> bool {
         self.lab_input
+    }
+    /// Whether the selected transform is a restricted XYZ Gray/TRC or
+    /// RGB matrix/TRC input/display model (T.800 I.5.3.3, Table I.9).
+    /// Its device inputs can be clipped to the TRC's `0..=1` range.
+    pub fn restricted_trc(&self, intent: Intent) -> bool {
+        self.input_display
+            && matches!(
+                self.forward(intent),
+                Ok(Forward::Gray { pcs: Pcs::Xyz, .. } | Forward::Matrix { .. })
+            )
     }
     /// Converts source components to encoded sRGB.
     ///

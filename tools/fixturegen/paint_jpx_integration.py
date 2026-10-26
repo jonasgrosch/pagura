@@ -25,13 +25,13 @@ def colr(method, data, precedence=0, approximation=1):
     return jpx.box(b'colr', struct.pack('>BbB', method, precedence, approximation) + data)
 
 
-def container(planes, specifications, *, bits=8, extra=b'', origin=(0, 0), brand=b'jpx '):
+def container(planes, specifications, *, bits=8, signed=False, extra=b'', origin=(0, 0), brand=b'jpx '):
     width = len(planes[0])
-    header = jpx.box(b'ihdr', struct.pack('>IIH4B', 1, width, len(planes), bits - 1, 7, 0, 0))
+    header = jpx.box(b'ihdr', struct.pack('>IIH4B', 1, width, len(planes), bits - 1 + 128 * int(signed), 7, 0, 0))
     header += b''.join(specifications) + extra
     return (jpx.box(b'jP  ', b'\r\n\x87\n') + jpx.box(b'ftyp', brand + bytes(4) + b'jp2 ')
             + jpx.box(b'jp2h', header)
-            + jpx.box(b'jp2c', jpx.codestream(planes, width, 1, bits=bits, origin=origin)))
+            + jpx.box(b'jp2c', jpx.codestream(planes, width, 1, bits=bits, signed=signed, origin=origin)))
 
 
 def definitions(rows):
@@ -91,15 +91,20 @@ def profile_choices():
                b'<< /XObject << /I 5 0 R >> >>', rectangles, requirement=ICC, tolerance=1)
     yield bad_image('malformed-selected-profile', container(planes, [colr(3, b'broken', 3), colr(2, exact, 2)]))
     yield bad_image('invalid-jpx-approximation', container(planes, [colr(2, exact, 0, 0)]))
-    yield bad_image('signed-icc-sample-boundary', encoded(planes, exact, signed=True), error='image.JPX-colour')
+    yield bad_image('signed-icc-sample-boundary', encoded(planes, lab_profile(), method=3, signed=True),
+                    error='image.JPX-colour')
     yield image_case('explicit-overrides-all-candidates', container(planes, [colr(3, b'broken', 3), colr(1, struct.pack('>I', 19), 2)]),
                      b'/Filter /JPXDecode /ColorSpace /DeviceRGB', [], 3, 1, colors=samples, requirement=ICC)
 
 
-def lab_cases():
+def lab_profile():
     tags = colour.icc_tags(4)
     tags[b'A2B0'] = colour.icc_mab(3, pcs=b'Lab ', only_b=True)
-    profile = colour.icc_pack(tags, 3, space=b'Lab ', pcs=b'Lab ')
+    return colour.icc_pack(tags, 3, space=b'Lab ', pcs=b'Lab ')
+
+
+def lab_cases():
+    profile = lab_profile()
     def rgb(values):
         return colour.cie_rgb('Lab', (100 * values[0], 255 * values[1] - 128, 255 * values[2] - 128),
                               white=colour.ICC_D50)
@@ -272,6 +277,40 @@ def signed_trc_cases():
                           extra={**control.extra, 'control_of': f'{AREA}/{name}'})
 
 
+def signed_trc_integration():
+    """Original signed values survive palette mapping, opacity and selection."""
+    profile = colour.icc_profile(3, curve=colour.icc_curve('identity', ()))
+    samples = [(-64, 0, -1000), (32, 128, 8192), (64, 256, 16384)]
+    alphas = [0, 128, 255]
+    # T.800 I.5.3.4 stores signed palette values in two's complement,
+    # independently of the unsigned codestream index and opacity channel.
+    palette = struct.pack('>HB', 3, 4) + bytes([135, 9, 143, 7])
+    palette += b''.join(struct.pack('>BHHB', r & 255, g, b & 65535, alpha)
+                        for (r, g, b), alpha in zip(samples, alphas))
+    maps = b''.join(struct.pack('>HBB', 0, 1, column) for column in range(4))
+    for mode in (0, 1, 2):
+        extra = jpx.box(b'pclr', palette) + jpx.box(b'cmap', maps)
+        extra += definitions([(i, 0, i + 1) for i in range(3)] + [(3, max(1, mode), 0)])
+        data = container([[0, 1, 2]], [colr(2, profile)], extra=extra)
+        pixels = []
+        for sample, alpha in zip(samples, alphas):
+            values = [F(max(0, value), maximum) for value, maximum in zip(sample, [255, 1023, 65535])]
+            if mode == 2 and alpha:
+                values = [value * F(255, alpha) for value in values]
+            pixels.append(tuple(srgb(value * 255) for value in values))
+        yield image_case(f'signed-trc-mixed-alpha-{mode}', data,
+                         b'/Filter /JPXDecode /SMaskInData %d' % mode, [], 3, 1,
+                         colors=pixels, alpha=[F(a, 255) for a in alphas] if mode else None,
+                         tolerance=1, requirement=ICC)
+    planes = [[128, 192, 255]] * 3
+    data = container(planes, [colr(3, lab_profile(), 3), colr(2, profile, 2)], signed=True)
+    yield image_case('signed-trc-candidate-fallback', data, b'/Filter /JPXDecode', [], 3, 1,
+                     colors=[(srgb(value),) * 3 for value in [0, 64, 127]], tolerance=1, requirement=ICC)
+    future = colour.icc_profile(3, version=5)
+    yield bad_image('signed-trc-no-device-fallback', encoded(planes, future, method=3, signed=True),
+                    error='image.JPX-colour')
+
+
 def cases():
     yield from profile_choices()
     yield from lab_cases()
@@ -279,3 +318,4 @@ def cases():
     yield from interactions()
     yield from inline_resources()
     yield from signed_trc_cases()
+    yield from signed_trc_integration()

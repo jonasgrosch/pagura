@@ -275,9 +275,15 @@ fn components(
             .component_bits(k)
             .unwrap_or(decoded.bits_per_component);
         let maximum = f64::from(u16::MAX >> 16_u32.saturating_sub(u32::from(bits.clamp(1, 16))));
+        let bias = match &decoded.kind {
+            pagura_image::ImageKind::EmbeddedColor { sample_bias, .. } => {
+                sample_bias.get(k).copied().unwrap_or(0)
+            }
+            _ => 0,
+        };
         let [low, high] = image.decode.get(k).copied().unwrap_or([0.0, maximum]);
         let sample = if association > 0.0 {
-            f64::from(raw) / maximum / association
+            (f64::from(raw) - f64::from(bias)) / maximum / association
         } else {
             0.0
         };

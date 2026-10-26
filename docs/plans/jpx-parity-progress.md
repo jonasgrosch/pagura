@@ -47,18 +47,47 @@ only source/format/lint checks and small independent fixture authoring ran local
 under ADR 0031.
 
 Remaining boundaries: source precision above sixteen bits and full Part 2 decoder
-features are R03; signed sYCC is invalid under Table I.10; general signed ICC sample/profile combinations are not defined by ICC.
-T.800 Table I.9 additionally permits clipping negative inputs to a restricted
-matrix/TRC profile; that narrower policy is being probed independently rather
-than classified as invalid. Additional baseline colour models and general
+features are R03; signed sYCC is invalid under Table I.10. General signed ICC
+sample/profile combinations are not defined by ICC.
+T.800 Table I.9 separately permits clipping negative inputs to a restricted
+XYZ Gray/RGB matrix/TRC input/display profile. The existing ICC parser identifies
+that subset; image metadata preserves the unsigned storage bias per component,
+and sampling subtracts it before normalization, opacity and colour conversion.
+General signed Lab/LUT profiles remain explicit Unsupported unless a later
+restricted candidate applies. Additional baseline colour models and general
 JPX compositing layers are not claimed by this integration bundle. A passed
 fixture is not competitive family parity, and no performance claim is made.
 
-The signed restricted-profile increment prepares native-size Gray/RGB controls
+The signed restricted-profile increment adds native-size Gray/RGB controls
 at eight and sixteen bits. Its oracle subtracts the authoring/storage bias,
 uses the full precision denominator from I.5.3.3, and clips negative device
-inputs before the TRC. Every signed case has both an unsigned JPX control with
+inputs before the TRC. Each native-size signed case has both an unsigned JPX control with
 the same ICC profile and an ordinary RGB control. The former isolates signed
 sample interpretation even when the latter exposes colour or sampling policy.
-These additional controls have only been authored; pinned-baseline observations
-and any resulting implementation remain pending.
+Mixed signed/unsigned palette channels, opacity modes and candidate fallback
+have additional formula-derived controls. Public tests preserve raw signed
+samples and independent unsigned opacity. The complete set has 220 render
+oracles; current implementation validation remains pending hosted execution.
+
+A diagnostic-only hosted run at `cb444312450e900a5b23b7b344286ee510d63cd6`
+retained the old signed rejection to measure the gap before the implementation:
+[run 40341090579](https://github.com/jonasgrosch/pagura/actions/runs/40341090579).
+Pagura passed 212 controls and returned its expected Unsupported error on the
+four signed Gray/RGB 8/16-bit cases. The workflow therefore failed deliberately;
+this is diagnostic evidence, not a successful acceptance run. Linux render-report
+artifact `12660430830` has SHA-256
+`74d52c3d16f0c01406c8708db9c73c18befa5762e5b171a246bc29386af8a743`;
+macOS artifact `12660000540` has SHA-256
+`213de85810c8ed9aa9befe7d7dccf415291d8aacf590fbdcb065f87c29ecefaa`.
+
+PDF.js 6.4.299 renders each signed case byte-identically to its clipped unsigned
+JPX control. In the eight-bit gray case both yield samples
+`[0, 0, 0, 0, 64, 127]`, while the independent ICC-managed oracle and ordinary RGB
+control yield `[0, 0, 0, 0, 137, 187]`. This supports the signed-sample clipping
+policy while exposing a separate colour-policy difference; it does not establish
+complete ICC output parity. MuPDF 1.28.5 and Quartz (macOS 26.6.2) pass the unsigned
+ICC and ordinary RGB controls but differ on signed inputs. PDFium 156.0.8076.0
+and hayro 0.8.0 differ on both signed and unsigned ICC cases, and their eight-bit
+signed gray outputs retain the storage-offset sequence. Poppler 24.02.0 also
+fails the ordinary RGB controls, so its signed observations remain unadjudicated.
+No competitor source or measured pixel became an oracle.

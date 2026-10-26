@@ -86,6 +86,10 @@ pub enum ImageKind {
     EmbeddedColor {
         /// Colour description from the container.
         color: jpx::JpxColor,
+        /// Unsigned storage bias of each component, subtracted before sample
+        /// normalization. Empty when all components are unsigned. Signed JPX
+        /// samples retain their original precision and raw offset encoding.
+        sample_bias: Vec<u16>,
     },
     /// A 1-bit stencil mask painted with the current fill colour
     /// (`/ImageMask true`); `inverted` follows `/Decode [1 0]`.
@@ -205,11 +209,13 @@ pub struct DecodedImage {
 }
 
 impl DecodedImage {
-    /// Device fallback for an embedded colour description that the painter
-    /// cannot support (7.4.9). The original profile or enumerated space remains
-    /// available in [`ImageKind::EmbeddedColor`].
+    /// Device fallback for an unsigned embedded colour description that the
+    /// painter cannot support (7.4.9). Signed ICC samples require a defined
+    /// profile interpretation. Original colour metadata remains available in
+    /// [`ImageKind::EmbeddedColor`].
     pub fn embedded_color_fallback(&self) -> Option<Value> {
-        if !matches!(self.kind, ImageKind::EmbeddedColor { .. }) {
+        if !matches!(&self.kind, ImageKind::EmbeddedColor { sample_bias, .. } if sample_bias.is_empty())
+        {
             return None;
         }
         match self.components {

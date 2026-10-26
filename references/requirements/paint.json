@@ -737,7 +737,12 @@
         "paint_jpx_integration/signed-trc-gray-16-rgb-control",
         "paint_jpx_integration/signed-trc-rgb-16",
         "paint_jpx_integration/signed-trc-rgb-16-unsigned-control",
-        "paint_jpx_integration/signed-trc-rgb-16-rgb-control"
+        "paint_jpx_integration/signed-trc-rgb-16-rgb-control",
+        "paint_jpx_integration/signed-trc-mixed-alpha-0",
+        "paint_jpx_integration/signed-trc-mixed-alpha-1",
+        "paint_jpx_integration/signed-trc-mixed-alpha-2",
+        "paint_jpx_integration/signed-trc-candidate-fallback",
+        "paint_jpx_integration/signed-trc-no-device-fallback"
       ],
       "review": [
         {
@@ -758,10 +763,10 @@
         {
           "locator": "T.800 (06/2019) I.5.3.3 and Table I.9; ICC.1:2010 input/display Gray and RGB matrix/TRC profile models",
           "rule": "For the restricted XYZ matrix/TRC subset, map the original signed integer using the full component-precision denominator and clip negative inputs to the TRC input limit. Do not add an unsigned colour offset or normalize to the positive signed maximum.",
-          "verdict": "Independently authored native-size Gray/RGB controls at 8 and 16 bits each include a clipped unsigned JPX control with the identical ICC profile and a plain RGB control. Pinned-baseline execution pending; no broader signed profile policy is inferred."
+          "verdict": "Independent native-size Gray/RGB controls at 8 and 16 bits have identical-profile unsigned JPX and plain RGB counterparts. Mixed signed/unsigned palette precision, SMaskInData 0/1/2, restricted-candidate fallback and refusal of undefined signed device fallback add integration controls. The original general-signed boundary fixture now uses a valid full Lab profile, keeping its Unsupported expectation; no valid restricted-TRC case is mislabeled as invalid."
         }
       ],
-      "gaps": "General signed ICC/profile combinations remain undefined by ICC. T.800 Table I.9 separately permits clipping negative inputs to restricted XYZ Gray/RGB matrix/TRC profiles; independent signed/unsigned/RGB controls probe that valid but discouraged subset. General Part 2 colour models and decoder extensions remain R03; competitive observations require individual adjudication."
+      "gaps": "General signed Lab/LUT and other nonrestricted ICC profile combinations remain outside the defined clipping policy; they are explicit Unsupported unless a later restricted candidate applies. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles use T.800 Table I.9 clipping. General Part 2 colour models and decoder extensions remain R03; competitive observations require individual adjudication."
     },
     {
       "id": "paint-jpx-sycc",

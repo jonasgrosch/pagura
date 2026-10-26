@@ -91,13 +91,19 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             ImageKind::Color {
                 color_space: Some(value),
             } => self.session.colors.resolve(resources, value).map(Some),
-            ImageKind::EmbeddedColor { color } => {
+            ImageKind::EmbeddedColor { color, sample_bias } => {
                 let ImageId::Object(id) = source.id() else {
                     return Err(Error::syntax("JPXDecode is forbidden in inline images"));
                 };
                 self.session
                     .colors
-                    .embedded_jpx(id, color, source.components(), intent)
+                    .embedded_jpx(
+                        id,
+                        color,
+                        source.components(),
+                        intent,
+                        !sample_bias.is_empty(),
+                    )
                     .map(Some)
             }
             ImageKind::Stencil { .. } => Ok(None),

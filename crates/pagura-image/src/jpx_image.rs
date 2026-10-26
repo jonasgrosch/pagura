@@ -95,6 +95,9 @@ impl Jpx {
         if self.mode != 0 && decoded.alpha.is_none() {
             return Err(Error::syntax("SMaskInData requires an opacity channel"));
         }
+        if storage_bytes(&decoded, component_geometry.capacity(), 0, 8, 0)? > limits.decoded_bytes {
+            return Err(Error::limit("JPX component adapter budget exceeded"));
+        }
         let colours: Vec<_> = decoded
             .components
             .iter()
@@ -128,7 +131,7 @@ impl Jpx {
         let precision = if mixed { 16 } else { first.0.bits };
         parameters::budget(width, height, count, precision, limits)?;
         let kind = (components == 0)
-            .then(|| embedded_space(decoded.color, count, colours.iter().any(|c| c.0.signed)))
+            .then(|| embedded_space(decoded.color, &colours))
             .transpose()?;
         Ok(Description {
             bits: colours.iter().map(|c| c.0.bits).collect(),
@@ -225,7 +228,7 @@ pub(crate) fn adapt(
         });
     }
     if matches!(image.kind, ImageKind::Color { color_space: None }) {
-        image.kind = embedded_space(decoded.color, count, components.iter().any(|c| c.0.signed))?;
+        image.kind = embedded_space(decoded.color, &components)?;
     }
     Ok(())
 }
@@ -347,7 +350,7 @@ fn storage_bytes(
     let reference_bytes = decoded
         .components
         .len()
-        .checked_mul(2 * size_of::<&jpx::JpxComponent>() + 1)
+        .checked_mul(2 * size_of::<&jpx::JpxComponent>() + 1 + size_of::<u16>())
         .ok_or(Error::limit("JPX component storage overflow"))?;
     add(
         add(add(bytes, component_bytes)?, geometry_bytes)?,
@@ -412,9 +415,23 @@ fn interleave(
     }
 }
 
-fn embedded_space(color: jpx::JpxColor, count: u8, signed: bool) -> Result<ImageKind> {
+fn embedded_space(
+    color: jpx::JpxColor,
+    components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
+) -> Result<ImageKind> {
+    let count =
+        u8::try_from(components.len()).map_err(|_| Error::limit("too many JPX components"))?;
+    let signed = components.iter().any(|c| c.0.signed);
     validate_color(&color, count, signed)?;
-    Ok(ImageKind::EmbeddedColor { color })
+    let sample_bias = if signed {
+        components
+            .iter()
+            .map(|(c, _)| if c.signed { 1 << (c.bits - 1) } else { 0 })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Ok(ImageKind::EmbeddedColor { color, sample_bias })
 }
 
 fn validate_color(color: &jpx::JpxColor, count: u8, signed: bool) -> Result<()> {
@@ -446,12 +463,6 @@ fn validate_color(color: &jpx::JpxColor, count: u8, signed: bool) -> Result<()> 
         }
         jpx::JpxColor::Enumerated(19) => {
             return Err(Error::syntax("CIEJab is forbidden for PDF JPX images"));
-        }
-        jpx::JpxColor::Icc(_) if signed => {
-            return Err(Error::unsupported(
-                features::JPX_COLOUR,
-                "signed JPX ICC input has no standardized sample interpretation",
-            ));
         }
         jpx::JpxColor::Unspecified => {
             return Err(Error::syntax(

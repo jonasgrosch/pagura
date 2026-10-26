@@ -956,8 +956,15 @@ fn decoded_bytes(image: &DecodedImage) -> usize {
         MaskKind::Embedded(alpha) => pagura_image::deferred::storage_bytes(&alpha.samples),
         _ => 0,
     };
+    let color = match &image.kind {
+        ImageKind::EmbeddedColor { color, sample_bias } => color
+            .retained_bytes()
+            .saturating_add(sample_bias.capacity() * size_of::<u16>()),
+        _ => 0,
+    };
     pagura_image::deferred::storage_bytes(&image.samples)
         .saturating_add(alpha)
+        .saturating_add(color)
         .saturating_add(size_of::<Decoded>())
 }
 
@@ -968,6 +975,12 @@ fn validate(image: &DecodedImage) -> Result<()> {
         .map_err(|_| Error::limit("image sample count overflow"))?;
     if image.components == 0 || image.samples.len() != count {
         return Err(Error::syntax("image sample count mismatch"));
+    }
+    if let ImageKind::EmbeddedColor { sample_bias, .. } = &image.kind
+        && !sample_bias.is_empty()
+        && sample_bias.len() != usize::from(image.components)
+    {
+        return Err(Error::syntax("image signed sample metadata mismatch"));
     }
     if let MaskKind::Embedded(alpha) = &image.mask
         && u64::try_from(alpha.samples.len()).ok() != Some(pixels)
@@ -1202,15 +1215,22 @@ fn colors(
         .decode
         .get(..components)
         .ok_or(Error::syntax("missing Decode component"))?;
-    let mut maxima = reserved(components, bytes)?;
+    let mut encoding = reserved(components, bytes)?;
     for i in 0..components {
-        maxima.push(
+        let bias = match &decoded.kind {
+            ImageKind::EmbeddedColor { sample_bias, .. } => {
+                sample_bias.get(i).copied().unwrap_or(0)
+            }
+            _ => 0,
+        };
+        encoding.push([
+            f64::from(bias),
             decoded
                 .component_bits(i)
                 .filter(|bits| (1..=16).contains(bits))
                 .map(texels::maximum)
                 .ok_or(Error::syntax("invalid image component precision"))?,
-        );
+        ]);
     }
     let embedded = match &decoded.mask {
         MaskKind::Embedded(alpha) => {
@@ -1241,7 +1261,7 @@ fn colors(
     };
     Ok(Colors {
         decode: copied(decode, bytes)?,
-        maxima,
+        encoding,
         lookup: Lookup::of(space).map(|(lookup, _)| lookup),
         key: description.key.map(|key| copied(key, bytes)).transpose()?,
         embedded,

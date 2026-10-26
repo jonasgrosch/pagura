@@ -25,6 +25,7 @@ fn ranked_candidates_remain_visible_without_decoding() {
     let source = source(&document).unwrap();
     let ImageKind::EmbeddedColor {
         color: JpxColor::Alternatives(choices),
+        ..
     } = source.kind()
     else {
         panic!("missing colour candidates");
@@ -120,4 +121,65 @@ fn candidate_metadata_and_palette_adaptation_obey_output_limits() {
             "{name}"
         );
     }
+}
+
+#[test]
+fn signed_profile_samples_preserve_precision_and_storage_bias() {
+    for bits in [8, 16] {
+        for (name, count) in [("gray", 1), ("rgb", 3)] {
+            let document =
+                document(&format!("signed-trc-{name}-{bits}"), Limits::default()).unwrap();
+            let source = source(&document).unwrap();
+            let ImageKind::EmbeddedColor { sample_bias, .. } = source.kind() else {
+                panic!("missing embedded sample metadata");
+            };
+            let bias = 1_u16 << (bits - 1);
+            assert_eq!(sample_bias, &vec![bias; count]);
+            for component in 0..count {
+                assert_eq!(source.component_bits(component), Some(bits));
+            }
+            let decoded = source
+                .decode(&DecodeRequest::FULL, &document.limits(), Recovery::Strict)
+                .unwrap();
+            assert_eq!(&decoded.image.kind, source.kind());
+            assert!(decoded.image.embedded_color_fallback().is_none());
+            let maximum = u16::MAX >> (16 - bits);
+            for (pixel, expected) in [0, bias / 2, bias - 1, bias, bias + bias / 2, maximum]
+                .into_iter()
+                .enumerate()
+            {
+                assert_eq!(decoded.image.samples.get(pixel * count), Some(expected));
+            }
+        }
+    }
+}
+
+#[test]
+fn signed_palette_components_keep_independent_bias_and_unsigned_opacity() {
+    let document = document("signed-trc-mixed-alpha-2", Limits::default()).unwrap();
+    let source = source(&document).unwrap();
+    let ImageKind::EmbeddedColor { sample_bias, .. } = source.kind() else {
+        panic!("missing palette colour metadata");
+    };
+    assert_eq!(sample_bias, &[128, 0, 32768]);
+    assert_eq!(
+        (0..3).map(|i| source.component_bits(i)).collect::<Vec<_>>(),
+        [Some(8), Some(10), Some(16)]
+    );
+    let decoded = source
+        .decode(&DecodeRequest::FULL, &document.limits(), Recovery::Strict)
+        .unwrap();
+    assert_eq!(
+        decoded.image.samples,
+        Samples::Mixed {
+            values: vec![64, 0, 31768, 160, 128, 40960, 192, 256, 49152],
+            bits: vec![8, 10, 16],
+        }
+    );
+    let MaskKind::Embedded(alpha) = decoded.image.mask else {
+        panic!("missing unsigned opacity");
+    };
+    assert_eq!(alpha.bits_per_component, 8);
+    assert_eq!(alpha.samples, Samples::Bytes(vec![0, 128, 255]));
+    assert!(alpha.premultiplied);
 }

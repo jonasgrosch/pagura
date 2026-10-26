@@ -55,8 +55,11 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
         }
     }
     assert_eq!(image.component_bits(usize::from(image.components)), None);
-    if matches!(image.kind, ImageKind::EmbeddedColor { .. }) {
-        assert!(image.embedded_color_fallback().is_some());
+    if let ImageKind::EmbeddedColor { sample_bias, .. } = &image.kind {
+        assert_eq!(
+            image.embedded_color_fallback().is_some(),
+            sample_bias.is_empty()
+        );
     }
     if let Some(space) = params.get("space") {
         assert_eq!(space_name(&image.kind), space, "{name}");
@@ -139,18 +142,23 @@ fn space_name(kind: &ImageKind) -> &str {
         } => std::str::from_utf8(array[0].as_name().unwrap().as_bytes()).unwrap(),
         ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Enumerated(16),
+            ..
         } => "DeviceRGB",
         ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Enumerated(17),
+            ..
         } => "DeviceGray",
         ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Enumerated(12),
+            ..
         } => "DeviceCMYK",
         ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Icc(_),
+            ..
         } => "icc",
         ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Enumerated(18),
+            ..
         } => "sYCC",
         ImageKind::Stencil { .. } => "stencil",
         _ => panic!("unexpected image colour description"),

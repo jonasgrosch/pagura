@@ -111,8 +111,8 @@ impl Lookup {
 pub(super) struct Colors {
     /// Decode interval of each component.
     pub(super) decode: Vec<[f64; 2]>,
-    /// The largest code of each component.
-    pub(super) maxima: Vec<f64>,
+    /// The unsigned storage bias and normalization denominator of each component.
+    pub(super) encoding: Vec<[f64; 2]>,
     pub(super) lookup: Option<Lookup>,
     /// Colour-key ranges of raw codes (8.9.6.4).
     pub(super) key: Option<Vec<[u16; 2]>>,
@@ -142,7 +142,7 @@ impl Colors {
     /// Heap storage owned by this prepared colour description.
     pub(super) fn bytes(&self) -> usize {
         self.decode.capacity() * size_of::<[f64; 2]>()
-            + self.maxima.capacity() * size_of::<f64>()
+            + self.encoding.capacity() * size_of::<[f64; 2]>()
             + self
                 .key
                 .as_ref()
@@ -161,13 +161,13 @@ impl Colors {
             .embedded
             .zip(extra.embedded)
             .map(|((maximum, premultiplied), code)| (f64::from(code) / maximum, premultiplied));
-        for (((value, &code), &[low, high]), &maximum) in values
+        for (((value, &code), &[low, high]), &[bias, maximum]) in values
             .iter_mut()
             .zip(codes)
             .zip(&self.decode)
-            .zip(&self.maxima)
+            .zip(&self.encoding)
         {
-            let mut normalized = f64::from(code) / maximum;
+            let mut normalized = (f64::from(code) - bias) / maximum;
             // T.800 I.5.3.6, I-5 multiplies stored samples. Undo it before
             // range interpretation, especially the offset Lab a/b channels.
             // Indexed images instead contain indices into preblended colours.

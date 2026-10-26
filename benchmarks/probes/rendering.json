@@ -2809,6 +2809,58 @@
         "rgb_sha256": "b088ca33cf140ff3b35e5cfed04b44999486046483421eb86cb9e0215cb78773",
         "tolerance": 1
       }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-mixed-alpha-0",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-mixed-alpha-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "404042f84fc44bda9787e6d9b0f09f9d54196db63e1cd3ac4000c64e028311ff",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-mixed-alpha-1",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-mixed-alpha-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b6cc15a93569290fe03c60a093a8174c8ce811a13be83af60dde07b6af6eb26",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-mixed-alpha-2",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-mixed-alpha-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f9b991c98670ae337c65efe8860941d6f435183209dd450843b5a2c6c4d39a93",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-candidate-fallback",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-candidate-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b11098bd81c6bf50765b9d58438807d5442cc997134155fb6e4bd33b863bcef1",
+        "tolerance": 1
+      }
     }
   ]
 }
