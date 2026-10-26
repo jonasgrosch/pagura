@@ -52,7 +52,7 @@ integration. Milestone numbers are outcomes, not completion claims.
   private reference cache); discrepancies become fixtures with independent
   expectations. A registry whose `scope` does not state this is unverified.
 - **M3/M4 gaps (R02–R04):** vertical substituted CJK fonts and executable font
-  programs; higher/mixed-precision JPX sYCC, Lab-input/multi-profile ICC fallback and Indexed container-palette opacity integration; residual
+  programs; JPX precision above 16 bits, Lab-input/multi-profile ICC fallback and Indexed container-palette opacity integration; residual
   codec variants. Expert CFF charsets, FDSelect 4, default CFF2 blends and JPX
   embedded alpha already exist and are not scheduled for reimplementation.
 - **M5 gaps (R05/R06):** inverse/destination ICC transforms, calibrated blending

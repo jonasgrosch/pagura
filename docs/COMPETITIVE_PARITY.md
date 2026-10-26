@@ -194,9 +194,9 @@ Owner: `pagura-image`, `pagura-color`, `pagura-interpret`, `pagura-paint`; depen
 `b410d2bcafac55cbe9dbf337dbdbc88144e59ac4` connects embedded ICC profiles to the existing
 forward transforms and bounded profile cache. Independent Gray/RGB, alpha,
 PDF override and malformed-profile fixtures accompany cache/budget controls;
-hosted validation is pending. `0a9f9cb0109d5059350367247212795844a04f7f` adds
+hosted validation passed for this slice on Ubuntu, macOS and Windows. `0a9f9cb0109d5059350367247212795844a04f7f` adds
 eight-bit unsigned sYCC with IEC Annex F rational pixel oracles, explicit PDF
-overrides and alpha fixtures. Other/mixed sYCC precisions, Lab-input profiles,
+overrides and alpha fixtures. Lab-input profiles,
 multiple-profile ranking and fallback after an unsupported selected transform remain open. This slice
 does not complete R02 or its platform/interaction acceptance gate.
 `7040b91024dd10282b4e7d5e51b2e1942ff0b6c4` additionally preserves direct
@@ -204,7 +204,15 @@ index/opacity channels for explicit PDF Indexed spaces without a container
 palette, with first/last alpha and SMaskInData 0/1/2 fixtures. It rejects signed
 sYCC channels before signedness is discarded. The source inventory also includes
 `847fb26f0616e8b70bec76883880c78cbc47915d`, which updates the diagnostic formatter
-for the new colour model. Hosted verification remains pending.
+for the new colour model. Head `431c184d8` passed all three hosted product checks
+in [run 40256202717](https://github.com/jonasgrosch/pagura/actions/runs/40256202717).
+
+The follow-up `48443e4a228cc2de62a298d99d2148a28391eef2` removes the eight-bit-only
+sYCC admission guard: T.800 I.5.3.3 / Table I.10 maps each channel to the same
+colour-value domain before IEC conversion. Independent fixtures cover every
+supported precision 1-16, the non-neutral 16-bit midpoint, and mixed 1/3/10-bit
+palette output with SMaskInData 0/1/2. Hosted verification of this follow-up
+is pending; decoder precision above 16 bits remains R03 work.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
    respect explicit PDF colour spaces and expose all relevant colour candidates.
