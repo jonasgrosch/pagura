@@ -172,6 +172,13 @@ fn complete_identity_checks_and_requested_dependency_checks_keep_their_scopes() 
         Err(ReadFault::Unavailable(_))
     ));
     source.supply(ID, 3968, &bytes[3968..4256]).unwrap();
+    // The first nearby token candidate also needs its preceding byte.
+    let Err(ReadFault::Unavailable(missing)) = document.object(ObjectId::new(5, 0)) else {
+        panic!("nearby header predecessor wait")
+    };
+    assert_eq!(missing.ranges(), &[ByteRange::new(3967, 3968).unwrap()]);
+    assert_eq!(document.diagnostics(), []);
+    source.supply(ID, 3967, &bytes[3967..3968]).unwrap();
     let invalid = document.object(ObjectId::new(5, 0)).unwrap_err();
     assert_eq!(invalid.as_error().unwrap().kind, ErrorKind::Syntax);
     assert_eq!(
