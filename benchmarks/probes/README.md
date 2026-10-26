@@ -544,3 +544,49 @@ N absent. That same PDF is now a Syntax control, consistent with the existing
 shared-selector test. Optional AP=null still permits generation. The correction
 removes only that invalid pixel case (464 to 463); product code, all remaining
 pixels/tolerances and the previous 416 controls are unchanged.
+
+The completed [0309 capability run](https://github.com/jonasgrosch/pagura/actions/runs/40388042315)
+records 463/464 Pagura passes; that null-N case is its only failure. Its Linux
+report SHA-256 is `fe33ae63738c7b5cf8cf84db4b2835341406c8ec13ba3565571fbcd02def4774`
+(artifact 12682810693, ZIP digest
+`5fe74e97c3f06806a8a568b02f23a58d32af967f88844080c45fe89a8cba2b98`).
+This is exact old-head pixel evidence, not a functional or final-head acceptance
+claim; #256's corrected integrated checkpoint has fresh hosted gates pending.
+
+## Normal button display diagnostics
+
+The `buttons` observation set adds 31 paired missing/stored normal appearances,
+four ordinary-content controls and the existing blank control. It covers
+checkbox/radio on/off and disagreeing AS/V, explicit captions, NeedAppearances,
+push-button caption/icon arrangements TP 0–6, transformed Form XObject icons,
+SW A/B/S/N with smaller/larger icons, proportional/anamorphic fit, alignment,
+border/full-bounds fitting, MK/page rotation and 72/144 DPI. Every push-button
+input omits V and DV. No edit, action, rollover or down event is requested.
+
+Primary ISO 32000-2 12.7.5.2.3–.4 gives AS precedence over disagreeing V;
+12.7.5.2.2 gives push buttons no permanent value. Table 192 defines normal CA
+for all button kinds and I/IF/TP for push buttons. Table 250 defines icon scale
+conditions, aspect-ratio policy, proportional alignment and border fitting.
+Exact caption font fallback, partition sizes and padding remain reader layout
+policy to adjudicate from scoped output, not a universal pixel requirement.
+
+The normal stored artwork is two literal rectangles at page (12,12) and
+(24,12), each 8 by 10; its on/push colours are black/red and its Off colours
+blue/green. The ordinary caption uses the original 600-advance, 500-by-700 Type3
+glyphs at size 10 with page baseline 21 and x=10,16. The ordinary icon is black
+over [8,8,16,16] and red over [16,8,24,16]. A transformed icon has source
+BBox [2,3,18,11] and Matrix [0,1,-1,0,11,-2], giving upright bounds [0,0,8,16]
+before placement; it is distinct from its stored-AP control. Literal polygon
+coverage supplies only the stored/ordinary controls, without calling product
+layout or parsing generated appearance programs. Existing Sound subjects,
+Redact/widget diagnostics and the 463 existing pixel definitions are unchanged.
+
+Hosted observations are pending. Reproduce through the existing workflow input
+`annotation_observations=buttons` or `observe --annotation-set buttons`; raw
+results retain adapter configurations, errors/refusals, hashes and images
+separately from oracle totals. The follow-up implementation will share one
+requested-field projection and normal appearance generator with untouched
+preview and explicit regeneration/save. No-op saves must preserve source bytes;
+push-button AP persistence must not invent V/DV or an on-state. R/D activation,
+action execution and richer form data remain separate groups. V01/V02 remain
+partial; these authored diagnostics assert no new product support.

@@ -45,6 +45,7 @@ AREA = 'annotation_display'
 REQUIREMENT = 'content-static-annotation-placement'
 REDACT_REQUIREMENT = 'content-redact-preview'
 WIDGET_REQUIREMENT = 'content-source-widget-display'
+BUTTON_REQUIREMENT = 'content-normal-button-display'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
 # Original rectangular ink regions in a 32-unit grid. These are the geometric
 # union of one-unit orthogonal strokes with miter corners and butt endpoints,
@@ -419,6 +420,7 @@ def cases():
                    extra={'render_error':'limit'})
 
     yield from widget_observation_cases()
+    yield from button_observation_cases()
 
 
 def widget_objects(variant='text', stored=False):
@@ -460,6 +462,104 @@ def widget_pdf(objects):
     for number,body in sorted(objects.items()):
         builder.obj(number,body if isinstance(body,bytes) else navigation_value(body))
     return builder.classic()[0]
+
+
+def button_objects(variant, stored=False):
+    """Normal button inputs; push buttons deliberately have neither V nor DV."""
+    objects=widget_objects()
+    widget=objects[11]
+    widget|={'FT':pdf_name('Btn'),'V':pdf_name('Yes'),'AS':pdf_name('Yes')}
+    off=b'0 0 1 rg 4 4 8 10 re f 0 1 0 rg 16 4 8 10 re f'
+    objects[81]=stream(off,b'/Type /XObject /Subtype /Form /BBox [0 0 48 32] /Resources << >>')
+    icon=b'0 g 0 0 8 8 re f 1 0 0 rg 8 0 8 8 re f'
+    objects[83]=stream(icon,b'/Type /XObject /Subtype /Form /BBox [0 0 16 8] /Resources << >>')
+    objects[84]=stream(b'0 g 0 0 48 64 re f 1 0 0 rg 48 0 48 64 re f',
+                       b'/Type /XObject /Subtype /Form /BBox [0 0 96 64] /Resources << >>')
+    objects[85]=stream(b'0 g 2 3 8 8 re f 1 0 0 rg 10 3 8 8 re f',
+                       b'/Type /XObject /Subtype /Form /BBox [2 3 18 11] /Matrix [0 1 -1 0 11 -2] /Resources << >>')
+    if variant.startswith('radio'):widget['Ff']=1<<15
+    if variant in ('check-off','radio-off'):widget|={'V':pdf_name('Off'),'AS':pdf_name('Off')}
+    if variant=='check-as-off':widget['AS']=pdf_name('Off')
+    if variant=='check-as-on':widget['V']=pdf_name('Off')
+    if variant in ('check-caption','check-as-off'):widget['MK']={'CA':'A'}
+    if variant=='radio-caption':widget['MK']={'CA':'B'}
+    if variant=='check-need':objects[10]['NeedAppearances']=True
+    if variant.startswith('push'):
+        widget['Ff']=1<<16
+        widget.pop('V');widget.pop('AS')
+        mk={'CA':'AB','I':ref(83)}
+        widget['MK']=mk
+        if variant=='push-need':objects[10]['NeedAppearances']=True
+        if variant not in ('push-caption','push-need'):
+            mk['TP']=1
+        if variant.startswith('push-position-'):mk['TP']=int(variant.rsplit('-',1)[1])
+        if variant=='push-matrix':mk['I']=ref(85)
+        if variant.startswith('push-scale-'):
+            mode=variant.split('-')[2]
+            mk['IF']={'SW':pdf_name(mode)}
+            if variant.endswith('-large'):mk['I']=ref(84)
+        if variant=='push-anamorphic':mk['IF']={'S':pdf_name('A'),'A':[0,1]}
+        if variant=='push-aligned':mk['IF']={'A':[0,1]}
+        if variant in ('push-border','push-full-bounds'):
+            widget['BS']={'W':2,'S':pdf_name('S')}
+            mk|={'BC':[0,0,1],'IF':{'FB':variant=='push-full-bounds'}}
+        if variant=='push-widget-rotation':mk|={'R':90,'TP':4}
+        if variant=='push-page-rotation':objects[3]['Rotate']=90
+    if stored:
+        widget['AP']={'N':ref(80) if variant.startswith('push')
+                      else {'Yes':ref(80),'Off':ref(81)}}
+    return objects
+
+
+@lru_cache(maxsize=16)
+def button_control_pixels(artwork='on', dpi=72, rotated=False):
+    """Literal stored/ordinary artwork, independent of button generation policy."""
+    marks=[((12,12,8,10),(0,0,0)),((24,12,8,10),(1,0,0))]
+    if artwork=='off':marks=[((12,12,8,10),(0,0,1)),((24,12,8,10),(0,1,0))]
+    elif artwork=='caption':marks=widget_glyphs(x=10,y=21)
+    elif artwork=='icon':marks=[((8,8,8,8),(0,0,0)),((16,8,8,8),(1,0,0))]
+    return widget_area_pixels(marks,transform=(0,-1,1,0,0,64) if rotated else (1,0,0,1,0,0),
+                              size=(48,64) if rotated else (64,48),scale=dpi//72)
+
+
+def button_observation_cases():
+    """Paired source-only observations; reader layout is not a pixel oracle.
+
+    Table 192 defines caption/icon selection and TP ordering, not exact caption
+    partitions. Table 250 defines icon fit. Existing-state controls distinguish
+    AS from V. Original Type3 glyphs and rectangle icons isolate font/artwork
+    availability. No edit, action, rollover or mouse-down event is requested.
+    """
+    for artwork in ('on','off','caption','icon'):
+        objects=button_objects('push-caption')
+        objects[1].pop('AcroForm');objects[3].pop('Annots')
+        objects[3]['Contents']=ref(50)
+        objects[3]['Resources']={'Font':{'F1':ref(70)},'XObject':{'Icon':ref(83)}}
+        contents={'on':b'0 g 12 12 8 10 re f 1 0 0 rg 24 12 8 10 re f',
+                  'off':b'0 0 1 rg 12 12 8 10 re f 0 1 0 rg 24 12 8 10 re f',
+                  'caption':b'BT /F1 10 Tf 1 0 0 1 10 21 Tm (AB) Tj ET',
+                  'icon':b'q 1 0 0 1 8 8 cm /Icon Do Q'}
+        objects[50]=stream(contents[artwork])
+        label='ordinary-content' if artwork=='on' else 'ordinary-'+artwork
+        yield Case('button-observe-'+label,widget_pdf(objects),RENDER,(BUTTON_REQUIREMENT,),
+                   'Ordinary-content control with literal original caption/icon or stored-state artwork',
+                   oracle=button_control_pixels(artwork))
+    variants=('check-on','check-off','check-as-off','check-as-on','check-caption','check-need',
+              'radio-on','radio-off','radio-caption','push-caption','push-need','push-icon',
+              'push-matrix','push-scale-B-small','push-scale-B-large','push-scale-S-small',
+              'push-scale-S-large','push-scale-N-small','push-anamorphic','push-aligned',
+              'push-border','push-full-bounds','push-widget-rotation','push-page-rotation',
+              *(f'push-position-{position}' for position in range(2,7)))
+    for variant in variants:
+        for dpi in ((72,144) if variant in ('check-caption','push-caption') else (72,)):
+            for stored in (False,True):
+                off=variant in ('check-off','check-as-off','radio-off')
+                yield Case(f'button-observe-{variant}-{dpi}-'+('stored' if stored else 'missing'),
+                           widget_pdf(button_objects(variant,stored)),RENDER if stored else UNSUPPORTED,
+                           (BUTTON_REQUIREMENT,),
+                           'Matched normal checkbox/radio/push-button source display; no field edits or interaction',
+                           oracle=button_control_pixels('off' if off else 'on',dpi,variant=='push-page-rotation') if stored else None,
+                           dpi=dpi,feature=None if stored else 'annotation.appearance',extra={'dpi':dpi})
 
 
 @lru_cache(maxsize=32)

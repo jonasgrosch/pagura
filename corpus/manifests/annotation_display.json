@@ -4502,6 +4502,1167 @@
       "strict_valid": true,
       "repairs": [],
       "feature": "form.xfa"
+    },
+    {
+      "id": "annotation_display/button-observe-ordinary-content",
+      "kind": "pdf",
+      "description": "Ordinary-content control with literal original caption/icon or stored-state artwork",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-ordinary-content.pdf",
+      "sha256": "e64b0e778dd860cedd14aa6ac830f08db932c58b5465eff5d65c84c1abe65860",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-ordinary-content.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-ordinary-off",
+      "kind": "pdf",
+      "description": "Ordinary-content control with literal original caption/icon or stored-state artwork",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-ordinary-off.pdf",
+      "sha256": "4b0763a6806ac5a50db2041aaee351ea29d2163248a03a75c2ec1fd0a7f09dd6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-ordinary-off.ppm",
+      "oracle_sha256": "ae8b95c1dd7ba55a22a9bec33181f29e212453f2d4910d6db65f3da478165d35",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-ordinary-caption",
+      "kind": "pdf",
+      "description": "Ordinary-content control with literal original caption/icon or stored-state artwork",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-ordinary-caption.pdf",
+      "sha256": "ab32235a7b25d6079edb27f1bcaa9be50702ac43fce9265a36604681810fe5d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-ordinary-caption.ppm",
+      "oracle_sha256": "fc1d1a858a32ab98afcf867189ffc69c72de867bae74b0487816ad0e6bb9ef42",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-ordinary-icon",
+      "kind": "pdf",
+      "description": "Ordinary-content control with literal original caption/icon or stored-state artwork",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-ordinary-icon.pdf",
+      "sha256": "618be4c2c85418d1581f6f3473b7f275443e7bc41e4bd21991b569cb1a927e09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-ordinary-icon.ppm",
+      "oracle_sha256": "9a16d72bbf75ac4b81739a047a280076ab9864b229dc777331078e777d5522a3",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-check-on-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-on-72-missing.pdf",
+      "sha256": "54e80c46c6941af3aae3f7031c10dcc92f3f639e0b9aa7034a92fbfcf49dbc2c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-check-on-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-on-72-stored.pdf",
+      "sha256": "a9384daac658f2be964069efb69cadda456a07b0194cbb50e77fe2222b2a8ecc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-on-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-check-off-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-off-72-missing.pdf",
+      "sha256": "537d48de5a736df634a475bf22be64adc72aa6fa58f89912b890113dc764d0ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-check-off-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-off-72-stored.pdf",
+      "sha256": "d5818760bb7061a886098b212e82f734da9023ae443d0bced50c99957f2bef0c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-off-72-stored.ppm",
+      "oracle_sha256": "ae8b95c1dd7ba55a22a9bec33181f29e212453f2d4910d6db65f3da478165d35",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-check-as-off-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-as-off-72-missing.pdf",
+      "sha256": "a8aabe6e5501ef48bc69c24d4a5e6f53336aa08b6bd5742d284c9b895f126de6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-check-as-off-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-as-off-72-stored.pdf",
+      "sha256": "a57ee984cd3df29306f7ebc17de578fd026014f50d1987959d54306131ba83b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-as-off-72-stored.ppm",
+      "oracle_sha256": "ae8b95c1dd7ba55a22a9bec33181f29e212453f2d4910d6db65f3da478165d35",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-check-as-on-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-as-on-72-missing.pdf",
+      "sha256": "e7ef69a6a1cc51459c9c901b814f703db4d50dd7cbc24543599a4772f8667f78",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-check-as-on-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-as-on-72-stored.pdf",
+      "sha256": "7de4477729869d9a039ed899de9ef297386df839c0bf71bf81fffa6c3e2835c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-as-on-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-check-caption-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-caption-72-missing.pdf",
+      "sha256": "0350fcf78dc98879b4ba46a93895072ca9bb44495cd6a1329320d8df64e812d5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-check-caption-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-caption-72-stored.pdf",
+      "sha256": "a09bef75421d0446e121e07d430ec21a0150fee4ba592883239c0da6e30f0368",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-caption-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-check-caption-144-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-caption-144-missing.pdf",
+      "sha256": "0350fcf78dc98879b4ba46a93895072ca9bb44495cd6a1329320d8df64e812d5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/button-observe-check-caption-144-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-caption-144-stored.pdf",
+      "sha256": "a09bef75421d0446e121e07d430ec21a0150fee4ba592883239c0da6e30f0368",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-caption-144-stored.ppm",
+      "oracle_sha256": "b23635a9e2b26887039ad50f722b510e0d8420b7b7b3e9ae0cdc24de020cd846",
+      "dpi": 144,
+      "width": 128,
+      "height": 96
+    },
+    {
+      "id": "annotation_display/button-observe-check-need-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-need-72-missing.pdf",
+      "sha256": "ec1ab63eec30abdc3c9df6ca6c2b3b8047d98f0fda2f9c3b05c930f492d1e480",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-check-need-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-check-need-72-stored.pdf",
+      "sha256": "b56fe0b48c50cbd76af7d5edfff9e54506660d6c7f6a4ead6f722c6c7d952fd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-check-need-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-radio-on-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-radio-on-72-missing.pdf",
+      "sha256": "d29dd062f24752c128b4bf1806a4bfea762443c3e7c091b9668f32fa17515a17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-radio-on-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-radio-on-72-stored.pdf",
+      "sha256": "c16ef066d1d8a9bebdfc6544a2a5c7018fc0d4fa2d4318cc6674d9e14b0063d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-radio-on-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-radio-off-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-radio-off-72-missing.pdf",
+      "sha256": "06de18756e1ccb43e08d6269ece18b05ca915399bb5666bb7737f42842a3b311",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-radio-off-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-radio-off-72-stored.pdf",
+      "sha256": "2ef1d7b45499b78cfa7cf792d47581350d066a2c3f9d7da4eb286a997cd7f3f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-radio-off-72-stored.ppm",
+      "oracle_sha256": "ae8b95c1dd7ba55a22a9bec33181f29e212453f2d4910d6db65f3da478165d35",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-radio-caption-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-radio-caption-72-missing.pdf",
+      "sha256": "43e011439d52e36afa50ce683b5df1979e84ac70ed94402d6ac1b24134625e3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-radio-caption-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-radio-caption-72-stored.pdf",
+      "sha256": "a734d35b68509881257d1c26847ba1cb411832a28ab8600b6af4250f2992f80d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-radio-caption-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-caption-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-caption-72-missing.pdf",
+      "sha256": "b005adad975ec4c33bf8713ed856eff76ed97ae6dcd9d9fff93855925b191a0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-caption-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-caption-72-stored.pdf",
+      "sha256": "106fc0b629e81b26f351b994a082d184d402d12625941406142e4a0f91cc1b1f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-caption-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-caption-144-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-caption-144-missing.pdf",
+      "sha256": "b005adad975ec4c33bf8713ed856eff76ed97ae6dcd9d9fff93855925b191a0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 144
+    },
+    {
+      "id": "annotation_display/button-observe-push-caption-144-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-caption-144-stored.pdf",
+      "sha256": "106fc0b629e81b26f351b994a082d184d402d12625941406142e4a0f91cc1b1f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-caption-144-stored.ppm",
+      "oracle_sha256": "b23635a9e2b26887039ad50f722b510e0d8420b7b7b3e9ae0cdc24de020cd846",
+      "dpi": 144,
+      "width": 128,
+      "height": 96
+    },
+    {
+      "id": "annotation_display/button-observe-push-need-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-need-72-missing.pdf",
+      "sha256": "0cf24231704979bc99689d85f547813eed3fd6325822f8f5a4211c5356e6c283",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-need-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-need-72-stored.pdf",
+      "sha256": "8817dfd6d5af85d0b5f7ebc54affb8e90b2915a8203b1317e47a0e31a0fbd948",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-need-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-icon-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-icon-72-missing.pdf",
+      "sha256": "bda2b720c47670541b38ede7930fa0859c694faa8f770b16b0f7a7d6d5d0df5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-icon-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-icon-72-stored.pdf",
+      "sha256": "563991dad2b0d159edd275c8f769581cc70df829fbd0e387c11c019c6a420fec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-icon-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-matrix-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-matrix-72-missing.pdf",
+      "sha256": "10d8077f81ff0a21587ee64ea89e0beb350ad3192623718b2400d044eec8f20f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-matrix-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-matrix-72-stored.pdf",
+      "sha256": "d3b38831fd8f890890cb033844957e97a0842e8e6c5250e8444ad59d825eb6dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-matrix-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-B-small-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-B-small-72-missing.pdf",
+      "sha256": "d49f14a167c3db94f6a822eb1ef2f3bf353785b93bb705fe0ae0b096657d2509",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-B-small-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-B-small-72-stored.pdf",
+      "sha256": "24135278fbc951932dd9fb0ae1a75b1db9185717ca5c13eb576a731f8f1def1d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-scale-B-small-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-B-large-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-B-large-72-missing.pdf",
+      "sha256": "73aa6e4e19ec7257e8610db4f559578564f448f328a8a57b24437ca3e3b5fa63",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-B-large-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-B-large-72-stored.pdf",
+      "sha256": "37285137889a77274176f57dc7fb118402bffcde9c12b471092655f233ed5c60",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-scale-B-large-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-S-small-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-S-small-72-missing.pdf",
+      "sha256": "fa3fb961120dde438b64763dc7d74e4509ad3387d7a42e0eaeb89caee195c18c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-S-small-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-S-small-72-stored.pdf",
+      "sha256": "6f40eddfd0b7c542605480163788dd02b99f756363ec5de477f041fe612e2aaf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-scale-S-small-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-S-large-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-S-large-72-missing.pdf",
+      "sha256": "8fa620ff09ec8af69cde8f83f17ea194d7444533a8f3e8283f85303b5746599e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-S-large-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-S-large-72-stored.pdf",
+      "sha256": "aec8de900a441008e4545432e14d89a89f528259f9f215254fca9bc1512ca6ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-scale-S-large-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-N-small-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-N-small-72-missing.pdf",
+      "sha256": "3d7bc526e3961dbbef657ac79ffe60a73e8c47cd6ef67192d9b5201a952b306c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-scale-N-small-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-scale-N-small-72-stored.pdf",
+      "sha256": "325a6d29cc5a84aff515ac9626824c21662482e93c9bd6373a3f0c74827e08cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-scale-N-small-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-anamorphic-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-anamorphic-72-missing.pdf",
+      "sha256": "70d738de91dcd262a55828d54a060102ffee82dab8d8ba61a283c749eff899e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-anamorphic-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-anamorphic-72-stored.pdf",
+      "sha256": "518ffca4fd99cb3ab9eef5cd03cd50c5e2a0c0268d5ebc2dc1a72f45fbfe9ab4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-anamorphic-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-aligned-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-aligned-72-missing.pdf",
+      "sha256": "6c8ad4ac3e739dcca859fca3b5ba9ef4fcf2c11e25e448b597fbb75385e63306",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-aligned-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-aligned-72-stored.pdf",
+      "sha256": "ab2d68461ba1fcff0b62c8492fad9533b472e84a62e1870cfa80a5c1b3c06cc3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-aligned-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-border-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-border-72-missing.pdf",
+      "sha256": "5f1c6486f39bc925dc75cf6014090bede2728a5e3662207a4368cf15f205cc01",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-border-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-border-72-stored.pdf",
+      "sha256": "ae9e2f2d230201be4320eeed8a88e8d0d5be88933fa8208578a981b25a74698a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-border-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-full-bounds-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-full-bounds-72-missing.pdf",
+      "sha256": "8b5abe3e26088efe6d52c847bdfb69ec0aa52eb71c8b22ad03551c64e612db3e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-full-bounds-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-full-bounds-72-stored.pdf",
+      "sha256": "503c155d2051cf38cc94fc6fb92149bdf3f85b6de6364510f9011c3de57820dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-full-bounds-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-widget-rotation-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-widget-rotation-72-missing.pdf",
+      "sha256": "3d2f679e76c193a73e8303d9f3c12bca5e05fd2c7118f98705cd6e0bc82cedd7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-widget-rotation-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-widget-rotation-72-stored.pdf",
+      "sha256": "9e928d9b64db343f2359baf4469f2642746945e103332e9dae55c8ee1147efc1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-widget-rotation-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-page-rotation-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-page-rotation-72-missing.pdf",
+      "sha256": "04bf16ab9ae122e85412836e1095d698173e60856f292b20f6c25e0321afda8b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-page-rotation-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-page-rotation-72-stored.pdf",
+      "sha256": "b3aaea1ad385fd72eb150cd10f57a72ceb7c35f9dca44a819f624f5b373198a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-page-rotation-72-stored.ppm",
+      "oracle_sha256": "36dd811e4366e592112d66333e23522babddbc8d627a9294df77f78f56980506",
+      "dpi": 72,
+      "width": 48,
+      "height": 64
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-2-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-2-72-missing.pdf",
+      "sha256": "b34299579bf3e63e8b19bc66d695ac78d82fb4474e7da8e339fa70830db1f2ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-2-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-2-72-stored.pdf",
+      "sha256": "fc2a0bc7c4b94115f409b5493bd6677a10145b407f1873c59557c0776eac2fde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-position-2-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-3-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-3-72-missing.pdf",
+      "sha256": "6adb6017f0df640fda10f2fc58b09f10d76f5be5bba569aba278444dfd840d34",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-3-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-3-72-stored.pdf",
+      "sha256": "9fadd7dfc48cedb7f55f4557feb674553393cbb28e7fde968ea09e1bd6f1936d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-position-3-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-4-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-4-72-missing.pdf",
+      "sha256": "28ade1154999876581c1ce5dc576b6a6b6aad20b2e8ca0e782e9a450d77b7326",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-4-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-4-72-stored.pdf",
+      "sha256": "568f8d08a166d8a0825ef08fa73b6cdc9ea5e9f1b72d69be0e116c25252194bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-position-4-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-5-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-5-72-missing.pdf",
+      "sha256": "d38cb59223b17099d6906583557eb4b57f54885e104a7444f8e3ce6e7430eff8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-5-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-5-72-stored.pdf",
+      "sha256": "d7a851fee82ee288afd706f286394c294080014878a3cadecf944fe2c48e7282",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-position-5-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-6-72-missing",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "unsupported",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-6-72-missing.pdf",
+      "sha256": "7571739a7649501dde002eed9f1ecf6ca61459ce64cd81582c4d38b2848a80b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "dpi": 72
+    },
+    {
+      "id": "annotation_display/button-observe-push-position-6-72-stored",
+      "kind": "pdf",
+      "description": "Matched normal checkbox/radio/push-button source display; no field edits or interaction",
+      "expected": "render",
+      "requirements": [
+        "content-normal-button-display"
+      ],
+      "path": "corpus/generated/annotation_display/button-observe-push-position-6-72-stored.pdf",
+      "sha256": "2d0cc676cbecb5dcac24756dbf83575a9db5dd682a8b572b7920b0b950f8d304",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/button-observe-push-position-6-72-stored.ppm",
+      "oracle_sha256": "d1730fcf1ba47c10399d5f23223478627f83a3c5c7eec63b5fef6d6d21374e1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 48
     }
   ]
 }
