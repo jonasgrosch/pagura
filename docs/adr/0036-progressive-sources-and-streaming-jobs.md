@@ -135,6 +135,14 @@ Provide lazy page lookup with bounded inheritance/count handling and batched
 dependency frontiers. The existing interpreter remains the authority for used
 resources. Global reconstruction explicitly requests complete input.
 
+`PageJob` and complete enumeration drive one owned page-tree cursor. Its frames
+retain source addresses and inherited-attribute owners rather than borrowed PDF
+values or a thread-local diagnostic sink. Counts are advisory: preceding leaves
+are visited structurally before publishing an exact ordinal, without resolving
+unused geometry or resources. The job exposes reported and verified totals
+separately and stops before later subtrees. Selected pages own their retained
+reservation; complete enumeration commits the same charges to the document.
+
 Preserve complete-document validation as a mode. Requested-operation mode
 validates the authoritative index and every consumed dependency while allowing
 unrelated object-header checks to remain deferred. Readiness reports the scope;

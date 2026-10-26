@@ -1,5 +1,7 @@
 //! Independently positioned bytes exercise the public sparse opening boundary.
 
+mod page_jobs;
+
 use pagura_core::{Error, ErrorKind, Limits, ObjectId, Recovery, Result, Value};
 use pagura_document::source::{
     ByteRange, ByteSource, LoadingLimits, ReadFault, ReadResult, SourceIdentity, SourceLimits,

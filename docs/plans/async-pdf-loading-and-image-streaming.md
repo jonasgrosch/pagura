@@ -461,9 +461,17 @@ reported count separately from a verified count, and use an explicit bounded
 walk/fallback when counts or tree structure cannot support a reliable ordinal.
 Existing complete enumeration remains available for operations that need it.
 
-`PageJob` uses the shared page/resource reader. It requests page ancestry,
-content streams, referenced forms, actually used fonts and image/mask/colour
-dependencies. Batch all ranges discoverable at a frontier, then continue after
+The document-level `PageJob` owns the shared page-tree cursor and resolves one
+exact ordinal. `reported_count()` exposes the root's advisory claim;
+`verified_count()` is present only after complete structural enumeration. Each
+preceding leaf is structurally visited without loading its geometry/resources,
+and lookup stops at the requested occurrence before later subtrees. Complete
+enumeration drives the same cursor. An owned page retains its page/resource
+reservation after the job ends; cancellation drops only unpublished state.
+
+Recording/rendering compose this metadata stage with the canonical interpreter.
+They request content streams, referenced forms, actually used fonts and
+image/mask/colour dependencies. Batch all ranges discoverable at a frontier, then continue after
 they arrive. Further indirect/compressed references may require more frontiers;
 the API does not promise a universal single network round.
 

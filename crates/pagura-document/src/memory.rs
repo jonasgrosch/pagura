@@ -90,9 +90,9 @@ impl Budget {
         }
     }
 
-    pub(crate) const fn reservation(&self) -> Reservation<'_> {
+    pub(crate) fn reservation(self: &Arc<Self>) -> Reservation {
         Reservation {
-            budget: self,
+            budget: Arc::clone(self),
             bytes: 0,
         }
     }
@@ -133,12 +133,13 @@ impl Drop for Budget {
 /// Tentative charges, released on drop unless committed. Page walks own one
 /// until their complete result is cached; dropping a failed walk releases only
 /// its pages and resources, not the objects it loaded.
-pub(crate) struct Reservation<'a> {
-    budget: &'a Budget,
+#[derive(Debug)]
+pub(crate) struct Reservation {
+    budget: Arc<Budget>,
     bytes: usize,
 }
 
-impl Reservation<'_> {
+impl Reservation {
     pub(crate) fn charge(&mut self, bytes: usize, object: ObjectId) -> Result<()> {
         self.budget.charge(bytes, Some(object))?;
         // Both terms are part of the checked, bounded aggregate above.
@@ -152,7 +153,7 @@ impl Reservation<'_> {
     }
 }
 
-impl Drop for Reservation<'_> {
+impl Drop for Reservation {
     fn drop(&mut self) {
         self.budget.release(self.bytes);
     }

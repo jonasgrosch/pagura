@@ -39,7 +39,7 @@ pub use diagnostics::DiagnosticBatch;
 pub use object::{IndirectObject, ObjectSource};
 pub use opening::{OpenJob, Opening};
 pub use options::{OpenOptions, Validation};
-pub use pages::Page;
+pub use pages::{Page, PageJob, PageLoading};
 pub use pagura_codec::{ImageCodec, Prefix};
 pub use pagura_core::Rotation;
 pub use stream::{ImageStream, StreamData};
