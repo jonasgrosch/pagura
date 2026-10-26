@@ -106,7 +106,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "7.2.6–7.2.7, 8.2–8.7, 10.5, 10.8–10.10, 10.16, F.2–F.3",
+          "locator": "7.2.6\u20137.2.7, 8.2\u20138.7, 10.5, 10.8\u201310.10, 10.16, F.2\u2013F.3",
           "verdict": "verified with documented choices",
           "reason": "Source ICC transforms and their output policy are specified in content-icc-matrix/lut/intent; legacy v2 metadata rules are not inferred from v4."
         }
@@ -393,7 +393,7 @@
       "id": "content-icc-matrix",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5, Tables 65–68",
+        "8.6.5.5, Tables 65\u201368",
         "8.6.5.8, Table 69"
       ],
       "rule": "Supported embedded source profiles use forward processing, never silent Alternate substitution. Gray TRCs scale PCS D50 XYZ or L*=100, not media white (ICC F.2); RGB uses the column matrix and per-channel TRCs (F.3). Sampled forward curves may be nonmonotonic and matrices need not be invertible. Parametric outputs clip, including positive overflow; threshold arithmetic preserves the nonnegative power domain. ICC Table 34 count-one gamma is two-byte unsigned 8.8 per 4.9; Table 65 is interpreted with complementary branches and the separate e offset for type 4 because its printed formulas conflict with its parameter list. Source values clip to ICC Range before Alternate, including later-version fallback; Alternate structure is validated even when unused. Bradford D50-to-D65 adaptation, sRGB output encoding, gamut clipping and final rounding are project policy.",
@@ -415,7 +415,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "4.6, 4.9, 6.2.1, 6.3.1–6.3.4, 7.2.16, 9.2.4–9.2.5, 9.2.15, 9.2.29–9.2.31, 9.2.44–9.2.45, 10.5, 10.16 Tables 64–65, F.2–F.3",
+          "locator": "4.6, 4.9, 6.2.1, 6.3.1\u20136.3.4, 7.2.16, 9.2.4\u20139.2.5, 9.2.15, 9.2.29\u20139.2.31, 9.2.44\u20139.2.45, 10.5, 10.16 Tables 64\u201365, F.2\u2013F.3",
           "verdict": "verified with documented choices",
           "reason": "PCS data is already adapted; chad is validated and is not applied twice. Curve table inconsistencies and device-output choices are documented in the rule."
         }
@@ -647,7 +647,7 @@
       "id": "content-icc-admission",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5, Tables 65–68"
+        "8.6.5.5, Tables 65\u201368"
       ],
       "rule": "ICC.1:2010 v4 profiles validate BCD/version reserved bytes, Gregorian dates, permitted source class/colour-space/PCS, attributes, intent, D50 illuminant, MD5 ProfileID and reserved bytes; required tags depend on profile class/model. Tag bodies are tightly packed, aligned and zero-padded, with exact shared bodies allowed. XYZ records are complete and nonnegative, reserved type fields and curve extents are exact, and chad is a signed sf32 invertible 3-by-3 matrix. These v4 metadata rules are not imposed on legacy v2 profiles. All table products, extents, allocations and cumulative retained profile storage are bounded before use.",
       "status": "implemented; ICC.1:2010 primary text verified",
@@ -671,7 +671,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "7.1.2, 7.2.4–7.2.19, 7.3–7.4, 8.2–8.7, 9.2.15, 9.2.34, 10.1, 10.5, 10.16, 10.20, 10.29",
+          "locator": "7.1.2, 7.2.4\u20137.2.19, 7.3\u20137.4, 8.2\u20138.7, 9.2.15, 9.2.34, 10.1, 10.5, 10.16, 10.20, 10.29",
           "verdict": "verified with documented choices",
           "reason": "Primary header, packing, class/model and tag definitions reviewed locally. Vendor-specific header bits remain permitted."
         }
@@ -681,9 +681,9 @@
       "id": "content-icc-lut",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5, Tables 65–68"
+        "8.6.5.5, Tables 65\u201368"
       ],
-      "rule": "Forward mft2 uses input tables, CLUT and output tables; its source-non-XYZ matrix must be identity. Forward mft1 uses 256-sample input/output tables and Lab PCS. mAB accepts B, M+matrix+B, A+CLUT+B and A+CLUT+M+matrix+B, including unequal grid sizes and 8/16-bit CLUTs. PCSXYZ uses unsigned 1.15; mft2 uses legacy FF00 Lab white in both v2 and v4, while mft1 and mAB use modern Lab encodings. Source Lab values use L* 0–100 and a*/b* -128–127 before normalization. Multilinear CLUT interpolation is project policy; two-point axes are linear as ICC requires. Evaluation uses at most 16 corners for PDF source profiles. Inverse mBA selected as a forward transform fails explicitly; optional BToA tags are ignored. LUT8 XYZ PCS has no specified encoding and remains explicit Unsupported.",
+      "rule": "Forward mft2 uses input tables, CLUT and output tables; its source-non-XYZ matrix must be identity. Forward mft1 uses 256-sample input/output tables and Lab PCS. mAB accepts B, M+matrix+B, A+CLUT+B and A+CLUT+M+matrix+B, including unequal grid sizes and 8/16-bit CLUTs. PCSXYZ uses unsigned 1.15; mft2 uses legacy FF00 Lab white in both v2 and v4, while mft1 and mAB use modern Lab encodings. Source Lab values use L* 0\u2013100 and a*/b* -128\u2013127 before normalization. Multilinear CLUT interpolation is project policy; two-point axes are linear as ICC requires. Evaluation uses at most 16 corners for PDF source profiles. Inverse mBA selected as a forward transform fails explicitly; optional BToA tags are ignored. LUT8 XYZ PCS has no specified encoding and remains explicit Unsupported.",
       "status": "implemented; ICC.1:2010 primary text verified",
       "tests": [
         "content/icc-mft2-4-Lab-v4",
@@ -707,7 +707,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "6.3.4.2 Tables 11–13, 10.5, 10.8 Tables 37–40, 10.9 Table 41, 10.10 Tables 42–43",
+          "locator": "6.3.4.2 Tables 11\u201313, 10.5, 10.8 Tables 37\u201340, 10.9 Table 41, 10.10 Tables 42\u201343",
           "verdict": "verified with documented choices",
           "reason": "Legacy Lab belongs to mft2, irrespective of profile major version. All legal mAB stage combinations and per-stage clipping are covered."
         }
@@ -740,7 +740,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "6.3.2, 7.2.15, 8.10.2, 9.1 Table 25, 9.2.1–9.2.3",
+          "locator": "6.3.2, 7.2.15, 8.10.2, 9.1 Table 25, 9.2.1\u20139.2.3",
           "verdict": "verified with documented choices",
           "reason": "Primary precedence order and colorimetric media-white scaling reviewed locally; PDF source processing overrides header hints."
         }
@@ -1204,7 +1204,7 @@
       "clauses": [
         "7.9.2.2",
         "12.5.6.7 Table 178",
-        "12.5.6.7 Figures 81–82"
+        "12.5.6.7 Figures 81\u201382"
       ],
       "rule": "Cap true paints a plain Contents caption; false/absent ignores caption-only entries. Contents uses the common PDF text-string decoder and reported recovery. CP selects Inline or Top and CO supplies two finite offsets in the line frame. Reader layout policy uses 12-point Helvetica/WinAnsi, 1.2-em leading, two units of clearance, centred rows and the source line direction. CR, LF and CRLF separate rows; tabs become spaces. Inline text interrupts the line where its metric box overlaps it; overlong text moves above the line. Leader-translated geometry and standard endings retain their positions. Caption text uses C and ca (else CA) after body and endings under the original annotation clip. Font encoding is shared with form appearances; host-supplied fonts are explicit and generated resources are private. Text storage, characters, work, numeric positions and output remain bounded.",
       "status": "plain captions implemented with 30 authored controls and 22 independent pixel expectations; hosted validation pending",
@@ -1629,6 +1629,112 @@
         "relief_annotations/nonrectangular"
       ],
       "gaps": "Independently specified trapezoids establish exact-area coverage for each fill, composited in source order under the existing raster contract. Stored controls use four separate trapezoid subpaths instead of generated facet paths. Controls cover both styles, two resolutions, RD, rotation, fractional geometry, RGB/Gray shading, separate and opaque-border alpha, transparency, width clamping, indirection and malformed input. CMYK colour-conversion expectations, nonrectangular relief, nonempty/rotated widgets and the separate filled-form path remain open. Exact bevel dimensions/lighting are documented reader policy, not standardized artwork."
+    },
+    {
+      "id": "content-cloudy-borders",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.4 Table 169",
+        "12.5.6.6 Table 177",
+        "12.5.6.8 Table 180",
+        "12.5.6.9 Table 181"
+      ],
+      "rule": "Generate bounded convex parabolic cloud lobes for Square, Circle, Polygon and FreeText. Preserve declared BS width/dashes, opacity, RD and original appearance BBox. Validate finite intensity in [0,2]; zero intensity preserves the ordinary outline. Lobe shape and spacing are documented reader policy.",
+      "status": "implemented; independent quadratic fill controls and hosted checks pending",
+      "tests": [
+        "pagura-appearance annotation::tests::cloud",
+        "cloud_annotations/Square-72",
+        "cloud_annotations/Square-144",
+        "cloud_annotations/Circle-72",
+        "cloud_annotations/Circle-144",
+        "cloud_annotations/Polygon-72",
+        "cloud_annotations/Polygon-144",
+        "cloud_annotations/FreeText-72",
+        "cloud_annotations/FreeText-144",
+        "cloud_annotations/strong",
+        "cloud_annotations/fractional",
+        "cloud_annotations/opacity",
+        "cloud_annotations/rotated",
+        "cloud_annotations/width-affects-lobes",
+        "cloud_annotations/bad-intensity",
+        "cloud_annotations/negative",
+        "cloud_annotations/excess",
+        "cloud_annotations/bad-effect"
+      ],
+      "gaps": "Cloud fill expectations integrate original quadratic contour segments exactly. Curved stroke/dash accuracy, richer rich-text layout and R/D interaction remain separate gates."
+    },
+    {
+      "id": "content-rich-annotation-text",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.6 Table 177",
+        "12.5.6.7 Table 178",
+        "XFA 3.3 chapters 5 and 27"
+      ],
+      "rule": "Generate inert rich annotation text from RC text strings or XML streams and DS defaults. Parse bounded inherited styles and paragraphs, sharing PDF font encoding and ordinary appearance programs. Preserve stored AP precedence, clipping, opacity and source identity. Unknown XFA markup is ignored; external objects and unsupported known formatting fail explicitly.",
+      "status": "implemented common Latin styles; hosted validation pending",
+      "tests": [
+        "pagura-appearance rich::tests",
+        "rich_annotations/plain-72",
+        "rich_annotations/stored-72",
+        "rich_annotations/plain-144",
+        "rich_annotations/stored-144",
+        "rich_annotations/span-color",
+        "rich_annotations/inheritance",
+        "rich_annotations/default-style",
+        "rich_annotations/mixed-size",
+        "rich_annotations/line-break",
+        "rich_annotations/paragraphs",
+        "rich_annotations/empty-paragraph",
+        "rich_annotations/leading-break",
+        "rich_annotations/paragraph-spacing",
+        "rich_annotations/center",
+        "rich_annotations/right",
+        "rich_annotations/margins",
+        "rich_annotations/spacing",
+        "rich_annotations/wrap",
+        "rich_annotations/entities",
+        "rich_annotations/whitespace",
+        "rich_annotations/scaled",
+        "rich_annotations/raised",
+        "rich_annotations/superscript-72",
+        "rich_annotations/subscript-72",
+        "rich_annotations/superscript-144",
+        "rich_annotations/subscript-144",
+        "rich_annotations/underline",
+        "rich_annotations/default-scale",
+        "rich_annotations/default-matrix",
+        "rich_annotations/default-word-spacing",
+        "rich_annotations/caption",
+        "rich_annotations/caption-color",
+        "rich_annotations/caption-trailing-break",
+        "rich_annotations/caption-overlapping-lines",
+        "rich_annotations/opacity",
+        "rich_annotations/rotation",
+        "rich_annotations/text-stream",
+        "rich_annotations/text-stream-utf16-big",
+        "rich_annotations/text-stream-utf16-little",
+        "rich_annotations/rc-precedence",
+        "rich_annotations/ignored-elements",
+        "rich_annotations/inert-link",
+        "rich_annotations/empty",
+        "rich_annotations/hidden",
+        "rich_annotations/stored-precedence",
+        "rich_annotations/mismatched",
+        "rich_annotations/undefined-entity",
+        "rich_annotations/nested-p",
+        "rich_annotations/text-outside-root",
+        "rich_annotations/invalid-size",
+        "rich_annotations/rc-type",
+        "rich_annotations/ds-type",
+        "rich_annotations/external-entity",
+        "rich_annotations/embedded-object",
+        "rich_annotations/rtl",
+        "rich_annotations/unsupported-layout",
+        "rich_annotations/automatic-size",
+        "rich_annotations/invalid-stream-utf16"
+      ],
+      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
     }
   ]
 }

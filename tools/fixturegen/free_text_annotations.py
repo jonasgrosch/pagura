@@ -153,10 +153,10 @@ def cases():
     yield rendered('callout',extra=b'/IT /FreeTextCallout /CL [1 1 4 4]')
     yield rendered('callout-no-line',extra=b'/IT /FreeTextCallout /LE 42')
     yield rendered('callout-null-line',extra=b'/IT /FreeTextCallout /CL null /LE 999 0 R')
-    for name,options,feature in [('rich-text',{'extra':b'/RC (rich)'},'annotation.appearance'),
-                                ('default-style',{'extra':b'/DS (font: Helvetica)'},'annotation.appearance'),
-                                ('cloudy',{'extra':b'/BE << /S /C >>'},'annotation.appearance'),
-                                ('complex-text',{'contents':b'<FEFF03A9>'},'appearance.font-encoding')]:
+    yield rendered('cloudy',extra=b'/BE << /S /C >>')
+    for label,extra in [('rich-text',b'/RC (rich)'),('default-style',b'/DS (font: Helvetica)')]:
+        yield Case(label,source(extra=extra),OPEN,(REQUIREMENT,),'Malformed rich text content/style fails explicitly',extra={'render_error':'syntax'})
+    for name,options,feature in [('complex-text',{'contents':b'<FEFF03A9>'},'appearance.font-encoding')]:
         yield Case(name,source(contents=options.get('contents',b'(HI)'),extra=options.get('extra',b'')),UNSUPPORTED,(REQUIREMENT,),
                    'Remaining richer appearance surfaces retain explicit capability refusals',feature=feature,
                    information=('font.substituted',) if name=='complex-text' else ())

@@ -3,6 +3,7 @@
 
 pub(crate) mod border;
 mod caret;
+mod cloud;
 mod ending;
 mod free_text;
 mod icon;
@@ -32,8 +33,9 @@ use pagura_document::Document;
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
 /// resources. Generated text uses private font resources; page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
-/// borders, Line/Ink/Polygon/PolyLine paths, plain Line captions with an explicit
-/// font provider, plain FreeText, standard rubber stamps, four text-markup styles, Caret symbols,
+/// borders, Line/Ink/Polygon/PolyLine paths, plain and common RC/DS styled Line
+/// captions and FreeText with an explicit font provider, standard rubber stamps,
+/// four text-markup styles, Caret symbols,
 /// seven Text icons, four FileAttachment
 /// icons, and the MK background and border of empty text and signature widgets.
 ///
@@ -46,8 +48,8 @@ use pagura_document::Document;
 /// # Errors
 /// `Syntax` errors for malformed entries, `Limit` errors for content and
 /// storage budgets, and [`features::ANNOTATION_APPEARANCE`] for subtypes,
-/// border styles, rotations and widget values that generation does not
-/// cover.
+/// border styles, rich layout/font variants and widget values that generation
+/// does not cover.
 pub fn annotation_appearance(
     document: &Document,
     annotation: &Dictionary,
@@ -64,11 +66,13 @@ pub fn annotation_appearance(
 /// font resource is resolved by the same provider when the stream is drawn.
 /// Rubber stamps use Helvetica-Bold/WinAnsi, fitted to the annotation rectangle.
 /// Plain FreeText uses DA and the shared form layout with AcroForm DR fonts.
+/// Common RC/DS styles share the caption layout and the same bounded font loader.
 /// Existing callers without a provider still generate all non-text artwork.
 ///
 /// # Errors
 /// As [`annotation_appearance`], plus font loading or encoding errors when a
-/// caption, stamp or FreeText needs unavailable data. Rich text remains explicitly unsupported.
+/// caption, stamp or FreeText needs unavailable data, or rich layout needs an
+/// unsupported font, character mapping or formatting property.
 pub fn annotation_appearance_with_fonts(
     document: &Document,
     annotation: &Dictionary,

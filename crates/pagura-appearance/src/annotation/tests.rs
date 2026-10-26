@@ -1,4 +1,5 @@
 mod caret;
+mod cloud;
 mod free_text;
 mod markup;
 mod relief;
@@ -238,7 +239,7 @@ fn unsupported_annotations_are_tagged() {
     let area = rect(0.0, 0.0, 8.0, 8.0);
     for text in [
         b"<< /Subtype /Stamp /IT /StampImage >>".as_slice(),
-        b"<< /Subtype /Square /BE << /S /C >> >>",
+        b"<< /Subtype /Square /BE << /S /Unknown >> >>",
         b"<< /Subtype /Ink /InkList [[1 1 2 2]] /Border [2 2 1] >>",
         b"<< /Subtype /Ink /InkList [[1 1 2 2]] /BS << /S /I >> >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",
@@ -766,14 +767,14 @@ fn line_caption_fonts_are_explicit_and_use_private_resources() {
     let font = resources
         .get(b"Font")
         .and_then(Value::as_dictionary)
-        .and_then(|fonts| fonts.get(b"Caption"))
+        .and_then(|fonts| fonts.get(b"Rich0"))
         .and_then(Value::as_dictionary)
         .unwrap();
     assert!(font.is_name(b"BaseFont", b"Helvetica"));
     assert!(font.is_name(b"Encoding", b"WinAnsiEncoding"));
     let content = String::from_utf8_lossy(appearance.content());
-    assert!(content.contains("/Caption 12 Tf\n"));
-    assert!(content.ends_with("<49> Tj\nET\n"));
+    assert!(content.contains("/Rich0 12 Tf\n"));
+    assert!(content.contains("<49> Tj\nET\n"));
 }
 
 #[test]

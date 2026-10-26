@@ -7,7 +7,7 @@ unequal axes; dash/stroke integration also uses the existing path machinery.
 """
 import math
 
-from .model import Case, OPEN, RENDER, UNSUPPORTED
+from .model import Case, OPEN, RENDER
 from .pdf import document, stream
 
 AREA = 'circle_annotations'
@@ -128,5 +128,5 @@ def cases():
                         ('rd-entry', b'/RD [0 /Bad 0 0]'), ('effect-type', b'/BE 42'), ('effect-style', b'/BE << /S 42 >>')]:
         yield Case(name, source(extra=extra), OPEN, (REQUIREMENT,),
                    'Malformed rectangle differences and effect types refuse generation', extra={'render_error': 'syntax'})
-    yield Case('cloudy', source(extra=b'/BE << /S /C /I 1 >>'), UNSUPPORTED, (REQUIREMENT,),
-               'Cloudy border synthesis remains an explicit gap', feature='annotation.appearance')
+    yield Case('cloudy', source(extra=b'/BE << /S /C /I 1 >>'), OPEN, (REQUIREMENT,),
+               'Cloudy synthesis renders; independent geometry controls are in cloud_annotations')

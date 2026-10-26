@@ -7,7 +7,7 @@ path evaluator is used. The curved fill is y=8+(x-4)^2/48 above y=4 on [4,28].
 import math
 
 from .ink_annotations import polygon_area, rectangle_union
-from .model import Case, OPEN, RENDER, UNSUPPORTED
+from .model import Case, OPEN, RENDER
 from .pdf import document, stream
 
 AREA = 'polygon_annotations'
@@ -139,8 +139,8 @@ def cases():
         yield Case(name, source(extra=extra, shape=shape), OPEN, (REQUIREMENT,),
                    'Malformed effect/ending declarations fail explicitly', extra={'render_error': 'syntax'})
     for name, extra, shape in [('cloudy', b'/BE << /S /C >>', 'Polygon')]:
-        yield Case(name, source(extra=extra, shape=shape), UNSUPPORTED, (REQUIREMENT,),
-                   'Cloudy borders and polyline end styles remain explicit gaps', feature='annotation.appearance')
+        yield Case(name, source(extra=extra, shape=shape), OPEN, (REQUIREMENT,),
+                   'Default zero cloud intensity keeps the existing polygon outline')
 
     yield Case('arrow', source(extra=b'/LE [/None /OpenArrow]',shape='PolyLine'),RENDER,(REQUIREMENT,'content-line-endings'),
                'Zero-width open endings paint no marks',oracle=oracle(polygons=(),fill=None,color=None))

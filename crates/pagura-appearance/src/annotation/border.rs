@@ -3,6 +3,7 @@
 mod form;
 mod relief;
 
+use super::cloud;
 use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::features;
 use crate::stream::AppearanceStream;
@@ -30,10 +31,14 @@ pub(super) fn generate(
     rect: Rect,
     shape: Shape,
 ) -> Result<Option<AppearanceStream>> {
+    let effect = if shape == Shape::Link {
+        None
+    } else {
+        cloud::Effect::read(document, annotation)?
+    };
     let bounds = if shape == Shape::Link {
         rect
     } else {
-        plain_effect(document, annotation)?;
         inset_bounds(document, annotation, rect)?
     };
     let border = if shape == Shape::Circle {
@@ -52,7 +57,18 @@ pub(super) fn generate(
     )
     .ok_or(Error::syntax("invalid border rectangle"))?;
     let mut marks = Marks::new(document, annotation);
-    let outline = if shape == Shape::Circle {
+    let cloud = effect
+        .map(|effect| {
+            if shape == Shape::Circle {
+                effect.ellipse(document, inner, border.width)
+            } else {
+                effect.rectangle(document, inner, border.width)
+            }
+        })
+        .transpose()?;
+    let outline = if let Some(cloud) = &cloud {
+        cloud.path()
+    } else if shape == Shape::Circle {
         Subpath::Ellipse(inner)
     } else {
         border.outline(inner)
@@ -66,7 +82,7 @@ pub(super) fn generate(
         && let Some(color) = color(document, annotation, b"C", Some(Color::black()))?
     {
         let underline = [(inner.x0(), inner.y0()), (inner.x1(), inner.y0())];
-        let path = if border.underline {
+        let path = if border.underline && cloud.is_none() {
             Subpath::Polyline(&underline)
         } else {
             outline
@@ -75,7 +91,7 @@ pub(super) fn generate(
             width: border.width,
             dash: &border.dash,
         };
-        if !border.paint_relief(&mut marks, bounds, &color)? {
+        if cloud.is_some() || !border.paint_relief(&mut marks, bounds, &color)? {
             marks.stroke(&[path], &color, pen)?;
         }
     }
@@ -124,27 +140,6 @@ pub(super) fn inset_bounds(
         rect.y1() - top,
     )
     .ok_or(Error::syntax("invalid annotation shape bounds"))
-}
-
-/// Border effects apply to Square/Circle and Polygon (Tables 180/181).
-pub(super) fn plain_effect(document: &Document, annotation: &Dictionary) -> Result<()> {
-    if let Some(effect) = optional(document, annotation, b"BE")? {
-        let effect = effect
-            .as_dictionary()
-            .ok_or(Error::syntax("annotation BE must be a dictionary"))?;
-        if let Some(style) = optional(document, effect, b"S")? {
-            let style = style
-                .as_name()
-                .ok_or(Error::syntax("border effect S must be a name"))?;
-            if style != b"S" {
-                return Err(Error::unsupported(
-                    features::ANNOTATION_APPEARANCE,
-                    "cloudy or unrecognized annotation border effect",
-                ));
-            }
-        }
-    }
-    Ok(())
 }
 
 /// An annotation border: BS, else Border, else solid and 1 unit wide

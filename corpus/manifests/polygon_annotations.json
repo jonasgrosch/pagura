@@ -856,8 +856,8 @@
     {
       "id": "polygon_annotations/cloudy",
       "kind": "pdf",
-      "description": "Cloudy borders and polyline end styles remain explicit gaps",
-      "expected": "unsupported",
+      "description": "Default zero cloud intensity keeps the existing polygon outline",
+      "expected": "open",
       "requirements": [
         "content-polygon-appearances"
       ],
@@ -865,8 +865,7 @@
       "sha256": "ebcc868dbdc280ff1c30f47f9cfbda6f91dd1caea69ed5f493ebffa914f26fd4",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "polygon_annotations/arrow",

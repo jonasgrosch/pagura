@@ -1,6 +1,7 @@
 //! Polygon/PolyLine appearances (12.5.6.9, Table 181).
 
-use super::border::{Border, plain_effect};
+use super::border::Border;
+use super::cloud;
 use super::ending;
 use super::marks::{Color, Marks, Pen, color};
 use super::path;
@@ -15,15 +16,24 @@ pub(super) fn generate(
     closed: bool,
 ) -> Result<Option<AppearanceStream>> {
     let geometry = path::read(document, annotation)?;
+    let effect = if closed {
+        cloud::Effect::read(document, annotation)?
+    } else {
+        None
+    };
     let endings = if closed {
-        plain_effect(document, annotation)?;
         None
     } else {
         Some(ending::read(document, annotation)?)
     };
     let border = Border::read(document, annotation)?;
+    let cloud = effect
+        .map(|effect| effect.geometry(document, &geometry, border.width))
+        .transpose()?;
     let mut marks = Marks::new(document, annotation);
-    let path = [geometry.subpath(closed)];
+    let path = [cloud
+        .as_ref()
+        .map_or_else(|| geometry.subpath(closed), cloud::Outline::path)];
     if closed && let Some(interior) = color(document, annotation, b"IC", None)? {
         marks.fill(&path, &interior)?;
     }

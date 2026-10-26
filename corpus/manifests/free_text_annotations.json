@@ -976,40 +976,10 @@
       "tolerance": 1
     },
     {
-      "id": "free_text_annotations/rich-text",
-      "kind": "pdf",
-      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
-      "expected": "unsupported",
-      "requirements": [
-        "content-free-text-appearances"
-      ],
-      "path": "corpus/generated/free_text_annotations/rich-text.pdf",
-      "sha256": "9ba68517fc02407c7e00cf340941a5d4438968569055155e1be28bcaa360c3c1",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
-    },
-    {
-      "id": "free_text_annotations/default-style",
-      "kind": "pdf",
-      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
-      "expected": "unsupported",
-      "requirements": [
-        "content-free-text-appearances"
-      ],
-      "path": "corpus/generated/free_text_annotations/default-style.pdf",
-      "sha256": "dd6d2469e073e1fae0087855bb6af3b6dbe2b7f53802accd59ded2281ad98175",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
-    },
-    {
       "id": "free_text_annotations/cloudy",
       "kind": "pdf",
-      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
-      "expected": "unsupported",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
       "requirements": [
         "content-free-text-appearances"
       ],
@@ -1018,7 +988,45 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/cloudy.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/rich-text",
+      "kind": "pdf",
+      "description": "Malformed rich text content/style fails explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/rich-text.pdf",
+      "sha256": "9ba68517fc02407c7e00cf340941a5d4438968569055155e1be28bcaa360c3c1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "free_text_annotations/default-style",
+      "kind": "pdf",
+      "description": "Malformed rich text content/style fails explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/default-style.pdf",
+      "sha256": "dd6d2469e073e1fae0087855bb6af3b6dbe2b7f53802accd59ded2281ad98175",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
     },
     {
       "id": "free_text_annotations/complex-text",

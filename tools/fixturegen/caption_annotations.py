@@ -92,6 +92,8 @@ def cases():
     yield rendered('utf16',contents=b'<FEFF0049>')
     yield rendered('utf8',contents=b'<EFBBBF49>')
     yield rendered('crlf',contents=b'(I\r\nI)',rows=(('I',14.332,20.134),('I',14.332,5.734)))
+    yield rendered('leading-empty-line',contents=b'(\nI)',rows=(('I',14.332,5.734),))
+    yield rendered('trailing-empty-line',contents=b'(I\n)',rows=(('I',14.332,20.134),))
     yield rendered('empty',contents=b'()',rows=(),regions=FULL)
     for name,extra in [('position-type',b'/CP 42'),('offset-type',b'/CO 42'),('offset-count',b'/CO [0]'),
                        ('offset-number',b'/CO [0 /Bad]')]:
@@ -99,8 +101,11 @@ def cases():
                    'Caption-only parameters validate even when the caption is empty',extra={'render_error':'syntax'})
     yield Case('contents-type',source(extra=b'/Cap true /Contents 42'),OPEN,(REQUIREMENT,),
                'Plain caption Contents must be a PDF text string',extra={'render_error':'syntax'})
+    yield Case('rich-text',source(extra=b'/Cap true /RC (<p>I</p>)'),RENDER,(REQUIREMENT,),
+               'Rich caption uses the independently specified Helvetica baseline and literal line gap',
+               oracle=oracle([(4,7,12.332,9),(19.668,7,28,9)],rows=(('I',14.332,4.934),)),
+               information=('font.substituted',),extra={'tolerance':1})
     for name,extra,feature in [('position-unknown',b'/CP /Other','annotation.appearance'),
-                              ('rich-text',b'/RC (<p>I</p>)','annotation.appearance'),
                               ('unmapped',b'/Contents <FEFF4E00>','appearance.font-encoding')]:
         yield Case(name,source(extra=b'/Cap true '+extra),UNSUPPORTED,(REQUIREMENT,),
                    'Unimplemented rich text, positions and font encodings remain explicit',feature=feature,
