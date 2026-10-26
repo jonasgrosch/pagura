@@ -45,7 +45,7 @@ pub use pagura_core::Rotation;
 pub use stream::{ImageStream, StreamData};
 pub use xref::{Revision, RevisionKind};
 
-use crate::source::{ByteSource, NeedData, ReadFault, ReadResult};
+use crate::source::{ByteSource, ReadFault, ReadResult};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Recovery, Result, Value,
 };
@@ -183,7 +183,7 @@ impl Document {
     /// # Errors
     /// Returns a source lifecycle error or `InvalidArgument` for a frontier
     /// belonging to another registered source/version.
-    pub fn can_retry(&self, missing: &NeedData) -> Result<bool> {
+    pub fn can_retry(&self, missing: &source::NeedData) -> Result<bool> {
         self.check_source()?;
         if missing.identity() != self.bytes.identity() {
             return Err(Error::invalid_argument(
