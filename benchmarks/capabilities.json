@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "ce492dc32e0dc2a97d03477c8a8d02035b30c8d4",
+  "audited_revision": "0d2c34b71b2c1a8416ecbb26e6cb36638367b5c3",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -326,9 +326,9 @@
     "crates/pagura-appearance/src/rich/layout.rs": "e037c8825df7c00a5e037407cdb669f74357567b66b201aef68b5c325b7ec190",
     "crates/pagura-appearance/src/annotation/tests/cloud.rs": "d10e839e5ff845b7a45922625fb0fcb95afb515a9a782d879ddd9bff8852bbb5",
     "crates/pagura-appearance/src/rich/tests.rs": "6ccdab307f2704bf04fc4407419ab5015fb980ae06d01c706a0c39b3726258c0",
-    "tools/fixturegen/cloud_annotations.py": "d93296240b6d563e8629263a732b11a3fc323512acdd5496c3fa5b51f3da0a55",
+    "tools/fixturegen/cloud_annotations.py": "25d3e5f68bd4aae9eabe8a976deb3623653192ae17d8a2aec3223c0ca2ba8cc7",
     "tools/fixturegen/rich_annotations.py": "aec1b25bda2d55302dfd65db0fe17fe6ee276db627cc4b23631346ff589ad735",
-    "corpus/manifests/cloud_annotations.json": "71ed6208b9bb9008748f2f168cdb5937dbc2ea51b7042c804b6baf80292d487f",
+    "corpus/manifests/cloud_annotations.json": "8aee0ed9c228c7716982fecadea1dfd22c1722223e474f15af89f434f91bb712",
     "corpus/manifests/rich_annotations.json": "66e7bf24283f947492a6c2df33849cdcdb77039a3c9964949bd88953fbb05abe"
   },
   "capabilities": [
