@@ -13995,10 +13995,64 @@
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-unsafe-symbolic-known-base.pdf",
-          "sha256": "2db1d52a128916d498593d8664ee6c24888ae439fa392be841b5f3c4593ad8e1"
+          "sha256": "0905b9cfa4d5a4fc26fc9f20012b9a85d8003794f0ba89d8029026391d292f9f"
         }
       },
       "driver": "provider-error"
+    },
+    {
+      "id": "text/substitute-symbolic-latin-encoding",
+      "kind": "vector",
+      "description": "A Symbolic flag contradicted by a known Latin family and an explicit Latin encoding is a reported repair; strict mode rejects it",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.pdf",
+          "sha256": "2db1d52a128916d498593d8664ee6c24888ae439fa392be841b5f3c4593ad8e1"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.repair",
+          "sha256": "fd55fb10fadae07ffb9691b9443856e1f4189f9292eda510b2729057f80bd659"
+        }
+      },
+      "driver": "substitute-repair"
+    },
+    {
+      "id": "text/substitute-symbolic-latin-base-encoding",
+      "kind": "vector",
+      "description": "A Symbolic flag contradicted by a known Latin family and an explicit Latin encoding is a reported repair; strict mode rejects it",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.pdf",
+          "sha256": "44278bf7f3c00a7cb235c570f28f573be051fcc8f9e4ed5a27a42c43c7d74ab2"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.repair",
+          "sha256": "fd55fb10fadae07ffb9691b9443856e1f4189f9292eda510b2729057f80bd659"
+        }
+      },
+      "driver": "substitute-repair"
     },
     {
       "id": "text/substitute-weight-zero",
