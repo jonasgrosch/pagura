@@ -141,8 +141,8 @@ impl Frame {
         // Sequential frames reconstruct native samples into their planes
         // during the scans, so only planes and expanded samples coexist. For
         // P=12 planes and samples are words, and the samples coexist with
-        // the final byte buffer as well. Colour conversion adds rows of at
-        // most 28 bytes per pixel of width.
+        // the final byte buffer as well. Colour conversion adds its rows
+        // (`ROW_BYTES` per pixel of width).
         let progressive = matches!(process, 0xc2 | 0xca);
         let twelve_bit = data[0] == 12;
         let plane_bytes = u64::from(twelve_bit) + 1;
@@ -153,7 +153,7 @@ impl Frame {
         };
         let mut memory =
             u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 }
-                + u64::from(width) * 32;
+                + u64::from(width) * super::transform::ROW_BYTES as u64;
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;

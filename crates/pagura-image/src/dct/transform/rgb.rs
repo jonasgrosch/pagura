@@ -43,6 +43,11 @@ impl Rgb {
 /// Pixels converted together: fixed lane arrays the compiler vectorizes.
 const LANES: usize = 16;
 
+/// The most bytes [`Offsets`] holds per luma column: three chroma and three
+/// channel rows of `i16`, and a tie for every chroma pair, reserved once
+/// per row so that pushing it never grows past the row's pairs.
+pub(in crate::dct) const ROW_BYTES: usize = 6 * size_of::<i16>() + size_of::<(usize, u8, u8)>();
+
 /// Table 13 offsets of one chroma row, replicated to its luma columns, so a
 /// luma row converts as independent lanes of clamped additions. Pixels of a
 /// chroma pair at a green half tie are converted again with its [`Rgb`].
@@ -87,6 +92,7 @@ impl Offsets {
             tied |= tie;
         }
         if tied {
+            self.ties.reserve_exact(count);
             for (index, (&cb, &cr)) in blue.iter().zip(red).enumerate() {
                 if offset(cb, cr).3 {
                     self.ties.push((index * repeat, cb, cr));
@@ -185,7 +191,28 @@ fn clamp(value: i16) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Offsets, Rgb};
+    use super::{Offsets, ROW_BYTES, Rgb};
+
+    #[test]
+    fn a_row_of_ties_stays_within_its_admitted_bytes() {
+        // Cb 178 and Cr 78 are a green half tie: every pair of the row ties.
+        for (width, repeat) in [(1025_usize, 1), (1025, 2), (1027, 4), (17, 1)] {
+            let count = width.div_ceil(repeat);
+            let mut offsets = Offsets::default();
+            for _ in 0..3 {
+                offsets.fill(&vec![178; count], &vec![78; count], repeat, width);
+                assert_eq!(offsets.ties.len(), count);
+                let held = offsets
+                    .chroma
+                    .iter()
+                    .chain(&offsets.channels)
+                    .map(|row| row.capacity() * size_of::<i16>())
+                    .sum::<usize>()
+                    + offsets.ties.capacity() * size_of::<(usize, u8, u8)>();
+                assert!(held <= width * ROW_BYTES, "{width}/{repeat}: {held}");
+            }
+        }
+    }
 
     #[test]
     fn lane_rows_match_each_pixel_and_green_tie() {

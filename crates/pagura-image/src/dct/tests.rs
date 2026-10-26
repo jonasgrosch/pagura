@@ -157,7 +157,7 @@ fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     // Six 8x8 blocks: the u16 planes the scan reconstructs, and the
     // expanded u16 samples plus the final bytes through conversion, beside
     // the conversion's rows.
-    let bytes = 24 * 16 * (2 + 2 + 1) + 24 * 32;
+    let bytes = 24 * 16 * (2 + 2 + 1) + 24 * super::transform::ROW_BYTES;
     let limits = Limits {
         decoded_bytes: bytes,
         ..Limits::default()
@@ -187,7 +187,7 @@ fn sequential_frames_budget_their_sample_planes_not_coefficients() {
         data
     };
     let pixels = 1000 * 1000 * 3;
-    let rows = 1000 * 32;
+    let rows = 1000 * super::transform::ROW_BYTES;
     let planes = 3 * 125 * 125 * 64;
     for (precision, process, bytes) in [
         (8, 0xc0, pixels + planes + rows),
