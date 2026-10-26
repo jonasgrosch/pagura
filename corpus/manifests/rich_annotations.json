@@ -445,6 +445,86 @@
       "tolerance": 1
     },
     {
+      "id": "rich_annotations/superscript-72",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/superscript-72.pdf",
+      "sha256": "8878d26cf69ff57df1474939b540a44e6d059782de0e5adf153e38711b4df566",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/superscript-72.ppm",
+      "oracle_sha256": "928f4d6c9883a942f6be7471aff1b688c2e846533929c5887c954f8e01c4919e",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/subscript-72",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/subscript-72.pdf",
+      "sha256": "8e517aa69486d56eed3344c81cae0c1f7de83fe57cb41e029ffc34d38abd0e18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/subscript-72.ppm",
+      "oracle_sha256": "9fdbd065acbc6c3f07e7d8e9c35666a17cadbd77c60a6230190f9f48e127ae91",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/superscript-144",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/superscript-144.pdf",
+      "sha256": "8878d26cf69ff57df1474939b540a44e6d059782de0e5adf153e38711b4df566",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/superscript-144.ppm",
+      "oracle_sha256": "46a4ba6ad88cb0399e43bf9c2d81ac8e5d9e0d6221d092562ca21a7efda8a67c",
+      "dpi": 144,
+      "width": 256,
+      "height": 128,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/subscript-144",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/subscript-144.pdf",
+      "sha256": "8e517aa69486d56eed3344c81cae0c1f7de83fe57cb41e029ffc34d38abd0e18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/subscript-144.ppm",
+      "oracle_sha256": "2fde6860e79484b7142b47cc5eb2a70007d2586ad2dbca8ff62a1d8f858d834d",
+      "dpi": 144,
+      "width": 256,
+      "height": 128,
+      "tolerance": 1
+    },
+    {
       "id": "rich_annotations/underline",
       "kind": "pdf",
       "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",

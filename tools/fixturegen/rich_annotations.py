@@ -82,6 +82,11 @@ def cases():
     yield rendered('whitespace',b'<body>\n<p>  A\n\t B  </p>\n</body>',regions=[ordinary[0],((18,50,23,57),BLACK)])
     yield rendered('scaled',b'<body><p style="xfa-font-horizontal-scale:150%;xfa-font-vertical-scale:50%">AB</p></body>',regions=[((6,54,13.5,57.5),BLACK),((15,54,22.5,57.5),BLACK)])
     yield rendered('raised',b'<body><p>A<span style="vertical-align:3pt">B</span></p></body>',regions=[((6,47,11,54),BLACK),((12,50,17,57),BLACK)])
+    # XFA3.3 chapter27: 31% rise / 15% drop, both at66% size. Literal
+    # rectangles use the original font's .8/-.2 metrics and .5x.7 ink box.
+    for dpi in (72,144):
+        yield rendered(f'superscript-{dpi}',b'<p>A<sup>B</sup></p>',dpi=dpi,regions=[((6,49.62,11,56.62),BLACK),((12,52.72,15.3,57.34),BLACK)])
+        yield rendered(f'subscript-{dpi}',b'<p>A<sub>B</sub></p>',dpi=dpi,regions=[ordinary[0],((12,48.5,15.3,53.12),BLACK)])
     yield rendered('underline',b'<body><p style="text-decoration:underline">AB</p></body>',regions=ordinary+[((6,49,18,49.5),BLACK)])
     yield rendered('default-scale',extra={'DA':b'/F1 10 Tf 150 Tz'},regions=[((6,50,13.5,57),BLACK),((15,50,22.5,57),BLACK)])
     yield rendered('default-matrix',extra={'DA':b'/F1 10 Tf 1.5 0 0 .5 0 0 Tm'},regions=[((6,54,13.5,57.5),BLACK),((15,54,22.5,57.5),BLACK)])

@@ -197,12 +197,12 @@ impl<'a, 'm> Reader<'a, 'm> {
             "b" => style.bold = true,
             "i" => style.italic = true,
             "sup" => {
-                style.rise += style.size / 3.0;
-                style.size *= 2.0 / 3.0;
+                style.rise += style.size * 0.31;
+                style.size *= 0.66;
             }
             "sub" => {
-                style.rise -= style.size / 3.0;
-                style.size *= 2.0 / 3.0;
+                style.rise -= style.size * 0.15;
+                style.size *= 0.66;
             }
             _ => (),
         }
