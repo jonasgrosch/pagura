@@ -1,48 +1,143 @@
-name: functional-checks
-# Pull requests run once on their own event; only main runs on push.
+name: jpeg-framing-measurement
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  # A newer push to the same pull request supersedes its checks; main keeps every run.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  check:
-    # Keep the check names that branch protection requires.
-    name: check (${{ matrix.os }})
-    strategy:
-      # Report every platform; one failure must not cancel the others.
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    # Same-repository integrate/* pull requests run their macOS job on the project's
-    # own Mac runners; forks and every other branch use the hosted runners.
-    runs-on: ${{ matrix.os }}
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PAGURA_SUBJECT: c04da5c605d84c7e66c7de3582f28abc61738a97
+      PAGURA_BASELINE: 6e87a6030ae206322aa813388b41e18363d5af81
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt --target wasm32-wasip1
-      # The host checks run the WASI module and worker threads under Node; the
-      # runner images' default Node versions crashed intermittently there.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26.8.1
-      # The runner images' default Python changes underneath us; .python-version pins it.
-      # 3.13, not 3.14: Windows builds of 3.14 use zlib-ng, which changes Flate fixture bytes.
+          ref: c04da5c605d84c7e66c7de3582f28abc61738a97
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: .python-version
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
-        with:
-          version: 0.13.1
-      - name: Install pinned Python lint tools
-        run: uv sync --locked --only-group lint
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build exact subject
+        run: cargo build --release --locked --offline --bin pagura
+      - name: Measure existing independent JPEG controls
         env:
-          UV_PYTHON_DOWNLOADS: never
-      - name: Verify all product contracts
-        run: python tools/check.py
+          PYTHONPATH: tools
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os, platform, statistics, subprocess, time
+          from fixturegen.pdf import document, stream
+          from benchkit.config import ROOT, POLICY_PATH, read_json, sha
+          from benchkit.corpus import corpus_cases
+          from benchkit.engines import identify, revision_engine
+          from benchkit.conversion import conversion_report
+          from benchkit.reports import conversion_markdown
+
+          subject, baseline = os.environ['PAGURA_SUBJECT'], os.environ['PAGURA_BASELINE']
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == subject
+          evidence = Path(os.environ['RUNNER_TEMP']) / 'jpeg-framing-evidence'
+          inputs = evidence / 'inputs'
+          inputs.mkdir(parents=True)
+          entries, source_files = [], {}
+          for entropy in ('huffman', 'arithmetic'):
+              name = 'jpeg-budget-' + entropy
+              data = (ROOT / 'corpus/generated/image' / (name + '.in')).read_bytes()
+              samples = (ROOT / 'corpus/generated/image' / (name + '.out')).read_bytes()
+              assert len(samples) == 128 * 64
+              for suffix in ('.in', '.out', '.params'):
+                  path = 'corpus/generated/image/' + name + suffix
+                  source_files[path] = sha((ROOT / path).read_bytes())
+                  assert sha(subprocess.check_output(['git', 'show', baseline + ':' + path])) == source_files[path]
+              pdf = document([
+                  b'<< /Type /Catalog /Pages 2 0 R >>',
+                  b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                  b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 128 64] /Resources << /XObject << /I 5 0 R >> >> /Contents 4 0 R >>',
+                  stream(b'q 128 0 0 64 0 0 cm /I Do Q'),
+                  stream(data, b'/Type /XObject /Subtype /Image /Width 128 /Height 64 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /DecodeParms << /ColorTransform 0 >>'),
+              ])
+              ppm = b'P6\n128 64\n255\n' + bytes(v for value in samples for v in (value,) * 3)
+              (inputs / (name + '.pdf')).write_bytes(pdf)
+              (inputs / (name + '.ppm')).write_bytes(ppm)
+              entries.append({'id': name, 'path': name + '.pdf', 'sha256': sha(pdf), 'pages': 1,
+                  'oracles': [{'page': 0, 'dpi': 72, 'path': name + '.ppm', 'sha256': sha(ppm), 'tolerance': 1}]})
+          manifest = inputs / 'manifest.json'
+          manifest.write_text(json.dumps({'schema': 1, 'documents': entries}, indent=2) + '\n')
+          cases, digest = corpus_cases(inputs, manifest)
+          policy = read_json(POLICY_PATH)
+          metadata = {
+              'subject': subject, 'baseline': baseline, 'workflow_revision': os.environ['GITHUB_SHA'],
+              'workflow_run': os.environ['GITHUB_RUN_ID'], 'fixture_sources': source_files,
+              'source_trees': {revision: subprocess.check_output(['git', 'rev-parse', revision + '^{tree}'], text=True).strip()
+                               for revision in (subject, baseline)},
+              'toolchain': subprocess.check_output(['rustc', '-Vv'], text=True),
+              'cargo': subprocess.check_output(['cargo', '-V'], text=True),
+              'runner': {key: os.environ.get(key) for key in
+                         ('RUNNER_OS', 'RUNNER_ARCH', 'RUNNER_ENVIRONMENT', 'ImageOS', 'ImageVersion')},
+              'platform': platform.platform(), 'cpu': json.loads(subprocess.check_output(['lscpu', '--json'], text=True)),
+              'configuration_sha256': {path: sha((ROOT / path).read_bytes()) for path in
+                                      ('.cargo/config.toml', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml')},
+              'scope': 'Exploratory hosted ordinary-JPEG overhead. No dedicated-runner, release-gate or general speed claim.',
+              'cold_policy': {'operation': 'render-cold', 'iterations': 2000, 'warmups': 3, 'blocks': 10,
+                              'order': 'alternating baseline/head by block; same input and DPI72'},
+          }
+          def write(name, value):
+              (evidence / name).write_text(json.dumps(value, indent=2) + '\n')
+          write('identity.json', metadata)
+          with revision_engine(baseline) as (base_command, base_revision):
+              commands = {'pagura': [str(ROOT / 'target/release/pagura')], 'revision': base_command}
+              identities = {name: identify(name, command) for name, command in commands.items()}
+              identities['pagura']['commit'] = subject
+              identities['revision']['commit'] = base_revision
+              metadata['binaries'] = identities
+              write('identity.json', metadata)
+              report = conversion_report(cases, commands, identities, policy,
+                  samples=10, warmups=3, seed=42017, input_digest=digest,
+                  operation='regression', revision=baseline, process_per_page=True,
+                  progress=lambda report: write('regression.json', report))
+              write('regression.json', report)
+              (evidence / 'regression.md').write_text(conversion_markdown(report))
+              for cell in report['cells']:
+                  assert cell['status'] == 'measured' and not cell['warmup_failures'], cell
+                  assert len(cell['samples']) == 10
+                  for pair in cell['samples']:
+                      assert pair['pagura']['status'] == pair['baseline']['status'] == 'ok', pair
+                      assert pair['pagura']['pixels_sha256'] == pair['baseline']['pixels_sha256'], pair
+              cold = {'subject': subject, 'baseline': baseline, 'policy': metadata['cold_policy'], 'blocks': []}
+              write('cold.json', cold)
+              for case in cases:
+                  for block in range(-3, 10):
+                      order = ['revision', 'pagura'] if block % 2 == 0 else ['pagura', 'revision']
+                      row = {'case': case['id'], 'block': block, 'warmup': block < 0, 'order': order, 'samples': {}}
+                      for name in order:
+                          command = commands[name] + ['microbench', case['path'], 'render-cold', '2000', '72']
+                          start = time.perf_counter_ns()
+                          result = subprocess.run(command, capture_output=True, text=True, timeout=120, check=True)
+                          value = json.loads(result.stdout)
+                          assert value['operation'] == 'render-cold' and value['iterations'] == 2000
+                          assert type(value['elapsed_ns']) is int and value['elapsed_ns'] > 0
+                          row['samples'][name] = {'command': command, 'result': value,
+                              'process_elapsed_ns': time.perf_counter_ns() - start,
+                              'stdout_sha256': sha(result.stdout.encode()), 'stderr_sha256': sha(result.stderr.encode())}
+                      cold['blocks'].append(row)
+                      write('cold.json', cold)
+          summary = []
+          for case in cases:
+              rows = [row for row in cold['blocks'] if row['case'] == case['id'] and not row['warmup']]
+              ratios = [row['samples']['pagura']['result']['elapsed_ns'] /
+                        row['samples']['revision']['result']['elapsed_ns'] for row in rows]
+              summary.append({'case': case['id'], 'cold_median_paired_ratio': statistics.median(ratios),
+                              'paired_ratios': ratios, 'baseline': baseline, 'subject': subject})
+          write('summary.json', summary)
+          print(json.dumps(summary, indent=2))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: jpeg-framing-c04da5c60
+          path: ${{ runner.temp }}/jpeg-framing-evidence
+          if-no-files-found: warn
+          retention-days: 14
