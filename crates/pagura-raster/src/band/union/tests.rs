@@ -589,10 +589,12 @@ fn swept(pieces: &[Piece], rules: &[FillRule], full: bool) -> (Vec<Line>, usize,
 }
 
 /// Fans of quadrilaterals crossing many times over inside their union, alone,
-/// twice over, with collinear edges from one vertex, beside and over random
+/// twice over, with collinear edges from one vertex, under overlapping
+/// circles whose contours continue inside the union, beside and over random
 /// polygons and across chunks, under either rule: the swaps leave every
 /// side as the full sweep emits it, bit for bit and in the same order, and
-/// charge at most an eighth more for their bookkeeping.
+/// charge at most an eighth more, and a few sorts of the pieces, for their
+/// bookkeeping.
 #[test]
 fn swaps_inside_the_union_keep_every_side() {
     let mut rng = Lcg(2_026);
@@ -605,6 +607,22 @@ fn swaps_inside_the_union_keep_every_side() {
             let r = rng.grid(0.25, 12, 8);
             let around = r * f64::from(1 + rng.next() % 8) / 64.0;
             lines.extend(fan(centre, around, (count, r), rng.grid(0.0, 64, 8)));
+        }
+        // Overlapping circles of many sides, whose contours continue
+        // through vertices inside the union.
+        if case % 4 == 3 {
+            for _ in 0..6 {
+                let centre = (rng.grid(0.0, 64, 8) / 3.0, rng.grid(-0.5, 17, 8) / 3.0);
+                let radius = rng.grid(0.25, 12, 8);
+                let sides = 12 + rng.next() % 40;
+                let points: Vec<(f64, f64)> = (0..sides)
+                    .map(|k| {
+                        let t = std::f64::consts::TAU * f64::from(k) / f64::from(sides);
+                        (centre.0 + radius * t.cos(), centre.1 + radius * t.sin())
+                    })
+                    .collect();
+                lines.extend(polygon(&points, 0));
+            }
         }
         // Every edge twice, as strokes drawn twice or shared sides give.
         if case % 7 == 1 {
@@ -639,8 +657,10 @@ fn swaps_inside_the_union_keep_every_side() {
                 .collect()
         };
         assert_eq!(bits(&fast), bits(&full), "case {case}");
+        // An eighth more, and the sorts of the bookkeeping.
+        let bookkeeping = 8 * sort_work(pieces.len());
         assert!(
-            fast_work <= full_work + full_work / 8,
+            fast_work <= full_work + full_work / 8 + bookkeeping,
             "case {case}: {fast_work} {full_work}"
         );
         swapped += taken;
