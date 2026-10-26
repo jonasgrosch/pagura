@@ -255,11 +255,12 @@ def observation_complete(engine, case, result):
 
     Wrong values and explicit refusals are usable observations, still reported
     as failures to meet the independent oracle. An adapter/build failure or a
-    timeout cannot establish such an observation and fails the workflow.
+    timeout or resource-limit outcome cannot establish such an observation and
+    fails the workflow; adapter bounds are not an engine capability verdict.
     """
     if (engine, case["operation"]) in UNIMPLEMENTED:
         return result["outcome"] == "adapter-unavailable"
-    return result["outcome"] in {"pass", "incorrect", "rejected", "unsupported", "limit"}
+    return result["outcome"] in {"pass", "incorrect", "rejected", "unsupported"}
 
 
 def run(data, inventory, output, selected=SELECTED):

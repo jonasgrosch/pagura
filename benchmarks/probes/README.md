@@ -109,8 +109,9 @@ resource refusal and never passes an invalid-input control; the
 adapters do not invent one from exceptions. Timeout, adapter errors, absent
 adapter paths and unavailable engine installations remain distinct outcomes.
 CI requires a completed observation on each implemented adapter path: `pass`,
-`incorrect`, a valid-input rejection, a named explicit unsupported result or a
-recorded resource limit. Limits still need scope/budget adjudication.
+`incorrect`, a valid-input rejection or a named explicit unsupported result.
+Resource limits remain distinct and fail the measurement gate until scope/budget
+adjudication; an adapter output bound cannot establish engine capability.
 Competitor differences are evidence, so they stay visible without failing the
 measuring tool. Broken/unavailable adapters, engine installations and timeouts
 fail the workflow. The seven explicitly unimplemented case/engine cells stay
