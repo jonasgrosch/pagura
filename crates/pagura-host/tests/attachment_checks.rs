@@ -20,9 +20,9 @@ fn input(version: Version, name: &str, password: &[u8], repair: bool) -> Result<
     Ok(input)
 }
 
-fn serve(config: SessionConfig, input: &[u8]) -> Result<Vec<Vec<u8>>> {
+fn serve(session: Session, input: &[u8]) -> Result<Vec<Vec<u8>>> {
     let mut output = Vec::new();
-    Session::new(config).serve(input, &mut output)?;
+    session.serve(input, &mut output)?;
     Ok(split_frames(&output)
         .iter()
         .map(|frame| frame.body().to_vec())
@@ -59,7 +59,7 @@ fn checks_have_canonical_requests_and_preserve_older_sessions() -> Result<()> {
     {
         let mut input = input(version, "check-flate", b"", false)?;
         requests(&mut input, 1, 0, 1);
-        let bodies = serve(SessionConfig::default(), &input)?;
+        let bodies = serve(Session::default(), &input)?;
         assert_eq!((bodies[2][0], bodies[2][5]), (255, 7));
         assert_eq!(bodies[3][0], 131, "older sessions remain usable");
     }
@@ -84,7 +84,7 @@ fn completed_checks_preserve_missing_and_mismatching_declarations() -> Result<()
             reading_response_bytes: 16,
             ..SessionLimits::default()
         });
-        let bodies = serve(config, &input)?;
+        let bodies = serve(Session::new(config), &input)?;
         let mut expected = vec![155, 3, 0, 0, 0, 6, 0, 0, 0, 0, 0];
         expected.extend(u64::try_from(size)?.to_le_bytes());
         expected.extend(observations);
@@ -108,7 +108,7 @@ fn checks_respect_response_and_decode_limits_and_exact_selection() -> Result<()>
     ] {
         let mut input = input(Version::V1_10, "check-flate", b"", false)?;
         requests(&mut input, 1, 0, 1);
-        let bodies = serve(config, &input)?;
+        let bodies = serve(Session::new(config), &input)?;
         assert_eq!(bodies[1][0], 130, "control must open before checking");
         assert_eq!((bodies[2][0], bodies[2][5]), (255, 2));
         assert_eq!(bodies[3][0], 131, "resource refusal retains the source");
@@ -121,7 +121,7 @@ fn checks_respect_response_and_decode_limits_and_exact_selection() -> Result<()>
     ] {
         let mut input = input(Version::V1_10, name, b"", false)?;
         requests(&mut input, document, index, key);
-        let bodies = serve(SessionConfig::default(), &input)?;
+        let bodies = serve(Session::default(), &input)?;
         assert_eq!((bodies[2][0], bodies[2][5]), (255, category), "{name}");
         assert_eq!(bodies[3][0], 131);
     }
@@ -139,7 +139,7 @@ fn absent_declarations_still_require_payload_authorization() -> Result<()> {
         for password in [b"".as_slice(), b"wrong", b"attachment", b"owner"] {
             let mut input = input(Version::V1_10, name, password, true)?;
             requests(&mut input, 1, 0, 0);
-            let bodies = serve(SessionConfig::default(), &input)?;
+            let bodies = serve(Session::default(), &input)?;
             let public = name == "encrypted-identity-no-type";
             if public || password == b"attachment" || password == b"owner" {
                 assert_eq!(bodies[2][0], 155);
