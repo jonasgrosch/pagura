@@ -4,7 +4,7 @@
 //! resolved.
 
 use super::cells::STRIP;
-use super::certify::uncertified;
+use super::certify::{uncertified, uncertified_unless_dense};
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
@@ -165,6 +165,9 @@ pub(crate) enum Winding {
     Check(f64),
     /// Possibly overlapping: cells are analysed.
     Unknown,
+    /// An unproven stroke's pieces: as `Check(0.0)`, except that a large
+    /// shape the certificate finds mostly doubtful is resolved throughout.
+    Unproven,
 }
 
 impl Shape {
@@ -335,7 +338,7 @@ impl Shape {
             Tiling::Proven => Winding::Certified,
             // Only the slabs where the outline may overlap itself need the
             // union resolver.
-            Tiling::Unproven => Winding::Check(0.0),
+            Tiling::Unproven => Winding::Unproven,
             Tiling::Components => Winding::Unknown,
         };
         Self::polygon(polygon, FillRule::NonZero, winding, options, bytes, None)
@@ -480,8 +483,9 @@ impl Shape {
         let polygon_bytes = polygon.heap_bytes();
         let doubtful = match winding {
             Winding::Certified => Some(Vec::new()),
-            Winding::Check(_) if triangle => Some(Vec::new()),
+            Winding::Check(_) | Winding::Unproven if triangle => Some(Vec::new()),
             Winding::Check(margin) => uncertified(&polygon, margin, bytes)?,
+            Winding::Unproven => uncertified_unless_dense(&polygon, bytes)?,
             Winding::Unknown => None,
         };
         let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());

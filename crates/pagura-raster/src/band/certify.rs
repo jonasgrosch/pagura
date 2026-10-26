@@ -64,6 +64,58 @@ pub(crate) fn uncertified(
     Ok(doubtful(polygon, margin, bytes)?.map(|doubtful| doubtful.slabs))
 }
 
+/// As [`uncertified`] without a margin, for an unproven stroke's pieces:
+/// `None` also where the shape is large and proves mostly doubtful, so that
+/// every row of it is resolved (see [`DENSE_CHAINS`]).
+pub(crate) fn uncertified_unless_dense(
+    polygon: &Polygon,
+    bytes: &mut Meter,
+) -> Result<Option<Vec<[f64; 2]>>> {
+    Ok(checked(polygon, 0.0, true, bytes)?.map(|doubtful| doubtful.slabs))
+}
+
+/// A stroke's certificate gives up on a shape of at least this many chains
+/// once the rows its failing slabs meet reach [`DENSE_SHARE`] of the rows
+/// swept, after [`DENSE_AFTER`] of the shape's rows, and every row is then
+/// resolved, as when the work bound is exceeded. On dense line drawings
+/// most rows fail anyway, and certifying the others costs more than
+/// resolving them, which covers them the same. A smaller shape certifies
+/// cheaply whatever it holds, and goes on.
+const DENSE_CHAINS: usize = 1024;
+/// See [`DENSE_CHAINS`].
+const DENSE_SHARE: f64 = 0.8;
+/// See [`DENSE_CHAINS`].
+const DENSE_AFTER: f64 = 0.25;
+
+/// Whether a certificate gives up with `doubtful` of the `swept` rows from
+/// the top of a shape of `rows` rows met by failing slabs; it decides only
+/// past [`DENSE_AFTER`] of the rows, and at least four.
+fn gives_up(swept: f64, rows: f64, doubtful: f64) -> bool {
+    swept >= (DENSE_AFTER * rows).max(4.0) && doubtful >= DENSE_SHARE * swept
+}
+
+/// The rows the failing slabs met so far, as the sweep goes down.
+#[derive(Default)]
+struct Doubt {
+    rows: f64,
+    /// The lowest row counted.
+    last: Option<f64>,
+}
+
+impl Doubt {
+    /// Counts the rows slab `lo..hi` meets that are not counted yet.
+    fn meet(&mut self, lo: f64, hi: f64) {
+        let first = self
+            .last
+            .map_or(lo.floor(), |last| lo.floor().max(last + 1.0));
+        let last = (hi.ceil() - 1.0).max(lo.floor());
+        if last >= first {
+            self.rows += last - first + 1.0;
+        }
+        self.last = Some(self.last.map_or(last, |l| l.max(last)));
+    }
+}
+
 /// The slabs [`uncertified`] finds and the common sign of the others.
 pub(crate) struct Doubtful {
     pub(crate) slabs: Vec<[f64; 2]>,
@@ -78,8 +130,19 @@ pub(crate) fn doubtful(
     margin: f64,
     bytes: &mut Meter,
 ) -> Result<Option<Doubtful>> {
+    checked(polygon, margin, false, bytes)
+}
+
+/// [`doubtful`], giving up on a large shape found mostly doubtful when
+/// `dense` is set.
+fn checked(
+    polygon: &Polygon,
+    margin: f64,
+    dense: bool,
+    bytes: &mut Meter,
+) -> Result<Option<Doubtful>> {
     let before = bytes.used();
-    let result = certificate(polygon, margin, bytes);
+    let result = certificate(polygon, margin, dense, bytes);
     let retained = result
         .as_ref()
         .ok()
@@ -94,7 +157,12 @@ pub(crate) fn doubtful(
     result
 }
 
-fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Option<Doubtful>> {
+fn certificate(
+    polygon: &Polygon,
+    margin: f64,
+    dense: bool,
+    bytes: &mut Meter,
+) -> Result<Option<Doubtful>> {
     if polygon.points.len() > u32::MAX as usize {
         return Ok(None);
     }
@@ -119,10 +187,11 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
         vertices: margin,
     };
     let mut failing = Vec::new();
+    let dense = dense && chains.len() >= DENSE_CHAINS;
     let Some(positive) = sweep(
         &points,
         &mut chains,
-        margins,
+        (margins, dense),
         &mut work,
         &mut failing,
         bytes,
@@ -161,7 +230,7 @@ impl Work {
 fn sweep(
     points: &[Point],
     chains: &mut [Chain],
-    margins: Margins,
+    (margins, dense): (Margins, bool),
     work: &mut Work,
     failing: &mut Vec<[f64; 2]>,
     bytes: &mut Meter,
@@ -180,6 +249,9 @@ fn sweep(
     bytes.reserve(&mut active, chains.len())?;
     let mut next = 0;
     let mut sign = None;
+    let top = heights.first().map_or(0.0, |y| y.floor());
+    let rows = heights.last().map_or(0.0, |y| y.ceil()) - top;
+    let mut doubt = Doubt::default();
     for pair in heights.windows(2) {
         let (lo, hi) = (pair[0], pair[1]);
         active.retain(|a| points[a.chain.end - 1].y > lo);
@@ -256,6 +328,10 @@ fn sweep(
                     failing.push([lo, hi]);
                 }
             }
+            doubt.meet(lo, hi);
+        }
+        if dense && gives_up(hi.floor() - top + 1.0, rows, doubt.rows) {
+            return Ok(None);
         }
     }
     Ok(Some(sign.unwrap_or(true)))
@@ -818,6 +894,56 @@ mod tests {
             polygon.end();
         }
         polygon
+    }
+
+    /// `count` rectangles of 1 by 28 from height 2, `step` apart.
+    fn rectangles(count: u32, step: f64) -> Polygon {
+        let rectangles: Vec<[(f64, f64); 4]> = (0..count)
+            .map(|i| {
+                let x = f64::from(i) * step;
+                [(x, 2.0), (x + 1.0, 2.0), (x + 1.0, 30.0), (x, 30.0)]
+            })
+            .collect();
+        let contours: Vec<&[(f64, f64)]> = rectangles.iter().map(|r| &r[..]).collect();
+        polygon(&contours)
+    }
+
+    #[test]
+    fn large_mostly_doubtful_strokes_give_up_their_certificate() {
+        let mut bytes = crate::testing::bytes();
+        // 600 overlapping rectangles hold 1,200 chains and fail every slab.
+        let dense = rectangles(600, 0.5);
+        let failing = uncertified(&dense, 0.0, &mut bytes).unwrap().unwrap();
+        assert_eq!(failing, vec![[2.0, 30.0]]);
+        assert_eq!(uncertified_unless_dense(&dense, &mut bytes).unwrap(), None);
+        // Fewer chains than `DENSE_CHAINS`, or none failing: it goes on.
+        let small = rectangles(400, 0.5);
+        assert_eq!(
+            uncertified_unless_dense(&small, &mut bytes).unwrap(),
+            Some(vec![[2.0, 30.0]])
+        );
+        let apart = rectangles(600, 2.0);
+        assert_eq!(
+            uncertified_unless_dense(&apart, &mut bytes).unwrap(),
+            Some(Vec::new())
+        );
+    }
+
+    #[test]
+    fn giving_up_waits_for_a_quarter_of_the_rows_and_four_fifths_doubtful() {
+        assert!(gives_up(25.0, 100.0, 20.0));
+        assert!(!gives_up(24.0, 100.0, 24.0));
+        assert!(!gives_up(25.0, 100.0, 19.5));
+        // Small shapes decide after four rows.
+        assert!(gives_up(4.0, 8.0, 4.0));
+        assert!(!gives_up(3.0, 8.0, 3.0));
+        // Each row a failing slab meets counts once.
+        let mut doubt = Doubt::default();
+        doubt.meet(2.25, 2.5);
+        doubt.meet(2.5, 4.0);
+        doubt.meet(3.5, 3.75);
+        doubt.meet(7.0, 7.5);
+        assert_eq!(doubt.rows, 3.0);
     }
 
     #[test]

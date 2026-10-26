@@ -126,3 +126,41 @@ fn unlisted_shapes_match_their_strip_lists() {
     }
     assert!(grids > 40, "{grids}");
 }
+
+/// A large, mostly doubtful stroke whose certificate gives up has its other
+/// rows resolved too, with the bytes certifying them gives.
+#[test]
+fn a_dense_shape_resolved_throughout_keeps_its_bytes() {
+    let limits = Limits::default();
+    let area = area(0, 0, 40, 32, 8);
+    // 600 overlapping rectangles above row 20, and 20 apart below it.
+    let mut path = PathBuilder::new();
+    for i in 0..600_u32 {
+        path.rect(1.0 + f64::from(i) * 0.05, 1.5, 1.25, 18.0);
+    }
+    for i in 0..20_u32 {
+        path.rect(1.0 + f64::from(i) * 1.9, 22.25, 0.75, 8.5);
+    }
+    let path = path.finish();
+    let prep = options(area, &limits, None);
+    let render = |winding| {
+        let mut bytes = crate::testing::bytes();
+        let (polygon, rule) = clip::fill_polygon(
+            &path,
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            &limits,
+            &mut bytes,
+        )
+        .unwrap();
+        if winding == shape::Winding::Unproven {
+            let given_up = certify::uncertified_unless_dense(&polygon, &mut bytes).unwrap();
+            assert_eq!(given_up, None);
+        }
+        let shape = Shape::polygon(polygon, rule, winding, &prep, &mut bytes, None).unwrap();
+        raster(&area, shape.as_ref(), None).0
+    };
+    let certified = render(shape::Winding::Check(0.0));
+    assert_eq!(render(shape::Winding::Unproven), certified);
+    assert_eq!(render(shape::Winding::Unknown), certified);
+}
