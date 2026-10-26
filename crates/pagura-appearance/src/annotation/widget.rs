@@ -1,7 +1,8 @@
 //! Source variable-text and unsigned signature widgets (12.5.6.19, 12.7.5).
 //! AcroForm values use the document's requested-field view and shared form
-//! generator. Orphan empty text/signature widgets retain the geometric fallback;
-//! appearance characteristics belong to the widget itself.
+//! generator. Without an AcroForm, empty text/signature widgets retain the
+//! geometric fallback; inconsistent membership in a present AcroForm is an error.
+//! Appearance characteristics belong to the widget itself.
 
 use super::border::Border;
 use super::marks::{Marks, Pen, Subpath, color};
@@ -12,7 +13,7 @@ use crate::widget_rotation;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
-/// Source Tx/Ch text, or the geometric empty-widget fallback.
+/// Source Tx/Ch text, or empty-widget geometry after AcroForm membership checks.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
