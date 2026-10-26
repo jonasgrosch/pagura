@@ -24,7 +24,7 @@
 //! rather than every crossing and end of the row times every piece across
 //! it. Coverage continuing across a cut needs no side there.
 
-use super::edges::{Line, PLAIN_HEIGHT, PLAIN_LIMIT};
+use super::edges::Line;
 use crate::FillRule;
 use crate::geometry::{greater, lesser};
 use pagura_core::{Error, Meter, Result};
@@ -62,10 +62,9 @@ impl Piece {
         })
     }
 
-    /// The leftmost and rightmost x of the piece.
-    fn columns(&self) -> (f64, f64) {
-        let (a, b) = (self.line.x(self.lo), self.line.x(self.hi));
-        (lesser(a, b), greater(a, b))
+    /// The x of the piece at its upper and lower ends.
+    fn ends(&self) -> (f64, f64) {
+        (self.line.x(self.lo), self.line.x(self.hi))
     }
 }
 
@@ -108,12 +107,14 @@ pub(crate) struct Resolver {
     /// start: the sweep takes the pieces by their upper end.
     columns: Vec<Span>,
     rows: Vec<Span>,
-    /// The pieces' edges prepared for plain interpolation.
+    /// The pieces' x at their upper and lower ends, by piece.
+    ends: Vec<(f64, f64)>,
+    /// The pieces' edges prepared for plain interpolation, and the largest
+    /// error of their plain places.
     lanes: Vec<Lane>,
-    /// The pieces spanning the current sub-slab, in order across it, and
-    /// that order as the sub-slab above left it.
+    lane_error: f64,
+    /// The pieces spanning the current sub-slab, in order across it.
     order: Vec<Place>,
-    above: Vec<Place>,
     /// The pieces joining at the current sub-slab.
     joining: Vec<Place>,
     windings: Vec<i64>,
@@ -132,7 +133,9 @@ pub(crate) struct Resolver {
     carried_after: Vec<i64>,
     /// The pieces' first and last columns, `(first, last, piece)`, by first
     /// column; their last columns in order; the columns the row is cut at.
+    /// Their x at their ends, by piece.
     spans: Vec<Span>,
+    row_ends: Vec<(f64, f64)>,
     lasts: Vec<f64>,
     cuts: Vec<f64>,
     /// The pieces reaching the current chunk, and its pieces clipped to it.
@@ -218,11 +221,14 @@ impl Resolver {
         work.charge_product(sort_work(count), 3)?;
         room(&mut self.spans, count, bytes)?;
         room(&mut self.lasts, count, bytes)?;
+        room(&mut self.row_ends, count, bytes)?;
         self.spans.clear();
         self.lasts.clear();
+        self.row_ends.clear();
         for (i, p) in (0_u32..).zip(pieces) {
-            let (left, right) = p.columns();
-            let (first, last) = (left.floor(), right.floor());
+            let (top, bottom) = p.ends();
+            self.row_ends.push((top, bottom));
+            let (first, last) = (lesser(top, bottom).floor(), greater(top, bottom).floor());
             self.spans.push((first, last, i));
             self.lasts.push(last);
         }
@@ -276,8 +282,8 @@ impl Resolver {
             local.clear();
             room(local, live.len(), bytes)?;
             for &n in live.iter() {
-                let piece = pieces[self.spans[n as usize].2 as usize];
-                local.extend(clip(piece, (left, right)));
+                let i = self.spans[n as usize].2 as usize;
+                local.extend(clip(pieces[i], self.row_ends[i], (left, right)));
             }
             self.sweep(local, (rules, top), (out, work, bytes), k + 1 < chunks)?;
         }
@@ -300,6 +306,7 @@ impl Resolver {
         work.charge_product(sort_work(count), 4)?;
         room(&mut self.columns, count, bytes)?;
         room(&mut self.rows, count, bytes)?;
+        room(&mut self.ends, count, bytes)?;
         let breaks = self.carry.len().saturating_sub(1);
         room(&mut self.heights, 2 * count + 2 + breaks, bytes)?;
         self.heights.clear();
@@ -308,6 +315,14 @@ impl Resolver {
         for p in pieces {
             self.heights.extend([p.lo, p.hi]);
         }
+        // A few pieces cross a sub-slab or two each: preparing their lanes
+        // costs more than placing them exactly.
+        self.lanes.clear();
+        if count >= PLAIN_PIECES {
+            room(&mut self.lanes, count, bytes)?;
+            self.lanes.extend(pieces.iter().map(|p| Lane::new(p.line)));
+        }
+        self.lane_error = self.lanes.iter().fold(0.0, |e, lane| e.max(lane.error));
         self.crossings(pieces, total, (work, bytes))?;
         work.charge(sort_work(self.heights.len()))?;
         self.heights.sort_unstable_by(f64::total_cmp);
@@ -315,16 +330,9 @@ impl Resolver {
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
         self.windings.resize(rules.len(), 0);
-        for v in [&mut self.order, &mut self.above, &mut self.joining] {
+        for v in [&mut self.order, &mut self.joining] {
             v.clear();
             room(v, count, bytes)?;
-        }
-        // A few pieces cross a sub-slab or two each: preparing their lanes
-        // costs more than placing them exactly.
-        self.lanes.clear();
-        if count >= PLAIN_PIECES {
-            room(&mut self.lanes, count, bytes)?;
-            self.lanes.extend(pieces.iter().map(|p| Lane::new(p.line)));
         }
         for v in [&mut self.open, &mut self.next] {
             v.clear();
@@ -398,11 +406,39 @@ impl Resolver {
     ) -> Result<()> {
         self.columns.clear();
         self.rows.clear();
+        self.ends.clear();
         for (i, p) in (0..total).zip(pieces) {
-            let (left, right) = p.columns();
-            self.columns.push((left, right, i));
+            let (top, bottom) = p.ends();
+            self.ends.push((top, bottom));
+            self.columns
+                .push((lesser(top, bottom), greater(top, bottom), i));
             self.rows.push((p.lo, p.hi, i));
         }
+        // A pair overlaps from the lower of their upper ends to the higher
+        // of their lower ends: a piece's x there is often one of its ends.
+        let x = |k: u32, y: f64| {
+            let (p, (top, bottom)) = (&pieces[k as usize], self.ends[k as usize]);
+            if y.to_bits() == p.lo.to_bits() {
+                top
+            } else if y.to_bits() == p.hi.to_bits() {
+                bottom
+            } else {
+                p.line.x(y)
+            }
+        };
+        // A pair whose plain places keep one side throughout, further apart
+        // than their errors at both ends, cannot cross.
+        let lanes = &self.lanes;
+        let apart = |i: u32, j: u32, (lo, hi): (f64, f64)| {
+            let (p, q) = (&pieces[i as usize], &pieces[j as usize]);
+            let (a, b) = (&lanes[i as usize], &lanes[j as usize]);
+            let error = a.error + b.error;
+            let (d0, d1) = (
+                a.x(p.line, lo) - b.x(q.line, lo),
+                a.x(p.line, hi) - b.x(q.line, hi),
+            );
+            (d0 > error && d1 > error) || (d0 < -error && d1 < -error)
+        };
         let by_start = |a: &Span, b: &Span| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2));
         self.columns.sort_unstable_by(by_start);
         self.rows.sort_unstable_by(by_start);
@@ -422,11 +458,11 @@ impl Resolver {
                 let q = pieces[j as usize];
                 let lo = greater(p.lo, q.lo);
                 let hi = lesser(p.hi, q.hi);
-                if lo >= hi {
+                if lo >= hi || (!lanes.is_empty() && apart(i, j, (lo, hi))) {
                     continue;
                 }
-                let d0 = p.line.x(lo) - q.line.x(lo);
-                let d1 = p.line.x(hi) - q.line.x(hi);
+                let d0 = x(i, lo) - x(j, lo);
+                let d1 = x(i, hi) - x(j, hi);
                 if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
                     let y = lo + (hi - lo) * (d0 / (d0 - d1));
                     if y > lo && y < hi {
@@ -445,9 +481,10 @@ impl Resolver {
     /// in. Returns how many pieces, by upper end, have joined.
     ///
     /// Pieces are placed by plain interpolation first. Where neighbours stay
-    /// apart by more than their bounds, every comparison agrees with the
-    /// exact places, so the order, the moves restoring it and the absence of
-    /// coincident pieces are theirs; elsewhere the exact places are taken.
+    /// apart by more than twice the largest error, every piece left of the
+    /// gap is left of every piece right of it in the exact places too; the
+    /// runs between such gaps take their exact places and order. So the
+    /// order and the coincident pieces are those of the exact places.
     fn place(
         &mut self,
         pieces: &[Piece],
@@ -471,24 +508,28 @@ impl Resolver {
         if self.lanes.is_empty() {
             arrange((&mut self.order, &mut self.joining), exact, work)?;
         } else {
-            self.above.clear();
-            self.above.extend_from_slice(&self.order);
             let lanes = &self.lanes;
             let plain = |i: u32| lanes[i as usize].x(pieces[i as usize].line, mid);
             arrange((&mut self.order, &mut self.joining), plain, work)?;
-            let mut right = f64::NEG_INFINITY;
-            let apart = self.order.iter().all(|&(x, i)| {
-                let error = lanes[i as usize].error;
-                let left = x - error;
-                let apart = right < left;
-                right = x + error;
-                apart
-            });
-            if !apart {
-                std::mem::swap(&mut self.order, &mut self.above);
-                // The unsuccessful plain pass has spent its work too.
-                work.charge(self.order.len())?;
-                arrange((&mut self.order, &mut self.joining), exact, work)?;
+            let error = self.lane_error;
+            let mut start = 0;
+            for end in 1..=self.order.len() {
+                let apart = self
+                    .order
+                    .get(end)
+                    .is_none_or(|&(x, _)| self.order[end - 1].0 + error < x - error);
+                if !apart {
+                    continue;
+                }
+                let run = &mut self.order[start..end];
+                if run.len() > 1 {
+                    work.charge(run.len())?;
+                    for entry in run.iter_mut() {
+                        entry.0 = exact(entry.1);
+                    }
+                    settle(run, work)?;
+                }
+                start = end;
             }
         }
         Ok(joined)
@@ -567,16 +608,15 @@ impl Resolver {
     }
 }
 
-/// `piece` within columns `left..right`: its heights where its x is there,
-/// cut where it crosses `left` or `right`, at the same heights for the
-/// chunks on either side.
-fn clip(piece: Piece, (left, right): (f64, f64)) -> Option<Piece> {
+/// `piece`, whose x at its ends is `(start, end)`, within columns
+/// `left..right`: its heights where its x is there, cut where it crosses
+/// `left` or `right`, at the same heights for the chunks on either side.
+fn clip(piece: Piece, (start, end): (f64, f64), (left, right): (f64, f64)) -> Option<Piece> {
     // A vertical edge has no inverse crossing. Chunks own their left side
     // and exclude their right, independently of the contour's direction.
     if piece.line.a.x == piece.line.b.x {
         return (left <= piece.line.a.x && piece.line.a.x < right).then_some(piece);
     }
-    let (start, end) = (piece.line.x(piece.lo), piece.line.x(piece.hi));
     let rising = end > start;
     let (mut lo, mut hi) = (piece.lo, piece.hi);
     if start.min(end) < left {
@@ -652,9 +692,7 @@ impl Lane {
             (line.b, line.a)
         };
         let height = bottom.y - top.y;
-        let exact = top.x.abs().max(bottom.x.abs()) > PLAIN_LIMIT
-            || top.y.abs().max(bottom.y.abs()) > PLAIN_LIMIT
-            || height < PLAIN_HEIGHT;
+        let exact = !line.plain();
         Self {
             top,
             slope: (bottom.x - top.x) / height,

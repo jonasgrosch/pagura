@@ -290,6 +290,7 @@ impl Plan {
     ) {
         const CHUNK: usize = 32;
         let (count, channels) = (count.max(1), channels.max(1));
+        let batch = crate::batch::Batch::new((components, count), (output, channels));
         let icc = match &self.kind {
             Kind::Chain(chain) if self.lookup.is_none() && chain.steps.is_empty() => {
                 match &chain.terminal {
@@ -309,10 +310,7 @@ impl Plan {
             _ => None,
         };
         let Some((profile, intent, range, used)) = icc else {
-            for (components, output) in components
-                .chunks_exact(count)
-                .zip(output.chunks_exact_mut(channels))
-            {
+            for (components, output) in batch.points() {
                 match round {
                     Some(round) => self.convert_rounded(components, output, round),
                     None => self.convert(components, output),
@@ -322,10 +320,8 @@ impl Plan {
         };
         let mut clipped = [0.0; CHUNK * 4];
         let mut linear = [[0.0; 3]; CHUNK];
-        for (components, output) in components
-            .chunks(CHUNK.saturating_mul(count))
-            .zip(output.chunks_mut(CHUNK * channels))
-        {
+        for chunk in batch.chunks(CHUNK) {
+            let (components, output) = chunk.parts();
             let mut len = 0;
             for (components, clipped) in components
                 .chunks_exact(count)
