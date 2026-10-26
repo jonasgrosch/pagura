@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "f3c92f3e323c5da6ce6ca3141331aee7d8f671c3",
+  "audited_revision": "0d748d09b175d155ff4e701f8b6388ada2220b43",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -18,7 +18,7 @@
     "corpus/manifests/jpx.json": "b93a40469ae684fb8cec16e035d3e6916424d74eccf4bd5f148bb6986fae80a3",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "53c41ce4c58ea6d0b21ff15c8d3356cd1a5ecc4950f9e8baae5961db929832ba",
-    "corpus/manifests/paint_jpx_integration.json": "8ec5fc45c3c281c7a6e20e74439ea4659e030553c120c4c10f516fb8eabd4823",
+    "corpus/manifests/paint_jpx_integration.json": "8258fd5dd43962b35152fa2817a688d320b3a9cb79832eae5b775ba3c7ac47d8",
     "corpus/manifests/paint_jpx_native.json": "75a6ab361ffffa315aaba12ae32aa2cbf9374877078fe840acf7c24a1d65d639",
     "corpus/manifests/paint_jpx_rgb.json": "6e744ad7f3c3244a4f3ba5e7e5da9d464b4ebbdc97da7b90b5ae582935bf555f",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
@@ -120,7 +120,7 @@
     "crates/pagura-image/src/tests.rs": "9431fb4111e2d0a4ed41d005142b23e64a29e73e7a90af8d47c1a28caab56099",
     "crates/pagura-image/tests/bitonal_integration.rs": "62d4a98b767a2aef02793af5837e4ecf078907c55ec93012853d3eea223d5d7b",
     "crates/pagura-image/tests/jpeg_integration.rs": "f7ba12fab5e3a45c313e41120cc56d3acb51f2c4d57152512685600ed4060820",
-    "crates/pagura-image/tests/jpx_integration.rs": "f0270df7444521cc94761ddba9217f810d61e8021976d8ffdd7fbccecafc7600",
+    "crates/pagura-image/tests/jpx_integration.rs": "6c08cbf6e390cc8d63a77ffdbdb92b59e662a97edfc655adeada0eba80923f34",
     "crates/pagura-interpret/src/dump.rs": "5c41df6cad34c374bc9209c8884237d5757d4d49a224f90a8f96484423b66137",
     "crates/pagura-interpret/src/features.rs": "7e5a38d35b2250c7e352e0ae74cc14b61325aad361c4e75cd93af5a0a84c7e5f",
     "crates/pagura-interpret/src/lib.rs": "4fee62ce36e00bb76d99ba852a2179ae9a9fd1de6249bb77cae0a1a87983d302",
@@ -132,7 +132,7 @@
     "crates/pagura-interpret/src/resources/colorspace.rs": "2479326551cc3df50f52cbd0c2bee66eedcfd1b96132de0fd41403de41505ded",
     "crates/pagura-interpret/src/resources/colorspace/icc.rs": "dab2a67c72f091c1d74e03c40bdfb9971db4dab2df4a37e0e6c78115c285c8d6",
     "crates/pagura-interpret/src/resources/colorspace/jpx.rs": "275355aa953677cf78b3149a1c30a87d1327cd370ba68cd92167e43158864d2f",
-    "crates/pagura-interpret/src/resources/colorspace/tests.rs": "75676ed1da3507f80c402311f480123bc4fac3926e2d221eeeb9eb8a019bc39f",
+    "crates/pagura-interpret/src/resources/colorspace/tests.rs": "84e42ddd5aab5fb74eb623f2c9fe82d17bdeedf791043fa70a26d8f3bdd65735",
     "crates/pagura-interpret/src/resources/group.rs": "8e020418885f5fdd2376a54ab772a202fb7b01540ba6b527d48d83a23dfa0281",
     "crates/pagura-interpret/src/resources/optional.rs": "7f4b11d80f0458cdf4e9a1c01fdcb6869ef398fc44d5ed93337e1a7465e199b1",
     "crates/pagura-interpret/src/resources/pattern.rs": "f38e0ceeb427c250e4034f61d2bcdc13bf73b67ee7d5489b737611da3a1cb92d",
@@ -195,9 +195,9 @@
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
     "references/requirements/image.json": "c38f1c6f006b7997d2ca6103c11e6ccbb09ab5b7e9ca7dc72821d76aa6cfb948",
     "references/requirements/jbig2.json": "ee69056398af0d7757e076b88530d81885135766d3b839c404c185fdaee8fc10",
-    "references/requirements/jpx.json": "84cd8f077e5c7769e47bf1c8a29925df9f7d9ae056559bcb4b444c39cc19e658",
+    "references/requirements/jpx.json": "73b5f3e4cc81aeb8ff4fcc12c2da06229c512d9c7552faee056906259a321cca",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
-    "references/requirements/paint.json": "4ecb851cce10da2043e45e175362112e9a1cbbdca46dcfde516daffe53d6e91b",
+    "references/requirements/paint.json": "3ea2f792fe01aaba53f712f752b2392b701748be9ce6f21b0fa9b89a3f8a0897",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
@@ -212,7 +212,7 @@
     "tools/fixturegen/jpeg.py": "66b90a999fe4c6f3944dc2a5d1ec9a34902ac0ff314997d70fa6738d1ba46812",
     "tools/fixturegen/jpx.py": "464a2777c6d4e88dcd20c89f07d31dfd5d42d3c625aa22d8bd3462884eb6f4ed",
     "tools/fixturegen/paint_jpx.py": "8b0982a69967d8529afc9cbf19c082cd492304a190e5ceb6ef3012e9f1728745",
-    "tools/fixturegen/paint_jpx_integration.py": "582ea12ec7e4d04b748ee0a7efc80eb174f58ce5d899508697f794682a93513f",
+    "tools/fixturegen/paint_jpx_integration.py": "26650219340f4c4f5fca7edeba1f9ebf9ab744d1af48559a0e34337dbf66569f",
     "tools/fixturegen/paint_jpx_native.py": "42cc8e73d3c54091027572e095c890637ce69d940641707b2caed6cfb5e348a7",
     "tools/fixturegen/paint_jpx_rgb.py": "a17ada3e3639f186ec340d8e90005cb44ca950d5b4e36f2f7c9eed8af0130e30",
     "tools/host_test.mjs": "0f477c23545ee1d15b40ae988934c7754241bb826e0042cd1344bbcaf87e7d09",
@@ -224,8 +224,8 @@
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
     "crates/pagura-color/src/convert/tests/oracle.rs": "8c831d6d26da40cd3a64537a0ff8856084d8907a4cdf4b8d2238a558986c14b6",
     "tools/fixturegen/content.py": "311dbd15e95c4e632b3aadaf4d60b75ef61cb37b173a3ca6756e7accf87b47c2",
-    "tools/fixturegen/jpx_lab_probe.py": "1ec747142c797da1fc207f444b243a85f71e780e278a4f26d838e7eeacaa86cb",
-    "corpus/manifests/jpx_lab_probe.json": "29f1daca0426e593386f1ff1bddb4d44ce493f96ffa87f685be4650d18e779a1"
+    "tools/fixturegen/jpx_lab_probe.py": "be56958f3180cf37f8621f70385719ec9abe429f8eb7b98983afed70659fec82",
+    "corpus/manifests/jpx_lab_probe.json": "52a4e2e6bc5e08249fa101ccda1be515b95fa0de54f29813860812f52722c3eb"
   },
   "capabilities": [
     {
