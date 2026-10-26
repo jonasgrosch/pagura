@@ -3,7 +3,9 @@
 mod boundary;
 mod chain;
 mod loading;
-pub(crate) use loading::{Loader, Primary};
+pub(crate) use loading::Loader;
+#[cfg(test)]
+pub(crate) use loading::Primary;
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 

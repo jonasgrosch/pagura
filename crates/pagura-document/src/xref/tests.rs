@@ -48,7 +48,7 @@ fn parse(
     })
 }
 
-fn source() -> pagura_core::Result<Arc<SparseBytes>> {
+fn source() -> Result<Arc<SparseBytes>> {
     Ok(Arc::new(SparseBytes::new(
         ID,
         2048,
@@ -224,7 +224,7 @@ fn owned_revision_chain_keeps_a_primary_section_while_its_supplement_waits() {
         };
         window.seek(u64::try_from(offset).unwrap()).unwrap();
         assert_eq!(window.work(), work);
-        let read = |parser: &mut pagura_core::syntax::Parser<'_, _>| {
+        let read = |parser: &mut Parser<'_, _>| {
             let mut diagnostics = Diagnostics::new(Recovery::Strict);
             let section = match kind {
                 Kind::Section => parse_section(parser, FILE_LENGTH, &limits, &mut diagnostics),

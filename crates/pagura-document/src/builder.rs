@@ -12,7 +12,7 @@ pub(crate) use loading::Build;
 
 use crate::source::ReadResult;
 use crate::xref::rebuild::StreamSlots;
-use crate::xref::{XrefOrigin, XrefTable};
+use crate::xref::{XrefEntry, XrefOrigin, XrefTable};
 use crate::{
     Document, Location, OpenOptions, Revision, Slot, Validation, diagnostics, history, memory,
     object, security, source,
@@ -186,9 +186,10 @@ fn structure_bytes(table: &XrefTable, revision_entries: bool) -> usize {
         );
     table.revisions.iter().fold(structure, |sum, revision| {
         let entries = if revision_entries {
-            revision.entries.len().saturating_mul(
-                size_of::<(u32, xref::XrefEntry)>().saturating_add(INDEX_ENTRY_OVERHEAD),
-            )
+            revision
+                .entries
+                .len()
+                .saturating_mul(size_of::<(u32, XrefEntry)>().saturating_add(INDEX_ENTRY_OVERHEAD))
         } else {
             0
         };
