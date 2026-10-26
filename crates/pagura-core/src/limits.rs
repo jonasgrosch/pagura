@@ -112,7 +112,9 @@ pub struct Limits {
     /// one unit per Type 4 calculator operator executed and per sample
     /// looked up or interpolated in a sampled, exponential or stitching
     /// function. Reserved during preparation through the prepared sources
-    /// that evaluate them.
+    /// that evaluate them. The default is 32 units per pixel at the pixel
+    /// cap, as for `decode_work`: both cost nanoseconds per unit, so the
+    /// two bound a similar worst-case time (ADR 0016).
     pub function_work: usize,
     /// Budgets of signature validation (ADR 0015).
     pub signatures: SignatureLimits,
@@ -222,7 +224,9 @@ impl Default for Limits {
             font_entries: 1_000_000,
             text_items: 1_000_000,
             text_work: 50_000_000,
-            function_work: 50_000_000,
+            // 32 units per pixel at the pixel cap, as `decode_work`: a few
+            // nanoseconds per unit in both (ADR 0016).
+            function_work: 32 * PIXELS,
             signatures: SignatureLimits::default(),
         }
     }
@@ -312,5 +316,12 @@ mod tests {
         // one with eight scans must fit at the pixel cap.
         assert!(limits.decode_work >= 3 * 8 * limits.pixels);
         assert!(limits.decode_work > limits.operations);
+    }
+
+    #[test]
+    fn function_work_scales_with_the_pixel_budget_as_decode_work_does() {
+        let limits = Limits::default();
+        assert_eq!(limits.function_work, 32 * limits.pixels);
+        assert_eq!(limits.function_work, limits.decode_work);
     }
 }

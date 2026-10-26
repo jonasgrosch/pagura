@@ -1,8 +1,9 @@
 # ADR 0016: One meaning per `Limits` field; domain budgets
 
 Status: accepted, 2026-10-18. Amended 2026-10-19 (signature, function and
-traversal budgets) and 2026-10-21 (render budgets, ADR 0034). Refines
-invariant 3 of `docs/ARCHITECTURE.md` and ADR 0012.
+traversal budgets), 2026-10-21 (render budgets, ADR 0034) and 2026-10-26
+(`function_work` scales with the pixel cap). Refines invariant 3 of
+`docs/ARCHITECTURE.md` and ADR 0012.
 
 ## Context
 
@@ -190,3 +191,33 @@ store's capacity, plus any value too large to retain, which its build budgets
 bound; this replaces the consequence above that `render_bytes` alone bounds a
 page's peak memory.
 
+## Amendment, 2026-10-26: `function_work` scales with the pixel cap
+
+`function_work` kept the 50,000,000 units of the `operations` default it
+replaced (amendment of 2026-10-19). At the pixel cap that is less than one
+unit per pixel, so it bounded nothing in particular. A full-page shading
+whose function costs a few dozen units an evaluation exceeds it at ordinary
+resolutions: two pages of a 1,000-page corpus reserved about 249M units at
+150 dpi (2.1 and 2.4 million pixels at 119 and 101 units an evaluation)
+and were refused, although they render in 2.7 and 0.3 s.
+
+1. **Work budgets scale with the pixel cap.** `function_work` defaults to
+   32 units per pixel of `pixels`, the allowance of `decode_work`
+   (2,147,483,648 units). This replaces the default of the amendments of
+   2026-10-19 and 2026-10-21.
+2. **The allowance keeps the protection of the other work budgets.** It is
+   chosen so that each work budget bounds a similar worst-case time, not to
+   admit particular pages. Measured on an M3 Pro (cold renders, `sample`
+   profiles of builds with the budgets lifted):
+
+   | Budget | Measured | Worst case at its default |
+   |---|---|---|
+   | `function_work` | 3.35 ns per unit (Type 4 functions of a full-page shading) | about 7 s |
+   | `decode_work` | 1.65–4.32 ns per unit (JPEG 2000) | 3.5–9.3 s |
+   | `render_work` | 0.4–2 ns per unit (ordinary pages) | up to about 4 s |
+
+   A reservation can exceed what execution evaluates, where identical
+   inputs share an evaluation (0.14 ns per reserved unit on the second
+   page), which only lowers the time a reservation stands for.
+3. **Every default still fits a 32-bit `usize`** (decision 3):
+   32 × 2^26 = 2^31. A unit test states the rule.

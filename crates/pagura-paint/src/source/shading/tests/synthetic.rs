@@ -394,6 +394,14 @@ fn function_work_is_reserved_per_sample() {
     let mut tight = Meter::new(1000 * 4 * cost - 1, "function work");
     let error = prepare().reserve(1000, &mut tight).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+    // Under the default budget, the most pixels this shading's evaluations
+    // admit at four samples each, and one more.
+    let most = limits.function_work / (4 * cost);
+    let mut default = Meter::new(limits.function_work, "function work");
+    prepare().reserve(most, &mut default).unwrap();
+    let mut default = Meter::new(limits.function_work, "function work");
+    let error = prepare().reserve(most + 1, &mut default).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
 }
 
 #[test]
