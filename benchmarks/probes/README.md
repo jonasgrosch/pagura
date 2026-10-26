@@ -331,9 +331,17 @@ row count, and the original exact budgets are extended to the 65,536 contexts.
 The fourteen image inputs from diagnostic `9e97615f228fb3f5cb0ea76f14ddf20872659a51`,
 [run 40368464986](https://github.com/jonasgrosch/pagura/actions/runs/40368464986),
 are preserved byte-for-byte under `image/` with identical PPM oracles and tolerance
-zero. The integrated inventory has 274 cases / 1,918 cells; acceptance of this
-implementation checkpoint remains pending. The original diagnostic inventory
-had those fourteen image cases plus blank/rectangle controls, for 112 cells.
+zero. The integrated [hosted rendering report](https://github.com/jonasgrosch/pagura/actions/runs/40376025925)
+at `c04da5c605d84c7e66c7de3582f28abc61738a97` passes all 274 Pagura controls
+across 1,918 cells. Artifact `12675450769` has ZIP SHA-256
+`14083a8db347da3e3b446e7802134f707b81a05fca7f039e1168c160b43a98d6`
+and report SHA-256
+`f7c0f1d681a4482931c2e91336ecfc21b730f7a0a372b9b495feedc9cd7619e4`.
+This rendering result is separate from full product acceptance. The original
+missing-DNL test now asserts Syntax: T.81 B.2.5 requires DNL for SOF Y=0, so its
+absence is malformed rather than an unimplemented process.
+The original diagnostic inventory had those fourteen image cases plus
+blank/rectangle controls, for 112 cells.
 Its eight Pagura subject failures remain `adapter-error`, as recorded by the
 then-current harness; source review separately identified the relevant refusal
 and framing paths. Historical outcomes are not rewritten.
@@ -365,8 +373,34 @@ pixel decode or preflight entropy copy. Every inspected byte is charged. The
 literal lossless control's work rises from 22 to 60: 4 SOS/length bytes plus 34
 entropy-through-EOI bytes, followed by its unchanged 20 sample units and 2 end-marker
 inspections. The DNL constant control requires 81 operations, 384 live bytes and 64
-pixels; one-short bounds refuse it. The ordinary-JPEG timing cost requires a
-paired hosted measurement and is not described as a performance improvement.
+pixels; one-short bounds refuse it.
+
+The bounded [Ubuntu measurement](https://github.com/jonasgrosch/pagura/actions/runs/40375650525)
+compared subject `c04da5c605d84c7e66c7de3582f28abc61738a97` with baseline
+`6e87a6030ae206322aa813388b41e18363d5af81`, using private workflow revision
+`29a7d45c3b6054f484a8eb489ee7070684f889f5`. Both heads used the unchanged
+`image/jpeg-budget-huffman` and `image/jpeg-budget-arithmetic` bytes, literal
+samples and tolerance 1 in native-size 128×64 gray PDF wrappers. All ten paired
+process samples per input passed and produced identical pixels, with three
+warmups and no warmup failures. The existing `render-cold` microbenchmark used
+2,000 fresh-context renders per block, ten alternating paired blocks and three
+warmups per input; raw output retains all 52 block invocations.
+
+| Ordinary JPEG control | Baseline median µs/render | Subject median µs/render | Median paired subject/baseline |
+| --- | ---: | ---: | ---: |
+| Huffman | 86.53 | 89.33 | 1.03155 |
+| Arithmetic | 166.69 | 167.95 | 1.00933 |
+
+This is scoped overhead evidence from GitHub-hosted Ubuntu 24 x64 image
+`20261023.334.3`, Rust 1.99.1, without isolated-runner power or idle attestation;
+it is not an ADR 0002 release gate or a whole-family performance result.
+Artifact `12675381132` (`jpeg-framing-c04da5c60`) retains identities, binary hashes,
+input hashes, process samples and raw cold blocks. Its ZIP SHA-256 is
+`736b6585a366d340e5852525b7cb7f9ce938c371d8f2d256e92653fa2160c001`;
+`regression.json` is
+`2b801c5c853ad249aca395d5243eb9b155add1e66479976d45bab37bc6d966b7`
+and `cold.json` is
+`9af40ef1226d5fa8d28bbcc64ba2641382a65e8ec7a48ab8f66bea0234501ff3`.
 
 PLM uses the existing indexed-fragment owner and PLT length syntax. T.800 A.7.2
 allows an Nplm byte list to span markers, while each packet length must finish
