@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01/R02 independent synthetic RGB8 oracles: controls, JPX ICC, sYCC channel precision and Indexed opacity. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01/R02 independent synthetic RGB8 oracles: controls, JPX ICC, sYCC channel precision and Indexed opacity at twofold magnification and matched native sampling. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -597,6 +597,526 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "9a8e25ac1ee716a48c326c4486b3c6a0d9fb7cbfca0254ba2dbdbd954aba0136",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-neutral.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-neutral",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f053c251788db9ba2fcc970dcd992c1d8e6cdfc437b6ee35d8de9a4dafa599c4",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-chroma.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-chroma",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "764fefcff880b53454f2317aa9cc93fa3849f70489fb6c8725baa0683800f219",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-gamut.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-gamut",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "393198b354885424b30dfd9866e21c079bc3c5047fb32cadf69ada06d899d0c7",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-pdf-override.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-pdf-override",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "a12f961cef4732772f50a5f6ee6a9fa33de2e2d42c8d016b8e2f80b86bcdaf1c",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-ignores-decode-default.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-ignores-decode-default",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "764fefcff880b53454f2317aa9cc93fa3849f70489fb6c8725baa0683800f219",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-straight-alpha.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-straight-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d88c312cead3df4bf3e28ab61402223d45bd8187da4db3819422306e594678d8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-premultiplied-alpha.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-premultiplied-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7ee30b3e7074c0a73663cfcb103217d1c895d4188a94f66750d8d038da7fed9f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-1.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "81b04f9200fd4a21626e4f2ef71f9ada93d023a5d48ee0bfda751ff3ba49b24d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-2.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c23db689919aab6d9cea9deccc1dc4684c8b6ed7e9b73481e9d6ce00e1d4bcab",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-3.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-3",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "80d678c8c3a5ad28ab6a7c16c050bf685467e2e103b9fce414656934bf802449",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-4.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-4",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ff12b2df2d40eae45a27e99df978365f7482fa6b66fce057a6847a94563f6764",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-5.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-5",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "cdb2921f1493a9e2fac7fe7cf6c5849e2f14ee45a144bc27a6bcee4e1dd1c843",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-6.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-6",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f763aef92888b64c6c09fccf468f4e38920d24bbaa249133e8ae7f4972e85134",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-7.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-7",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "061f47ae992e6e22fdfff537fef49d666fe09118eed63f2421e26c3951ec0bef",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-8.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "71fa194193ef48f8c3e6e8fab52a7fced59ce951d5fa5d63499492c253c4ef23",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-9.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-9",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-10.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-10",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-11.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-11",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-12.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-12",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-13.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-13",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-14.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-14",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-15.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-15",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-16.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-precision-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2cd2e055353ee954650858e4639fdb2ca0bf3e48aee092545cd043712a948be8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-16bit-boundary.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-16bit-boundary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ea5a361be92e5f6ee2682e360619f00e1b1e02ff2e86231c8863bb05fcc2685f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-mixed-alpha-0.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-mixed-alpha-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "740b842954b7297ddc003b4b75f432bc994f41ed6ee712956a4e6703cce68d92",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-mixed-alpha-1.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-mixed-alpha-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5b917a3b9c22a5b2a926c45fbdb4c96c53b190564fefe8b1d7e340ffcaeba42f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-mixed-alpha-2.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/sycc-mixed-alpha-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d20d71b5df6bccba9da9ac8699640d960b0208a5e4f65cce850fbdbe0cbc901d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-0-last.native",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx_native/indexed-alpha-0-last",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2abb4765d307f601d6d4151d37586ba2d4e73b4fd08b68e501ec3575322f0a79",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-0-first.native",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx_native/indexed-alpha-0-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2abb4765d307f601d6d4151d37586ba2d4e73b4fd08b68e501ec3575322f0a79",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-1-last.native",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx_native/indexed-alpha-1-last",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5e554fa65c000156c7e9a1a09830276fbb091c4ccaf2709bcf7f35061b362c54",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-1-first.native",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx_native/indexed-alpha-1-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5e554fa65c000156c7e9a1a09830276fbb091c4ccaf2709bcf7f35061b362c54",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-2-last.native",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx_native/indexed-alpha-2-last",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c9e770816d95fc3ed3bc9e2a89d23d1a9eee103d13c80df0bf5d04f10d7052cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-2-first.native",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx_native/indexed-alpha-2-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c9e770816d95fc3ed3bc9e2a89d23d1a9eee103d13c80df0bf5d04f10d7052cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.gray-linear.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/gray-linear",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "7a8b434e7ecb1ff5b4d1cc24f68096d1c21127fff4791f684ba44e2fa1ab8536",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.rgb-linear.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/rgb-linear",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "1c03d611d02622b1a87a3b268d87431a6fc5e13cdf95876410e443acdd14e16a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.pdf-override.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/pdf-override",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8f1e58a3e1dffbb787542a51c30962de1bfed4673e0c076736589b9ee4da4330",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.ignores-pdf-decode-default.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/ignores-pdf-decode-default",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "1c03d611d02622b1a87a3b268d87431a6fc5e13cdf95876410e443acdd14e16a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.future-profile-fallback.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/future-profile-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d76d2c228b0fbeb68200aacad2300df6f335944001b4b63ba10489340527d78b",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.straight-alpha.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/straight-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "18649629c3b988201be21080690c6f4863ffc1cdc5fba8acecdeae5fb19ee952",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.premultiplied-alpha.native",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_native/premultiplied-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "18649629c3b988201be21080690c6f4863ffc1cdc5fba8acecdeae5fb19ee952",
         "tolerance": 1
       }
     }

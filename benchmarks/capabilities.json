@@ -16,6 +16,7 @@
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "53c41ce4c58ea6d0b21ff15c8d3356cd1a5ecc4950f9e8baae5961db929832ba",
+    "corpus/manifests/paint_jpx_native.json": "75a6ab361ffffa315aaba12ae32aa2cbf9374877078fe840acf7c24a1d65d639",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
     "crates/pagura-appearance/src/annotation/border.rs": "4423feb6d972c20fccde3e8ad80ecc7a02540c94db1e2fa268601b29627e96e8",
     "crates/pagura-appearance/src/annotation/tests.rs": "9535a7eca8ad1a1ee5e315e2e7fe6e3a23e4add357db7588a373c10c61d83d0c",
@@ -182,7 +183,8 @@
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
-    "tools/fixturegen/paint_jpx.py": "db511df8d9a8c92983644f8affa402e15bf1377062bcb5efa8de1781036c5cf2",
+    "tools/fixturegen/paint_jpx.py": "8b0982a69967d8529afc9cbf19c082cd492304a190e5ceb6ef3012e9f1728745",
+    "tools/fixturegen/paint_jpx_native.py": "42cc8e73d3c54091027572e095c890637ce69d940641707b2caed6cfb5e348a7",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
@@ -612,7 +614,8 @@
       ],
       "tests": [
         "crates/pagura-paint/src/source/image/tests.rs",
-        "tools/fixturegen/paint_jpx.py"
+        "tools/fixturegen/paint_jpx.py",
+        "tools/fixturegen/paint_jpx_native.py"
       ],
       "requirements": [
         "jpx-pdf-contract",
@@ -627,7 +630,13 @@
         "paint_jpx/indexed-alpha-1-last",
         "paint_jpx/indexed-alpha-1-first",
         "paint_jpx/indexed-alpha-2-last",
-        "paint_jpx/indexed-alpha-2-first"
+        "paint_jpx/indexed-alpha-2-first",
+        "paint_jpx_native/indexed-alpha-0-last",
+        "paint_jpx_native/indexed-alpha-0-first",
+        "paint_jpx_native/indexed-alpha-1-last",
+        "paint_jpx_native/indexed-alpha-1-first",
+        "paint_jpx_native/indexed-alpha-2-last",
+        "paint_jpx_native/indexed-alpha-2-first"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -672,7 +681,8 @@
       "tests": [
         "crates/pagura-interpret/src/resources/colorspace/tests.rs",
         "tools/fixturegen/paint_jpx.py",
-        "crates/pagura-color/tests/sycc.rs"
+        "crates/pagura-color/tests/sycc.rs",
+        "tools/fixturegen/paint_jpx_native.py"
       ],
       "requirements": [
         "jpx-pdf-contract",
@@ -719,7 +729,41 @@
         "paint_jpx/sycc-precision-16",
         "paint_jpx/sycc-mixed-alpha-0",
         "paint_jpx/sycc-mixed-alpha-1",
-        "paint_jpx/sycc-mixed-alpha-2"
+        "paint_jpx/sycc-mixed-alpha-2",
+        "paint_jpx_native/gray-linear",
+        "paint_jpx_native/rgb-linear",
+        "paint_jpx_native/pdf-override",
+        "paint_jpx_native/ignores-pdf-decode-default",
+        "paint_jpx_native/future-profile-fallback",
+        "paint_jpx_native/straight-alpha",
+        "paint_jpx_native/premultiplied-alpha",
+        "paint_jpx_native/sycc-neutral",
+        "paint_jpx_native/sycc-chroma",
+        "paint_jpx_native/sycc-gamut",
+        "paint_jpx_native/sycc-pdf-override",
+        "paint_jpx_native/sycc-ignores-decode-default",
+        "paint_jpx_native/sycc-straight-alpha",
+        "paint_jpx_native/sycc-premultiplied-alpha",
+        "paint_jpx_native/sycc-16bit-boundary",
+        "paint_jpx_native/sycc-precision-1",
+        "paint_jpx_native/sycc-precision-2",
+        "paint_jpx_native/sycc-precision-3",
+        "paint_jpx_native/sycc-precision-4",
+        "paint_jpx_native/sycc-precision-5",
+        "paint_jpx_native/sycc-precision-6",
+        "paint_jpx_native/sycc-precision-7",
+        "paint_jpx_native/sycc-precision-8",
+        "paint_jpx_native/sycc-precision-9",
+        "paint_jpx_native/sycc-precision-10",
+        "paint_jpx_native/sycc-precision-11",
+        "paint_jpx_native/sycc-precision-12",
+        "paint_jpx_native/sycc-precision-13",
+        "paint_jpx_native/sycc-precision-14",
+        "paint_jpx_native/sycc-precision-15",
+        "paint_jpx_native/sycc-precision-16",
+        "paint_jpx_native/sycc-mixed-alpha-0",
+        "paint_jpx_native/sycc-mixed-alpha-1",
+        "paint_jpx_native/sycc-mixed-alpha-2"
       ],
       "comparisons": {
         "pdfium": "unprobed",

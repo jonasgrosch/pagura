@@ -167,9 +167,13 @@ cells, including Pagura through its public CLI, for empty/populated controls, fr
 The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
 these are observations pending sampling/colour/alpha adjudication, not established
 competitor defects. The first Pagura-inclusive run passed all six subject
-oracles. The consolidated R02 follow-up expands this to 46 fixtures and 322
-render cells, with its own hosted execution pending; none of the earlier results
-establishes this expanded scope.
+oracles. The 46-fixture R02 follow-up completed all 322 render observations in
+[run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286),
+with Pagura passing all 46 independent oracles. Baseline pixel disagreements
+remain unadjudicated. Forty additional native-sampling controls bring the current
+manifest to 86 fixtures and 602 render cells, pending their hosted execution.
+They retain the original fixtures and tolerances and help isolate magnification
+from colour/alpha behavior; no family support verdict follows from these counts.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
@@ -224,8 +228,11 @@ The follow-up `48443e4a228cc2de62a298d99d2148a28391eef2` removes the eight-bit-o
 sYCC admission guard: T.800 I.5.3.3 / Table I.10 maps each channel to the same
 colour-value domain before IEC conversion. Independent fixtures cover every
 supported precision 1-16, the non-neutral 16-bit midpoint, and mixed 1/3/10-bit
-palette output with SMaskInData 0/1/2. Hosted verification of this follow-up
-is pending; decoder precision above 16 bits remains R03 work.
+palette output with SMaskInData 0/1/2. All 46 render probes passed for Pagura in
+[run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286).
+Product checks passed on Linux and macOS before integration superseded the
+Windows run; checks on the current one-pass integration remain pending.
+Decoder precision above 16 bits remains R03 work.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
    respect explicit PDF colour spaces and expose all relevant colour candidates.

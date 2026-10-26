@@ -1,0 +1,808 @@
+{
+  "schema": 2,
+  "area": "paint_jpx_native",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "paint_jpx_native/sycc-neutral",
+      "kind": "pdf",
+      "description": "sycc neutral",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-neutral.pdf",
+      "sha256": "f019033eec136c0c7dd67b5d847a5c07af8364dce56e8a7bb4a49807dafbbec2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-neutral.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/sycc-chroma",
+      "kind": "pdf",
+      "description": "sycc chroma",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-chroma.pdf",
+      "sha256": "a51d13d916220a442704b6ba727d6a9906c370437240700ce0c9be56f2bcb7a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-chroma.ppm",
+      "oracle_sha256": "cdab21f201fdbc5fb9a2a47a178a87cd5bcabf8496843d96bfcf1a1c479bd824",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/sycc-gamut",
+      "kind": "pdf",
+      "description": "sycc gamut",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-gamut.pdf",
+      "sha256": "a89221a5c297763360e458cda38c4d033b9a00bee9160c59cad82510e2568ba0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-gamut.ppm",
+      "oracle_sha256": "f7607fdb840db1e319165548b1282f730d28d21038e0436e7331dde49235784a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/sycc-pdf-override",
+      "kind": "pdf",
+      "description": "sycc pdf override",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-pdf-override.pdf",
+      "sha256": "3dcca538026df4a18248b144b71ef542f0695dcaa56033c55d797f19ae8aa5ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-pdf-override.ppm",
+      "oracle_sha256": "39edcec0c802cf89d560c4dfd8461701e86aa9c213006a5267b5809395c88310",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/sycc-ignores-decode-default",
+      "kind": "pdf",
+      "description": "sycc ignores decode default",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-ignores-decode-default.pdf",
+      "sha256": "d0fcaeac653a122ff0df285faf442290f62f073d0d3722568b0e89a1be949b39",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-ignores-decode-default.ppm",
+      "oracle_sha256": "cdab21f201fdbc5fb9a2a47a178a87cd5bcabf8496843d96bfcf1a1c479bd824",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/sycc-straight-alpha",
+      "kind": "pdf",
+      "description": "sycc straight alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-straight-alpha.pdf",
+      "sha256": "2ddefe5230ffd7bc2346a75e4b60efa0bedf7b41315217ca1c0813bc1b9f5e36",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-straight-alpha.ppm",
+      "oracle_sha256": "4451fc4ebe92385e1e93d385b14059982339e46e9f9acecaae88d71bcda5e72a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-premultiplied-alpha",
+      "kind": "pdf",
+      "description": "sycc premultiplied alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-premultiplied-alpha.pdf",
+      "sha256": "5be6265c686919e6ae9073b4d70dd332111a981b4e37ff847e6de42fc922f4f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-premultiplied-alpha.ppm",
+      "oracle_sha256": "6b4a5366cc25977b470fcb8280c8732702a4e59c4c86f72c79d748f0c5d16bee",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-1",
+      "kind": "pdf",
+      "description": "sycc precision 1",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-1.pdf",
+      "sha256": "5fdafe4c405c0575dbf9a243dce32a87cac942342ea43d94e32eb4273196d125",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-1.ppm",
+      "oracle_sha256": "31caf8fede52fdafb1e6e7d07ea14d0e1945a0af697b2c4686cb1ab9f3051bd1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-2",
+      "kind": "pdf",
+      "description": "sycc precision 2",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-2.pdf",
+      "sha256": "2b3d834e8d831064c29eb8fbbcf17c58ab7b577099fec352e01fcb78501f5800",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-2.ppm",
+      "oracle_sha256": "f79f002312701ed54a3ddb3d08c5ab9b72330b832977efe95aaed124d6d63ff0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-3",
+      "kind": "pdf",
+      "description": "sycc precision 3",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-3.pdf",
+      "sha256": "b89f074c5a8f5243a1d93f2417c7e9f0cd639470a398ab2a8fadd28bf94a486f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-3.ppm",
+      "oracle_sha256": "722c10ebed0a6403ad01b2b45346bfe93cf1be022c13ce2d86b41a03ba652cd9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-4",
+      "kind": "pdf",
+      "description": "sycc precision 4",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-4.pdf",
+      "sha256": "a1be154ae0936f89989166ad14b5fa65d0184c5d0d09083fff2570099f996d41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-4.ppm",
+      "oracle_sha256": "3dc78f4056a421113f32a31f8efb9fbfb8b41fec06293b834f70c925b0a4324a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-5",
+      "kind": "pdf",
+      "description": "sycc precision 5",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-5.pdf",
+      "sha256": "e7388b52e0597b1683e2c356f8739525b5ff37526f0234737b598b20b52b1e1d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-5.ppm",
+      "oracle_sha256": "163582b166bd0813ce86aff8da5a54cd5354d120c31d79f8503df1508636e337",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-6",
+      "kind": "pdf",
+      "description": "sycc precision 6",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-6.pdf",
+      "sha256": "55907a108408bb6723c118e0feb6e8c4310bb28ffdfc705f029636fc42b76e9b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-6.ppm",
+      "oracle_sha256": "51cef06dd6f000bd5a605e77bfc21f89c5511b10904ca170e7508a7ba98abfef",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-7",
+      "kind": "pdf",
+      "description": "sycc precision 7",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-7.pdf",
+      "sha256": "d872474f49d0807083d7f15b81647c84e962eb4248d8ea6659ed4e3555bbf4f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-7.ppm",
+      "oracle_sha256": "bc8f4de9abc3aea84226e9bcad5bfe3aadcbaddf53daf59dff2bb2e969239904",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-8",
+      "kind": "pdf",
+      "description": "sycc precision 8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-8.pdf",
+      "sha256": "c44b4364fa2aa2d9f7a59098d12abbecc2c78a65bbaf1bd311dc9334e173e1e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-8.ppm",
+      "oracle_sha256": "4fc8c47b7536d1722328f8632e1114c107efef62a1a6846b628f83b872cc1704",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-9",
+      "kind": "pdf",
+      "description": "sycc precision 9",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-9.pdf",
+      "sha256": "0175b4b9b0c99778372f2012f6fea9f97759a91df1ff9e4592dc9ab1faebb330",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-9.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-10",
+      "kind": "pdf",
+      "description": "sycc precision 10",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-10.pdf",
+      "sha256": "3acab098796a426e39638587b45c189ee37dcfae9a06cdfbfe6d224b9519545f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-10.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-11",
+      "kind": "pdf",
+      "description": "sycc precision 11",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-11.pdf",
+      "sha256": "b4ce670b18817c42f2721f14f88c7da4db9d467033d02a36c4eb14a8190751e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-11.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-12",
+      "kind": "pdf",
+      "description": "sycc precision 12",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-12.pdf",
+      "sha256": "49934c9ed79d133acb30955c6d1d937bd683abda5023cbe69a9d50241fafc1dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-12.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-13",
+      "kind": "pdf",
+      "description": "sycc precision 13",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-13.pdf",
+      "sha256": "47ec4288077509fdfb06e3e20b18a88f18af94e78e8c266fdde38a19ba365791",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-13.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-14",
+      "kind": "pdf",
+      "description": "sycc precision 14",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-14.pdf",
+      "sha256": "15b006ad111e93c84595de6af8cf992308e8a939b8e67f9ce940c1214b6e4e74",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-14.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-15",
+      "kind": "pdf",
+      "description": "sycc precision 15",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-15.pdf",
+      "sha256": "fe4b7a8936421d41d16f5771ba9b2b5cd085c65ceb74292dcd1d1efbf3e872eb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-15.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-precision-16",
+      "kind": "pdf",
+      "description": "sycc precision 16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-precision-16.pdf",
+      "sha256": "b162909d48aad3f72bf4262dcd93a53196b869377d8a23c15eb45d0276f17a66",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-precision-16.ppm",
+      "oracle_sha256": "43f8b96595006571fe63724219df8816fca5c30839d5b825d3d0ab4db83ba9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-16bit-boundary",
+      "kind": "pdf",
+      "description": "sycc 16bit boundary",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-16bit-boundary.pdf",
+      "sha256": "9e747b6b45a7d75c29af2c20f0604d5b58049936d0e8098d5995923778ef1d0c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-16bit-boundary.ppm",
+      "oracle_sha256": "537730f4c6ca5ce9b4a720ed6f9c91bec8d0a623f644ce457491a8d72fdb2b87",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/sycc-mixed-alpha-0",
+      "kind": "pdf",
+      "description": "sycc mixed alpha 0",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-mixed-alpha-0.pdf",
+      "sha256": "5bbc9eea8c13365cd87c025e238468047f3c3ec7e64ac861f14096173a5494e1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-mixed-alpha-0.ppm",
+      "oracle_sha256": "ab5f12f45604b556310f9be72335c8b13a2b003a709a92233aef09c4f6171ae8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-mixed-alpha-1",
+      "kind": "pdf",
+      "description": "sycc mixed alpha 1",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-mixed-alpha-1.pdf",
+      "sha256": "683d97f56e7d74beca3e4db721aa7758573ebededaf841fd3f5f666209c1f095",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-mixed-alpha-1.ppm",
+      "oracle_sha256": "f44edf7ed3d38b97e04550ff6c77cfeea8affde7145590b136677a9b5b016e5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/sycc-mixed-alpha-2",
+      "kind": "pdf",
+      "description": "sycc mixed alpha 2",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/sycc-mixed-alpha-2.pdf",
+      "sha256": "7755f468ab5deb9f7c8caa27c453bb9e7eabc19ecda408e0abffc071d4b6563a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/sycc-mixed-alpha-2.ppm",
+      "oracle_sha256": "ab97ecafff1a7ed5a0c3d57596bc248caa1268a184ab5ef2a8e9c5ecd1694417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/indexed-alpha-0-last",
+      "kind": "pdf",
+      "description": "indexed alpha 0 last",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_native/indexed-alpha-0-last.pdf",
+      "sha256": "77f6c709fe4fe0715b21e2f6e65a157389d0b4d91b4b0e912d956c78bd4d091d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/indexed-alpha-0-last.ppm",
+      "oracle_sha256": "535f811304a037cc6313d214e0f5cd7695f8208f209f48fc2afb56293297c768",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/indexed-alpha-0-first",
+      "kind": "pdf",
+      "description": "indexed alpha 0 first",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_native/indexed-alpha-0-first.pdf",
+      "sha256": "1df1884c2ebff1ffe3c32c6f135d6374d4de27cbe8dd4f5962a7216d37af77c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/indexed-alpha-0-first.ppm",
+      "oracle_sha256": "535f811304a037cc6313d214e0f5cd7695f8208f209f48fc2afb56293297c768",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/indexed-alpha-1-last",
+      "kind": "pdf",
+      "description": "indexed alpha 1 last",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_native/indexed-alpha-1-last.pdf",
+      "sha256": "7144ed577be66f95aac8b1209432839364a2350f6f4c7ebe14c7c128d830e83c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/indexed-alpha-1-last.ppm",
+      "oracle_sha256": "8e6be3d2cff9a8a44d92b5e40798a98367a5fa260e3c94058472f6b016ad1f20",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/indexed-alpha-1-first",
+      "kind": "pdf",
+      "description": "indexed alpha 1 first",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_native/indexed-alpha-1-first.pdf",
+      "sha256": "54bbe2102b10673f2208d08424982eb4d61207ceac454102e144ac5e5496a36d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/indexed-alpha-1-first.ppm",
+      "oracle_sha256": "8e6be3d2cff9a8a44d92b5e40798a98367a5fa260e3c94058472f6b016ad1f20",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/indexed-alpha-2-last",
+      "kind": "pdf",
+      "description": "indexed alpha 2 last",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_native/indexed-alpha-2-last.pdf",
+      "sha256": "b73b0237a7cdb8e62a90dca212ee2db82bac0239ab6f8ee7434c843b137766f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/indexed-alpha-2-last.ppm",
+      "oracle_sha256": "3964493605fc800ef5556ce93fe7ebb5e573896639c7a9b2bc1f24f97a9d8d9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/indexed-alpha-2-first",
+      "kind": "pdf",
+      "description": "indexed alpha 2 first",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx_native/indexed-alpha-2-first.pdf",
+      "sha256": "8fc51a8e8ff7b7bc9bf16e2de2c7c3c24548f6b7a0d0022fcfd17a965e1ea2e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/indexed-alpha-2-first.ppm",
+      "oracle_sha256": "3964493605fc800ef5556ce93fe7ebb5e573896639c7a9b2bc1f24f97a9d8d9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/gray-linear",
+      "kind": "pdf",
+      "description": "gray linear",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/gray-linear.pdf",
+      "sha256": "128a1a8834d67bedcd4f55da4791004a976a0c9e3f78bf4e48dd335af88bf593",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/gray-linear.ppm",
+      "oracle_sha256": "fa8ab27606b94531123578e2dca6268d5df880bb24256f42c6f454fa1671d45a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/rgb-linear",
+      "kind": "pdf",
+      "description": "rgb linear",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/rgb-linear.pdf",
+      "sha256": "906bf9b9c776e5c39fad8cbd2fe8072cf141e1a1f9afc3372768b2c310d42038",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/rgb-linear.ppm",
+      "oracle_sha256": "08f305af77bb766a08339ea94ff130852dfe427c609a3b7b8d7cd814af692839",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/pdf-override",
+      "kind": "pdf",
+      "description": "pdf override",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/pdf-override.pdf",
+      "sha256": "ef049b44f4383fadc41c57783d45da589b2549e8f8d612289b0f25ceab9967a6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/pdf-override.ppm",
+      "oracle_sha256": "9f643055b2359b3e57a6a1d9fa419982c458e988c258aa6d36e7d2380a9b7874",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/ignores-pdf-decode-default",
+      "kind": "pdf",
+      "description": "ignores pdf decode default",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/ignores-pdf-decode-default.pdf",
+      "sha256": "3fcf9e050fa1628388ef120f6255475a069f89e855f9c1e8e3a13409bfcde91b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/ignores-pdf-decode-default.ppm",
+      "oracle_sha256": "08f305af77bb766a08339ea94ff130852dfe427c609a3b7b8d7cd814af692839",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/future-profile-fallback",
+      "kind": "pdf",
+      "description": "future profile fallback",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/future-profile-fallback.pdf",
+      "sha256": "43c79340f6c32fca6b722da91f1fe4deb2fe083e79dbb413252a43989f205375",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/future-profile-fallback.ppm",
+      "oracle_sha256": "b82009392ab2fba70f65cbdb26b388f068c034098db93cffcc128fbd366ab01e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_native/straight-alpha",
+      "kind": "pdf",
+      "description": "straight alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/straight-alpha.pdf",
+      "sha256": "a901c1f4d43a452165fe67d90bf2325f15f799f3f716879e6b8b1a47c1268ae3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/straight-alpha.ppm",
+      "oracle_sha256": "8e41ecd65f8470d071d092753947db3f27dd13c0200d3263222d3970a0a0018e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_native/premultiplied-alpha",
+      "kind": "pdf",
+      "description": "premultiplied alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_native/premultiplied-alpha.pdf",
+      "sha256": "ff1578eed4fe0f9767a6ed765f8121b09d1d580f8b7b4fff350c7a2445ebe776",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_native/premultiplied-alpha.ppm",
+      "oracle_sha256": "8e41ecd65f8470d071d092753947db3f27dd13c0200d3263222d3970a0a0018e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    }
+  ]
+}

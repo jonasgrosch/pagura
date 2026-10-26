@@ -4,9 +4,10 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) now contains 46 independent pixel
-oracles: six initial controls plus forty valid R02 colour/opacity fixtures.
-Its 322 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
+The companion [render manifest](rendering.json) now contains 86 independent pixel
+oracles: six initial controls, forty valid R02 colour/opacity fixtures and forty
+matched native-sampling controls. Its 602 cells use the public Pagura CLI and all
+six existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -166,8 +167,29 @@ The first Pagura-inclusive [run 40257897816](https://github.com/jonasgrosch/pagu
 at merge revision `a6db14a5134357af2b92cc503083ee6837374194` added six Pagura
 passes: 26 passes and the same 16 baseline disagreements overall. Pagura met
 five controls exactly and fractional coverage within its declared one-level
-bound. The subsequent 46-fixture R02 expansion is pending hosted execution;
-results of the initial six controls do not establish the expanded scope.
+bound.
+
+The 46-fixture R02 [run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286)
+at merge revision `4a058819a91f27311bf29c9f15c8ec976e3eb83b` completed all 322
+render observations without adapter failures. Pagura met every declared oracle.
+
+| Engine | Pixel passes | Pixel disagreements |
+|---|---:|---:|
+| Pagura | 46 | 0 |
+| PDFium | 13 | 33 |
+| MuPDF | 2 | 44 |
+| pdf.js | 21 | 25 |
+| Poppler | 2 | 44 |
+| hayro | 22 | 24 |
+| CoreGraphics | 3 | 43 |
+
+These counts measure agreement with the full-image pixel oracles in that exact
+configuration. They do not measure supported PDF features: twofold-magnified
+samples can differ because of resampling policy. The additional forty
+`paint_jpx_native` controls use identical codestreams and primary-formula colour
+expectations at one sample per pixel with integer placement. They preserve every
+original fixture and tolerance. Their first hosted run is pending; matched
+uncompressed controls and configuration adjudication also remain open.
 
 ## Next G01 increments
 
