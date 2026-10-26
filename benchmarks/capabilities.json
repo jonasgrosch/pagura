@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "e946738c81f28ed198165707e39677f38344407f",
+  "audited_revision": "bc28baccaae3e688fddd2a7b21fbb93fe01ebb78",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
