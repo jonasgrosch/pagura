@@ -29,6 +29,7 @@ pub mod repairs;
 mod revision_bounds;
 mod security;
 pub mod signatures;
+pub mod source;
 mod stream;
 mod view;
 mod xref;

@@ -1,0 +1,25 @@
+name: progressive-source-jobs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: progressive-source-jobs-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  source-contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt
+      - name: Check source and facade contracts
+        run: cargo clippy -p pagura-document -p pagura --all-targets --all-features -- -D warnings
+      - name: Verify source availability and lease lifetime
+        run: cargo test -p pagura-document --test sources
+      - name: Verify facade source contract
+        run: cargo test -p pagura --test api source::

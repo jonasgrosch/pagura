@@ -10,6 +10,7 @@ mod png;
 mod provider;
 mod render;
 mod signatures;
+mod source;
 mod streaming;
 mod support;
 mod tags;

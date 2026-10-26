@@ -1,0 +1,16 @@
+{
+  "schema": 2,
+  "area": "sources",
+  "scope": "Project-owned immutable byte-source and availability contracts from ADR 0035. Independent literal byte vectors test storage and ownership, without invoking a PDF parser or product writer as an oracle.",
+  "requirements": [
+    {
+      "id": "source-availability-and-leases",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "source storage implemented; hosted validation pending",
+      "tests": ["pagura-document/tests/sources.rs", "pagura/tests/api/source.rs"],
+      "gaps": "Document parser/cache migration, progressive opening/pages, jobs, encoding, protocol and scheduling remain group 11 obligations.",
+      "rule": "A source fixes identity and length. Supplies validate all overlaps before publishing new fragments. Missing bytes remain separate from terminal errors. Duplicate bytes do not advance availability; conflicting overlap invalidates future reads. Every retained allocation stays charged until its last lease drops. Assembly and missing-range frontiers obey explicit caps, and work accumulates across retries."
+    }
+  ]
+}
