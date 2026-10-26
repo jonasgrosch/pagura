@@ -544,7 +544,9 @@ impl Codes {
     /// writes them; false, with nothing written, unless the image's three
     /// lanes are opaque and its pixels take nearest samples, or their
     /// colours are mapped averages (see [`Self::mapped`]) whose footprints
-    /// all meet the image.
+    /// all meet the image. Out of line: inside the store's span loop the
+    /// word loops compile worse.
+    #[inline(never)]
     pub(super) fn words(
         &self,
         image: &DecodedImage,

@@ -187,6 +187,44 @@ impl Sampling {
     }
 }
 
+impl Sampling {
+    /// The words an opaque store writes for the colours of nearest opaque
+    /// three-colour texels of `pixels`, written as their rows are read, as
+    /// [`Self::fill`] reads them: false, with nothing written, unless the
+    /// plan takes upright nearest samples of such texels.
+    pub(super) fn words(
+        &self,
+        geometry: &Geometry,
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
+        texels: &impl Texels,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let (Self::Separable(plan), Scratch::Separable(scratch)) = (self, scratch) else {
+            return false;
+        };
+        if !plan.nearest() || !texels.opaque() || texels.lanes() != 5 {
+            return false;
+        }
+        let rows = TexelRows {
+            texels,
+            width: geometry.size().0,
+            values: 3,
+        };
+        let word = crate::kernel::opaque_word;
+        plan.gather_each(
+            &rows,
+            pixels,
+            scratch,
+            out,
+            |pixel, &[r, g, b]: &[f64; 3]| {
+                *pixel = [word(r), word(g), word(b), u16::MAX];
+            },
+        );
+        true
+    }
+}
+
 /// Sets the alpha and shape that follow an opaque texel's colours: two
 /// stores rather than a fill call per pixel.
 #[inline]
