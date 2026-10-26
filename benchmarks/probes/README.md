@@ -292,8 +292,13 @@ now distinguishes that context, ignoring deprecated FontMatrix without changing
 CFF1 or Top DICT matrices. Legacy matrix application remains a separate
 compatibility question because both interpretations use the same version-2 header.
 The original diagnostic reports, fonts and pixel expectations remain unchanged.
-Nine of those PDFs/controls join the preceding 25 integrated controls; hosted
-acceptance of the implementation is pending.
+Nine of those PDFs/controls join the preceding 25 integrated controls. At
+`95249301d`, all 34 Pagura controls pass in [hosted run 40403532318](https://github.com/jonasgrosch/pagura/actions/runs/40403532318),
+and [full functional checks](https://github.com/jonasgrosch/pagura/actions/runs/40403532292)
+pass on Ubuntu, macOS and Windows. The combined report covers 238 cells at
+merge `2f89cbc28efafa544ce6c0a50ea2552886b724b4`; artifact `12690375705`
+has ZIP SHA-256 `a1b179444cdc51d405f656c682c70fbfc00825e7fa136325cd62ceafc5c0f826`
+and report SHA-256 `760e50b5a5d106b05f5e72d884f0744464c69641b3cb1051a62087128b5a86a5`.
 
 Linux artifact `12687168595` has ZIP SHA-256
 `763a9df7cff0b36950ebcb6ee43a15efbc987f0d0f94c25c97131b6649c8f8c0`
@@ -301,3 +306,19 @@ and report SHA-256
 `ea7a6a90c330062312b7aa3da5f1a6987b4e26098dcca590df6a033d30982369`.
 The native `cff2-font-dict-matrix` expectation changes from the historical refusal
 to its independently authored untransformed outline, with identical font bytes.
+
+## Type 1 advance vectors
+
+Adobe Type 1 section 6.4 defines both coordinates of `sbw` and requires a
+`seac` composite's opening metrics to match its base glyph. The existing
+charstring state now retains both advance coordinates; the horizontal metrics
+API still returns the x coordinate. PDF text placement remains governed by
+the PDF widths and text matrix.
+
+Eleven native controls cover signed and vertical advances, exact composite
+metrics, malformed operands and width-only decoding. Six independently authored
+PDF controls compare horizontal, upward and downward advances under ordinary
+and quarter-turn text matrices. Literal bearing/rectangle geometry establishes
+the pixels. They bring the integrated rendering set to 40 while preserving all
+34 earlier controls, their bytes and their tolerances. This addition awaits
+hosted acceptance; it does not extend the static PostScript program subset.
