@@ -240,7 +240,8 @@ impl Colors {
         if count == 0 {
             return;
         }
-        let mut colors = [0.0; super::BATCH * MAX_CHANNELS];
+        // A stage with a ramp converts into at most this many channels.
+        let mut colors = [0.0; super::BATCH * pagura_color::MAX_RAMP_CHANNELS];
         let Some(colors) = colors.get_mut(..count * channels) else {
             return;
         };
