@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "1436a77ae93c5180fba65b11b3737866610f3ab7",
+  "audited_revision": "1777d9b94e83355a4132e91fa9e3f47a8f2c916f",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -106,7 +106,7 @@
     "crates/pagura-interpret/src/resources/optional.rs": "7f4b11d80f0458cdf4e9a1c01fdcb6869ef398fc44d5ed93337e1a7465e199b1",
     "crates/pagura-interpret/src/resources/pattern.rs": "f38e0ceeb427c250e4034f61d2bcdc13bf73b67ee7d5489b737611da3a1cb92d",
     "crates/pagura-interpret/src/resources/shading.rs": "cd81d6e8ffbb39d6ec4bcd0e12bd7319b12e0c417f19431f5ee1e0a742ec1d57",
-    "crates/pagura-paint/src/execute.rs": "9a6915b506f51a374582dcf6ddbcc2b4eb57c74f3aaad21cf2d9787f598ad4c0",
+    "crates/pagura-paint/src/execute.rs": "dfd3e4b0b60839daf6b3907d568316085cd3e157f926d8a20ce7f1ec25297805",
     "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
     "crates/pagura-paint/src/prepare/finish.rs": "77bb757520b9d7cf3ae61c9b5a32d063986b03d3afd25f7923985d3a62dc9286",
     "crates/pagura-paint/src/prepare/planner/marks.rs": "82d0c145bff197fde1fc3b8344ba4a301c61a876244671b446dc088a11c6681d",

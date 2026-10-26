@@ -25,6 +25,8 @@ pub(crate) struct Tops {
     pub(crate) wide: usize,
     /// F32 pixels.
     pub(crate) levels: usize,
+    /// Rows of lazily started buffers, one started interval each.
+    pub(crate) rows: usize,
 }
 
 impl Tops {
@@ -59,6 +61,17 @@ impl Tops {
         debug_assert!(fits, "the stacks hold every nested buffer");
         fits.then_some(placed)
     }
+
+    /// Places the started intervals of the rows of a lazily started buffer
+    /// over `rect`: their offset and the tops above them, or `None` where
+    /// the stack of `limits` does not hold them.
+    pub(crate) fn rows(self, rect: DeviceRect, limits: Self) -> Option<(usize, Self)> {
+        let above = Self {
+            rows: self.rows + u32_to_usize(rect.height()),
+            ..self
+        };
+        (above.rows <= limits.rows).then_some((self.rows, above))
+    }
 }
 
 /// A group's buffer in the current band.
@@ -77,6 +90,10 @@ pub(crate) struct Frame {
     /// What it started from: the backdrop of knockout members (11.4.6) and
     /// of the backdrop removal of non-isolated results (11.4.4).
     pub(crate) initial: Backdrop,
+    /// Where it starts lazily, the offset among the workspace's `starts`
+    /// of its rows' started columns, outside which its pixels are unread;
+    /// `None` where every pixel started with the buffer.
+    pub(crate) started: Option<usize>,
 }
 
 impl Frame {
@@ -174,6 +191,43 @@ impl Backdrop {
     }
 }
 
+impl Backdrop {
+    /// The `len` pixels from `(x, y)` of this backdrop as its buffer holds
+    /// them, where it holds them all as f64 pixels of `layout`: their colour
+    /// and alpha are what [`Self::row`] writes, their group alpha and shape
+    /// the buffer's own. `wide` is the wide stack below the reader.
+    pub(crate) fn pixels<'a>(
+        &self,
+        page: &'a PageBuffer,
+        wide: &'a [f64],
+        (x, y): (u32, u32),
+        layout: Layout,
+        len: usize,
+    ) -> Option<&'a [f64]> {
+        let Self::Frame {
+            buffer,
+            rect,
+            layout: source,
+        } = *self
+        else {
+            return None;
+        };
+        let end = x.checked_add(u32::try_from(len).ok()?)?;
+        if source != layout || x < rect.x0 || end > rect.x1 || y < rect.y0 || y >= rect.y1 {
+            return None;
+        }
+        let first =
+            u32_to_usize(y - rect.y0) * u32_to_usize(rect.width()) + u32_to_usize(x - rect.x0);
+        let stride = layout.stride();
+        let values = match (buffer, page) {
+            (Buffer::Wide(offset), _) => wide.get(offset..)?,
+            (Buffer::Page, PageBuffer::F64(values)) => values,
+            _ => return None,
+        };
+        values.get(first * stride..(first + len) * stride)
+    }
+}
+
 /// The most colour channels of a pixel.
 pub(crate) const CHANNELS: usize = 4 + crate::plan::MAX_SPOTS;
 
@@ -231,13 +285,12 @@ impl Read<'_> {
         let lanes = (n.min(source.channels()), n);
         match (buffer, self.page) {
             (Buffer::Wide(offset), _) => wide(
-                pixels,
+                (out, layout),
                 self.wide.get(offset + first * source.stride()..),
                 source,
-                lanes,
             ),
             (Buffer::Page, PageBuffer::F64(values)) => {
-                wide(pixels, values.get(first * source.stride()..), source, lanes);
+                wide((out, layout), values.get(first * source.stride()..), source);
             }
             (Buffer::Levels(offset), _) => narrow(
                 pixels,
@@ -261,17 +314,27 @@ impl Read<'_> {
     }
 }
 
-/// [`Read::row`] of f64 pixels of `source`: `channels` colour values of
-/// each over the first of its pixel in `pixels`, and its alpha after their
-/// `n` channels.
-fn wide<'a>(
-    pixels: impl Iterator<Item = &'a mut [f64]>,
-    values: Option<&[f64]>,
-    source: Layout,
-    (channels, n): (usize, usize),
-) {
-    let values = values.unwrap_or_default().chunks_exact(source.stride());
-    for (pixel, value) in pixels.zip(values) {
+/// [`Read::row`] of f64 `values` of `source` into the f64 pixels of
+/// `layout` in `out`: the colour values both have over the first of each
+/// pixel, and its alpha after its channels. Pixels of one layout copy as a
+/// run, then lose their group alpha and shape.
+fn wide((out, layout): (&mut [f64], Layout), values: Option<&[f64]>, source: Layout) {
+    let (n, stride) = (layout.channels(), layout.stride());
+    let values = values.unwrap_or_default();
+    if source == layout {
+        let len = out.len().min(values.len()) / stride * stride;
+        out[..len].copy_from_slice(&values[..len]);
+        for pixel in out[..len].chunks_exact_mut(stride) {
+            pixel[n + 1] = 0.0;
+            pixel[n + 2] = 0.0;
+        }
+        return;
+    }
+    let channels = n.min(source.channels());
+    for (pixel, value) in out
+        .chunks_exact_mut(stride)
+        .zip(values.chunks_exact(source.stride()))
+    {
         for (out, &v) in pixel.iter_mut().zip(value).take(channels) {
             *out = v;
         }
