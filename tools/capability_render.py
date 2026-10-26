@@ -103,7 +103,7 @@ def invoke(command, row, directory):
             'pixel_comparison': verdict, **diagnostic}
 
 
-def run(data, inventory, output, selected):
+def run(data, inventory, output, selected, images=None):
     require(selected and len(set(selected)) == len(selected) and set(selected) <= set(inventory['engines']), 'invalid selected engines')
     require(not any(os.environ.get(key) for key in ('PAGURA_HAYRO', 'PAGURA_QUARTZ', 'PAGURA_POPPLER')),
             'custom render executables require matching service/version identities')
@@ -147,7 +147,7 @@ def run(data, inventory, output, selected):
     with tempfile.TemporaryDirectory(prefix='pagura-render-probes-') as temporary:
         directory = Path(temporary)
         for name in inventory['engines']:
-            for case in data['cases']:
+            for index, case in enumerate(data['cases']):
                 identity = identities[name]
                 if name not in selected:
                     result = {'outcome': 'not-run', 'reason': identity['reason']}
@@ -156,6 +156,16 @@ def run(data, inventory, output, selected):
                 else:
                     row = rows[case['id']]
                     result = invoke(command_for(name, commands[name], row, directory / 'page.ppm'), row, directory)
+                    if images is not None and result['outcome'] in {'pass', 'incorrect'}:
+                        # Only the manifest's project-owned synthetic fixtures
+                        # reach here. Keep visual evidence outside Git; names
+                        # use the fixed engine and an ordinal, never PDF text.
+                        folder = images / name / str(index)
+                        folder.mkdir(parents=True, exist_ok=True)
+                        width, height, pixels = normalize((directory / 'page.ppm').read_bytes())
+                        (folder / 'actual.ppm').write_bytes(f'P6\n{width} {height}\n255\n'.encode() + pixels)
+                        (folder / 'oracle.ppm').write_bytes(local_file(ROOT, row['oracle']).read_bytes())
+                        result['image_directory'] = f'{name}/{index}'
                 report['results'].append({'engine': name, 'case': case['id'], **result})
     validate_report(report, data, inventory)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -171,6 +181,7 @@ def main():
     parser.add_argument('reports', type=Path, nargs='*')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--engines', default='pdfium,mupdf,pdfjs,poppler,hayro')
+    parser.add_argument('--images', type=Path, help='retain synthetic actual/oracle PPMs outside Git for adjudication')
     args = parser.parse_args()
     data, inventory = read_json(ROOT / MANIFEST), read_json(ROOT / LEDGER)
     validate_manifest(data, inventory)
@@ -180,7 +191,7 @@ def main():
     require(args.output is not None, '--output is required')
     if args.command == 'run':
         require(not args.reports, 'run does not accept report inputs')
-        if not run(data, inventory, args.output, tuple(args.engines.split(','))):
+        if not run(data, inventory, args.output, tuple(args.engines.split(',')), args.images):
             parser.exit(1, 'G01 render observations incomplete; inspect saved diagnostics and outcomes.\n')
     else:
         report = combine([read_json(path) for path in args.reports], data, inventory)

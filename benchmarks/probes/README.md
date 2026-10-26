@@ -88,6 +88,11 @@ exits remain unclassified adapter failures until investigated, never presumed
 backend rejections or unsupported features. These probes do not measure or
 compare the render adapters' timing output. Embedded ICC/sYCC and Indexed JPX
 alpha from the separate R02 implementation PR will be added after consolidation.
+The `--images` option retains actual/oracle PPM pairs for these project-owned
+synthetic fixtures; hosted `capability-render-images-<os>` artifacts allow visual
+adjudication without committing measured output. A pixel disagreement can reflect
+colour, sampling or antialiasing policy and is not by itself an established engine
+defect. No tolerance is relaxed to turn an observation into a pass.
 
 `pass` requires the independent expectation, or an engine rejection for the
 invalid-input control. A wrong result is `incorrect`; a rejection of valid input
