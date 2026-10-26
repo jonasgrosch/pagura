@@ -174,6 +174,27 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
 
 ## R02 image integration controls
 
+The private `probe/image-marker-boundaries` branch temporarily selects sixteen
+render cases: two ordinary controls and fourteen diagnostic cases from
+`tools/fixturegen/image_marker_probe.py`. It leaves the product at
+`6e87a6030ae206322aa813388b41e18363d5af81` and preserves all six pinned baseline
+identities. The manifest is for diagnosis, not product acceptance: the current
+subject explicitly refuses the new supported-syntax candidates.
+
+The DNL set contains deferred, same-height, redefined-height and progressive
+first-scan variants, two unchanged JPEG controls and an RGB control. T.81 B.2.5
+and E.2.4 define the marker placement; literal zero-DC/EOB coding produces 128
+throughout the complete 8x8 MCU. The JPX set contains PLM, zero CRG and their
+combination, unchanged JP2/RGB controls, and two equivalent JPX containers that
+differ only in whether the compatibility list includes `jp2 `. T.800 A.7.2 and
+A.9.1 leave the literal component oracle unchanged; nonzero registration is not
+adjudicated by this set. T.801:2002 M.8/M.9.2/M.11.1 and Cor4 define the latter
+containers' `jpx `/`jpxb` compatibility, MinV=1 and required `rreq` immediately
+after `ftyp`; corrected feature5 selects their unrestricted Part1 codestream in
+both one-bit requirement masks. Every sample uses native placement and tolerance
+zero. No product or baseline output supplied an expected pixel. Hosted results
+are pending; the controls below describe the retained feature checkpoint.
+
 The image bundle adds 214 controls to the six existing graphics/image
 controls: unsigned 1–16-bit and mixed-precision sYCC, embedded ICC, native-size
 sampling, matching ordinary RGB/soft-mask images, ranked profile choices,

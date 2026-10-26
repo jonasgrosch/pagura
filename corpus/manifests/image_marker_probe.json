@@ -1,0 +1,288 @@
+{
+  "schema": 2,
+  "area": "image_marker_probe",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "image_marker_probe/jpeg-dnl-deferred",
+      "kind": "pdf",
+      "description": "jpeg dnl deferred",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-deferred.pdf",
+      "sha256": "4b6d971ed8c7c88c58e74a0195fb68a06728ab2b91bd1cead27b53a424d6b358",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-deferred.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpeg-dnl-same-height",
+      "kind": "pdf",
+      "description": "jpeg dnl same height",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-same-height.pdf",
+      "sha256": "e1fae0de0cf021ff25274b07ed8a7682884df4158006ebb3b120dba1e1d9ac5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-same-height.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpeg-dnl-redefined",
+      "kind": "pdf",
+      "description": "jpeg dnl redefined",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-redefined.pdf",
+      "sha256": "c1376c313f146e159e82fedd8dc29f0d3e7223b2a624973465404d4610833f54",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-redefined.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpeg-dnl-progressive",
+      "kind": "pdf",
+      "description": "jpeg dnl progressive",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-progressive.pdf",
+      "sha256": "0c9f707fbe6c878e5fdee1e577ba2b6bf6daf1f12d948fff22bc81d07cc0ad18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-progressive.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpeg-dnl-baseline-control",
+      "kind": "pdf",
+      "description": "jpeg dnl baseline control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-baseline-control.pdf",
+      "sha256": "f7c8b746dd6d91e38910378221e28139550baa062a772e9483b5c4c071223a89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-baseline-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpeg-dnl-progressive-control",
+      "kind": "pdf",
+      "description": "jpeg dnl progressive control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-progressive-control.pdf",
+      "sha256": "88f3d16ae8a0b3537a048411ceb2b204dcd3130d3829b8c3dbcf20c526899b93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-progressive-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpeg-dnl-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg dnl rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-dct"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpeg-dnl-rgb-control.pdf",
+      "sha256": "189333d3e688c1b774a5e2f2739bf2803bf1779758451da80467ca77b0f0c32d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpeg-dnl-rgb-control.ppm",
+      "oracle_sha256": "bc9d867c813fd2a60fd1cef5b3ed94d8a1353b7fee86c27e83b3065f5aa29d7c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpx-plm",
+      "kind": "pdf",
+      "description": "jpx plm",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpx-plm.pdf",
+      "sha256": "b5c778beb9b7980e5c0e24157fbb7ca9cdb50bcb0dcfcd9202e848cb2518b025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpx-plm.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpx-crg-zero",
+      "kind": "pdf",
+      "description": "jpx crg zero",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpx-crg-zero.pdf",
+      "sha256": "6ee6c2fa8a40eeae0fa163b36d8f82ebcc0f46c2caf7939e2b92591e2e59feb1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpx-crg-zero.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpx-plm-crg-zero",
+      "kind": "pdf",
+      "description": "jpx plm crg zero",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpx-plm-crg-zero.pdf",
+      "sha256": "e470d6c712b4d16fc9a0e7f152549346959791c03ad71ccf9d10c6105f703553",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpx-plm-crg-zero.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpx-marker-codec-control",
+      "kind": "pdf",
+      "description": "jpx marker codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpx-marker-codec-control.pdf",
+      "sha256": "2d31463c880e828b9b345d72000a0b9904b18439cd5ab87829f08fcc9922b365",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpx-marker-codec-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpx-marker-rgb-control",
+      "kind": "pdf",
+      "description": "jpx marker rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpx-marker-rgb-control.pdf",
+      "sha256": "5bce1255f932c2d23cb3aad20610d506c537c31802a4d6c5806ad8501680eb30",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpx-marker-rgb-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpxb-only",
+      "kind": "pdf",
+      "description": "jpxb only",
+      "expected": "render",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpxb-only.pdf",
+      "sha256": "0976245b1fa1e852b643ed331cfb3c821d166788411bc0354d4f617222a9d79d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpxb-only.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image_marker_probe/jpxb-jp2-control",
+      "kind": "pdf",
+      "description": "jpxb jp2 control",
+      "expected": "render",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "path": "corpus/generated/image_marker_probe/jpxb-jp2-control.pdf",
+      "sha256": "aa30f77de7c2ca532a55d596b7a7429e7331a7deead719bde9981c5ef5df8109",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image_marker_probe/jpxb-jp2-control.ppm",
+      "oracle_sha256": "52a80ae3437495b554bc01802fc894646b5cb9cd2f4e92b2dfad4c405fccd0a0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    }
+  ]
+}
