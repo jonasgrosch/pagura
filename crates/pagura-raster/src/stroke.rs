@@ -114,6 +114,8 @@ pub(crate) struct Run {
     pub(crate) points: Vec<Point>,
     pub(crate) closed: bool,
     tangent: Point,
+    /// Source endpoint directions when they differ from the flattened chord.
+    caps: [Option<Point>; 2],
 }
 impl Run {
     pub(crate) fn transformed(mut self, transform: Transform) -> Self {
@@ -129,12 +131,16 @@ impl Run {
             .max(transform.c.abs())
             .max(transform.d.abs());
         if scale > 0.0 {
-            let x = (transform.a / scale) * self.tangent.x + (transform.c / scale) * self.tangent.y;
-            let y = (transform.b / scale) * self.tangent.x + (transform.d / scale) * self.tangent.y;
-            let tangent = Point::new(x, y);
-            let length = tangent.length();
-            if length > 0.0 {
-                self.tangent = tangent / length;
+            for direction in
+                std::iter::once(&mut self.tangent).chain(self.caps.iter_mut().flatten())
+            {
+                let x = (transform.a / scale) * direction.x + (transform.c / scale) * direction.y;
+                let y = (transform.b / scale) * direction.x + (transform.d / scale) * direction.y;
+                let tangent = Point::new(x, y);
+                let length = tangent.length();
+                if length > 0.0 {
+                    *direction = tangent / length;
+                }
             }
         }
         self
@@ -394,7 +400,7 @@ fn construct<O: Outline>(
             bytes.refund(released);
             continue;
         }
-        let dashed = dash(contour.points, contour.closed, stroke, limits, bytes)?;
+        let dashed = dash_contour(contour, stroke, limits, bytes)?;
         let dashed_bytes = dashed.capacity().saturating_mul(size_of::<Run>());
         for run in dashed {
             let run = if hairline {
@@ -538,7 +544,59 @@ pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn dash(
+/// Preserve source cap directions only on dashes touching an open contour's
+/// original endpoints. Interior dash boundaries keep their chord directions.
+pub(crate) fn dash_contour(
+    contour: crate::flatten::Polyline,
+    stroke: &Stroke,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Vec<Run>> {
+    let ends = [
+        contour.points.first().copied(),
+        contour.points.last().copied(),
+    ];
+    let mut runs = dash(contour.points, contour.closed, stroke, limits, bytes)?;
+    if !contour.closed {
+        for (index, end) in ends.into_iter().enumerate() {
+            let run = if index == 0 {
+                runs.first_mut()
+            } else {
+                runs.last_mut()
+            };
+            if let Some(run) = run {
+                let mut points = run.points.iter();
+                let endpoint = if index == 0 {
+                    points.next()
+                } else {
+                    points.next_back()
+                };
+                if endpoint.copied() != end {
+                    continue;
+                }
+                let adjacent = if index == 0 {
+                    points.find(|point| Some(*point) != endpoint)
+                } else {
+                    points.rfind(|point| Some(*point) != endpoint)
+                };
+                if let (Some(&endpoint), Some(&adjacent)) = (endpoint, adjacent) {
+                    let chord = if index == 0 {
+                        adjacent - endpoint
+                    } else {
+                        endpoint - adjacent
+                    };
+                    let tangent = contour.tangents[index];
+                    if tangent != Point::default() && tangent != chord / chord.length() {
+                        run.caps[index] = Some(tangent);
+                    }
+                }
+            }
+        }
+    }
+    Ok(runs)
+}
+
+fn dash(
     points: Vec<Point>,
     closed: bool,
     stroke: &Stroke,
@@ -573,6 +631,7 @@ fn split_dashes(
             points,
             closed,
             tangent: Point::new(1.0, 0.0),
+            caps: [None; 2],
         });
         return Ok(runs);
     }
@@ -645,6 +704,7 @@ fn split_dashes(
                         points: std::mem::take(&mut run),
                         closed: false,
                         tangent,
+                        caps: [None; 2],
                     });
                 }
                 index = (index + 1) % cycle_count;
@@ -658,6 +718,7 @@ fn split_dashes(
             points: run,
             closed: false,
             tangent,
+            caps: [None; 2],
         });
     }
     join_seam(&mut result, &points, closed && initial_on, bytes)?;
@@ -730,13 +791,25 @@ pub(crate) fn draw(
             .copied()
             .ok_or(Error::invalid_argument("empty stroke"))?;
         let mut directions = Vec::new();
-        for (&a, &b) in points
+        let segments = points.len() - usize::from(!closed);
+        for (i, (&a, &b)) in points
             .iter()
             .zip(points.iter().skip(1).chain(closed.then_some(&first)))
+            .enumerate()
         {
             let d = (b - a) / (b - a).length();
-            let n = d.perp() * radius;
-            polygon(out, &[a + n, b + n, b - n, a - n], limits, bytes)?;
+            let start = if i == 0 && !closed {
+                run.caps[0].unwrap_or(d)
+            } else {
+                d
+            };
+            let end = if i + 1 == segments && !closed {
+                run.caps[1].unwrap_or(d)
+            } else {
+                d
+            };
+            let [na, nb] = [start.perp() * radius, end.perp() * radius];
+            polygon(out, &[a + na, b + nb, b - nb, a - na], limits, bytes)?;
             bytes.reserve_capacity(&mut directions, 1)?;
             directions.push(d);
         }
@@ -749,8 +822,24 @@ pub(crate) fn draw(
             let after = directions.get(i);
             match (before, after) {
                 (Some(&a), Some(&b)) => join(out, point, [a, b], pen, stroke, limits, bytes)?,
-                (None, Some(&d)) => cap(out, first, -d, pen, stroke.cap, limits, bytes)?,
-                (Some(&d), None) => cap(out, last, d, pen, stroke.cap, limits, bytes)?,
+                (None, Some(&d)) => cap(
+                    out,
+                    first,
+                    -run.caps[0].unwrap_or(d),
+                    pen,
+                    stroke.cap,
+                    limits,
+                    bytes,
+                )?,
+                (Some(&d), None) => cap(
+                    out,
+                    last,
+                    run.caps[1].unwrap_or(d),
+                    pen,
+                    stroke.cap,
+                    limits,
+                    bytes,
+                )?,
                 _ => {}
             }
         }

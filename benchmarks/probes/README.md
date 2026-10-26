@@ -319,8 +319,12 @@ feature or a passing comparison. Pagura must meet every independent oracle.
 Three further PDF 2.0 Ink Path controls add non-linear circular strokes at
 72/144 dpi and partial opacity, bringing the current manifest to 48 cases and
 336 cells. Their exact disk-area expectations exposed a 144-dpi subject stroke
-disagreement in hosted validation; it is under investigation. These new cases
-retain actual/oracle images through the same report pipeline. The historical
+disagreement in [run 40292322329](https://github.com/jonasgrosch/pagura/actions/runs/40292322329):
+four seam pixels differ by two to five levels; all other pixels are within one.
+The 72-dpi and partial-opacity controls pass. The source cap repair retains
+Bézier endpoint tangents instead of flattened chord directions; hosted verification
+of the repair is pending. These cases retain actual/oracle images through the
+same report pipeline. The historical
 315-cell result above does not cover this increment.
 
 ## Next G01 increments

@@ -365,7 +365,10 @@ cubics, mixed operators, indirection, precedence and malformed required entries.
 Hosted native/WASI validation found a 144-dpi curved-stroke oracle disagreement.
 Three new G01 Ink Path controls extend the current render manifest to 48 cases
 and 336 cells, retaining actual/oracle pixels for investigation. Existing oracle
-bytes and tolerances are unchanged; this Path increment is not yet validated.
+bytes and tolerances are unchanged. The retained report localizes the failure to
+four seam pixels: source Bézier endpoint tangents were lost during flattening.
+The repair preserves those tangents for open endpoint caps, including dashes
+that reach an original endpoint; its hosted validation is pending.
 
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path

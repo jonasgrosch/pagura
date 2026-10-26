@@ -71,6 +71,13 @@ pub(super) fn append(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<bool> {
+    // The tiling certificate uses chord-normal end lines. A source curve's
+    // tangent may cut the first/last piece differently; retain its component
+    // union until a certificate covers that geometry too.
+    if run.caps.iter().any(Option::is_some) {
+        super::draw(out, run, pen, stroke, limits, bytes)?;
+        return Ok(false);
+    }
     let before = bytes.used().saturating_sub(out.heap_bytes());
     let result = (|| {
         let Pen { radius, .. } = pen;
