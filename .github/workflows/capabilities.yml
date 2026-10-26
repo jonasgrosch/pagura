@@ -50,8 +50,8 @@ jobs:
         with:
           version: 0.13.1
       - run: uv sync --locked --only-group lint
-      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py tools/test_capability_pagura.py tools/test_capability_attachments.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py benchmarks/adapters/capability_pagura.py tools/competitors.py
-      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py tools/test_capability_pagura.py tools/test_capability_attachments.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py benchmarks/adapters/capability_pagura.py tools/competitors.py
+      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py tools/test_capability_pagura.py tools/test_capability_attachments.py tools/test_capability_hayro.py benchmarks/adapters/capability_hayro.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py benchmarks/adapters/capability_pagura.py tools/competitors.py
+      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py tools/test_capability_pagura.py tools/test_capability_attachments.py tools/test_capability_hayro.py benchmarks/adapters/capability_hayro.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py benchmarks/adapters/capability_pagura.py tools/competitors.py
       - run: python tools/capabilities.py --check
       - run: python tools/capability_probes.py check
       - run: python tools/capability_render.py check

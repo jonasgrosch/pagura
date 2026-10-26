@@ -196,6 +196,45 @@
       "fixture": "annotation-only",
       "oracle": "exact-json",
       "expected": []
+    },
+    {
+      "id": "attachments.nested",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "nested-attachments",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "attachments.compressed",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "compressed-attachments",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "annotation-attachments.compressed",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "annotation-compressed",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
     }
   ]
 }

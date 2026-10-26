@@ -156,10 +156,9 @@ been exercised. Later discoveries reopen the inventory and relevant package.
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
 **Started:** the [document-service probe slice](../benchmarks/probes/README.md)
-adds eighteen independent populated/empty/rejection controls, 126 explicit case/engine
+adds twenty-one independent populated/empty/rejection controls, 147 explicit case/engine
 cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
-six baselines across hosted Ubuntu and macOS; hayro catalog/page attachment and text reconstruction
-and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
+six baselines across hosted Ubuntu and macOS. Hayro catalog/page attachment probes now use public object/stream APIs with a bounded byte-hash bridge; their new hosted run is pending. Hayro and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
 operation/configuration matrix remains open. `f948c64f289f2ec80112f92b0f06f7c88b0f882b`
 adds Pagura through the public metadata/attachment/text CLI and additive inspect
 geometry, preserving all six baseline columns. Every Pagura cell must meet its independent expectation in hosted execution. These
@@ -498,8 +497,8 @@ keeps payload decoding and authorization lazy; no file is activated. Independent
 blank/red-rectangle oracles cover direct/indirect null Annots and indirect Rect
 coordinates. The renderer now handles those valid forms. Typed-view fixtures
 separately require malformed-input errors or the exact registered missing-icon
-appearance tag; they do not claim that discovery implements icon generation. Library/facade
-source checks pass, while hosted runtime checks are pending. CLI attachment
+appearance tag; they do not claim that discovery implements icon generation. Library/facade and independent render checks pass on hosted Linux/macOS/Windows at `5172155b3` in
+[run 40277191350](https://github.com/jonasgrosch/pagura/actions/runs/40277191350). CLI attachment
 commands now accept `--page PAGE` with distinct annotation JSON and exact original
 Annots index/EF selection for extraction and checks. Tests cover selection without
 catalog fallback, caller-chosen new files, password failures and no partial JSON.

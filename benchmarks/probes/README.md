@@ -3,8 +3,8 @@
 The first executable slice probes **page counts/dimensions, Info metadata,
 catalog and first-page annotation attachment bytes, and text** using independently authored populated/empty
 controls and a non-PDF rejection control. Pagura joins all six baseline columns,
-yielding 126 document-service cells. Its observations use the public CLI only.
-G01 remains open: these eighteen cases do not establish family or product parity.
+yielding 147 document-service cells. Its observations use the public CLI only.
+G01 remains open: these twenty-one cases do not establish family or product parity.
 The companion [render manifest](rendering.json) adds six independent pixel
 oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
 premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
@@ -18,7 +18,7 @@ Pagura is an additional measured subject, never a replacement baseline.
 | MuPDF | Pages, metadata, catalog/page attachments, text | Optional providers not covered | Ubuntu, locked PyMuPDF wheel |
 | pdf.js | Pages, metadata, catalog/page attachments, text | Browser configuration not covered | Ubuntu, locked Node legacy build; eval disabled |
 | Poppler | Pages, metadata, catalog/page attachments, text | Other bindings/configurations not covered | Ubuntu, OS GLib/GI packages |
-| hayro | Pages, ASCII Info metadata | Attachment and text reconstruction not implemented in this adapter | Ubuntu, locked standalone Rust workspace |
+| hayro | Pages, ASCII Info metadata, catalog/page attachments via public objects/streams | Text reconstruction not implemented in this adapter; attachment filenames limited to ASCII | Ubuntu, locked standalone Rust workspace |
 | CoreGraphics | Pages, Info metadata, catalog/page attachments via public object/stream APIs | Text reconstruction not implemented in this adapter | macOS system framework; no PDFKit |
 
 A missing adapter path is `adapter-unavailable`, not a claim that an engine
@@ -81,7 +81,7 @@ python tools/capability_render.py combine /tmp/render-linux.json /tmp/render-mac
 
 Each platform publishes `capability-document-services-<os>`, even when a probe
 fails. After successful platform jobs, `capability-document-services` combines
-all 70 cells, requiring disjoint engine selections and identical revision,
+all 147 cells, requiring disjoint engine selections and identical revision,
 workflow-run, source and fixture hashes. Reports record environment, adapter,
 manifest, lock and native binary identities. Python/pdf.js/hayro dependencies
 are pinned; Poppler and CoreGraphics use the actual recorded OS versions, not
@@ -188,20 +188,35 @@ while the page is open; PyMuPDF filters the first page's annotation iterator;
 pdf.js uses `getAnnotations({intent: "any"})` then `getAttachmentContent(fileId)`;
 Poppler uses annotation mappings and file attachment objects; CoreGraphics walks
 the first page dictionary and decodes the selected EF stream. No adapter activates
-an attachment or treats its filename as an output path. Hayro remains an explicit
-adapter gap for both catalog and annotation attachment operations.
+an attachment or treats its filename as an output path. Hayro now uses public
+`XRef::root_id/get`, dictionary/array objects, `Page::raw` and `Stream::decoded`.
+Its separate Python bridge hashes observed bytes, without interpreting PDF syntax
+or decoding streams. Only public API declarations from the pinned crate were
+consulted; its implementation was not copied or translated. Three further
+controls exercise a child name-tree node and compressed catalog/page payloads.
+
+The hayro adapter bounds traversal to 1,024 nodes/slots, records to 128 and
+aggregate decoded output to 64 KiB, with 1,024-byte ASCII filenames. Its byte
+bridge caps intermediate transfer at 1 MiB and the normalized report at 64 KiB,
+with a 15-second subprocess deadline inside the harness's 20-second deadline.
+Nonzero exits, malformed envelopes and out-of-scope encodings are adapter errors;
+resource bounds remain `limit`. Actual decoder/load failures are distinguished
+from missing adapter coverage. These bounds do not prevent allocation within
+hayro's complete stream decoding. The public API documentation is linked at
+[object](https://docs.rs/hayro-syntax/0.8.0/hayro_syntax/object/index.html) and
+[xref](https://docs.rs/hayro-syntax/0.8.0/hayro_syntax/xref/struct.XRef.html).
 
 Offline contract tests cover index/scope preservation, duplicate results, handle
 cleanup on failure, lazy descriptor/byte retrieval, wrong API shapes and adapter
-bounds. New annotation enumeration is capped at 1,024 entries (128 for CoreGraphics),
-with decoded payload checks of 64 MiB (64 KiB for CoreGraphics). These post-decode
+bounds. New annotation enumeration is capped at 1,024 entries (128 for CoreGraphics and hayro),
+with decoded payload checks of 64 MiB (64 KiB for CoreGraphics and hayro). These post-decode
 checks do not promise bounded allocation inside competitor APIs; the harness has
 a separate process deadline. Resource refusals never establish feature support.
 [Hosted run 40276014297](https://github.com/jonasgrosch/pagura/actions/runs/40276014297)
 at merge revision `29236241a454a6749340638a14095a363128ccad` records 111 passes
 and 15 explicit adapter gaps across 126 cells: Pagura, PDFium, MuPDF, pdf.js and
 Poppler each pass all 18 cases, CoreGraphics 16 and hayro five. The missing paths
-are thirteen hayro attachment/text cells and two CoreGraphics text cells. There
+in that report are thirteen hayro attachment/text cells and two CoreGraphics text cells. The new hayro adapter and 21-case matrix await their own hosted run. There
 are no incorrect observations in this run. Later renderer changes require new
 current-head evidence; broader attachment encodings,
 password/configuration combinations and performance remain separate work.

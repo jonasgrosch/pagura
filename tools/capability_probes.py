@@ -13,6 +13,7 @@ import platform
 import subprocess
 import sys
 import tempfile
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -23,23 +24,21 @@ from benchkit.engines import engines, identify
 MANIFEST = Path("benchmarks/probes/document-services.json")
 ADAPTER = Path("benchmarks/adapters/capability_python.py")
 SELECTED = ("pdfium", "mupdf", "pagura")
-ADAPTER_FILES = [Path("benchmarks/adapters/capability_pagura.py"), ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
+ADAPTER_FILES = [Path("benchmarks/adapters/capability_pagura.py"), Path("benchmarks/adapters/capability_hayro.py"), ADAPTER, Path("benchmarks/adapters/capability_pdfjs.mjs"),
                  Path("benchmarks/adapters/capability_pdfjs_services.mjs"),
                  Path("benchmarks/adapters/capability_poppler.py"), Path("benchmarks/adapters/capability_quartz.swift"),
                  Path("benchmarks/adapters/hayro/src/bin/capabilities.rs")]
 # Explicit adapter coverage, not a claim of backend absence. These cells stay
 # visible and cannot be used to close a capability or release gate.
 UNIMPLEMENTED = {
-    ("hayro", "attachments"): "no attachment extractor implemented over hayro's public object API",
-    ("hayro", "annotation-attachments"): "no page attachment extractor implemented over hayro's public object API",
     ("hayro", "text"): "no text reconstruction implemented over hayro's public interpreter API",
     ("quartz", "text"): "no text reconstruction implemented over CoreGraphics PDF operators",
 }
 OPERATIONS = {"pages": "document.structure", "metadata": "document.metadata",
               "attachments": "document.attachments", "annotation-attachments": "document.attachments",
               "text": "text.accessibility"}
-ANNOTATION_FIXTURES = {"annotation-only", "annotation-both", "annotation-mixed", "annotation-second-page"}
-FIXTURES = {"services", "complete-ef", "empty", "invalid"} | ANNOTATION_FIXTURES
+ANNOTATION_FIXTURES = {"annotation-only", "annotation-both", "annotation-mixed", "annotation-second-page", "annotation-compressed"}
+FIXTURES = {"services", "complete-ef", "empty", "invalid", "nested-attachments", "compressed-attachments"} | ANNOTATION_FIXTURES
 OUTCOMES = {"pass", "incorrect", "rejected", "unsupported", "timeout", "adapter-error",
             "adapter-unavailable", "engine-unavailable", "not-run", "limit"}
 PAYLOAD = b"Synthetic attachment.\n"
@@ -61,14 +60,16 @@ def fixture(variant: str) -> bytes:
     if variant not in FIXTURES:
         raise ValueError("unknown synthetic variant")
     full = variant != "empty"
-    catalog_files = variant in {"services", "complete-ef", "annotation-both"}
+    catalog_files = variant in {"services", "complete-ef", "annotation-both", "nested-attachments", "compressed-attachments"}
+    tree = b"<< /Kids [9 0 R] >>" if variant == "nested-attachments" else b"<< /Names [(probe.txt) 7 0 R] >>"
+    compressed = variant in {"compressed-attachments", "annotation-compressed"}
     annotations = (b" /Annots [10 0 R 9 0 R 9 0 R]" if variant == "annotation-mixed" else
-                   b" /Annots [9 0 R]" if variant in {"annotation-only", "annotation-both"} else b"")
+                   b" /Annots [9 0 R]" if variant in {"annotation-only", "annotation-both", "annotation-compressed"} else b"")
     content = b"BT /F1 12 Tf 20 50 Td (Parity probe) Tj ET\n" if full else b""
     def stream(value: bytes, extra: bytes = b"") -> bytes:
         return b"<< /Length " + str(len(value)).encode() + extra + b" >>\nstream\n" + value + b"\nendstream"
     objects = [
-        b"<< /Type /Catalog /Pages 2 0 R" + (b" /Names << /EmbeddedFiles << /Names [(probe.txt) 7 0 R] >> >>" if catalog_files else b"") + b" >>",
+        b"<< /Type /Catalog /Pages 2 0 R" + (b" /Names << /EmbeddedFiles " + tree + b" >>" if catalog_files else b"") + b" >>",
         (b"<< /Type /Pages /Kids [3 0 R 10 0 R] /Count 2 >>" if variant == "annotation-second-page" else
          b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R" + annotations + b" >>",
@@ -78,9 +79,12 @@ def fixture(variant: str) -> bytes:
         objects += [b"<< /Title (Capability probe) /Author (Pagura fixtures) >>",
                     b"<< /Type /Filespec /F (probe.txt) /UF (probe.txt) /EF << /F 8 0 R" +
                     (b" /UF 8 0 R" if variant == "complete-ef" or variant in ANNOTATION_FIXTURES else b"") + b" >> >>",
-                    stream(PAYLOAD, b" /Type /EmbeddedFile /Subtype /text#2Fplain")]
+                    stream(zlib.compress(PAYLOAD, level=0) if compressed else PAYLOAD,
+                           b" /Type /EmbeddedFile /Subtype /text#2Fplain" + (b" /Filter /FlateDecode" if compressed else b""))]
     if variant in ANNOTATION_FIXTURES:
         objects.append(b"<< /Type /Annot /Subtype /FileAttachment /Rect [10 20 30 40] /FS 7 0 R /Contents (Probe attachment) /Name /Paperclip >>")
+    if variant == "nested-attachments":
+        objects.append(b"<< /Limits [(probe.txt) (probe.txt)] /Names [(probe.txt) 7 0 R] >>")
     if variant == "annotation-mixed":
         objects.append(b"<< /Type /Annot /Subtype /Link /Rect [0 0 1 1] /Dest [3 0 R /Fit] >>")
     if variant == "annotation-second-page":
@@ -233,7 +237,7 @@ def service_commands():
             "mupdf": [render["mupdf"][0], str(ROOT / ADAPTER), "mupdf"],
             "pdfjs": [render["pdfjs"][0], str(ROOT / "benchmarks/adapters/capability_pdfjs.mjs")],
             "poppler": ["/usr/bin/python3", str(ROOT / "benchmarks/adapters/capability_poppler.py")],
-            "hayro": [str(CACHE / "hayro-target/release/capabilities")],
+            "hayro": [sys.executable, str(ROOT / "benchmarks/adapters/capability_hayro.py"), str(CACHE / "hayro-target/release/capabilities")],
             "quartz": [str(CACHE / "capability-quartz")]}
 
 
@@ -261,7 +265,7 @@ def service_identity(name, command):
         "mupdf": "Pinned default PyMuPDF wheel; optional providers are not probed.",
         "pdfjs": "Pinned pdfjs-dist Node legacy build; eval disabled; browser behavior is not probed.",
         "poppler": "Hosted Ubuntu GLib/GI packages; actual version and native hashes recorded, not lock-pinned.",
-        "hayro": "Pinned standalone hayro default features; public page/ASCII Info APIs only.",
+        "hayro": "Pinned standalone hayro default features; public pages, ASCII Info and object/stream APIs. Catalog name trees and first-page FileAttachment annotations stay separate; EF/UF is preferred, else EF/F. ASCII filenames only; 128 files, 1024 traversal items/slots and 64 KiB aggregate decoded-output adapter bounds. Stream decoding completes before the output bound.",
         "quartz": "Hosted macOS CoreGraphics; OS version and adapter binary hash recorded; no PDFKit.",
     }[name]
     return result
