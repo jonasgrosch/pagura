@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `659f566a6d6c2f2ec06110b57d53be18a543f8ca`. G00 source inventory is complete for this revision.
+Source audit: `3a9d9a38d9eb7193d163a874a2925ac83cff02cf`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
@@ -28,7 +28,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `security.passwords` / D03 | Password security and encoding | partial / partial / partial / partial | Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion. | Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01. |
 | `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
 | `fonts.cid-substitution` / R04 | CID font substitution | partial / partial / partial / partial | Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. | Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. |
-| `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic and non-hierarchical Huffman lossless with 2–16-bit samples, all predictors, point transforms, restarts and multi-component scans; CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. Resource-aware inline framing resolves indirect ICC N and DeviceN names without colour-space substitution. | Arithmetic lossless/hierarchical JPEG and deferred DNL, CCITT extension mode, JBIG2 amendments and JPX Part 2 subvariants remain explicit. The lossless Huffman batch awaits hosted acceptance; scoped diagnostic baseline results do not close the codec family. |
+| `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic and non-hierarchical Huffman lossless with 2-16-bit samples, predictors, point transforms, restarts and multi-component scans; CCITT G3/G4 with defined uncompressed continuation; JBIG2 regions including twelve adaptive generic-template pixels; JPEG 2000 Part 1. Resource-aware inline framing resolves indirect ICC N and DeviceN names. | Arithmetic lossless/hierarchical JPEG and deferred DNL, undefined CCITT selectors, unknown JBIG2 necessary extensions and JPX Part 2 subvariants remain explicit. The bitonal extension batch awaits hosted acceptance. The T.88 contradictory AT length is documented; scoped diagnostic baseline results do not close the codec family. |
 | `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 0/1/2, including straight/premultiplied normalization, explicit PDF Indexed palette replacement, direct/palette opacity, first/last channel order, mixed colour/alpha precision and nonzero reference origin; groups, external masks and associated-colour interpolation have independent fixtures. | Ambiguous independent palette-index sources and incomplete/per-colour associations remain explicit layout boundaries; precision above sixteen bits and general Part 2 layering remain R03. Hosted comparisons do not establish whole-family parity. |
 | `images.jpx-colour` / R02 | JPX embedded colour interpretation | partial / partial / partial / partial | Explicit PDF override; embedded Gray/RGB/CMYK; unsigned 1–16-bit and mixed-precision sYCC; ICC forward profiles with physical Lab input ranges. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles preserve raw precision and apply T.800 negative-input clipping, including mixed signed palettes and opacity. Ranked candidates use signed precedence, approximation and stable order, skip unsupported selected profiles/transforms, and keep candidate/intent cache identities distinct. | Additional Part 2 enumerated colour models and codestream features remain R03. Signed sYCC is invalid; general signed Lab/LUT and nonrestricted ICC combinations remain explicit Unsupported unless a later restricted candidate applies. No unsigned-device fallback is guessed for signed samples. Scoped diagnostic baseline observations do not establish family parity; broader configurations require G01 adjudication. |
 | `colour.transparency` / R05 | Group colour, transparency and overprint | partial / partial / partial / partial | Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display. | Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 338 registered requirement IDs map to capability rows in the ledger.
+All 340 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery
@@ -99,7 +99,7 @@ remain in every comparison denominator, including APIs without an adapter.
 
 ## Feature-tag dispositions
 
-**22 boundary**, **5 dispatch**, **15 dormant**, **36 gap**, **12 mixed**.
+**23 boundary**, **5 dispatch**, **16 dormant**, **34 gap**, **12 mixed**.
 
 `gap`: live unsupported subvariant; `boundary`: policy, invalid/unknown input or API
 boundary needing a concrete interoperability case; `dispatch`: handled in another
@@ -123,7 +123,7 @@ uses, aliases and helper calls; the checker verifies locators and hashes, not re
 | `appearance.widget-rotation` / gap | `forms.workflow` | Nonzero widget rotation is not implemented in form appearance generation. [style.rs](../crates/pagura-appearance/src/form/style.rs) |
 | `asn1.constructed-type` / boundary | `signatures.trust` | Generic DER accepts sequence/set and a controlled BER octet-string deviation; other universal constructed types are refused. Probe actual CMS/certificate uses before scheduling additional ASN.1 types. [der.rs](../crates/pagura-pki/src/der.rs) |
 | `asn1.universal-type` / boundary | `signatures.trust` | Universal primitives outside the implemented DER set are refused; this does not imply all ASN.1 types are required by supported PDF signature profiles. [types.rs](../crates/pagura-pki/src/types.rs) |
-| `ccitt.extension` / gap | `images.codecs` | The two-dimensional CCITT extension mode is explicitly refused; ordinary Group 3/4 paths exist. [codes.rs](../crates/pagura-image/src/ccitt/codes.rs) |
+| `ccitt.extension` / boundary | `images.codecs` | Defined selector 111 uncompressed coding is implemented in both entrances and across unbroken T.6 rows. Undefined selectors 0-6 remain explicit Unsupported. [codes.rs](../crates/pagura-image/src/ccitt/codes.rs) |
 | `colorspace.BlackPoint` / gap | `colour.transparency` | Nonzero calibrated-space BlackPoint is not implemented; zero remains supported. [cie.rs](../crates/pagura-color/src/cie.rs) |
 | `colorspace.ICCBased` / mixed | `colour.transparency` | ICC v2/v4 forward transforms exist. Other versions/forward types and lut8 XYZ refuse; inverse mBA is not a forward transform. ICC admission/fallback must be distinguished from destination-profile support. [icc.rs](../crates/pagura-color/src/icc.rs) |
 | `colorspace.unknown` / boundary | `colour.transparency` | Unknown colour-space families refuse explicitly; the standard supported families must not be counted missing from this catch-all. [colorspace.rs](../crates/pagura-interpret/src/resources/colorspace.rs) |
@@ -157,7 +157,7 @@ uses, aliases and helper calls; the checker verifies locators and hashes, not re
 | `image.JPX-sample-layout` / mixed | `images.jpx-alpha` | PDF Indexed palettes retain their source index and independently mapped opacity. Distinct source indices cannot define one PDF Indexed sample; incomplete/per-colour associations and sample representations above sixteen bits remain explicit boundaries. [channels.rs](../crates/pagura-image/src/jpx/channels.rs), [jpx_image.rs](../crates/pagura-image/src/jpx_image.rs), [boxes.rs](../crates/pagura-image/src/jpx/boxes.rs) |
 | `image.embedded-alpha` / dormant | `images.jpx-alpha` | Retained declaration has no live refusal caller. SMaskInData 1/2 support exists; remaining layouts are tracked by JPX-sample-layout and decoder refusals. [features.rs](../crates/pagura-image/src/features.rs) |
 | `image.inline-colour-length` / boundary | `images.codecs` | The low-level helper has no resources to resolve a named colour space. The resource-aware public helper and interpreter share exact ICC/DeviceN component counting, with independent embedded-EI framing controls. [inline.rs](../crates/pagura-image/src/inline.rs) |
-| `jbig2.extended-template` / gap | `images.codecs` | Extended adaptive templates from the amendments are explicitly refused. [generic.rs](../crates/pagura-image/src/jbig2/generic.rs) |
+| `jbig2.extended-template` / dormant | `images.codecs` | Compatibility declaration has no live refusal caller. T.88:2018 twelve-pixel generic templates use the existing decoder; the contradictory AT field length is recorded in requirements. Current-head hosted acceptance remains pending. [mod.rs](../crates/pagura-image/src/jbig2/mod.rs) |
 | `jbig2.extension` / boundary | `images.codecs` | Unknown necessary extensions refuse; unrecognized non-necessary extensions are skipped. A concrete baseline-supported extension is required before adding implementation work. [mod.rs](../crates/pagura-image/src/jbig2/mod.rs) |
 | `jbig2.halftone-region` / dormant | `images.codecs` | Compatibility declaration has no live refusal caller; halftone regions. Do not infer a missing capability from this tag. [mod.rs](../crates/pagura-image/src/jbig2/mod.rs) |
 | `jbig2.huffman-table` / dormant | `images.codecs` | Compatibility declaration has no live refusal caller; user Huffman tables. Do not infer a missing capability from this tag. [mod.rs](../crates/pagura-image/src/jbig2/mod.rs) |
