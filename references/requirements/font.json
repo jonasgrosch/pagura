@@ -41,7 +41,21 @@
         "font_formats/cmap12-windows-utf16-isolated",
         "font_formats/cmap8-windows-ucs4-isolated",
         "font_formats/cmap12-unicode-utf16-isolated",
-        "font_formats/cmap8-unicode-ucs4-isolated"
+        "font_formats/cmap8-unicode-ucs4-isolated",
+        "font_collections/glyf-simple-first-control",
+        "font_collections/glyf-simple-second-control",
+        "font_collections/glyf-simple-single-v1",
+        "font_collections/glyf-simple-single-v2",
+        "font_collections/glyf-simple-pair-first",
+        "font_collections/glyf-simple-pair-second",
+        "font_collections/glyf-cid-first-control",
+        "font_collections/glyf-cid-second-control",
+        "font_collections/glyf-cid-single-v1",
+        "font_collections/glyf-cid-single-v2",
+        "font_collections/glyf-cid-pair-first",
+        "font_collections/glyf-cid-pair-second",
+        "font_collections/rectangle-0",
+        "font_collections/rectangle-1"
       ],
       "gaps": "Collections and remaining post formats are unsupported. Format 8 accepts complete numeric codes without decoding UTF-16 word streams; no scalar-to-packed-surrogate heuristic is introduced. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies and other internal layouts still require primary-format review.",
       "tables": [
@@ -206,7 +220,13 @@
         "font_formats/cff2-fd-matrix-explicit-top-cid",
         "font_formats/cff2-fd-small-matrix-cid",
         "font_formats/cff-matrix-rectangle-1",
-        "font_formats/cff-matrix-rectangle-2"
+        "font_formats/cff-matrix-rectangle-2",
+        "font_collections/cff-cid-first-control",
+        "font_collections/cff-cid-second-control",
+        "font_collections/cff-cid-single-v1",
+        "font_collections/cff-cid-single-v2",
+        "font_collections/cff-cid-pair-first",
+        "font_collections/cff-cid-pair-second"
       ],
       "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Legacy CFF2 Font DICT matrix interpretation remains an unresolved compatibility choice. Nondefault variations, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
       "tables": [

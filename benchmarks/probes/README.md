@@ -322,3 +322,38 @@ and quarter-turn text matrices. Literal bearing/rectangle geometry establishes
 the pixels. They bring the integrated rendering set to 40 while preserving all
 34 earlier controls, their bytes and their tolerances. This addition awaits
 hosted acceptance; it does not extend the static PostScript program subset.
+
+## Diagnostic font collections
+
+This branch measures TTC/OTC admission and face selection with unchanged product
+code from `3e5d8e69c`. It is a diagnostic branch, not an additional feature PR.
+The [OpenType collection format](https://learn.microsoft.com/en-us/typography/opentype/spec/otff#font-collections)
+defines version 1 and 2 headers, file-relative table offsets and shared tables.
+The [name table](https://learn.microsoft.com/en-us/typography/opentype/spec/name)
+defines the independently authored Windows Unicode names, including name ID 6.
+ISO 32000-2 Table 124 describes the embedded font routes but supplies no
+collection face-index field. Selecting a face by the PDF font name is therefore
+an observation to investigate, not an assumed PDF requirement.
+
+There are three routes: simple and CID TrueType, and CID OpenType/CFF. Each has
+two standalone face controls, single-face collections with both header versions,
+and two selections from the same two-face collection. Ordinary rectangle controls
+establish the independently authored 5 by 10 and 10 by 20 pixel expectations.
+The CFF controls set the Top FontMatrix explicitly and retain their CID charset;
+they do not rely on the separately unresolved omitted-matrix behavior. The
+bounded authoring checks cover offsets, sharing and checksums without using
+a font engine. Both routes have explicit head/hhea/OS/2 metrics and post version
+3. The TrueType programs contain only `.notdef` and the rectangle, with exact
+maxp/loca entries; their CID embedding omits cmap as required by 9.9.1. These
+tables follow the OpenType [head](https://learn.microsoft.com/en-us/typography/opentype/spec/head),
+[hhea](https://learn.microsoft.com/en-us/typography/opentype/spec/hhea),
+[maxp](https://learn.microsoft.com/en-us/typography/opentype/spec/maxp),
+[OS/2](https://learn.microsoft.com/en-us/typography/opentype/spec/os2) and
+[post](https://learn.microsoft.com/en-us/typography/opentype/spec/post) definitions.
+The diagnostic set has 22 controls including the two fixed
+render controls; the published 40-control feature set remains unchanged.
+
+A failed subject is meaningful only where its standalone and ordinary drawing
+controls pass. First-face fallback must be distinguished from successful named
+selection. Results cannot establish whole-format conformance, and no collection
+support is claimed before the hosted observations and public API are reviewed.
