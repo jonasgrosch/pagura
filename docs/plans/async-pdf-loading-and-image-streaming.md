@@ -469,8 +469,15 @@ and lookup stops at the requested occurrence before later subtrees. Complete
 enumeration drives the same cursor. An owned page retains its page/resource
 reservation after the job ends; cancellation drops only unpublished state.
 
-Recording/rendering compose this metadata stage with the canonical interpreter.
-They request content streams, referenced forms, actually used fonts and
+`RenderJob` composes this metadata stage with `RenderContext::scene` and the
+existing `render_session` preflight. It delivers one source-independent session
+for bands or `png::RenderEncoder`, without publishing pixels during loading.
+Unchanged source generations do not replay recording. Changed generations can
+still replay an unfinished scene prefix, charged by `RenderJobLimits` and the
+existing per-attempt budgets; this remains an interpreter-resumption gap for
+P3/P9, not full acceptance. Cancellation/failure drops only unfinished state.
+
+Recording requests content streams, referenced forms, actually used fonts and
 image/mask/colour dependencies. Batch all ranges discoverable at a frontier, then continue after
 they arrive. Further indirect/compressed references may require more frontiers;
 the API does not promise a universal single network round.

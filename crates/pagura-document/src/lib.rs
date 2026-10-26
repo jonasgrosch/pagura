@@ -45,7 +45,7 @@ pub use pagura_core::Rotation;
 pub use stream::{ImageStream, StreamData};
 pub use xref::{Revision, RevisionKind};
 
-use crate::source::{ReadFault, ReadResult};
+use crate::source::{ByteSource, NeedData, ReadFault, ReadResult};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Recovery, Result, Value,
 };
@@ -173,6 +173,24 @@ impl Document {
     /// Returns the source's terminal lifecycle or consistency error.
     pub fn check_source(&self) -> Result<()> {
         self.bytes.check()
+    }
+
+    /// Whether this source changed since an unavailable dependency was observed.
+    /// A true result permits retry; the new bytes need not cover every requested
+    /// interval. Closure and conflicting bytes remain terminal even if the
+    /// availability generation did not change. This performs no source read.
+    ///
+    /// # Errors
+    /// Returns a source lifecycle error or `InvalidArgument` for a frontier
+    /// belonging to another registered source/version.
+    pub fn can_retry(&self, missing: &NeedData) -> Result<bool> {
+        self.check_source()?;
+        if missing.identity() != self.bytes.identity() {
+            return Err(Error::invalid_argument(
+                "dependency frontier belongs to another source",
+            ));
+        }
+        Ok(missing.generation() != self.bytes.generation())
     }
 
     /// The resource budgets in effect.

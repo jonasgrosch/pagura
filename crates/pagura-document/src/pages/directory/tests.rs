@@ -194,3 +194,38 @@ fn selected_page_reservation_follows_the_issued_value_and_its_clones() {
     drop(copy);
     assert_eq!(document.retained.used(), baseline);
 }
+
+#[test]
+fn complete_enumeration_discards_wait_reports_and_publishes_terminal_reports_once() {
+    let (source, document) = fixture(
+        b"2 0 obj << /Type /Pages /Count 2 /Kids [3 0 R 4 0 R] /MediaBox [0 0 8 8] >> endobj\n",
+    )
+    .unwrap();
+    for _ in 0..3 {
+        let Err(ReadFault::Unavailable(missing)) = document.pages() else {
+            panic!("second page dependency")
+        };
+        assert_eq!(missing.ranges(), &[ByteRange::new(4000, 4256).unwrap()]);
+        assert_eq!(document.diagnostics(), []);
+    }
+    source
+        .supply(
+            ID,
+            4000,
+            b"4 0 obj << /Type /Unknown /Parent 2 0 R >> endobj\n",
+        )
+        .unwrap();
+    let expected = ReadFault::Invalid(
+        Error::syntax("page tree node Type must be Pages or Page").in_object(ObjectId::new(4, 0)),
+    );
+    let diagnostic = Diagnostic::new(
+        repairs::PAGE_TYPE,
+        "missing page-tree Type inferred from Kids or leaf attributes",
+    )
+    .at(Position::File(900))
+    .in_object(ObjectId::new(3, 0));
+    for _ in 0..3 {
+        assert_eq!(document.pages().unwrap_err(), expected);
+        assert_eq!(document.diagnostics(), std::slice::from_ref(&diagnostic));
+    }
+}

@@ -30,7 +30,7 @@ mod context;
 mod options;
 mod renderer;
 
-pub use context::RenderContext;
+pub use context::{RenderContext, RenderJob, RenderJobLimits, RenderLoading};
 pub use options::{OverprintPreview, RenderOptions, Tile};
 pub use pagura_extract::{PositionedText, TextPage};
 pub use pagura_interpret::Scene;

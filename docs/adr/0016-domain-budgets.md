@@ -214,3 +214,11 @@ source or output wait releases CPU admission; the bytes it retains remain charge
 Defaults and adversarial checks accompany each implementation before admission
 is connected to a host. Domain configuration is not evidence of a measured bound.
 
+`RenderJobLimits::scene_attempts` (default 64) admits calls to scene recording,
+charged before each call, including a scene-cache hit. An unchanged source wait
+uses no attempt. Until interpretation itself retains instruction state, changed
+availability can replay an unfinished prefix; normal interpreter/font/colour
+limits apply per attempt, while the document's source-work charge is cumulative.
+This bounds replay explicitly without claiming instruction-level resumption.
+The controller's fixed fields are excluded from source/page/render quotas; its
+active page, cached dependencies and prepared output keep their existing owners.

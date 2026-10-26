@@ -19,8 +19,14 @@ const ARC_COUNTS: usize = 2 * size_of::<usize>();
 /// Existing borrowed enumeration drives exactly the same retained cursor.
 pub(crate) fn read(document: &Document) -> ReadResult<(Vec<Page>, Reservation)> {
     let mut cursor = Cursor::new(document, Selection::All)?;
-    while !cursor.advance(document)? {}
-    document.check_source()?;
+    let result: ReadResult<()> = (|| {
+        while !cursor.advance(document)? {}
+        document.check_source().map_err(ReadFault::Invalid)
+    })();
+    if matches!(result, Err(ReadFault::Invalid(_))) {
+        cursor.publish(document);
+    }
+    result?;
     let finished = cursor.finish()?;
     document.report(finished.diagnostics);
     Ok((finished.pages, finished.reservation))
@@ -303,9 +309,9 @@ impl Cursor {
             page.id(),
         )?;
         let retained = std::mem::replace(&mut self.reservation, document.retained.reservation());
-        let page = self.pages.pop().map(|mut page| {
-            page._reservation = Some(Arc::new(retained));
-            page
+        let page = self.pages.pop().map(|page| Page {
+            _reservation: Some(Arc::new(retained)),
+            ..page
         });
         document.report(self.diagnostics.take());
         Ok(page)

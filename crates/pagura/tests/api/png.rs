@@ -46,7 +46,7 @@ fn public_surface_export_honors_each_caller_budget() {
     }
 }
 
-fn collect_rendered(mut encoder: png::RenderEncoder) -> pagura::Result<Vec<u8>> {
+pub(super) fn collect_rendered(mut encoder: png::RenderEncoder) -> pagura::Result<Vec<u8>> {
     let mut output = Vec::new();
     loop {
         match encoder.advance()? {

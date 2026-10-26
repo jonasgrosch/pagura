@@ -1,5 +1,8 @@
 //! The rendering context of one document (ADR 0012, ADR 0034).
 
+mod loading;
+pub use loading::{RenderJob, RenderJobLimits, RenderLoading};
+
 use crate::options::{RenderOptions, Tile};
 use crate::renderer::Renderer;
 use pagura_core::{Built, ObjectId, Rect, Result, Store, StoreKey};
