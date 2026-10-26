@@ -559,6 +559,9 @@ pub(crate) fn dash_contour(
     let mut runs = dash(contour.points, contour.closed, stroke, limits, bytes)?;
     if !contour.closed {
         for (index, end) in ends.into_iter().enumerate() {
+            let Some(tangent) = contour.tangents[index] else {
+                continue;
+            };
             let run = if index == 0 {
                 runs.first_mut()
             } else {
@@ -585,8 +588,7 @@ pub(crate) fn dash_contour(
                     } else {
                         endpoint - adjacent
                     };
-                    let tangent = contour.tangents[index];
-                    if tangent != Point::default() && tangent != chord / chord.length() {
+                    if tangent != chord / chord.length() {
                         run.caps[index] = Some(tangent);
                     }
                 }

@@ -105,14 +105,13 @@ pub(crate) struct Polyline {
     pub(crate) points: Vec<Point>,
     pub(crate) closed: bool,
     pub(crate) degenerate: bool,
-    /// Forward source tangents at the first and last nondegenerate segment.
-    /// Zero denotes a contour with no direction. Chords cannot substitute for
-    /// these at an open curve's caps: the angular error grows with pen width.
-    pub(crate) tangents: [Point; 2],
+    /// Forward source tangents where an endpoint's segment is a curve.
+    /// Lines keep their chord construction, including interpolated dashes.
+    pub(crate) tangents: [Option<Point>; 2],
 }
 
 impl Polyline {
-    fn record_tangents(&mut self, from: Point, [c1, c2, end]: [Point; 3]) {
+    fn record_tangents(&mut self, from: Point, [c1, c2, end]: [Point; 3], curve: bool) {
         let direction = |origin: Point, candidates: [Point; 3]| {
             candidates
                 .into_iter()
@@ -120,11 +119,11 @@ impl Polyline {
                 .map(|point| (point - origin) / (point - origin).length())
         };
         if let Some(start) = direction(from, [c1, c2, end]) {
-            if self.tangents[0] == Point::default() {
-                self.tangents[0] = start;
+            if self.degenerate {
+                self.tangents[0] = curve.then_some(start);
             }
             if let Some(back) = direction(end, [c2, c1, from]) {
-                self.tangents[1] = -back;
+                self.tangents[1] = curve.then_some(-back);
             }
         }
     }
@@ -318,7 +317,7 @@ fn flatten_using(
             Segment::LineTo(point) => {
                 bounded(point)?;
                 bounded(point * transform)?;
-                current.record_tangents(position, [point; 3]);
+                current.record_tangents(position, [point; 3], false);
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
                 append(&mut current.points, point, &mut count, limits, bytes)?;
                 position = point;
@@ -346,7 +345,7 @@ fn flatten_using(
             }
         };
         if let Some((controls @ [_, c1, c2, end], elevation)) = piece {
-            current.record_tangents(position, [c1, c2, end]);
+            current.record_tangents(position, [c1, c2, end], true);
             current.degenerate &= [c1, c2, end].iter().all(|p| *p == position);
             curve(
                 (controls, elevation),
@@ -385,14 +384,14 @@ fn prepare<'a>(
             points: Vec::new(),
             closed: false,
             degenerate: true,
-            tangents: [Point::default(); 2],
+            tangents: [None; 2],
         });
     }
     let current = &mut result[index];
     current.points.clear();
     current.closed = false;
     current.degenerate = true;
-    current.tangents = [Point::default(); 2];
+    current.tangents = [None; 2];
     Ok(current)
 }
 
