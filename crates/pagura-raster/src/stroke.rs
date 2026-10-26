@@ -556,7 +556,7 @@ fn assemble<O: Outline>(
     // the same set.
     if accept < Tiling::Components {
         let mut tiles = fresh(pen_transform);
-        let mut chains = tiling::Chains::default();
+        let mut chains = tiling::Chains::new(&runs, stroke, limits, &mut cleanup_work, bytes)?;
         let mut tiling = if tiling::apart(runs.iter(), pen.radius, stroke, bytes)? {
             Tiling::Proven
         } else {
@@ -580,6 +580,9 @@ fn assemble<O: Outline>(
                 }
             };
             tiling = tiling.max(built);
+        }
+        if tiling <= accept {
+            chains.finish(&mut tiles, pen, limits, bytes)?;
         }
         // The chains stay charged across the runs, and no longer.
         let released = chains.heap_bytes();

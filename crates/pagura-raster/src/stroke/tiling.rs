@@ -10,7 +10,9 @@
 //! end piece, so an open round-capped run is proven only where each end
 //! segment holds its circle behind the end line: the end piece then takes
 //! the part of the circle beyond its end, and the circle is not drawn. A
-//! point's two round caps are one circle.
+//! point's two round caps are one circle, and so are the round caps of run
+//! ends that meet at one point: their circles are the same polygon, which
+//! an end holding its cap there covers already.
 //! Pieces that meet share their vertices bit for bit. Their nonzero filled
 //! set is the components'; where proven, every point is covered once. A
 //! reversal, or a turn tighter than the pen around a short segment, takes the components'
@@ -22,7 +24,7 @@
 //! The pieces are not emitted one by one: their outline is, every side two
 //! of them share left out, which keeps their nonzero winding everywhere.
 
-use super::{Outline, Pen, Run, cap, join_into, offsets, oriented};
+use super::{Outline, Pen, Run, cap, circle, join_into, offsets, oriented};
 use crate::{LineCap, LineJoin, Point, Stroke};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -92,7 +94,9 @@ pub(super) fn append(
             if let Some(&point) = points.first() {
                 let tangent = run.tangent;
                 let back = Point::new(-tangent.x, -tangent.y);
-                cap(out, point, tangent, pen, stroke.cap, limits, bytes)?;
+                if stroke.cap != LineCap::Round || chains.circle(point, bytes)? {
+                    cap(out, point, tangent, pen, stroke.cap, limits, bytes)?;
+                }
                 if stroke.cap != LineCap::Round {
                     cap(out, point, back, pen, stroke.cap, limits, bytes)?;
                 }
@@ -117,6 +121,10 @@ pub(super) fn append(
             None
         };
         let proven = tiles && (run.closed || stroke.cap != LineCap::Round || caps.is_some());
+        if caps.is_some() {
+            chains.hold(*first);
+            chains.hold(*last);
+        }
         if out
             .len()
             .checked_add(segments.len().saturating_mul(7))
@@ -142,8 +150,12 @@ pub(super) fn append(
             segments.as_slice(),
         ) {
             let back = Point::new(-start.x, -start.y);
-            cap(out, *first, back, pen, stroke.cap, limits, bytes)?;
-            cap(out, *last, *finish, pen, stroke.cap, limits, bytes)?;
+            if chains.circle(*first, bytes)? {
+                cap(out, *first, back, pen, stroke.cap, limits, bytes)?;
+            }
+            if chains.circle(*last, bytes)? {
+                cap(out, *last, *finish, pen, stroke.cap, limits, bytes)?;
+            }
         }
         Ok(proven)
     })();
@@ -560,21 +572,149 @@ fn beyond(
     false
 }
 
-/// The buffers of [`trace`], reused across a stroke's runs: an outline, and
-/// the left side it ends with, which is traced forward and taken back.
+/// What a stroke's runs share as their outlines are traced: the buffers of
+/// [`trace`], reused across the runs (an outline, and the left side it ends
+/// with, which is traced forward and taken back), and the points where round
+/// caps of several run ends meet.
 #[derive(Default)]
 pub(super) struct Chains {
     outline: Vec<Point>,
     left: Vec<Point>,
+    /// Each point that two or more open runs end at, in order.
+    shared: Vec<Meeting>,
+    /// The shared points a round cap circle is asked for at, in the order
+    /// asked: drawn once each after the runs, where no end holds its cap.
+    asked: Vec<Point>,
+}
+
+/// A point where two or more open runs end, by its coordinates' bits. The
+/// round cap circles there are one polygon, which covers what all of them
+/// do; an end holding its cap there covers it with its chain beyond the end
+/// line and its end piece behind it.
+#[derive(Clone, Copy)]
+struct Meeting {
+    point: (u64, u64),
+    /// Whether a circle is asked for there.
+    asked: bool,
+    /// Whether an end there holds its cap.
+    held: bool,
+}
+
+/// A point by its coordinates' bits: equal keys give equal circles.
+fn key(point: Point) -> (u64, u64) {
+    (point.x.to_bits(), point.y.to_bits())
 }
 
 impl Chains {
+    /// Chains for `runs`, with the points where round caps of their ends
+    /// meet. Sorting the ends is charged to `work`.
+    pub(super) fn new(
+        runs: &[Run],
+        stroke: &Stroke,
+        limits: &Limits,
+        work: &mut usize,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        let mut chains = Self::default();
+        if stroke.cap != LineCap::Round {
+            return Ok(chains);
+        }
+        let ends = runs
+            .iter()
+            .filter(|run| !run.closed)
+            .filter_map(|run| Some((*run.points.first()?, *run.points.last()?)));
+        let count = ends.clone().count().saturating_mul(2);
+        if count < 2 {
+            return Ok(chains);
+        }
+        bytes.reserve(&mut chains.shared, count)?;
+        super::charge(
+            work,
+            count.saturating_mul(count.ilog2() as usize + 1),
+            limits.raster_work,
+        )?;
+        let shared = &mut chains.shared;
+        let meeting = |point| Meeting {
+            point: key(point),
+            asked: false,
+            held: false,
+        };
+        for (first, last) in ends {
+            shared.extend([meeting(first), meeting(last)]);
+        }
+        shared.sort_unstable_by_key(|m| m.point);
+        // One entry for each point at least two ends share.
+        let (mut kept, mut start) = (0, 0);
+        while let Some(&first) = shared.get(start) {
+            let ends = shared[start..]
+                .iter()
+                .take_while(|m| m.point == first.point)
+                .count();
+            if ends > 1 {
+                shared[kept] = first;
+                kept += 1;
+            }
+            start += ends;
+        }
+        shared.truncate(kept);
+        Ok(chains)
+    }
+
     /// Heap bytes, charged while the chains are kept.
     pub(super) fn heap_bytes(&self) -> usize {
         self.outline
             .capacity()
             .saturating_add(self.left.capacity())
             .saturating_mul(size_of::<Point>())
+            .saturating_add(self.asked.capacity().saturating_mul(size_of::<Point>()))
+            .saturating_add(self.shared.capacity().saturating_mul(size_of::<Meeting>()))
+    }
+
+    fn meeting(&mut self, point: Point) -> Option<&mut Meeting> {
+        let i = self
+            .shared
+            .binary_search_by_key(&key(point), |m| m.point)
+            .ok()?;
+        self.shared.get_mut(i)
+    }
+
+    /// Whether to draw the round cap circle at `point` now: not at a shared
+    /// point, whose circle waits for the runs, once.
+    fn circle(&mut self, point: Point, bytes: &mut Meter) -> Result<bool> {
+        let Some(meeting) = self.meeting(point) else {
+            return Ok(true);
+        };
+        if !std::mem::replace(&mut meeting.asked, true) {
+            bytes.reserve_capacity(&mut self.asked, 1)?;
+            self.asked.push(point);
+        }
+        Ok(false)
+    }
+
+    /// Records that a run end at `point` holds its round cap.
+    fn hold(&mut self, point: Point) {
+        if let Some(meeting) = self.meeting(point) {
+            meeting.held = true;
+        }
+    }
+
+    /// Draws the circles asked for at shared points where no end holds its
+    /// cap.
+    pub(super) fn finish(
+        &mut self,
+        out: &mut impl Outline,
+        pen: Pen,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        for i in 0..self.asked.len() {
+            let point = self.asked[i];
+            if !self.meeting(point).is_some_and(|m| m.held) {
+                circle(out, point, pen, limits, bytes)?;
+            }
+        }
+        self.asked.clear();
+        Ok(())
     }
 }
 
@@ -756,7 +896,7 @@ fn trace(
     out: &mut impl Outline,
     run: &Traced<'_>,
     caps: Option<&Caps>,
-    Chains { outline, left }: &mut Chains,
+    Chains { outline, left, .. }: &mut Chains,
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<()> {
@@ -1624,5 +1764,170 @@ mod tests {
         assert_eq!(error.message, "stroke outline budget exceeded");
         let traced = chains.outline.len().max(chains.left.len());
         assert!(traced < 2 * limits.path_segments, "{traced} of {full}");
+    }
+
+    /// One path of the open subpaths through `parts`' points.
+    fn subpaths(parts: &[&[(f64, f64)]]) -> Path {
+        let mut path = PathBuilder::new();
+        for part in parts {
+            for (i, &(x, y)) in part.iter().enumerate() {
+                if i == 0 {
+                    path.move_to(Point::new(x, y));
+                } else {
+                    path.line_to(Point::new(x, y)).unwrap();
+                }
+            }
+        }
+        path.finish()
+    }
+
+    #[test]
+    fn round_caps_of_meeting_run_ends_take_one_circle() {
+        // Two dots, and a run that doubles back so that it holds neither
+        // cap, all at one point; the run's far end and a third dot apart.
+        let dot: &[(f64, f64)] = &[(12.0, 12.0), (12.0, 12.0)];
+        let back: &[(f64, f64)] = &[(12.0, 12.0), (20.0, 15.0), (16.0, 13.5)];
+        let apart: &[(f64, f64)] = &[(30.0, 30.0), (30.0, 30.0)];
+        let stroke = Stroke {
+            width: 3.0,
+            cap: LineCap::Round,
+            ..Stroke::default()
+        };
+        let outline = |parts: &[&[(f64, f64)]]| {
+            pieces(
+                &subpaths(parts),
+                Transform::IDENTITY,
+                &stroke,
+                &Limits::default(),
+                (Tiling::Unproven, TOLERANCE),
+                &mut crate::testing::bytes(),
+            )
+            .unwrap()
+            .0
+        };
+        let circle = outline(&[dot]).segments().len();
+        let alone = outline(&[back]).segments().len();
+        let parts: &[&[(f64, f64)]] = &[dot, back, dot, apart];
+        let meeting = outline(parts).segments().len();
+        // Of five circles, the second dot's and the run's first cap repeat
+        // the first dot's; the run's far cap and the dot apart do not.
+        assert_eq!(meeting, alone + circle);
+        assert_eq!(
+            pieces_union_difference(&subpaths(parts), Transform::IDENTITY, &stroke),
+            0
+        );
+    }
+
+    #[test]
+    fn a_held_cap_covers_the_circles_of_ends_meeting_it() {
+        // A segment holding both caps, a dot at each of its ends and one
+        // apart: only the dot apart takes a circle.
+        let held: &[(f64, f64)] = &[(12.0, 12.0), (20.0, 12.0)];
+        let dots: [&[(f64, f64)]; 3] = [
+            &[(12.0, 12.0), (12.0, 12.0)],
+            &[(20.0, 12.0), (20.0, 12.0)],
+            &[(30.0, 30.0), (30.0, 30.0)],
+        ];
+        let stroke = Stroke {
+            width: 3.0,
+            cap: LineCap::Round,
+            ..Stroke::default()
+        };
+        let outline = |parts: &[&[(f64, f64)]]| {
+            pieces(
+                &subpaths(parts),
+                Transform::IDENTITY,
+                &stroke,
+                &Limits::default(),
+                (Tiling::Unproven, TOLERANCE),
+                &mut crate::testing::bytes(),
+            )
+            .unwrap()
+        };
+        let (alone, _, tiling) = outline(&[held]);
+        assert_eq!(tiling, Tiling::Proven);
+        let circle = outline(&[dots[2]]).0.segments().len();
+        let parts = [dots[0], held, dots[1], dots[2]];
+        let (meeting, _, _) = outline(&parts);
+        assert_eq!(meeting.segments().len(), alone.segments().len() + circle);
+        assert_eq!(
+            pieces_union_difference(&subpaths(&parts), Transform::IDENTITY, &stroke),
+            0
+        );
+    }
+
+    #[test]
+    fn asked_circles_are_admitted_before_they_wait() {
+        let runs: Vec<_> = (0..4_u32)
+            .map(|i| super::super::Run {
+                points: vec![Point::new(0.0, 0.0), Point::new(f64::from(i), 9.0)],
+                closed: false,
+                tangent: Point::new(1.0, 0.0),
+            })
+            .collect();
+        let stroke = Stroke {
+            cap: LineCap::Round,
+            ..Stroke::default()
+        };
+        let shared = 8 * size_of::<super::Meeting>();
+        let ask = |bytes: usize| {
+            let mut meter = pagura_core::Meter::new(bytes, crate::band::RENDER_BYTES);
+            let mut chains =
+                super::Chains::new(&runs, &stroke, &Limits::default(), &mut 0, &mut meter).unwrap();
+            // The four runs share their first point only.
+            assert_eq!(chains.shared.len(), 1);
+            let point = Point::new(0.0, 0.0);
+            let asked = chains.circle(point, &mut meter);
+            asked.map(|draw| {
+                (
+                    draw,
+                    chains.circle(point, &mut meter).unwrap(),
+                    meter.used(),
+                )
+            })
+        };
+        let room = shared + size_of::<Point>();
+        // Asked once, it waits; asked again, nothing more is charged.
+        assert_eq!(ask(room).unwrap(), (false, false, room));
+        assert_eq!(
+            ask(room - 1).unwrap_err().message,
+            crate::band::RENDER_BYTES
+        );
+    }
+
+    #[test]
+    fn meeting_ends_are_admitted_before_they_are_sorted() {
+        // 40 runs whose ends meet at 12 points, two runs or more at each.
+        let runs: Vec<_> = (0..40_u32)
+            .map(|i| super::super::Run {
+                points: vec![
+                    Point::new(f64::from(i % 7), 0.0),
+                    Point::new(f64::from(i % 5), 9.0),
+                ],
+                closed: false,
+                tangent: Point::new(1.0, 0.0),
+            })
+            .collect();
+        let stroke = Stroke {
+            cap: LineCap::Round,
+            ..Stroke::default()
+        };
+        let new = |bytes: usize, raster_work: usize| {
+            let limits = Limits {
+                raster_work,
+                ..Limits::default()
+            };
+            let mut meter = pagura_core::Meter::new(bytes, crate::band::RENDER_BYTES);
+            super::Chains::new(&runs, &stroke, &limits, &mut 0, &mut meter)
+                .map(|chains| (meter.used(), chains.heap_bytes(), chains.shared.len()))
+        };
+        let size = 80 * size_of::<super::Meeting>();
+        // 80 ends, sorted in at most 80 (log2 80 + 1) comparisons.
+        let work = 80 * 7;
+        assert_eq!(new(size, work).unwrap(), (size, size, 12));
+        let refused = new(size - 1, work).unwrap_err();
+        assert_eq!(refused.message, crate::band::RENDER_BYTES);
+        let refused = new(size, work - 1).unwrap_err();
+        assert_eq!(refused.message, crate::band::RASTER_WORK);
     }
 }

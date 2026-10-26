@@ -1,11 +1,14 @@
 //! The capability-free PostScript calculator subset (7.10.5).
 //!
 //! A program is parsed into a tree, validated statically (`check`) and
-//! compiled into flat code with conditional jumps (`run`). Braces become
-//! conditional branches, never procedure objects; only numeric, boolean and
-//! stack operators exist, with no file, name, process or host access.
+//! compiled into flat code with conditional jumps (`run`), and where it
+//! qualifies into straight-line code over real registers (`registers`).
+//! Braces become conditional branches, never procedure objects; only
+//! numeric, boolean and stack operators exist, with no file, name, process
+//! or host access.
 
 mod check;
+mod registers;
 mod run;
 
 use pagura_core::syntax::{Origin, Parser as Numbers, is_whitespace};
@@ -15,6 +18,8 @@ use pagura_core::{Error, Limits, Position, Result};
 #[derive(Debug, Clone)]
 pub(super) struct Program {
     code: Box<[run::Instruction]>,
+    /// The same program as straight-line code, where it qualifies.
+    compiled: Option<registers::Compiled>,
     cost: usize,
 }
 
@@ -125,6 +130,10 @@ enum Node {
 impl Program {
     pub(super) fn heap_bytes(&self) -> usize {
         size_of_val(self.code.as_ref())
+            + self
+                .compiled
+                .as_ref()
+                .map_or(0, registers::Compiled::heap_bytes)
     }
 
     /// Parses, validates and compiles `text` for `inputs` inputs and
@@ -153,6 +162,7 @@ impl Program {
         })?;
         Ok(Self {
             code: run::compile(&program),
+            compiled: registers::compile(&program, inputs),
             cost,
         })
     }
@@ -166,7 +176,16 @@ impl Program {
     /// Runs the program on `inputs` (already clipped to the domain) and
     /// writes its results to `output`.
     pub(super) fn evaluate(&self, inputs: &[f64], output: &mut [f64]) {
-        run::evaluate(&self.code, inputs, output);
+        match &self.compiled {
+            Some(compiled) => compiled.evaluate(inputs, output),
+            None => run::evaluate(&self.code, inputs, output),
+        }
+    }
+
+    /// Whether the program runs as straight-line code.
+    #[cfg(test)]
+    pub(super) fn compiled(&self) -> bool {
+        self.compiled.is_some()
     }
 }
 

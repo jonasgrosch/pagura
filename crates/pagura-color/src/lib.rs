@@ -27,5 +27,5 @@ pub use function::{
     CalculatorFunction, ExponentialFunction, Function, SampledFunction, StitchingFunction,
 };
 pub use icc::{Intent, Profile};
-pub use ramp::{Ramp, RampStage};
+pub use ramp::{MAX_RAMP_CHANNELS, Ramp, RampStage};
 pub use space::{ColorSpace, Colorant, DeviceN, IccSpace, Indexed, MAX_COMPONENTS, Separation};
