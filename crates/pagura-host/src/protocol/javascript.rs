@@ -75,6 +75,10 @@ fn write_module(out: &mut String) -> fmt::Result {
     Ok(())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "This declarative list enumerates the canonical code spaces once, in generated order"
+)]
 fn tables() -> [Item<Vec<(&'static str, String)>>; 23] {
     let versions = Version::ALL
         .iter()

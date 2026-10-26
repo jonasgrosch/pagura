@@ -48,16 +48,17 @@ impl<'a> Reader<'a> {
                 scale: self.field(Self::f64)?,
                 background: self.field(Self::code)?,
                 output: self.field(Self::code)?,
-                tile: match self.flag()? {
-                    false => None,
-                    true => Some(self.field(|reader| {
+                tile: if self.flag()? {
+                    Some(self.field(|reader| {
                         Ok(Tile {
                             x: reader.u32()?,
                             y: reader.u32()?,
                             width: reader.u32()?,
                             height: reader.u32()?,
                         })
-                    })?),
+                    })?)
+                } else {
+                    None
                 },
             },
             RequestKind::JobAdvance => Request::Advance(self.field(Self::u32)?),

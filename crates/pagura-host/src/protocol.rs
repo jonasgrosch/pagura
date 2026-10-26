@@ -347,7 +347,6 @@ impl Response {
     /// The response's kind byte.
     pub const fn kind(&self) -> ResponseKind {
         match self {
-            Self::Progressive(response) => response.kind(),
             Self::Hello(_) => ResponseKind::Hello,
             Self::Open { .. } => ResponseKind::Open,
             Self::PageInfo { .. } => ResponseKind::PageInfo,
@@ -355,7 +354,7 @@ impl Response {
             Self::Generation(_) => ResponseKind::Generation,
             Self::Skipped(_) | Self::GenerationTile { .. } => ResponseKind::GenerationTile,
             Self::Stats(_) => ResponseKind::Stats,
-            Self::Reading(response) => response.kind(),
+            Self::Reading(response) | Self::Progressive(response) => response.kind(),
             Self::FormFields(_) => ResponseKind::FormFields,
             Self::SavedForm(_) => ResponseKind::SavedForm,
             Self::FormWidgets(_) => ResponseKind::FormWidgets,

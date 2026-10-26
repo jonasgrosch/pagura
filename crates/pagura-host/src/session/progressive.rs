@@ -6,7 +6,7 @@ mod sources;
 
 use super::documents::Documents;
 use crate::progressive::Request;
-use crate::protocol::{Field, OutputCode, PageRef, Payload, PngBackground, layout};
+use crate::protocol::{Field, OutputCode, PageRef, Payload, PngBackground, ResponseKind, layout};
 use crate::wire::Writer;
 use crate::{ProgressiveLimits, SessionConfig};
 use jobs::Job;
@@ -30,10 +30,10 @@ pub(super) struct Registry {
 }
 
 impl Registry {
-    pub(super) fn new(config: SessionConfig, source: Arc<MemoryBudget>) -> Self {
+    pub(super) fn new(config: &SessionConfig, source: Arc<MemoryBudget>) -> Self {
         let limits = config.progressive_limits();
         Self {
-            config,
+            config: *config,
             limits,
             sources: Sources::new(source),
             jobs: BTreeMap::new(),
@@ -158,17 +158,21 @@ impl Registry {
                     .ok_or_else(|| unknown(handle))?;
                 out.u32(handle.get())?;
             }
-            Request::Stats => {
-                out.count(self.sources.count())?;
-                out.count(self.jobs.len())?;
-                out.u64(pagura::convert::usize_to_u64(self.sources.admitted_bytes()))?;
-                out.u64(pagura::convert::usize_to_u64(self.active.used()))?;
-                out.u64(pagura::convert::usize_to_u64(
-                    self.sources.registered_bytes(),
-                ))?;
-            }
+            Request::Stats => return Ok(self.stats()?),
         }
         Ok(Payload::new(kind, out))
+    }
+
+    fn stats(&self) -> Result<Payload> {
+        let mut out = Writer::new(self.cap());
+        out.count(self.sources.count())?;
+        out.count(self.jobs.len())?;
+        out.u64(pagura::convert::usize_to_u64(self.sources.admitted_bytes()))?;
+        out.u64(pagura::convert::usize_to_u64(self.active.used()))?;
+        out.u64(pagura::convert::usize_to_u64(
+            self.sources.registered_bytes(),
+        ))?;
+        Ok(Payload::new(ResponseKind::JobStats, out))
     }
 
     fn open(

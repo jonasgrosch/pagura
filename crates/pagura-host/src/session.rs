@@ -57,7 +57,7 @@ impl Session {
     /// session as a whole is bounded by `config.session` (ADR 0032).
     pub fn new(config: SessionConfig) -> Self {
         let documents = Documents::new(&config);
-        let progressive = progressive::Registry::new(config, documents.source_budget());
+        let progressive = progressive::Registry::new(&config, documents.source_budget());
         Self {
             config,
             state: State::AwaitingHello,

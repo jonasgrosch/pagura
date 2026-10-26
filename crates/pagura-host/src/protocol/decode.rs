@@ -14,6 +14,10 @@ use pagura::{Error, Limits, Position, Result, Tile};
 /// # Errors
 /// Returns positioned `Syntax` for truncated, unknown or noncanonical payloads,
 /// or `Limit` for oversized PDF, password or query byte strings.
+#[expect(
+    clippy::too_many_lines,
+    reason = "One exhaustive wire dispatch keeps every frozen request layout in its existing owner"
+)]
 pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
     let mut reader = Reader::new(body);
     let kind: RequestKind = reader.code()?;
