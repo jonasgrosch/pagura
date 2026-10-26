@@ -337,5 +337,13 @@ metrics, malformed operands and width-only decoding. Six independently authored
 PDF controls compare horizontal, upward and downward advances under ordinary
 and quarter-turn text matrices. Literal bearing/rectangle geometry establishes
 the pixels. They bring the integrated rendering set to 40 while preserving all
-34 earlier controls, their bytes and their tolerances. This addition awaits
-hosted acceptance; it does not extend the static PostScript program subset.
+34 earlier controls, their bytes and their tolerances. Checkpoint
+`3e5d8e69cc7e04e5730a7b6a12b583c63684e789` passes
+[all three functional platforms](https://github.com/jonasgrosch/pagura/actions/runs/40408412284)
+and [all capability checks](https://github.com/jonasgrosch/pagura/actions/runs/40408412177).
+The combined report records 40/40 Pagura observations and 280 engine cells at
+merge `2ee47ec3610c20fda7e51b6ef22859a18b6f12cc`. Artifact `12693725018`
+has ZIP SHA-256 `acd3178e1d7c6c64f628015d0365e4633779e86343f19f808bfe826380ffee68`
+and report SHA-256 `fc175b33ad985248f7593f771b1af751ded43eee9216ca4cf1d8251f1afdeb96`.
+This evidence precedes the additional eight DICT controls and current one-pass
+base changes. It does not extend the static PostScript program subset.
