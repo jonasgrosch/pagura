@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "9657b4c380cd749e7469fb286fac8e9e93d0df3a",
+  "audited_revision": "43879047a874007dc4a082863a7e658d67f4b19f",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -58,10 +58,13 @@
     "crates/pagura-color/src/space/retained.rs": "51148ba1ef7ae3f229a1615bb1382d2b1dab8202862a9ceddf3490ff8790f309",
     "crates/pagura-color/tests/sycc.rs": "ebd03c04b7b8a9c4cab1e452ff07e6771fefa4fd3cec4c0edfea5702a97df2b2",
     "crates/pagura-core/src/error.rs": "c43b6a9db6cc264930a0fc4639d602fcc5ab39415965b948df2dff5f3b58fe9a",
-    "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",
+    "crates/pagura-core/src/lib.rs": "a111eb19b2ebfcfe642f1227d8be72ffb235c462157c79bdd0ee17efc5995c3d",
+    "crates/pagura-core/src/meter.rs": "d13fe1dae9ef9952af6e7657450cbf7c0a01513ab94dcf07ae8e4636a8d14857",
+    "crates/pagura-core/src/meter/memory.rs": "24c77d5918996b0a578f3ab49656ce20590149474f02c5ad0c543fbb03072dae",
     "crates/pagura-core/src/syntax.rs": "ba59c9d5ddd4813b1885c93a30a4586d9a007d8fef70b7637888f9c2cc11d912",
     "crates/pagura-core/src/syntax/direct.rs": "d5d927d5cf97282fefd984916baa17b8a0cace89a028f4fb65695e4ea2da9b83",
     "crates/pagura-core/src/syntax/window.rs": "123a89bc0bf8428613cd0bea6b2816080009058cf61125ea582910472f9e8ef2",
+    "crates/pagura-core/tests/memory.rs": "d5ee4748042515814a12e6cf8ede61274dfd7d9b648d5947ec9b82d2ada2dd59",
     "crates/pagura-core/tests/windows.rs": "dd3cae760fd83054bb3309ed8e8b19b3b18b5e907b74e41f6b0a7f9bc44ccc8b",
     "crates/pagura-crypto/src/hash/md5.rs": "b73634cbd9549de7c1893096b2fe61bb2e1fd4b238cab05a2509008925a64af0",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
@@ -92,9 +95,9 @@
     "crates/pagura-document/src/signatures/change_tests.rs": "aa06cc1d51b037fce2b5f0f357bfa46f7e792b96f25a40cbd86c81a17aa2e809",
     "crates/pagura-document/src/signatures/model.rs": "3a63fbb6d9aa873fe0cc5ee90a14046f0bb5d7187955c754663c762d6b98813f",
     "crates/pagura-document/src/source.rs": "3538b32a14354e8c24480879ed4121e3cc26b3948e7bba42671e8b11ca5cc0e6",
-    "crates/pagura-document/src/source/complete.rs": "869daf3c0dbf17c9cfc66e1ac27b49ddb015ed46a422a395e6fb7d82ad85c666",
-    "crates/pagura-document/src/source/memory.rs": "13ee3ddd75776aefd99cd813ca7cba32b4d8640c3d95478d08b97c203afadc9a",
-    "crates/pagura-document/src/source/sparse.rs": "cfdb73f280e945807f6f1d85cf000cdf1ba939b97eee42840ed2a3bb9d04317e",
+    "crates/pagura-document/src/source/complete.rs": "e9624b6dc05c0aa0b30eccd67a2f23a4f2cc3c46bd440f5792f74accbb2c1d46",
+    "crates/pagura-document/src/source/memory.rs": "bd3ba68608505d87d010cbe3245563867aa431e0366070e94a43520e89728145",
+    "crates/pagura-document/src/source/sparse.rs": "bf0b456ad0187750d5c3dd541790689fe367c8bc41a444698e78d44cf7008e9b",
     "crates/pagura-document/src/source/types.rs": "9c313bf813eab52ddce696f78695a7e55741e272951b8a878d828d658e60bd6c",
     "crates/pagura-document/src/stream.rs": "250f70208f31a88b3ee4d4e47e50f6b06f5ed9acbd06d1126b7c089c4776505a",
     "crates/pagura-document/tests/file_annotations.rs": "18a147044a9981155308d85a1db0af8359cd45fac61762ccd9462da25c1bf76d",
@@ -167,15 +170,19 @@
     "crates/pagura-interpret/src/resources/optional.rs": "7f4b11d80f0458cdf4e9a1c01fdcb6869ef398fc44d5ed93337e1a7465e199b1",
     "crates/pagura-interpret/src/resources/pattern.rs": "f38e0ceeb427c250e4034f61d2bcdc13bf73b67ee7d5489b737611da3a1cb92d",
     "crates/pagura-interpret/src/resources/shading.rs": "cd81d6e8ffbb39d6ec4bcd0e12bd7319b12e0c417f19431f5ee1e0a742ec1d57",
-    "crates/pagura-paint/src/execute.rs": "9defb2bcec9183609708c1abc1905eec898204a1b6511321ae61c6f68de7cdec",
+    "crates/pagura-paint/src/execute.rs": "5b9aa9677556ef202f5bbb5c6093c630152b89b34228b2f4ca6bef61c5087b90",
     "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
+    "crates/pagura-paint/src/execute/workspace.rs": "e82a288252188cff35161e2cdafbc9544187dc19bcb04370fa132a2e5f7b1542",
+    "crates/pagura-paint/src/prepare.rs": "14c5a5b9990fab5273d373de056154e640912a0804cdfe46d1547c9c52c1bd01",
     "crates/pagura-paint/src/prepare/finish.rs": "77bb757520b9d7cf3ae61c9b5a32d063986b03d3afd25f7923985d3a62dc9286",
     "crates/pagura-paint/src/prepare/planner/marks.rs": "82d0c145bff197fde1fc3b8344ba4a301c61a876244671b446dc088a11c6681d",
     "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "f6b278bbc04311797014de9cbc92c556f8f37dc512bead734b78bb47b944253e",
     "crates/pagura-paint/src/prepare/planner/patterns.rs": "1e37d4341ee851c552b43510a9d97280ca62d2086f14659a6b1d680c2f4f95aa",
+    "crates/pagura-paint/src/prepare/session.rs": "e9771602b531479a2a2fa86f2cc113ecca7ce3c0db8d6ebdf5d818c083246a5e",
     "crates/pagura-paint/src/prepare/storage.rs": "9bd79bb6706725419f663b2f76db00d3561f3deb021c27b2b2489a1c921fd54d",
     "crates/pagura-paint/src/prepare/tests/formats.rs": "66cc22c9ae8219158c8b5b372abab98806e0a7dde0c92e56367c2b67840ef66d",
-    "crates/pagura-paint/src/prepare/tests/streaming.rs": "4b0f2831d7045dd10be103fbc6a6bbb931b0cd837e6ce11dbcbbe2926649c0da",
+    "crates/pagura-paint/src/prepare/tests/session.rs": "3b9fe4722c4cebb0db15719ccbffbbc3db12d8ed615d76a350c86adcbaa4bd52",
+    "crates/pagura-paint/src/prepare/tests/streaming.rs": "09e43bd83a8793cc3ffdbc109905bb60cfaa2c5c99f38189779790d9e8914c3a",
     "crates/pagura-paint/src/source/image/tests.rs": "87ff805ddc7f319ef9602f45707a9bce0f8c9a40c1ec32f5c7a40a855c705526",
     "crates/pagura-paint/src/source/image/texels.rs": "b8b02ebcec27c6883d8d2f653a6bfe8de2791a2930dea2aab3ebcf7577da3d1b",
     "crates/pagura-paint/src/source/shading.rs": "20c726da9b76be1e9e401bc14c5e0ca4ac96e2e2fea6a28666870fb7d767a05b",
@@ -187,8 +194,9 @@
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
     "crates/pagura-raster/src/pixmap.rs": "271183e63b7b4504e8f46b24c73061c3ccec03fa24cf15f941bd912c46ee8d65",
-    "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
+    "crates/pagura-render/src/context.rs": "df1ac7860752c33e8bb176904d1de34909504e1e5a9e83a3e03a34d0a2d4eaaf",
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
+    "crates/pagura-render/src/renderer.rs": "217877ca236f4ffcaa7465f3edd6623c76402c3078c9819535d02753849b9a12",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
     "crates/pagura-text/src/features.rs": "488e4cab6c106cd3df8d3722c23b8d7add6674891350c2a8aa45e523b8ce0e1c",
     "crates/pagura-text/src/font.rs": "85f6eabbe810efba245588b54e4e540b23162031631f94abe214a0adb9e60f26",
@@ -200,7 +208,7 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "772f3471e2a2f2c2461bbcbd5b139ae7c7d0dba23f8453804056959ad0a13864",
+    "crates/pagura/src/lib.rs": "9fc9606e89575e7c4eddef4002d1a05a0b3f3c931d5ffb9f9b4cfa7c09c6496d",
     "crates/pagura/src/png.rs": "68a9faf63cc1bb48d720d690ac4e43541ec3a466cf3eb009659498a9ee087a2c",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
@@ -208,6 +216,7 @@
     "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/png.rs": "a9a4cc53373f76cfd16c18c2b5424ee2d1b2aa2577f51019b6b8faa503e075d6",
+    "crates/pagura/tests/api/session.rs": "667c906c1a6a4e9d5ce0b2574d426781547292549a527de554fb817300dd299e",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
     "crates/pagura/tests/api/source.rs": "3d3a6d8a3094c374631c8253331dcdb6d5ce8fe62f1c3b13c33d195f98c417bc",
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
@@ -239,7 +248,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "edd3f0d4c3b0612e707ffcead0bf4c97c04599900ae9b38f5fc40a7e0b406043",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/sources.json": "c099e78449d4487c72c0cf0b21ceaaf79c31f03b94f2112becc3b69ccd39d592",
+    "references/requirements/sources.json": "dff7d56efcc79caad49056f51aff1ab24a2c6b73b6264b7e7a433ac5d416f320",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
@@ -356,7 +365,7 @@
         "viewer": "missing"
       },
       "implemented": "Complete-buffer document opening, lazy object caches and immutable source bytes remain available. Separate bounded complete/sparse byte sources expose immutable identity, exact missing ranges, atomic overlap validation, generation-based progress and allocation-accounted leases through the facade. Source storage is not yet connected to document parsing. The shared slice parser distinguishes structurally incomplete windows from true EOF while retaining complete-input behavior and provisional diagnostics.",
-      "remaining": "Document window integration and availability propagation, retry-safe cache publication, scoped/linearized opening, lazy page access, owned jobs, protocol v2, browser/native range drivers and bounded worker scheduling remain group 11 work under accepted ADR 0035. Hosted validation of the new storage contracts is pending.",
+      "remaining": "Document window integration and availability propagation, retry-safe cache publication, scoped/linearized opening, lazy page access, owned jobs, protocol v2, browser/native range drivers and bounded worker scheduling remain group 11 work under accepted ADR 0035. Complete-source storage controls passed hosted Ubuntu, macOS and Windows; full document availability parity remains unvalidated.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/load.rs",
@@ -371,13 +380,16 @@
         "crates/pagura/src/lib.rs",
         "crates/pagura-core/src/syntax.rs",
         "crates/pagura-core/src/syntax/window.rs",
-        "crates/pagura-core/src/syntax/direct.rs"
+        "crates/pagura-core/src/syntax/direct.rs",
+        "crates/pagura-core/src/meter.rs",
+        "crates/pagura-core/src/meter/memory.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
         "crates/pagura-document/tests/sources.rs",
         "crates/pagura/tests/api/source.rs",
-        "crates/pagura-core/tests/windows.rs"
+        "crates/pagura-core/tests/windows.rs",
+        "crates/pagura-core/tests/memory.rs"
       ],
       "requirements": [
         "document-loading-bounds",
@@ -1213,22 +1225,31 @@
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "RenderContext lends final RGBA bands after preflight; fallible consumers and stops between bands; CLI streams PPM.",
-      "remaining": "Persistent pause/resume, host active-request cancellation and async backpressure; calls currently restart.",
+      "implemented": "Collected surfaces, callback bands and owned RenderSession output share one band cursor and executor. Owned sessions preallocate bounded slots, preserve immutable BandLease pixels across pauses/cancellation, and return explicit backpressure and terminal states. RenderContext exposes the owned session through the public facade; CLI streams PPM.",
+      "remaining": "Owned-session hosted validation is pending. Protocol v2, host cancellation, browser/native async backpressure and aggregate worker scheduling remain group 11 obligations. Existing callback calls retain per-call restart semantics.",
       "sources": [
         "crates/pagura-render/src/context.rs",
         "crates/pagura-paint/src/execute.rs",
         "crates/pagura-cli/src/commands.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-paint/src/prepare/session.rs",
+        "crates/pagura-paint/src/execute/workspace.rs",
+        "crates/pagura-paint/src/prepare.rs",
+        "crates/pagura-render/src/renderer.rs",
+        "crates/pagura-core/src/meter/memory.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/streaming.rs",
-        "crates/pagura-paint/src/prepare/tests/streaming.rs"
+        "crates/pagura-paint/src/prepare/tests/streaming.rs",
+        "crates/pagura-paint/src/prepare/tests/session.rs",
+        "crates/pagura/tests/api/session.rs",
+        "crates/pagura-core/tests/memory.rs"
       ],
       "requirements": [
-        "content-compositor-precision"
+        "content-compositor-precision",
+        "owned-render-output-lifecycle"
       ],
       "fixtures": [],
       "comparisons": {
