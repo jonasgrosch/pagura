@@ -125,12 +125,22 @@ impl Document {
         if bytes.len() > options.limits.file_bytes {
             return Err(Error::limit("file size budget exceeded"));
         }
-        builder::open(bytes.into(), options)
+        builder::open(source::View::local(bytes, &options.limits)?, options)
     }
 
     /// The original, unmodified file bytes.
     pub fn original_bytes(&self) -> &[u8] {
         &self.bytes
+    }
+
+    /// Explicitly leases the complete original source prefix of this document.
+    /// Shared complete backing is reused without copying bytes. The immutable
+    /// lease remains readable and charged after the document or source closes.
+    ///
+    /// # Errors
+    /// Returns source lifecycle, consistency, admission or range failures.
+    pub fn materialize(&self) -> source::ReadResult<source::ByteLease> {
+        self.bytes.materialize()
     }
 
     /// The resource budgets in effect.

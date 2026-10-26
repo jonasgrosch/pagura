@@ -369,7 +369,8 @@ mod tests {
             ..OpenOptions::default()
         };
         let bytes: Arc<[u8]> = Arc::from(b"%PDF-1.7\n".as_slice());
-        let Err(error) = DocumentBuilder::new(bytes.into(), &options, table, Vec::new()) else {
+        let bytes = crate::source::View::local(bytes, &options.limits).unwrap();
+        let Err(error) = DocumentBuilder::new(bytes, &options, table, Vec::new()) else {
             panic!("the trailer does not fit beside one slot");
         };
         assert_eq!(error.kind, ErrorKind::Limit);

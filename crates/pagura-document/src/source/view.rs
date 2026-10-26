@@ -1,13 +1,14 @@
 //! Admitted complete backing and historical prefixes of the same source.
 
-use super::{ByteLease, ByteSource};
-use pagura_core::{Error, Result};
+use super::{ByteLease, ByteRange, ByteSource, ReadResult};
+use pagura_core::convert::usize_to_u64;
+use pagura_core::{Error, Limits, Result};
 use std::{ops::Deref, sync::Arc};
 
 #[derive(Debug, Clone)]
 enum Backing {
     /// Complete-buffer convenience callers have document-local identity.
-    Local(Arc<[u8]>),
+    Local(ByteLease),
     /// Explicit source admission retains its lease and consistency provider.
     Registered {
         source: Arc<dyn ByteSource>,
@@ -24,6 +25,15 @@ pub(crate) struct View {
 }
 
 impl View {
+    pub(crate) fn local(bytes: Arc<[u8]>, limits: &Limits) -> Result<Self> {
+        let (lease, _) = super::complete::admit(bytes, limits, None)?;
+        let end = lease.bytes().len();
+        Ok(Self {
+            backing: Backing::Local(lease),
+            end,
+        })
+    }
+
     pub(crate) fn admitted(source: Arc<dyn ByteSource>, lease: ByteLease) -> Result<Self> {
         source.check()?;
         if lease.range().start() != 0 || lease.range().end() != source.len() {
@@ -46,6 +56,14 @@ impl View {
         }
     }
 
+    pub(crate) fn materialize(&self) -> ReadResult<ByteLease> {
+        self.check()?;
+        let lease = match &self.backing {
+            Backing::Local(lease) | Backing::Registered { lease, .. } => lease,
+        };
+        Ok(lease.slice(ByteRange::whole(usize_to_u64(self.end)))?)
+    }
+
     pub(crate) fn prefix(&self, end: usize) -> Result<Self> {
         self.check()?;
         if end > self.end {
@@ -62,25 +80,28 @@ impl Deref for View {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
         let bytes: &[u8] = match &self.backing {
-            Backing::Local(bytes) => bytes,
-            Backing::Registered { lease, .. } => lease.bytes(),
+            Backing::Local(lease) | Backing::Registered { lease, .. } => lease.bytes(),
         };
         &bytes[..self.end]
     }
 }
 
-impl From<Arc<[u8]>> for View {
-    fn from(bytes: Arc<[u8]>) -> Self {
-        let end = bytes.len();
-        Self {
-            backing: Backing::Local(bytes),
-            end,
-        }
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl From<Vec<u8>> for View {
-    fn from(bytes: Vec<u8>) -> Self {
-        Self::from(Arc::<[u8]>::from(bytes))
+    #[test]
+    fn materialized_historical_prefix_keeps_absolute_extent_and_shared_storage() {
+        let original: Arc<[u8]> = Arc::from(&b"older revision\nnewer revision\n"[..]);
+        let view = View::local(Arc::clone(&original), &Limits::default()).unwrap();
+        let prefix = view.prefix(15).unwrap();
+        let lease = prefix.materialize().unwrap();
+        assert_eq!(lease.bytes(), b"older revision\n");
+        assert_eq!(lease.range(), ByteRange::new(0, 15).unwrap());
+        assert_eq!(lease.bytes().as_ptr(), original.as_ptr());
+        assert!(prefix.prefix(16).is_err());
+        drop(view);
+        drop(prefix);
+        assert_eq!(lease.bytes(), b"older revision\n");
     }
 }

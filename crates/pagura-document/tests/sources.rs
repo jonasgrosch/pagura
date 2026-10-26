@@ -28,6 +28,13 @@ fn complete_source_leases_original_allocation_and_checks_bounds() {
     assert_eq!(lease.range(), ByteRange::new(0, 17).unwrap());
     assert_eq!(source.identity(), ID);
     assert_eq!(source.generation(), 0);
+    let part = source.read_exact(ByteRange::new(12, 17).unwrap()).unwrap();
+    assert_eq!(part.bytes(), b"bytes");
+    assert_eq!(part.bytes().as_ptr(), bytes[12..].as_ptr());
+    assert_eq!(part.range(), ByteRange::new(12, 17).unwrap());
+    let empty = source.read_exact(ByteRange::new(17, 17).unwrap()).unwrap();
+    assert!(empty.bytes().is_empty());
+    assert_eq!(empty.range(), ByteRange::new(17, 17).unwrap());
     assert!(
         matches!(source.read_exact(ByteRange::new(16, 18).unwrap()), Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::InvalidArgument)
     );

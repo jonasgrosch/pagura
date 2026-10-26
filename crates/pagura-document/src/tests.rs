@@ -269,7 +269,7 @@ mod structure_tests {
         // document and replace immutable source in this private unit test.
         let mut document =
             Document::open(fixture("classic", "rectangle.pdf"), &OpenOptions::default()).unwrap();
-        document.bytes = bytes.into();
+        document.bytes = crate::source::View::local(bytes.into(), &document.limits()).unwrap();
         assert_eq!(
             document.object(ObjectId::new(4, 0)).unwrap_err().kind,
             ErrorKind::Cycle

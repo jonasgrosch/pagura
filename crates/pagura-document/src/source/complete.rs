@@ -7,8 +7,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 #[derive(Debug)]
 pub struct CompleteBytes {
     identity: SourceIdentity,
-    length: u64,
-    backing: Arc<Retained<Storage>>,
+    lease: ByteLease,
     budget: Arc<Budget>,
     work: Mutex<Meter>,
 }
@@ -24,19 +23,10 @@ impl CompleteBytes {
         limits: &Limits,
         source_limits: &SourceLimits,
     ) -> Result<Self> {
-        let length =
-            u64::try_from(bytes.len()).map_err(|_| Error::limit("source length overflow"))?;
-        super::length(length, limits)?;
-        let budget = Budget::new(source_limits.retained_bytes, super::memory::EXCEEDED);
-        let retained = bytes
-            .len()
-            .checked_add(size_of::<Retained<Storage>>() + 4 * size_of::<usize>())
-            .ok_or(Error::limit("source retained size overflow"))?;
-        let reservation = budget.reserve(retained)?;
+        let (lease, budget) = admit(bytes, limits, Some(source_limits.retained_bytes))?;
         Ok(Self {
             identity,
-            length,
-            backing: Retained::new(Storage::Shared(bytes), reservation),
+            lease,
             budget,
             work: Mutex::new(Meter::new(
                 source_limits.work,
@@ -51,7 +41,7 @@ impl ByteSource for CompleteBytes {
         self.identity
     }
     fn len(&self) -> u64 {
-        self.length
+        self.lease.range().end()
     }
     fn generation(&self) -> u64 {
         0
@@ -63,15 +53,36 @@ impl ByteSource for CompleteBytes {
         Ok(())
     }
     fn read_exact(&self, range: ByteRange) -> ReadResult<ByteLease> {
-        let extent = range.offsets(self.length)?;
+        let lease = self.lease.slice(range)?;
         self.work
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .charge(1)?;
-        Ok(ByteLease {
-            backing: Some(Arc::clone(&self.backing)),
-            extent,
-            range,
-        })
+        Ok(lease)
     }
+}
+
+/// One storage admission for registered complete sources and document-local
+/// complete input. Local input is bounded by file_bytes; its exact allocation
+/// plus fixed metadata becomes the reservation cap, preserving that API limit.
+pub(super) fn admit(
+    bytes: Arc<[u8]>,
+    limits: &Limits,
+    retained_limit: Option<usize>,
+) -> Result<(ByteLease, Arc<Budget>)> {
+    let length = u64::try_from(bytes.len()).map_err(|_| Error::limit("source length overflow"))?;
+    super::length(length, limits)?;
+    let retained = bytes
+        .len()
+        .checked_add(size_of::<Retained<Storage>>() + 4 * size_of::<usize>())
+        .ok_or(Error::limit("source retained size overflow"))?;
+    let budget = Budget::new(retained_limit.unwrap_or(retained), super::memory::EXCEEDED);
+    let reservation = budget.reserve(retained)?;
+    let extent = 0..bytes.len();
+    let lease = ByteLease {
+        backing: Some(Retained::new(Storage::Shared(bytes), reservation)),
+        extent,
+        range: ByteRange::whole(length),
+    };
+    Ok((lease, budget))
 }

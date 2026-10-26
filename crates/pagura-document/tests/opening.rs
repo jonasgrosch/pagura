@@ -59,6 +59,21 @@ fn ready(job: &mut OpenJob) -> ReadResult<Arc<Document>> {
 }
 
 #[test]
+fn explicit_materialization_reuses_caller_bytes_and_outlives_the_document() {
+    let bytes: Arc<[u8]> = literal().into();
+    let document = Document::open(Arc::clone(&bytes), &OpenOptions::default()).unwrap();
+    let lease = document.materialize().unwrap();
+    assert_eq!(lease.range(), ByteRange::new(0, 1024).unwrap());
+    assert_eq!(lease.bytes().as_ptr(), bytes.as_ptr());
+    assert_eq!(
+        document.materialize().unwrap().bytes().as_ptr(),
+        lease.bytes().as_ptr()
+    );
+    drop(document);
+    assert_eq!(lease.bytes(), bytes.as_ref());
+}
+
+#[test]
 fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_model() {
     let source = source().unwrap();
     let mut job = job(source.clone()).unwrap();
@@ -112,9 +127,10 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
         let page = document.page(0).unwrap();
         let stream = document.object(ObjectId::new(4, 0)).unwrap();
         let authenticated = document.reauthenticate(&[]).unwrap();
+        let lease = document.materialize().unwrap();
         assert_eq!(
-            authenticated.original_bytes().as_ptr(),
-            document.original_bytes().as_ptr()
+            authenticated.materialize().unwrap().bytes().as_ptr(),
+            lease.bytes().as_ptr()
         );
         let authenticated_page = authenticated.page(0).unwrap();
         assert_eq!(document.raw_stream_data(stream).unwrap(), b"hello\n");
@@ -140,14 +156,19 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
             authenticated.page(authenticated_page.index()).unwrap_err(),
             expected
         );
-        // The admitted immutable allocation survives source close and remains
-        // charged while either document owns it.
-        assert_eq!(document.original_bytes(), bytes);
+        assert!(
+            matches!(document.materialize(), Err(ReadFault::Invalid(error)) if error == expected)
+        );
+        // An issued immutable lease survives close; a fresh materialization
+        // still checks the provider before returning shared backing.
+        assert_eq!(lease.bytes(), bytes);
         source.close();
         assert!(source.retained_bytes() >= LENGTH);
         drop(document);
         assert!(source.retained_bytes() >= LENGTH);
         drop(authenticated);
+        assert!(source.retained_bytes() >= LENGTH);
+        drop(lease);
         assert_eq!(source.retained_bytes(), 0);
     }
 }

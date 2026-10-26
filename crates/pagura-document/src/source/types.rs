@@ -103,6 +103,32 @@ impl ByteLease {
     pub const fn range(&self) -> ByteRange {
         self.range
     }
+
+    /// Shares a contained interval without reading a provider or allocating
+    /// another byte buffer. The original reservation stays owned by the lease.
+    pub(super) fn slice(&self, range: ByteRange) -> Result<Self> {
+        let offsets = range.offsets(self.range.end())?;
+        let original = self.range.offsets(self.range.end())?;
+        if offsets.start < original.start {
+            return Err(Error::invalid_argument(
+                "source interval precedes its lease",
+            ));
+        }
+        let start = self
+            .extent
+            .start
+            .checked_add(offsets.start - original.start)
+            .ok_or(Error::limit("source lease offset overflow"))?;
+        let end = start
+            .checked_add(offsets.len())
+            .filter(|&end| end <= self.extent.end)
+            .ok_or(Error::limit("source lease extent overflow"))?;
+        Ok(Self {
+            backing: self.backing.clone(),
+            extent: start..end,
+            range,
+        })
+    }
 }
 
 /// The exact missing intervals of one read at an observed availability generation.
