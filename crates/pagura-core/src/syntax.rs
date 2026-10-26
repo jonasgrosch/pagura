@@ -4,12 +4,14 @@
 //! [`Diagnostics`] sink, which rejects it in [`Recovery::Strict`] mode.
 
 mod direct;
+mod window;
 
 use direct::Context;
 
 /// The direct-stream recovery state threaded through one parse, if enabled.
 type Streams<'a, 'b, 'h> = Option<Context<'a, 'b, 'h>>;
 pub use direct::{DirectStream, DirectStreamHandler, PathComponent};
+pub use window::{InputEnd, ParsedWindow, WindowRead};
 
 use crate::repairs::{
     DICTIONARY_CLOSER, DICTIONARY_OPENER, DIRECT_STREAM, DUPLICATE_KEY, KEY_SOLIDUS,
@@ -82,6 +84,8 @@ pub struct Parser<'a> {
     limits: Budgets,
     nodes: usize,
     diagnostics: Diagnostics,
+    window_end: InputEnd,
+    incomplete_window: bool,
 }
 
 /// The [`Limits`] fields the parser reads. A parser is created per object,
@@ -115,6 +119,8 @@ impl<'a> Parser<'a> {
             limits: Budgets::from(limits),
             nodes: 0,
             diagnostics: Diagnostics::new(Recovery::Strict),
+            window_end: InputEnd::Complete,
+            incomplete_window: false,
         }
     }
 
@@ -163,6 +169,7 @@ impl<'a> Parser<'a> {
     /// Returns a syntax error if `offset` is beyond the end of the input.
     pub fn seek(&mut self, offset: usize) -> Result<()> {
         if offset > self.data.len() {
+            self.window_boundary();
             return Err(Error::syntax("offset outside input").at(self.origin.position(offset)));
         }
         self.position = offset;
@@ -201,6 +208,9 @@ impl<'a> Parser<'a> {
     }
 
     fn next_byte(&mut self) -> Result<u8> {
+        if self.current().is_none() {
+            self.window_boundary();
+        }
         let byte = self
             .current()
             .ok_or_else(|| self.error("unexpected end of input"))?;
@@ -215,6 +225,9 @@ impl<'a> Parser<'a> {
                 self.position += 1;
             }
             if self.current() != Some(b'%') {
+                if self.current().is_none() {
+                    self.window_boundary();
+                }
                 return;
             }
             while self.current().is_some_and(|b| b != b'\r' && b != b'\n') {
@@ -246,6 +259,9 @@ impl<'a> Parser<'a> {
         while self.current().is_some_and(is_regular) {
             self.position += 1;
         }
+        if self.current().is_none() {
+            self.window_boundary();
+        }
         if start == self.position {
             return Err(self.error("expected token"));
         }
@@ -256,6 +272,9 @@ impl<'a> Parser<'a> {
     pub fn keyword(&mut self, word: &[u8]) -> bool {
         self.skip_whitespace();
         let rest = self.rest();
+        if word.starts_with(rest) {
+            self.window_boundary();
+        }
         let complete = rest.get(word.len()).is_none_or(|&b| !is_regular(b));
         if rest.starts_with(word) && complete {
             self.position += word.len();
@@ -365,6 +384,9 @@ impl<'a> Parser<'a> {
             }
         }
         if self.current() != Some(b'#') {
+            if self.current().is_none() {
+                self.window_boundary();
+            }
             return Ok(Name::new(&self.data[start..self.position]));
         }
         let mut bytes = self.data[start..self.position].to_vec();
@@ -379,6 +401,9 @@ impl<'a> Parser<'a> {
                     self.position += 2;
                     byte = (high << 4) | low;
                 } else {
+                    if self.data.len().saturating_sub(self.position) < 2 {
+                        self.window_boundary();
+                    }
                     self.diagnostics.repair(
                         Diagnostic::new(
                             NAME_ESCAPE,
@@ -392,6 +417,9 @@ impl<'a> Parser<'a> {
                 return Err(self.error("name contains a null byte"));
             }
             self.push_bounded(&mut bytes, byte)?;
+        }
+        if self.current().is_none() {
+            self.window_boundary();
         }
         Ok(Name::new(&bytes))
     }
@@ -556,6 +584,9 @@ impl<'a> Parser<'a> {
     /// Skips a second `<<` before the first key, a repaired deviation.
     fn duplicated_opener(&mut self) -> Result<()> {
         self.skip_whitespace();
+        if self.rest().len() < 2 && b"<<".starts_with(self.rest()) {
+            self.window_boundary();
+        }
         if !self.rest().starts_with(b"<<") {
             return Ok(());
         }
@@ -577,6 +608,9 @@ impl<'a> Parser<'a> {
     /// Consumes `>>`, or a stray `)` and then `>>` as a repaired deviation.
     /// Returns whether the dictionary ended.
     fn dictionary_closer(&mut self) -> Result<bool> {
+        if self.rest().len() < 2 && b">>".starts_with(self.rest()) {
+            self.window_boundary();
+        }
         if self.rest().starts_with(b">>") {
             self.position += 2;
             return Ok(true);
@@ -586,6 +620,9 @@ impl<'a> Parser<'a> {
             let at = self.position();
             self.position += 1;
             self.skip_whitespace();
+            if self.rest().len() < 2 && b">>".starts_with(self.rest()) {
+                self.window_boundary();
+            }
             if self.rest().starts_with(b">>") {
                 self.diagnostics.repair(
                     Diagnostic::new(
@@ -618,6 +655,9 @@ impl<'a> Parser<'a> {
         let tail = self.rest();
         let length = tail.iter().take_while(|&&byte| is_regular(byte)).count();
         let token = tail.get(..length).unwrap_or_default();
+        if length == tail.len() {
+            self.window_boundary();
+        }
         if !token.first().is_some_and(u8::is_ascii_alphabetic)
             || matches!(
                 token,
