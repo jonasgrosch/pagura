@@ -42,6 +42,45 @@ fn ordering_refuses_before_spending_unavailable_work() {
 }
 
 #[test]
+fn settling_matches_the_total_order_of_places_and_indices() {
+    // Sorted prefixes, equal places, signed zeros and NaN, as plain and
+    // exact places give them.
+    let values = [-1.0, -0.0, 0.0, 0.5, 0.5, 1.0, f64::NAN];
+    let mut rng = Lcg(31);
+    for _ in 0..2_000 {
+        let len = 1 + rng.next() as usize % 12;
+        let mut order: Vec<Place> = (0..len)
+            .map(|i| {
+                (
+                    values[rng.next() as usize % values.len()],
+                    u32::try_from(i).unwrap(),
+                )
+            })
+            .collect();
+        if rng.next().is_multiple_of(2) {
+            // Most sub-slabs find their order sorted but for one move.
+            order.sort_unstable_by(ordered);
+            let k = rng.next() as usize % len;
+            order[k].0 = values[rng.next() as usize % values.len()];
+        }
+        let mut expected = order.clone();
+        expected.sort_unstable_by(ordered);
+        let mut work = Meter::new(usize::MAX, "ordering work");
+        settle(&mut order, &mut work).unwrap();
+        assert_eq!(
+            order
+                .iter()
+                .map(|o| (o.0.to_bits(), o.1))
+                .collect::<Vec<_>>(),
+            expected
+                .iter()
+                .map(|o| (o.0.to_bits(), o.1))
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
+#[test]
 fn close_plain_places_charge_their_exact_run() {
     // Coincident edges are placed exactly after the plain pass; a third
     // edge apart from them keeps its plain place.
@@ -61,6 +100,51 @@ fn close_plain_places_charge_their_exact_run() {
     resolver.place(&pieces, (0.0, 0.5), 0, &mut work).unwrap();
     assert_eq!(work.used(), sort_work(pieces.len()) + 2);
     assert_eq!(resolver.order, [(0.25, 2), (0.5, 0), (0.5, 1)]);
+}
+
+#[test]
+fn integer_keys_sort_as_the_total_order() {
+    let specials = [
+        f64::NAN,
+        -f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        0.0,
+        -0.0,
+        f64::MIN_POSITIVE / 4.0,
+        -f64::MIN_POSITIVE,
+        1.0,
+        -1.0,
+        0.5,
+    ];
+    let mut rng = Lcg(97);
+    let (mut keys, mut span_keys, mut sorted) = (Vec::new(), Vec::new(), Vec::new());
+    for _ in 0..1_000 {
+        let len = rng.next() as usize % 40;
+        let mut values: Vec<f64> = (0..len)
+            .map(|_| match rng.next() % 3 {
+                0 => specials[rng.next() as usize % specials.len()],
+                _ => rng.grid(-2.0, 33, 8),
+            })
+            .collect();
+        let mut expected = values.clone();
+        expected.sort_unstable_by(f64::total_cmp);
+        sort_values(&mut values, &mut keys);
+        let bits = |v: &[f64]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        assert_eq!(bits(&values), bits(&expected));
+        let mut spans: Vec<Span> = (0..u32::try_from(len).unwrap())
+            .map(|i| (expected[(i as usize * 7) % len.max(1)], f64::from(i), i))
+            .collect();
+        let mut by_start = spans.clone();
+        by_start.sort_unstable_by(|a, b| a.0.total_cmp(&b.0).then(a.2.cmp(&b.2)));
+        sort_spans(&mut spans, (&mut span_keys, &mut sorted));
+        let fields = |v: &[Span]| {
+            v.iter()
+                .map(|s| (s.0.to_bits(), s.1.to_bits(), s.2))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(fields(&spans), fields(&by_start));
+    }
 }
 
 fn line(x0: f64, y0: f64, x1: f64, y1: f64) -> Line {
@@ -455,4 +539,142 @@ fn dense_rows_cost_their_chunks() {
         chunked.used(),
         whole.used()
     );
+}
+
+/// The quadrilaterals a pen of radius `r` sweeps along the closed polyline
+/// of `count` segments around a circle of radius `around` at `centre`, as a
+/// stroker emits them where its segments are shorter than its pen.
+fn fan(centre: (f64, f64), around: f64, (count, r): (u32, f64), turn: f64) -> Vec<(Line, u8)> {
+    let at = |k: u32| {
+        let t = turn + std::f64::consts::TAU * f64::from(k) / f64::from(count);
+        (centre.0 + around * t.cos(), centre.1 + around * t.sin())
+    };
+    let mut lines = Vec::new();
+    for k in 0..count {
+        let (p, q) = (at(k), at(k + 1));
+        let length = (q.0 - p.0).hypot(q.1 - p.1);
+        let normal = ((p.1 - q.1) / length * r, (q.0 - p.0) / length * r);
+        lines.extend(polygon(
+            &[
+                (p.0 + normal.0, p.1 + normal.1),
+                (p.0 - normal.0, p.1 - normal.1),
+                (q.0 - normal.0, q.1 - normal.1),
+                (q.0 + normal.0, q.1 + normal.1),
+            ],
+            0,
+        ));
+    }
+    lines
+}
+
+/// The sides of `pieces` in row `0..1` with the swaps inside the covered
+/// set, or with every sub-slab placed and joined, the work charged, and how
+/// many sub-slabs the swaps took.
+fn swept(pieces: &[Piece], rules: &[FillRule], full: bool) -> (Vec<Line>, usize, usize) {
+    let mut out = Vec::new();
+    let mut work = Meter::new(usize::MAX, "work");
+    let mut bytes = Meter::new(usize::MAX, "bytes");
+    let mut resolver = Resolver {
+        full,
+        ..Resolver::default()
+    };
+    let meters = Meters {
+        work: &mut work,
+        bytes: &mut bytes,
+    };
+    resolver
+        .row(pieces, rules, 0.0, (&mut out, meters))
+        .unwrap();
+    (out, work.used(), resolver.swapped)
+}
+
+#[test]
+fn doubtful_pairs_expire_once_and_large_live_sets_decline() {
+    let mut resolver = Resolver {
+        heights: vec![0.0, 0.25, 1.0],
+        lowest: f64::INFINITY,
+        ..Resolver::default()
+    };
+    for end in (2..1026).rev() {
+        resolver.reach(end, (0, 1));
+    }
+    // A thousand live pairs need no repeated scan or additional work.
+    let mut work = Meter::new(0, "doubtful pairs");
+    for _ in 0..10 {
+        assert_eq!(
+            resolver
+                .take_swaps(&[], FillRule::NonZero, 1, (0, 0, 0), &mut work)
+                .unwrap(),
+            None
+        );
+        assert_eq!(resolver.reaching.len(), 1024);
+    }
+    for height in 2..1027 {
+        resolver.expire(height);
+        assert_eq!(resolver.reaching.len(), 1026 - height);
+        assert!(resolver.reaching.iter().all(|p| p.0 >= height));
+        for at in 1..resolver.reaching.len() {
+            assert!(resolver.reaching[(at - 1) / 2].0 <= resolver.reaching[at].0);
+        }
+    }
+}
+
+/// Fans of quadrilaterals crossing many times over inside their union, alone,
+/// twice over, with collinear edges from one vertex, beside and over random
+/// polygons and across chunks, under either rule: the swaps leave every
+/// side as the full sweep emits it, bit for bit and in the same order, and
+/// charge no more.
+#[test]
+fn swaps_inside_the_union_keep_every_side() {
+    let mut rng = Lcg(2_026);
+    let mut swapped = 0;
+    for case in 0..400_usize {
+        let mut lines = Vec::new();
+        for _ in 0..=case % 4 {
+            let centre = (rng.grid(0.0, 64, 8), rng.grid(-0.5, 17, 8));
+            let count = 8 + rng.next() % 40;
+            let r = rng.grid(0.25, 12, 8);
+            let around = r * f64::from(1 + rng.next() % 8) / 64.0;
+            lines.extend(fan(centre, around, (count, r), rng.grid(0.0, 64, 8)));
+        }
+        // Every edge twice, as strokes drawn twice or shared sides give.
+        if case % 7 == 1 {
+            lines.extend_from_within(..);
+        }
+        // Collinear edges from one vertex through the fans, whose places
+        // differ only by rounding.
+        if case % 5 == 2 {
+            for _ in 0..24 {
+                let (x, y) = (rng.grid(0.0, 64, 8) / 3.0, rng.grid(-0.5, 17, 8) / 3.0);
+                let (dx, dy) = (rng.grid(-1.0, 17, 8) / 3.0, rng.grid(0.125, 8, 8) / 7.0);
+                let t = f64::from(1 + rng.next() % 7) / 9.0;
+                lines.extend(polygon(
+                    &[(x, y), (x + dx, y + dy), (x + t * dx, y + t * dy)],
+                    0,
+                ));
+            }
+        }
+        if case % 3 == 0 {
+            lines.extend(random_lines(&mut rng, 1 + case % 8, 1));
+        }
+        let rule = [FillRule::NonZero, FillRule::EvenOdd][usize::from(case % 5 == 4)];
+        let pieces = pieces(&lines);
+        let ((fast, fast_work, taken), (full, full_work, _)) = (
+            swept(&pieces, &[rule], false),
+            swept(&pieces, &[rule], true),
+        );
+        let bits = |sides: &[Line]| -> Vec<[u64; 4]> {
+            sides
+                .iter()
+                .map(|l| [l.a.x, l.a.y, l.b.x, l.b.y].map(f64::to_bits))
+                .collect()
+        };
+        assert_eq!(bits(&fast), bits(&full), "case {case}");
+        assert!(
+            fast_work <= full_work,
+            "case {case}: {fast_work} {full_work}"
+        );
+        swapped += taken;
+    }
+    assert!(swapped > 100_000, "{swapped}");
 }

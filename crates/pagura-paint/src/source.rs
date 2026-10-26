@@ -17,7 +17,7 @@ use pagura_raster::{DeviceRect, Transform};
 mod image;
 mod shading;
 
-pub(crate) use image::{ImageBudgets, ImageSampler};
+pub(crate) use image::{ImageBudgets, ImageSampler, ScratchLayout};
 pub(crate) use shading::{BBoxUse, ShadingSource};
 
 /// Working colours of one span: `channels` values per pixel in the target's
@@ -35,16 +35,49 @@ pub(crate) struct SpanColors {
     pub(crate) painted: Painted,
 }
 
-/// Mutable storage for one prepared paint, owned by the caller.
+/// Mutable storage of prepared paints, owned by the caller: the paints of
+/// one storage take turns with it ([`crate::plan::Slots`]).
 #[derive(Debug, Default)]
 pub(crate) struct PaintScratch {
     image: Option<Box<image::ImageScratch>>,
+    /// The paint that used it last.
+    owner: Option<u32>,
 }
 
 impl PaintScratch {
-    /// Whether the capacities match `source`, without reusing its values.
-    pub(crate) fn fits(&self, source: &Source) -> bool {
-        self.image.as_ref().map(|scratch| scratch.layout()) == source.scratch_layout()
+    /// Allocates or reuses capacities of `layout`, charging them to `bytes`.
+    pub(crate) fn make(
+        layout: Option<ScratchLayout>,
+        previous: Option<Self>,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        bytes.charge(layout.map_or(0, ScratchLayout::bytes))?;
+        if let Some(mut previous) = previous.filter(|previous| previous.fits(layout)) {
+            previous.reset();
+            return Ok(previous);
+        }
+        Ok(Self {
+            image: layout
+                .map(|layout| layout.make().map(Box::new))
+                .transpose()?,
+            owner: None,
+        })
+    }
+
+    /// Whether the capacities match `layout`, without reusing its values.
+    pub(crate) fn fits(&self, layout: Option<ScratchLayout>) -> bool {
+        self.image.as_ref().map(|scratch| scratch.layout()) == layout
+    }
+
+    /// Takes the storage for `paint`: the caches of another paint's
+    /// placement go, the colour memo of their shared image stays.
+    pub(crate) fn claim(&mut self, paint: u32) {
+        if self.owner != Some(paint) {
+            if let Some(image) = &mut self.image {
+                image.switch();
+            }
+            self.owner = Some(paint);
+        }
     }
 
     /// Bytes retained by this paint's execution storage.
@@ -57,6 +90,7 @@ impl PaintScratch {
         if let Some(image) = &mut self.image {
             image.reset();
         }
+        self.owner = None;
     }
 }
 
@@ -139,35 +173,11 @@ pub(crate) enum Precision {
 }
 
 impl Source {
-    fn scratch_layout(&self) -> Option<image::ScratchLayout> {
+    pub(crate) fn scratch_layout(&self) -> Option<ScratchLayout> {
         match self {
             Self::Image(image) => Some(image.scratch_layout()),
             Self::Solid { .. } | Self::Shading(_) => None,
         }
-    }
-
-    /// Execution bytes reserved independently of retained cache state.
-    pub(crate) fn scratch_bytes(&self) -> usize {
-        self.scratch_layout().map_or(0, image::ScratchLayout::bytes)
-    }
-
-    /// Allocates or reuses matching execution capacities before rendering.
-    pub(crate) fn make_scratch(
-        &self,
-        previous: Option<PaintScratch>,
-        bytes: &mut Meter,
-    ) -> Result<PaintScratch> {
-        bytes.charge(self.scratch_bytes())?;
-        if let Some(mut previous) = previous.filter(|previous| previous.fits(self)) {
-            previous.reset();
-            return Ok(previous);
-        }
-        Ok(PaintScratch {
-            image: self
-                .scratch_layout()
-                .map(|layout| layout.make().map(Box::new))
-                .transpose()?,
-        })
     }
 
     /// Prepares `paint` (a solid colour or shading pattern; tiling patterns
@@ -417,11 +427,11 @@ impl Source {
         }
     }
 
-    /// Render work units one pixel costs besides compositing (mesh
-    /// geometry tests).
-    pub(crate) fn work_per_pixel(&self) -> usize {
+    /// Render work units filling `region` costs besides compositing (mesh
+    /// geometry tests), counted until it passes `limit`.
+    pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
         match self {
-            Self::Shading(shading) => shading.geometry_work(),
+            Self::Shading(shading) => shading.geometry_work(region, limit),
             Self::Solid { .. } | Self::Image(_) => 0,
         }
     }

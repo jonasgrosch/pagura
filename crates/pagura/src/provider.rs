@@ -28,8 +28,9 @@ pub const BUNDLED: bool = cfg!(feature = "bundled-data");
 
 /// The feature-selected provider: [`Bundled`] parsing within `limits` with
 /// the `bundled-data` feature, otherwise `None`, which leaves only the
-/// resources embedded in each PDF. Each call creates empty caches; keep and
-/// share the result to parse each resource once.
+/// resources embedded in each PDF. The standard fonts are parsed once per
+/// process and shared by every provider; each call creates empty caches for
+/// the other resources, so keep and share the result to parse each once.
 ///
 /// ```
 /// let provider = pagura::provider::default_provider(pagura::Limits::default());

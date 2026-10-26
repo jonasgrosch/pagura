@@ -1,6 +1,7 @@
 //! Forward curves: ICC.1:2010 10.5 and 10.16.
 
 use super::{Arithmetic, At, Budget, format::zeros, sample_index, unsupported, usize_f64};
+use crate::affine::{Affine, Undecided};
 use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 
@@ -170,6 +171,32 @@ impl Curve {
                 }
             }
         }
+    }
+
+    /// Encloses what [`Self::evaluate`] computes for every value of `x`
+    /// (see [`crate::affine`]), for the curves that interpolate: identity
+    /// and sampled curves.
+    pub(super) fn enclose(&self, x: Affine) -> Result<Affine, Undecided> {
+        let Self::Samples(values) = self else {
+            return match self {
+                Self::Identity => x.clamp(0.0, 1.0),
+                _ => Err(Undecided::Unsupported),
+            };
+        };
+        let last = values.len() - 1;
+        let position = x.scale(usize_f64(last));
+        let [first, end] = position.cells(last)?;
+        let mut value = Affine::point(0.0);
+        for low in first..=end {
+            let high = (low + 1).min(last);
+            let cell = Affine::point(values[low]).add(
+                position
+                    .sub(Affine::point(usize_f64(low)))
+                    .scale(values[high] - values[low]),
+            );
+            value = if low == first { cell } else { value.join(cell) };
+        }
+        value.clamp(0.0, 1.0)
     }
 
     /// [`Self::evaluate`] of a sampled curve.

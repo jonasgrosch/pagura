@@ -228,3 +228,36 @@ fn a_work_limited_point_cell_sweep_keeps_full_resolution() {
     let (_, work) = crate::testing::raster(&area, Some(&shape), None);
     assert!(work <= shape.work());
 }
+
+#[test]
+fn listed_rows_are_admitted_beside_their_strip_list() {
+    // Items crossing several strips: their rows stay charged while both
+    // passes of the list read them, and are released before it returns.
+    let lines: Vec<Line> = (0..48_u32)
+        .map(|i| {
+            let x = f64::from(i) * 0.25;
+            Line {
+                a: Point::new(x, 1.0),
+                b: Point::new(x + 3.0, 21.0 + 2.0 * f64::from(i)),
+            }
+        })
+        .collect();
+    let bounds = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 16,
+        y1: 128,
+    };
+    let resolved = Resolved::default();
+    let list = |max| {
+        let mut bytes = Meter::new(max, RENDER_BYTES);
+        listed((&lines, &[]), &resolved, bounds, 16, &mut bytes)
+            .map(|(list, _)| (bytes.used(), list.retained_bytes()))
+    };
+    let (used, retained) = list(usize::MAX).unwrap();
+    assert_eq!(used, retained);
+    let peak = retained + lines.len() * size_of::<Option<(u32, u32)>>();
+    assert_eq!(list(peak).unwrap(), (retained, retained));
+    let error = list(peak - 1).unwrap_err();
+    assert_eq!(error.message, RENDER_BYTES);
+}
