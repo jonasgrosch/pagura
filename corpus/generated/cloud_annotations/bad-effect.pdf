@@ -16,7 +16,7 @@ stream
 endstream
 endobj
 5 0 obj
-<< /Type /Annot /Subtype /Square /Rect [0 0 32 32] /BE << /S /C /I 1 >> /BS << /W 0 >> /CA 1.0 /RD [8 8 8 8] /C [] /IC [1 0 0] /BE 42 >>
+<< /Type /Annot /Subtype /Square /Rect [0 0 32 32] /BE 42 /BS << /W 0 >> /CA 1.0 /RD [8 8 8 8] /C [] /IC [1 0 0]  >>
 endobj
 xref
 0 6
@@ -29,5 +29,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-450
+430
 %%EOF

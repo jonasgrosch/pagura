@@ -273,7 +273,7 @@
         "content-cloudy-borders"
       ],
       "path": "corpus/generated/cloud_annotations/bad-intensity.pdf",
-      "sha256": "57d213ac7cb0b0ac1ee35538e6e35490c580bd5068d0b63f3d2af647f947e8e6",
+      "sha256": "b48cf6c44f0578a0dfad385f2ef41356f6b5954eaac7bb696a5aefce53f7a0f5",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -288,7 +288,7 @@
         "content-cloudy-borders"
       ],
       "path": "corpus/generated/cloud_annotations/negative.pdf",
-      "sha256": "d56e2e4f13bf785648a31b6571a6ad738646ce06776f37390c68dfc99d54e14a",
+      "sha256": "ee2d2289f0a424eefd84358312245decfb64f1ba32c819a63513bbbc9e47f55d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -303,7 +303,7 @@
         "content-cloudy-borders"
       ],
       "path": "corpus/generated/cloud_annotations/excess.pdf",
-      "sha256": "cbce6b9586fa91b5a0945f590900ef519660c1c6937f881b0ba7095a09b4032b",
+      "sha256": "bc36e3c35e55f05d40ee03efbc4bc58af1141b572a4182a86f07b1382b971c26",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -318,7 +318,7 @@
         "content-cloudy-borders"
       ],
       "path": "corpus/generated/cloud_annotations/bad-effect.pdf",
-      "sha256": "7b73a68a328c05340a3395bf7945b5eeae65d90af737bad9f50a5fb1de68cbb1",
+      "sha256": "6af0389f4ff022ddfeb13dbe9b93a97698298a6657e1e68db830868cc8eb5ea3",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

@@ -14,8 +14,9 @@ AREA='cloud_annotations'
 REQUIREMENT='content-cloudy-borders'
 
 
-def source(shape='Square',*,intensity=1,width=0,alpha=1.,rotate=0,extra=b'',stored=None):
-    style=f'/BE << /S /C /I {intensity} >> /BS << /W {width} >> /CA {alpha} '.encode()
+def source(shape='Square',*,intensity=1,width=0,alpha=1.,rotate=0,extra=b'',stored=None,effect=None):
+    effect=f'<< /S /C /I {intensity} >>'.encode() if effect is None else effect
+    style=b'/BE '+effect+f' /BS << /W {width} >> /CA {alpha} '.encode()
     if shape=='FreeText':style+=b'/DA (/Helvetica 12 Tf) /Contents () /C [1 0 0] /RD [8 8 8 8] '
     elif shape=='Polygon':style+=b'/Vertices [8 8 24 8 24 24 8 24] /C [] /IC [1 0 0] '
     else:style+=b'/RD [8 8 8 8] /C [] /IC [1 0 0] '
@@ -73,7 +74,7 @@ def cases():
         yield Case(name,source(**options),RENDER,(REQUIREMENT,),
                    'Independent quadratic areas, annotation clipping and source-over establish pixels',
                    oracle=oracle(**options),extra={'tolerance':1})
-    for name,extra in [('bad-intensity',b'/BE << /S /C /I /Bad >>'),('negative',b'/BE << /S /C /I -1 >>'),
-                       ('excess',b'/BE << /S /C /I 3 >>'),('bad-effect',b'/BE 42')]:
-        yield Case(name,source(extra=extra),OPEN,(REQUIREMENT,),
+    for name,effect in [('bad-intensity',b'<< /S /C /I /Bad >>'),('negative',b'<< /S /C /I -1 >>'),
+                       ('excess',b'<< /S /C /I 3 >>'),('bad-effect',b'42')]:
+        yield Case(name,source(effect=effect),OPEN,(REQUIREMENT,),
                    'Malformed cloud declarations fail before no-mark shortcuts',extra={'render_error':'syntax'})
