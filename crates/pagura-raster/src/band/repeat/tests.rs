@@ -173,12 +173,11 @@ fn kept_bytes(templates: &StrokeTemplates) -> usize {
 
 #[test]
 fn a_saturated_cache_admits_nothing_it_cannot_charge() {
-    // An eighth of this budget cannot hold the slots of 300 strokes: the
-    // table grows by doubling, with its old and new slots charged at once.
-    let limits = Limits {
-        render_bytes: 128 << 10,
-        ..Limits::default()
-    };
+    // Keep the cache's 16 KiB allowance independent of shape preparation.
+    // Source-tangent curve geometry needs more than the former 128 KiB
+    // shape allowance. The cache still cannot hold 300 strokes: its table
+    // grows by doubling, with old and new slots charged at once.
+    let limits = Limits::default();
     let options = options(&limits);
     let path = curl();
     let stroke = |n: u32| Stroke {
@@ -187,7 +186,10 @@ fn a_saturated_cache_admits_nothing_it_cannot_charge() {
         cap: LineCap::Round,
         ..Stroke::default()
     };
-    let mut templates = StrokeTemplates::default();
+    let mut templates = StrokeTemplates {
+        meter: Some(Meter::new(16 << 10, "stroke template budget exceeded")),
+        ..StrokeTemplates::default()
+    };
     let check = |templates: &StrokeTemplates| {
         let meter = templates.meter.as_ref().expect("the cache has a meter");
         assert!(meter.used() <= meter.max());
