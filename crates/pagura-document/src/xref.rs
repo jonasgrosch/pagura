@@ -173,7 +173,17 @@ pub(crate) fn read(
         }?;
         chain.accept(section)?;
     }
-    let mut table = chain.into_table();
+    finish(bytes, header, limits, chain.into_table())
+}
+
+/// Complete-document validation of an already authoritative primary index.
+/// The source job reaches this boundary only after explicit materialization.
+pub(crate) fn finish(
+    bytes: &[u8],
+    header: usize,
+    limits: &Limits,
+    mut table: XrefTable,
+) -> Result<XrefTable> {
     join_linearized_base(bytes, header, limits, &mut table)?;
     validate_identities(bytes, &table, limits)?;
     Ok(table)

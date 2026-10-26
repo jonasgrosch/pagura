@@ -29,12 +29,27 @@ pub(crate) fn open(bytes: source::View, options: &OpenOptions) -> Result<Documen
     let mut diagnostics = Diagnostics::new(options.recovery);
     let header = xref::header(&bytes, &mut diagnostics)?;
     let mut attempt = Diagnostics::new(options.recovery);
-    let primary = xref::read(&bytes, header, &options.limits, &mut attempt).and_then(|table| {
+    let primary = xref::read(&bytes, header, &options.limits, &mut attempt)
+        .map(|table| (table, attempt.take()));
+    from_primary(bytes, options, diagnostics, primary)
+}
+
+/// Builds from the completed primary index, or performs the same one-time
+/// complete-input reconstruction after a structural primary/build failure.
+/// Header diagnostics survive that fallback; provisional primary repairs do not.
+pub(crate) fn from_primary(
+    bytes: source::View,
+    options: &OpenOptions,
+    mut diagnostics: Diagnostics,
+    primary: Result<(XrefTable, Vec<Diagnostic>)>,
+) -> Result<Document> {
+    bytes.check()?;
+    let primary = primary.and_then(|(table, attempt)| {
         let reported = diagnostics
             .as_slice()
             .iter()
             .cloned()
-            .chain(attempt.take())
+            .chain(attempt)
             .collect();
         DocumentBuilder::new(bytes.clone(), options, table, reported)?.build(&options.password)
     });
