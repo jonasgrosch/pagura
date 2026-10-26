@@ -549,6 +549,13 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       return;
     }
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
+      const deviceOracle = entry.id.startsWith('file_attachment_icons/');
+      // The viewer supersamples reduced pages. At 25% it uses 4 device pixels
+      // per CSS pixel (72 dpi overall); at 100% it uses 2 (144 dpi overall).
+      // Compare icon oracles on that exact device grid: CSS box averaging is
+      // not an equivalent oracle for fixed-size marks or layered alpha masks.
+      const oracleZoom = deviceOracle && entry.dpi === 72 ? 0.25 : 1;
+      elements.get('zoom').value = String(oracleZoom);
       await pick(entry); await waitFor(ready);
       assert.equal(elements.get('error').hidden, true);
       assert.equal(elements.get('diagnostic-count').textContent, `Repairs: ${entry.repairs.length} · Information: ${(entry.information ?? []).length}`);
@@ -556,7 +563,12 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
       assert.ok(canvases().length > 0);
       for (const canvas of canvases()) {
-        const x = parseFloat(canvas.style.left), y = parseFloat(canvas.style.top), { rgba, width, height } = cssPixels(canvas);
+        const density = canvas.width / parseFloat(canvas.style.width);
+        if (deviceOracle) assert.equal(density * oracleZoom, entry.dpi / 72, `${entry.id}: declared oracle resolution`);
+        const x = parseFloat(canvas.style.left) * (deviceOracle ? density : 1);
+        const y = parseFloat(canvas.style.top) * (deviceOracle ? density : 1);
+        const { rgba, width, height } = deviceOracle
+          ? { rgba: canvas.image.data, width: canvas.width, height: canvas.height } : cssPixels(canvas);
         assert.ok(x >= 0 && y >= 0 && x + width <= entry.width && y + height <= entry.height);
         for (let row = 0; row < height; row++) for (let column = 0; column < width; column++) {
           const pixel = (row * width + column) * 4, oracle = ((y + row) * entry.width + x + column) * 3;
@@ -574,6 +586,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
         assert.ok(retained.every(canvas => canvases().includes(canvas)), 'scrolling back reuses the same full-resolution canvases');
       }
     }
+    elements.get('zoom').value = '1';
     const twoPages = manifest.cases.find((entry) => entry.id === 'classic/two-pages');
     elements.get('viewport').clientHeight = 40;
     await pick(twoPages); await waitFor(ready);
