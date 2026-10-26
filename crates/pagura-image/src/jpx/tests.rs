@@ -127,7 +127,8 @@ fn malformed_inputs_have_positions() -> Result<(), Box<dyn std::error::Error>> {
         }
         checked += 1;
     }
-    assert_eq!(checked, 66);
+    // Empty first-image headers inherit defaults and now have sample vectors.
+    assert_eq!(checked, 64);
     Ok(())
 }
 
