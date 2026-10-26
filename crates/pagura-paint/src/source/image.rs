@@ -667,42 +667,72 @@ struct Weight {
     scales_shape: bool,
 }
 
+/// Where [`Straight::pixels`] takes each pixel's mask factor from: no mask,
+/// the alpha sampled already, or the value ahead of the texel's.
+const UNMASKED: u8 = 0;
+const SAMPLED: u8 = 1;
+const FUSED: u8 = 2;
+
 impl Straight<'_> {
-    /// Pushes each pixel's straight colours, `C` of them (any number for
-    /// 0), onto `out.colors`, writes its alpha over `out.alpha` and pushes
-    /// its shape onto `shape`.
-    fn write<const C: usize>(&self, out: &mut SpanColors, mut shape: Option<&mut Vec<f64>>) {
+    /// Writes each pixel's straight colours, `C` of them (any number for
+    /// 0), as `out.colors`, its alpha over `out.alpha` and its shape as
+    /// `shape`.
+    fn write<const C: usize>(&self, out: &mut SpanColors, shape: Option<&mut Vec<f64>>) {
+        match self.mask {
+            None => self.pixels::<C, UNMASKED>(out, shape),
+            Some(Weight { fused: false, .. }) => self.pixels::<C, SAMPLED>(out, shape),
+            Some(Weight { fused: true, .. }) => self.pixels::<C, FUSED>(out, shape),
+        }
+    }
+
+    /// [`Self::write`] with the mask factor taken the `FACTOR` way, so that
+    /// each case has a loop of its own; the outputs are sized once and each
+    /// pixel's values written in place.
+    fn pixels<const C: usize, const FACTOR: u8>(
+        &self,
+        out: &mut SpanColors,
+        shape: Option<&mut Vec<f64>>,
+    ) {
         let channels = if C == 0 { self.channels } else { C };
         let SpanColors { colors, alpha, .. } = out;
+        let count = alpha.len().min(self.summed.len() / self.stride);
         colors.clear();
-        if let Some(shape) = shape.as_deref_mut() {
+        colors.resize(count * channels, 0.0);
+        let mut shape = shape.map(|shape| {
             shape.clear();
-        }
+            shape.resize(count, 0.0);
+            shape.as_mut_slice()
+        });
         let scales_shape = self.mask.is_some_and(|mask| mask.scales_shape);
-        for (texel, alpha) in self.summed.chunks_exact(self.stride).zip(alpha) {
-            let (factor, texel) = match self.mask {
-                Some(Weight { fused: true, .. }) => (Some(texel[0]), &texel[1..]),
-                Some(Weight { fused: false, .. }) => (Some(*alpha), texel),
-                None => (None, texel),
+        let ahead = usize::from(FACTOR == FUSED);
+        // A stencil painted without a colour has no channels, only alpha.
+        let mut colors = colors.chunks_exact_mut(channels.max(1));
+        for (index, (texel, alpha)) in self.summed.chunks_exact(self.stride).zip(alpha).enumerate()
+        {
+            let factor = match FACTOR {
+                FUSED => Some(texel[0]),
+                SAMPLED => Some(*alpha),
+                _ => None,
             };
+            let texel = &texel[ahead..];
             let held = (texel[channels], texel[channels + 1]);
+            let color = colors.next().unwrap_or_default();
             // A fixed count keeps each pixel's colour in registers.
-            let (opacity, own) = match texel.first_chunk::<C>() {
-                Some(color) if C > 0 => {
-                    let mut color = *color;
-                    let held = straighten(&mut color, held, (factor, scales_shape));
-                    colors.extend_from_slice(&color);
+            let (opacity, own) = match (texel.first_chunk::<C>(), color.first_chunk_mut::<C>()) {
+                (Some(texel), Some(color)) if C > 0 => {
+                    let mut value = *texel;
+                    let held = straighten(&mut value, held, (factor, scales_shape));
+                    *color = value;
                     held
                 }
                 _ => {
-                    let start = colors.len();
-                    colors.extend_from_slice(&texel[..channels]);
-                    straighten(&mut colors[start..], held, (factor, scales_shape))
+                    color.copy_from_slice(&texel[..channels]);
+                    straighten(color, held, (factor, scales_shape))
                 }
             };
             *alpha = opacity;
             if let Some(shape) = shape.as_deref_mut() {
-                shape.push(own);
+                shape[index] = own;
             }
         }
     }
