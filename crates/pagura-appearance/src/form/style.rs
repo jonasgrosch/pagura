@@ -12,7 +12,7 @@ pub(super) struct Style {
     pub(super) inset: f64,
     background: Option<Vec<f64>>,
     border: Option<Vec<f64>>,
-    style: Border,
+    outline: Border,
 }
 
 impl Style {
@@ -54,7 +54,7 @@ impl Style {
             },
             background,
             border,
-            style,
+            outline: style,
         })
     }
 
@@ -73,7 +73,7 @@ impl Style {
             ))?;
         }
         if let Some(color) = &self.border {
-            self.style.paint_form(out, bbox, color)?;
+            self.outline.paint_form(out, bbox, color)?;
         }
         out.text("Q\n")
     }
