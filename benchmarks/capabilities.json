@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "55d4b934d60271526bb918a9d889c8e134fae8c3",
+  "audited_revision": "990c4e5c37d72db42b3229f55337275be7ca2bf7",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -182,7 +182,7 @@
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
-    "references/requirements/image.json": "91371db0cd6dc70626fee338bdfb1741409d38cf56ef403c7ec11b070dcafb79",
+    "references/requirements/image.json": "1870dbf784f481b722d3700e4c04f25040d9b2d6097c90474b706fa1f3af7133",
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "46c773802fbd309d3959f3c335348142300fce4a1bbee6cc6996e378ceac8ff7",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
