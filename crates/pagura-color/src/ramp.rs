@@ -20,6 +20,7 @@ use crate::cie;
 use crate::convert::{Channel, Converter};
 use crate::function::Function;
 use crate::space::MAX_COMPONENTS;
+use pagura_core::Meter;
 use std::sync::Arc;
 
 /// The most channels a ramp converts into.
@@ -74,17 +75,16 @@ struct Term {
 }
 
 impl Ramp {
-    /// Bytes per piece of a ramp converting into `channels` channels, its
-    /// share of the index (at most four buckets) included.
-    pub fn piece_bytes(channels: usize) -> usize {
-        size_of::<[f64; 2]>() + channels * size_of::<Term>() + 4 * size_of::<u32>()
-    }
-
     /// Cuts `inputs` (bounds in IEEE total order) into at most `limit`
     /// pieces for `stage`, whose `components` colour components `converter`
-    /// converts, after at most `4 · limit` enclosures. The ramp is empty
-    /// where the stage or conversion has no enclosure or converts into more
-    /// than four channels. Enclosures exist for exponential functions with
+    /// converts, after at most `4 · limit` enclosures. Its storage is
+    /// charged to `bytes` before it is allocated, temporaries included
+    /// (the intervals pending while it cuts, and the replacements of shrunk
+    /// buffers), and temporaries are refunded once released, so `bytes`
+    /// keeps [`Self::bytes`] charged. The ramp is empty, with every charge
+    /// returned, where `bytes` lacks room at any point, where the stage or
+    /// conversion has no enclosure, or where it converts into more than
+    /// four channels. Enclosures exist for exponential functions with
     /// `N` 1, sampled functions of one input and order 1, stitching
     /// functions of them, and conversions through range clips and
     /// one-input tint transforms into the target's own family, from device
@@ -95,8 +95,8 @@ impl Ramp {
         stage: RampStage<'_>,
         components: usize,
         converter: &Converter,
-        inputs: [f64; 2],
-        limit: usize,
+        (inputs, limit): ([f64; 2], usize),
+        bytes: &mut Meter,
     ) -> Self {
         let channels = converter.target().channels();
         let one_input = match stage {
@@ -124,57 +124,70 @@ impl Ramp {
             }
             converter.enclose(values, out)
         };
+        let used = bytes.used();
         let mut ramp = Self {
             channels,
             ..Self::default()
         };
-        if ramp.pieces.try_reserve_exact(limit).is_err()
-            || ramp
-                .terms
-                .try_reserve_exact(limit.saturating_mul(channels))
-                .is_err()
-        {
-            return Self::default();
+        if ramp.cut(enclose, (inputs, limit), bytes).is_ok() {
+            return ramp;
         }
+        drop(ramp);
+        // Everything charged since has been released.
+        bytes.refund(bytes.used().saturating_sub(used));
+        Self::default()
+    }
+
+    /// Cuts `inputs` into pieces by `enclose`, as [`Self::new`] does,
+    /// charging storage to `bytes`.
+    fn cut(
+        &mut self,
+        enclose: impl Fn(Affine, &mut [Channel]) -> Result<(), Undecided>,
+        (inputs, limit): ([f64; 2], usize),
+        bytes: &mut Meter,
+    ) -> pagura_core::Result<()> {
+        bytes.reserve(&mut self.pieces, limit)?;
+        bytes.reserve(&mut self.terms, limit.saturating_mul(self.channels))?;
         let mut out = [Channel::Value(Affine::point(0.0)); MAX_RAMP_CHANNELS];
-        let out = &mut out[..channels];
+        let out = &mut out[..self.channels];
         // Intervals to enclose, the leftmost last: pieces come out ordered.
-        let mut pending = vec![inputs];
+        let mut pending = Vec::new();
+        bytes.reserve_capacity(&mut pending, 1)?;
+        pending.push(inputs);
         let mut budget = limit.saturating_mul(4);
         while let Some([low, high]) = pending.pop() {
-            if budget == 0 || ramp.pieces.len() == limit {
+            if budget == 0 || self.pieces.len() == limit {
                 break;
             }
             budget -= 1;
-            ramp.enclosures += 1;
+            self.enclosures += 1;
             let x = Affine::input(low, high);
             match enclose(x, out) {
-                Ok(()) => ramp.push([low, high], x, out),
+                Ok(()) => self.push([low, high], x, out),
                 // Over the whole interval: the stage itself has no enclosure.
                 Err(Undecided::Unsupported) if [low, high] == inputs => break,
                 Err(Undecided::Unsupported) => {}
                 Err(Undecided::Split { form, at }) => {
                     let [left, right] = split([low, high], x, form, at);
+                    bytes.reserve_capacity(&mut pending, 2)?;
                     pending.extend(right);
                     pending.extend(left);
                 }
             }
         }
-        ramp.pieces.shrink_to_fit();
-        ramp.terms.shrink_to_fit();
-        if !ramp.index(inputs) {
-            return Self::default();
-        }
-        ramp
+        let released = pending.capacity() * size_of::<[f64; 2]>();
+        drop(pending);
+        bytes.refund(released);
+        shrink(&mut self.pieces, bytes);
+        shrink(&mut self.terms, bytes);
+        self.index(inputs, bytes)
     }
 
-    /// Builds the bucket index over `inputs`, two buckets or more a piece;
-    /// false where it cannot be held.
-    fn index(&mut self, [low, high]: [f64; 2]) -> bool {
+    /// Builds the bucket index over `inputs`, two buckets or more a piece,
+    /// charging it to `bytes`.
+    fn index(&mut self, [low, high]: [f64; 2], bytes: &mut Meter) -> pagura_core::Result<()> {
         let buckets = (2 * self.pieces.len()).next_power_of_two();
-        if self.index.try_reserve_exact(buckets).is_err() {
-            return false;
-        }
+        bytes.reserve(&mut self.index, buckets)?;
         self.index.resize(buckets, u32::MAX);
         self.origin = low;
         self.scale = usize_f64(buckets) / (high - low);
@@ -190,7 +203,7 @@ impl Ramp {
             let piece = u32::try_from(i).unwrap_or(u32::MAX);
             self.index[first..=last].fill(piece);
         }
-        true
+        Ok(())
     }
 
     /// The bucket of `x`: nondecreasing in `x`, and 0 for NaN.
@@ -377,6 +390,19 @@ impl Term {
             ..line
         })
     }
+}
+
+/// Shrinks `values` to its length, charging the replacement to `bytes`
+/// before the old storage is released and refunding the old storage after;
+/// leaves it as it is where `bytes` lacks room for both.
+fn shrink<T>(values: &mut Vec<T>, bytes: &mut Meter) {
+    let old = values.capacity();
+    if values.len() == old || bytes.charge_items::<T>(values.len()).is_err() {
+        return;
+    }
+    values.shrink_to_fit();
+    // What is held now stays charged.
+    bytes.refund((old + values.len() - values.capacity()) * size_of::<T>());
 }
 
 /// The parts of `low..=high` (whose input form is `x`) on either side of

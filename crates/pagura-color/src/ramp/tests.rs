@@ -106,7 +106,13 @@ fn certified_colours_round_as_exact_colours() {
         } else {
             domain
         };
-        let ramp = Ramp::new(stage, components, &converter, inputs, 2048);
+        let ramp = Ramp::new(
+            stage,
+            components,
+            &converter,
+            (inputs, 2048),
+            &mut Meter::new(usize::MAX, "ramp test"),
+        );
         if ramp.is_empty() {
             continue;
         }
@@ -141,4 +147,72 @@ fn certified_colours_round_as_exact_colours() {
     // are certified.
     assert!(ramps > 120, "{ramps} ramps");
     assert!(certified * 10 > samples * 8, "{certified} of {samples}");
+}
+
+/// A ramp charges its storage before allocating it: the least budget that
+/// builds one exceeds what it keeps by its temporaries (here a reversed
+/// grid of 4,096 samples, which leaves almost every cell pending while it
+/// cuts), one byte less builds none and returns every charge, and a built
+/// ramp keeps exactly the bytes it holds charged.
+#[test]
+fn construction_charges_its_peak_storage() {
+    let samples: Vec<u8> = (0..4096 * 3)
+        .map(|i| u8::try_from(i % 251).unwrap())
+        .collect();
+    let function = Function::sampled(
+        crate::function::SampledFunction {
+            domain: vec![[0.0, 1.0]],
+            range: vec![[0.0, 1.0]; 3],
+            size: vec![4096],
+            bits_per_sample: 8,
+            order: 1,
+            encode: Some(vec![[4095.0, 0.0]]),
+            decode: None,
+            samples: samples.into(),
+        },
+        &Limits::default(),
+    )
+    .unwrap();
+    let converter = Converter::new(
+        &ColorSpace::DeviceRgb,
+        &Target::new(Process::Rgb),
+        &Conversion::default(),
+    )
+    .unwrap();
+    let build = |max: usize| {
+        let mut bytes = Meter::new(max, "ramp test");
+        let ramp = Ramp::new(
+            RampStage::Single(&function),
+            3,
+            &converter,
+            ([0.0, 1.0], 4096),
+            &mut bytes,
+        );
+        (ramp, bytes.used())
+    };
+    let (ramp, used) = build(usize::MAX);
+    assert!(ramp.len() > 4000, "{} pieces", ramp.len());
+    assert_eq!(used, ramp.bytes());
+    let (mut low, mut high) = (0, used * 4);
+    while low + 1 < high {
+        let mid = low + (high - low) / 2;
+        if build(mid).0.is_empty() {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    let (least, refused) = (build(high), build(low));
+    // At the least budget a buffer may stay unshrunk; what it holds stays
+    // charged.
+    assert_eq!((least.0.len(), least.1), (ramp.len(), least.0.bytes()));
+    assert!(
+        refused.0.is_empty() && refused.1 == 0,
+        "{} bytes kept",
+        refused.1
+    );
+    // The pieces, terms and index alone, which is all an admission of the
+    // kept bytes per piece covered, are not enough.
+    let kept = 4096 * (size_of::<[f64; 2]>() + 3 * size_of::<Term>() + 4 * size_of::<u32>());
+    assert!(high > kept, "{high} bytes built it, {kept} kept");
 }

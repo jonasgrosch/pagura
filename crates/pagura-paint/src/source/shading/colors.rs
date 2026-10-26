@@ -115,8 +115,9 @@ impl Colors {
 
     /// Certifies the colours of function inputs within `inputs` (bounds in
     /// IEEE total order) ahead, in as many pieces as `samples` samples
-    /// repay; skipped where the stage has no enclosure or the meters lack
-    /// room for the most it may take.
+    /// repay; skipped where the stage has no enclosure, the functions meter
+    /// lacks room for the most enclosures it may take, or `bytes` lacks room
+    /// for its storage at any point of its construction.
     pub(super) fn certify(
         &mut self,
         inputs: [f64; 2],
@@ -129,21 +130,28 @@ impl Colors {
             Functions::PerComponent(fs) => RampStage::PerComponent(fs),
         };
         let limit = (samples / SAMPLES_PER_PIECE).min(MAX_PIECES);
-        let held = limit.saturating_mul(Ramp::piece_bytes(self.channels));
         let enclosure = ENCLOSURE_COST.saturating_mul(self.cost);
         if limit < MIN_PIECES
-            || held > bytes.remaining()
             || limit.saturating_mul(4).saturating_mul(enclosure) > functions.remaining()
         {
             return;
         }
-        let ramp = Ramp::new(stage, self.components, &self.converter, inputs, limit);
+        // The ramp charges its storage to `bytes` as it allocates it.
+        let ramp = Ramp::new(
+            stage,
+            self.components,
+            &self.converter,
+            (inputs, limit),
+            bytes,
+        );
         // Within the room checked above.
-        let charged = functions
+        if functions
             .charge_product(ramp.enclosures(), enclosure)
-            .and_then(|()| bytes.charge(ramp.bytes()));
-        if charged.is_ok() {
+            .is_ok()
+        {
             self.ramp = ramp;
+        } else {
+            bytes.refund(ramp.bytes());
         }
     }
 
