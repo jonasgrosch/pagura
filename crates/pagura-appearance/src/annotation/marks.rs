@@ -40,7 +40,7 @@ impl Color {
         let light: Vec<_> = self
             .0
             .iter()
-            .map(|value| (value.clamp(0.0, 1.0) + 1.0) / 2.0)
+            .map(|value| value.clamp(0.0, 1.0).midpoint(1.0))
             .collect();
         if self.0.len() == 4 {
             [Self(dark), Self(light)]
