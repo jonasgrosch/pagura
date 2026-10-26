@@ -5788,19 +5788,6 @@
       }
     },
     {
-      "id": "annotations.display.widget-source-null-normal",
-      "capability": "annotations.appearances",
-      "operation": "render",
-      "fixture": "annotation_display/widget-source-null-normal",
-      "oracle": "rgb8",
-      "expected": {
-        "width": 64,
-        "height": 48,
-        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
-        "tolerance": 1
-      }
-    },
-    {
       "id": "annotations.display.widget-source-null-value",
       "capability": "annotations.appearances",
       "operation": "render",

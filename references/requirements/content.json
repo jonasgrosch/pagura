@@ -2018,6 +2018,7 @@
       "reference": "iso32000-2-full-text",
       "clauses": [
         "7.3.9",
+        "12.5.5 Table 170",
         "12.5.5",
         "12.5.6.19 Table 192",
         "12.7.3 Table 224",
@@ -2028,7 +2029,7 @@
         "12.7.5.4 Tables 233–234"
       ],
       "status": "Shared source/preview/save implementation and independent controls authored after hosted baseline observations; product runtime validation pending",
-      "rule": "Variable-text widgets use effective FT, Ff, V, DA, Q and MaxLen, with null dictionary entries treated as absent. AcroForm supplies DA/DR; MK remains widget-local. A bounded requested-widget view checks Parent ancestry and forward Fields/Kids membership, shares the full form owner's inheritance, terminal-field and value readers, and omits unrelated field subtrees, names, actions and DV. Unnamed separate widgets use their owning field's attributes. Source and explicit edit inputs feed one generator and the existing font/layout, style, resource, MK rotation and appearance serialization owners. Choice V identifies displayed Opt names (the second string of an export/display pair); I is used when consistent with authoritative V and TI selects the first visible row. Ordinary stored AP wins regardless of NeedAppearances. Untouched missing Tx/Ch previews generate from source values; an explicit specification form preview/save can regenerate when NeedAppearances is true, retaining the existing Tx replacement/append rules. Hidden and text-only requests do not inspect field data. No-op ordinary saves preserve bytes; explicit preparation and same-value saves are checked through strict reopen against independent Type3 rectangle coverage.",
+      "rule": "Variable-text widgets use effective FT, Ff, V, DA, Q and MaxLen, with null dictionary entries treated as absent. AcroForm supplies DA/DR; MK remains widget-local. A bounded requested-widget view checks Parent ancestry and forward Fields/Kids membership, shares the full form owner's inheritance, terminal-field and value readers, and omits unrelated field subtrees, names, actions and DV. Unnamed separate widgets use their owning field's attributes. Source and explicit edit inputs feed one generator and the existing font/layout, style, resource, MK rotation and appearance serialization owners. Choice V identifies displayed Opt names (the second string of an export/display pair); I is used when consistent with authoritative V and TI selects the first visible row. Ordinary stored AP wins regardless of NeedAppearances. Untouched missing Tx/Ch previews generate from source values; an explicit specification form preview/save can regenerate when NeedAppearances is true, retaining the existing Tx replacement/append rules. Hidden and text-only requests do not inspect field data. No-op ordinary saves preserve bytes; explicit preparation and same-value saves are checked through strict reopen against independent Type3 rectangle coverage. A present AP dictionary requires N (Table 170); null N is absent under 7.3.9 and is a Syntax error, whereas optional AP=null permits generation.",
       "tests": [
         "annotation_display/widget-observe-ordinary-content",
         "annotation_display/widget-observe-text-72-missing",
@@ -2107,7 +2108,7 @@
         "pagura api::editing::widget_display::source_widgets_untouched_previews_and_saved_reopens_share_layout",
         "pagura api::editing::widget_display::explicitly_saving_source_values_persists_the_same_missing_appearance"
       ],
-      "gaps": "The 48 new pixel controls and source/preview/save checks await hosted runtime validation; the 28 raw adapter observations establish scoped reader behavior, not pixel truth or family support. Rich/CID/complex-script layout, push-button artwork, actions and physical printing remain explicit separate boundaries. Source display does not execute the NeedAppearances request or normalize malformed field membership; full form inspection retains its existing repair contract. No whole-tree cache, timing claim or V01/V02 promotion is introduced."
+      "gaps": "The 47 new pixel controls and source/preview/save checks await hosted runtime validation; the 28 raw adapter observations establish scoped reader behavior, not pixel truth or family support. Rich/CID/complex-script layout, push-button artwork, actions and physical printing remain explicit separate boundaries. Source display does not execute the NeedAppearances request or normalize malformed field membership; full form inspection retains its existing repair contract. No whole-tree cache, timing claim or V01/V02 promotion is introduced. Hosted editing run 40389416478 exposed an incorrect new null-N pixel expectation; primary Table 170 adjudication reclassified that same PDF as Syntax. Product code and the previous 416 pixel controls are unchanged; 47 valid widget pixel controls remain."
     }
   ]
 }

@@ -17,7 +17,8 @@ fn source_widgets_untouched_previews_and_saved_reopens_share_layout() {
         let context = pagura::render_context(Arc::clone(&document));
         let page = document.page(0).unwrap();
         let options = RenderOptions::from_dpi(case.get("dpi").and_then(Json::as_f64).unwrap());
-        let source = pagura::render_page(&document, page, &options).unwrap();
+        let source = pagura::render_page(&document, page, &options)
+            .unwrap_or_else(|error| panic!("{name}: source render: {error}"));
         let expected = fixture("annotation_display", &format!("{name}.ppm"));
         let actual = crate::support::ppm(&source);
         let tolerance = case.get("tolerance").and_then(Json::as_f64).unwrap();
@@ -33,8 +34,13 @@ fn source_widgets_untouched_previews_and_saved_reopens_share_layout() {
             "{name}: source pixel error {worst}"
         );
 
-        let filler = document.form_filler().unwrap().unwrap();
-        let scene = context.filled_scene(&filler, page).unwrap();
+        let filler = document
+            .form_filler()
+            .unwrap_or_else(|error| panic!("{name}: form view: {error}"))
+            .unwrap();
+        let scene = context
+            .filled_scene(&filler, page)
+            .unwrap_or_else(|error| panic!("{name}: untouched preview: {error}"));
         let preview = crate::support::ppm(&context.render_scene(&scene, &options, None).unwrap());
         let expected_preview = fixture(
             "annotation_display",
@@ -53,14 +59,16 @@ fn source_widgets_untouched_previews_and_saved_reopens_share_layout() {
         if case.string("widget_display") == Some("same") {
             assert_eq!(preview, actual, "{name}: source/untouched preview");
         }
-        let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
+        let saved = save_filled_form(&filler, &SaveOptions::default())
+            .unwrap_or_else(|error| panic!("{name}: save: {error}"));
         if filler.form().need_appearances {
             assert!(saved.starts_with(&original), "{name}");
         } else {
             assert_eq!(saved, original, "{name}: no-op save changed source bytes");
         }
         let reopened = open(saved.clone()).unwrap();
-        let after = pagura::render_page(&reopened, reopened.page(0).unwrap(), &options).unwrap();
+        let after = pagura::render_page(&reopened, reopened.page(0).unwrap(), &options)
+            .unwrap_or_else(|error| panic!("{name}: reopened render: {error}"));
         assert_eq!(
             crate::support::ppm(&after),
             preview,

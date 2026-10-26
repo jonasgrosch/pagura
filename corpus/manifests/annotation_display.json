@@ -3828,8 +3828,8 @@
     {
       "id": "annotation_display/widget-source-null-normal",
       "kind": "pdf",
-      "description": "Independent source display, untouched preview, field boundaries and existing view flags",
-      "expected": "render",
+      "description": "Present AP requires N (Table 170); a null N is absent (7.3.9) and fails explicitly",
+      "expected": "open",
       "requirements": [
         "content-source-widget-display"
       ],
@@ -3838,13 +3838,7 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/annotation_display/widget-source-null-normal.ppm",
-      "oracle_sha256": "fc1d1a858a32ab98afcf867189ffc69c72de867bae74b0487816ad0e6bb9ef42",
-      "dpi": 72,
-      "width": 64,
-      "height": 48,
-      "widget_display": "same",
-      "tolerance": 1
+      "render_error": "syntax"
     },
     {
       "id": "annotation_display/widget-source-null-value",

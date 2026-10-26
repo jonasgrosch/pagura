@@ -572,6 +572,13 @@ def widget_source_cases():
             objects[11]['AP']={'N':ref(80)};objects[1]['AcroForm']=ref(90);objects[90]=b'90 0 R'
             oracle_variant='stored';contract='source-only'
         if variant=='zero-width':objects[11]['Rect']=[8,8,8,40];oracle_variant='blank'
+        if variant=='null-normal':
+            # Table 170 requires N in a present AP dictionary. By 7.3.9, null
+            # is absent, so this is malformed rather than missing artwork.
+            yield Case('widget-source-'+variant,widget_pdf(objects),OPEN,(WIDGET_REQUIREMENT,),
+                       'Present AP requires N (Table 170); a null N is absent (7.3.9) and fails explicitly',
+                       extra={'render_error':'syntax'})
+            continue
         yield Case('widget-source-'+variant,widget_pdf(objects),RENDER,(WIDGET_REQUIREMENT,),
                    'Independent source display, untouched preview, field boundaries and existing view flags',
                    oracle=widget_pixels(oracle_variant,dpi),dpi=dpi,

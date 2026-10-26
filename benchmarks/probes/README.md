@@ -510,7 +510,7 @@ extracted page text. The full AcroForm API keeps its existing inspection/repair
 contract; the narrow source view refuses inconsistent membership rather than
 searching unrelated field trees to repair backlinks.
 
-Forty-eight independent controls bring G01 to 464 cases. The 48-by-32 widget
+Forty-seven independent controls bring G01 to 463 cases. The 48-by-32 widget
 has a two-unit inset. At size 10, ascent/descent 8/-2 and advance 6 give baseline
 13 locally (21 on the page); right quadding starts at x=42 and center at x=26.
 Four comb cells are 11 units wide, so centered AB starts at x=23.5 and 34.5.
@@ -536,3 +536,11 @@ and strict reopen with these pixels, retaining original bytes/values. The host
 loop checks native/WASI/browser equality, tiles and no-op reopen. Runtime
 validation of this widget batch is pending; the preceding 416 oracle definitions
 are unchanged, and V01/V02 remain partial.
+
+[Hosted editing run 40389416478](https://github.com/jonasgrosch/pagura/actions/runs/40389416478)
+exposed an incorrect new pixel expectation for `widget-source-null-normal`.
+ISO 32000-2 Table 170 requires N in a present AP dictionary; 7.3.9 makes a null
+N absent. That same PDF is now a Syntax control, consistent with the existing
+shared-selector test. Optional AP=null still permits generation. The correction
+removes only that invalid pixel case (464 to 463); product code, all remaining
+pixels/tolerances and the previous 416 controls are unchanged.
