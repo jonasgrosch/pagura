@@ -12,7 +12,7 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
+    "corpus/manifests/content.json": "595b75779e5cb3df9384d9223e668b3b478af93ebb9a536fb0d86154e9a1e72e",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
@@ -119,7 +119,7 @@
     "crates/pagura-paint/src/prepare/finish.rs": "f15aa5d129e1da9d42696b60f6ba5dade033a985f9e4eba86373f53cee56e82b",
     "crates/pagura-paint/src/prepare/planner/marks.rs": "5f5c362e01e577a3e7b256805fca8a7289e8cc365610bc553a333ffc64eede8a",
     "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "370a442ce611e7a87595ab00e15f0556cf2ced8cd1efe20a18eb9a9d3f5cac10",
-    "crates/pagura-paint/src/prepare/planner/patterns.rs": "1e37d4341ee851c552b43510a9d97280ca62d2086f14659a6b1d680c2f4f95aa",
+    "crates/pagura-paint/src/prepare/planner/patterns.rs": "22a5331008b84ecd26bba08ce123aaf61eb758ea5344f9ea29ad74e57a840729",
     "crates/pagura-paint/src/prepare/storage.rs": "9bd79bb6706725419f663b2f76db00d3561f3deb021c27b2b2489a1c921fd54d",
     "crates/pagura-paint/src/prepare/tests/formats.rs": "66cc22c9ae8219158c8b5b372abab98806e0a7dde0c92e56367c2b67840ef66d",
     "crates/pagura-paint/src/prepare/tests/streaming.rs": "4b0f2831d7045dd10be103fbc6a6bbb931b0cd837e6ce11dbcbbe2926649c0da",
