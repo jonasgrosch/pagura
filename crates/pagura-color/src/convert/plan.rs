@@ -3,6 +3,7 @@
 //! buffer without allocation.
 
 use super::{Colorants, Conversion, Painted, Process, Target};
+use crate::affine::{Affine, Undecided};
 use crate::cie::{self, Calibrated};
 use crate::function::Function;
 use crate::icc::{Intent, Profile};
@@ -374,6 +375,160 @@ impl Plan {
         }
         Painted(painted)
     }
+}
+
+/// A converted value's enclosure (see [`crate::affine`]), and how the
+/// conversion finishes it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Channel {
+    /// The value itself.
+    Value(Affine),
+    /// Linear sRGB that the transfer function raises to its power
+    /// ([`cie::encode`] above its linear segment).
+    Encoded(Affine),
+}
+
+impl Plan {
+    /// Encloses what [`Self::convert`] computes for every value of
+    /// `components` into `output`, for a chain of `Range` clipping and
+    /// one-input tint transforms ending in the target's own family, in a
+    /// device source encoded as RGB or gray, or in an ICC matrix/TRC
+    /// source encoded as RGB.
+    pub(super) fn enclose(
+        &self,
+        components: &[Affine],
+        output: &mut [Channel],
+    ) -> std::result::Result<(), Undecided> {
+        let (None, Kind::Chain(chain)) = (&self.lookup, &self.kind) else {
+            return Err(Undecided::Unsupported);
+        };
+        let mut values = [Affine::point(0.0); MAX_COMPONENTS];
+        let mut len = components.len().min(MAX_COMPONENTS);
+        values[..len].copy_from_slice(&components[..len]);
+        for step in &chain.steps {
+            len = step.enclose(&mut values, len)?;
+        }
+        let (process, spots) = output.split_at_mut(self.process.min(output.len()));
+        chain.enclose_finish(&values[..len], process)?;
+        spots.fill(Channel::Value(Affine::point(1.0)));
+        Ok(())
+    }
+}
+
+impl Chain {
+    /// Encloses [`Self::finish`].
+    fn enclose_finish(
+        &self,
+        values: &[Affine],
+        output: &mut [Channel],
+    ) -> std::result::Result<(), Undecided> {
+        let n = |i: usize| match values.get(i) {
+            Some(v) => v.clamp(0.0, 1.0),
+            None => Ok(Affine::point(0.0)),
+        };
+        let one = Affine::point(1.0);
+        let rgb = match &self.terminal {
+            Terminal::Native { complement } => {
+                for (i, out) in output.iter_mut().enumerate() {
+                    let v = n(i)?;
+                    *out = Channel::Value(if *complement { one.sub(v) } else { v });
+                }
+                return Ok(());
+            }
+            Terminal::All => return Err(Undecided::Unsupported),
+            Terminal::Rgb { source, .. } => match source {
+                Source::Gray => [n(0)?; 3].map(Channel::Value),
+                Source::Rgb => [n(0)?, n(1)?, n(2)?].map(Channel::Value),
+                Source::Cmyk => {
+                    let k = n(3)?;
+                    let ink = |i| Ok(one.sub(n(i)?.add(k).clamp(f64::MIN, 1.0)?));
+                    [ink(0)?, ink(1)?, ink(2)?].map(Channel::Value)
+                }
+                Source::Inverse => [one.sub(n(0)?); 3].map(Channel::Value),
+                Source::Sycc | Source::Calibrated(_) => return Err(Undecided::Unsupported),
+                Source::Icc {
+                    profile,
+                    intent,
+                    range,
+                    count,
+                } => {
+                    let clipped = enclose_clip(values, range)?;
+                    let linear =
+                        profile.enclose_linear(clipped.get(..*count).unwrap_or(&[]), *intent)?;
+                    let mut rgb = [Channel::Value(one); 3];
+                    for (out, v) in rgb.iter_mut().zip(linear) {
+                        *out = match cie::enclose_encode(v)? {
+                            Some(encoded) => Channel::Value(encoded),
+                            None => Channel::Encoded(v),
+                        };
+                    }
+                    rgb
+                }
+            },
+        };
+        let Terminal::Rgb { encode, .. } = &self.terminal else {
+            return Err(Undecided::Unsupported);
+        };
+        match (encode, rgb) {
+            (Encode::Rgb, rgb) => {
+                for (out, value) in output.iter_mut().zip(rgb) {
+                    *out = value;
+                }
+            }
+            (Encode::Gray, [Channel::Value(r), Channel::Value(g), Channel::Value(b)]) => {
+                if let Some(out) = output.first_mut() {
+                    *out = Channel::Value(r.scale(0.3).add(g.scale(0.59)).add(b.scale(0.11)));
+                }
+            }
+            _ => return Err(Undecided::Unsupported),
+        }
+        Ok(())
+    }
+}
+
+impl Step {
+    /// Encloses [`Self::apply`] of the first `len` of `values`, returning
+    /// the number of values that continue.
+    fn enclose(
+        &self,
+        values: &mut [Affine; MAX_COMPONENTS],
+        len: usize,
+    ) -> std::result::Result<usize, Undecided> {
+        match self {
+            Self::Lookup(_) => Err(Undecided::Unsupported),
+            Self::Clip { range, count } => {
+                let clipped = enclose_clip(values.get(..len).unwrap_or(&[]), range)?;
+                let count = (*count).min(4);
+                values[..count].copy_from_slice(&clipped[..count]);
+                Ok(count)
+            }
+            Self::Tint(function) => {
+                let (1, Some(&input)) = (function.inputs(), values.first().filter(|_| len > 0))
+                else {
+                    return Err(Undecided::Unsupported);
+                };
+                let outputs = function.outputs().min(MAX_COMPONENTS);
+                function.enclose(input.clamp(0.0, 1.0)?, &mut values[..outputs])?;
+                Ok(outputs)
+            }
+        }
+    }
+}
+
+/// Encloses [`clip_icc`].
+fn enclose_clip(
+    components: &[Affine],
+    range: &[[f64; 2]; 4],
+) -> std::result::Result<[Affine; 4], Undecided> {
+    let mut clipped = [Affine::point(0.0); 4];
+    for (i, (out, &[low, high])) in clipped.iter_mut().zip(range).enumerate() {
+        *out = components
+            .get(i)
+            .copied()
+            .unwrap_or(Affine::point(0.0))
+            .clamp(low, high)?;
+    }
+    Ok(clipped)
 }
 
 /// The encoding of linear value `v`, or where `round` of it is all that

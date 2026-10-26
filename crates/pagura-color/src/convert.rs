@@ -16,6 +16,8 @@
 
 mod plan;
 
+pub(crate) use plan::Channel;
+
 use crate::function::Function;
 use crate::icc::Intent;
 use crate::space::ColorSpace;
@@ -274,6 +276,16 @@ impl Converter {
             (output, self.target.channels()),
             Some(&round),
         );
+    }
+
+    /// Encloses what [`Self::convert`] computes for every value of
+    /// `components` (see [`crate::affine`]).
+    pub(crate) fn enclose(
+        &self,
+        components: &[crate::affine::Affine],
+        output: &mut [Channel],
+    ) -> std::result::Result<(), crate::affine::Undecided> {
+        self.plan.enclose(components, output)
     }
 
     /// The channels a colour paints under overprint mode 1 (`OPM 1`,

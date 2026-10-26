@@ -6,10 +6,12 @@
 
 mod bounds;
 
+use crate::affine::{Affine, Undecided};
 use crate::features;
 use pagura_core::{Error, Result};
 
 pub use bounds::encode_bounds;
+pub(crate) use bounds::{MARGIN, power_bounds, power_cubic};
 
 /// A 3×3 matrix applied to column vectors, row by row.
 pub type Matrix = [[f64; 3]; 3];
@@ -116,6 +118,38 @@ pub fn xyz_to_srgb(xyz: [f64; 3]) -> [f64; 3] {
 /// takes to encoded sRGB.
 pub fn linear_srgb(xyz: [f64; 3]) -> [f64; 3] {
     map(XYZ_TO_LINEAR_SRGB, xyz).map(|v| v.clamp(0.0, 1.0))
+}
+
+/// Encloses [`map`] (see [`crate::affine`]).
+pub(crate) fn enclose_map(matrix: Matrix, value: [Affine; 3]) -> [Affine; 3] {
+    matrix.map(|row| {
+        value[0]
+            .scale(row[0])
+            .add(value[1].scale(row[1]))
+            .add(value[2].scale(row[2]))
+    })
+}
+
+/// Encloses [`linear_srgb`].
+pub(crate) fn enclose_linear_srgb(xyz: [Affine; 3]) -> Result<[Affine; 3], Undecided> {
+    let [r, g, b] = enclose_map(XYZ_TO_LINEAR_SRGB, xyz);
+    Ok([r.clamp(0.0, 1.0)?, g.clamp(0.0, 1.0)?, b.clamp(0.0, 1.0)?])
+}
+
+/// The branch [`encode`] takes for every value of `v`: the enclosure of
+/// the encoded value where every value is scaled, `None` where every value
+/// is raised to the power.
+pub(crate) fn enclose_encode(v: Affine) -> Result<Option<Affine>, Undecided> {
+    if v.high() <= LINEAR_LIMIT {
+        Ok(Some(v.scale(12.92)))
+    } else if v.low() > LINEAR_LIMIT {
+        Ok(None)
+    } else {
+        Err(Undecided::Split {
+            form: v,
+            at: LINEAR_LIMIT,
+        })
+    }
 }
 
 /// The sRGB transfer function (IEC 61966-2-1) of a linear value in `0..=1`.

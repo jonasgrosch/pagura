@@ -128,7 +128,7 @@ impl ShadingSource {
             Use::Operator,
             (&mut bytes, functions),
         )?
-        .reserve(pixels, functions)
+        .reserve(pixels, (&mut bytes, functions))
     }
 
     /// Prepares `shading` as a shading pattern's paint (8.7.4.4): samples
@@ -152,7 +152,7 @@ impl ShadingSource {
             Use::Pattern,
             (&mut bytes, functions),
         )?
-        .reserve(pixels, functions)
+        .reserve(pixels, (&mut bytes, functions))
     }
 
     fn new(
@@ -225,11 +225,29 @@ impl ShadingSource {
     }
 
     /// Reserves execution work; preparation is charged before evaluation.
-    fn reserve(self, pixels: usize, functions: &mut Meter) -> Result<Self> {
+    /// Where samples go through [`Self::fill_batched`], their colours are
+    /// also certified ahead for that many samples.
+    fn reserve(
+        mut self,
+        pixels: usize,
+        (bytes, functions): (&mut Meter, &mut Meter),
+    ) -> Result<Self> {
         let samples = pixels
             .checked_mul(self.samples())
             .ok_or(Error::limit("shading sample count overflow"))?;
         functions.charge_product(samples, self.colors.cost())?;
+        let inputs = match &*self.geometry {
+            Geometry::Axial(g) if self.aligned.is_none() => Some(g.inputs()),
+            Geometry::Radial(g) => Some(g.inputs()),
+            _ => None,
+        };
+        if let Some(inputs) = inputs
+            && self.constant.is_none()
+            && self.single_sample()
+            && self.colors.batched()
+        {
+            self.colors.certify(inputs, samples, (bytes, functions));
+        }
         Ok(self)
     }
 
