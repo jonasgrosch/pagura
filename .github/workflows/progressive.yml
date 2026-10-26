@@ -21,8 +21,8 @@ jobs:
         run: cargo clippy -p pagura-core -p pagura-codec -p pagura-document -p pagura-raster -p pagura-paint -p pagura-render -p pagura --all-targets --all-features -- -D warnings
       - name: Verify complete and extendable parser windows
         run: cargo test -p pagura-core
-      - name: Verify source availability and lease lifetime
-        run: cargo test -p pagura-document --test sources --test windows
+      - name: Verify complete-document and sparse-window contracts
+        run: cargo test -p pagura-document
       - name: Verify facade source contract
         run: 'cargo test -p pagura --test api source::'
       - name: Verify shared glyph-store callers

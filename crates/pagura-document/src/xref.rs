@@ -4,7 +4,7 @@ pub(crate) mod rebuild;
 pub(crate) mod stream;
 
 use crate::repairs;
-use pagura_core::syntax::{Origin, Parser, is_whitespace};
+use pagura_core::syntax::{Origin, ParseMode, Parser, is_whitespace};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, Meter, ObjectId, Position,
     Result,
@@ -382,6 +382,7 @@ fn merge_entries(
 }
 
 /// One cross-reference section and the trailer that ends it.
+#[derive(Debug)]
 pub(crate) struct Section {
     pub(crate) entries: BTreeMap<u32, XrefEntry>,
     pub(crate) trailer: Dictionary,
@@ -398,10 +399,24 @@ fn section(
 ) -> Result<Section> {
     let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits)?
         .with_recovery(diagnostics.mode());
-    if !parser.keyword(b"xref") {
-        return stream::read(bytes, offset, limits, diagnostics);
+    parse_section(&mut parser, bytes.len(), limits, diagnostics)
+}
+
+/// Shared section grammar. Source extents are checked against the declared
+/// file length, never against the size of a temporary parser window. `end`
+/// remains relative to this parser's input, as `Parser::offset` is.
+fn parse_section<M: ParseMode>(
+    parser: &mut Parser<'_, M>,
+    file_length: usize,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> std::result::Result<Section, M::Fault> {
+    let start = parser.offset();
+    if !parser.keyword_with_boundary(b"xref")? {
+        parser.seek(start)?;
+        return stream::parse(parser, file_length, limits, diagnostics);
     }
-    let entries = classic_section(bytes, &mut parser, limits)?;
+    let entries = classic_section(file_length, parser, limits)?;
     let trailer = parser
         .parse()?
         .as_dictionary()
@@ -526,20 +541,23 @@ fn find_startxref(
 }
 
 /// Reads the subsections of a classic table, up to `trailer` (clause 7.5.4).
-fn classic_section(
-    bytes: &[u8],
-    parser: &mut Parser<'_>,
+fn classic_section<M: ParseMode>(
+    file_length: usize,
+    parser: &mut Parser<'_, M>,
     limits: &Limits,
-) -> Result<BTreeMap<u32, XrefEntry>> {
+) -> std::result::Result<BTreeMap<u32, XrefEntry>, M::Fault> {
     let mut entries = BTreeMap::new();
-    while !parser.keyword(b"trailer") {
-        let invalid = |parser: &Parser<'_>, message| Error::syntax(message).at(parser.position());
+    while !parser.keyword_with_boundary(b"trailer")? {
+        let invalid =
+            |parser: &Parser<'_, M>, message| Error::syntax(message).at(parser.position());
         let first = u32::try_from(parser.unsigned()?)
             .map_err(|_| invalid(parser, "object number out of range"))?;
         let count = usize::try_from(parser.unsigned()?)
             .map_err(|_| invalid(parser, "subsection length out of range"))?;
         if entries.len().saturating_add(count) > limits.objects {
-            return Err(Error::limit("cross-reference entry budget exceeded").at(parser.position()));
+            return Err(Error::limit("cross-reference entry budget exceeded")
+                .at(parser.position())
+                .into());
         }
         for index in 0..count {
             let number = u32::try_from(index)
@@ -552,13 +570,15 @@ fn classic_section(
                 .map_err(|_| invalid(parser, "generation out of range"))?;
             let kind = parser.word()?;
             let location = match kind {
-                b"n" if number == 0 => return Err(invalid(parser, "object 0 cannot be in use")),
-                b"n" if offset >= bytes.len() => {
-                    return Err(invalid(parser, "object offset outside the file"));
+                b"n" if number == 0 => {
+                    return Err(invalid(parser, "object 0 cannot be in use").into());
+                }
+                b"n" if offset >= file_length => {
+                    return Err(invalid(parser, "object offset outside the file").into());
                 }
                 b"n" => Location::Offset(offset),
                 b"f" => Location::Free,
-                _ => return Err(invalid(parser, "entry type must be n or f")),
+                _ => return Err(invalid(parser, "entry type must be n or f").into()),
             };
             if entries
                 .insert(
@@ -570,9 +590,12 @@ fn classic_section(
                 )
                 .is_some()
             {
-                return Err(invalid(parser, "subsections overlap"));
+                return Err(invalid(parser, "subsections overlap").into());
             }
         }
     }
     Ok(entries)
 }
+
+#[cfg(test)]
+mod tests;

@@ -270,12 +270,23 @@ fn crypt_params(value: Option<&Value>) -> Result<()> {
 }
 
 /// Stream EOL syntax is stricter than ordinary PDF white space (7.3.8.1).
-pub(crate) fn start(
-    parser: &pagura_core::syntax::Parser<'_>,
+pub(crate) fn start<M: pagura_core::syntax::ParseMode>(
+    parser: &mut pagura_core::syntax::Parser<'_, M>,
     diagnostics: &mut Diagnostics,
     id: Option<ObjectId>,
-) -> Result<usize> {
+) -> std::result::Result<usize, M::Fault> {
     let offset = parser.offset();
+    let first = offset
+        .checked_add(1)
+        .ok_or(Error::limit("stream EOL offset overflow"))?;
+    parser.has_bytes(first)?;
+    if parser.data().get(offset) == Some(&b'\r') {
+        // A CR at a window boundary may still be the first byte of CRLF.
+        let second = first
+            .checked_add(1)
+            .ok_or(Error::limit("stream EOL offset overflow"))?;
+        parser.has_bytes(second)?;
+    }
     match parser.data().get(offset..) {
         Some([b'\r', b'\n', ..]) => Ok(offset + 2),
         Some([b'\n', ..]) => Ok(offset + 1),
@@ -291,7 +302,9 @@ pub(crate) fn start(
             Ok(offset + 1)
         }
         _ => Err(
-            Error::syntax("stream keyword must be followed by LF or CRLF").at(parser.position()),
+            Error::syntax("stream keyword must be followed by LF or CRLF")
+                .at(parser.position())
+                .into(),
         ),
     }
 }

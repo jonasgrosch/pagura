@@ -11,6 +11,7 @@
       "tests": [
         "pagura-document/tests/sources.rs",
         "pagura-document/tests/windows.rs",
+        "pagura-document/src/xref/tests.rs",
         "pagura/tests/api/source.rs",
         "pagura-core/tests/windows.rs",
         "pagura-core/tests/memory.rs",

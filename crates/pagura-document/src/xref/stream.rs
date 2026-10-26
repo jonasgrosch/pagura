@@ -2,8 +2,8 @@
 
 use super::{Location, RevisionKind, Section, XrefEntry, integer_offset};
 use pagura_codec::{Filter, FilterChain};
-use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Result, Value};
+use pagura_core::syntax::{Origin, ParseMode, Parser};
+use pagura_core::{Diagnostics, Dictionary, Error, Limits, ObjectId, Result, Value};
 use std::collections::BTreeMap;
 
 /// Entry types of Table 18.
@@ -19,35 +19,46 @@ pub(crate) fn read(
 ) -> Result<Section> {
     let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits)?
         .with_recovery(diagnostics.mode());
+    parse(&mut parser, bytes.len(), limits, diagnostics)
+}
+
+pub(super) fn parse<M: ParseMode>(
+    parser: &mut Parser<'_, M>,
+    file_length: usize,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> std::result::Result<Section, M::Fault> {
+    let position = parser.position();
     let number = u32::try_from(parser.unsigned()?)
         .map_err(|_| Error::syntax("xref stream number out of range"))?;
     let generation = u16::try_from(parser.unsigned()?)
         .map_err(|_| Error::syntax("xref stream generation out of range"))?;
     let id = ObjectId::new(number, generation);
-    let result = read_body(&mut parser, limits, diagnostics);
-    result.map_err(|error| error.at(Position::File(offset)).in_object(id))
+    read_body(parser, file_length, limits, diagnostics)
+        .map_err(|fault| M::map_error(fault, |error| error.at(position).in_object(id)))
 }
 
-fn read_body(
-    parser: &mut Parser<'_>,
+fn read_body<M: ParseMode>(
+    parser: &mut Parser<'_, M>,
+    file_length: usize,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<Section> {
-    if !parser.keyword(b"obj") {
-        return Err(Error::syntax("expected xref stream object header"));
+) -> std::result::Result<Section, M::Fault> {
+    if !parser.keyword_with_boundary(b"obj")? {
+        return Err(Error::syntax("expected xref stream object header").into());
     }
     let Value::Dictionary(dictionary) = parser.parse()? else {
-        return Err(Error::syntax("xref stream must be a dictionary"));
+        return Err(Error::syntax("xref stream must be a dictionary").into());
     };
     if !dictionary.is_name(b"Type", b"XRef") {
-        return Err(Error::syntax("cross-reference stream Type must be XRef"));
+        return Err(Error::syntax("cross-reference stream Type must be XRef").into());
     }
     if dictionary.contains_key(b"F") {
-        return Err(Error::syntax("xref stream cannot be external"));
+        return Err(Error::syntax("xref stream cannot be external").into());
     }
     let raw = bootstrap_stream_data(parser, &dictionary, limits, diagnostics)?;
-    if !parser.keyword(b"endobj") {
-        return Err(Error::syntax("missing xref stream endobj"));
+    if !parser.keyword_with_boundary(b"endobj")? {
+        return Err(Error::syntax("missing xref stream endobj").into());
     }
     let end = parser.offset();
     diagnostics.absorb(parser.take_diagnostics())?;
@@ -58,15 +69,15 @@ fn read_body(
         .iter()
         .any(|filter| matches!(filter, Filter::Crypt(_)))
     {
-        return Err(Error::syntax("xref stream cannot use a Crypt filter"));
+        return Err(Error::syntax("xref stream cannot use a Crypt filter").into());
     }
     let data = chain.decode(raw, limits.decoded_bytes, diagnostics)?;
     let entries = entries(&data, &dictionary, limits)?;
     if entries
         .values()
-        .any(|entry| matches!(entry.location, Location::Offset(at) if at >= parser.data().len()))
+        .any(|entry| matches!(entry.location, Location::Offset(at) if at >= file_length))
     {
-        return Err(Error::syntax("object offset outside the file"));
+        return Err(Error::syntax("object offset outside the file").into());
     }
     Ok(Section {
         entries,
@@ -78,31 +89,36 @@ fn read_body(
 
 /// The data of a stream read before any object can be resolved, such as a
 /// cross-reference stream, which requires a direct `/Length` (7.5.8.2).
-pub(crate) fn bootstrap_stream_data<'a>(
-    parser: &mut Parser<'a>,
+pub(crate) fn bootstrap_stream_data<'a, M: ParseMode>(
+    parser: &mut Parser<'a, M>,
     dictionary: &Dictionary,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<&'a [u8]> {
+) -> std::result::Result<&'a [u8], M::Fault> {
     let length =
         integer_offset(dictionary, b"Length")?.ok_or(Error::syntax("stream Length is missing"))?;
     if length > limits.stream_bytes {
-        return Err(Error::limit("stream size budget exceeded"));
+        return Err(Error::limit("stream size budget exceeded").into());
     }
-    if !parser.keyword(b"stream") {
-        return Err(Error::syntax("expected stream keyword"));
+    if !parser.keyword_with_boundary(b"stream")? {
+        return Err(Error::syntax("expected stream keyword").into());
     }
     let start = crate::stream::start(parser, diagnostics, None)?;
     let end = start
         .checked_add(length)
         .ok_or(Error::syntax("stream length overflow"))?;
+    if !parser.has_bytes(end)? {
+        return Err(Error::syntax("stream extends beyond the file").into());
+    }
     let data = parser
         .data()
         .get(start..end)
         .ok_or(Error::syntax("stream extends beyond the file"))?;
     parser.seek(end)?;
-    if !parser.keyword(b"endstream") {
-        return Err(Error::syntax("stream Length does not end at endstream").at(parser.position()));
+    if !parser.keyword_with_boundary(b"endstream")? {
+        return Err(Error::syntax("stream Length does not end at endstream")
+            .at(parser.position())
+            .into());
     }
     Ok(data)
 }

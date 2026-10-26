@@ -458,12 +458,15 @@ source supply and backpressure. Preserve complete-buffer convenience APIs and
 atomic scene recording/source-order preflight. Supply unavailable ranges through
 host capabilities; do not cache temporary absence as a terminal PDF error.
 
-Between-band cancellation already works in library calls. Remaining work is
-resuming without replay, exposing jobs/cancellation in the host, and bounding
-latency in source/preparation/codec stages. Bounded native/WASM worker scheduling
-is a subsequent D01 slice, outside the async plan's first release. Keep one
-shared `PreparedScene`/caller-owned scratch model; parallelism cannot add a
-different rendering route.
+Owned render sessions and incremental PNG encoding now preserve cursors and
+bounded output leases. Remaining work includes source/document integration,
+host jobs and cancellation, and bounded latency in loading/preparation/codec
+stages. Bounded native/WASM worker scheduling is required within group 11,
+including priorities, aggregate queue/memory admission, starvation controls and
+shutdown. Source/output waits release CPU admission. Keep one shared
+`PreparedScene` and private worker scratch model; parallelism cannot add a
+different rendering route. The complete group remains open until these
+scheduling and source/transport gates pass.
 
 Acceptance: first-page display works before whole-file arrival on linearized
 fixtures; non-linearized files request required ranges correctly. Short/overlapping

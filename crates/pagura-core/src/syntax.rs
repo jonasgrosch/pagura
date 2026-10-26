@@ -181,8 +181,12 @@ impl<'a, M: ParseMode> Parser<'a, M> {
 
     /// The current location as a [`Position`].
     pub fn position(&self) -> Position {
+        self.position_at(self.position)
+    }
+
+    fn position_at(&self, offset: usize) -> Position {
         // Construction admits the complete slice and seek stays within it.
-        self.origin.position(self.origin_offset + self.position)
+        self.origin.position(self.origin_offset + offset)
     }
 
     /// Moves to `offset`.
@@ -303,6 +307,10 @@ impl<'a, M: ParseMode> Parser<'a, M> {
     }
 
     /// Consumes `word` if it is the next complete token.
+    ///
+    /// Window callbacks that branch on a missing keyword should use
+    /// [`Self::keyword_with_boundary`] to distinguish an undecided prefix
+    /// from a known mismatch before issuing a semantic error.
     pub fn keyword(&mut self, word: &[u8]) -> bool {
         self.skip_whitespace();
         let rest = self.rest();
@@ -316,6 +324,37 @@ impl<'a, M: ParseMode> Parser<'a, M> {
         } else {
             false
         }
+    }
+
+    /// Consumes `word`, distinguishing an extendable prefix from a mismatch.
+    /// Complete-input matching is identical to [`Self::keyword`].
+    ///
+    /// # Errors
+    /// Returns an incomplete-window failure when additional bytes are needed
+    /// to decide whether the token matches. A known mismatch returns `false`.
+    pub fn keyword_with_boundary(&mut self, word: &[u8]) -> ModeResult<M, bool> {
+        self.skip_whitespace();
+        if self.mode.extendable() && word.starts_with(self.rest()) {
+            self.window_boundary();
+            return Err(self.end_error("incomplete keyword"));
+        }
+        Ok(self.keyword(word))
+    }
+
+    /// Whether this input contains every byte before slice-relative `end`.
+    /// Does not move the parser. A complete input returns `false` at EOF;
+    /// a window requests extension before the caller can classify truncation.
+    ///
+    /// # Errors
+    /// Returns an incomplete-window failure when `end` is beyond an
+    /// extendable slice. Arithmetic constructing `end` remains the caller's
+    /// responsibility and must be checked before this operation.
+    pub fn has_bytes(&mut self, end: usize) -> ModeResult<M, bool> {
+        if end > self.data.len() && self.mode.extendable() {
+            self.window_boundary();
+            return Err(self.end_error("incomplete byte range"));
+        }
+        Ok(end <= self.data.len())
     }
 
     /// Reads an unsigned decimal integer token.
@@ -458,7 +497,7 @@ impl<'a, M: ParseMode> Parser<'a, M> {
                             NAME_ESCAPE,
                             "invalid name escape retained as a literal hash",
                         )
-                        .at(self.origin.position(self.position - 1)),
+                        .at(self.position_at(self.position - 1)),
                     )?;
                 }
             }
@@ -813,7 +852,7 @@ impl<'a, M: ParseMode> Parser<'a, M> {
                 return Err(self.end_error("incomplete number"));
             }
             return Err(Error::syntax("invalid number")
-                .at(self.origin.position(start))
+                .at(self.position_at(start))
                 .into());
         }
         let negative = token.first() == Some(&b'-');
@@ -846,13 +885,13 @@ impl<'a, M: ParseMode> Parser<'a, M> {
                         LEADING_ZERO_REFERENCE,
                         "leading zeros removed from reference object or generation number",
                     )
-                    .at(self.origin.position(start)),
+                    .at(self.position_at(start)),
                 )?;
             }
             if reference.number == 0 {
                 self.diagnostics.repair(
                     Diagnostic::new(ZERO_REFERENCE, "object-zero reference interpreted as null")
-                        .at(self.origin.position(start)),
+                        .at(self.position_at(start)),
                 )?;
                 return Ok(Value::Null);
             }

@@ -21,6 +21,8 @@ pub trait ParseMode: sealed::Sealed + fmt::Debug {
     fn pending(&self) -> bool;
     /// Whether this slice can be extended.
     fn extendable(&self) -> bool;
+    /// Adds context to a terminal error without changing input availability.
+    fn map_error(fault: Self::Fault, map: impl FnOnce(Error) -> Error) -> Self::Fault;
 }
 
 /// Complete-input parser mode, preserving the existing terminal error API.
@@ -39,6 +41,9 @@ impl ParseMode for CompleteInput {
     }
     fn extendable(&self) -> bool {
         false
+    }
+    fn map_error(error: Error, map: impl FnOnce(Error) -> Error) -> Error {
+        map(error)
     }
 }
 
@@ -77,6 +82,12 @@ impl ParseMode for WindowInput {
     }
     fn extendable(&self) -> bool {
         self.end == InputEnd::Extendable
+    }
+    fn map_error(fault: ParseFault, map: impl FnOnce(Error) -> Error) -> ParseFault {
+        match fault {
+            ParseFault::Incomplete => ParseFault::Incomplete,
+            ParseFault::Invalid(error) => ParseFault::Invalid(map(error)),
+        }
     }
 }
 

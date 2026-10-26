@@ -265,3 +265,84 @@ fn origin_admission_and_seek_check_overflow_without_changing_local_offsets() {
     assert_eq!(parser.offset(), 0);
     assert_eq!(parser.position(), Position::File(usize::MAX));
 }
+
+#[test]
+fn token_start_errors_and_repairs_keep_the_window_origin() {
+    for origin in [Origin::File, Origin::Stream(ObjectId::new(5, 1))] {
+        let error = Parser::new(b" 1..2]", origin, Limits::default())
+            .with_origin_offset(307)
+            .unwrap()
+            .read_window(InputEnd::Extendable, Parser::parse)
+            .unwrap_err();
+        assert_eq!(error.position, origin.position(308));
+        for (bytes, expected) in [
+            (&b"/A#x1]"[..], 309),
+            (&b" 01 0 R]"[..], 308),
+            (&b" 0 0 R]"[..], 308),
+        ] {
+            let WindowRead::Complete(parsed) = Parser::new(bytes, origin, Limits::default())
+                .with_origin_offset(307)
+                .unwrap()
+                .with_recovery(Recovery::Repair)
+                .read_window(InputEnd::Extendable, Parser::parse)
+                .unwrap()
+            else {
+                panic!("completed repaired token")
+            };
+            assert_eq!(parsed.diagnostics.len(), 1);
+            assert_eq!(parsed.diagnostics[0].position, origin.position(expected));
+        }
+    }
+}
+
+#[test]
+fn grammar_branches_wait_only_for_undecided_keyword_prefixes() {
+    let bytes = b"endstream";
+    for split in 0..=bytes.len() {
+        let result = Parser::new(&bytes[..split], Origin::Buffer, Limits::default())
+            .read_window(InputEnd::Extendable, |parser| {
+                parser.keyword_with_boundary(bytes)
+            })
+            .unwrap();
+        assert!(matches!(result, WindowRead::Incomplete { .. }));
+    }
+    for (bytes, expected) in [(&b"endstream]"[..], true), (b"endstX", false)] {
+        let WindowRead::Complete(parsed) = Parser::new(bytes, Origin::Buffer, Limits::default())
+            .read_window(InputEnd::Extendable, |parser| {
+                parser.keyword_with_boundary(b"endstream")
+            })
+            .unwrap()
+        else {
+            panic!("decided keyword")
+        };
+        assert_eq!(parsed.value, expected);
+    }
+    let mut complete = Parser::new(b"endstr", Origin::Buffer, Limits::default());
+    assert!(!complete.keyword_with_boundary(b"endstream").unwrap());
+    assert_eq!(complete.offset(), 0);
+}
+
+#[test]
+fn declared_byte_extents_separate_window_extension_from_real_truncation() {
+    let WindowRead::Complete(parsed) = Parser::new(b"ab", Origin::Buffer, Limits::default())
+        .read_window(InputEnd::Complete, |parser| parser.has_bytes(3))
+        .unwrap()
+    else {
+        panic!("true EOF is known")
+    };
+    assert!(!parsed.value);
+    assert_eq!(parsed.offset, 0);
+    assert!(matches!(
+        Parser::new(b"ab", Origin::Buffer, Limits::default())
+            .read_window(InputEnd::Extendable, |parser| parser.has_bytes(3))
+            .unwrap(),
+        WindowRead::Incomplete { .. }
+    ));
+    let WindowRead::Complete(parsed) = Parser::new(b"ab", Origin::Buffer, Limits::default())
+        .read_window(InputEnd::Extendable, |parser| parser.has_bytes(2))
+        .unwrap()
+    else {
+        panic!("extent already present")
+    };
+    assert!(parsed.value);
+}
