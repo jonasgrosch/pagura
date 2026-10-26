@@ -589,26 +589,34 @@ fn swept(pieces: &[Piece], rules: &[FillRule], full: bool) -> (Vec<Line>, usize,
 }
 
 #[test]
-fn doubtful_pair_scans_are_charged_when_swaps_decline() {
+fn doubtful_pairs_expire_once_and_large_live_sets_decline() {
     let mut resolver = Resolver {
         heights: vec![0.0, 0.25, 1.0],
         lowest: f64::INFINITY,
-        reaching: vec![(2, 0, 1); 1024],
         ..Resolver::default()
     };
-    let mut work = Meter::new(1024, "doubtful pairs");
-    assert_eq!(
-        resolver
-            .take_swaps(&[], FillRule::NonZero, 1, (0, 0, 0), &mut work)
-            .unwrap(),
-        None
-    );
-    assert_eq!(work.used(), 1024);
-    assert!(
-        resolver
-            .take_swaps(&[], FillRule::NonZero, 1, (0, 0, 0), &mut work)
-            .is_err()
-    );
+    for end in (2..1026).rev() {
+        resolver.reach(end, (0, 1));
+    }
+    // A thousand live pairs need no repeated scan or additional work.
+    let mut work = Meter::new(0, "doubtful pairs");
+    for _ in 0..10 {
+        assert_eq!(
+            resolver
+                .take_swaps(&[], FillRule::NonZero, 1, (0, 0, 0), &mut work)
+                .unwrap(),
+            None
+        );
+        assert_eq!(resolver.reaching.len(), 1024);
+    }
+    for height in 2..1027 {
+        resolver.expire(height);
+        assert_eq!(resolver.reaching.len(), 1026 - height);
+        assert!(resolver.reaching.iter().all(|p| p.0 >= height));
+        for at in 1..resolver.reaching.len() {
+            assert!(resolver.reaching[(at - 1) / 2].0 <= resolver.reaching[at].0);
+        }
+    }
 }
 
 /// Fans of quadrilaterals crossing many times over inside their union, alone,
