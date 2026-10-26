@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "bb32f155a8720d1cd9b582607cf1308aa47529e5",
+  "audited_revision": "7017dc6bb94a44a900915a8a041823b7ea5f5f02",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -228,7 +228,7 @@
     "tools/fixturegen/files.py": "eb590a18a172631ce232d38ba5365749bf2b5a4f21362b93e04f1dc2f0d87d36",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
-    "tools/page_attachments_test.mjs": "eae5f6039307b73555ade723a7da97390f3d150e5bf1780abee04221e5989033",
+    "tools/page_attachments_test.mjs": "253795e1c4e96ba4c49ad44acc2217889dce1b8af5e09658ad06d36a55f61fcb",
     "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
     "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
     "web/client.mjs": "ea78b0bf556c12346a1b9769a078e7835d6915637c7a653967786c9b1e40f3f2",
