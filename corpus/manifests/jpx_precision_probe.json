@@ -1,0 +1,458 @@
+{
+  "schema": 2,
+  "area": "jpx_precision_probe",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "jpx_precision_probe/unsigned-17-native",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-17-native.jpx",
+          "sha256": "595af1f67f2365c5febc8266249cc59e5070b63e99944f41f7b99c04c7932fd4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-17-native.samples",
+          "sha256": "de2cc13086afc10df59a3956dc4efadbce1a6f3194ea4c80258a4801782c6a7d"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-17",
+      "kind": "pdf",
+      "description": "unsigned 17",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-17.pdf",
+      "sha256": "8242b35ceac8caad1625564d7e6321aa1456d3b9807f812b04003d90dcd5c6d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-17.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-17",
+      "role": "subject",
+      "precision": 17,
+      "codestream_sha256": "595af1f67f2365c5febc8266249cc59e5070b63e99944f41f7b99c04c7932fd4"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-17-codec-control",
+      "kind": "pdf",
+      "description": "unsigned 17 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-17-codec-control.pdf",
+      "sha256": "5e3b070701211145b0466f0388e67efe5fe86239f5fb228bf46183fbeb6a2f52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-17-codec-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-17",
+      "role": "codec-control",
+      "precision": 16,
+      "codestream_sha256": "4c9ba79ec6e24326cbdd585d2d376771e2ef3259fb72c329d823b918988312c3"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-17-rgb-control",
+      "kind": "pdf",
+      "description": "unsigned 17 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-17-rgb-control.pdf",
+      "sha256": "ea49955a33635268cf9251a3506e80282c7de298893dde9cb279dc3a98e5d9ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-17-rgb-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_precision_probe/unsigned-17",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-24-native",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-24-native.jpx",
+          "sha256": "f5db9597a78b5a438d59fb5f937f5d2cb45856012c185e87087bca652391741c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-24-native.samples",
+          "sha256": "1c9a263d76195eb2382c20cec880c88a52837530643a6653187c625fbb56e575"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-24",
+      "kind": "pdf",
+      "description": "unsigned 24",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-24.pdf",
+      "sha256": "5b757dfc79dad5c30dd457a4f9ae6fc386d8886eda20108cc940c344ee193cb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-24.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-24",
+      "role": "subject",
+      "precision": 24,
+      "codestream_sha256": "f5db9597a78b5a438d59fb5f937f5d2cb45856012c185e87087bca652391741c"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-24-codec-control",
+      "kind": "pdf",
+      "description": "unsigned 24 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-24-codec-control.pdf",
+      "sha256": "5e3b070701211145b0466f0388e67efe5fe86239f5fb228bf46183fbeb6a2f52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-24-codec-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-24",
+      "role": "codec-control",
+      "precision": 16,
+      "codestream_sha256": "4c9ba79ec6e24326cbdd585d2d376771e2ef3259fb72c329d823b918988312c3"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-24-rgb-control",
+      "kind": "pdf",
+      "description": "unsigned 24 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-24-rgb-control.pdf",
+      "sha256": "ea49955a33635268cf9251a3506e80282c7de298893dde9cb279dc3a98e5d9ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-24-rgb-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_precision_probe/unsigned-24",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-31-native",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-31-native.jpx",
+          "sha256": "7e33f4c759b133858ecaa9a6ee1acd5a411433b984ff71edb79bd2d587d49d01"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-31-native.samples",
+          "sha256": "7ffcd8898a1ae51ecfea4c5ea1a9bee23e381fbddab36a742d01fe37367b05ba"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-31",
+      "kind": "pdf",
+      "description": "unsigned 31",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-31.pdf",
+      "sha256": "3ce62c9ac0850c859828dc540416dbf1177b2eea9049f20099d18f4e3115af24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-31.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-31",
+      "role": "subject",
+      "precision": 31,
+      "codestream_sha256": "7e33f4c759b133858ecaa9a6ee1acd5a411433b984ff71edb79bd2d587d49d01"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-31-codec-control",
+      "kind": "pdf",
+      "description": "unsigned 31 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-31-codec-control.pdf",
+      "sha256": "5e3b070701211145b0466f0388e67efe5fe86239f5fb228bf46183fbeb6a2f52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-31-codec-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-31",
+      "role": "codec-control",
+      "precision": 16,
+      "codestream_sha256": "4c9ba79ec6e24326cbdd585d2d376771e2ef3259fb72c329d823b918988312c3"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-31-rgb-control",
+      "kind": "pdf",
+      "description": "unsigned 31 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-31-rgb-control.pdf",
+      "sha256": "ea49955a33635268cf9251a3506e80282c7de298893dde9cb279dc3a98e5d9ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-31-rgb-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_precision_probe/unsigned-31",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-32-native",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-32-native.jpx",
+          "sha256": "60764d46180fd8298e8190e3708df622afdc1781c9ea4983af75453018fd9632"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-32-native.samples",
+          "sha256": "8ce2cef2091644106a8e27918942c99fec9a1621a22db637cfb3af2095e0f98c"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-32",
+      "kind": "pdf",
+      "description": "unsigned 32",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-32.pdf",
+      "sha256": "82b2020d2bf82d194afb338220dd0d114c671544a38ae141a27e4d7733cccdd8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-32.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-32",
+      "role": "subject",
+      "precision": 32,
+      "codestream_sha256": "60764d46180fd8298e8190e3708df622afdc1781c9ea4983af75453018fd9632"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-32-codec-control",
+      "kind": "pdf",
+      "description": "unsigned 32 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-32-codec-control.pdf",
+      "sha256": "5e3b070701211145b0466f0388e67efe5fe86239f5fb228bf46183fbeb6a2f52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-32-codec-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-32",
+      "role": "codec-control",
+      "precision": 16,
+      "codestream_sha256": "4c9ba79ec6e24326cbdd585d2d376771e2ef3259fb72c329d823b918988312c3"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-32-rgb-control",
+      "kind": "pdf",
+      "description": "unsigned 32 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-32-rgb-control.pdf",
+      "sha256": "ea49955a33635268cf9251a3506e80282c7de298893dde9cb279dc3a98e5d9ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-32-rgb-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_precision_probe/unsigned-32",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-38-native",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-38-native.jpx",
+          "sha256": "45717551dc2ee802a25dd373ff5429f7839d6aae0584a6efb8f13b8dd4886554"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx_precision_probe/unsigned-38-native.samples",
+          "sha256": "6d534aad7d241b8bb1c9348347ca6c8e32291ffbd5cefbfc97b3a548c04cea93"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-38",
+      "kind": "pdf",
+      "description": "unsigned 38",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-38.pdf",
+      "sha256": "77cc18a7908fb34f6fa7d232936c66cdbece67cde91602f5457c3b588c76a6f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-38.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-38",
+      "role": "subject",
+      "precision": 38,
+      "codestream_sha256": "45717551dc2ee802a25dd373ff5429f7839d6aae0584a6efb8f13b8dd4886554"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-38-codec-control",
+      "kind": "pdf",
+      "description": "unsigned 38 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-38-codec-control.pdf",
+      "sha256": "5e3b070701211145b0466f0388e67efe5fe86239f5fb228bf46183fbeb6a2f52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-38-codec-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_precision_probe/unsigned-38",
+      "role": "codec-control",
+      "precision": 16,
+      "codestream_sha256": "4c9ba79ec6e24326cbdd585d2d376771e2ef3259fb72c329d823b918988312c3"
+    },
+    {
+      "id": "jpx_precision_probe/unsigned-38-rgb-control",
+      "kind": "pdf",
+      "description": "unsigned 38 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-high-precision"
+      ],
+      "path": "corpus/generated/jpx_precision_probe/unsigned-38-rgb-control.pdf",
+      "sha256": "ea49955a33635268cf9251a3506e80282c7de298893dde9cb279dc3a98e5d9ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_precision_probe/unsigned-38-rgb-control.ppm",
+      "oracle_sha256": "2eae0a1108edaa1fd38606d9ae386e9f831bb1988a4a0f19d0ac1240a8c19454",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_precision_probe/unsigned-38",
+      "role": "rgb-control"
+    }
+  ]
+}

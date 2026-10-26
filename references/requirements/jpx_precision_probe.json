@@ -1,0 +1,25 @@
+{
+  "schema": 2,
+  "area": "jpx_precision_probe",
+  "scope": "Private diagnostic for valid unsigned JPEG 2000 precision, without a product or competitor support claim. No transform, ROI, palette, opacity, signed interpretation or file-layout extension is inferred from these controls.",
+  "requirements": [
+    {
+      "id": "jpx-high-precision",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), A.5.1/Table A.11, A.6.4/Tables A.28-A.29, B.10.5-B.10.6, E-2, G.1, I.5.3.3/Table I.10",
+      "status": "Unprobed: independently authored 17-, 24-, 31-, 32- and 38-bit unsigned samples, exact native integer expectations and paired 16-bit codec/RGB PDF controls. Existing product precision refusal remains an implementation gap.",
+      "tests": [
+        "jpx_precision_probe/unsigned-17-native",
+        "jpx_precision_probe/unsigned-24-native",
+        "jpx_precision_probe/unsigned-31-native",
+        "jpx_precision_probe/unsigned-32-native",
+        "jpx_precision_probe/unsigned-38-native"
+      ],
+      "rule": "PDF permits 1\u201338 component bits. T.800 Table A.11 conditions representability on coefficient growth and coding bounds. E-2 permits at most 37 nominal magnitude planes without ROI because G\u22647 and epsilon\u226431. The 38-bit subject therefore uses unsigned 1 rather than 0: its centered magnitude is 2^37\u22121, representable in 37 planes. The remaining samples are 2^(P\u22122), 2^(P\u22121), 2^P\u22121. These exact integers are not reduced to a 16-bit API. Enumerated unsigned gray maps x/(2^P\u22121) to the sRGB nonlinearity; independent nearest-byte expectations are 0,64,128,255.",
+      "boundaries": "No full ROI claim: Table A.26 permits shifts 0\u2013255 and H.1 shifts coded magnitude planes. The coefficient representation and its explicit resource/precision admission bound require separate review. A passing byte rendering cannot prove preservation of the low-order sample bits; native/interleaved acceptance is required. The 38-bit unsigned zero endpoint is deliberately absent rather than encoded with an invalid guard/exponent field. The one-byte display tolerance is fixed before observation; RGB controls are exact."
+    }
+  ]
+}

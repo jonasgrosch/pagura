@@ -532,7 +532,7 @@
         "viewer": "partial"
       },
       "implemented": "JPEG sequential/progressive with Huffman/arithmetic and non-hierarchical Huffman lossless with 2-16-bit samples, predictors, point transforms, restarts and multi-component scans; CCITT G3/G4 with defined uncompressed continuation; JBIG2 regions including twelve adaptive generic-template pixels; JPEG 2000 Part 1. Resource-aware inline framing resolves indirect ICC N and DeviceN names. Shared JPEG framing resolves first-scan DNL before allocation, including replacement of nonzero Y. PLM, zero CRG and bounded jpxb-only containers reuse the existing marker/box owners; fourteen original diagnostic PDF/oracle pairs are unchanged. Checkpoint 42795ad26 passes all three OS gates, host checks and 388 render observations, including first-image headers/opacity and CIELab. Ordered internal metadata references now reuse the existing header parser; 16 unchanged additional controls await hosted acceptance.",
-      "remaining": "Precision 17–38, early packed-header framing, nonzero CRG registration, selected-codestream fragmentation and external/out-of-order metadata references, baseline colour definitions beyond the implemented unsigned D50 CIELab 14 subset and restricted Part 2 array/nonlinear transforms remain open. Arithmetic lossless and hierarchical JPEG remain compatibility boundaries pending applicable passing baseline controls; five arithmetic negative observations are scoped, not family verdicts. Undefined CCITT selectors and unknown necessary JBIG2 extension types remain boundaries. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab 19; these are PDF boundaries, not missing capabilities. Other permitted JPX baseline features remain applicable.",
+      "remaining": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, selected-codestream fragmentation and external/out-of-order metadata references, baseline colour definitions beyond the implemented unsigned D50 CIELab 14 subset and restricted Part 2 array/nonlinear transforms remain open. Arithmetic lossless and hierarchical JPEG remain compatibility boundaries pending applicable passing baseline controls; five arithmetic negative observations are scoped, not family verdicts. Undefined CCITT selectors and unknown necessary JBIG2 extension types remain boundaries. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab 19; these are PDF boundaries, not missing capabilities. Other permitted JPX baseline features remain applicable.",
       "sources": [
         "crates/pagura-image/src/features.rs",
         "crates/pagura-image/src/jbig2/mod.rs",
@@ -988,7 +988,7 @@
         "viewer": "implemented"
       },
       "implemented": "SMaskInData 0/1/2, including straight/premultiplied normalization, explicit PDF Indexed palette replacement, direct/palette opacity, first/last channel order, mixed colour/alpha precision and nonzero reference origin; groups, external masks and associated-colour interpolation have independent fixtures. Enumerated D50 CIELab has additional straight/premultiplied controls with fixed RGB expectations; they pass at 42795ad26. First-image jpch/jplh inheritance, cgrp, palette/channel ownership and opct 0/1 with identity registration now use the existing Header/ChannelsUse path; all 56 added rendering rows pass at 42795ad26. Later-image header overrides do not alter the selected first image.",
-      "remaining": "Ambiguous independent palette-index sources and incomplete ordinary colour associations remain explicit layout boundaries. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab 19; these are PDF boundaries, not missing capabilities. Required selected-codestream fragmentation and other metadata-reference layouts, nonidentity registration and unimplemented reader features remain open; this first-image subset does not imply those layouts. Precision 17–38 and permitted baseline layouts remain R03; scoped reports do not establish family parity.",
+      "remaining": "Ambiguous independent palette-index sources and incomplete ordinary colour associations remain explicit layout boundaries. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab 19; these are PDF boundaries, not missing capabilities. Required selected-codestream fragmentation and other metadata-reference layouts, nonidentity registration and unimplemented reader features remain open; this first-image subset does not imply those layouts. Precision 17\u201338 and permitted baseline layouts remain R03; scoped reports do not establish family parity.",
       "sources": [
         "crates/pagura-image/src/jpx_image.rs",
         "crates/pagura-paint/src/source/image/texels.rs",
@@ -1128,8 +1128,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Explicit PDF override; embedded Gray/RGB/CMYK; unsigned 1–16-bit and mixed-precision sYCC; ICC forward profiles with physical Lab input ranges. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles preserve raw precision and apply T.800 negative-input clipping, including mixed signed palettes and opacity. Ranked candidates use signed precedence, approximation and stable order, skip unsupported selected profiles/transforms, and keep candidate/intent cache identities distinct. Enumerated CIELab 14 defaults and explicit EP map unsigned 1–16-bit post-palette channels onto three physical Lab intervals, including extended L; ordinary PDF L remains 0–100. D50, fractional low-precision offsets and alpha reuse existing owners. The 323-row hosted pixel result includes six annotated malformed duplicate-colour observations; it is not a valid-input count. Nine conforming METH3 ranking/codec/RGB controls pass at 42795ad26. First-image jpch/jplh inheritance, cgrp, palette/channel ownership and opct 0/1 with identity registration now use the existing Header/ChannelsUse path; all 56 added rendering rows pass at 42795ad26. Later-image header overrides do not alter the selected first image. Selected first-header metadata references reuse those same field checks and colour owners, with physical error mapping and bounded temporary storage; 16 unchanged paired controls await hosted acceptance.",
-      "remaining": "Other enumerated baseline colours and non-D50 CIELab illuminants remain R03. Signed CIELab remains outside the unsigned M-18 mapping; zero-range validity stays unadjudicated and unavailable after candidate exhaustion. CIEJab19 is excluded by PDF 7.4.9. Signed sRGB/Gray/sYCC enumerations are invalid under T.800 Table I.10. General signed Lab/LUT and nonrestricted ICC combinations stay Unsupported unless a later restricted candidate applies. No unsigned-device fallback or general clipping policy is guessed; scoped results do not establish family parity. File-level fallback from unsupported Lab to an equivalent distinct-method colour profile remains unproved; the three historical repeated-METH1 fallback files cannot establish it. Repeated-METH2 ranking observations are also malformed; only the new distinct conforming controls can attest that file layout.",
+      "implemented": "Explicit PDF override; embedded Gray/RGB/CMYK; unsigned 1\u201316-bit and mixed-precision sYCC; ICC forward profiles with physical Lab input ranges. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles preserve raw precision and apply T.800 negative-input clipping, including mixed signed palettes and opacity. Ranked candidates use signed precedence, approximation and stable order, skip unsupported selected profiles/transforms, and keep candidate/intent cache identities distinct. Enumerated CIELab 14 defaults and explicit EP map unsigned 1\u201316-bit post-palette channels onto three physical Lab intervals, including extended L; ordinary PDF L remains 0\u2013100. D50, fractional low-precision offsets and alpha reuse existing owners. The 323-row hosted pixel result includes six annotated malformed duplicate-colour observations; it is not a valid-input count. Nine conforming METH3 ranking/codec/RGB controls pass at 42795ad26. First-image jpch/jplh inheritance, cgrp, palette/channel ownership and opct 0/1 with identity registration now use the existing Header/ChannelsUse path; all 56 added rendering rows pass at 42795ad26. Later-image header overrides do not alter the selected first image. Selected first-header metadata references reuse those same field checks and colour owners, with physical error mapping and bounded temporary storage; 16 unchanged paired controls await hosted acceptance.",
+      "remaining": "Other enumerated baseline colours and non-D50 CIELab illuminants remain R03. Signed CIELab remains outside the unsigned M-18 mapping; zero-range validity stays unadjudicated and unavailable after candidate exhaustion. CIEJab19 is excluded by PDF 7.4.9. Signed sRGB/Gray/sYCC enumerations are invalid under T.800 Table I.10. General signed Lab/LUT and nonrestricted ICC combinations stay Unsupported unless a later restricted candidate applies. No unsigned-device fallback or general clipping policy is guessed; scoped results do not establish family parity. File-level fallback from unsupported Lab to an equivalent distinct-method colour profile remains unproved; the three historical repeated-METH1 fallback files cannot establish it. Repeated-METH2 ranking observations are also malformed; only the new distinct conforming controls can attest that file layout. Precision 17\u201338 bits remains an explicit R02 obligation. The separate unsigned precision diagnostic has not run and makes no baseline or ROI support claim.",
       "sources": [
         "crates/pagura-image/src/jpx_image.rs",
         "crates/pagura-interpret/src/machine/image/describe.rs",
@@ -1167,14 +1167,16 @@
         "tools/host_test.mjs",
         "tools/fixturegen/jpx_layout_probe.py",
         "crates/pagura-image/src/jpx/boxes/tests.rs",
-        "tools/fixturegen/jpx_fragment_probe.py"
+        "tools/fixturegen/jpx_fragment_probe.py",
+        "tools/fixturegen/jpx_precision_probe.py"
       ],
       "requirements": [
         "jpx-pdf-contract",
         "paint-image-decode",
         "paint-jpx-icc",
         "paint-jpx-sycc",
-        "paint-jpx-interactions"
+        "paint-jpx-interactions",
+        "jpx-high-precision"
       ],
       "fixtures": [
         "paint/image-jpx-icc-explicit",
@@ -1507,7 +1509,27 @@
         "jpx_fragment_probe/reference-split-linear-icc",
         "jpx_fragment_probe/reference-split-linear-icc-codec-control",
         "jpx_fragment_probe/reference-split-linear-icc-brand-control",
-        "jpx_fragment_probe/reference-split-linear-icc-rgb-control"
+        "jpx_fragment_probe/reference-split-linear-icc-rgb-control",
+        "jpx_precision_probe/unsigned-17-native",
+        "jpx_precision_probe/unsigned-17",
+        "jpx_precision_probe/unsigned-17-codec-control",
+        "jpx_precision_probe/unsigned-17-rgb-control",
+        "jpx_precision_probe/unsigned-24-native",
+        "jpx_precision_probe/unsigned-24",
+        "jpx_precision_probe/unsigned-24-codec-control",
+        "jpx_precision_probe/unsigned-24-rgb-control",
+        "jpx_precision_probe/unsigned-31-native",
+        "jpx_precision_probe/unsigned-31",
+        "jpx_precision_probe/unsigned-31-codec-control",
+        "jpx_precision_probe/unsigned-31-rgb-control",
+        "jpx_precision_probe/unsigned-32-native",
+        "jpx_precision_probe/unsigned-32",
+        "jpx_precision_probe/unsigned-32-codec-control",
+        "jpx_precision_probe/unsigned-32-rgb-control",
+        "jpx_precision_probe/unsigned-38-native",
+        "jpx_precision_probe/unsigned-38",
+        "jpx_precision_probe/unsigned-38-codec-control",
+        "jpx_precision_probe/unsigned-38-rgb-control"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -4428,7 +4450,7 @@
       ],
       "review": "boundary",
       "capability": "images.jpx-colour",
-      "rationale": "Embedded ICC, physical Lab input, mixed 1–16-bit sYCC and supported candidate fallback are integrated. An exhausted candidate list cannot use a device fallback for component counts other than one, three or four.",
+      "rationale": "Embedded ICC, physical Lab input, mixed 1\u201316-bit sYCC and supported candidate fallback are integrated. An exhausted candidate list cannot use a device fallback for component counts other than one, three or four.",
       "evidence": [
         {
           "path": "crates/pagura-interpret/src/resources/colorspace/jpx.rs",

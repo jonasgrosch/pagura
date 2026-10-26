@@ -724,3 +724,30 @@ one-short bounds refuse. These are allocation-admission charges, not live-memory
 measurements. Native controls cover finite extents versus overflow, malformed
 count, recursive targets, ownership, variable depths and physical error offsets;
 public native/interleaved samples preserve the original four RGB pixels.
+
+## R02 high-precision diagnostic
+
+`tools/fixturegen/jpx_precision_probe.py` authors five unsigned JP2 subjects at
+17, 24, 31, 32 and 38 bits. Each has a 16-bit codec control and an exact RGB
+control; blank/rectangle controls bring this private manifest to 17 rows. Five
+separate native vectors retain literal samples, including low bits invisible in
+RGB8. The source is based on image checkpoint `f0f4d0be2`; no product code changes
+or runtime observations are included.
+
+T.800 A.5.1/Table A.11 permits these precisions subject to representability.
+E-2 bounds no-ROI magnitude planes by `G+epsilon-1`, at most 37. For 38 bits,
+`G=7`, `epsilon=31`; unsigned sample 1 replaces the unrepresentable zero endpoint.
+The remaining samples are `2^(P-2)`, `2^(P-1)` and `2^P-1`. I.5.3.3/Table I.10
+gives unsigned gray `x/(2^P-1)`; independent integer rounding gives display bytes
+0,64,128,255. Codec cases allow one display byte, fixed before observation; RGB
+controls require exact pixels. Existing MQ/packet helpers encode one reversible
+block, without DWT, MCT or ROI. No competitor data defines an expectation.
+
+After source review, publish the private `probe/jpx-high-precision` ref and
+dispatch the existing `capabilities.yml` once at its verified head. Its explicit
+GitHub-hosted Ubuntu/macOS jobs preserve all six pinned engine identities,
+source/binary hashes, pixel reports and actual/oracle artifacts. Pagura precision
+refusals are expected diagnostic evidence; workflow failure is not acceptance.
+Adjudicate each subject with both controls and retain the original outcomes.
+The reduced manifest stays off PR #182. No timing, full ROI, transformed-image,
+palette/opacity or family-parity claim follows from these probes.
