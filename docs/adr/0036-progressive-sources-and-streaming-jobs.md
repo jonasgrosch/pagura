@@ -224,6 +224,22 @@ A wait completes the current request, allowing the serial host to accept its
 missing input. Preserve v1.0–1.12 complete-buffer behavior. Browser fetching stays in
 JS; this work does not require the separately planned JSPI transport.
 
+The host registry uses the same Session ordering/dispatch for native decoded
+requests and stdio frames. V2 is 0x00020000; requests 41–52 and responses 169–179
+cover immutable source lifecycle, opening/page/render jobs and exact-sequence
+output acknowledgements. The wire layouts live in pagura-host/PROTOCOL.md and
+canonical code tables. One unacknowledged canonical band/chunk lease prevents
+further producer work. A prepared render is source independent; source/document
+closure preserves independent jobs and issued output. SourceFinish checks full
+coverage without assembling bytes and makes missing coverage terminal.
+Aggregate source ceilings use the existing MemoryBudget parent/child admission;
+that ownership follows byte and frontier leases after source closure. Active
+operation/document domain ceilings follow job/context ownership. These counters
+exclude bounded fixed controller/index storage and separate framed transport
+copies; they are not RSS evidence. Worker scheduling, browser driving, extraction
+and full resource acceptance remain required inside this group.
+
+
 ### 8. Budgets and compatibility
 
 Give loading, extraction, encoding and aggregate host queues their own

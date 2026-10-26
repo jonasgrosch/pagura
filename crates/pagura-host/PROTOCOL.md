@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.11
+# Pagura session protocol v1 through v2.0
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -18,7 +18,7 @@ complete valid request. Callers serialize requests; the host flushes responses.
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
 `hello(65540)` (0x00010004) for v1.4, through `hello(65548)`
-(0x0001000c) for v1.12. Versions 1.5–1.7 add the form operations below.
+(0x0001000c) for v1.12, or `hello(131072)` (0x00020000) for v2.0. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -700,3 +700,102 @@ attempts consume no handle. Source/handle budgets are checked before opening.
 The existing document is unchanged, and the new handle must be closed. The
 viewer uses it only for the explicitly requested operation and clears supplied
 password bytes after each attempt. Stale dialogs cannot download its output.
+
+
+## Version 2.0: immutable sources and owned jobs
+
+V2 preserves every earlier record. Source and job handles occupy separate
+monotonic u32 namespaces; document handles use the existing registry. A source
+identity is `u64 registration | 32 version bytes`, with registration equal to
+its source handle. Version bytes are opaque representation tokens, never URLs.
+Every supplied interval must belong to that exact representation. Conflicting
+accepted bytes poison the source; a stale token is rejected without changing it.
+No operation performs network or filesystem I/O.
+
+| Request | Payload | Response | Payload |
+|---|---|---|---|
+| 41 SourceCreate | u64 length, 32 version bytes | 169 | u32 source |
+| 42 SourceSupply | u32 source, 32 version bytes, u64 offset, blob bytes | 170 | u64 newly added bytes, u64 availability generation |
+| 43 SourceFinish | u32 source | 171 | u32 source |
+| 44 SourceClose | u32 source | 172 | u32 source |
+| 45 OpenJob | u32 source, u8 validation, u8 recovery, blob password | 173 | u32 job |
+| 46 PageJob | u32 document, u32 page | 173 | u32 job |
+| 47 RenderJob | u32 document, u32 page, f64 scale, u8 background, u8 output, u8 has_tile, optional u32 x/y/width/height | 173 | u32 job |
+| 48 JobAdvance | u32 job | 174 or 179 | progress or missing input |
+| 49 JobAcknowledge | u32 job, u64 sequence | 175 | u32 job, u64 sequence |
+| 50 JobCancel | u32 job | 176 | u32 job, u8 changed |
+| 51 JobClose | u32 job | 177 | u32 job |
+| 52 JobStats | empty | 178 | u32 registered sources, u32 job handles, u64 source admission, u64 active admission, u64 registered source residency |
+
+Validation 0 selects CompleteDocument, requiring materialization and the existing
+global indexed-identity checks. Validation 1 selects RequestedOperation, validating
+authoritative opening structure and each consumed dependency; unused objects can
+remain unavailable. It does not certify unused object bodies. Recovery/background
+codes retain their earlier meanings. Output 0 selects final premultiplied RGBA8
+bands; output 1 selects a single straight RGBA8 PNG. All flags are exactly 0 or 1.
+Prepared-page geometry and output use the existing CropBox/UserUnit/rotation policy.
+
+Response 179 is `identity | u64 generation | u32 range_count`, followed by sorted,
+disjoint `u64 start | u64 end` half-open ranges. It completes the request, including
+an older source-dependent service invoked on a sparse document in a V2 session.
+The caller may supply ranges, cancel, close or perform unrelated operations before
+advancing again. An unchanged availability generation does not repeat loading or
+recording work. A changed generation can currently replay an unfinished scene;
+the scene-attempt limit bounds that work. Instruction-level interpreter resumption
+remains part of group 11's unfinished acceptance scope.
+
+Response 174 begins `u32 job | u8 event`:
+
+| Event | Additional payload |
+|---|---|
+| 0 Yielded | empty; one job unit progressed |
+| 1 Opened | u32 document, u8 validation |
+| 2 Page | u32 ordinal, optional reported count, optional verified count, then the v1 page_info geometry payload |
+| 3 Prepared | u8 output, full-page rectangle, requested-region rectangle |
+| 4 Band | u64 sequence, full-page rectangle, region rectangle, u32 first row, u32 exclusive final row, u32 stride, blob premultiplied RGBA8 |
+| 5 Png | u64 sequence, blob bytes |
+| 6 Complete | empty; successful terminal completion |
+| 7 Cancelled | empty; terminal cancellation |
+| 8 Backpressured | empty; outstanding output prevented any producer work |
+
+A rectangle is `u32 x0,y0,x1,y1`; row numbers are absolute device coordinates.
+An optional count is `u8 present` followed by u32 count when present. Reported
+Count is advisory. Verified count is present only after complete structural
+page enumeration. PageJob resolves an exact ordinal without requiring later
+subtrees. Opened publishes no implied page count.
+
+Only one output sequence per job can remain outstanding, starting at 1. The
+canonical renderer/encoder lease remains retained until an exact acknowledgement.
+A wrong, duplicate or stale acknowledgement is InvalidArgument and cannot release
+another output. Pulling while a lease is held yields Backpressured without CPU
+work. Complete occurs only after the final acknowledgement and a subsequent
+advance. PNG chunks form one stream; the final IEND chunk alone is not Complete.
+Cancelled/failed jobs cannot become successful. Repeated terminal advances repeat
+the terminal result; cancel is idempotent. Close releases the handle permanently.
+
+SourceFinish validates full coverage without assembling a full buffer. A hole
+makes subsequent source operations terminal. Successful finish changes neither
+bytes nor availability generation; identical duplicate supply remains valid.
+SourceClose invalidates future source reads while already issued byte/output
+leases stay readable. A prepared render needs no more input and can finish after
+source/document closure. Other source-dependent jobs fail their next lifecycle
+check. Closing a document does not invalidate independently owned active jobs.
+
+ProgressiveLimits bounds registered sources, all job handles, per-request supply,
+source storage, cumulative loading, scene attempts, output/encoding storage and
+aggregate active admission. Source admission is the sum of sparse source ceilings
+plus complete-open byte charges, shared with SessionLimits.total_source_bytes.
+The shared memory owner keeps admission until its final dependent lease drops,
+including after handle closure. Active opening admission covers credential copies,
+parsed values, stream/decoded ceilings, parser windows and context store/scratch;
+render admission separately covers scene/preparation, decode, output and encoder
+ceilings. These are conservative domain ceilings, not RSS measurements. Fixed
+handle/controller/index storage is bounded by handle counts and excluded from the
+byte counters. Transport retains a bounded request/response copy separately under
+max_frame_bytes and reading_response_bytes. Registered source residency excludes
+closed registrations still pinned by consumers; source admission includes them.
+
+The native Session::handle entry point and stdio serve loop share ordering,
+version gates and dispatch. Native async scheduling, browser range driving,
+extraction jobs and WASI/runtime acceptance remain separate unfinished parts of
+the same group; this protocol checkpoint does not establish their completion.

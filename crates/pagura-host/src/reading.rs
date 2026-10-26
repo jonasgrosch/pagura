@@ -200,32 +200,7 @@ impl Request<'_> {
     }
 }
 
-/// A fully bounded reading payload. Its kind and bytes are constructed only
-/// by this adapter.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Response {
-    kind: ResponseKind,
-    payload: Vec<u8>,
-}
-
-impl Response {
-    pub(crate) fn new(kind: ResponseKind, writer: Writer) -> Self {
-        Self {
-            kind,
-            payload: writer.finish(),
-        }
-    }
-
-    /// The response's kind byte.
-    pub const fn kind(&self) -> ResponseKind {
-        self.kind
-    }
-
-    /// The encoded payload, after kind and id.
-    pub fn payload(&self) -> &[u8] {
-        &self.payload
-    }
-}
+pub use crate::protocol::Payload as Response;
 
 /// `u8 present | [f64 x0, y0, x1, y1]`.
 pub(crate) fn bounds(bounds: Option<Rect>, cap: usize) -> Result<Response> {

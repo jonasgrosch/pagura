@@ -63,7 +63,9 @@ fn payload<'a>(out: &mut Writer, response: &'a Response) -> Result<&'a [u8]> {
             out.u32(stats.documents)?;
             out.u32(stats.lists)?;
         }
-        Response::Reading(response) => return Ok(response.payload()),
+        Response::Reading(response) | Response::Progressive(response) => {
+            return Ok(response.payload());
+        }
         Response::FormFields(payload)
         | Response::FormWidgets(payload)
         | Response::FormStyles(payload) => return Ok(payload),

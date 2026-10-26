@@ -1,5 +1,7 @@
 //! Request decoding: the only code that knows request layouts.
 
+mod progressive;
+
 use super::{
     Field, OpenFlags, PageRef, PngRequest, Request, RequestFrame, RequestKind, TileRequest,
 };
@@ -17,6 +19,18 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
     let kind: RequestKind = reader.code()?;
     let id = reader.u32()?;
     let request = match kind {
+        RequestKind::SourceCreate
+        | RequestKind::SourceSupply
+        | RequestKind::SourceFinish
+        | RequestKind::SourceClose
+        | RequestKind::OpenJob
+        | RequestKind::PageJob
+        | RequestKind::RenderJob
+        | RequestKind::JobAdvance
+        | RequestKind::JobAcknowledge
+        | RequestKind::JobCancel
+        | RequestKind::JobClose
+        | RequestKind::JobStats => Request::Progressive(reader.progressive(kind, limits)?),
         RequestKind::Reauthenticate => Request::Reauthenticate {
             document: reader.field(Reader::u32)?,
             password: reader.blob(limits.string_bytes)?.get(),
@@ -168,6 +182,10 @@ impl<'a> Reader<'a> {
 
     pub(crate) fn u32(&mut self) -> Result<u32> {
         self.array().map(u32::from_le_bytes)
+    }
+
+    fn u64(&mut self) -> Result<u64> {
+        self.array().map(u64::from_le_bytes)
     }
 
     fn f64(&mut self) -> Result<f64> {

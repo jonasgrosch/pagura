@@ -76,18 +76,50 @@ impl SparseBytes {
         source_limits: &SourceLimits,
     ) -> Result<Self> {
         super::length(length, limits)?;
-        Ok(Self {
+        Ok(Self::empty(
+            identity,
+            length,
+            source_limits,
+            Budget::new(source_limits.retained_bytes, super::memory::EXCEEDED),
+        ))
+    }
+
+    /// Creates a source whose retained-byte ceiling is admitted to `parent`.
+    /// The shared source budget carries this admission into byte/frontier leases,
+    /// so closing the source cannot refund storage a consumer still pins.
+    ///
+    /// # Errors
+    /// As [`Self::new`], plus the parent's aggregate admission limit.
+    pub fn new_with_budget(
+        identity: SourceIdentity,
+        length: u64,
+        limits: &Limits,
+        source_limits: &SourceLimits,
+        parent: &Arc<pagura_core::MemoryBudget>,
+    ) -> Result<Self> {
+        super::length(length, limits)?;
+        let budget = parent.admit(source_limits.retained_bytes, super::memory::EXCEEDED)?;
+        Ok(Self::empty(identity, length, source_limits, budget))
+    }
+
+    fn empty(
+        identity: SourceIdentity,
+        length: u64,
+        source_limits: &SourceLimits,
+        budget: Arc<Budget>,
+    ) -> Self {
+        Self {
             identity,
             length,
             limits: *source_limits,
-            budget: Budget::new(source_limits.retained_bytes, super::memory::EXCEEDED),
+            budget,
             available: Mutex::new(Available {
                 chunks: BTreeMap::new(),
                 generation: 0,
                 terminal: None,
                 work: Meter::new(source_limits.work, "source work budget exceeded"),
             }),
-        })
+        }
     }
 
     fn lock(&self) -> MutexGuard<'_, Available> {
@@ -168,6 +200,34 @@ impl SparseBytes {
             added_bytes,
             generation,
         })
+    }
+
+    /// Finalizes input without assembling it. Every declared byte must already
+    /// be supplied. A missing interval makes the source terminal, so jobs cannot
+    /// keep requesting bytes after the provider has declared end of input.
+    /// Successful repeated finalization and matching duplicate supply are harmless.
+    ///
+    /// # Errors
+    /// Returns an existing source failure, `Limit` for cumulative coverage work,
+    /// or terminal `InvalidArgument` when the declared representation has a hole.
+    pub fn finish(&self) -> Result<()> {
+        let mut available = self.lock();
+        available.active()?;
+        let count = available.chunks.len();
+        available.work.charge(count.saturating_add(1))?;
+        let mut end = 0;
+        for (&start, chunk) in &available.chunks {
+            if start != end {
+                break;
+            }
+            end = chunk.end;
+        }
+        if u64::try_from(end).ok() != Some(self.length) {
+            let error = Error::invalid_argument("source finalized with missing bytes");
+            available.terminal = Some(error.clone());
+            return Err(error);
+        }
+        Ok(())
     }
 
     /// Closes this source and drops its map; outstanding leases remain valid and charged.

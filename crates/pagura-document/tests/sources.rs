@@ -273,3 +273,95 @@ fn arrival_order_does_not_change_independent_bytes() {
         assert_eq!(source.materialize().unwrap().bytes(), expected);
     }
 }
+
+#[test]
+fn finalization_checks_fragment_coverage_without_materializing() {
+    let source = sparse_source(
+        8,
+        SourceLimits {
+            assembly_bytes: 1,
+            ..SourceLimits::default()
+        },
+    )
+    .unwrap();
+    source.supply(ID, 4, b"EFGH").unwrap();
+    source.supply(ID, 0, b"ABCD").unwrap();
+    let retained = source.retained_bytes();
+    let generation = source.generation();
+    source.finish().unwrap();
+    source.finish().unwrap();
+    assert_eq!(source.retained_bytes(), retained);
+    assert_eq!(source.generation(), generation);
+    assert_eq!(
+        source.materialize().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
+    assert_eq!(source.supply(ID, 2, b"CDEF").unwrap().added_bytes(), 0);
+    let lease = source.read_exact(ByteRange::new(4, 8).unwrap()).unwrap();
+    source.close();
+    assert_eq!(lease.bytes(), b"EFGH");
+    assert!(source.finish().is_err());
+    assert!(source.retained_bytes() > 0);
+    drop(lease);
+    assert_eq!(source.retained_bytes(), 0);
+    sparse_source(0, SourceLimits::default())
+        .unwrap()
+        .finish()
+        .unwrap();
+}
+
+#[test]
+fn finalization_with_a_hole_is_terminal_but_keeps_issued_leases_readable() {
+    let source = sparse_source(8, SourceLimits::default()).unwrap();
+    source.supply(ID, 0, b"ABC").unwrap();
+    source.supply(ID, 4, b"EFGH").unwrap();
+    let lease = source.read_exact(ByteRange::new(0, 3).unwrap()).unwrap();
+    let generation = source.generation();
+    let error = source.finish().unwrap_err();
+    assert_eq!(
+        error,
+        pagura_core::Error::invalid_argument("source finalized with missing bytes")
+    );
+    assert_eq!(source.check().unwrap_err(), error);
+    assert_eq!(source.finish().unwrap_err(), error);
+    assert_eq!(source.supply(ID, 3, b"D").unwrap_err(), error);
+    assert_eq!(source.generation(), generation);
+    assert_eq!(
+        source
+            .read_exact(ByteRange::new(0, 3).unwrap())
+            .unwrap_err(),
+        ReadFault::Invalid(error)
+    );
+    assert_eq!(lease.bytes(), b"ABC");
+}
+
+#[test]
+fn aggregate_source_admission_survives_close_and_the_last_byte_or_wait_lease() {
+    let parent = pagura_core::MemoryBudget::new(8192, "session admission exceeded");
+    let source = SparseBytes::new_with_budget(
+        ID,
+        8,
+        &Limits::default(),
+        &SourceLimits {
+            retained_bytes: 4096,
+            ..SourceLimits::default()
+        },
+        &parent,
+    )
+    .unwrap();
+    assert_eq!(parent.used(), 4096);
+    source.supply(ID, 0, b"ABC").unwrap();
+    let bytes = source.read_exact(ByteRange::new(0, 3).unwrap()).unwrap();
+    let Err(ReadFault::Unavailable(missing)) = source.materialize() else {
+        panic!("missing source tail")
+    };
+    source.close();
+    drop(source);
+    assert_eq!(parent.used(), 4096);
+    assert_eq!(bytes.bytes(), b"ABC");
+    assert_eq!(missing.ranges(), &[ByteRange::new(3, 8).unwrap()]);
+    drop(bytes);
+    assert_eq!(parent.used(), 4096);
+    drop(missing);
+    assert_eq!(parent.used(), 0);
+}

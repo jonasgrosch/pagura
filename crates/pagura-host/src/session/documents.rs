@@ -5,8 +5,8 @@ use crate::config::{SessionConfig, SessionLimits};
 use crate::protocol::{Field, PageRef, Response, SessionStats};
 use pagura::ReadResult;
 use pagura::{
-    Diagnostic, Document, Error, Limits, OpenOptions, Page, Recovery, Rect, RenderContext,
-    RenderOptions, Result, Scene, TextPage,
+    Diagnostic, Document, Error, Limits, MemoryBudget, OpenOptions, Page, Recovery, Rect,
+    RenderContext, RenderOptions, Reservation, Result, Scene, TextPage,
 };
 use std::collections::BTreeMap;
 use std::sync::{Arc, Weak};
@@ -15,12 +15,22 @@ use std::sync::{Arc, Weak};
 #[derive(Debug)]
 struct Slot {
     /// The document and its render store, which keeps recorded scenes.
-    context: RenderContext,
+    context: Arc<RenderContext>,
+    document: Arc<Document>,
+    ownership: Arc<Ownership>,
     /// The scenes recorded for tiles and bounds by page index; a scene is
     /// retained while its store keeps it.
     scenes: BTreeMap<u32, Weak<Scene>>,
     /// The selected viewport generation, zero before the first (1.1).
     generation: u32,
+}
+
+/// Host admissions shared by the registered context and its independent jobs.
+/// These are conservative domain ceilings, not measured allocation telemetry.
+#[derive(Debug)]
+pub(super) struct Ownership {
+    _source: Option<Reservation>,
+    _active: Option<Reservation>,
 }
 
 /// Open documents by handle, with their render stores and the text cache
@@ -31,18 +41,21 @@ pub(super) struct Documents {
     limits: SessionLimits,
     slots: BTreeMap<u32, Slot>,
     next_handle: u32,
-    source_bytes: usize,
+    source: Arc<MemoryBudget>,
     texts: PageCache<TextPage>,
 }
 
 impl Documents {
-    pub(super) const fn new(config: &SessionConfig) -> Self {
+    pub(super) fn new(config: &SessionConfig) -> Self {
         Self {
             engine: config.engine,
             limits: config.session,
             slots: BTreeMap::new(),
             next_handle: 1,
-            source_bytes: 0,
+            source: MemoryBudget::new(
+                config.session.total_source_bytes,
+                "session source byte budget exceeded",
+            ),
             texts: PageCache::new(config.session.text_cache_bytes),
         }
     }
@@ -85,7 +98,8 @@ impl Documents {
 
     fn admit(&self, length: usize) -> Result<usize> {
         let retained = self
-            .source_bytes
+            .source
+            .used()
             .checked_add(length)
             .filter(|&size| size <= self.limits.total_source_bytes)
             .ok_or(Error::limit("session source byte budget exceeded"))?;
@@ -96,37 +110,82 @@ impl Documents {
     }
 
     fn insert(&mut self, document: Document) -> ReadResult<(u32, u32)> {
-        let retained = self.admit(document.source_len())?;
+        self.admit(document.source_len())?;
         let pages = u32::try_from(document.page_count()?)
             .map_err(|_| Error::limit("page count exceeds protocol range"))?;
+        let source = self.source.reserve(document.source_len())?;
+        let ownership = Arc::new(Ownership {
+            _source: Some(source),
+            _active: None,
+        });
+        let handle = self.insert_context(Arc::new(document), ownership)?;
+        Ok((handle, pages))
+    }
+
+    /// The same context registry accepts scoped readiness without page enumeration.
+    pub(super) fn insert_progressive(
+        &mut self,
+        document: Arc<Document>,
+        admission: Reservation,
+    ) -> Result<u32> {
+        self.insert_context(
+            document,
+            Arc::new(Ownership {
+                _source: None,
+                _active: Some(admission),
+            }),
+        )
+    }
+
+    fn insert_context(
+        &mut self,
+        document: Arc<Document>,
+        ownership: Arc<Ownership>,
+    ) -> Result<u32> {
+        self.admit(0)?;
         let handle = self.next_handle;
         let provider = pagura::provider::default_provider(self.engine);
-        let context = RenderContext::with_store_capacity(
-            Arc::new(document),
+        let context = Arc::new(RenderContext::with_store_capacity(
+            Arc::clone(&document),
             provider,
             self.limits.store_bytes,
-        );
+        ));
         self.slots.insert(
             handle,
             Slot {
                 context,
+                document,
+                ownership,
                 scenes: BTreeMap::new(),
                 generation: 0,
             },
         );
         self.next_handle += 1;
-        self.source_bytes = retained;
-        Ok((handle, pages))
+        Ok(handle)
+    }
+
+    pub(super) fn source_budget(&self) -> Arc<MemoryBudget> {
+        Arc::clone(&self.source)
+    }
+
+    /// An independent job pins both the context and its host admission.
+    pub(super) fn pin(&self, handle: Field<u32>) -> Result<(Arc<RenderContext>, Arc<Ownership>)> {
+        let slot = self.slot(handle)?;
+        slot.context.document().check_source()?;
+        Ok((Arc::clone(&slot.context), Arc::clone(&slot.ownership)))
+    }
+
+    pub(super) fn page_job(&self, page: PageRef) -> ReadResult<(pagura::PageJob, Arc<Ownership>)> {
+        let slot = self.slot(page.document)?;
+        let job = pagura::PageJob::new(Arc::clone(&slot.document), page.page.index()?)?;
+        Ok((job, Arc::clone(&slot.ownership)))
     }
 
     pub(super) fn close(&mut self, handle: Field<u32>) -> Result<Response> {
-        let slot = self
-            .slots
+        self.slots
             .remove(&handle.get())
             .ok_or_else(|| unknown(handle))?;
         self.texts.close(handle.get());
-        let released = slot.context.document().source_len();
-        self.source_bytes = self.source_bytes.saturating_sub(released);
         Ok(Response::Close)
     }
 
@@ -239,7 +298,7 @@ impl Documents {
             .filter(|scene| scene.strong_count() > 0)
             .count();
         SessionStats {
-            source_bytes: u64::try_from(self.source_bytes).unwrap_or(u64::MAX),
+            source_bytes: u64::try_from(self.source.used()).unwrap_or(u64::MAX),
             cache_bytes: u64::try_from(retained).unwrap_or(u64::MAX),
             documents: u32::try_from(self.slots.len()).unwrap_or(u32::MAX),
             lists: u32::try_from(scenes).unwrap_or(u32::MAX),

@@ -88,6 +88,8 @@ wire_codes! {
     V1_11 = 0x0001_000b,
     /// Scoped files, object metadata, collections, image transfer and reauthentication.
     V1_12 = 0x0001_000c,
+    /// Immutable range sources and owned pull-driven jobs.
+    V2 = 0x0002_0000,
 }
 
 wire_codes! {
@@ -103,7 +105,7 @@ wire_codes! {
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_12;
+    pub const LATEST: Self = Self::V2;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -121,6 +123,7 @@ impl Version {
             Self::V1_10 => "attachment checks require protocol 1.10",
             Self::V1_11 => "page attachment operations require protocol 1.11",
             Self::V1_12 => "extended document services require protocol 1.12",
+            Self::V2 => "progressive source jobs require protocol 2.0",
         })
     }
 }
@@ -208,12 +211,48 @@ wire_codes! {
     Reauthenticate = 39,
     /// Stored thumbnail declaration of an explicit owner. (1.12).
     Thumbnail = 40,
+    /// Register an immutable range source. (2.0).
+    SourceCreate = 41,
+    /// Supply verified bytes for a registered version. (2.0).
+    SourceSupply = 42,
+    /// Finalize source coverage. (2.0).
+    SourceFinish = 43,
+    /// Close a registered source. (2.0).
+    SourceClose = 44,
+    /// Start an owned document opening. (2.0).
+    OpenJob = 45,
+    /// Start an exact selected-page lookup. (2.0).
+    PageJob = 46,
+    /// Start source-dependent preparation and streamed output. (2.0).
+    RenderJob = 47,
+    /// Advance one owned job unit. (2.0).
+    JobAdvance = 48,
+    /// Release the outstanding output sequence. (2.0).
+    JobAcknowledge = 49,
+    /// Cancel one owned job. (2.0).
+    JobCancel = 50,
+    /// Release a job handle. (2.0).
+    JobClose = 51,
+    /// Read progressive admission and retention accounting. (2.0).
+    JobStats = 52,
 }
 
 impl RequestKind {
     /// The first version that accepts this request.
     pub const fn since(self) -> Version {
         match self {
+            Self::SourceCreate
+            | Self::SourceSupply
+            | Self::SourceFinish
+            | Self::SourceClose
+            | Self::OpenJob
+            | Self::PageJob
+            | Self::RenderJob
+            | Self::JobAdvance
+            | Self::JobAcknowledge
+            | Self::JobCancel
+            | Self::JobClose
+            | Self::JobStats => Version::V2,
             Self::Files
             | Self::FileBytes
             | Self::FileCheck
@@ -253,9 +292,20 @@ impl RequestKind {
         }
     }
 
-    /// The kind of a successful response; failures are [`ResponseKind::Error`].
+    /// The ordinary response kind; version two can also return `NeedData`.
+    /// Operational failures use [`ResponseKind::Error`].
     pub const fn response(self) -> ResponseKind {
         match self {
+            Self::SourceCreate => ResponseKind::SourceCreate,
+            Self::SourceSupply => ResponseKind::SourceSupply,
+            Self::SourceFinish => ResponseKind::SourceFinish,
+            Self::SourceClose => ResponseKind::SourceClose,
+            Self::OpenJob | Self::PageJob | Self::RenderJob => ResponseKind::JobCreated,
+            Self::JobAdvance => ResponseKind::JobProgress,
+            Self::JobAcknowledge => ResponseKind::JobAcknowledge,
+            Self::JobCancel => ResponseKind::JobCancel,
+            Self::JobClose => ResponseKind::JobClose,
+            Self::JobStats => ResponseKind::JobStats,
             Self::Files => ResponseKind::Files,
             Self::FileBytes => ResponseKind::FileBytes,
             Self::FileCheck => ResponseKind::FileCheck,
@@ -384,6 +434,28 @@ wire_codes! {
     Reauthenticate = 167,
     /// Stored thumbnail declaration of an explicit owner. (1.12).
     Thumbnail = 168,
+    /// Progressive SourceCreate response (2.0).
+    SourceCreate = 169,
+    /// Progressive SourceSupply response (2.0).
+    SourceSupply = 170,
+    /// Progressive SourceFinish response (2.0).
+    SourceFinish = 171,
+    /// Progressive SourceClose response (2.0).
+    SourceClose = 172,
+    /// Progressive JobCreated response (2.0).
+    JobCreated = 173,
+    /// Progressive JobProgress response (2.0).
+    JobProgress = 174,
+    /// Progressive JobAcknowledge response (2.0).
+    JobAcknowledge = 175,
+    /// Progressive JobCancel response (2.0).
+    JobCancel = 176,
+    /// Progressive JobClose response (2.0).
+    JobClose = 177,
+    /// Progressive JobStats response (2.0).
+    JobStats = 178,
+    /// Progressive NeedData response (2.0).
+    NeedData = 179,
     /// A structured failure.
     Error = 255,
 }
@@ -686,4 +758,45 @@ wire_codes! {
     Image = 0,
     /// Thumbnail selection.
     Thumbnail = 1,
+}
+
+wire_codes! {
+    /// Final output representation of a progressive render (2.0).
+    pub enum OutputCode: u8, unknown = Error::syntax("unknown progressive output kind");
+    /// Final premultiplied RGBA8 bands in device row order.
+    Bands = 0,
+    /// One straight RGBA8 PNG, in canonical chunk order.
+    Png = 1,
+}
+
+wire_codes! {
+    /// Readiness policy carried by a source-backed document (2.0).
+    pub enum ValidationCode: u8, unknown = Error::syntax("unknown validation scope");
+    /// Validate all source objects before publishing the document.
+    CompleteDocument = 0,
+    /// Validate authoritative structure and each requested dependency.
+    RequestedOperation = 1,
+}
+
+wire_codes! {
+    /// Explicit progress event of an owned job (2.0).
+    pub enum JobEventCode: u8, unknown = Error::syntax("unknown job event");
+    /// One CPU unit completed with no result yet.
+    Yielded = 0,
+    /// A document handle is ready under its stated policy.
+    Opened = 1,
+    /// Exact selected-page geometry is ready.
+    Page = 2,
+    /// All source reads and render preflight are complete.
+    Prepared = 3,
+    /// One final immutable band with an acknowledgement sequence.
+    Band = 4,
+    /// One encoded PNG chunk with an acknowledgement sequence.
+    Png = 5,
+    /// Successful terminal completion, after all output was acknowledged.
+    Complete = 6,
+    /// Explicit terminal cancellation.
+    Cancelled = 7,
+    /// An outstanding lease prevents more CPU work.
+    Backpressured = 8,
 }

@@ -47,3 +47,7 @@ jobs:
         run: 'cargo test -p pagura --test api png::'
       - name: Verify incremental codecs and independent decoder fixtures
         run: cargo test -p pagura-codec
+      - name: Verify host protocol and source/job lifetime controls
+        run: |
+          cargo test -p pagura-host
+          cargo test -p pagura-host --all-features

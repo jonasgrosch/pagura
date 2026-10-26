@@ -260,9 +260,22 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
     round_trip(PayloadKind::ALL, PayloadKind::code);
     round_trip(ImageTransferCode::ALL, ImageTransferCode::code);
     round_trip(ImageAssetCode::ALL, ImageAssetCode::code);
-    // Responses answer requests with the high bit set (PROTOCOL.md).
+    round_trip(OutputCode::ALL, OutputCode::code);
+    round_trip(ValidationCode::ALL, ValidationCode::code);
+    round_trip(JobEventCode::ALL, JobEventCode::code);
+    // V1 replies use the high bit; V2 shares created/progress event envelopes.
     for &kind in RequestKind::ALL {
-        assert_eq!(kind.response().code(), kind.code() | 0x80);
+        let expected = match kind.code() {
+            1..=44 => kind.code() | 0x80,
+            45..=47 => 173,
+            48 => 174,
+            49 => 175,
+            50 => 176,
+            51 => 177,
+            52 => 178,
+            _ => panic!("unassigned request oracle"),
+        };
+        assert_eq!(kind.response().code(), expected);
     }
     assert_eq!(
         Version::ALL.iter().map(|v| v.code()).collect::<Vec<_>>(),
@@ -279,7 +292,8 @@ fn code_tables_round_trip_and_reject_unassigned_codes() {
             0x0001_0009,
             0x0001_000a,
             0x0001_000b,
-            0x0001_000c
+            0x0001_000c,
+            0x0002_0000
         ]
     );
     assert!(Version::try_from(2).is_err());

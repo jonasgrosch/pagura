@@ -422,6 +422,7 @@ fn every_request_is_gated_by_the_version_that_added_it() {
         27 => 0x0001_000a,
         28..=30 => 0x0001_000b,
         31..=40 => 0x0001_000c,
+        41..=52 => 0x0002_0000,
         _ => panic!("no independent version oracle for request {kind}"),
     };
     for &version in Version::ALL {

@@ -19,6 +19,7 @@ export const Version = Object.freeze({
   V1_10: 0x0001000a,
   V1_11: 0x0001000b,
   V1_12: 0x0001000c,
+  V2: 0x00020000,
 });
 
 /** Request kind bytes. */
@@ -63,6 +64,18 @@ export const RequestKind = Object.freeze({
   ImageBytes: 38,
   Reauthenticate: 39,
   Thumbnail: 40,
+  SourceCreate: 41,
+  SourceSupply: 42,
+  SourceFinish: 43,
+  SourceClose: 44,
+  OpenJob: 45,
+  PageJob: 46,
+  RenderJob: 47,
+  JobAdvance: 48,
+  JobAcknowledge: 49,
+  JobCancel: 50,
+  JobClose: 51,
+  JobStats: 52,
 });
 
 /** Response kind bytes. */
@@ -107,6 +120,17 @@ export const ResponseKind = Object.freeze({
   ImageBytes: 166,
   Reauthenticate: 167,
   Thumbnail: 168,
+  SourceCreate: 169,
+  SourceSupply: 170,
+  SourceFinish: 171,
+  SourceClose: 172,
+  JobCreated: 173,
+  JobProgress: 174,
+  JobAcknowledge: 175,
+  JobCancel: 176,
+  JobClose: 177,
+  JobStats: 178,
+  NeedData: 179,
   Error: 255,
 });
 
@@ -236,6 +260,31 @@ export const ImageTransferCode = Object.freeze({
 export const ImageAssetCode = Object.freeze({
   Image: 0,
   Thumbnail: 1,
+});
+
+/** Progressive render output modes (2.0). */
+export const OutputCode = Object.freeze({
+  Bands: 0,
+  Png: 1,
+});
+
+/** Document validation readiness scopes (2.0). */
+export const ValidationCode = Object.freeze({
+  CompleteDocument: 0,
+  RequestedOperation: 1,
+});
+
+/** Owned job progress events (2.0). */
+export const JobEventCode = Object.freeze({
+  Yielded: 0,
+  Opened: 1,
+  Page: 2,
+  Prepared: 3,
+  Band: 4,
+  Png: 5,
+  Complete: 6,
+  Cancelled: 7,
+  Backpressured: 8,
 });
 
 /** Largest frame body: max(file_bytes + string_bytes + 14, pixels * 4 + 18,

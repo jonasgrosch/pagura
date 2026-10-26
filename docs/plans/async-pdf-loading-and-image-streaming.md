@@ -848,6 +848,18 @@ because dropping a blocking task's handle does not preempt its CPU operation.
 
 ## 15. Protocol v2 and browser reuse
 
+The source/open/page/render host checkpoint extends the existing Session and
+Documents registry and exposes one decoded-request entry point for native
+adapters. Its canonical tables reserve version 0x00020000, requests 41–52 and
+responses 169–179; exact layouts and ownership are in
+[pagura-host/PROTOCOL.md](../../crates/pagura-host/PROTOCOL.md#version-20-immutable-sources-and-owned-jobs).
+Source finalization, lease-following aggregate admission, explicit NeedData and
+one exact-ACK output slot are implemented. Hosted acceptance of this checkpoint,
+extraction messages, JS range driving, WASI parity and the bounded native/browser
+worker pools remain required. This does not complete P7/P8 or remove P3's bounded
+whole-scene retry limitation.
+
+
 Keep v1.0–1.12 behavior frozen and complete-buffer based. Add a negotiated v2
 surface with explicit source and job handles. Final wire tags/layout are a
 deliverable of the contract package, generated from the existing canonical

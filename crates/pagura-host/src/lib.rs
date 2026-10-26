@@ -11,6 +11,7 @@ mod cache;
 mod config;
 mod control;
 mod editing;
+pub mod progressive;
 pub mod protocol;
 pub mod reading;
 mod session;
@@ -18,4 +19,5 @@ mod wire;
 
 pub use config::{SessionConfig, SessionLimits};
 pub use control::Cancellation;
+pub use progressive::ProgressiveLimits;
 pub use session::{Session, SessionEnd};

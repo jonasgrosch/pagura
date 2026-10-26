@@ -9,16 +9,39 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 /// Closing a producer then releases only storage that no consumer still owns.
 /// Accounting estimates allocation capacity, not allocator overhead or RSS.
 #[derive(Debug)]
-pub struct MemoryBudget(Mutex<Meter>);
+pub struct MemoryBudget {
+    meter: Mutex<Meter>,
+    _admission: Option<Reservation>,
+}
 
 impl MemoryBudget {
     /// Creates a shared budget with the fixed limit-error message of its domain.
     pub fn new(limit: usize, message: &'static str) -> Arc<Self> {
-        Arc::new(Self(Mutex::new(Meter::new(limit, message))))
+        Arc::new(Self {
+            meter: Mutex::new(Meter::new(limit, message)),
+            _admission: None,
+        })
+    }
+
+    /// Admits a child domain's entire ceiling before creating its budget.
+    /// The admission stays charged to this parent until the child and its last
+    /// allocation reservation drop. Child `used()` reports actual charges;
+    /// parent `used()` includes admitted ceilings, not just occupied bytes.
+    /// Counter/controller overhead is excluded from both counts.
+    ///
+    /// # Errors
+    /// Returns the parent's `Limit` error without creating a child when its
+    /// remaining admission cannot fit `limit`.
+    pub fn admit(self: &Arc<Self>, limit: usize, message: &'static str) -> Result<Arc<Self>> {
+        let admission = self.reserve(limit)?;
+        Ok(Arc::new(Self {
+            meter: Mutex::new(Meter::new(limit, message)),
+            _admission: Some(admission),
+        }))
     }
 
     fn meter(&self) -> MutexGuard<'_, Meter> {
-        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+        self.meter.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Bytes charged to all live reservations.
@@ -82,5 +105,37 @@ impl Reservation {
 impl Drop for Reservation {
     fn drop(&mut self) {
         self.budget.meter().refund(self.bytes);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Error, ErrorKind};
+
+    #[test]
+    fn child_admission_follows_the_last_allocation_and_cannot_exceed_either_limit() {
+        let parent = MemoryBudget::new(100, "aggregate admission exceeded");
+        let child = parent.admit(80, "child allocation exceeded").unwrap();
+        assert_eq!((parent.used(), child.used()), (80, 0));
+        assert_eq!(
+            parent.admit(21, "another child").unwrap_err(),
+            Error::limit("aggregate admission exceeded")
+        );
+        let lease = child.reserve(70).unwrap();
+        assert_eq!(
+            child.reserve(11).unwrap_err(),
+            Error::limit("child allocation exceeded")
+        );
+        assert_eq!(parent.reserve(21).unwrap_err().kind, ErrorKind::Limit);
+        assert_eq!((parent.used(), child.used()), (80, 70));
+        drop(child);
+        assert_eq!(parent.used(), 80);
+        drop(lease);
+        assert_eq!(parent.used(), 0);
+        let empty = parent.admit(0, "empty child").unwrap();
+        assert_eq!(empty.reserve(1).unwrap_err().kind, ErrorKind::Limit);
+        drop(empty);
+        assert_eq!(parent.used(), 0);
     }
 }

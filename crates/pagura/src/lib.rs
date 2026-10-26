@@ -84,8 +84,8 @@ pub mod text {
 /// 32- and 64-bit targets Pagura supports, for callers of the facade alone.
 pub use pagura_core::convert;
 pub use pagura_core::{
-    Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
-    Position, Recovery, Rect, Repair, Result, SignatureLimits, Value,
+    Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, MemoryBudget, Name,
+    ObjectId, Position, Recovery, Rect, Repair, Reservation, Result, SignatureLimits, Value,
 };
 /// Inert file specifications, embedded payloads and associated files (7.11, 14.13).
 pub use pagura_document::files;
@@ -111,7 +111,7 @@ pub use pagura_document::{
     DiagnosticBatch, Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenJob,
     OpenOptions, Opening, Page, PageJob, PageLoading, Rotation, StreamData, Validation,
 };
-pub use pagura_raster::{Pixmap, Point, Rgba8};
+pub use pagura_raster::{DeviceRect, Pixmap, Point, Rgba8};
 pub use pagura_render::{
     BandLease, BandOutput, Completion, OutputLimits, OverprintPreview, RenderContext, RenderJob,
     RenderJobLimits, RenderLoading, RenderOptions, RenderSession, Scene, Tile, device_size,

@@ -14,9 +14,9 @@ mod javascript;
 
 pub use codes::{
     ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FileScopeCode,
-    FitCode, ImageAssetCode, ImageTransferCode, MetadataOwnerCode, OpenFlags, OutlineStyle,
-    PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus,
-    Version,
+    FitCode, ImageAssetCode, ImageTransferCode, JobEventCode, MetadataOwnerCode, OpenFlags,
+    OutlineStyle, OutputCode, PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind,
+    SearchFlags, TileStatus, ValidationCode, Version,
 };
 pub(crate) use decode::Reader;
 pub use decode::decode;
@@ -139,6 +139,8 @@ pub struct PngRequest {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
+    /// Immutable range sources and owned pull-driven operations (2.0).
+    Progressive(crate::progressive::Request<'a>),
     /// Reauthenticate a fresh snapshot without mutating the existing handle (1.12).
     Reauthenticate {
         /// Original immutable document handle.
@@ -207,6 +209,7 @@ impl Request<'_> {
     /// The request's kind byte.
     pub const fn kind(&self) -> RequestKind {
         match self {
+            Self::Progressive(request) => request.kind(),
             Self::Hello(_) => RequestKind::Hello,
             Self::Reauthenticate { .. } => RequestKind::Reauthenticate,
             Self::Open { .. } => RequestKind::Open,
@@ -232,7 +235,8 @@ impl Request<'_> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SessionStats {
-    /// Original input bytes owned by open documents.
+    /// Original complete input bytes plus sparse-source admission ceilings.
+    /// Includes closed handles still pinned by jobs or source leases (2.0).
     pub source_bytes: u64,
     /// Estimated compiled-list retention charges.
     pub cache_bytes: u64,
@@ -279,6 +283,8 @@ impl Pixels {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Response {
+    /// Bounded progressive source/job event (2.0).
+    Progressive(Payload),
     /// The negotiated version.
     Hello(Version),
     /// New document handle and page count.
@@ -341,6 +347,7 @@ impl Response {
     /// The response's kind byte.
     pub const fn kind(&self) -> ResponseKind {
         match self {
+            Self::Progressive(response) => response.kind(),
             Self::Hello(_) => ResponseKind::Hello,
             Self::Open { .. } => ResponseKind::Open,
             Self::PageInfo { .. } => ResponseKind::PageInfo,
@@ -359,6 +366,33 @@ impl Response {
             Self::Close => ResponseKind::Close,
             Self::Error(_) => ResponseKind::Error,
         }
+    }
+}
+
+/// A bounded adapter payload. Only the host's typed operation adapters can
+/// construct its response kind and bytes, through the canonical capped writer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Payload {
+    kind: ResponseKind,
+    payload: Vec<u8>,
+}
+
+impl Payload {
+    pub(crate) fn new(kind: ResponseKind, writer: crate::wire::Writer) -> Self {
+        Self {
+            kind,
+            payload: writer.finish(),
+        }
+    }
+
+    /// The response's kind byte.
+    pub const fn kind(&self) -> ResponseKind {
+        self.kind
+    }
+
+    /// The encoded payload, after kind and id.
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
     }
 }
 

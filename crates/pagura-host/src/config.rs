@@ -17,7 +17,8 @@ pub struct SessionLimits {
     /// Documents open at the same time. Handles are never reused, so this
     /// does not limit how many documents a session opens over its lifetime.
     pub max_documents: usize,
-    /// Original source bytes retained across all open documents.
+    /// Original complete input bytes plus admitted sparse-source ceilings.
+    /// A dependent job or lease keeps admission after its handle closes.
     pub total_source_bytes: usize,
     /// Capacity of each open document's render store (ADR 0012): the
     /// recorded scenes, decoded images, fonts and glyph setups rendering
@@ -108,6 +109,7 @@ pub struct SessionConfig {
     pub engine: Limits,
     /// Budgets of the session as a whole.
     pub session: SessionLimits,
+    progressive: Option<crate::ProgressiveLimits>,
 }
 
 impl SessionConfig {
@@ -116,7 +118,20 @@ impl SessionConfig {
         Self {
             engine,
             session: SessionLimits::for_engine(&engine),
+            progressive: None,
         }
+    }
+
+    /// Replaces progressive source/job quotas before the session is created.
+    #[must_use]
+    pub const fn with_progressive(mut self, limits: crate::ProgressiveLimits) -> Self {
+        self.progressive = Some(limits);
+        self
+    }
+
+    /// Effective progressive quotas, including their defaults when not overridden.
+    pub fn progressive_limits(&self) -> crate::ProgressiveLimits {
+        self.progressive.unwrap_or_default()
     }
 
     /// Replaces the session budgets.

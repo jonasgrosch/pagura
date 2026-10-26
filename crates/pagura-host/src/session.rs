@@ -2,6 +2,7 @@
 
 mod documents;
 mod png;
+mod progressive;
 mod render;
 mod transport;
 
@@ -27,10 +28,11 @@ pub enum SessionEnd {
 }
 
 /// Where the handshake stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum State {
     AwaitingHello,
     Ready(Version),
+    Failed(Error),
 }
 
 /// One synchronous session with immutable documents and monotonically assigned handles.
@@ -40,6 +42,7 @@ pub struct Session {
     state: State,
     last_request: u32,
     documents: Documents,
+    progressive: progressive::Registry,
     cancellation: crate::Cancellation,
 }
 
@@ -53,11 +56,14 @@ impl Session {
     /// Creates a session. Each document receives `config.engine`; the
     /// session as a whole is bounded by `config.session` (ADR 0032).
     pub fn new(config: SessionConfig) -> Self {
+        let documents = Documents::new(&config);
+        let progressive = progressive::Registry::new(config, documents.source_budget());
         Self {
             config,
             state: State::AwaitingHello,
             last_request: 0,
-            documents: Documents::new(&config),
+            documents,
+            progressive,
             cancellation: crate::Cancellation::default(),
         }
     }
@@ -106,21 +112,45 @@ impl Session {
                 Ok(frame) => frame,
                 Err(error) => return self.fail(&mut output, id, error),
             };
-            if let Err(error) = self.order(&frame) {
-                return self.fail(&mut output, frame.id, error);
-            }
-            // V1 can create only complete-buffer documents. A source wait has
-            // no PDF error category and no v1 frame: preserve its typed cause
-            // as a transport failure if that admission invariant is broken.
-            let response = match self.execute(frame.request) {
+            let response = match self.handle(frame) {
                 Ok(response) => response,
-                Err(ReadFault::Invalid(error)) => Response::Error(error),
+                Err(ReadFault::Invalid(error)) => return self.fail(&mut output, id, error),
                 Err(fault) => return Err(io::Error::other(fault)),
             };
             // The document owns its source now; release a potentially large
             // request buffer before allocating the encoded response.
             drop(body);
             self.send(&mut output, id, &response)?;
+        }
+    }
+
+    /// Handles one decoded request through the same ordering and operation owner
+    /// as [`Self::serve`]. A version-two source wait is a completed `NeedData`
+    /// response, so a caller can supply ranges or cancel before advancing again.
+    /// Operational failures are structured error responses and keep the session usable.
+    ///
+    /// # Errors
+    /// A handshake/order failure is terminal and repeats on subsequent calls.
+    /// A version-one source wait remains typed: complete opens cannot normally
+    /// produce one, and version one has no availability response.
+    pub fn handle(&mut self, frame: RequestFrame<'_>) -> ReadResult<Response> {
+        if let State::Failed(error) = &self.state {
+            return Err(error.clone().into());
+        }
+        if let Err(error) = self.order(&frame) {
+            self.state = State::Failed(error.clone());
+            return Err(error.into());
+        }
+        match self.execute(frame.request) {
+            Ok(response) => Ok(response),
+            Err(ReadFault::Invalid(error)) => Ok(Response::Error(error)),
+            Err(ReadFault::Unavailable(missing)) if self.require(Version::V2).is_ok() => {
+                Ok(match self.progressive.need_data(&missing) {
+                    Ok(payload) => Response::Progressive(payload),
+                    Err(error) => Response::Error(error),
+                })
+            }
+            Err(fault) => Err(fault),
         }
     }
 
@@ -132,7 +162,7 @@ impl Session {
             )
             .at(Position::Buffer(layout::ID_OFFSET)));
         }
-        match (self.state, frame.request) {
+        match (&self.state, frame.request) {
             (State::AwaitingHello, Request::Hello(version)) => {
                 let version = Version::try_from(version.get())
                     .map_err(|error| error.at(version.position()))?;
@@ -149,6 +179,7 @@ impl Session {
                     .at(Position::Buffer(layout::KIND_OFFSET)));
             }
             (State::Ready(_), _) => (),
+            (State::Failed(error), _) => return Err(error.clone()),
         }
         self.last_request = frame.id;
         Ok(())
@@ -158,6 +189,10 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> ReadResult<Response> {
         let version = self.require(request.kind().since())?;
         match request {
+            Request::Progressive(request) => self
+                .progressive
+                .execute(request, &mut self.documents)
+                .map(Response::Progressive),
             Request::Reauthenticate { document, password } => {
                 self.documents.reauthenticate(document, password)
             }
@@ -204,8 +239,8 @@ impl Session {
 
     /// The negotiated version, if it is at least `minimum`.
     fn require(&self, minimum: Version) -> Result<Version> {
-        match self.state {
-            State::Ready(version) if version >= minimum => Ok(version),
+        match &self.state {
+            State::Ready(version) if *version >= minimum => Ok(*version),
             _ => Err(minimum.required()),
         }
     }

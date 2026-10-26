@@ -2,9 +2,9 @@
 
 use super::{
     ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FileScopeCode,
-    FitCode, ImageAssetCode, ImageTransferCode, MetadataOwnerCode, OpenFlags, OutlineStyle,
-    PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus,
-    Version,
+    FitCode, ImageAssetCode, ImageTransferCode, JobEventCode, MetadataOwnerCode, OpenFlags,
+    OutlineStyle, OutputCode, PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind,
+    SearchFlags, TileStatus, ValidationCode, Version,
 };
 use crate::SessionLimits;
 use crate::editing;
@@ -75,7 +75,7 @@ fn write_module(out: &mut String) -> fmt::Result {
     Ok(())
 }
 
-fn tables() -> [Item<Vec<(&'static str, String)>>; 20] {
+fn tables() -> [Item<Vec<(&'static str, String)>>; 23] {
     let versions = Version::ALL
         .iter()
         .map(|version| (version.name(), format!("{:#010x}", version.code())))
@@ -168,6 +168,21 @@ fn tables() -> [Item<Vec<(&'static str, String)>>; 20] {
             "ImageAssetCode",
             "Image object selection (1.12).",
             codes!(ImageAssetCode),
+        ),
+        (
+            "OutputCode",
+            "Progressive render output modes (2.0).",
+            codes!(OutputCode),
+        ),
+        (
+            "ValidationCode",
+            "Document validation readiness scopes (2.0).",
+            codes!(ValidationCode),
+        ),
+        (
+            "JobEventCode",
+            "Owned job progress events (2.0).",
+            codes!(JobEventCode),
         ),
     ]
 }
