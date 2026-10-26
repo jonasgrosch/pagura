@@ -128,7 +128,7 @@ impl<'a> Renderer<'a> {
 
     /// Prepares `scene` for one region and reports its repairs to the
     /// document, where strict recovery refuses them.
-    fn prepare(
+    pub(crate) fn prepare(
         self,
         scene: &Scene,
         (options, tile): (&RenderOptions, Option<Tile>),

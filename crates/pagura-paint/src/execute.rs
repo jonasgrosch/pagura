@@ -17,6 +17,7 @@ pub(crate) use frame::{Backdrop, Buffer, Frame, Read, Tops};
 pub(crate) use mask::transfer as mask_transfer;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
+pub(crate) use workspace::ReadyScratch;
 pub use workspace::Scratch;
 pub(crate) use workspace::{
     Extents, MaskCache, PageBand, PageBuffer, Sizes, Usage, Workspace, coverage_capacity,
@@ -201,25 +202,55 @@ impl Rendering<'_> {
         mut stop: impl FnMut(u32) -> bool,
         mut consume: impl FnMut(Range<u32>, &mut Vec<u8>) -> Result<(), E>,
     ) -> Result<Completion, E> {
-        let area = self.plan.area;
-        self.workspace.restart();
-        self.rasterizer.restart();
-        for band in area.bands() {
-            let rows = area.band_rows(band);
+        let mut cursor = BandCursor::new(self);
+        while let Some(rows) = cursor.rows(self) {
             let row = rows.start;
             if stop(row) {
                 return Ok(Completion::Stopped { row });
             }
-            Executor::band(self, band, output);
+            cursor.render(self, output);
             consume(rows, output)?;
         }
         Ok(Completion::Complete)
     }
 }
 
+/// The single monotonically advancing cursor for collected and owned renders.
+#[derive(Debug)]
+pub(crate) struct BandCursor {
+    next: u32,
+    end: u32,
+}
+
+impl BandCursor {
+    pub(crate) fn new(rendering: &mut Rendering<'_>) -> Self {
+        rendering.workspace.restart();
+        rendering.rasterizer.restart();
+        let bands = rendering.plan.area.bands();
+        Self {
+            next: bands.start,
+            end: bands.end,
+        }
+    }
+
+    pub(crate) fn rows(&self, rendering: &Rendering<'_>) -> Option<Range<u32>> {
+        (self.next < self.end).then(|| rendering.plan.area.band_rows(self.next))
+    }
+
+    pub(crate) const fn complete(&self) -> bool {
+        self.next >= self.end
+    }
+
+    pub(crate) fn render(&mut self, rendering: &mut Rendering<'_>, output: &mut Vec<u8>) {
+        debug_assert!(!self.complete());
+        Executor::band(rendering, self.next, output);
+        self.next = self.next.saturating_add(1);
+    }
+}
+
 /// The largest actual band: clipped edge bands can both be shorter than
 /// the grid height. Three or more bands include an unclipped middle band.
-fn output_band_bytes(area: pagura_raster::Area) -> pagura_core::Result<usize> {
+pub(crate) fn output_band_bytes(area: pagura_raster::Area) -> pagura_core::Result<usize> {
     let bands = area.bands();
     let rows = if bands.end.saturating_sub(bands.start) > 2 {
         u32_to_usize(area.band_height)

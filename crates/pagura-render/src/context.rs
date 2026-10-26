@@ -7,7 +7,7 @@ use pagura_document::forms::FormFiller;
 use pagura_document::{Document, Page};
 use pagura_extract::{PositionedText, TextPage};
 use pagura_interpret::Scene;
-use pagura_paint::{Completion, Scratch};
+use pagura_paint::{Completion, OutputLimits, RenderSession, Scratch};
 use pagura_raster::Pixmap;
 use pagura_text::Provider;
 use std::ops::Range;
@@ -266,6 +266,32 @@ impl RenderContext {
             self.renderer()
                 .render_bands(scene, (options, tile), scratch, stop, consume)
         })
+    }
+
+    /// Prepares an owned render that continues one final band per step.
+    ///
+    /// The session owns its scratch and reserved output slots, holds no context
+    /// lock, and needs no source bytes after this call. Leases pin output slots
+    /// until released. Existing callbacks retain their per-call restart behavior.
+    ///
+    /// # Errors
+    /// As [`Self::render_scene`], plus the separate output quota in `limits`.
+    /// All errors occur before the session can publish output.
+    pub fn render_session(
+        &self,
+        scene: &Scene,
+        options: &RenderOptions,
+        tile: Option<Tile>,
+        limits: OutputLimits,
+    ) -> Result<RenderSession> {
+        let prepared = Arc::new(self.renderer().prepare(scene, (options, tile))?);
+        let scratch = self
+            .scratch
+            .lock()
+            .ok()
+            .and_then(|mut kept| kept.take())
+            .unwrap_or_default();
+        RenderSession::new(prepared, scratch, limits)
     }
 
     /// Takes and returns scratch identically for collectors and consumers,

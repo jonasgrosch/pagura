@@ -173,5 +173,20 @@ fn opaque_white_outputs_pack_exactly_like_rgb_over_white_in_every_page_format() 
             )
             .unwrap();
         assert_eq!(rgb, pixmap.to_rgb_over(Rgba8::WHITE));
+        let mut session = crate::RenderSession::new(
+            std::sync::Arc::new(prepared),
+            scratch,
+            crate::OutputLimits::default(),
+        )
+        .unwrap();
+        let mut owned = Vec::new();
+        loop {
+            match session.advance() {
+                crate::BandOutput::Band(band) => owned.extend_from_slice(band.premultiplied_rgba()),
+                crate::BandOutput::Complete => break,
+                other => panic!("unexpected owned output: {other:?}"),
+            }
+        }
+        assert_eq!(owned, pixmap.data());
     }
 }

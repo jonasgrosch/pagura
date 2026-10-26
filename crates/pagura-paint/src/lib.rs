@@ -23,5 +23,7 @@ mod testing;
 
 pub use execute::{Rendering, Scratch};
 
-pub use prepare::{Charges, Completion, PreparedScene, prepare};
+pub use prepare::{
+    BandLease, BandOutput, Charges, Completion, OutputLimits, PreparedScene, RenderSession, prepare,
+};
 pub use request::{OverprintMode, RenderRequest};

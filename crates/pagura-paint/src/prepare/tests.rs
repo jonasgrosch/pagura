@@ -9,6 +9,7 @@ mod invariance;
 mod mixed;
 mod patterns;
 mod runs;
+mod session;
 mod streaming;
 
 use crate::execute::Rendering;

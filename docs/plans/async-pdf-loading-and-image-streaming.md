@@ -537,14 +537,18 @@ aborting their task handles does not stop already executing work. See the
 
 ## 11. Resumable final pixel bands
 
-Add an owned render session holding `Arc<PreparedScene>`, `Scratch`, a monotonic
-global-band cursor and a preallocated output-band buffer. Construct a temporary
+The library now exposes `RenderSession` holding `Arc<PreparedScene>`, admitted
+owned scratch, a monotonic global-band cursor and a fixed set of preallocated
+output slots. `RenderContext::render_session` uses the existing preparation path. Construct a temporary
 borrowed execution view during each step; avoid a self-referential struct
 holding a `Rendering<'a>` that borrows its own fields.
 
-Initialize the workspace and active-item lists once. `next_band` executes one
-band, advances the cursor once, and returns its global row range and immutable
-pixel bytes. Pausing must not call `workspace.restart()` or repeat earlier
+Initialize the workspace and active-item lists once. `advance` executes one
+band, advances the cursor once, and returns a `BandLease` with its global row
+range and immutable pixel bytes. `BandOutput::Backpressured` executes nothing;
+`Complete` and `Cancelled` are explicit terminal states. `OutputLimits` bounds
+slot count and retained output bytes. Shared core `MemoryBudget` reservations
+follow source and output allocations until their final owner drops them. Pausing must not call `workspace.restart()` or repeat earlier
 bands. The current `render`, `render_until` and `render_bands` APIs become
 adapters over the same cursor. Each existing API call still starts a new render
 and retains its completion/cancellation/consumer-error meaning; only the new

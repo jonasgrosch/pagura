@@ -27,7 +27,7 @@ impl CompleteBytes {
         let length =
             u64::try_from(bytes.len()).map_err(|_| Error::limit("source length overflow"))?;
         super::length(length, limits)?;
-        let budget = Budget::new(source_limits.retained_bytes);
+        let budget = Budget::new(source_limits.retained_bytes, super::memory::EXCEEDED);
         let retained = bytes
             .len()
             .checked_add(size_of::<Retained<Storage>>() + 4 * size_of::<usize>())

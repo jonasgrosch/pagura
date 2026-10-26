@@ -3,7 +3,9 @@
 
 use crate::{Error, Result};
 
+mod memory;
 mod tables;
+pub use memory::{MemoryBudget, Reservation};
 
 /// A budget that work or bytes are charged against before they are spent.
 ///

@@ -1,16 +1,34 @@
 {
   "schema": 2,
   "area": "sources",
-  "scope": "Project-owned immutable byte-source and availability contracts from ADR 0035. Independent literal byte vectors test storage and ownership, without invoking a PDF parser or product writer as an oracle.",
+  "scope": "Project-owned source availability and owned output lifecycle contracts from ADR 0035. Independent literal byte vectors test source storage; analytic image oracles and existing compositor controls validate owned rendering.",
   "requirements": [
     {
       "id": "source-availability-and-leases",
       "reference": "project-policy",
       "clauses": [],
-      "status": "source storage implemented; hosted validation pending",
-      "tests": ["pagura-document/tests/sources.rs", "pagura/tests/api/source.rs"],
+      "status": "source storage implemented; complete-source hosted controls pass on Ubuntu, macOS and Windows; document integration remains pending",
+      "tests": [
+        "pagura-document/tests/sources.rs",
+        "pagura/tests/api/source.rs",
+        "pagura-core/tests/windows.rs",
+        "pagura-core/tests/memory.rs"
+      ],
       "gaps": "Document parser/cache migration, progressive opening/pages, jobs, encoding, protocol and scheduling remain group 11 obligations.",
       "rule": "A source fixes identity and length. Supplies validate all overlaps before publishing new fragments. Missing bytes remain separate from terminal errors. Duplicate bytes do not advance availability; conflicting overlap invalidates future reads. Every retained allocation stays charged until its last lease drops. Assembly and missing-range frontiers obey explicit caps, and work accumulates across retries."
+    },
+    {
+      "id": "owned-render-output-lifecycle",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "implemented; hosted validation pending",
+      "tests": [
+        "pagura-paint/src/prepare/tests/session.rs",
+        "pagura-paint/src/prepare/tests/streaming.rs",
+        "pagura/tests/api/session.rs"
+      ],
+      "gaps": "Protocol, browser/native async adapters and worker scheduling remain group 11 obligations.",
+      "rule": "Prepared sessions own scratch, a persistent global-band cursor and preallocated output slots. Pausing never repeats a band. A held immutable lease prevents slot reuse; no free slot means no execution. Cancellation is terminal and leaves existing leases valid and charged. Existing collectors, callbacks and owned sessions share the same executor and exact pixels."
     }
   ]
 }

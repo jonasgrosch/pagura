@@ -12,9 +12,12 @@ pub(crate) mod bounds;
 mod finish;
 mod overprint;
 pub(crate) mod planner;
+mod session;
 mod shapes;
 pub(crate) mod stacks;
 mod storage;
+
+pub use session::{BandLease, BandOutput, OutputLimits, RenderSession};
 
 pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes};
 
@@ -35,6 +38,7 @@ use pagura_raster::{Area, DeviceRect};
 #[derive(Debug)]
 pub struct PreparedScene {
     plan: Plan,
+    page: DeviceRect,
     shapes: Shapes,
     repairs: Vec<Diagnostic>,
     charges: Charges,
@@ -135,6 +139,7 @@ pub fn prepare(
     let finished = finish::finish(planner, &mut budget)?;
     Ok(PreparedScene {
         plan: finished.plan,
+        page: request.page,
         shapes: finished.shapes,
         repairs: finished.repairs,
         charges: budget.charges(),

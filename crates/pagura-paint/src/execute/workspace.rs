@@ -23,6 +23,13 @@ pub struct Scratch {
     rasterizer: Option<BandRasterizer>,
 }
 
+/// Scratch admitted for one prepared plan; its two parts always exist together.
+#[derive(Debug)]
+pub(crate) struct ReadyScratch {
+    pub(crate) workspace: Workspace,
+    pub(crate) rasterizer: BandRasterizer,
+}
+
 impl Scratch {
     /// Bytes held between renders.
     pub fn retained_bytes(&self) -> usize {
@@ -36,13 +43,19 @@ impl Scratch {
     /// The workspace and rasterizer for `plan`, allocated within the
     /// bytes preparation reserved for them ([`Plan::scratch`]).
     pub(crate) fn fit(&mut self, plan: &Plan) -> Result<(&mut Workspace, &mut BandRasterizer)> {
+        let ready = std::mem::take(self).into_ready(plan)?;
+        Ok((
+            self.workspace.insert(ready.workspace),
+            self.rasterizer.insert(ready.rasterizer),
+        ))
+    }
+
+    /// Allocates the same admitted storage for a persistent owned execution.
+    pub(crate) fn into_ready(self, plan: &Plan) -> Result<ReadyScratch> {
         // Drop storage outside the new reservation before replacing anything.
-        let previous = self
-            .workspace
-            .take()
-            .map(|workspace| Kept::new(plan, workspace));
+        let previous = self.workspace.map(|workspace| Kept::new(plan, workspace));
         let mut bytes = Meter::new(plan.scratch, "render memory budget exceeded");
-        let rasterizer = match self.rasterizer.take() {
+        let rasterizer = match self.rasterizer {
             Some(rasterizer) if rasterizer.area() == plan.area => {
                 BandRasterizer::charge(plan.area, &mut bytes)?;
                 rasterizer
@@ -54,9 +67,10 @@ impl Scratch {
             }
         };
         let workspace = Workspace::new(plan, plan.sizes, previous, &mut bytes)?;
-        let workspace = self.workspace.insert(workspace);
-        let rasterizer = self.rasterizer.insert(rasterizer);
-        Ok((workspace, rasterizer))
+        Ok(ReadyScratch {
+            workspace,
+            rasterizer,
+        })
     }
 }
 

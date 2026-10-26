@@ -40,7 +40,7 @@ pub use diagnostic::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};
 pub use dictionary::{Dictionary, DictionaryIter};
 pub use error::{Error, ErrorKind, Feature, Position, Result, ResultExt};
 pub use limits::{Limits, SignatureLimits};
-pub use meter::Meter;
+pub use meter::{MemoryBudget, Meter, Reservation};
 pub use name::Name;
 pub use rect::Rect;
 pub use retained::INDEX_ENTRY_OVERHEAD;

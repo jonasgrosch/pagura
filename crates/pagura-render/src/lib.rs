@@ -34,7 +34,7 @@ pub use context::RenderContext;
 pub use options::{OverprintPreview, RenderOptions, Tile};
 pub use pagura_extract::{PositionedText, TextPage};
 pub use pagura_interpret::Scene;
-pub use pagura_paint::Completion;
+pub use pagura_paint::{BandLease, BandOutput, Completion, OutputLimits, RenderSession};
 pub use pagura_raster::Pixmap;
 pub use pagura_text::Provider;
 

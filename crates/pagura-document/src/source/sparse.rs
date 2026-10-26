@@ -80,7 +80,7 @@ impl SparseBytes {
             identity,
             length,
             limits: *source_limits,
-            budget: Budget::new(source_limits.retained_bytes),
+            budget: Budget::new(source_limits.retained_bytes, super::memory::EXCEEDED),
             available: Mutex::new(Available {
                 chunks: BTreeMap::new(),
                 generation: 0,
@@ -143,12 +143,12 @@ impl SparseBytes {
             .generation
             .checked_add(1)
             .ok_or(Error::limit("source availability generation exhausted"))?;
-        let (mut prepared, _reservation) = self.budget.vector(gaps.value.len())?;
+        let (mut prepared, _reservation) = super::memory::vector(&self.budget, gaps.value.len())?;
         let mut added_bytes = 0_usize;
         for gap in &gaps.value {
             let part = gap.offsets(self.length)?;
             let input = &bytes[part.start - range.start..part.end - range.start];
-            let (mut copied, mut reservation) = self.budget.vector(input.len())?;
+            let (mut copied, mut reservation) = super::memory::vector(&self.budget, input.len())?;
             reservation.grow(size_of::<(usize, Chunk)>() + INDEX_ENTRY_OVERHEAD)?;
             copied.extend_from_slice(input);
             added_bytes = added_bytes.saturating_add(input.len());
@@ -209,7 +209,7 @@ impl SparseBytes {
             return Err(Error::limit("source assembly window budget exceeded"));
         }
         available.work.charge(range.len())?;
-        let (mut bytes, reservation) = self.budget.vector(range.len())?;
+        let (mut bytes, reservation) = super::memory::vector(&self.budget, range.len())?;
         for (&start, chunk) in overlapping(&available.chunks, range.clone()) {
             let begin = start.max(range.start) - start;
             let end = chunk.end.min(range.end) - start;
@@ -300,7 +300,7 @@ fn push_gap(budget: &Arc<Budget>, gaps: &mut Gaps, range: Range<usize>, cap: usi
     let (gaps, reservation) = if let Some(pair) = gaps {
         pair
     } else {
-        gaps.insert(budget.vector(0)?)
+        gaps.insert(super::memory::vector(budget, 0)?)
     };
     if gaps.len() >= cap {
         return Err(Error::limit("source missing-range count exceeded"));

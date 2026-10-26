@@ -111,7 +111,8 @@ pub use pagura_document::{
 };
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{
-    Completion, OverprintPreview, RenderContext, RenderOptions, Scene, Tile, device_size,
+    BandLease, BandOutput, Completion, OutputLimits, OverprintPreview, RenderContext,
+    RenderOptions, RenderSession, Scene, Tile, device_size,
 };
 pub use pagura_write::{Builder, NewObject};
 pub use text::{SearchOptions, TextMatch, TextPage};
