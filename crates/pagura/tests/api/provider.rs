@@ -308,7 +308,7 @@ fn cjk_substitution_requires_its_opt_in_data() {
         .scene(context.document().page(0).unwrap())
         .unwrap_err();
     assert_eq!(
-        error.feature().unwrap().as_str(),
+        error.as_error().unwrap().feature().unwrap().as_str(),
         if cfg!(feature = "bundled-data") {
             "font.non-embedded"
         } else {
