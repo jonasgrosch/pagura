@@ -1,0 +1,178 @@
+{
+  "schema": 2,
+  "area": "paint_jpx",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "paint_jpx/gray-linear",
+      "kind": "pdf",
+      "description": "gray linear",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/gray-linear.pdf",
+      "sha256": "782f34484cb0438fe8786953277b09ec2db233fcd2e421107824076c68e0a476",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/gray-linear.ppm",
+      "oracle_sha256": "9e2dc01e4e064fc8e6be06130c9de3db4f7c1b4f3fe5799b2ff6224d71fa1d49",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/rgb-linear",
+      "kind": "pdf",
+      "description": "rgb linear",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/rgb-linear.pdf",
+      "sha256": "9964c48700fda87c14d17d489bf42651315ea4ea936efba5e7114b7c3de77a93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/rgb-linear.ppm",
+      "oracle_sha256": "091a46c0e549b8ecbb22ab01309c423bed1690ccc4c9ec18f616ffc4b98002ee",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/pdf-override",
+      "kind": "pdf",
+      "description": "pdf override",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/pdf-override.pdf",
+      "sha256": "afc602de6a00be6755f84ceecd2361efa615c81d33cf9b84cd0f4f51a4b93873",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/pdf-override.ppm",
+      "oracle_sha256": "7d6682899ce261a672b1f8d79ba83a87414c7c13abaee0f6b96e115ad0ed175b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/ignores-pdf-decode-default",
+      "kind": "pdf",
+      "description": "ignores pdf decode default",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/ignores-pdf-decode-default.pdf",
+      "sha256": "d063f32a5f93401f39eeeaee84ecf6adba2ccf2ef1c3d72d1b98b00efb47c358",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/ignores-pdf-decode-default.ppm",
+      "oracle_sha256": "091a46c0e549b8ecbb22ab01309c423bed1690ccc4c9ec18f616ffc4b98002ee",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/future-profile-fallback",
+      "kind": "pdf",
+      "description": "future profile fallback",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/future-profile-fallback.pdf",
+      "sha256": "79707224cc84fe4fde2a233bed19e1f5be63363d8b106eec2dea4a81a2e13241",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/future-profile-fallback.ppm",
+      "oracle_sha256": "79eff8aac00432d960286e4bc2da9e425dc457789770bceeb2811659238a8234",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx/straight-alpha",
+      "kind": "pdf",
+      "description": "straight alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/straight-alpha.pdf",
+      "sha256": "61343cbe78fb2e30d19c53b3424d537f24549115e570eeb71951659f31c06dc9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/straight-alpha.ppm",
+      "oracle_sha256": "31c9c8c3ee0c4f022d4af75ec1023eea5f6bf9af78d75ff9be26a25e922639d7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/premultiplied-alpha",
+      "kind": "pdf",
+      "description": "premultiplied alpha",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/premultiplied-alpha.pdf",
+      "sha256": "f6e5adc17dfc288a5daf0c33597016cea9667ef802e5b7e5ce828b7ea9f5da37",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/premultiplied-alpha.ppm",
+      "oracle_sha256": "31c9c8c3ee0c4f022d4af75ec1023eea5f6bf9af78d75ff9be26a25e922639d7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/truncated-profile",
+      "kind": "pdf",
+      "description": "Malformed embedded ICC remains a syntax error",
+      "expected": "open",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/truncated-profile.pdf",
+      "sha256": "8fdd715ab10a7dddb5357f27489dedfc97f1d17eb0c4565d70d3bb4289a6124b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_jpx/profile-channel-mismatch",
+      "kind": "pdf",
+      "description": "Malformed embedded ICC remains a syntax error",
+      "expected": "open",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx/profile-channel-mismatch.pdf",
+      "sha256": "474d60fee05b5726bbc00621a884830626a28205b721f02d2066d3472766a164",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}

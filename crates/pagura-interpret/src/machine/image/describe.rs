@@ -9,7 +9,7 @@ use crate::model::{Image, ImageMask};
 use pagura_color::{ColorSpace, Components, Intent, MAX_COMPONENTS};
 use pagura_core::{Dictionary, Error, ObjectId, Result};
 use pagura_image::jpx::JpxColor;
-use pagura_image::{ImageKind, ImageSource, SourceMask};
+use pagura_image::{ImageId, ImageKind, ImageSource, SourceMask};
 use std::sync::Arc;
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
@@ -76,8 +76,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     }
 
     /// The image's colour space: its `ColorSpace` value, the device space
-    /// of a JPEG 2000 container's sRGB or greyscale, or none for a stencil
-    /// mask.
+    /// of a JPEG 2000 container, an embedded ICC profile, or none for a
+    /// stencil mask. Explicit PDF colour always wins (7.4.9, Table 87).
     fn image_space(
         &mut self,
         source: &ImageSource,
@@ -87,6 +87,17 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             ImageKind::Color {
                 color_space: Some(value),
             } => self.session.colors.resolve(resources, value).map(Some),
+            ImageKind::EmbeddedColor {
+                color: JpxColor::Icc(data),
+            } => {
+                let ImageId::Object(id) = source.id() else {
+                    return Err(Error::syntax("JPXDecode is forbidden in inline images"));
+                };
+                self.session
+                    .colors
+                    .embedded_icc(id, data, source.components())
+                    .map(Some)
+            }
             ImageKind::EmbeddedColor { color } => {
                 let name: &[u8] = match (color, source.components()) {
                     (JpxColor::Enumerated(16), 3) => b"DeviceRGB",

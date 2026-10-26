@@ -662,6 +662,38 @@
         "pagura-cli cli::scan_separates_information_from_repairs"
       ],
       "gaps": "Diagnostic classification follows ADR 0003/0009; the polygon oracle follows the locked substitute and explicit PDF metrics."
+    },
+    {
+      "id": "paint-jpx-icc",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "Table 87",
+        "8.6.5.5",
+        "11.6.5.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "paint/image-jpx-icc-explicit",
+        "paint_jpx/gray-linear",
+        "paint_jpx/rgb-linear",
+        "paint_jpx/pdf-override",
+        "paint_jpx/ignores-pdf-decode-default",
+        "paint_jpx/future-profile-fallback",
+        "paint_jpx/straight-alpha",
+        "paint_jpx/premultiplied-alpha",
+        "paint_jpx/truncated-profile",
+        "paint_jpx/profile-channel-mismatch",
+        "pagura-interpret resources::colorspace::tests::embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets"
+      ],
+      "review": [
+        {
+          "locator": "7.4.9; Table 87; T.800 I.5.3.3; ICC.1:2010 7.2\u20137.4 and 8.2",
+          "rule": "Use the embedded profile when PDF ColorSpace is absent; ignore Decode in that case. Explicit PDF colour takes precedence. The existing ICC parser and forward converters handle profile syntax, budgets and colourimetry.",
+          "verdict": "Primary clauses reviewed; independent linear-profile pixel oracles authored; hosted execution pending."
+        }
+      ],
+      "gaps": "sYCC, Lab-input profiles, ranking multiple JPX colour specifications and fallback after an unsupported selected transform remain open. Full interaction/platform and competitor gates remain G01/R02 work."
     }
   ]
 }
