@@ -13,7 +13,8 @@ use std::collections::BTreeMap;
 ///
 /// Changed widgets use generated text and choice programs or the selected
 /// button state; NeedAppearances also regenerates unchanged text and choice
-/// fields. An untouched field with a stored AP keeps it when generation is
+/// fields. Missing text/choice appearances use their source values even without
+/// edits. An untouched field with a stored AP keeps it when generation is
 /// unsupported, reporting [`information::APPEARANCE_KEPT`] in both
 /// recovery modes; edited fields and other errors fail.
 #[derive(Debug)]
@@ -55,8 +56,9 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
     /// `annotation` must be the dictionary the filler's document resolves
     /// for the annotation: identity, not content, selects the widget, so a
     /// value never applies to an unrelated annotation with the same field
-    /// name. An untouched widget with an area returns `None` whatever its
-    /// field type. Otherwise, when the widget selects a stored stream,
+    /// name. An untouched widget keeps its stored appearance unless
+    /// NeedAppearances requests regeneration; missing Tx/Ch appearances are
+    /// generated from source values. When the widget selects a stored stream,
     /// `culled` receives that stream's dictionary and returns whether the
     /// stream would paint nothing (hidden by optional content, or an empty
     /// fitted placement, 12.5.5); a culled stream is returned as it is,
@@ -79,17 +81,21 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
         let form = self.filler.form();
         let widget = super::widget(self.filler, index)?;
         let field = super::field(self.filler, widget)?;
-        let regenerate = self.filler.get(widget.field).is_some()
-            || form.need_appearances
-                && matches!(
-                    field.kind,
-                    FieldKind::Text { .. } | FieldKind::Choice { .. }
-                );
-        if !regenerate && rect.width() != 0.0 && rect.height() != 0.0 {
+        let variable = matches!(
+            field.kind,
+            FieldKind::Text { .. } | FieldKind::Choice { .. }
+        );
+        let regenerate =
+            self.filler.get(widget.field).is_some() || form.need_appearances && variable;
+        let original = original(self.filler, index)?;
+        if !regenerate
+            && rect.width() != 0.0
+            && rect.height() != 0.0
+            && (!variable || original.is_some())
+        {
             return Ok(None);
         }
         let document = self.filler.document();
-        let original = original(self.filler, index)?;
         if let Some(Appearance::Existing(id)) = original.as_ref() {
             let stream = document
                 .object(*id)?

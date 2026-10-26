@@ -1,5 +1,5 @@
 //! Inherited field entries and shared primitive readers (12.7.4.1).
-use super::{AdditionalAction, Justification};
+use super::{AdditionalAction, FieldFlags, Justification};
 use crate::navigation::actions;
 use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Result, Value};
@@ -24,7 +24,7 @@ pub(super) enum Key {
 }
 
 impl Key {
-    const ALL: [Self; 8] = [
+    pub(super) const ALL: [Self; 8] = [
         Self::Ft,
         Self::Ff,
         Self::V,
@@ -63,13 +63,22 @@ impl<'a> Inherited<'a> {
         context: &mut Context<'a>,
         dictionary: &'a Dictionary,
         source: Source,
+        keys: impl IntoIterator<Item = Key>,
     ) -> Result<Self> {
-        for (key, entry) in Key::ALL.into_iter().zip(&mut self.0) {
+        for key in keys {
+            let entry = &mut self.0[key as usize];
             if let Some(value) = context.present(dictionary, key.name(), source)? {
                 *entry = Some(Entry { value, source });
             }
         }
         Ok(self)
+    }
+
+    pub(super) fn flags(&self, context: &mut Context<'a>) -> Result<FieldFlags> {
+        self.get(Key::Ff)
+            .map(|entry| unsigned(entry, context))
+            .transpose()
+            .map(|bits| FieldFlags::from_bits(bits.unwrap_or(0)))
     }
 
     pub(super) fn defaults(
@@ -94,6 +103,25 @@ pub(super) fn unsigned<'a>(entry: Entry<'a>, context: &mut Context<'a>) -> Resul
         .as_integer()
         .and_then(|v| u32::try_from(v).ok())
         .ok_or_else(|| source.error(Error::syntax("form integer must be unsigned 32-bit")))
+}
+
+/// A named child makes this a nonterminal field, independent of inherited FT.
+pub(super) fn has_field_children<'a>(
+    context: &mut Context<'a>,
+    dictionary: &'a Dictionary,
+    source: Source,
+) -> Result<bool> {
+    let Some(kids) = context.present(dictionary, b"Kids", source)? else {
+        return Ok(false);
+    };
+    for value in array(context, kids, source)? {
+        context.step(0, source)?;
+        let (child, child_source) = context.dictionary(value, source)?;
+        if context.present(child, b"T", child_source)?.is_some() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub(super) fn appearance<'a>(

@@ -1,7 +1,7 @@
-//! Appearance data for in-memory form values (12.7.4.3–12.7.5).
+//! Shared appearances for source and in-memory form values (12.7.4.3–12.7.5).
 //!
 //! Nothing here mutates or serializes the source document. Resource
-//! references remain relative to the filler's document. Generated programs
+//! references remain relative to the source document. Generated programs
 //! are ordinary Form XObjects, drawn like any annotation appearance.
 //! Layout is bounded reader policy: greedy whitespace wrapping, 1.2 em default
 //! leading, a 12 pt auto-size ceiling, 1/64 pt size steps when shrinking,
@@ -31,10 +31,10 @@ use crate::program::Program;
 use crate::stream::{Appearance, AppearanceStream, form_dictionary};
 use crate::values::optional_dictionary;
 use da::DefaultAppearance;
-use pagura_core::{Error, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use pagura_document::{
     Document,
-    forms::{Field, FieldKind, FormFiller, Widget, WidgetState},
+    forms::{Field, FieldKind, FilledField, FormFiller, Widget, WidgetState, WidgetText},
 };
 use pagura_text::Provider;
 use style::Style;
@@ -262,7 +262,7 @@ impl Context<'_, '_> {
         {
             return Ok(original.clone());
         }
-        if original.is_none() && (!button && !variable || bounds(self.widget).is_err()) {
+        if original.is_none() && (!button && !variable || bounds(self.widget.rectangle).is_err()) {
             return Ok(Appearance::Hidden);
         }
         if self.filler.form().has_xfa {
@@ -275,13 +275,42 @@ impl Context<'_, '_> {
             return buttons::check_mark(self.document(), self.widget, state, self.field)
                 .map(Appearance::Generated);
         }
-        self.variable(original.as_ref())
+        Variable {
+            field: variable::Inputs {
+                document: self.document(),
+                kind: &self.field.kind,
+                flags: self.field.flags,
+                value: self.field.value.as_ref(),
+                change: self.filler.get(self.widget.field).map(FilledField::value),
+                dictionary: self.field.dictionary,
+                default_appearance: self.field.default_appearance,
+                justification: self.field.justification,
+            },
+            widget: self.widget.dictionary,
+            bounds: self.widget.rectangle,
+            default_resources: self.filler.form().default_resources,
+            fonts: self.fonts,
+            policy: self.policy,
+        }
+        .appearance(original.as_ref())
+        .map(Appearance::Generated)
     }
+}
 
-    /// Text and choice appearances: a new Tx section in a new or the
-    /// original stream (12.7.4.3).
-    fn variable(&self, original: Option<&Appearance>) -> Result<Appearance> {
-        let document = self.document();
+/// The same variable-text generator serves source display and explicit edits.
+struct Variable<'a, 'd> {
+    field: variable::Inputs<'a, 'd>,
+    widget: &'d Dictionary,
+    bounds: Rect,
+    default_resources: Option<&'d Dictionary>,
+    fonts: &'a dyn FontSource,
+    policy: UpdatePolicy,
+}
+
+impl Variable<'_, '_> {
+    /// A new Tx section in a new or the original stream (12.7.4.3).
+    fn appearance(&self, original: Option<&Appearance>) -> Result<AppearanceStream> {
+        let document = self.field.document;
         let limits = document.limits();
         let original_id = match original {
             Some(Appearance::Existing(id)) => Some(*id),
@@ -297,21 +326,20 @@ impl Context<'_, '_> {
                 .and_then(Value::as_array)
                 .and_then(Rect::from_array)
                 .ok_or(Error::syntax("existing appearance has invalid BBox"))?,
-            None => bounds(self.widget)?,
+            None => bounds(self.bounds)?,
         };
         if self.policy == UpdatePolicy::PreserveExisting
             && (bbox.width() == 0.0 || bbox.height() == 0.0)
         {
             source = None;
             old = None;
-            bbox = bounds(self.widget)?;
+            bbox = bounds(self.bounds)?;
         }
         let existing = old
             .map(|dictionary| optional_dictionary(document, dictionary, b"Resources"))
             .transpose()?
             .flatten();
-        let mut resources =
-            update::resources(document, existing, self.filler.form().default_resources)?;
+        let mut resources = update::resources(document, existing, self.default_resources)?;
         let da = DefaultAppearance::parse(
             self.field
                 .default_appearance
@@ -322,7 +350,7 @@ impl Context<'_, '_> {
             supply_font(document, &mut resources, da.font.as_bytes())?;
         }
         let font = Font::load(document, &resources, da.font.as_bytes(), self.fonts)?;
-        let style = Style::read(document, self.widget.dictionary)?;
+        let style = Style::read(document, self.widget)?;
         let frame = if old.is_none() {
             Some(crate::widget_rotation::frame(style.rotation, bbox)?)
         } else {
@@ -341,7 +369,7 @@ impl Context<'_, '_> {
             area.width(),
             area.height()
         ))?;
-        variable::write(&mut text, self.filler, self.widget.field, area, &font, &da)?;
+        variable::write(&mut text, &self.field, area, &font, &da)?;
         text.text("Q\nEMC\n")?;
         let text = text.finish();
         let content = if let Some(source) = source {
@@ -368,8 +396,42 @@ impl Context<'_, '_> {
             dictionary.remove(key);
         }
         dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
-        AppearanceStream::new(document, dictionary, content).map(Appearance::Generated)
+        AppearanceStream::new(document, dictionary, content)
     }
+}
+
+/// Generates a missing source Tx/Ch appearance through the ordinary form path.
+pub(crate) fn source_widget(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+    field: &WidgetText<'_>,
+    fonts: &dyn FontSource,
+) -> Result<AppearanceStream> {
+    if field.has_xfa {
+        return Err(Error::unsupported(
+            pagura_document::features::XFA,
+            "XFA appearance generation is unavailable",
+        ));
+    }
+    Variable {
+        field: variable::Inputs {
+            document,
+            kind: &field.kind,
+            flags: field.flags,
+            value: field.value.as_ref(),
+            change: None,
+            dictionary: field.dictionary,
+            default_appearance: field.default_appearance,
+            justification: field.justification,
+        },
+        widget: annotation,
+        bounds: rect,
+        default_resources: field.default_resources,
+        fonts,
+        policy: UpdatePolicy::Specification,
+    }
+    .appearance(None)
 }
 
 /// The stored normal appearance a widget selects with its current state,
@@ -416,8 +478,8 @@ fn normal(
 }
 
 /// The widget's rectangle moved to the origin, the BBox of a new appearance.
-fn bounds(widget: &Widget<'_>) -> Result<Rect> {
-    let (width, height) = (widget.rectangle.width(), widget.rectangle.height());
+fn bounds(rectangle: Rect) -> Result<Rect> {
+    let (width, height) = (rectangle.width(), rectangle.height());
     Rect::from_corners(0.0, 0.0, width, height)
         .filter(|_| width > 0.0 && height > 0.0)
         .ok_or(Error::invalid_argument(

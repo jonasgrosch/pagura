@@ -1646,7 +1646,7 @@
         "relief_annotations/width-type",
         "relief_annotations/nonrectangular"
       ],
-      "gaps": "Independent trapezoids establish coverage and compositing. CMYK colour expectations, nonrectangular relief and nonempty ordinary widget synthesis remain open. Filled forms and quarter-turn empty widgets share the border geometry. Exact bevel dimensions and lighting are reader policy."
+      "gaps": "Independent trapezoids establish coverage and compositing. CMYK colour expectations and nonrectangular relief remain open; source Tx/Ch layout uses content-source-widget-display. Filled forms and quarter-turn empty widgets share the border geometry. Exact bevel dimensions and lighting are reader policy."
     },
     {
       "id": "content-cloudy-borders",
@@ -1945,7 +1945,7 @@
         "12.5.6.10 Table 182",
         "12.5.6.23 Table 195"
       ],
-      "status": "Matched baseline observations completed; shared non-destructive preview and independent geometry controls authored, awaiting hosted runtime validation",
+      "status": "Matched baseline observations and shared non-destructive preview validated by the retained 416-control hosted run at b042f0230; whole V01 remains partial",
       "rule": "Redact annotations identify content without removing it. QuadPoints denotes the intended region in Table 182 counterclockwise order; absent or null quads use Rect. The explicit preview policy strokes one-unit red region outlines clipped to Rect, sharing quad validation, alternate-order repair, path generation and budgets with text markup. All quads paint in one stroke with CA opacity. Popup colour C, nonstroking ca, and post-application replacement IC, RO, OverlayText/Repeat/DA/Q are not read for this outline, including malformed or cyclic values. Stored normal AP takes precedence over substitute geometry and replacement entries. Preview rendering preserves underlying pixels, extracted Unicode and positions, and original document bytes. RO remains distinct from normal AP and takes precedence over other replacement entries only when applying redactions.",
       "tests": [
         "annotation_display/redact-observe-ordinary-content",
@@ -2011,7 +2011,7 @@
         "pagura-interpret annotations::static_appearances_use_existing_reference_and_scene_budgets",
         "pagura-appearance annotation::tests::markup::redact_closes_every_quad_before_painting_one_translucent_stroke"
       ],
-      "gaps": "The exact outline artwork is reader policy, not a universal pixel requirement. Raw missing/stored baseline observations remain separate from independent oracle verdicts; canvas-only and CoreGraphics adapter omissions do not establish full-viewer behavior. The new 30 pixel controls await hosted runtime validation. Applying redactions, destroying all identified content and drawing post-application RO/interior/overlay replacements remain group 16. Static preview does not promote V01 or claim sanitizing removal."
+      "gaps": "The exact outline artwork is reader policy, not a universal pixel requirement. Raw missing/stored baseline observations remain separate from independent oracle verdicts; canvas-only and CoreGraphics adapter omissions do not establish full-viewer behavior. The 30 new pixel controls passed in the retained 416-control hosted run at b042f0230; this scoped evidence does not establish whole-family support. Applying redactions, destroying all identified content and drawing post-application RO/interior/overlay replacements remain group 16. Static preview does not promote V01 or claim sanitizing removal."
     },
     {
       "id": "content-source-widget-display",
@@ -2023,11 +2023,12 @@
         "12.7.3 Table 224",
         "12.7.4.1 Table 226",
         "12.7.4.3 Table 228",
+        "12.7.4.2",
         "12.7.5.3 Tables 231–232",
         "12.7.5.4 Tables 233–234"
       ],
-      "status": "Primary inheritance and source-value semantics reviewed; matched missing/stored diagnostic inputs authored, awaiting hosted observations",
-      "rule": "Variable-text widgets use effective field attributes: FT, Ff, V, DA, Q and MaxLen inherit through the field hierarchy, with null dictionary entries treated as absent. AcroForm supplies default DA and font resources through DR; MK is widget-local. Choice V identifies displayed Opt names, including the second string of an export/display pair, and list I/TI select and expose options under Table 234. NeedAppearances is a separate regeneration request, defaulting false; the diagnostic separates it from missing-AP fallback and supplies visibly distinct stored AP artwork. PDF 1.7 inputs retain source values unchanged and compare missing/stored Tx/Ch appearances with literal ordinary-content and blank controls. Embedded original Type3 glyphs isolate layout from font availability. Raw adapter observations are separate from pixel-oracle verdicts.",
+      "status": "Shared source/preview/save implementation and independent controls authored after hosted baseline observations; product runtime validation pending",
+      "rule": "Variable-text widgets use effective FT, Ff, V, DA, Q and MaxLen, with null dictionary entries treated as absent. AcroForm supplies DA/DR; MK remains widget-local. A bounded requested-widget view checks Parent ancestry and forward Fields/Kids membership, shares the full form owner's inheritance, terminal-field and value readers, and omits unrelated field subtrees, names, actions and DV. Unnamed separate widgets use their owning field's attributes. Source and explicit edit inputs feed one generator and the existing font/layout, style, resource, MK rotation and appearance serialization owners. Choice V identifies displayed Opt names (the second string of an export/display pair); I is used when consistent with authoritative V and TI selects the first visible row. Ordinary stored AP wins regardless of NeedAppearances. Untouched missing Tx/Ch previews generate from source values; an explicit specification form preview/save can regenerate when NeedAppearances is true, retaining the existing Tx replacement/append rules. Hidden and text-only requests do not inspect field data. No-op ordinary saves preserve bytes; explicit preparation and same-value saves are checked through strict reopen against independent Type3 rectangle coverage.",
       "tests": [
         "annotation_display/widget-observe-ordinary-content",
         "annotation_display/widget-observe-text-72-missing",
@@ -2055,9 +2056,58 @@
         "annotation_display/widget-observe-list-multi-72-missing",
         "annotation_display/widget-observe-list-multi-72-stored",
         "annotation_display/widget-observe-list-top-72-missing",
-        "annotation_display/widget-observe-list-top-72-stored"
+        "annotation_display/widget-observe-list-top-72-stored",
+        "annotation_display/widget-source-center",
+        "annotation_display/widget-source-null-ap",
+        "annotation_display/widget-source-null-normal",
+        "annotation_display/widget-source-null-value",
+        "annotation_display/widget-source-stream-value",
+        "annotation_display/widget-source-separate",
+        "annotation_display/widget-source-list-mismatch",
+        "annotation_display/widget-source-page-rotate",
+        "annotation_display/widget-source-user-unit",
+        "annotation_display/widget-source-no-zoom",
+        "annotation_display/widget-source-no-rotate",
+        "annotation_display/widget-source-no-view",
+        "annotation_display/widget-source-hidden",
+        "annotation_display/widget-source-ignored-actions",
+        "annotation_display/widget-source-ignored-sibling",
+        "annotation_display/widget-source-stored-ignores-field",
+        "annotation_display/widget-source-zero-width",
+        "annotation_display/widget-source-rebuilt-control",
+        "annotation_display/widget-source-ignored-need",
+        "annotation_display/widget-source-unused-font",
+        "annotation_display/widget-source-siblings",
+        "annotation_display/widget-source-missing-da",
+        "annotation_display/widget-source-wrong-da",
+        "annotation_display/widget-source-wrong-flags",
+        "annotation_display/widget-source-wrong-value",
+        "annotation_display/widget-source-invalid-comb",
+        "annotation_display/widget-source-export-value",
+        "annotation_display/widget-source-wrong-option",
+        "annotation_display/widget-source-unsorted-indices",
+        "annotation_display/widget-source-invalid-index",
+        "annotation_display/widget-source-invalid-top",
+        "annotation_display/widget-source-wrong-top",
+        "annotation_display/widget-source-missing-membership",
+        "annotation_display/widget-source-repeated-membership",
+        "annotation_display/widget-source-wrong-parent",
+        "annotation_display/widget-source-missing-kid",
+        "annotation_display/widget-source-parent-cycle",
+        "annotation_display/widget-source-nonterminal",
+        "annotation_display/widget-source-rich",
+        "annotation_display/widget-source-xfa",
+        "pagura-document forms::tests::requested_widget_text_agrees_with_the_full_effective_field_view",
+        "pagura-document forms::tests::requested_widget_text_does_not_visit_actions_default_values_or_sibling_trees",
+        "pagura-document forms::tests::requested_widget_text_shares_the_existing_traversal_budget",
+        "pagura-appearance form::tests::filled_widgets_generate_missing_appearances_and_preserve_identity",
+        "pagura-interpret annotations::source_widget_text_is_lazy_and_cannot_become_extracted_page_text",
+        "pagura-interpret annotations::missing_widget_generation_uses_the_existing_content_byte_budget",
+        "pagura-interpret annotations::static_appearances_use_existing_reference_and_scene_budgets",
+        "pagura api::editing::widget_display::source_widgets_untouched_previews_and_saved_reopens_share_layout",
+        "pagura api::editing::widget_display::explicitly_saving_source_values_persists_the_same_missing_appearance"
       ],
-      "gaps": "Nonempty source Tx/Ch widgets without AP remain unsupported in ordinary page display pending shared form-generator integration. Untouched filler preview and saved/reopened behavior need the same independent controls. Rich/CID/complex-script layout, push-button artwork, actions and physical printing remain separate boundaries. Raw canvas output cannot establish full-viewer behavior or promote V01/V02."
+      "gaps": "The 48 new pixel controls and source/preview/save checks await hosted runtime validation; the 28 raw adapter observations establish scoped reader behavior, not pixel truth or family support. Rich/CID/complex-script layout, push-button artwork, actions and physical printing remain explicit separate boundaries. Source display does not execute the NeedAppearances request or normalize malformed field membership; full form inspection retains its existing repair contract. No whole-tree cache, timing claim or V01/V02 promotion is introduced."
     }
   ]
 }

@@ -3,6 +3,7 @@
 
 mod button_states;
 mod form_borders;
+mod widget_display;
 
 use pagura::editing::{SaveOptions, SignaturePolicy, Transaction, features, save_filled_form};
 use pagura::forms::{ButtonValue, ChoiceSelection, FieldValue, FillValue};

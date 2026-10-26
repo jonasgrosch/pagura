@@ -453,32 +453,86 @@ also passes that head. These results precede integration of one-pass base
 does not implement applied redaction or promote V01.
 
 
-## Source widget display diagnostic
+## Source widget display
 
-The `widgets` annotation observation set adds 13 missing/stored Tx/Ch pairs,
-plus blank and literal ordinary-content controls. The PDF 1.7 inputs retain
-source values unchanged: ordinary and inherited/null field attributes,
-NeedAppearances, multiline/comb text, MK rotation, combo/editable/list choices,
-multiselection and TI, with the ordinary text pair at 72/144 DPI. An original
-embedded Type3 font separates layout from host font availability. Option pairs
-use distinct export and display strings; source V uses display strings as
-required by ISO 32000-2 Table 234. Stored artwork consists of literal black/red
-rectangles, with independently calculated pixel controls, so regeneration is
-distinguishable from stored-AP precedence.
+The `widgets` raw observation set retains its 13 missing/stored Tx/Ch pairs,
+blank and literal ordinary-content controls. PDF 1.7 inputs distinguish source
+values from deliberately different black/red stored artwork. They cover
+inherited/null attributes, NeedAppearances, multiline/comb, MK rotation,
+combo/editable/list choices, multiselection and TI, with text at 72/144 DPI.
+The embedded original Type3 font has 600-unit advances and 500-by-700-unit ink;
+choice export and display strings differ, and V uses Table 234 display names.
+All 27 original PDFs and 14 original pixel controls retain their exact hashes.
 
-The primary review covers null-as-absence (7.3.9), field inheritance
-(12.7.4.1/Table 226), AcroForm DA/DR and NeedAppearances (12.7.3/Table 224),
-variable text (12.7.4.3/Table 228), widget-local MK (Table 189), text fields
-(Tables 231–232) and choices (Tables 233–234). Missing AP and the explicit
-NeedAppearances regeneration request are separate subjects. Ordinary stored
-AP precedence, source display, untouched filler preview and save/reopen will
-be validated together through the existing form generator. Rich/CID layout,
-push-button artwork, actions and physical printing remain separate boundaries.
+[Hosted observations](https://github.com/jonasgrosch/pagura/actions/runs/40380559074)
+at `68fa04401a095b61d2139a5a8aab3fb735f852f6` show MuPDF 1.28.5 drawing all
+13 missing appearances; Poppler 24.02.0 draws all except the noneditable combo.
+MuPDF, Poppler and pdf.js replace the stored artwork when NeedAppearances is
+true. Otherwise pdf.js 6.4.299 leaves missing appearances blank in the existing
+Node canvas adapter; Hayro 0.8.0 leaves all missing cases blank and retains stored
+artwork. PDFium 156.0.8076.0 with annotations enabled and Quartz CoreGraphics on
+macOS 26.6.2 omit even stored widgets while drawing the ordinary rectangles.
+These omissions are adapter observations, not full-viewer results. Pagura's
+pre-change build refused the 13 missing cases with `annotation.appearance` and
+retained stored artwork. Differences in font fallback/layout are observations,
+never sources for the generated pixel oracle. No action or event is invoked.
 
-Dispatch `capabilities.yml` with `annotation_observations=widgets` on the
-reviewed private branch, or select `observe --annotation-set widgets` in the
-existing harness. This diagnostic uses the recorded display adapters and
-retains images as hosted artifacts. It records raw output/refusals/errors,
-never an oracle verdict, pixel pass total or full-viewer capability. Hosted
-observations and product integration are pending. The 416 existing G01 pixel
-cases and all previous annotation inputs/oracles are unchanged.
+The Linux report SHA-256 is
+`e8fc0c9dc34f7708cf10b95de4e0ec493ad09f53a984dd63af7e5d9bd5669494`
+(artifact 12678567119, ZIP digest
+`1ccb80f7a4810a80479f3198017698e72f34b0a1ee6a073b546cbc2fa836f83a`).
+The macOS report SHA-256 is
+`90f3ea10723d0e670dc3b79e2e9d1a666df8527f9a3498245909dbe4c6be87f1`
+(artifact 12678027211, ZIP digest
+`685c9f3c58be0b8d5390377053f095316062409bb3314faef31ab4eb55d5d732`).
+Reports preserve renderer/configuration identities and every subject/control
+hash. Images remain hosted artifacts, separate from independent oracle totals.
+The existing `observe --annotation-set widgets` command reproduces this scope.
+
+The source path uses a bounded requested-widget projection in the document form
+owner: selected Parent ancestry must agree with Fields/Kids membership, and the
+owning field must be terminal. It reuses the full view's attribute, flag, type
+and value readers without building all fields/names or reading actions and DV.
+Unnamed separate widgets use their parent's field attributes (12.7.4.2); MK is
+widget-local (Table 189). One borrowed input feeds the existing variable-text
+font/layout, style, resource, MK rotation and appearance serializer for source
+and filled values. No per-page FormFiller, borrowing cache or second renderer
+is introduced. Existing traversal/depth/result-memory and generated-content/
+scene budgets apply; no speed claim is made.
+
+Ordinary display retains a selected stored AP and does not execute the
+NeedAppearances request. Untouched missing Tx/Ch previews use source values.
+Explicit specification previews/saves may regenerate for NeedAppearances, using
+the existing Tx replacement/append rule; unmarked stored artwork remains.
+No-op host saves retain original bytes. Hidden/NoView, stored AP and text-only
+paths stay ahead of source lookup, and generated widget glyphs do not become
+extracted page text. The full AcroForm API keeps its existing inspection/repair
+contract; the narrow source view refuses inconsistent membership rather than
+searching unrelated field trees to repair backlinks.
+
+Forty-eight independent controls bring G01 to 464 cases. The 48-by-32 widget
+has a two-unit inset. At size 10, ascent/descent 8/-2 and advance 6 give baseline
+13 locally (21 on the page); right quadding starts at x=42 and center at x=26.
+Four comb cells are 11 units wide, so centered AB starts at x=23.5 and 34.5.
+Multiline baselines are page y=30,18. List rows start at page y=38 with height
+12 and baselines 29,17,5, clipped to [10,10,54,38]; independent selected-row
+rectangles use RGB (0.6,0.75,0.9). Two separate widgets on one field have page
+baselines 13 and 29. Literal rectangle transforms cover MK rotation, page
+rotation, UserUnit, NoRotate and NoZoom; the latter anchors the upper-left corner at
+(16,80) at 144 DPI while retaining one-unit glyph geometry. The NoRotate control maps its
+upper-left corner to (24,56) on a quarter-turned page and keeps the glyph
+baseline horizontal at y=45. Rational polygon
+coverage computes these pixels without parsing an emitted appearance program.
+
+Controls include default/null/stream V, separate-widget field overrides,
+authoritative V versus inconsistent I, unused font/action/default entries,
+stored/hidden laziness, zero area and a stored ordinary-art-plus-text control
+for explicit regeneration. Malformed selected DA/Ff/V, options, Comb, I/TI,
+missing/repeated membership, Parent cycles and nonterminal owners fail
+explicitly. Rich text and XFA retain named refusals; broader CID/complex-script
+layout, push-button artwork, actions and physical printing remain boundaries.
+Cross-crate checks compare source display, untouched preview, same-value saves
+and strict reopen with these pixels, retaining original bytes/values. The host
+loop checks native/WASI/browser equality, tiles and no-op reopen. Runtime
+validation of this widget batch is pending; the preceding 416 oracle definitions
+are unchanged, and V01/V02 remain partial.

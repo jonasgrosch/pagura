@@ -145,6 +145,7 @@ fn static_appearances_use_existing_reference_and_scene_budgets() {
         "sound-speaker-72-0-generated",
         "sound-mic-72-0-generated",
         "redact-quad-72-generated",
+        "widget-observe-text-72-missing",
     ] {
         let document = open(name, Limits::default()).unwrap();
         let page = document.page(0).unwrap();
@@ -242,4 +243,53 @@ fn sound_uses_explicit_view_flags_while_text_keeps_its_fixed_icon_view() {
         assert_eq!(views.len(), 1, "{name}");
         assert!(views[0].no_zoom && views[0].no_rotate, "{name}");
     }
+}
+
+#[test]
+fn source_widget_text_is_lazy_and_cannot_become_extracted_page_text() {
+    let manifest = pagura_testkit::Manifest::load("annotation_display");
+    for case in manifest
+        .cases()
+        .filter(|case| case.name().starts_with("widget-"))
+    {
+        let document = open(case.name(), Limits::default()).unwrap();
+        let page = document.page(0).unwrap();
+        let interpreter = Interpreter::new(&document);
+        assert!(
+            interpreter.text(page).unwrap().glyphs.is_empty(),
+            "{}",
+            case.name()
+        );
+        if let Some(expected) = case.string("render_error") {
+            let error = interpreter.scene(page).unwrap_err();
+            assert_eq!(error.kind.name(), expected, "{}", case.name());
+        } else if case.string("expected") == Some("render") {
+            interpreter
+                .scene(page)
+                .unwrap_or_else(|error| panic!("{}: {error}", case.name()));
+        }
+        assert!(
+            interpreter.text(page).unwrap().glyphs.is_empty(),
+            "{}",
+            case.name()
+        );
+    }
+}
+
+#[test]
+fn missing_widget_generation_uses_the_existing_content_byte_budget() {
+    let document = open(
+        "widget-observe-text-72-missing",
+        Limits {
+            stream_bytes: 96,
+            ..Limits::default()
+        },
+    )
+    .unwrap();
+    let interpreter = Interpreter::new(&document);
+    let page = document.page(0).unwrap();
+    assert!(interpreter.text(page).unwrap().glyphs.is_empty());
+    let error = interpreter.scene(page).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.message, "appearance content budget exceeded");
 }

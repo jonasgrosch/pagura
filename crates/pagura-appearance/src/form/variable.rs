@@ -6,38 +6,45 @@ use super::{
     layout::{self, TextLayout},
 };
 use crate::program::Program;
-use pagura_core::{Error, Rect, Result};
+use pagura_core::{Dictionary, Error, Rect, Result};
+use pagura_document::Document;
 use pagura_document::forms::{
-    ChoiceStyle, Field, FieldFlags, FieldKind, FieldValue, FilledField, FilledValue, FormFiller,
+    ChoiceStyle, FieldFlags, FieldKind, FieldValue, FilledValue, Justification,
 };
 
-/// Writes the variable text of field `index` in `area`.
+/// Borrowed source or edited data for the one variable-text layout path.
+pub(super) struct Inputs<'a, 'd> {
+    pub(super) document: &'d Document,
+    pub(super) kind: &'a FieldKind<'d>,
+    pub(super) flags: FieldFlags,
+    pub(super) value: Option<&'a FieldValue<'d>>,
+    pub(super) change: Option<&'a FilledValue>,
+    pub(super) dictionary: &'d Dictionary,
+    pub(super) default_appearance: Option<&'d [u8]>,
+    pub(super) justification: Justification,
+}
+
+/// Writes variable text using source values unless an explicit edit replaces them.
 pub(super) fn write(
     out: &mut Program,
-    filler: &FormFiller<'_>,
-    index: usize,
+    field: &Inputs<'_, '_>,
     area: Rect,
     font: &Font,
     da: &DefaultAppearance,
 ) -> Result<()> {
-    let field = filler
-        .form()
-        .fields
-        .get(index)
-        .ok_or(Error::invalid_argument("filled field index is absent"))?;
-    let text = match &field.kind {
-        FieldKind::Text { .. } => text(filler, field, index)?,
+    let text = match field.kind {
+        FieldKind::Text { .. } => text(field)?,
         FieldKind::Choice {
             style: ChoiceStyle::Combo { editable },
             options,
             ..
-        } => combo(filler, field, index, *editable, options)?,
+        } => combo(field, *editable, options)?,
         FieldKind::Choice {
             style: ChoiceStyle::List,
             ..
         } => {
-            let values = choice::values(filler, field, index);
-            return choice::list(out, filler, index, area, font, da, &values);
+            let values = choice::values(field);
+            return choice::list(out, field, area, font, da, &values);
         }
         _ => {
             return Err(Error::unsupported(
@@ -47,16 +54,12 @@ pub(super) fn write(
         }
     };
     out.text("BT\n")?;
-    layout::write(out, font, da, area, &text, &filler.document().limits())?;
+    layout::write(out, font, da, area, &text, &field.document.limits())?;
     out.text("ET\n")
 }
 
 /// A text field's value and layout flags (Table 228).
-fn text<'a>(
-    filler: &'a FormFiller<'_>,
-    field: &'a Field<'_>,
-    index: usize,
-) -> Result<TextLayout<'a>> {
+fn text<'a>(field: &'a Inputs<'_, '_>) -> Result<TextLayout<'a>> {
     let FieldKind::Text {
         multiline,
         comb,
@@ -64,7 +67,7 @@ fn text<'a>(
         password,
         rich_text,
         ..
-    } = &field.kind
+    } = field.kind
     else {
         return Err(Error::syntax("field is not text"));
     };
@@ -74,9 +77,9 @@ fn text<'a>(
             "rich text appearance generation is unavailable",
         ));
     }
-    let value = match filler.get(index).map(FilledField::value) {
+    let value = match field.change {
         Some(FilledValue::Text(s)) => s.as_str(),
-        _ => match &field.value {
+        _ => match field.value {
             Some(FieldValue::Text(s)) => s.as_str(),
             None => "",
             _ => return Err(Error::syntax("invalid text field value")),
@@ -103,13 +106,11 @@ fn text<'a>(
 /// A combo box's single value, which must be an option unless editable
 /// (12.7.5.4).
 fn combo<'a>(
-    filler: &'a FormFiller<'_>,
-    field: &'a Field<'_>,
-    index: usize,
+    field: &'a Inputs<'_, '_>,
     editable: bool,
     options: &[pagura_document::forms::ChoiceOption],
 ) -> Result<TextLayout<'a>> {
-    let values = choice::values(filler, field, index);
+    let values = choice::values(field);
     let value = values.first().map_or("", |s| *s);
     if values.len() > 1 || value.contains(['\r', '\n']) {
         return Err(Error::syntax("combo value must be a single line"));

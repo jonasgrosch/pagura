@@ -30,11 +30,13 @@ https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html
 https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_pixmap
 """
 from functools import lru_cache
+from fractions import Fraction as F
 
 from .document import Builder, navigation_value
 from .document_forms import name as pdf_name, ref
 from .file_attachment_icons import FRAME, pixels as icon_pixels
 from .forms import base as form_base
+from .forms_render import glyphs as widget_glyphs, pixels as widget_area_pixels
 from .markup_annotations import oracle as markup_pixels
 from .model import Case, OPEN, RENDER, UNSUPPORTED
 from .pdf import document, opaque_rectangles, stream
@@ -419,55 +421,195 @@ def cases():
     yield from widget_observation_cases()
 
 
-def widget_observation_cases():
-    """Source values, not edits: an original Type3 font isolates font availability."""
+def widget_objects(variant='text', stored=False):
+    """Independent source values; the original diagnostic PDF bytes stay fixed."""
+    kind='Ch' if variant.startswith(('combo','list')) else 'Tx'
+    flags=1<<17 if variant.startswith('combo') else 0
+    objects=form_base(kind,flags,need=variant=='text-need')
+    objects[3]['MediaBox']=[0,0,64,48]
+    objects[11]|={'Rect':[8,8,56,40],'V':'AB','F':4}
+    if variant in ('text-inherited','text-null-inheritance'):
+        objects[10]['Fields']=[ref(12)]
+        objects[12]={'T':'parent','Kids':[ref(11)],'FT':pdf_name('Tx'),'V':'AB',
+                     'Ff':0,'DA':b'/F1 10 Tf 0 g','Q':2}
+        objects[11]['Parent']=ref(12)
+        for key in ('FT','Ff','V','DA','Q'):
+            objects[11].pop(key,None)
+            if variant=='text-null-inheritance':objects[11][key]=None
+    if variant=='text-multiline':objects[11]|={'Ff':1<<12,'V':'AB\nCD'}
+    if variant=='text-comb':objects[11]|={'Ff':1<<24,'MaxLen':4,'Q':1}
+    if variant=='text-widget-rotation':objects[11]['MK']={'R':90}
+    if kind=='Ch':
+        objects[11]|={'Opt':[['export-a','AA'],['export-b','BB'],['export-c','CC']], 'V':'BB'}
+    if variant=='combo-editable':objects[11]|={'Ff':(1<<17)|(1<<18),'V':'CUSTOM'}
+    if variant=='list-multi':objects[11]|={'Ff':1<<21,'V':['AA','CC'],'I':[0,2]}
+    if variant=='list-top':objects[11]|={'TI':1,'V':'CC'}
     artwork=b'0 g 4 4 8 10 re f 1 0 0 rg 16 4 8 10 re f'
-    def pdf(variant, stored=False):
-        kind='Ch' if variant.startswith(('combo','list')) else 'Tx'
-        flags=1<<17 if variant.startswith('combo') else 0
-        objects=form_base(kind,flags,need=variant=='text-need')
-        objects[3]['MediaBox']=[0,0,64,48]
-        objects[11]|={'Rect':[8,8,56,40],'V':'AB','F':4}
-        if variant in ('text-inherited','text-null-inheritance'):
-            objects[10]['Fields']=[ref(12)]
-            objects[12]={'T':'parent','Kids':[ref(11)],'FT':pdf_name('Tx'),'V':'AB',
-                         'Ff':0,'DA':b'/F1 10 Tf 0 g','Q':2}
-            objects[11]['Parent']=ref(12)
-            for key in ('FT','Ff','V','DA','Q'):
-                objects[11].pop(key,None)
-                if variant=='text-null-inheritance':objects[11][key]=None
-        if variant=='text-multiline':objects[11]|={'Ff':1<<12,'V':'AB\nCD'}
-        if variant=='text-comb':objects[11]|={'Ff':1<<24,'MaxLen':4,'Q':1}
-        if variant=='text-widget-rotation':objects[11]['MK']={'R':90}
-        if kind=='Ch':
-            objects[11]|={'Opt':[['export-a','AA'],['export-b','BB'],['export-c','CC']], 'V':'BB'}
-        if variant=='combo-editable':objects[11]|={'Ff':(1<<17)|(1<<18),'V':'CUSTOM'}
-        if variant=='list-multi':objects[11]|={'Ff':1<<21,'V':['AA','CC'],'I':[0,2]}
-        if variant=='list-top':objects[11]|={'TI':1,'V':'CC'}
-        objects[80]=stream(artwork,b'/Type /XObject /Subtype /Form /BBox [0 0 48 32] /Resources << >>')
-        if stored:objects[11]['AP']={'N':ref(80)}
-        if variant=='ordinary-content':
-            objects[3].pop('Annots')
-            objects[3]['Contents']=ref(50)
-            objects[50]=stream(b'q 1 0 0 1 8 8 cm '+artwork+b' Q')
-            objects[1].pop('AcroForm')
-        builder=Builder()
-        for number,body in sorted(objects.items()):
-            builder.obj(number,body if isinstance(body,bytes) else navigation_value(body))
-        return builder.classic()[0]
-    def pixels(dpi):
-        scale=dpi//72
+    objects[80]=stream(artwork,b'/Type /XObject /Subtype /Form /BBox [0 0 48 32] /Resources << >>')
+    if stored:objects[11]['AP']={'N':ref(80)}
+    if variant=='ordinary-content':
+        objects[3].pop('Annots')
+        objects[3]['Contents']=ref(50)
+        objects[50]=stream(b'q 1 0 0 1 8 8 cm '+artwork+b' Q')
+        objects[1].pop('AcroForm')
+    return objects
+
+
+def widget_pdf(objects):
+    builder=Builder()
+    for number,body in sorted(objects.items()):
+        builder.obj(number,body if isinstance(body,bytes) else navigation_value(body))
+    return builder.classic()[0]
+
+
+@lru_cache(maxsize=32)
+def widget_pixels(variant='text', dpi=72):
+    """Literal Type3 rectangles from metrics, never from an appearance program.
+
+    The 48x32 widget has two units of padding. Ten-unit text has 8/-2
+    ascender/descender, six-unit advances and 5x7 ink. Single-line baseline
+    is local y=13; multiline y=22,10; list row baselines y=21,9,-3.
+    """
+    scale=dpi//72
+    if variant=='stored':
         return opaque_rectangles(64*scale,48*scale,
             [((12*scale,12*scale,8*scale,10*scale),(0,0,0)),
              ((24*scale,12*scale,8*scale,10*scale),(255,0,0))])
-    yield Case('widget-observe-ordinary-content',pdf('ordinary-content'),RENDER,(WIDGET_REQUIREMENT,),
-               'Literal black/red rectangles provide an ordinary-content control for the matched stored AP',oracle=pixels(72))
+    marks=widget_glyphs(x=10,y=21)
+    transform=(1,0,0,1,0,0);size=(64,48)
+    if variant in ('text-inherited','text-null-inheritance','separate'):
+        marks=widget_glyphs(x=42,y=21)
+    elif variant=='center':marks=widget_glyphs(x=26,y=21)
+    elif variant=='text-comb':marks=widget_glyphs('A',x=F(47,2),y=21)+widget_glyphs('B',x=F(69,2),y=21)
+    elif variant=='text-multiline':marks=widget_glyphs(x=10,y=30)+widget_glyphs('CD',x=10,y=18)
+    elif variant=='text-widget-rotation':
+        marks=widget_glyphs(x=2,y=21);transform=(0,1,-1,0,56,8)
+    elif variant=='combo-editable':marks=widget_glyphs('CUSTOM',x=10,y=21)
+    elif variant.startswith('list'):
+        selected={'list':{1},'list-multi':{0,2},'list-top':{2},'list-mismatch':{1}}[variant]
+        top=1 if variant=='list-top' else 0
+        marks=[]
+        for row,i in enumerate(range(top,3)):
+            y=38-12*row
+            if i in selected:marks.append(((10,y-12,44,12),(F(3,5),F(3,4),F(9,10))))
+            marks+=widget_glyphs(('AA','BB','CC')[i],x=10,y=y-9)
+        # Independent intersection with the declared two-unit text clip.
+        marks=[((max(x,10),max(y,10),min(x+w,54)-max(x,10),min(y+h,38)-max(y,10)),color)
+               for (x,y,w,h),color in marks if x<54 and x+w>10 and y<38 and y+h>10]
+    elif variant=='rebuilt':
+        marks=[((12,12,8,10),(F(0),)*3),((24,12,8,10),(F(1),F(0),F(0)))]+marks
+    elif variant=='blank':marks=[]
+    elif variant=='siblings':marks=widget_glyphs(x=10,y=13)+widget_glyphs(x=34,y=29)
+    elif variant=='page-rotate':transform=(0,-1,1,0,0,64);size=(48,64)
+    elif variant=='no-rotate':marks=widget_glyphs(x=26,y=45);size=(48,64)
+    elif variant=='user-unit':scale*=2
+    elif variant=='no-zoom':transform=(1,0,0,1,8,40);size=(128,96);scale=1
+    return widget_area_pixels(marks,transform=transform,size=size,scale=scale)
+
+
+def widget_observation_cases():
+    yield Case('widget-observe-ordinary-content',widget_pdf(widget_objects('ordinary-content')),RENDER,(WIDGET_REQUIREMENT,),
+               'Literal black/red rectangles provide an ordinary-content control for the matched stored AP',oracle=widget_pixels('stored'))
     for variant in ('text','text-need','text-inherited','text-null-inheritance','text-multiline','text-comb',
                     'text-widget-rotation','combo','combo-editable','list','list-multi','list-top'):
         for dpi in ((72,144) if variant=='text' else (72,)):
             for stored in (False,True):
-                yield Case(f'widget-observe-{variant}-{dpi}-'+('stored' if stored else 'missing'),pdf(variant,stored),
-                           RENDER if stored else UNSUPPORTED,(WIDGET_REQUIREMENT,),
-                           'Matched source Tx/Ch widget: stored AP precedence and missing-AP policy observed without editing values',
-                           oracle=pixels(dpi) if stored else None, dpi=dpi,
-                           feature=None if stored else 'annotation.appearance',extra={'dpi':dpi})
+                yield Case(f'widget-observe-{variant}-{dpi}-'+('stored' if stored else 'missing'),
+                           widget_pdf(widget_objects(variant,stored)),RENDER,(WIDGET_REQUIREMENT,),
+                           'Matched source Tx/Ch widget: stored AP precedence and missing-AP policy without editing values',
+                           oracle=widget_pixels('stored' if stored else variant,dpi),dpi=dpi,
+                           extra={'dpi':dpi,'tolerance':0 if stored else 1,
+                                  'widget_display':'regenerate' if stored and variant=='text-need' else 'same',
+                                  'widget_preview':'widget-source-rebuilt-control' if stored and variant=='text-need' else None})
+    yield from widget_source_cases()
+
+
+def widget_source_cases():
+    for variant in ('center','null-ap','null-normal','null-value','stream-value','separate','list-mismatch',
+                    'page-rotate','user-unit','no-zoom','no-rotate','no-view','hidden','ignored-actions','ignored-sibling',
+                    'stored-ignores-field','zero-width','rebuilt-control','ignored-need','unused-font','siblings'):
+        objects=widget_objects('list' if variant=='list-mismatch' else 'text')
+        oracle_variant=variant if variant in ('center','separate','list-mismatch','page-rotate','user-unit','no-zoom','no-rotate','siblings') else 'text'
+        contract='same';dpi=144 if variant=='no-zoom' else 72
+        if variant=='rebuilt-control':
+            objects[11]['AP']={'N':ref(80)}
+            objects[80]=stream(b'0 g 4 4 8 10 re f 1 0 0 rg 16 4 8 10 re f 0 g 2 13 5 7 re 8 13 5 7 re f',
+                               b'/Type /XObject /Subtype /Form /BBox [0 0 48 32] /Resources << >>')
+            oracle_variant='rebuilt'
+        if variant=='center':objects[11]['Q']=1
+        if variant=='null-ap':objects[11]['AP']=None
+        if variant=='null-normal':objects[11]['AP']={'N':None}
+        if variant=='null-value':objects[11]['V']=None;oracle_variant='blank'
+        if variant=='stream-value':objects[11]['V']=ref(90);objects[90]=stream(b'\xfe\xff\x00A\x00B')
+        if variant=='separate':
+            objects[10]['Fields']=[ref(12)]
+            objects[12]={'T':'entry','FT':pdf_name('Tx'),'V':'AB','Q':2,'Kids':[ref(11)],'MK':{'BG':[1,0,0]}}
+            objects[11].pop('T');objects[11]['Parent']=ref(12)
+            # Unnamed widget field-like entries do not override the actual field.
+            objects[11]|={'V':'CUSTOM','Q':0,'DA':b'/missing 9 Tf'}
+        if variant=='list-mismatch':objects[11]['I']=[0]
+        if variant=='page-rotate':objects[3]['Rotate']=90
+        if variant=='user-unit':objects[3]['UserUnit']=2
+        if variant=='no-zoom':objects[11]['F']=12
+        if variant=='no-rotate':objects[3]['Rotate']=90;objects[11]|={'F':20,'Rect':[8,8,40,24]}
+        if variant in ('no-view','hidden'):
+            objects[11]['F']=32 if variant=='no-view' else 2
+            objects[1]['AcroForm']=ref(90);objects[90]=b'90 0 R';oracle_variant='blank';contract='source-only'
+        if variant=='ignored-actions':
+            objects[11]|={'A':ref(90),'AA':ref(90),'DV':ref(90)};objects[90]=b'90 0 R';contract='source-only'
+        if variant=='ignored-need':
+            objects[10]['NeedAppearances']=ref(90);objects[90]=b'90 0 R';contract='source-only'
+        if variant=='unused-font':objects[10]['DR']['Font']['Unused']=ref(90);objects[90]=b'90 0 R'
+        if variant=='siblings':
+            for key in ('Subtype','Rect','F'):objects[11].pop(key)
+            objects[11]['Kids']=[ref(20),ref(21)];objects[3]['Annots']=[ref(20),ref(21)]
+            for number,rectangle in [(20,[8,8,32,24]),(21,[32,24,56,40])]:
+                objects[number]={'Subtype':pdf_name('Widget'),'Parent':ref(11),'Rect':rectangle,'F':4}
+        if variant=='ignored-sibling':
+            objects[10]['Fields'].append(ref(90));objects[90]={'T':'unrelated','Kids':ref(91),'AA':ref(91)}
+            objects[91]=b'91 0 R';contract='source-only'
+        if variant=='stored-ignores-field':
+            objects[11]['AP']={'N':ref(80)};objects[1]['AcroForm']=ref(90);objects[90]=b'90 0 R'
+            oracle_variant='stored';contract='source-only'
+        if variant=='zero-width':objects[11]['Rect']=[8,8,8,40];oracle_variant='blank'
+        yield Case('widget-source-'+variant,widget_pdf(objects),RENDER,(WIDGET_REQUIREMENT,),
+                   'Independent source display, untouched preview, field boundaries and existing view flags',
+                   oracle=widget_pixels(oracle_variant,dpi),dpi=dpi,
+                   extra={'widget_display':contract,'tolerance':1})
+    invalid=[
+        ('missing-da','text',lambda o:o[10].pop('DA'),'syntax'),
+        ('wrong-da','text',lambda o:o[11].update(DA=3),'syntax'),
+        ('wrong-flags','text',lambda o:o[11].update(Ff=-1),'syntax'),
+        ('wrong-value','text',lambda o:o[11].update(V=3),'syntax'),
+        ('invalid-comb','text',lambda o:o[11].update(Ff=1<<24),'syntax'),
+        ('export-value','combo',lambda o:o[11].update(V='export-b'),'syntax'),
+        ('wrong-option','list',lambda o:o[11].update(Opt=[['AA']]),'syntax'),
+        ('unsorted-indices','list-multi',lambda o:o[11].update(I=[2,0]),'syntax'),
+        ('invalid-index','list',lambda o:o[11].update(I=[3]),'syntax'),
+        ('invalid-top','list',lambda o:o[11].update(TI=4),'syntax'),
+        ('wrong-top','list',lambda o:o[11].update(TI='1'),'syntax'),
+        ('missing-membership','text',lambda o:o[10].update(Fields=[]),'syntax'),
+        ('repeated-membership','text',lambda o:o[10].update(Fields=[ref(11),ref(11)]),'cycle'),
+        ('wrong-parent','text',lambda o:o[11].update(Parent=3),'syntax'),
+    ]
+    for label,variant,change,error in invalid:
+        objects=widget_objects(variant);change(objects)
+        yield Case('widget-source-'+label,widget_pdf(objects),OPEN,(WIDGET_REQUIREMENT,),
+                   'Malformed selected field data or inconsistent membership is explicit',extra={'render_error':error})
+    for label in ('missing-kid','parent-cycle','nonterminal'):
+        objects=widget_objects('text-inherited')
+        if label=='missing-kid':objects[12]['Kids']=[]
+        elif label=='parent-cycle':objects[12]|={'Parent':ref(12),'Kids':[ref(11),ref(12)]}
+        else:
+            objects[11].pop('T')
+            objects[12]['Kids'].append(ref(13));objects[13]={'T':'child','FT':pdf_name('Tx'),'Parent':ref(12)}
+        yield Case('widget-source-'+label,widget_pdf(objects),OPEN,(WIDGET_REQUIREMENT,),
+                   'Requested ancestry must agree with forward membership and remain acyclic',
+                   extra={'render_error':'cycle' if label=='parent-cycle' else 'syntax'})
+    for label,change,feature in [
+        ('rich',lambda o:o[11].update(Ff=1<<25),'form.rich-text'),
+        ('xfa',lambda o:o[10].update(XFA=b'inert'),'form.xfa'),
+    ]:
+        objects=widget_objects();change(objects)
+        yield Case('widget-source-'+label,widget_pdf(objects),UNSUPPORTED,(WIDGET_REQUIREMENT,),
+                   'Advanced layout and XFA keep the existing explicit capability boundary',feature=feature)

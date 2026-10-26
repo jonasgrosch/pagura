@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls, MediaBox-relative FixedPrint screen placement and non-destructive Redact region-outline previews. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls, MediaBox-relative FixedPrint screen placement and non-destructive Redact region-outline previews and source Tx/Ch widget text through the shared form generator. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -5407,6 +5407,630 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-ordinary-content",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-ordinary-content",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-144-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-144-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "e5f4d74a1c4c1391f07856eb0a1f708a3823c3fd3ff4a3825d7c43b650163689",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "9911befa092bbfb2456901ec0811013dc9dd370325de3a79b45e7b5e5b9fd0fe",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-need-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-need-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-need-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-need-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-inherited-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-inherited-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "234066371179556b6113f0104c30605062455e0ea89d35638aac243aa6fad3bf",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-inherited-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-inherited-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-null-inheritance-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-null-inheritance-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "234066371179556b6113f0104c30605062455e0ea89d35638aac243aa6fad3bf",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-null-inheritance-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-null-inheritance-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-multiline-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-multiline-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "f1b85d0e408fbcaca4db1de0aa0c42c6a7ef6e4a715139b113eb3b55f6f41e70",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-multiline-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-multiline-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-comb-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-comb-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c2d3e826d94bc1f6ef6e1146efb9ad9325e739db667722f46b61eb2541a0e03b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-comb-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-comb-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-widget-rotation-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-widget-rotation-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "eb9a21cb34614f9a2a11a59adb1c64f8c30e90f10acb3a1bfe5f9af2ae275b49",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-text-widget-rotation-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-text-widget-rotation-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-combo-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-combo-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-combo-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-combo-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-combo-editable-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-combo-editable-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "8e4b3a0f7200e3f4e075529cfc26a64b475d94fb20e760ba7aa129043df3f6aa",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-combo-editable-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-combo-editable-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-list-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-list-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "fb2a087cb06dfcaa92841431c9aa5cfe849dc2a0d82144628be9e2f0a10f3bd3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-list-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-list-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-list-multi-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-list-multi-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "b574af63aec8e7260e7e9c9610ba06e5edd980d45a0954236bff8a46b2affe29",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-list-multi-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-list-multi-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-list-top-72-missing",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-list-top-72-missing",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "3f3c2d451f36bb9fe5139ea7b9cac8e34448eae9c23c9c240652625ef6485999",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-observe-list-top-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-observe-list-top-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-center",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-center",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2de4f7d27de6ddeeac98134c5e8b7ffa2ff631a53d3e1580caf6da791550d931",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-null-ap",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-null-ap",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-null-normal",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-null-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-null-value",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-null-value",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-stream-value",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-stream-value",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-separate",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-separate",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "234066371179556b6113f0104c30605062455e0ea89d35638aac243aa6fad3bf",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-list-mismatch",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-list-mismatch",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "fb2a087cb06dfcaa92841431c9aa5cfe849dc2a0d82144628be9e2f0a10f3bd3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-page-rotate",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-page-rotate",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 64,
+        "rgb_sha256": "2bcf1d45cfba8fafa8b84401cca6714fa6193de59afd89192a8659a28a3a5d94",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-user-unit",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-user-unit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "e5f4d74a1c4c1391f07856eb0a1f708a3823c3fd3ff4a3825d7c43b650163689",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-no-zoom",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-no-zoom",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "4a5a0113f615b183ac4316f9ff11a4c4e1d624541d95d90718afc32f46befa8f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-no-rotate",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-no-rotate",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 64,
+        "rgb_sha256": "9d5695b4d49645d4a46c492ee3d1020534825f030886ba93d43ddd1bf6ba8fde",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-no-view",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-no-view",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-ignored-actions",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-ignored-actions",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-ignored-sibling",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-ignored-sibling",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-stored-ignores-field",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-stored-ignores-field",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2cfd450c761ff1e5a42742df737b74a37c3b9f01dd3f888bd1e2b7d820eb26fc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-zero-width",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-zero-width",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-rebuilt-control",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-rebuilt-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "079ca9e4357eace7a45cf28e1566f049aee9fe738847a47290c1ce920b70fb7c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-ignored-need",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-ignored-need",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-unused-font",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-unused-font",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "af47e3d68686cf24a35e9ec5f773e107c410db6622d2ed67fcc355250636d74f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.widget-source-siblings",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/widget-source-siblings",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "515f458d1d8b68a06748e3b249b201534dbf1a4b45ca99505cead70445eea852",
         "tolerance": 1
       }
     }

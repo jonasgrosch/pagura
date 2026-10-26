@@ -1,22 +1,30 @@
-//! Empty variable-text and unsigned signature widgets (12.5.6.19, 12.7.5).
-//! Values and field types inherit through Parent; appearance characteristics
-//! do not. Nonempty values require text layout or a supplied appearance
-//! stream.
+//! Source variable-text and unsigned signature widgets (12.5.6.19, 12.7.5).
+//! AcroForm values use the document's requested-field view and shared form
+//! generator. Orphan empty text/signature widgets retain the geometric fallback;
+//! appearance characteristics belong to the widget itself.
 
 use super::border::Border;
 use super::marks::{Marks, Pen, Subpath, color};
 use crate::features;
+use crate::fonts::FontSource;
 use crate::stream::AppearanceStream;
 use crate::widget_rotation;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
-/// The MK background and border of an empty text or signature widget.
+/// Source Tx/Ch text, or the geometric empty-widget fallback.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
+    fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
+    if let Some(field) = document.widget_text(annotation)? {
+        if rect.width() == 0.0 || rect.height() == 0.0 {
+            return Ok(None);
+        }
+        return crate::form::source_widget(document, annotation, rect, &field, fonts).map(Some);
+    }
     let unsupported = || {
         Error::unsupported(
             features::ANNOTATION_APPEARANCE,

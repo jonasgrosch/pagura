@@ -352,6 +352,14 @@ async function testRenderCases({ client, root, native, wasiRun, cases }) {
     assert.deepEqual(diagnostics, frames[4].value, `${entry.id}: full diagnostic parity`);
     assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair').map((item) => item.tag), entry.repairs);
     assert.deepEqual(diagnostics.filter((item) => item.kind === 'information').map((item) => item.tag), entry.information ?? []);
+    if (entry.widget_display === 'same' || entry.widget_display === 'regenerate') {
+      const saved = await client.saveForm(opened.document, []);
+      bytesEqual(saved, pdf, `${entry.id}: empty host edit keeps source bytes`);
+      const reopened = await client.open(saved);
+      const after = await client.renderTile(reopened.document, 0, scale, tile);
+      bytesEqual(after.rgba, browserTile.rgba, `${entry.id}: source widget survives no-op save and reopen`);
+      await client.close(reopened.document);
+    }
     if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
       assert.equal((await client.pageText(opened.document, 0)).text, 'AAB');
       assert.deepEqual(await client.diagnostics(opened.document), diagnostics);

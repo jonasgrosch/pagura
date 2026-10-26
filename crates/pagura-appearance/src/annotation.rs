@@ -1,5 +1,5 @@
 //! Appearances of annotations that have no appearance stream (12.5.5):
-//! borders, ink/polygon paths, static icons and empty widgets (12.5.6).
+//! borders, ink/polygon paths, static icons and source widgets (12.5.6).
 
 pub(crate) mod border;
 mod caret;
@@ -26,7 +26,7 @@ use pagura_document::Document;
 /// Generates the normal appearance of `annotation`, which has no `AP`, in
 /// its rectangle `rect` (the normalized `Rect` entry).
 ///
-/// The appearance is a Form XObject whose BBox is `rect` and which has no
+/// Except for variable-text widgets, the Form XObject's BBox is `rect`, with no
 /// Matrix, so fitting it into the rectangle (12.5.5) is the identity and its
 /// content is in default user space; the BBox clips every mark to the
 /// rectangle. Strokes use the annotation's `CA` and fills its `ca` (else
@@ -38,6 +38,8 @@ use pagura_document::Document;
 /// four text-markup styles, Redact region outlines, Caret symbols,
 /// seven Text icons, four FileAttachment icons, two static Sound icons,
 /// and the MK background and border of empty text and signature widgets.
+/// AcroForm Tx/Ch widgets share the form generator's effective field values,
+/// resources and layout, with a local BBox and optional MK rotation Matrix.
 /// Icon artwork never resolves file or sound payloads and cannot activate media.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
@@ -49,8 +51,8 @@ use pagura_document::Document;
 /// # Errors
 /// `Syntax` errors for malformed entries, `Limit` errors for content and
 /// storage budgets, and [`features::ANNOTATION_APPEARANCE`] for subtypes,
-/// border styles, rich layout/font variants and widget values that generation
-/// does not cover.
+/// border styles and widget types that generation does not cover. Variable
+/// text uses the form generator's explicit font, rich-text and XFA boundaries.
 pub fn annotation_appearance(
     document: &Document,
     annotation: &Dictionary,
@@ -112,7 +114,7 @@ pub fn annotation_appearance_with_fonts(
             icon::generate(document, annotation, rect, icon::Kind::FileAttachment)?
         }
         b"Sound" => icon::generate(document, annotation, rect, icon::Kind::Sound)?,
-        b"Widget" => widget::generate(document, annotation, rect)?,
+        b"Widget" => widget::generate(document, annotation, rect, fonts)?,
         _ => {
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,

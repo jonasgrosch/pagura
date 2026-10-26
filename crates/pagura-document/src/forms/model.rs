@@ -241,6 +241,32 @@ pub struct Field<'a> {
     pub dictionary: &'a Dictionary,
 }
 
+/// The effective variable-text data of one source widget (12.7.4.3).
+///
+/// Unlike [`AcroForm`], this projection does not build a full field/name index
+/// or read actions or default values. Its owning field dictionary supplies I and TI;
+/// appearance characteristics remain on the widget itself.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct WidgetText<'a> {
+    /// Effective text or choice configuration.
+    pub kind: FieldKind<'a>,
+    /// Effective field flags.
+    pub flags: FieldFlags,
+    /// Effective source V, decoded without modifying source bytes.
+    pub value: Option<FieldValue<'a>>,
+    /// Effective DA, including AcroForm fallback.
+    pub default_appearance: Option<&'a [u8]>,
+    /// Effective Q, including AcroForm fallback.
+    pub justification: Justification,
+    /// The owning field's dictionary; separate widgets do not override it.
+    pub dictionary: &'a Dictionary,
+    /// AcroForm DR, borrowed without copying font resources.
+    pub default_resources: Option<&'a Dictionary>,
+    /// Whether an XFA entry is present; it is never executed.
+    pub has_xfa: bool,
+}
+
 /// A widget associated with a terminal field (12.5.6.19, 12.7.4.2).
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]

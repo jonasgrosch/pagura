@@ -375,18 +375,18 @@ fn an_invalid_widget_index_is_a_caller_error_without_widget_context() {
 }
 
 #[test]
-fn filled_widgets_regenerate_only_changed_or_requested_widgets() {
+fn filled_widgets_generate_missing_appearances_and_preserve_identity() {
     let document =
         Document::open(fixture("forms", "render-text.pdf"), &OpenOptions::default()).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     let dictionary = filler.form().widgets[0].dictionary;
     let rect = filler.form().widgets[0].rectangle;
     let fonts = ProviderFonts::new(None, &document.limits());
-    let never = |_: &Dictionary| -> Result<bool> { panic!("an untouched widget is not culled") };
+    let never = |_: &Dictionary| -> Result<bool> { panic!("a missing appearance is not culled") };
     let widgets = FilledWidgets::new(&filler).unwrap();
     assert_eq!(
         widgets.appearance(dictionary, rect, &fonts, never).unwrap(),
-        None
+        Some(prepare_widget(&filler, 0, None).unwrap())
     );
     // Identity, not equal content, selects the widget.
     let copy = dictionary.clone();
