@@ -24,6 +24,10 @@ pub enum ColorSpace {
     DeviceRgb,
     /// DeviceCMYK (8.6.4.4).
     DeviceCmyk,
+    /// Embedded JPX sYCC with eight-bit unsigned channels (7.4.9;
+    /// IEC 61966-2-1 Amendment 1, F.4). Inputs are code values divided by
+    /// 255; this is not a PDF colour-space name.
+    Sycc,
     /// CalGray, CalRGB or Lab (8.6.5.2–8.6.5.4).
     Calibrated(Arc<Calibrated>),
     /// ICCBased (8.6.5.5).
@@ -106,7 +110,7 @@ impl ColorSpace {
     pub fn components(&self) -> usize {
         match self {
             Self::DeviceGray | Self::Indexed(_) | Self::Separation(_) => 1,
-            Self::DeviceRgb => 3,
+            Self::DeviceRgb | Self::Sycc => 3,
             Self::DeviceCmyk => 4,
             Self::Calibrated(space) => space.components(),
             Self::Icc(space) => usize::from(space.components),
@@ -133,6 +137,7 @@ impl ColorSpace {
     pub fn initial(&self) -> crate::Components {
         match self {
             Self::DeviceCmyk => crate::Components::from_slice(&[0.0, 0.0, 0.0, 1.0]),
+            Self::Sycc => crate::Components::from_slice(&[0.0, 128.0 / 255.0, 128.0 / 255.0]),
             Self::Separation(_) | Self::DeviceN(_) => {
                 crate::Components::filled(1.0, self.components())
             }

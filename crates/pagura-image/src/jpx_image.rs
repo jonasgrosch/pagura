@@ -43,12 +43,6 @@ impl Jpx {
         };
         let indexed = matches!(kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
             if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
-        if indexed && mode != 0 {
-            return Err(Error::unsupported(
-                features::JPX_SAMPLE_LAYOUT,
-                "Indexed JPX opacity requires channel mapping",
-            ));
-        }
         Ok(Self {
             mode,
             options,
@@ -140,7 +134,7 @@ impl Jpx {
         let precision = if mixed { 16 } else { first.0.bits };
         parameters::budget(width, height, count, precision, limits)?;
         let kind = (components == 0)
-            .then(|| embedded_space(decoded.color, count))
+            .then(|| embedded_space(decoded.color, count, colours.iter().any(|c| c.0.signed)))
             .transpose()?;
         Ok(Description {
             bits: colours.iter().map(|c| c.0.bits).collect(),
@@ -237,7 +231,7 @@ pub(crate) fn adapt(
         });
     }
     if matches!(image.kind, ImageKind::Color { color_space: None }) {
-        image.kind = embedded_space(decoded.color, count)?;
+        image.kind = embedded_space(decoded.color, count, components.iter().any(|c| c.0.signed))?;
     }
     Ok(())
 }
@@ -426,8 +420,11 @@ fn interleave(
     }
 }
 
-fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
+fn embedded_space(color: jpx::JpxColor, count: u8, signed: bool) -> Result<ImageKind> {
     let space = match (&color, count) {
+        (jpx::JpxColor::Enumerated(18), _) if signed => {
+            return Err(Error::syntax("JPX sYCC requires unsigned colour channels"));
+        }
         (jpx::JpxColor::Enumerated(17), 1) => Some(b"DeviceGray".as_slice()),
         (jpx::JpxColor::Enumerated(16), 3) => Some(b"DeviceRGB".as_slice()),
         (jpx::JpxColor::Enumerated(12), 4) => Some(b"DeviceCMYK".as_slice()),
