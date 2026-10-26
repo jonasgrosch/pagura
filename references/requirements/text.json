@@ -411,6 +411,15 @@
         "locator": "Version 2.5; Header",
         "rule": "The 0x00025000 version stores one signed byte offset per glyph into standard Macintosh names. This is a deprecated, documented layout, not post 3.0 absence of names.",
         "scope": "Paired original post 2.5/2.0 programs share cmap, outlines and metrics; PDF 9.6.5.4 determines direct Unicode and glyph-name fallback. Head 6ac4b1d27 passed all 13 integrated Pagura render controls in hosted run40385518384 and full three-platform checks in run40385513689. This is scoped evidence, not font-family parity."
+      },
+      "cmap8_review": {
+        "source": "https://learn.microsoft.com/en-us/typography/opentype/spec/cmap",
+        "locators": [
+          "Format 8: mixed 16-bit and 32-bit coverage",
+          "Format 12: Segmented coverage"
+        ],
+        "rule": "Format 8 contains an 8192-byte bitmap, sorted nonoverlapping sequential map groups and a reserved zero word. Its introductory UTF-16 description conflicts with the later U+0000..U+0010 high-word illustration. Both supplementary encodings remain diagnostic candidates until adjudicated; BMP coverage is unaffected by that ambiguity.",
+        "scope": "Six original subjects with matched format-12 controls, unchanged outlines/metrics and independent rectangle expectations. Post 3 removes name fallback. FontFile2 PDF Differences selects A or u1F600 through the existing binding. No product change or support claim."
       }
     },
     {

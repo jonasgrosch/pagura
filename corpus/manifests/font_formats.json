@@ -143,6 +143,246 @@
       "width": 32,
       "height": 32,
       "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-windows-bmp",
+      "kind": "pdf",
+      "description": "cmap8 windows bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-windows-bmp.pdf",
+      "sha256": "a7017d359abb01b0f35c1f77078b2bc79f948dd73cb3e70efae950d4e32a94c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-windows-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-windows-bmp",
+      "kind": "pdf",
+      "description": "cmap12 windows bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-windows-bmp.pdf",
+      "sha256": "a74fd1a21b8615e9d90cb28cc033d59231ea34ac7e57cec1ca9dd280d770ab19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-windows-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-windows-utf16",
+      "kind": "pdf",
+      "description": "cmap8 windows utf16",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-windows-utf16.pdf",
+      "sha256": "e06a00aa5e1d0aac2f56587a564460b7955db5dee20946f38e88d50c322f35ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-windows-utf16.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-windows-utf16",
+      "kind": "pdf",
+      "description": "cmap12 windows utf16",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-windows-utf16.pdf",
+      "sha256": "e565c15e755827c52338127e44b4a178edd46e6bfa336183c914c8f492da6675",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-windows-utf16.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-windows-ucs4",
+      "kind": "pdf",
+      "description": "cmap8 windows ucs4",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-windows-ucs4.pdf",
+      "sha256": "a076bf333ca27d25e9370dd85d30d693536ecaeefa04ed54d6551d85a23b385e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-windows-ucs4.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-windows-ucs4",
+      "kind": "pdf",
+      "description": "cmap12 windows ucs4",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-windows-ucs4.pdf",
+      "sha256": "e565c15e755827c52338127e44b4a178edd46e6bfa336183c914c8f492da6675",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-windows-ucs4.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-unicode-bmp",
+      "kind": "pdf",
+      "description": "cmap8 unicode bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-unicode-bmp.pdf",
+      "sha256": "7411c0560ed97a93c4fcf5c0bf49f27ef75e1cdb2b214a2d1270011d49d33942",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-unicode-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-unicode-bmp",
+      "kind": "pdf",
+      "description": "cmap12 unicode bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-unicode-bmp.pdf",
+      "sha256": "bc4070a5643da128b4d9136ae691f2332738627b152f0a576af9b18bb8b2793f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-unicode-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-unicode-utf16",
+      "kind": "pdf",
+      "description": "cmap8 unicode utf16",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-unicode-utf16.pdf",
+      "sha256": "95767a1348d59a9c4e5120bb438d2e929fe55eeaa6071830211624840138a0d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-unicode-utf16.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-unicode-utf16",
+      "kind": "pdf",
+      "description": "cmap12 unicode utf16",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-unicode-utf16.pdf",
+      "sha256": "b465a688c261a8630359544dac18b75ece4d714d5dc71312aa920596c1a67b49",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-unicode-utf16.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-unicode-ucs4",
+      "kind": "pdf",
+      "description": "cmap8 unicode ucs4",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-unicode-ucs4.pdf",
+      "sha256": "e44c1b07c43f8afacdf17170ce670522a6abc013e88c14e812a57f222a17b997",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-unicode-ucs4.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-unicode-ucs4",
+      "kind": "pdf",
+      "description": "cmap12 unicode ucs4",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-unicode-ucs4.pdf",
+      "sha256": "b465a688c261a8630359544dac18b75ece4d714d5dc71312aa920596c1a67b49",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-unicode-ucs4.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     }
   ]
 }

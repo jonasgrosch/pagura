@@ -27,11 +27,52 @@ def font_objects(mode, version):
     records = [(3, 1, {65: 1})] if mode == 'direct' else [(3, 1, {66: 2}), (1, 0, {65: 2})]
     program = truetype(table_overrides={b'post': post(version), b'cmap': text_cmap_records(sorted(records))})
     encoding = b'/WinAnsiEncoding' if mode != 'differences' else b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /A] >>'
+    return source_objects(program, encoding)
+
+
+def source_objects(program, encoding):
     font = (b'<< /Type /Font /Subtype /TrueType /BaseFont /LegacyName /FirstChar 65 /LastChar 65 '
             b'/Widths [600] /Encoding ' + encoding + b' /FontDescriptor 6 0 R >>')
     descriptor = (b'<< /Type /FontDescriptor /FontName /LegacyName /Flags 32 /FontBBox [0 0 300 300] '
                   b'/ItalicAngle 0 /Ascent 300 /Descent 0 /CapHeight 200 /StemV 50 /FontFile2 7 0 R >>')
     return [font, descriptor, stream(program, b'/Length1 %d' % len(program))]
+
+
+def mixed_cmap(mapping, platform, encoding):
+    """Original format-8 table: literal code groups and high-word bitmap."""
+    is32 = bytearray(8192)
+    for code in mapping:
+        if code > 0xffff:
+            high = code >> 16
+            is32[high // 8] |= 1 << (7 - high % 8)
+    groups = b''.join(u32(code) + u32(code) + u32(glyph) for code, glyph in sorted(mapping.items()))
+    sub = u16(8) + u16(0) + u32(8208 + len(groups)) + u32(0) + is32 + u32(len(mapping)) + groups
+    return u16(0) + u16(1) + u16(platform) + u16(encoding) + u32(12) + sub
+
+
+def cmap_cases():
+    # The format-8 prose describes UTF-16 and also gives a conflicting UCS-4
+    # high-word example. Keep both supplementary candidates separate; neither
+    # outcome alone adjudicates the encoding rule. The BMP subject is unambiguous.
+    for platform, encoding, label in ((3, 10, 'windows'), (0, 4, 'unicode')):
+        for mode, code, name in (('bmp', 65, b'A'), ('utf16', 0xd83dde00, b'u1F600'),
+                                 ('ucs4', 0x1f600, b'u1F600')):
+            for fmt in (8, 12):
+                mapping = {code if fmt == 8 else (65 if mode == 'bmp' else 0x1f600): 1}
+                if mode != 'bmp':
+                    mapping[65] = 1
+                if fmt == 8:
+                    cmap = mixed_cmap(mapping, platform, encoding)
+                else:
+                    # Reuse the existing format-12 writer, changing only its
+                    # encoding-record identity for the Unicode-platform pair.
+                    cmap = text_cmap_records([(3, 10, mapping)])
+                    cmap = cmap[:4] + u16(platform) + u16(encoding) + cmap[8:]
+                program = truetype(table_overrides={b'cmap': cmap, b'post': u32(0x30000) + bytes(28)})
+                font_encoding = b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /' + name + b'] >>'
+                yield case(f'cmap{fmt}-{label}-{mode}', b'BT /F 100 Tf 1 0 0 1 4 4 Tm (A) Tj ET',
+                           source_objects(program, font_encoding), FONT, [((4, 4, 10, 20), BLACK)],
+                           requirement=REQUIREMENT)
 
 
 def cases():
@@ -44,3 +85,4 @@ def cases():
                        requirement=REQUIREMENT)
     yield case('ordinary-rectangle', b'0 g 4 4 10 20 re f',
                rectangles=[((4, 4, 10, 20), BLACK)], requirement=REQUIREMENT)
+    yield from cmap_cases()

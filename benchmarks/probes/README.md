@@ -208,3 +208,18 @@ The preceding vertical-substitution checkpoint `a0533c2d6` passed
 That validates its native synthetic maps, PDF metrics/extraction and bundled
 collection controls at that revision; it does not establish competitor-family
 parity or validate the later base and post-name combination.
+
+## Private cmap 8 boundary observations
+
+This ref selects 15 cases: two BMP format-8 subjects and four supplementary
+candidates, six matched format-12 controls, one original glyph-sized rectangle
+and unchanged blank/rectangle controls. Windows full-Unicode and Unicode-platform
+records are separate. Post 3 removes glyph-name fallback; source outlines and
+metrics are identical within each pair. All pixel comparisons use the original
+10-by-20 rectangle at tolerance 0.
+
+The primary format-8 prose names UTF-16 but later gives a conflicting UCS-4
+high-word example. UTF-16 and UCS-4 candidates remain explicitly unadjudicated.
+Their measurements describe reader behavior and cannot alone establish validity
+or a feature gap. The integrated 13-case font manifest remains on its feature
+branch; this private selection must not replace it. No new product path is added.
