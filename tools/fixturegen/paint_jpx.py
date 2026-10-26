@@ -17,15 +17,15 @@ AREA = "paint_jpx"
 REQUIREMENT = "paint-jpx-icc"
 
 
-def encoded(planes, profile, *, alpha=0, method=2, bits=8):
+def encoded(planes, profile, *, alpha=0, method=2, bits=8, signed=False, channels=None):
     width = len(planes[0])
-    header = jpx.box(b'ihdr', struct.pack('>IIH4B', 1, width, len(planes), bits - 1, 7, 0, 0))
+    header = jpx.box(b'ihdr', struct.pack('>IIH4B', 1, width, len(planes), bits - 1 + 128 * int(signed), 7, 0, 0))
     header += jpx.box(b'colr', bytes([method, 0, 0]) + profile)
-    if alpha:
-        entries = [(i, 0, i + 1) for i in range(len(planes) - 1)] + [(len(planes) - 1, alpha, 0)]
+    if alpha or channels is not None:
+        entries = channels if channels is not None else [(i, 0, i + 1) for i in range(len(planes) - 1)] + [(len(planes) - 1, alpha, 0)]
         header += jpx.box(b'cdef', struct.pack('>H', len(entries)) + b''.join(struct.pack('>HHH', *row) for row in entries))
     return (jpx.box(b'jP  ', b'\r\n\x87\n') + jpx.box(b'ftyp', b'jp2 \0\0\0\0jp2 ')
-            + jpx.box(b'jp2h', header) + jpx.box(b'jp2c', jpx.codestream(planes, width, 1, bits=bits)))
+            + jpx.box(b'jp2h', header) + jpx.box(b'jp2c', jpx.codestream(planes, width, 1, bits=bits, signed=signed)))
 
 
 def srgb(sample):
@@ -35,6 +35,7 @@ def srgb(sample):
 
 def cases():
     yield from sycc_cases()
+    yield from indexed_cases()
     unit = colour.icc_curve('identity', ())
     gray = colour.icc_profile(1, curve=unit)
     rgb = colour.icc_profile(3, curve=unit)
@@ -118,3 +119,28 @@ def sycc_cases():
     image = stream(data, b'/Subtype /Image /Width 1 /Height 1 /Filter /JPXDecode')
     yield Case('sycc-16bit-boundary', page(b'2 0 0 2 2 2 cm /I Do', [image], b'<< /XObject << /I 5 0 R >> >>'),
                UNSUPPORTED, (requirement,), 'Higher precision sYCC remains explicit', feature='xobject.jpx-color')
+    data = encoded([[128]] * 3, enumeration, method=1, signed=True)
+    image = stream(data, b'/Subtype /Image /Width 1 /Height 1 /Filter /JPXDecode')
+    yield Case('sycc-signed-invalid', page(b'2 0 0 2 2 2 cm /I Do', [image], b'<< /XObject << /I 5 0 R >> >>'),
+               OPEN, (requirement,), 'T.800 Table I.10 requires unsigned sYCC channels', extra={'render_error': 'syntax'})
+
+
+def indexed_cases():
+    # ISO 32000-2 7.4.9 / Table 87: PDF Indexed determines the samples;
+    # opacity is still a separate JPX channel, ordered by cdef, not a colour.
+    requirement = 'paint-jpx-indexed-alpha'
+    indices, alphas = [0, 1, 2], [0, 128, 255]
+    palette = b'/ColorSpace [/Indexed /DeviceRGB 2 <000000800000FF0000>]'
+    colours = [(0, 0, 0), (128, 0, 0), (255, 0, 0)]
+    for mode in (0, 1, 2):
+        for first in (False, True):
+            planes = [alphas, indices] if first else [indices, alphas]
+            channels = [(0, max(mode, 1), 0), (1, 0, 1)] if first else [(0, 0, 1), (1, max(mode, 1), 0)]
+            data = encoded(planes, b'ignored by explicit PDF colour', channels=channels)
+            dictionary = b'/Filter /JPXDecode /SMaskInData %d ' % mode + palette
+            if mode:
+                dictionary += b' /Mask [0 2]'  # embedded alpha takes precedence
+            yield image_case(f'indexed-alpha-{mode}-' + ('first' if first else 'last'), data,
+                             dictionary, [], 3, 1, requirement=requirement,
+                             colors=[(255, 0, 0)] * 3 if mode == 2 else colours,
+                             alpha=[F(a, 255) for a in alphas] if mode else None, tolerance=1)

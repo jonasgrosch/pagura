@@ -714,7 +714,8 @@
         "paint_jpx/sycc-straight-alpha",
         "paint_jpx/sycc-premultiplied-alpha",
         "paint_jpx/sycc-16bit-boundary",
-        "pagura-color tests/sycc.rs eight_bit_sycc_preserves_neutrals_and_decodes_chroma"
+        "pagura-color tests/sycc.rs eight_bit_sycc_preserves_neutrals_and_decodes_chroma",
+        "paint_jpx/sycc-signed-invalid"
       ],
       "review": [
         {
@@ -724,6 +725,33 @@
         }
       ],
       "gaps": "Other precisions and mixed-precision sYCC remain Unsupported(xobject.jpx-color). Broader masks, groups, interpolation, platform and competitor acceptance remain G01/R02 work."
+    },
+    {
+      "id": "paint-jpx-indexed-alpha",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.6.6.3",
+        "11.6.5.2",
+        "Table 87"
+      ],
+      "status": "partial",
+      "tests": [
+        "paint_jpx/indexed-alpha-0-last",
+        "paint_jpx/indexed-alpha-0-first",
+        "paint_jpx/indexed-alpha-1-last",
+        "paint_jpx/indexed-alpha-1-first",
+        "paint_jpx/indexed-alpha-2-last",
+        "paint_jpx/indexed-alpha-2-first"
+      ],
+      "review": [
+        {
+          "locator": "ISO 32000-2 7.4.9, Table 87, 11.6.4.3; T.800 I.5.3.6",
+          "rule": "For an explicit PDF Indexed colour space without a container palette, retain the raw index and separate opacity channels. Channel definitions determine their order. Apply the PDF lookup before unassociating premultiplied base colours; embedded opacity overrides Mask.",
+          "verdict": "Primary clauses reviewed; independent alpha 0/partial/1 pixel oracles authored for first/last opacity channels and SMaskInData 0/1/2. Hosted execution pending."
+        }
+      ],
+      "gaps": "Combining an explicit PDF Indexed space with opacity defined after a JPX container palette still requires channel mapping and remains Unsupported(image.JPX-sample-layout). Broader interaction/platform and competitor evidence remains R02/G01 work."
     }
   ]
 }

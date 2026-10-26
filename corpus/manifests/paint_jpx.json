@@ -160,6 +160,141 @@
       "feature": "xobject.jpx-color"
     },
     {
+      "id": "paint_jpx/sycc-signed-invalid",
+      "kind": "pdf",
+      "description": "T.800 Table I.10 requires unsigned sYCC channels",
+      "expected": "open",
+      "requirements": [
+        "paint-jpx-sycc"
+      ],
+      "path": "corpus/generated/paint_jpx/sycc-signed-invalid.pdf",
+      "sha256": "23656ed05fa55b2fd100e519c0ef22ce76e2277c340db4c74a592992e569e47b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_jpx/indexed-alpha-0-last",
+      "kind": "pdf",
+      "description": "indexed alpha 0 last",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx/indexed-alpha-0-last.pdf",
+      "sha256": "8d384530a0b80efb98d2ee93eb26f3f46c9580d4440684122c4a0a1afa9bea7d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/indexed-alpha-0-last.ppm",
+      "oracle_sha256": "ee19e61b53f958bd588744f1abfe9d2a16cbe8fe5b879cbba1337aff286e2348",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/indexed-alpha-0-first",
+      "kind": "pdf",
+      "description": "indexed alpha 0 first",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx/indexed-alpha-0-first.pdf",
+      "sha256": "e97b7d30b76ea017051dee151432ad62c147b8897b2613aef0044166d329ee47",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/indexed-alpha-0-first.ppm",
+      "oracle_sha256": "ee19e61b53f958bd588744f1abfe9d2a16cbe8fe5b879cbba1337aff286e2348",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/indexed-alpha-1-last",
+      "kind": "pdf",
+      "description": "indexed alpha 1 last",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx/indexed-alpha-1-last.pdf",
+      "sha256": "4b34ed0cbf79f5e5d9c0507b23b8b3783b994bd715b243386e4fc3d854be883e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/indexed-alpha-1-last.ppm",
+      "oracle_sha256": "1e717536c540e0de80bb15888de34a109e52c144e0b1f34b5aa3511c2b5d76f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/indexed-alpha-1-first",
+      "kind": "pdf",
+      "description": "indexed alpha 1 first",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx/indexed-alpha-1-first.pdf",
+      "sha256": "563d2eaaef5acaefe6d7f74c8cee0d7ef52d2341c8961712c74fc65d74af1a6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/indexed-alpha-1-first.ppm",
+      "oracle_sha256": "1e717536c540e0de80bb15888de34a109e52c144e0b1f34b5aa3511c2b5d76f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/indexed-alpha-2-last",
+      "kind": "pdf",
+      "description": "indexed alpha 2 last",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx/indexed-alpha-2-last.pdf",
+      "sha256": "77e98990128fce7a8fbb70fdab8fac79ca8bb76d5c88a567495d93398accd32c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/indexed-alpha-2-last.ppm",
+      "oracle_sha256": "ba6890e0537399a866b9c555f9e481cdeb16ceac3f7f6e039034203a3b46d6a9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx/indexed-alpha-2-first",
+      "kind": "pdf",
+      "description": "indexed alpha 2 first",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-indexed-alpha"
+      ],
+      "path": "corpus/generated/paint_jpx/indexed-alpha-2-first.pdf",
+      "sha256": "ea5a83d2dd7e017aeea10a4ca95d07f34489572331c4afbed2204557e5e549c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx/indexed-alpha-2-first.ppm",
+      "oracle_sha256": "ba6890e0537399a866b9c555f9e481cdeb16ceac3f7f6e039034203a3b46d6a9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
       "id": "paint_jpx/gray-linear",
       "kind": "pdf",
       "description": "gray linear",

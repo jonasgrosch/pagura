@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Independent IEC 61966-2-1 Amendment 1 F.15–F.17 code-value examples.
 
 use pagura_color::{ColorSpace, Conversion, Converter, Process, Target};
