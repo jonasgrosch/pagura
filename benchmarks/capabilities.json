@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "579ab22575c86ea4d9e13d261a6d57b986d2836f",
+  "audited_revision": "6a9c21007dab2ac1ccb79c22e34bbb93e058aee8",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -241,7 +241,7 @@
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
     "tools/fixturegen/polygon_annotations.py": "04a623609458f86b7e749028c1adb56a91bb44b6e799529213b68c2d174e405f",
-    "tools/host_test.mjs": "8ae4090bbe815ce8bdc9f05844399814983f7893439dc1c0222466e6e5fa4e84",
+    "tools/host_test.mjs": "eee05a5901505d9fc7dce0b0a8a80e5b856c1f23f2d1cb96be98f290d4ba8697",
     "tools/page_attachments_test.mjs": "253795e1c4e96ba4c49ad44acc2217889dce1b8af5e09658ad06d36a55f61fcb",
     "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
     "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
