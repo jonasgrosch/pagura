@@ -22,7 +22,7 @@ mod stroke;
 
 pub use band::{
     Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, CoverageRow, DeviceRect,
-    GlyphEdges, MarkCoverage, RowOut, Shape, ShapeOptions, Span, StrokeTemplates,
+    GlyphEdges, MarkCoverage, RowOut, Shape, ShapeOptions, ShapeScratch, Span, StrokeTemplates,
 };
 pub use empty_fill::empty_fill_outline;
 pub use geometry::{Point, Transform};

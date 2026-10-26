@@ -978,8 +978,8 @@ mod tests {
             let path = path.finish();
             let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
             for band_height in [1, 3, 16, 32] {
-                let options = Prep {
-                    area: Area {
+                let options = Prep::from_parts(
+                    Area {
                         region: DeviceRect {
                             x0: 0,
                             y0: 0,
@@ -988,9 +988,9 @@ mod tests {
                         },
                         band_height,
                     },
-                    limits: &limits,
-                    clip: None,
-                };
+                    &limits,
+                    None,
+                );
                 let shape = super::super::placed(&edges, origin, &options)
                     .unwrap()
                     .unwrap();
@@ -1050,8 +1050,8 @@ mod tests {
         path.close();
         let edges =
             Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-        let options = Prep {
-            area: Area {
+        let options = Prep::from_parts(
+            Area {
                 region: DeviceRect {
                     x0: 0,
                     y0: 0,
@@ -1060,9 +1060,9 @@ mod tests {
                 },
                 band_height: 3,
             },
-            limits: &limits,
-            clip: None,
-        };
+            &limits,
+            None,
+        );
         let shape = super::super::placed(&edges, Point::default(), &options)
             .unwrap()
             .unwrap();
@@ -1117,11 +1117,7 @@ mod tests {
             },
         )
         .unwrap();
-        let options = Prep {
-            area,
-            limits: &limits,
-            clip: Some(&clip),
-        };
+        let options = Prep::from_parts(area, &limits, Some(&clip));
         let start = Point::new(0.125, 0.125);
         for (control, expected) in [(Point::new(0.25, 0.25), 0), (start, 16)] {
             let mut path = PathBuilder::new();
@@ -1172,8 +1168,8 @@ mod tests {
         let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
         assert!(edges.curved());
         let origin = Point::new(-98_302.997_063_444_05, 1.0 - m);
-        let options = Prep {
-            area: Area {
+        let options = Prep::from_parts(
+            Area {
                 region: DeviceRect {
                     x0: 0,
                     y0: 0,
@@ -1182,9 +1178,9 @@ mod tests {
                 },
                 band_height: 1,
             },
-            limits: &limits,
-            clip: None,
-        };
+            &limits,
+            None,
+        );
         // Recover z=M(1-t) from x=0 using the original quadratic, then
         // integrate its pixel-local polynomial. This avoids H(tb)-H(ta)
         // and its large, nearly equal antiderivative values entirely.
@@ -1247,8 +1243,8 @@ mod tests {
         }
         let edges =
             Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-        let options = Prep {
-            area: Area {
+        let options = Prep::from_parts(
+            Area {
                 region: DeviceRect {
                     x0: 0,
                     y0: 0,
@@ -1257,9 +1253,9 @@ mod tests {
                 },
                 band_height: 1,
             },
-            limits: &limits,
-            clip: None,
-        };
+            &limits,
+            None,
+        );
         let shape = super::super::placed(&edges, Point::default(), &options)
             .unwrap()
             .unwrap();
@@ -1348,11 +1344,7 @@ mod tests {
             origin: Point::default(),
             points: &[],
         };
-        let options = Prep {
-            area,
-            limits: &limits,
-            clip: Some(&clip),
-        };
+        let options = Prep::from_parts(area, &limits, Some(&clip));
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let (actual, error) = interval(
@@ -1415,11 +1407,7 @@ mod tests {
             },
             band_height: 1,
         };
-        let options = Prep {
-            area,
-            limits: &limits,
-            clip: None,
-        };
+        let options = Prep::from_parts(area, &limits, None);
         let source = Source {
             outline: &path,
             linear: Transform::IDENTITY,

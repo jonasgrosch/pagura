@@ -207,6 +207,48 @@ pub(crate) fn room<T>(values: &mut Vec<T>, extra: usize, bytes: &mut Meter) -> R
 }
 
 impl Resolver {
+    /// The bytes its storage holds.
+    pub(crate) fn bytes(&self) -> usize {
+        fn held<T>(values: &Vec<T>) -> usize {
+            values.capacity().saturating_mul(size_of::<T>())
+        }
+        [
+            held(&self.heights),
+            held(&self.columns),
+            held(&self.rows),
+            held(&self.ends),
+            held(&self.lanes),
+            held(&self.order),
+            held(&self.joining),
+            held(&self.windings),
+            held(&self.open),
+            held(&self.sides),
+            held(&self.next),
+            held(&self.slots),
+            held(&self.carry),
+            held(&self.carried),
+            held(&self.after),
+            held(&self.carried_after),
+            held(&self.spans),
+            held(&self.row_ends),
+            held(&self.lasts),
+            held(&self.cuts),
+            held(&self.height_keys),
+            held(&self.span_keys),
+            held(&self.sorted),
+            held(&self.crosses),
+            held(&self.lefts),
+            held(&self.at),
+            held(&self.doubtful),
+            held(&self.bands),
+            held(&self.reaching),
+            held(&self.live),
+            held(&self.local),
+        ]
+        .into_iter()
+        .fold(0, usize::saturating_add)
+    }
+
     /// Appends to `out` the sides of the covered set of row `top..top + 1`
     /// of `pieces`, where group `g` is inside under `rules[g]` and a point
     /// is covered when every group is inside.

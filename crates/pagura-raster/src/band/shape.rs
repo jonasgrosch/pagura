@@ -9,6 +9,7 @@ use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
+use super::scratch::{Kept, ShapeScratch};
 use super::union::{Meters, Piece, Resolver, room};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::geometry::{greater, lesser};
@@ -201,6 +202,23 @@ impl Shape {
         Self::fill_in(path, transform, rule, &Prep::new(options, clip))
     }
 
+    /// [`Self::fill_with_clip`] with the buffers of `scratch`, which the
+    /// render keeps between its shapes.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::fill`].
+    pub fn fill_with_scratch(
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        (clip, scratch): (Option<&ClipShape>, &ShapeScratch),
+        options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        let options = Prep::new(options, clip).lending(scratch);
+        Self::fill_in(path, transform, rule, &options)
+    }
+
     pub(crate) fn fill_in(
         path: &Path,
         transform: Transform,
@@ -368,6 +386,21 @@ impl Shape {
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Self>> {
         super::glyph::place(edges, origin, &Prep::new(options, clip))
+    }
+
+    /// [`Self::glyph_with_clip`] with the buffers of `scratch`, as
+    /// [`Self::fill_with_scratch`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::fill`].
+    pub fn glyph_with_scratch(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        origin: crate::Point,
+        (clip, scratch): (Option<&ClipShape>, &ShapeScratch),
+        options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        super::glyph::place(edges, origin, &Prep::new(options, clip).lending(scratch))
     }
 
     #[cfg(test)]
@@ -1012,13 +1045,14 @@ fn scan_columns(xs: impl Iterator<Item = f64>, width: usize) -> (usize, usize) {
     columns(lo, hi, width)
 }
 
-/// The region and clip a shape is prepared in.
+/// The region and clip a shape is prepared in, and the buffers it borrows.
 pub(crate) struct Frame<'a> {
     pub(crate) clip: Option<&'a ClipShape>,
     pub(crate) rect: Option<Bounds>,
     pub(crate) paths: Option<&'a Paths>,
     /// The pixels the clip keeps within the region.
     pub(crate) limit: DeviceRect,
+    pub(crate) scratch: Option<&'a ShapeScratch>,
 }
 
 impl<'a> Frame<'a> {
@@ -1035,6 +1069,7 @@ impl<'a> Frame<'a> {
             rect: clip.and_then(ClipShape::rect),
             paths: clip.and_then(ClipShape::paths),
             limit,
+            scratch: options.scratch,
         })
     }
 
@@ -1163,15 +1198,38 @@ fn rows_of(l: &Line, bounds: DeviceRect) -> Option<(u32, u32)> {
 /// Resolves the rows `chosen` of `bounds`: the sides of the covered set of
 /// `lines` under `rule`, within the clip's paths in the rows marked joint.
 ///
-/// Its work is charged to a meter of `raster_work`, and its scratch, which
-/// it frees on return, to one of `render_bytes`.
+/// Its work is charged to a meter of `raster_work`, and its scratch to one
+/// of `render_bytes`: the resolver and row buffers the frame lends, whose
+/// capacity is paid while they are kept, or its own, which it frees on
+/// return.
 fn resolve(
     lines: &[Line],
     rule: FillRule,
     frame: &Frame<'_>,
-    (bounds, chosen): (DeviceRect, &[(u32, bool)]),
+    rows: (DeviceRect, &[(u32, bool)]),
     work: &mut Meter,
     bytes: &mut Meter,
+) -> Result<Resolved> {
+    let mut kept = frame.scratch.map_or_else(Kept::default, ShapeScratch::take);
+    let resolved = resolve_rows(lines, rule, frame, rows, &mut kept, Meters { work, bytes });
+    if let Some(scratch) = frame.scratch {
+        scratch.keep(kept);
+    }
+    resolved
+}
+
+/// [`resolve`] with the resolver and row buffers of `kept`.
+fn resolve_rows(
+    lines: &[Line],
+    rule: FillRule,
+    frame: &Frame<'_>,
+    (bounds, chosen): (DeviceRect, &[(u32, bool)]),
+    Kept {
+        resolver,
+        pieces,
+        sides,
+    }: &mut Kept,
+    Meters { work, bytes }: Meters<'_>,
 ) -> Result<Resolved> {
     // The lines of each strip, then each row's pieces from its strip.
     let strip_rows =
@@ -1195,14 +1253,12 @@ fn resolve(
         room(&mut rules, count, bytes)?;
         rules.extend(paths.rules());
     }
-    let mut resolver = Resolver::default();
-    let (mut pieces, mut sides) = (Vec::new(), Vec::new());
     let mut resolved = Resolved::default();
     for &(y, joint) in chosen {
         let top = f64::from(y);
         pieces.clear();
         let listed = list.strip(y / STRIP);
-        room(&mut pieces, listed.len(), bytes)?;
+        room(pieces, listed.len(), bytes)?;
         for &i in listed {
             if let Some(&line) = lines.get(i as usize) {
                 pieces.extend(Piece::new(line, top, 0));
@@ -1210,16 +1266,16 @@ fn resolve(
         }
         let groups = match (joint, frame.paths) {
             (true, Some(paths)) => {
-                paths.pieces(y, 1, (&mut pieces, bytes), work)?;
+                paths.pieces(y, 1, (pieces, bytes), work)?;
                 rules.len()
             }
             _ => 1,
         };
         resolve_pieces(
-            &pieces,
+            pieces,
             &rules[..groups],
             y,
-            (&mut resolver, &mut sides, &mut resolved),
+            (resolver, sides, &mut resolved),
             Meters { work, bytes },
         )?;
     }

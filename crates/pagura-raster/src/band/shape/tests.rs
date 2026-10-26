@@ -72,6 +72,10 @@ fn an_empty_resolved_row_still_masks_the_original_polygon() {
 }
 
 fn round_capped(points: &[(f64, f64)]) -> Shape {
+    round_capped_in(points, None)
+}
+
+fn round_capped_in(points: &[(f64, f64)], scratch: Option<&ShapeScratch>) -> Shape {
     let mut path = crate::PathBuilder::new();
     for (i, &(x, y)) in points.iter().enumerate() {
         if i == 0 {
@@ -99,16 +103,80 @@ fn round_capped(points: &[(f64, f64)]) -> Shape {
         },
         limits: &limits,
     };
-    Shape::stroke(
+    let options = Prep {
+        scratch,
+        ..Prep::new(&options, None)
+    };
+    Shape::stroke_in(
         &path,
         &stroke,
-        Transform::IDENTITY,
-        Transform::IDENTITY,
+        (Transform::IDENTITY, Transform::IDENTITY),
         Adjustment::None,
         &options,
     )
     .unwrap()
     .unwrap()
+}
+
+#[test]
+fn buffers_grown_past_the_cap_are_not_kept() {
+    let scratch = ShapeScratch::default();
+    let limits = Limits::default();
+    let options = ShapeOptions {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 64,
+                y1: 64,
+            },
+            band_height: 64,
+        },
+        limits: &limits,
+    };
+    // The star polygon {n/k}: all its edges cross near its centre.
+    let star = |n: u32, k: u32| {
+        let mut path = crate::PathBuilder::new();
+        for i in 0..n {
+            let angle = std::f64::consts::TAU * f64::from(i * k % n) / f64::from(n);
+            let p = Point::new(32.0 + 30.0 * angle.sin(), 32.0 - 30.0 * angle.cos());
+            if i == 0 {
+                path.move_to(p);
+            } else {
+                path.line_to(p).unwrap();
+            }
+        }
+        let path = path.close().finish();
+        let options = Prep::new(&options, None).lending(&scratch);
+        Shape::fill_in(&path, Transform::IDENTITY, FillRule::NonZero, &options)
+            .unwrap()
+            .unwrap()
+    };
+    assert_ne!(star(5, 2).resolved.rows, []);
+    assert!(scratch.bytes() > 0);
+    assert_ne!(star(201, 100).resolved.rows, []);
+    assert_eq!(scratch.bytes(), 0);
+}
+
+#[test]
+fn kept_buffers_prepare_shapes_as_new_ones_do() {
+    let scratch = ShapeScratch::default();
+    let area = round_capped(&[(8.0, 5.0), (8.0, 6.0)]).area;
+    for points in [
+        &[(8.0, 5.0), (8.0, 55.0), (8.0, 105.0), (8.0, 106.5)][..],
+        &[(8.0, 5.0), (8.0, 6.5), (8.0, 50.0)],
+        &[(4.0, 60.0), (12.0, 100.0), (12.5, 101.0)],
+    ] {
+        let new = round_capped(points);
+        let kept = round_capped_in(points, Some(&scratch));
+        assert_ne!(new.resolved.rows, []);
+        assert_eq!(new.resolved.rows, kept.resolved.rows);
+        assert_eq!(
+            crate::testing::raster(&area, Some(&new), None),
+            crate::testing::raster(&area, Some(&kept), None)
+        );
+        assert!(scratch.bytes() > 0);
+    }
 }
 
 #[test]

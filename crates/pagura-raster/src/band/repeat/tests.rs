@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::testing::{raster, window};
-use crate::{Area, LineCap, LineJoin, PathBuilder};
+use crate::{Area, LineCap, LineJoin, PathBuilder, ShapeScratch};
 use pagura_core::Limits;
 
 fn options(limits: &Limits) -> ShapeOptions<'_> {
@@ -39,7 +39,7 @@ fn place(
         stroke,
         (Transform::IDENTITY, transform),
         Adjustment::None,
-        None,
+        (None, &ShapeScratch::default()),
         options,
         templates,
     )

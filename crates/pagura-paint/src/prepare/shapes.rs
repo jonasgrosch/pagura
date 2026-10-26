@@ -9,7 +9,7 @@ use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, OutlineKey, Pen};
 use pagura_raster::{
     BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, MarkCoverage, Path,
-    Point, RowOut, Shape, ShapeOptions, StrokeTemplates, Transform,
+    Point, RowOut, Shape, ShapeOptions, ShapeScratch, StrokeTemplates, Transform,
 };
 use std::sync::Arc;
 
@@ -39,6 +39,10 @@ pub(crate) struct ShapeBuilder<'a> {
     clip: Option<u32>,
     /// The strokes prepared so far, for their repeats elsewhere.
     strokes: StrokeTemplates,
+    /// The buffers the shapes take turns with, and the bytes of them
+    /// charged to the render.
+    scratch: ShapeScratch,
+    kept: usize,
 }
 
 /// The identity of glyph edges in the [`Store`]: the outline and the bits
@@ -79,6 +83,8 @@ impl<'a> ShapeBuilder<'a> {
             handles: Vec::new(),
             clip: None,
             strokes: StrokeTemplates::default(),
+            scratch: ShapeScratch::default(),
+            kept: 0,
         }
     }
 
@@ -89,6 +95,29 @@ impl<'a> ShapeBuilder<'a> {
 
     fn current_clip(&self) -> Option<&ClipShape> {
         self.clip.and_then(|k| self.clips.get(u32_to_usize(k)))
+    }
+
+    /// Keeps the scratch buffers charged to the render while it keeps them:
+    /// right after a shape is prepared, before anything else is reserved,
+    /// charges what the shape grew them by, and drops them when that does
+    /// not fit.
+    fn settle(&mut self, bytes: &mut Meter) {
+        let held = self.scratch.bytes();
+        if held <= self.kept {
+            bytes.refund(self.kept - held);
+            self.kept = held;
+        } else if bytes.charge(held - self.kept).is_ok() {
+            self.kept = held;
+        } else {
+            self.release(bytes);
+        }
+    }
+
+    /// Drops the scratch buffers and returns their charge.
+    fn release(&mut self, bytes: &mut Meter) {
+        self.scratch.clear();
+        bytes.refund(self.kept);
+        self.kept = 0;
     }
 
     fn shape(&mut self, shape: Option<Shape>, bytes: &mut Meter) -> Result<Option<Prepared>> {
@@ -102,13 +131,20 @@ impl<'a> ShapeBuilder<'a> {
             work: shape.work(),
         };
         // The payload is already live; keep it charged while the old and
-        // replacement inline-slot buffers overlap during growth.
+        // replacement inline-slot buffers overlap during growth. Kept scratch
+        // buffers give way where either does not fit beside them.
         let payload = shape.retained_bytes().saturating_sub(size_of::<Shape>());
-        bytes.charge(payload)?;
-        if let Err(error) = bytes.reserve_capacity(&mut self.shapes, 1) {
-            drop(shape);
-            bytes.refund(payload);
-            return Err(error);
+        if bytes.charge(payload).is_err() {
+            self.release(bytes);
+            bytes.charge(payload)?;
+        }
+        if bytes.reserve_capacity(&mut self.shapes, 1).is_err() {
+            self.release(bytes);
+            if let Err(error) = bytes.reserve_capacity(&mut self.shapes, 1) {
+                drop(shape);
+                bytes.refund(payload);
+                return Err(error);
+            }
         }
         self.shapes.push(shape);
         Ok(Some(prepared))
@@ -127,8 +163,10 @@ impl<'a> ShapeBuilder<'a> {
         options: &ShapeOptions<'_>,
         bytes: &mut Meter,
     ) -> Result<Option<Prepared>> {
-        let shape = Shape::fill_with_clip(path, transform, rule, self.current_clip(), options)?;
-        self.shape(shape, bytes)
+        let lent = (self.current_clip(), &self.scratch);
+        let shape = Shape::fill_with_scratch(path, transform, rule, lent, options);
+        self.settle(bytes);
+        self.shape(shape?, bytes)
     }
 
     /// A stroke; `inverse` maps user space to the space the pen's line
@@ -151,11 +189,12 @@ impl<'a> ShapeBuilder<'a> {
             &pen.stroke,
             (inverse, transform),
             pen.adjustment,
-            clip,
+            (clip, &self.scratch),
             options,
             &mut self.strokes,
-        )?;
-        self.shape(shape, bytes)
+        );
+        self.settle(bytes);
+        self.shape(shape?, bytes)
     }
 
     /// A glyph placement of `source` under the device linear map `linear`
@@ -197,8 +236,10 @@ impl<'a> ShapeBuilder<'a> {
             area: options.area,
             limits: &limits,
         };
-        let shape = Shape::glyph_with_clip(edges, origin, self.current_clip(), &options)?;
-        self.shape(shape, bytes)
+        let lent = (self.current_clip(), &self.scratch);
+        let shape = Shape::glyph_with_scratch(edges, origin, lent, &options);
+        self.settle(bytes);
+        self.shape(shape?, bytes)
     }
 
     /// The edges of `source` under `linear`, from this preparation or the
@@ -305,7 +346,8 @@ impl<'a> ShapeBuilder<'a> {
     pub(crate) fn finish(self, bytes: &mut Meter) -> Result<Shapes> {
         let released = bytes
             .map_bytes(&self.edges)?
-            .saturating_add(self.handles.capacity() * size_of::<Arc<GlyphEdges>>());
+            .saturating_add(self.handles.capacity() * size_of::<Arc<GlyphEdges>>())
+            .saturating_add(self.kept);
         let Self {
             shapes,
             clips,
@@ -474,6 +516,170 @@ mod tests {
         )
         .unwrap()
         .unwrap()
+    }
+
+    /// The star polygon `{n/k}` of radius `r` about the area's centre: its
+    /// crossings leave rows in doubt.
+    fn star(n: u32, k: u32, r: f64) -> Path {
+        let mut path = pagura_raster::PathBuilder::new();
+        for i in 0..n {
+            let angle = std::f64::consts::TAU * f64::from(i * k % n) / f64::from(n);
+            let p = Point::new(16.0 + r * angle.sin(), 16.0 - r * angle.cos());
+            if i == 0 {
+                path.move_to(p);
+            } else {
+                path.line_to(p).unwrap();
+            }
+        }
+        path.close().finish()
+    }
+
+    fn star_options(limits: &Limits) -> ShapeOptions<'_> {
+        ShapeOptions {
+            area: Area {
+                region: DeviceRect {
+                    x0: 0,
+                    y0: 0,
+                    x1: 32,
+                    y1: 32,
+                },
+                band_height: 8,
+            },
+            limits,
+        }
+    }
+
+    fn fill_star(
+        builder: &mut ShapeBuilder<'_>,
+        (n, k, r): (u32, u32, f64),
+        bytes: &mut Meter,
+    ) -> Result<Option<Prepared>> {
+        let limits = *builder.limits;
+        let star = star(n, k, r);
+        let options = star_options(&limits);
+        builder.fill(
+            &star,
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            &options,
+            bytes,
+        )
+    }
+
+    /// What the builder holds for its shapes: their slots and payloads.
+    fn held(builder: &ShapeBuilder<'_>) -> usize {
+        builder.shapes.capacity() * size_of::<Shape>()
+            + builder
+                .shapes
+                .iter()
+                .map(|shape| shape.retained_bytes() - size_of::<Shape>())
+                .sum::<usize>()
+    }
+
+    #[test]
+    fn kept_buffers_are_charged_after_every_shape_until_finishing() {
+        let limits = Limits::default();
+        let store = Store::new(1 << 20);
+        let mut builder = ShapeBuilder::new(&store, &limits);
+        let mut bytes = Meter::new(1 << 22, "shape memory");
+        let mut most = 0;
+        for star in [
+            (5, 2, 6.0),
+            (5, 2, 15.0),
+            (7, 3, 15.0),
+            (11, 5, 15.0),
+            (5, 2, 3.0),
+        ] {
+            fill_star(&mut builder, star, &mut bytes).unwrap().unwrap();
+            assert_eq!(builder.kept, builder.scratch.bytes());
+            assert_eq!(bytes.used(), held(&builder) + builder.kept);
+            assert!(builder.kept <= 64 << 10);
+            assert!(builder.kept >= most, "kept buffers are reused, not shrunk");
+            most = builder.kept;
+        }
+        assert!(most > 0);
+        let shapes = builder.finish(&mut bytes).unwrap();
+        assert_eq!(bytes.used(), shapes.retained_bytes());
+    }
+
+    #[test]
+    fn a_render_that_cannot_keep_the_buffers_drops_them_and_goes_on() {
+        let limits = Limits::default();
+        let store = Store::new(1 << 20);
+        let mut probe = ShapeBuilder::new(&store, &limits);
+        let mut bytes = Meter::new(1 << 20, "shape memory");
+        fill_star(&mut probe, (5, 2, 15.0), &mut bytes)
+            .unwrap()
+            .unwrap();
+        let payload = probe.shapes[0].retained_bytes() - size_of::<Shape>();
+        let kept = probe.kept;
+        assert!(kept > 0);
+        // Room for the shape and one slot, or for the buffers, not both.
+        let mut builder = ShapeBuilder::new(&store, &limits);
+        let mut tight = Meter::new(payload + size_of::<Shape>() + kept - 1, "shape memory");
+        fill_star(&mut builder, (5, 2, 15.0), &mut tight)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (builder.kept, builder.scratch.bytes(), tight.used()),
+            (0, 0, held(&builder))
+        );
+    }
+
+    #[test]
+    fn kept_buffers_are_charged_while_the_slots_grow_beside_them() {
+        // Four certified rectangles fill the first slots; the star then grows
+        // the scratch and the slots at once.
+        let limits = Limits::default();
+        let store = Store::new(1 << 20);
+        let rectangles = |builder: &mut ShapeBuilder<'_>, bytes: &mut Meter| {
+            for _ in 0..4 {
+                builder
+                    .shape(Some(rectangle(&limits)), bytes)
+                    .unwrap()
+                    .unwrap();
+            }
+        };
+        let slot = size_of::<Shape>();
+        let mut probe = ShapeBuilder::new(&store, &limits);
+        let mut bytes = Meter::new(1 << 20, "shape memory");
+        rectangles(&mut probe, &mut bytes);
+        let (before, slots) = (bytes.used(), probe.shapes.capacity());
+        assert_eq!((probe.shapes.len(), slots), (4, 4));
+        fill_star(&mut probe, (5, 2, 15.0), &mut bytes)
+            .unwrap()
+            .unwrap();
+        let payload = probe.shapes[4].retained_bytes() - slot;
+        let grown = probe.kept;
+        assert!(grown >= slots * slot, "{grown} bytes of scratch");
+        // Room for everything once the old slots are returned, but not
+        // while the old and the doubled slots overlap.
+        let max = before + payload + slots * slot + grown;
+        let mut builder = ShapeBuilder::new(&store, &limits);
+        let mut tight = Meter::new(max, "shape memory");
+        rectangles(&mut builder, &mut tight);
+        assert_eq!(tight.used(), before);
+        fill_star(&mut builder, (5, 2, 15.0), &mut tight)
+            .unwrap()
+            .unwrap();
+        // All that was live while the slots grew fits the budget.
+        assert!(before + payload + builder.shapes.capacity() * slot + builder.kept <= max);
+        assert_eq!(builder.kept, builder.scratch.bytes());
+        assert_eq!(tight.used(), held(&builder) + builder.kept);
+    }
+
+    #[test]
+    fn a_refused_shape_keeps_no_buffers() {
+        let limits = Limits::default();
+        let store = Store::new(1 << 20);
+        let mut builder = ShapeBuilder::new(&store, &limits);
+        let mut none = Meter::new(0, "shape memory");
+        let error = fill_star(&mut builder, (5, 2, 15.0), &mut none).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(
+            (builder.kept, builder.scratch.bytes(), none.used()),
+            (0, 0, 0)
+        );
     }
 
     #[test]

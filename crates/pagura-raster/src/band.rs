@@ -40,6 +40,7 @@ mod raster;
 mod rect;
 mod repeat;
 mod row;
+mod scratch;
 mod shape;
 mod union;
 
@@ -49,6 +50,7 @@ pub(crate) use edges::{Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
 pub use repeat::StrokeTemplates;
+pub use scratch::ShapeScratch;
 pub use shape::Shape;
 pub(crate) use shape::{RASTER_WORK, RENDER_BYTES};
 
@@ -151,21 +153,38 @@ pub struct ShapeOptions<'a> {
     pub limits: &'a Limits,
 }
 
-/// What preparing one shape needs: the render's options and the clip state
-/// the mark is painted in.
+/// What preparing one shape needs: the render's options, the clip state the
+/// mark is painted in, and the buffers it may borrow (`None`: its own).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Prep<'a> {
     pub(crate) area: Area,
     pub(crate) limits: &'a Limits,
     pub(crate) clip: Option<&'a ClipShape>,
+    pub(crate) scratch: Option<&'a ShapeScratch>,
 }
 
 impl<'a> Prep<'a> {
     pub(crate) fn new(options: &ShapeOptions<'a>, clip: Option<&'a ClipShape>) -> Self {
+        Self::from_parts(options.area, options.limits, clip)
+    }
+
+    /// The options of `area` under `limits` in the clip state `clip`,
+    /// lending no buffers. Build options with this or [`Self::new`] rather
+    /// than a literal, so that a field added later breaks no caller.
+    pub(crate) fn from_parts(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Self {
         Self {
-            area: options.area,
-            limits: options.limits,
+            area,
+            limits,
             clip,
+            scratch: None,
+        }
+    }
+
+    /// These options borrowing the buffers of `scratch`.
+    pub(crate) fn lending(self, scratch: &'a ShapeScratch) -> Self {
+        Self {
+            scratch: Some(scratch),
+            ..self
         }
     }
 }

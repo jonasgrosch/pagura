@@ -3,7 +3,7 @@
 
 use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
-use pagura_core::{Limits, Position};
+use pagura_core::{Limits, Position, Store};
 use pagura_interpret::{
     BlendMode, ClipId, ClipNode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node,
     Paint, PatternId, Pen, PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
@@ -511,4 +511,72 @@ fn a_prior_large_scratch_changes_neither_small_charges_nor_tight_errors() {
         (cold.kind, cold.message, cold.position)
     );
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+/// Preparation keeps the winding resolver's buffers between its shapes and
+/// starts with none, so a preparation after others refuses exactly where a
+/// first one does.
+#[test]
+fn kept_resolver_buffers_refuse_warm_where_cold() {
+    let mut b = Build::new(32.0, 32.0);
+    let paint = b.rgb([0.0, 0.0, 0.0]);
+    for i in 0..6_u8 {
+        // Five-pointed stars, whose crossings leave rows to resolve.
+        let r = 4.0 + f64::from(i) * 2.0;
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(16.0, 16.0 - r));
+        for k in 1..5_u8 {
+            let angle = f64::from(k) * 0.8 * std::f64::consts::PI;
+            path.line_to(Point::new(16.0 + r * angle.sin(), 16.0 - r * angle.cos()))
+                .unwrap();
+        }
+        path.close();
+        b.node(
+            PAGE,
+            Node::Fill(FillNode {
+                path: Arc::new(path.finish()),
+                rule: FillRule::NonZero,
+                paint,
+                mark: MarkInfo {
+                    position: Position::Buffer(usize::from(i)),
+                    ..mark(StateId(0))
+                },
+            }),
+        );
+    }
+    let request = b.request(b.page(), 8);
+    let prepare = |render_bytes, store: &Store| {
+        let limits = Limits {
+            render_bytes,
+            ..Limits::default()
+        };
+        crate::prepare(&b.scene, &request, store, &limits)
+            .map(|_| ())
+            .map_err(|error| (error.kind, error.message, error.position))
+    };
+    // The least memory a first preparation fits in.
+    let (mut refused, mut fits) = (0, 1 << 20);
+    prepare(fits, &Store::new(1 << 20)).unwrap();
+    while refused + 1 < fits {
+        let middle = refused.midpoint(fits);
+        if prepare(middle, &Store::new(1 << 20)).is_ok() {
+            fits = middle;
+        } else {
+            refused = middle;
+        }
+    }
+    let warm = Store::new(1 << 20);
+    for _ in 0..2 {
+        prepare(1 << 20, &warm).unwrap();
+    }
+    for render_bytes in (refused.saturating_sub(256)..=fits + 256)
+        .step_by(8)
+        .chain([refused, fits])
+    {
+        assert_eq!(
+            prepare(render_bytes, &Store::new(1 << 20)),
+            prepare(render_bytes, &warm),
+            "{render_bytes}"
+        );
+    }
 }

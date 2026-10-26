@@ -45,7 +45,7 @@ pub(super) fn area(x0: u32, y0: u32, x1: u32, y1: u32, band_height: u32) -> Area
 }
 
 pub(super) fn options<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {
-    Prep { area, limits, clip }
+    Prep::from_parts(area, limits, clip)
 }
 
 /// The public options of `area`.

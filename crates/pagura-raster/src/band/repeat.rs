@@ -136,6 +136,7 @@ impl Shape {
     /// A stroke as [`Shape::stroke_with_clip`] makes it, reusing the shape
     /// of an earlier placement of the same stroke in `templates` where that
     /// gives the same coverage bytes, and keeping this one's for later ones.
+    /// It borrows the buffers of `scratch`, as [`Shape::fill_with_scratch`].
     ///
     /// # Errors
     ///
@@ -145,11 +146,11 @@ impl Shape {
         stroke: &Stroke,
         (pen, transform): (Transform, Transform),
         adjustment: Adjustment,
-        clip: Option<&super::ClipShape>,
+        (clip, scratch): (Option<&super::ClipShape>, &super::ShapeScratch),
         options: &ShapeOptions<'_>,
         templates: &mut StrokeTemplates,
     ) -> Result<Option<Self>> {
-        let prep = Prep::new(options, clip);
+        let prep = Prep::new(options, clip).lending(scratch);
         let (polygon, tiling, mut bytes) =
             Self::stroke_pieces(path, stroke, (pen, transform), adjustment, &prep)?;
         // Only unproven pieces may need the resolver.

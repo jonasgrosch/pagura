@@ -106,11 +106,7 @@ fn coverage_inspection_charges_temporary_cells_and_cumulative_work() {
         },
         band_height: 2,
     };
-    let options = Prep {
-        area,
-        limits: &limits,
-        clip: None,
-    };
+    let options = Prep::from_parts(area, &limits, None);
     let origin = Point::new(1.2, 1.3);
     let base = placed(&edges, origin, &options).unwrap().unwrap();
     let super::super::shape::Body::Glyph(body) = &base.body else {

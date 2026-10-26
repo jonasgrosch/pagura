@@ -344,6 +344,45 @@ fn scratch_is_charged_to_the_byte_meter() {
     assert!(small.used() <= used / 2);
 }
 
+/// What a resolver holds is what its rows charged for it beside the sides
+/// they appended, for rows of a chunk or fewer pieces and of many chunks.
+#[test]
+fn its_bytes_are_what_its_rows_charged() {
+    let mut rng = Lcg(5);
+    let mut resolver = Resolver::default();
+    let mut bytes = Meter::new(usize::MAX, "bytes");
+    let mut out = Vec::new();
+    for count in [4_u32, 40, 400] {
+        let mut lines = Vec::new();
+        for i in 0..count {
+            let x = f64::from(i) / 10.0;
+            let points: Vec<(f64, f64)> = (0..4)
+                .map(|_| (x + rng.grid(0.0, 17, 8), rng.grid(-0.25, 12, 8)))
+                .collect();
+            lines.extend(polygon(&points, u8::from(i % 2 == 1)));
+        }
+        let mut work = Meter::new(usize::MAX, "work");
+        let meters = Meters {
+            work: &mut work,
+            bytes: &mut bytes,
+        };
+        out.clear();
+        resolver
+            .row(
+                &pieces(&lines),
+                &[FillRule::NonZero, FillRule::EvenOdd],
+                0.0,
+                (&mut out, meters),
+            )
+            .unwrap();
+        assert_eq!(
+            bytes.used(),
+            resolver.bytes() + out.capacity() * size_of::<Line>(),
+            "{count} shapes"
+        );
+    }
+}
+
 /// The covered area of row `0..1`, integrated slab by slab: every pair
 /// tested for a crossing, and per slab every piece placed at its middle.
 fn slab_by_slab(pieces: &[Piece], rules: &[FillRule]) -> f64 {
