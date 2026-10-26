@@ -501,7 +501,42 @@
       "tests": [
         "jpx/pdf-colour-19",
         "jpx/pdf-colour-12",
-        "jpx/pdf-depth-17"
+        "jpx/pdf-depth-17",
+        "jpx_lab_probe/lab-default-8",
+        "jpx_lab_probe/lab-default-8-codec-control",
+        "jpx_lab_probe/lab-default-8-rgb-control",
+        "jpx_lab_probe/lab-default-8-pdf-lab-control",
+        "jpx_lab_probe/lab-explicit-default-8",
+        "jpx_lab_probe/lab-explicit-default-8-codec-control",
+        "jpx_lab_probe/lab-explicit-default-8-rgb-control",
+        "jpx_lab_probe/lab-explicit-default-8-pdf-lab-control",
+        "jpx_lab_probe/lab-default-16",
+        "jpx_lab_probe/lab-default-16-codec-control",
+        "jpx_lab_probe/lab-default-16-rgb-control",
+        "jpx_lab_probe/lab-default-16-pdf-lab-control",
+        "jpx_lab_probe/lab-explicit-custom-8",
+        "jpx_lab_probe/lab-explicit-custom-8-codec-control",
+        "jpx_lab_probe/lab-explicit-custom-8-rgb-control",
+        "jpx_lab_probe/lab-explicit-custom-8-pdf-lab-control",
+        "jpx_lab_probe/lab-explicit-custom-16",
+        "jpx_lab_probe/lab-explicit-custom-16-codec-control",
+        "jpx_lab_probe/lab-explicit-custom-16-rgb-control",
+        "jpx_lab_probe/lab-explicit-custom-16-pdf-lab-control",
+        "jpx_lab_probe/lab-default-palette-8-12-16",
+        "jpx_lab_probe/lab-default-palette-8-12-16-codec-control",
+        "jpx_lab_probe/lab-default-palette-8-12-16-rgb-control",
+        "jpx_lab_probe/lab-default-palette-8-12-16-pdf-lab-control",
+        "jpx_lab_probe/lab-malformed-ep-1",
+        "jpx_lab_probe/lab-malformed-ep-4",
+        "jpx_lab_probe/lab-malformed-ep-24",
+        "jpx_lab_probe/lab-malformed-ep-27",
+        "jpx_lab_probe/lab-malformed-ep-29",
+        "jpx_lab_probe/lab-malformed-ep-32",
+        "jpx_lab_probe/lab-d65-unprobed",
+        "jpx_lab_probe/lab-temperature-unprobed",
+        "jpx_lab_probe/lab-unknown-illuminant",
+        "jpx_lab_probe/lab-zero-range-unadjudicated",
+        "jpx_lab_probe/lab-signed-boundary"
       ],
       "gaps": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
       "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.2, G.4, I.5.3.6, Table I.16, Table I.17",
@@ -521,14 +556,24 @@
         "implementation_expectations": "The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged."
       },
       "external_review": {
-        "status": "reviewed PDF selection subset; full Part 2 remains open",
-        "standard": "ITU-T T.801 (08/2023) / ISO/IEC 15444-2",
+        "status": "reviewed PDF selection and enumerated CIELab primary rules; diagnostic authored but unrun; other Part 2 remains open",
+        "standard": "ITU-T T.801 (08/2002), integrating Amendment 1/Cor1/Cor2, with Cor3 (01/2005) and Cor4 (05/2006); ISO/IEC 15444-2:2004 as referenced by PDF",
         "clauses": [
           "M.11.7.2",
-          "Table M.23"
+          "Table M.23",
+          "M.9.2.4",
+          "M.11.7.4.1",
+          "Equation M-18",
+          "Table M.29",
+          "Table M.30",
+          "Cor4 Table M.14"
         ],
         "depends_on": "Precision 17\u201338, early packed-header framing, nonzero CRG registration, first-image jpch/jplh and opct metadata, ordered in-file fragments/cross-references, baseline colour definitions and restricted Part 2 array/nonlinear transforms remain open. PDF 7.4.9 prohibits multilayer composition/animation and used per-colour or multiple opacity, and excludes CIEJab19; these are PDF boundaries, not missing capabilities. First-image metadata and other permitted JPX baseline features remain applicable.",
-        "evidence": "Public image-source tests and independent colour/palette/mask/inline controls; full functional verification remains bound to hosted source revisions."
+        "evidence": "jpx_lab_probe contains six independent D50 subjects, unchanged-codec/RGB/PDF Lab controls, six malformed-length vectors and five unprobed boundary vectors. All runtime outcomes remain pending; the primary-formula RGB oracle and declared tolerances are frozen before execution. Existing integration tests remain bound to their recorded hosted source revisions.",
+        "source": "text/itu-t801-2002.txt; text/itu-t801-2005-cor3.txt; text/itu-t801-2006-cor4.txt; exact hashes in jpx-boxes.external_review",
+        "lab_parameters": "Enumerated 14 uses unsigned N with physical value (N-O)*R/(2^bits-1), independently per colour channel. Absent EP uses R=(100,170,200), O=(0,2^(Na-1),3*2^(Nb-3)), D50. Nonempty EP is seven unsigned 32-bit fields: RL,OL,RA,OA,RB,OB,IL. The explicit-default control preserves those values while exercising the 28-byte EP form. This is distinct from ICC Lab encoding.",
+        "lab_illuminants": "T.4 (07/2003) E.6.4 defines D50 XYZ=(96.422,100,82.521); text/itu-t4-2003.txt SHA256 3abe7b9dd5582d75c9bc841f6e7d68d11dbc9a9218156086403802b9bfaf3093. T.801 Table M.29 also defines other illuminant codes and CT temperatures, which are not invalid merely because this probe establishes only D50. Unassigned IL has no guessed D50 replacement.",
+        "lab_boundaries": "The six render subjects cover unsigned 8/16-bit and 8/12/16-bit palette output; they do not narrow PDF's 1-38-bit domain. Signed Lab is outside the unsigned M-18 mapping and has no guessed pixel oracle. Table M.30 lists zero ranges while M-18 division becomes degenerate; zero range remains explicitly unadjudicated. Partial/excess EP lengths are malformed, not omitted defaults."
       }
     },
     {

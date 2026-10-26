@@ -435,3 +435,33 @@ uses the existing `explicit_refusal` owner from the appearance workstream.
 A named backend/CLI refusal is recorded as such; arbitrary nonzero exits stay
 unclassified. Negative controls cover both cases without changing pixel acceptance
 or historic diagnostic rows.
+
+## R02 enumerated CIELab diagnostic
+
+The private `jpx_lab_probe` fixture area starts from product checkpoint
+`20cf20993f229ce589366ceacf9f14446293df00`; it has no runtime results yet.
+Six D50 subjects cover omitted defaults at 8 and 16 bits, explicitly supplied
+default parameters at 8 bits, changed ranges/offsets at 8 and 16 bits, and
+8/12/16-bit palette output. Each has an unchanged-codestream sRGB control, an
+ordinary RGB control, and a plain PDF Lab control. With blank/rectangle controls,
+the private render manifest has 26 cases / 182 cells across Pagura and the six
+pinned baselines. It replaces the integrated manifest only on this probe branch.
+
+T.801 M.11.7.4.1/M-18 supplies the unsigned range/offset equations and optional
+28-byte EP layout. M.9.2.4 distinguishes omitted defaults from explicit parameters;
+corrected Cor4 Table M.14 features 56/57 declare those colour requirements,
+alongside the separate Part 1 requirement. T.4 E.6.4 supplies D50 XYZ
+(96.422,100,82.521), as used by the existing independent CIE oracle. This differs
+from rounded ICC D50 and ICC Lab channel encoding. The fixture manifest retains
+the exact rational Lab values, coded samples, precision and paired codestream
+hashes. Tolerance 1 is frozen for CIE/codec subjects and controls; ordinary RGB
+controls retain tolerance 0. No engine output supplies an expectation.
+
+Six nonempty EP lengths (1,4,24,27,29,32) are separately malformed; an empty EP is
+the valid default. Five non-render vectors retain the distinct signed-input,
+defined D65, defined colour-temperature, unassigned illuminant and zero-range
+boundaries. No RGB/error outcome is invented for these five. Table M.29's other
+defined illuminants remain applicable; Table M.30's zero range and M-18's division
+remain unadjudicated. These vectors are outside the valid rendering denominator.
+Source locators and hashes are in the `jpx-pdf-contract` requirement. No family
+status or product acceptance changes follow from this unrun diagnostic.
