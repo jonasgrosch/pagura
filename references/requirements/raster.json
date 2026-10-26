@@ -236,7 +236,10 @@
         "raster/convex-miter-sixteen-near-miter-forward-pdf",
         "raster/convex-miter-sixteen-near-miter-reverse-pdf",
         "raster/convex-miter-sixteen-reversed-inner-forward-pdf",
-        "raster/convex-miter-sixteen-reversed-inner-reverse-pdf"
+        "raster/convex-miter-sixteen-reversed-inner-reverse-pdf",
+        "cloud_annotations/source-curve-miter",
+        "pagura-raster stroke::tests::source_curve_miter_has_the_analytic_triangle_area",
+        "pagura-raster stroke::tests::smooth_curve_joins_retain_equal_source_directions_through_zero_segments"
       ],
       "gaps": "Broader curve-stroke offset, curved-dash and extreme-coordinate independent vectors remain",
       "rule": "Width, caps, joins, miter limits and degenerate subpaths determine stroke geometry; cap and join styles are defined in Tables 53 and 54. Dashes restart per subpath and retain user-space distances."

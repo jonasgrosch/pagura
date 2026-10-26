@@ -1,4 +1,5 @@
 """Analytic controls for the independent cloud-stroke coverage oracle."""
+import math
 import unittest
 
 from fixturegen.cloud_annotations import polygon_coverage, stroke_contours
@@ -42,6 +43,11 @@ class CloudCoverageTests(unittest.TestCase):
         for y,expected in [(7.4,0.),(9.5,1.)]:
             tiny=[[(5000*(x-15.9999),5000*(yy-(y-.0001))) for x,yy in contour] for contour in contours]
             self.assertAlmostEqual(polygon_coverage(tiny,1)[0],expected)
+        # The top cusp's exterior triangle alone intersects this device pixel.
+        # Its area is the integral of (y - (23.5-sqrt(5)/2))/2 on[22.5,23],
+        # scaled by4: sqrt(5)/2-3/4. No offset curve enters this rectangle.
+        top=[[(2*x-31,2*y-45) for x,y in contour] for contour in contours]
+        self.assertAlmostEqual(polygon_coverage(top,1)[0],math.sqrt(5)/2-.75)
 
 
 if __name__=='__main__':

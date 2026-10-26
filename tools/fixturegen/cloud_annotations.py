@@ -217,6 +217,15 @@ def oracle(shape='Square',*,intensity=1,width=0,alpha=1.,dpi=72,rotate=0):
 
 
 def cases():
+    # Ordinary content, with no annotation or cloud generator. The crop contains
+    # only the exterior miter triangle between these two quadratic source arcs.
+    # Its exact coverage is sqrt(5)/2-3/4, so gray=255-round(255*area)=161.
+    joined=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                     b'<< /Type /Page /Parent 2 0 R /MediaBox [15.5 22.5 16 23] /Resources << >> /Contents 4 0 R >>',
+                     stream(b'0 G 1 w 23.5 23.5 m 21 28.5 18.5 28.5 16 23.5 c 13.5 28.5 11 28.5 8.5 23.5 c S')])
+    yield Case('source-curve-miter',joined,RENDER,(REQUIREMENT,'raster-strokes'),
+               'Ordinary curved-path miter has exact isolated triangle coverage sqrt(5)/2-3/4',
+               oracle=b'P6\n1 1\n255\n'+bytes([161]*3),dpi=144,extra={'tolerance':1})
     for shape in ('Square','Circle','Polygon','FreeText'):
         for dpi in (72,144):
             yield Case(f'{shape}-{dpi}',source(shape),RENDER,(REQUIREMENT,),

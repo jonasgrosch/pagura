@@ -1644,6 +1644,7 @@
       "tests": [
         "pagura-appearance annotation::tests::cloud",
         "tools/test_cloud_pixels.py",
+        "cloud_annotations/source-curve-miter",
         "cloud_annotations/Square-72",
         "cloud_annotations/Square-144",
         "cloud_annotations/Circle-72",

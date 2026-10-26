@@ -5,6 +5,27 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "cloud_annotations/source-curve-miter",
+      "kind": "pdf",
+      "description": "Ordinary curved-path miter has exact isolated triangle coverage sqrt(5)/2-3/4",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders",
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/cloud_annotations/source-curve-miter.pdf",
+      "sha256": "9386205c7a15c65d37ccfa1b9af172705d02ebafeecc2e7e9e2ed18607c3208a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/source-curve-miter.ppm",
+      "oracle_sha256": "34f4ecfef54b06122c5c4e3ab7ab5e94eb5cd1ffddbcbafc0e57bdadc047ff72",
+      "dpi": 144,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
       "id": "cloud_annotations/Square-72",
       "kind": "pdf",
       "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
