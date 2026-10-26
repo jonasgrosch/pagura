@@ -221,3 +221,19 @@ does not assert OpenType post 4, glyph-name fallback, name spelling, extraction,
 font collection support, or competitive-family parity. The baseline run may
 fail because Pagura currently rejects unknown post versions; the old harness
 retains nonzero exits as unclassified failures, not named unsupported evidence.
+
+The follow-up name probe retains all seven direct controls and adds six candidate
+spellings, each paired with an exact literal post 2 name. The primary text fixes
+the prefix and hexadecimal code interpretation but leaves padding and letter case
+unspecified. Candidate mismatches cannot alone establish invalid input or a feature
+gap. Their original rectangle comparisons are observations, with no name or family
+support promotion. All earlier fixture bytes and expectations are unchanged.
+
+Linux observations from [run 40387744536](https://github.com/jonasgrosch/pagura/actions/runs/40387744536)
+at `791f19b6c` show MuPDF, PDF.js and Poppler passing all seven direct controls.
+Pagura passes five controls and has two unclassified post 4 failures; source review
+confirms unknown post versions are refused. Hayro misses both post 4 subjects
+while passing their post 3 controls. PDFium misses the paired font controls, so
+those cells are not format-specific evidence. The macOS jobs were still queued
+when this note was written. Linux report SHA-256:
+`5ca216fa6965417fe0332667edcb9ada956e7a949a135be70fd17c204d02c8f7`.

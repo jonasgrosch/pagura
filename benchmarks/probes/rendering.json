@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Private R04 Apple post4 admission probe: two direct Unicode-cmap subjects with an assigned or unassigned post4 code, matched post3 controls, a literal glyph-sized rectangle, and unchanged blank/rectangle controls. FontFile2 TrueType input; not OpenType format4 support, glyph-name fallback, extraction or family parity. Independent pixel expectations; no timing.",
+  "scope": "Private R04 post4 admission and glyph-name observations: original seven direct-cmap controls plus six candidate name spellings, each with a literal post2-name control. Padding/case of derived post4 names is unadjudicated; candidate mismatches alone are not unsupported-format evidence. Rectangle expectations are diagnostic only for name candidates; no font-family or extraction claim.",
   "cases": [
     {
       "id": "control.blank",
@@ -85,6 +85,162 @@
       "capability": "fonts.programs",
       "operation": "render",
       "fixture": "font_formats/post3-control-direct-unnamed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-name-short-digit",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-name-short-digit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-name-control-short-digit",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-name-control-short-digit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-name-padded-digit",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-name-padded-digit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-name-control-padded-digit",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-name-control-padded-digit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-name-short-upper",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-name-short-upper",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-name-control-short-upper",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-name-control-short-upper",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-name-short-lower",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-name-short-lower",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-name-control-short-lower",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-name-control-short-lower",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-name-padded-upper",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-name-padded-upper",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-name-control-padded-upper",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-name-control-padded-upper",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-name-padded-lower",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-name-padded-lower",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-name-control-padded-lower",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-name-control-padded-lower",
       "oracle": "rgb8",
       "expected": {
         "width": 32,

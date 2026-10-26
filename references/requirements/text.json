@@ -429,7 +429,8 @@
           }
         ],
         "rule": "The legacy Apple TrueType post4 header is followed directly by one uint16 code per maxp glyph; FFFF marks an unassigned code. Microsoft OpenType does not support this version. These FontFile2 probes exercise unchanged cmap selection, with no glyph-name spelling inferred.",
-        "scope": "Compatibility admission only; no product implementation or measured support is asserted before hosted paired observations."
+        "scope": "Compatibility admission only; no product implementation or measured support is asserted before hosted paired observations.",
+        "name_observations": "Apple describes names with an a prefix and hexadecimal code characters without specifying padding/case. Six candidate spellings have independent literal post2-name controls; they are diagnostic observations rather than six normative requirements. No product spelling is inferred before results."
       }
     },
     {

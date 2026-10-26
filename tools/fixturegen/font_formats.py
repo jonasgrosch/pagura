@@ -36,11 +36,37 @@ def font_objects(mode, version):
     records = [(3, 1, {65: 1})] if mode.startswith('direct') else [(3, 1, {66: 2}), (1, 0, {65: 2})]
     program = truetype(table_overrides={b'post': post(version, mode != 'direct-unnamed'), b'cmap': text_cmap_records(sorted(records))})
     encoding = b'/WinAnsiEncoding' if mode != 'differences' else b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /A] >>'
+    return source_objects(program, encoding)
+
+
+def source_objects(program, encoding):
     font = (b'<< /Type /Font /Subtype /TrueType /BaseFont /LegacyName /FirstChar 65 /LastChar 65 '
             b'/Widths [600] /Encoding ' + encoding + b' /FontDescriptor 6 0 R >>')
     descriptor = (b'<< /Type /FontDescriptor /FontName /LegacyName /Flags 32 /FontBBox [0 0 300 300] '
                   b'/ItalicAngle 0 /Ascent 300 /Descent 0 /CapHeight 200 /StemV 50 /FontFile2 7 0 R >>')
     return [font, descriptor, stream(program, b'/Length1 %d' % len(program))]
+
+
+def post4_name_cases():
+    # Apple specifies an "a" prefix followed by hexadecimal code characters,
+    # but does not fix padding or letter case. These are observations of each
+    # candidate, paired with an exact literal post-2 name; not normative names.
+    for label, code, name in [('short-digit', 0x41, b'a41'), ('padded-digit', 0x41, b'a0041'),
+                              ('short-upper', 0x4a, b'a4A'), ('short-lower', 0x4a, b'a4a'),
+                              ('padded-upper', 0x4a, b'a004A'), ('padded-lower', 0x4a, b'a004a')]:
+        for version, tag in [(0x40000, 'post4-name'), (0x20000, 'post2-name-control')]:
+            header = u32(version) + bytes(28)
+            if version == 0x40000:
+                table = header + b''.join(u16(n) for n in (0xffff, code, 0xffff, 0xffff, 0xffff))
+            else:
+                table = header + u16(5) + b''.join(u16(n) for n in (0, 258, 0, 0, 0))
+                table += bytes([len(name)]) + name
+            cmap = text_cmap_records([(3, 1, {66: 2})])
+            program = truetype(table_overrides={b'post': table, b'cmap': cmap})
+            encoding = b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /' + name + b'] >>'
+            yield case(f'{tag}-{label}', b'BT /F 100 Tf 1 0 0 1 4 4 Tm (A) Tj ET',
+                       source_objects(program, encoding), FONT, [((4, 4, 10, 20), BLACK)],
+                       requirement=REQUIREMENT)
 
 
 def cases():
@@ -51,6 +77,7 @@ def cases():
             yield case(f'{label}-{mode}', b'BT /F 100 Tf 1 0 0 1 4 4 Tm (A) Tj ET',
                        font_objects(mode, version), FONT, [((4, 4, 10, 20), BLACK)],
                        requirement=REQUIREMENT)
+    yield from post4_name_cases()
     yield case('ordinary-rectangle', b'0 g 4 4 10 20 re f',
                rectangles=[((4, 4, 10, 20), BLACK)], requirement=REQUIREMENT)
     for mode in ('direct', 'direct-unnamed'):
