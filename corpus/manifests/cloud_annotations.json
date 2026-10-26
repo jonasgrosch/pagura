@@ -1,0 +1,328 @@
+{
+  "schema": 2,
+  "area": "cloud_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "cloud_annotations/Square-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-72.pdf",
+      "sha256": "a7c9a1ecb9b37702abf8a3b94d4b956884545d13ec839d33aae4abed19d85af6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Square-72.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-144.pdf",
+      "sha256": "a7c9a1ecb9b37702abf8a3b94d4b956884545d13ec839d33aae4abed19d85af6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Square-144.ppm",
+      "oracle_sha256": "5cf4f13e3bfa93ac25e8eed9aa27f0d7b1424f8ce505a7c5856c18ff7d0b4760",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-72.pdf",
+      "sha256": "6ff9872c09b325faacbe44593a7f2cebde27abde1433ed3b5ceea3f4874319e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Circle-72.ppm",
+      "oracle_sha256": "cc25c290e2c7f833c39ffd13cade9e8dd50c307f6dd304df64ec0618b2be0ffa",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-144.pdf",
+      "sha256": "6ff9872c09b325faacbe44593a7f2cebde27abde1433ed3b5ceea3f4874319e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Circle-144.ppm",
+      "oracle_sha256": "db69292d8c134bb40aed80bfbe2751a07304833d54f1fd87777fc6966304f73c",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-72.pdf",
+      "sha256": "664f66b93ef01e38782a2de268868635c1016ebea7ccd523063736e176f9c92c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Polygon-72.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-144.pdf",
+      "sha256": "664f66b93ef01e38782a2de268868635c1016ebea7ccd523063736e176f9c92c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Polygon-144.ppm",
+      "oracle_sha256": "5cf4f13e3bfa93ac25e8eed9aa27f0d7b1424f8ce505a7c5856c18ff7d0b4760",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-72.pdf",
+      "sha256": "9c0c892e02da9b8a8bc7a35c987a6815f6623738d11329182c5194a3fbc029c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/FreeText-72.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-144.pdf",
+      "sha256": "9c0c892e02da9b8a8bc7a35c987a6815f6623738d11329182c5194a3fbc029c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/FreeText-144.ppm",
+      "oracle_sha256": "5cf4f13e3bfa93ac25e8eed9aa27f0d7b1424f8ce505a7c5856c18ff7d0b4760",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/strong",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/strong.pdf",
+      "sha256": "66460fe5065ff5641aeb43b5c80fcda6aea82c698014dd7ca194699284403fd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/strong.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/fractional",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/fractional.pdf",
+      "sha256": "5e32f569a5e5e4e975404eabf54e11aa353d6b3a78dbb992714f12c7ff9d5328",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/fractional.ppm",
+      "oracle_sha256": "a451fcd6af7bb2974aa706a1aa405c0bbfd12384ab0d545f6af27766c59ad033",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/opacity",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/opacity.pdf",
+      "sha256": "c974ef9d49b9c19066c306a107990f219025e8d42376de2f466795e27766cd75",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/opacity.ppm",
+      "oracle_sha256": "8c22e3104d8562a08a8fba528cfeb8654475d733219623f794b9ea592ff17155",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/rotated",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/rotated.pdf",
+      "sha256": "2a3a66d2fbb83ad9f1802090a7a9c41dfdd5feb81a10c5ad0a5b1a54186d9421",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/rotated.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/width-affects-lobes",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/width-affects-lobes.pdf",
+      "sha256": "72fc4b47f3a9b4b304ea78326559373a7ac0735d4abf3c743dad6e2b5403279a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/width-affects-lobes.ppm",
+      "oracle_sha256": "f377d9793f989201a0d68b3e8dd511cb5118129dc89453056f2409b3acf653db",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/bad-intensity",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/bad-intensity.pdf",
+      "sha256": "57d213ac7cb0b0ac1ee35538e6e35490c580bd5068d0b63f3d2af647f947e8e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "cloud_annotations/negative",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/negative.pdf",
+      "sha256": "d56e2e4f13bf785648a31b6571a6ad738646ce06776f37390c68dfc99d54e14a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "cloud_annotations/excess",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/excess.pdf",
+      "sha256": "cbce6b9586fa91b5a0945f590900ef519660c1c6937f881b0ba7095a09b4032b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "cloud_annotations/bad-effect",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/bad-effect.pdf",
+      "sha256": "7b73a68a328c05340a3395bf7945b5eeae65d90af737bad9f50a5fb1de68cbb1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}

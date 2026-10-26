@@ -7,12 +7,13 @@
 
 mod callout;
 
-use super::border::{Border, inset_bounds, plain_effect};
+use super::border::{Border, inset_bounds};
+use super::cloud;
 use super::marks::{Color, Marks, Pen, Subpath, color};
-use crate::features;
 use crate::fonts::{Encoding, FontSource};
 use crate::form::{da::DefaultAppearance, layout, layout::TextLayout, supply_font};
 use crate::program::Program;
+use crate::rich;
 use crate::stream::AppearanceStream;
 use crate::values::{optional, optional_dictionary};
 use pagura_core::{Diagnostics, Dictionary, Error, Meter, Name, Rect, Result, Value, text_string};
@@ -24,11 +25,13 @@ pub(super) fn generate(
     rect: Rect,
     fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
-    plain_text(document, annotation)?;
     let callout = callout::Callout::read(document, annotation)?;
-    plain_effect(document, annotation)?;
+    let effect = cloud::Effect::read(document, annotation)?;
     let bounds = inset_bounds(document, annotation, rect)?;
     let border = Border::read_rectangular(document, annotation)?;
+    let cloud = effect
+        .map(|effect| effect.rectangle(document, inset(bounds, border.width / 2.0)?, border.width))
+        .transpose()?;
     let background = color(document, annotation, b"C", None)?;
     let quadding = quadding(document, annotation)?;
     let limits = document.limits();
@@ -40,7 +43,11 @@ pub(super) fn generate(
     storage.charge_product(da_bytes.len(), 2)?;
     work.charge(da_bytes.len())?;
     let da = DefaultAppearance::parse(da_bytes, &limits)?;
-    let text = contents(document, annotation, &mut storage)?;
+    let text = if optional(document, annotation, b"RC")?.is_some() {
+        String::new()
+    } else {
+        contents(document, annotation, &mut storage)?
+    };
     let mut geometry = Meter::new(limits.path_segments, "free text geometry budget exceeded");
     geometry.charge(8 + border.outline_segments())?; // Background, border and text clip.
     if callout.is_some() {
@@ -54,9 +61,38 @@ pub(super) fn generate(
     if let Some(callout) = callout {
         callout.draw(&mut marks, &border, background.as_ref())?;
     }
-    paint_box(&mut marks, bounds, &border, background.as_ref())?;
+    paint_box(
+        &mut marks,
+        bounds,
+        &border,
+        background.as_ref(),
+        cloud.as_ref(),
+    )?;
     let area = inset(bounds, border.width + 2.0)?;
-    if !text.is_empty() && area.width() > 0.0 && area.height() > 0.0 {
+    let rich = rich::prepare(
+        document,
+        annotation,
+        &text,
+        &da,
+        quadding,
+        area.width(),
+        fonts,
+    )?;
+    if let Some(rich) = rich {
+        if !rich.fonts.is_empty() && area.width() > 0.0 && area.height() > 0.0 {
+            let mut out = Program::new(&limits);
+            out.text(&format!(
+                "q\n{} {} {} {} re W n\n",
+                area.x0(),
+                area.y0(),
+                area.width(),
+                area.height()
+            ))?;
+            rich.write(&mut out, (area.x0(), area.y1()), (1.0, 0.0))?;
+            out.text("Q\n")?;
+            marks.text(&out.finish(), rich.fonts, &Color::black())?;
+        }
+    } else if !text.is_empty() && area.width() > 0.0 && area.height() > 0.0 {
         work.charge(256)?;
         work.charge(text.len())?;
         // Include the fixed reverse font map and the shared layout's worst-case
@@ -130,18 +166,6 @@ fn resources(document: &Document, name: &[u8], storage: &mut Meter) -> Result<Di
     Ok(resources)
 }
 
-fn plain_text(document: &Document, annotation: &Dictionary) -> Result<()> {
-    if optional(document, annotation, b"RC")?.is_some()
-        || optional(document, annotation, b"DS")?.is_some()
-    {
-        return Err(Error::unsupported(
-            features::ANNOTATION_APPEARANCE,
-            "rich free text appearance generation is unavailable",
-        ));
-    }
-    Ok(())
-}
-
 fn quadding(document: &Document, annotation: &Dictionary) -> Result<Justification> {
     match optional(document, annotation, b"Q")?.map(Value::as_integer) {
         None | Some(Some(0)) => Ok(Justification::Left),
@@ -181,17 +205,23 @@ fn paint_box(
     bounds: Rect,
     border: &Border,
     background: Option<&Color>,
+    cloud: Option<&cloud::Outline>,
 ) -> Result<()> {
     if let Some(background) = background {
-        marks.fill(&[rectangle(bounds)], background)?;
+        marks.fill(
+            &[cloud.map_or_else(|| rectangle(bounds), cloud::Outline::path)],
+            background,
+        )?;
     }
     if border.width > 0.0 {
-        if border.paint_relief(marks, bounds, &Color::black())? {
+        if cloud.is_none() && border.paint_relief(marks, bounds, &Color::black())? {
             return Ok(());
         }
         let inner = inset(bounds, border.width / 2.0)?;
         let line = [(inner.x0(), inner.y0()), (inner.x1(), inner.y0())];
-        let path = if border.underline {
+        let path = if let Some(cloud) = cloud {
+            cloud.path()
+        } else if border.underline {
             Subpath::Polyline(&line)
         } else {
             border.outline(inner)

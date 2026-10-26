@@ -1,6 +1,5 @@
 //! Bounded plain text for Line captions, sharing the form font encoder.
 
-use crate::features;
 use crate::fonts::{Encoding, FontSource};
 use crate::values::optional;
 use pagura_core::{Diagnostics, Dictionary, Error, Meter, Name, Result, Value, text_string};
@@ -26,12 +25,6 @@ impl Text {
         annotation: &Dictionary,
         fonts: &dyn FontSource,
     ) -> Result<Option<Self>> {
-        if optional(document, annotation, b"RC")?.is_some() {
-            return Err(Error::unsupported(
-                features::ANNOTATION_APPEARANCE,
-                "rich line caption generation is not implemented",
-            ));
-        }
         let Some(value) = optional(document, annotation, b"Contents")? else {
             return Ok(None);
         };

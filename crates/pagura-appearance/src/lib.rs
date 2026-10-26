@@ -26,6 +26,7 @@ mod form;
 pub mod information;
 mod program;
 pub mod repairs;
+mod rich;
 mod stream;
 mod values;
 

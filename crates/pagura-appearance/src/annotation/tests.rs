@@ -1,4 +1,5 @@
 mod caret;
+mod cloud;
 mod free_text;
 mod markup;
 mod relief;
@@ -238,7 +239,7 @@ fn unsupported_annotations_are_tagged() {
     let area = rect(0.0, 0.0, 8.0, 8.0);
     for text in [
         b"<< /Subtype /Stamp /IT /StampImage >>".as_slice(),
-        b"<< /Subtype /Square /BE << /S /C >> >>",
+        b"<< /Subtype /Square /BE << /S /Unknown >> >>",
         b"<< /Subtype /Ink /InkList [[1 1 2 2]] /Border [2 2 1] >>",
         b"<< /Subtype /Ink /InkList [[1 1 2 2]] /BS << /S /I >> >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",

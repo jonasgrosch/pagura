@@ -3,6 +3,7 @@
 
 pub(crate) mod border;
 mod caret;
+mod cloud;
 mod ending;
 mod free_text;
 mod icon;

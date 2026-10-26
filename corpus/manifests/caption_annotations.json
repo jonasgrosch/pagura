@@ -583,6 +583,29 @@
       "render_error": "syntax"
     },
     {
+      "id": "caption_annotations/rich-text",
+      "kind": "pdf",
+      "description": "Rich caption uses the independently specified Helvetica baseline and literal line gap",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/rich-text.pdf",
+      "sha256": "03801026293c4426421ce1ea65c9b19b92fe58dcc3c03e35444af8771b99c4ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/rich-text.ppm",
+      "oracle_sha256": "312eb592d143de4103558fb427c12e6e4899121524e8ec1b1643e9e95e334c70",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
       "id": "caption_annotations/position-unknown",
       "kind": "pdf",
       "description": "Unimplemented rich text, positions and font encodings remain explicit",
@@ -592,21 +615,6 @@
       ],
       "path": "corpus/generated/caption_annotations/position-unknown.pdf",
       "sha256": "8b16e81cd26b776153954acb54dd76a2a191ac51963fcb8526240fbe3c08cd06",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
-    },
-    {
-      "id": "caption_annotations/rich-text",
-      "kind": "pdf",
-      "description": "Unimplemented rich text, positions and font encodings remain explicit",
-      "expected": "unsupported",
-      "requirements": [
-        "content-line-captions"
-      ],
-      "path": "corpus/generated/caption_annotations/rich-text.pdf",
-      "sha256": "03801026293c4426421ce1ea65c9b19b92fe58dcc3c03e35444af8771b99c4ee",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

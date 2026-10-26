@@ -99,8 +99,11 @@ def cases():
                    'Caption-only parameters validate even when the caption is empty',extra={'render_error':'syntax'})
     yield Case('contents-type',source(extra=b'/Cap true /Contents 42'),OPEN,(REQUIREMENT,),
                'Plain caption Contents must be a PDF text string',extra={'render_error':'syntax'})
+    yield Case('rich-text',source(extra=b'/Cap true /RC (<p>I</p>)'),RENDER,(REQUIREMENT,),
+               'Rich caption uses the independently specified Helvetica baseline and literal line gap',
+               oracle=oracle([(4,7,12.332,9),(19.668,7,28,9)],rows=(('I',14.332,4.934),)),
+               information=('font.substituted',),extra={'tolerance':1})
     for name,extra,feature in [('position-unknown',b'/CP /Other','annotation.appearance'),
-                              ('rich-text',b'/RC (<p>I</p>)','annotation.appearance'),
                               ('unmapped',b'/Contents <FEFF4E00>','appearance.font-encoding')]:
         yield Case(name,source(extra=b'/Cap true '+extra),UNSUPPORTED,(REQUIREMENT,),
                    'Unimplemented rich text, positions and font encodings remain explicit',feature=feature,

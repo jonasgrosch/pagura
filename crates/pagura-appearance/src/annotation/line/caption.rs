@@ -8,10 +8,12 @@ mod text;
 
 use crate::features;
 use crate::fonts::FontSource;
+use crate::form::da::DefaultAppearance;
 use crate::program::Program;
+use crate::rich;
 use crate::values::{number, optional};
 use pagura_core::{Dictionary, Error, Result};
-use pagura_document::Document;
+use pagura_document::{Document, forms::Justification};
 use text::Text;
 
 type Point = (f64, f64);
@@ -47,6 +49,45 @@ impl Caption {
         }
         let position = position(document, annotation)?;
         let offset = offset(document, annotation)?;
+        if optional(document, annotation, b"RC")?.is_some() {
+            let appearance = DefaultAppearance::parse(b"/Helvetica 12 Tf", &document.limits())?;
+            let rich = rich::prepare(
+                document,
+                annotation,
+                "",
+                &appearance,
+                Justification::Left,
+                f64::INFINITY,
+                fonts,
+            )?
+            .ok_or(Error::syntax("missing rich caption content"))?;
+            if rich.fonts.is_empty() {
+                return Ok(None);
+            }
+            let layout = Layout::with_extent(
+                line,
+                position,
+                offset,
+                Extent {
+                    width: rich.width,
+                    height: rich.height,
+                    ascent: 0.0,
+                },
+            )?;
+            let origin = shifted(
+                layout.center,
+                layout.axis,
+                -rich.width / 2.0,
+                layout.baseline,
+            )?;
+            let mut out = Program::new(&document.limits());
+            rich.write(&mut out, origin, layout.axis)?;
+            return Ok(Some(Self {
+                body: layout.body,
+                content: out.finish(),
+                fonts: rich.fonts,
+            }));
+        }
         let Some(text) = Text::read(document, annotation, fonts)? else {
             return Ok(None);
         };
@@ -67,8 +108,39 @@ struct Layout {
     baseline: f64,
 }
 
+struct Extent {
+    width: f64,
+    height: f64,
+    ascent: f64,
+}
+
 impl Layout {
     fn new(line: [Point; 2], position: Position, offset: Point, text: &Text) -> Result<Self> {
+        let width = text
+            .rows
+            .iter()
+            .map(|row| row.width * SIZE)
+            .fold(0.0, f64::max);
+        let height = (text.ascent - text.descent) * SIZE
+            + text.rows.len().saturating_sub(1) as f64 * LEADING;
+        Self::with_extent(
+            line,
+            position,
+            offset,
+            Extent {
+                width,
+                height,
+                ascent: text.ascent * SIZE,
+            },
+        )
+    }
+
+    fn with_extent(
+        line: [Point; 2],
+        position: Position,
+        offset: Point,
+        extent: Extent,
+    ) -> Result<Self> {
         let dx = line[1].0 - line[0].0;
         let dy = line[1].1 - line[0].1;
         let length = dx.hypot(dy);
@@ -80,19 +152,17 @@ impl Layout {
         } else {
             (dx / length, dy / length)
         };
-        let width = text
-            .rows
-            .iter()
-            .map(|row| row.width * SIZE)
-            .fold(0.0, f64::max);
-        let height = (text.ascent - text.descent) * SIZE
-            + text.rows.len().saturating_sub(1) as f64 * LEADING;
+        let Extent {
+            width,
+            height,
+            ascent,
+        } = extent;
         let top = position == Position::Top || width + 2.0 * CLEARANCE > length;
         let baseline = if top {
             height + CLEARANCE
         } else {
             height / 2.0
-        } - text.ascent * SIZE;
+        } - ascent;
         let midpoint = (
             line[0].0 / 2.0 + line[1].0 / 2.0,
             line[0].1 / 2.0 + line[1].1 / 2.0,
