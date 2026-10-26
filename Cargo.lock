@@ -28,9 +28,11 @@ dependencies = [
 name = "pagura-appearance"
 version = "0.1.0"
 dependencies = [
+ "pagura-content",
  "pagura-core",
  "pagura-data",
  "pagura-document",
+ "pagura-image",
  "pagura-raster",
  "pagura-testkit",
  "pagura-text",

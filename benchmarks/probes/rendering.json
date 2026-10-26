@@ -13339,6 +13339,513 @@
         "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
         "tolerance": 0
       }
+    },
+    {
+      "id": "forms.update.update-art-inline-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "15624749917a4765e98a0312ebc663287fdb245883803aa7d69ca193fb6f12e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-named-binary-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-named-binary-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "dc9a824112525a230c3540aa9eefe3dfbb582de08bb62d84fd5e44656264a363",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-named-binary-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-named-binary-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "dc9a824112525a230c3540aa9eefe3dfbb582de08bb62d84fd5e44656264a363",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-named-binary-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-named-binary-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "3d754a2b7c5bc2b504dbe10980c8c151fc676e771de734523c37f9406d6f554f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-named-binary-144-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-named-binary-144-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "37805a6441bc914f1491dfb1e48eba9c91c64cfbbc81142ffa6426d1e1df0d88",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-named-binary-144-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-named-binary-144-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "37805a6441bc914f1491dfb1e48eba9c91c64cfbbc81142ffa6426d1e1df0d88",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-named-binary-144-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-named-binary-144-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "6acb48606643a37b19a8984f3a0f7a0a1134ffdc9cca7c79ffb0ba8172569fde",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-filtered-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-filtered-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-filtered-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-filtered-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-inline-filtered-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-inline-filtered-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "15624749917a4765e98a0312ebc663287fdb245883803aa7d69ca193fb6f12e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-image-xobject-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-image-xobject-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-image-xobject-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-image-xobject-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-image-xobject-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-image-xobject-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "15624749917a4765e98a0312ebc663287fdb245883803aa7d69ca193fb6f12e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-form-artwork-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-form-artwork-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-form-artwork-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-form-artwork-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-form-artwork-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-form-artwork-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "15624749917a4765e98a0312ebc663287fdb245883803aa7d69ca193fb6f12e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-choice-artwork-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-choice-artwork-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-choice-artwork-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-choice-artwork-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-choice-artwork-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-choice-artwork-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "15624749917a4765e98a0312ebc663287fdb245883803aa7d69ca193fb6f12e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-append-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-append-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-append-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-append-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-append-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-append-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "f1d8c58f049c09411251ac2c3e3051156c24a6479b9d3238bfa3f0dd5e2239dc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-unmarked-inline-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-unmarked-inline-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-unmarked-inline-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-unmarked-inline-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "c3cb618b9533e9b051c7fe719cb316317eb05b3086bf67f4fd21d5a32596b326",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-unmarked-inline-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-unmarked-inline-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "15624749917a4765e98a0312ebc663287fdb245883803aa7d69ca193fb6f12e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-repeated-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-repeated-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "b5cba27a154d32ddd1b84e38d4e1916505de366aa35eb700381b441292e01dc2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-repeated-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-repeated-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "b5cba27a154d32ddd1b84e38d4e1916505de366aa35eb700381b441292e01dc2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-repeated-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-repeated-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "8ad42d60cfa1d6cd5f4da0655e50a07adeb405f847bfdc94c4dbef1276805241",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-repeated-144-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-repeated-144-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "b34472835b6b0791c869a77c5b884556325632a845e189b36a4e393f48bbcb99",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-repeated-144-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-repeated-144-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "b34472835b6b0791c869a77c5b884556325632a845e189b36a4e393f48bbcb99",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-repeated-144-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-repeated-144-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "1beb8ade36ef94a996128f3e7031f7084afffc490a05c19cf0770e448d6cbe77",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-font-collision-72-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-font-collision-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "1a6d076d0032f21f9b3c108953b9e2518e14775e687faeb4516e4b57a95df867",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-font-collision-72-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-font-collision-72-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "1a6d076d0032f21f9b3c108953b9e2518e14775e687faeb4516e4b57a95df867",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-font-collision-72-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-font-collision-72-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "bcf6b3b6cdd1efb8da1c9981cdde9242c231873be91fa82e953f2c033c6bde9b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-font-collision-144-source",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-font-collision-144-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "b4689a6af377379300abc53d9cd94c291bc0c033a9582afb23b7295b8a2f3487",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-font-collision-144-before",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-font-collision-144-before",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "b4689a6af377379300abc53d9cd94c291bc0c033a9582afb23b7295b8a2f3487",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "forms.update.update-art-font-collision-144-after",
+      "capability": "forms.workflow",
+      "operation": "render",
+      "fixture": "annotation_display/update-art-font-collision-144-after",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "7840a2a798d6cbc1c45355f6c716f4769b1797a9113651155a6680f7bfdffa12",
+        "tolerance": 1
+      }
     }
   ]
 }

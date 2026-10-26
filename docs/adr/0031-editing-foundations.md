@@ -170,8 +170,13 @@ continues to default to specification behavior. Preserve untouched cached APs,
 create missing APs before clearing NeedAppearances, and repair only edited
 variable-text appearances. Exact standard-14 names can receive explicit
 resources; custom font names are not guessed. Unmarked text-show operations are
-removed while vector artwork is retained inside an isolated graphics scope.
-Clipping text and external XObjects remain unsupported in that fallback.
+removed while artwork is retained inside an isolated graphics scope. The shared
+content reader supplies exact replacement spans and the ordinary image owner
+frames inline samples. Image XObjects and recursively text-free Forms survive;
+unmarked Forms containing text and clipping text remain explicit refusals.
+Repeated independently balanced Tx sections use that same reader. Tx sections
+inside BT or crossing a graphics scope remain unsupported. Existing resources
+win DR collisions, and no-op saves never inspect or rewrite unused artwork.
 
 The same save path supplies disposable draft snapshots for on-page rendering.
 This avoids an independent HTML checkbox glyph or text preview that disagrees

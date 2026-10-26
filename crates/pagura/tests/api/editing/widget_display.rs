@@ -445,3 +445,164 @@ fn rich_selected_errors_leave_source_bytes_intact_and_passwords_unpersisted() {
         ErrorKind::Unsupported(features::PASSWORD)
     );
 }
+
+#[test]
+fn nonrich_updates_preserve_artwork_across_preview_save_and_reopen() {
+    use pagura::form_appearance::{Appearance, UpdatePolicy, prepare_widget_with_policy};
+    let manifest = Manifest::load("annotation_display");
+    for case in manifest
+        .cases()
+        .filter(|case| case.string("update_oracle").is_some())
+    {
+        let name = case.name();
+        let original = fixture("annotation_display", &format!("{name}.pdf"));
+        let document = Arc::new(open(original.clone()).unwrap());
+        let mut filler = document.form_filler().unwrap().unwrap();
+        let policy = if case.string("update_policy") == Some("preserve") {
+            UpdatePolicy::PreserveExisting
+        } else {
+            UpdatePolicy::Specification
+        };
+        let save_options = SaveOptions {
+            form_appearances: policy,
+            ..SaveOptions::default()
+        };
+        let old_default = filler.form().fields[0].default_value.clone();
+        assert_eq!(
+            save_filled_form(&filler, &save_options).unwrap(),
+            original,
+            "{name}: no-op"
+        );
+        let input = if case.get("update_choice").and_then(Json::as_bool) == Some(true) {
+            FillValue::Choice(ChoiceSelection::Indices(&[1]))
+        } else {
+            FillValue::Text("AB")
+        };
+        filler.set(0, input).unwrap();
+        let prepared = prepare_widget_with_policy(&filler, 0, None, policy)
+            .unwrap_or_else(|error| panic!("{name}: prepare: {error}"));
+        let Appearance::Generated(prepared) = prepared else {
+            panic!("{name}: expected generated appearance")
+        };
+        let options = RenderOptions::from_dpi(case.get("dpi").and_then(Json::as_f64).unwrap());
+        let oracle = case.string("update_oracle").unwrap();
+        if policy == UpdatePolicy::Specification {
+            let context = pagura::render_context(Arc::clone(&document));
+            let scene = context
+                .filled_scene(&filler, document.page(0).unwrap())
+                .unwrap();
+            let preview = context.render_scene(&scene, &options, None).unwrap();
+            assert_artwork_pixels(name, &crate::support::ppm(&preview), oracle);
+        }
+        // The browser's PreserveExisting preview uses a disposable saved
+        // snapshot. The same prepared bytes must become its persisted AP/N.
+        let saved = save_filled_form(&filler, &save_options)
+            .unwrap_or_else(|error| panic!("{name}: save: {error}"));
+        assert!(saved.starts_with(&original), "{name}");
+        let reopened = open(saved.clone()).unwrap();
+        let form = reopened.acro_form().unwrap().unwrap();
+        assert_eq!(
+            form.fields[0].value,
+            Some(FieldValue::Text("AB".to_owned())),
+            "{name}"
+        );
+        assert_eq!(form.fields[0].default_value, old_default, "{name}: DV");
+        let appearances = reopened
+            .resolve_dictionary(form.widgets[0].dictionary.get(b"AP").unwrap())
+            .unwrap();
+        let id = appearances.get(b"N").and_then(Value::as_reference).unwrap();
+        assert_eq!(
+            reopened
+                .stream_data(reopened.object(id).unwrap())
+                .unwrap()
+                .as_ref(),
+            prepared.content(),
+            "{name}: prepared/persisted bytes"
+        );
+        for key in [b"R", b"D"] {
+            assert_eq!(
+                appearances.get(key),
+                Some(&Value::Reference(ObjectId::new(81, 0))),
+                "{name}: alternate AP"
+            );
+        }
+        let after = pagura::render_page(&reopened, reopened.page(0).unwrap(), &options)
+            .unwrap_or_else(|error| panic!("{name}: reopened render: {error}"));
+        assert_artwork_pixels(name, &crate::support::ppm(&after), oracle);
+        assert_eq!(
+            save_filled_form(&reopened.form_filler().unwrap().unwrap(), &save_options).unwrap(),
+            saved,
+            "{name}: repeated no-op"
+        );
+        filler.reset(0);
+        assert_eq!(
+            save_filled_form(&filler, &save_options).unwrap(),
+            original,
+            "{name}: reset"
+        );
+        exported(&format!("saved-{name}"), &saved, &original).unwrap();
+    }
+}
+
+fn assert_artwork_pixels(name: &str, actual: &[u8], oracle: &str) {
+    let expected = fixture("annotation_display", &format!("{oracle}.ppm"));
+    assert_eq!(actual.len(), expected.len(), "{name}");
+    let worst = actual
+        .iter()
+        .zip(&expected)
+        .map(|(a, b)| a.abs_diff(*b))
+        .max()
+        .unwrap_or(0);
+    assert!(worst <= 1, "{name}: artwork pixel error {worst}");
+}
+
+#[test]
+fn ambiguous_or_malformed_artwork_updates_fail_atomically() {
+    use pagura::form_appearance::{UpdatePolicy, prepare_widget_with_policy};
+    let manifest = Manifest::load("annotation_display");
+    for case in manifest
+        .cases()
+        .filter(|case| case.string("update_error").is_some())
+    {
+        let name = case.name();
+        let original = fixture("annotation_display", &format!("{name}.pdf"));
+        let document = open(original.clone()).unwrap();
+        let mut filler = document.form_filler().unwrap().unwrap();
+        let options = SaveOptions {
+            form_appearances: UpdatePolicy::PreserveExisting,
+            ..SaveOptions::default()
+        };
+        assert_eq!(
+            save_filled_form(&filler, &options).unwrap(),
+            original,
+            "{name}: lazy no-op"
+        );
+        filler.set(0, FillValue::Text("AB")).unwrap();
+        for error in [
+            prepare_widget_with_policy(&filler, 0, None, options.form_appearances).unwrap_err(),
+            save_filled_form(&filler, &options).unwrap_err(),
+        ] {
+            let actual = match error.kind {
+                ErrorKind::Unsupported(feature) => format!("unsupported:{feature}"),
+                kind => kind.name().to_owned(),
+            };
+            assert_eq!(
+                actual,
+                case.string("update_error").unwrap(),
+                "{name}: {error}"
+            );
+        }
+        assert_eq!(filler.changes().count(), 1, "{name}: draft lost");
+        assert_eq!(
+            document.original_bytes(),
+            original,
+            "{name}: source changed"
+        );
+        filler.reset(0);
+        assert_eq!(
+            save_filled_form(&filler, &options).unwrap(),
+            original,
+            "{name}: reset"
+        );
+    }
+}

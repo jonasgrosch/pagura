@@ -12,8 +12,10 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+pagura-content.workspace = true
 pagura-core.workspace = true
 pagura-document.workspace = true
+pagura-image.workspace = true
 pagura-raster.workspace = true
 pagura-text.workspace = true
 

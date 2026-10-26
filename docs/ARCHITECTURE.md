@@ -9,7 +9,7 @@ pagura           ──► pagura-render, pagura-appearance (appearance data), p
 pagura-render    ──► pagura-paint, pagura-interpret, pagura-extract, pagura-text, pagura-document, pagura-raster
 pagura-paint     ──► pagura-interpret, pagura-color, pagura-image, pagura-raster
 pagura-interpret ──► pagura-content, pagura-appearance, pagura-color, pagura-image, pagura-raster, pagura-extract, pagura-text, pagura-font, pagura-document
-pagura-appearance ─► pagura-text, pagura-document, pagura-raster (shared geometry only)
+pagura-appearance ─► pagura-text, pagura-document, pagura-content (source spans), pagura-image (inline framing), pagura-raster (shared geometry only)
 pagura-extract   ──► pagura-text (font kinds, writing modes, glyph text), pagura-document, pagura-raster
 pagura-color     ──► pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font (ADR 0026)
@@ -38,7 +38,7 @@ oracle: only dev-dependencies name it.
 | `pagura-extract` | page text: layout policy, reading order, search and the logical structure view over the interpreter's positioned glyphs (ADR 0014, ADR 0025) | content streams, font programs, pixels |
 | `pagura-image` | image XObjects and inline images as sources read without decoding, decoded on request (layout and orientation); JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-color` | colour spaces, prepared converters, ICC profile transforms and CIE colorimetry; PDF functions, prepared and total (ADR 0028, ADR 0034) | PDF objects |
-| `pagura-content` | content-stream tokenizer and typed operators (Annex A) with source positions | graphics state, resources |
+| `pagura-content` | content-stream tokenizer and typed operators (Annex A) with source positions and exact operand/operator spans | graphics state, resources |
 | `pagura-interpret` | the one interpreter: the graphics state machine over pages, forms, annotations and patterns into a `Device`, with `Needs` negotiation; the scene recorder and the text device (ADR 0034) | pixels, resolution |
 | `pagura-appearance` | shared form-field/annotation appearance selection and generation; font layout, border geometry and appearance streams kept as data (12.5.5, 12.7.4.3) | interpretation, pixels |
 | `pagura-paint` | the renderer: preparation and reservation of a scene for one region, the band executor, prepared paint, span kernels and storage formats (ADR 0034) | PDF objects, documents |

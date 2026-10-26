@@ -78,7 +78,7 @@ impl WidgetAppearance {
 /// with `provider` (ADR 0009) or only from the document for `None`.
 ///
 /// Unchanged fields retain AP unless NeedAppearances requests regeneration.
-/// Changed plain text/choice fields replace only the Tx section of an existing AP;
+/// Changed plain text/choice fields replace each balanced Tx section of an existing AP;
 /// existing resources win collisions with DR. Buttons always select an existing
 /// state when AP exists; only an absent AP permits a generated normal caption,
 /// mark or icon.
@@ -92,9 +92,11 @@ impl WidgetAppearance {
 /// Returns positioned syntax, font, limit and unsupported-capability errors.
 /// Horizontal simple fonts with reversible single-character Unicode mappings
 /// are supported. Oblique text matrices, advanced rich formatting, XFA,
-/// negative font sizes and appearance updates crossing
-/// text/graphics scopes or containing inline images remain explicit
-/// unsupported capabilities. DoNotScroll rejects text that will not visibly fit.
+/// negative font sizes and appearance updates crossing text/graphics scopes
+/// remain explicit unsupported capabilities. Inline images use the ordinary
+/// resource-aware framing. The unmarked compatibility fallback preserves Image
+/// XObjects and text-free Forms, but refuses inseparable Form text and text
+/// clipping. DoNotScroll rejects text that will not visibly fit.
 pub fn prepare(
     filler: &FormFiller<'_>,
     provider: Option<&dyn Provider>,
@@ -456,7 +458,13 @@ impl Generation<'_, '_> {
         text.text("Q\nEMC\n")?;
         let text = text.finish();
         let content = if let Some(source) = source {
-            update::replace(&document.stream_data(source)?, &text, &limits, self.policy)?
+            update::replace(
+                document,
+                &resources,
+                &document.stream_data(source)?,
+                &text,
+                self.policy,
+            )?
         } else {
             let mut out = Program::new(&limits);
             style.paint(&mut out, bbox)?;

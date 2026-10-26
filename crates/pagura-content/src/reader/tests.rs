@@ -130,7 +130,7 @@ fn inline_images_are_framed_by_the_caller_and_end_with_ei() {
 #[test]
 fn operation_ranges_preserve_unselected_source_bytes() {
     let content = Content::from_bytes(
-        b" % lead\nBX /Ignored 17 Future EX\nq /Tx << /MCID 2 >> BDC\nBT /F1 10 Tf (old) Tj ET EMC Q\nBI /W 1 ID x EI Q".as_slice(),
+        b" % lead\nBX /Ignored 17 Future EX\nq /Tx << /MCID 2 >> BDC\nBT /F1 10 Tf (old) Tj ET EMC Q\nBI /W 1 ID\r\nx EI Q".as_slice(),
     );
     let mut reader = Reader::new(&content, &Limits::default());
     let mut tokens = meter();
@@ -155,7 +155,7 @@ fn operation_ranges_preserve_unselected_source_bytes() {
             b"ET",
             b"EMC",
             b"Q",
-            b"BI /W 1 ID ",
+            b"BI /W 1 ID\r\n",
             b"Q",
         ]
     );

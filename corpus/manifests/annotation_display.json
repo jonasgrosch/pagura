@@ -10215,6 +10215,944 @@
       "height": 48,
       "tolerance": 1,
       "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/update-art-inline-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-72-source.pdf",
+      "sha256": "efeb397d8264b50d4a83e9e76263e064d89fa1486305f24a01b1583b9c2399c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-inline-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-inline-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-72-before.pdf",
+      "sha256": "97bc4160976bc6f030ce197188561e22ae0fb24fc7c063aabf88206c5169ba17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-72-after.pdf",
+      "sha256": "0aaead10b9d8c17e347c67afcab005a447f7d5258aa499d42223b3778a79b6bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-72-after.ppm",
+      "oracle_sha256": "5d1006bd07afdd72ad5f9bff83596fbc90811e6eb17f81b609ad48f52f4cf77a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-named-binary-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-named-binary-72-source.pdf",
+      "sha256": "9c809c0b80f5ff856926058c37cf1304f9de23e6ca077b3137a1ae012a087f97",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-named-binary-72-source.ppm",
+      "oracle_sha256": "498ade1eff62cf630820c9601d72fed5ddcd84657343eb72622c2e6d1074ebfb",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-inline-named-binary-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-inline-named-binary-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-named-binary-72-before.pdf",
+      "sha256": "a6ad06a01abaa4fa567dbccb9b2c677fa113279f78d743038fb6ca5fe7e15b0a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-named-binary-72-before.ppm",
+      "oracle_sha256": "498ade1eff62cf630820c9601d72fed5ddcd84657343eb72622c2e6d1074ebfb",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-named-binary-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-named-binary-72-after.pdf",
+      "sha256": "6d6f0554dfd61c637c1406a869fd80e182a6f8672c8c24d52df7fb1bc7dfe9e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-named-binary-72-after.ppm",
+      "oracle_sha256": "0fd303d90c98288b2cf8ede38d04f7481ccf64a78035f203fa4e5494fd76f723",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-named-binary-144-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-named-binary-144-source.pdf",
+      "sha256": "9c809c0b80f5ff856926058c37cf1304f9de23e6ca077b3137a1ae012a087f97",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-named-binary-144-source.ppm",
+      "oracle_sha256": "001c616238a116179c9aa8c5d2636997089447d0ac7ebae76972bab7f2ac34b7",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-inline-named-binary-144-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-inline-named-binary-144-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-named-binary-144-before.pdf",
+      "sha256": "a6ad06a01abaa4fa567dbccb9b2c677fa113279f78d743038fb6ca5fe7e15b0a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-named-binary-144-before.ppm",
+      "oracle_sha256": "001c616238a116179c9aa8c5d2636997089447d0ac7ebae76972bab7f2ac34b7",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-named-binary-144-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-named-binary-144-after.pdf",
+      "sha256": "6d6f0554dfd61c637c1406a869fd80e182a6f8672c8c24d52df7fb1bc7dfe9e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-named-binary-144-after.ppm",
+      "oracle_sha256": "8625fc5687b3e2e72a057b5b60d0d8e2b4f7ad7cbfc12d0f78618f8e3bdd0af9",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-filtered-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-filtered-72-source.pdf",
+      "sha256": "cf0ba72bbf78f3e1052ff20a8c5094cb564e00c4da4834ae0be925271082cf1e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-filtered-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-inline-filtered-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-inline-filtered-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-filtered-72-before.pdf",
+      "sha256": "a3f7480ced2d01312f67c413a7ac15d03a284f3ffab42dd6aad177b8337f866a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-filtered-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-inline-filtered-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-inline-filtered-72-after.pdf",
+      "sha256": "335193c20fc59a358865b42aac0c3e6a612495d0a6bb84616a36513334c965ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-inline-filtered-72-after.ppm",
+      "oracle_sha256": "5d1006bd07afdd72ad5f9bff83596fbc90811e6eb17f81b609ad48f52f4cf77a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-image-xobject-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-image-xobject-72-source.pdf",
+      "sha256": "621b22d6040aed11557e976a14985beb37c1cc6fa14473ab65d66f8126a5225c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-image-xobject-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "preserve",
+      "update_oracle": "update-art-image-xobject-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-image-xobject-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-image-xobject-72-before.pdf",
+      "sha256": "8edd09810ded2559c380d9a85e9af587d2731f03b80b2e9b7f2506166db170d1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-image-xobject-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-image-xobject-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-image-xobject-72-after.pdf",
+      "sha256": "0247216ab7fd1be3cd826b1f81a65c77a055c313b84b7de4525bb0e1355534c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-image-xobject-72-after.ppm",
+      "oracle_sha256": "5d1006bd07afdd72ad5f9bff83596fbc90811e6eb17f81b609ad48f52f4cf77a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-form-artwork-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-form-artwork-72-source.pdf",
+      "sha256": "ea3727d838eebd76e7c05a30f08de6ef56eb37f144b3c9f8cc9970388de90d0c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-form-artwork-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "preserve",
+      "update_oracle": "update-art-form-artwork-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-form-artwork-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-form-artwork-72-before.pdf",
+      "sha256": "83f2313922c2446462398cacd07e4e601275faa6b8cad457772d74ba72c4a463",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-form-artwork-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-form-artwork-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-form-artwork-72-after.pdf",
+      "sha256": "e50b84545b4eafd16aaf28944996732a3ba4b297021cb2bf434992d165ee4315",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-form-artwork-72-after.ppm",
+      "oracle_sha256": "5d1006bd07afdd72ad5f9bff83596fbc90811e6eb17f81b609ad48f52f4cf77a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-choice-artwork-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-choice-artwork-72-source.pdf",
+      "sha256": "b1be706e6f0af2d4b5fe38d67c2503289114509bf3b45af9c0deb2c6047d001b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-choice-artwork-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "preserve",
+      "update_oracle": "update-art-choice-artwork-72-after",
+      "update_choice": true
+    },
+    {
+      "id": "annotation_display/update-art-choice-artwork-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-choice-artwork-72-before.pdf",
+      "sha256": "c1a3b682dad0fdcdc9ff48eba077eda5b306602717651d67e09f18a2ae0aa95b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-choice-artwork-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-choice-artwork-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-choice-artwork-72-after.pdf",
+      "sha256": "76061b7edb37119c1e225460a046b3fbc4bde710fc399cb443b773ce5e518d3e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-choice-artwork-72-after.ppm",
+      "oracle_sha256": "5d1006bd07afdd72ad5f9bff83596fbc90811e6eb17f81b609ad48f52f4cf77a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-append-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-append-72-source.pdf",
+      "sha256": "8515054cfeb2bff538b46e9e63a95575558547c4a823b6d6b7b43129e8a5f2fa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-append-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-append-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-append-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-append-72-before.pdf",
+      "sha256": "0e349867a173ac819750592030673952d4ec8fe7d08fc12821b82cded2743be5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-append-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-append-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-append-72-after.pdf",
+      "sha256": "d4885deeb586c07f0db62dd8059c00180830e8b3bf702adf89074ff41dd0c01c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-append-72-after.ppm",
+      "oracle_sha256": "e9311dcb614cdbcd6d869f30e2916ca037efbf932030cf6f305d6d784a94fff0",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-unmarked-inline-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-unmarked-inline-72-source.pdf",
+      "sha256": "8515054cfeb2bff538b46e9e63a95575558547c4a823b6d6b7b43129e8a5f2fa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-unmarked-inline-72-source.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "preserve",
+      "update_oracle": "update-art-unmarked-inline-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-unmarked-inline-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-unmarked-inline-72-before.pdf",
+      "sha256": "0e349867a173ac819750592030673952d4ec8fe7d08fc12821b82cded2743be5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-unmarked-inline-72-before.ppm",
+      "oracle_sha256": "e950f87fc5647d68310dd47972593f7a39e0f32d3a90e57c04ace35a98944bce",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-unmarked-inline-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-unmarked-inline-72-after.pdf",
+      "sha256": "689b654cf7c2c7d59651b2e9eee2f96d947300ba792e6d36994f706c6334c2ec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-unmarked-inline-72-after.ppm",
+      "oracle_sha256": "5d1006bd07afdd72ad5f9bff83596fbc90811e6eb17f81b609ad48f52f4cf77a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-repeated-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-repeated-72-source.pdf",
+      "sha256": "0afca1f8a9b87a8d41469bd9d3b28a885a0e10facbed55243ef32114a80f75e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-repeated-72-source.ppm",
+      "oracle_sha256": "004bf1d63ae86e6f316db41825cf6b62b69745a32d5a480cf1d7097b9c6deb02",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-repeated-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-repeated-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-repeated-72-before.pdf",
+      "sha256": "0ede168520d159fd3f0468d84a493b8a0e129b12c40978f538c6ce1acbd050f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-repeated-72-before.ppm",
+      "oracle_sha256": "004bf1d63ae86e6f316db41825cf6b62b69745a32d5a480cf1d7097b9c6deb02",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-repeated-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-repeated-72-after.pdf",
+      "sha256": "76647243c03431904085267089d78747c8f1a4bc58ad8605cf27e61a4b7a9fbe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-repeated-72-after.ppm",
+      "oracle_sha256": "bdd76fdcf919700fcfe001035904a224b414d252899e87777f9598021fcdc288",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-repeated-144-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-repeated-144-source.pdf",
+      "sha256": "0afca1f8a9b87a8d41469bd9d3b28a885a0e10facbed55243ef32114a80f75e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-repeated-144-source.ppm",
+      "oracle_sha256": "f9b876344f65c52a09b2ccb0c7d0527f018322e8e7d38d78fec1aa0720f34558",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-repeated-144-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-repeated-144-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-repeated-144-before.pdf",
+      "sha256": "0ede168520d159fd3f0468d84a493b8a0e129b12c40978f538c6ce1acbd050f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-repeated-144-before.ppm",
+      "oracle_sha256": "f9b876344f65c52a09b2ccb0c7d0527f018322e8e7d38d78fec1aa0720f34558",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-repeated-144-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-repeated-144-after.pdf",
+      "sha256": "76647243c03431904085267089d78747c8f1a4bc58ad8605cf27e61a4b7a9fbe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-repeated-144-after.ppm",
+      "oracle_sha256": "ae8fa9160d3819808d22e502d49342d2ce1a4d7b240a754f5e3323044ccb5227",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-font-collision-72-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-font-collision-72-source.pdf",
+      "sha256": "4902d50fdd2ca48b67b88c51fe53ff517f79f5a7e18c5749446af24a460dfd1c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-font-collision-72-source.ppm",
+      "oracle_sha256": "c13f720c80da18f38a6a14b9a4dc53f1bdb9bbb6771916ca3e2d2ac6b532be50",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-font-collision-72-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-font-collision-72-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-font-collision-72-before.pdf",
+      "sha256": "509feb4017ba1dde13e5bc80bb3ba2d18dc2c507b641997f7cccc46bd2c29f9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-font-collision-72-before.ppm",
+      "oracle_sha256": "c13f720c80da18f38a6a14b9a4dc53f1bdb9bbb6771916ca3e2d2ac6b532be50",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-font-collision-72-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-font-collision-72-after.pdf",
+      "sha256": "a6619ac6d422665b3e440561a3d039cadbc83585bf7a2175778522c855b1f3c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-font-collision-72-after.ppm",
+      "oracle_sha256": "0728a68d2c3a43c262a3c103ce1c62b631d32ef5571184f83020dc11f9145a19",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-font-collision-144-source",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-font-collision-144-source.pdf",
+      "sha256": "4902d50fdd2ca48b67b88c51fe53ff517f79f5a7e18c5749446af24a460dfd1c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-font-collision-144-source.ppm",
+      "oracle_sha256": "b6cbb919a5fdeef73847c289ee59972a4fbbd40209f25a1ff0be212b8f47447e",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "update_policy": "specification",
+      "update_oracle": "update-art-font-collision-144-after",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-font-collision-144-before",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-font-collision-144-before.pdf",
+      "sha256": "509feb4017ba1dde13e5bc80bb3ba2d18dc2c507b641997f7cccc46bd2c29f9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-font-collision-144-before.ppm",
+      "oracle_sha256": "b6cbb919a5fdeef73847c289ee59972a4fbbd40209f25a1ff0be212b8f47447e",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-font-collision-144-after",
+      "kind": "pdf",
+      "description": "Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit",
+      "expected": "render",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-font-collision-144-after.pdf",
+      "sha256": "a6619ac6d422665b3e440561a3d039cadbc83585bf7a2175778522c855b1f3c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/update-art-font-collision-144-after.ppm",
+      "oracle_sha256": "26097c0d111367ac19c509cd48b5824687285bfaa3b8d9e30c26b61fd1871621",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/update-art-refuse-form-text",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-form-text.pdf",
+      "sha256": "63d686d6ac8e6569a62afe7c5ef7adc96cb8104838c239fdf66cdd9ed0c93858",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "unsupported:appearance.update",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-refuse-form-cycle",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-form-cycle.pdf",
+      "sha256": "5e90e0d998937970366df20e81d4daa9424aa0e2f75882b0f16567746b52917a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "cycle",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-refuse-text-clip",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-text-clip.pdf",
+      "sha256": "6b66b1c66b2fc43c836204d2ff29376f36191ed8c1819e86ca5d192578188713",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "unsupported:appearance.update",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-refuse-cross-text",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-cross-text.pdf",
+      "sha256": "7b0792d4be2c1b1717bd6b232c1536ac03c6e12ddebe2a3544077daf2a13284a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "unsupported:appearance.update",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-refuse-cross-graphics",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-cross-graphics.pdf",
+      "sha256": "ca8ca21332596d1809499e3246a033e7d2a66440b71c9a59bc53626ff9b61be8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "unsupported:appearance.update",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-refuse-inline-truncated",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-inline-truncated.pdf",
+      "sha256": "abbc536534cbd66cfbda55961bdb5bc20d9473690951542e956db6b78fca402c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "syntax",
+      "update_choice": false
+    },
+    {
+      "id": "annotation_display/update-art-refuse-nonstream-xobject",
+      "kind": "pdf",
+      "description": "Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available",
+      "expected": "open",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "path": "corpus/generated/annotation_display/update-art-refuse-nonstream-xobject.pdf",
+      "sha256": "e38a911f7d12d98b3aa1bd5dba07cdae3a59090ac8f1a80ecfb7b5c42056293e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "update_policy": "preserve",
+      "update_error": "syntax",
+      "update_choice": false
     }
   ]
 }

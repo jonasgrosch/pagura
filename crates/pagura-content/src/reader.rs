@@ -32,7 +32,7 @@ pub struct Operation<'r> {
     pub offset: usize,
     /// The operands and operator in the original bytes, excluding surrounding
     /// white space/comments and ignored operators in compatibility sections.
-    /// For an inline image this ends after `ID` and its one white-space byte;
+    /// For an inline image this ends after `ID` and its white-space byte or CR LF;
     /// its data is still read with [`Reader::inline_image_data`].
     pub range: std::ops::Range<usize>,
 }

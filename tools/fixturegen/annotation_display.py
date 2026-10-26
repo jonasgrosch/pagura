@@ -426,6 +426,7 @@ def cases():
     yield from normal_button_cases()
     yield from static_subtype_cases()
     yield from rich_field_cases()
+    yield from artwork_update_cases()
 
 
 def widget_objects(variant='text', stored=False):
@@ -1146,3 +1147,94 @@ def rich_field_cases():
             data[11]['AP']={'N':ref(80)}
             data[80]=stream(art(marks),b'/Type /XObject /Subtype /Form /BBox [8 8 56 40] /Resources << >>')
         yield case('lazy-'+label,data,marks,paired='stored')
+
+
+
+def artwork_update_cases():
+    """12.7.4.3: preserve external artwork, replace only each balanced Tx span.
+
+    The stored AP is in page coordinates [8,8,56,40]. Literal Type3 marks
+    for OLD are at (10,11); replacement AB is at (10,21). The latter follows
+    10pt font metrics 8/-2 centered in [10,10,54,38], with 6-unit advances.
+    Both before/after page controls contain only authored colored rectangles.
+    """
+    black,red=(0,0,0),(1,0,0)
+    requirement='forms-appearance-update'
+    old=b'BT /F1 10 Tf 0 g 1 0 0 1 10 11 Tm (OLD) Tj ET'
+    tx=b'/Tx BMC q '+old+b' Q EMC'
+    red_mark=[((10,32,6,4),red)]
+    image=b'q 6 0 0 4 10 32 cm BI /W 1 /H 1 /BPC 8 /CS /RGB ID \xff\0\0 EI Q'
+    # Literal gray samples include an apparent EI delimiter in their data.
+    embedded=b'q 10 0 0 4 10 32 cm BI /W 5 /H 1 /BPC 8 /CS /Samples ID x EI  EI Q'
+    sample_marks=[((10+2*i,32,2,4),(F(v,255),)*3) for i,v in enumerate(b'x EI ')]
+    definitions=[
+        ('inline','specification',image+b' '+tx,red_mark,False,False),
+        ('inline-named-binary','specification',embedded+b' '+tx,sample_marks,False,False),
+        ('inline-filtered','specification',b'q 6 0 0 4 10 32 cm BI /W 1 /H 1 /BPC 8 /CS /RGB /F /AHx ID ff0000> EI Q '+tx,red_mark,False,False),
+        ('image-xobject','preserve',b'q 6 0 0 4 10 32 cm /Im Do Q '+old,red_mark,False,False),
+        ('form-artwork','preserve',b'/Art Do '+old,red_mark,False,False),
+        ('choice-artwork','preserve',image+b' /Art Do '+old,red_mark,True,False),
+        ('append','specification',image+b' '+old,red_mark,False,False),
+        ('unmarked-inline','preserve',image+b' '+old,red_mark,False,False),
+        ('repeated','specification',b'/Outer BMC /Tx << /MCID 1 >> BDC q '+old+b' Q EMC EMC\nq 1 0 0 1 0 10 cm '+tx+b' Q',[],False,True),
+        ('font-collision','specification',image+b' '+tx,red_mark,False,False),
+    ]
+    def objects(program):
+        data=widget_objects()
+        data[11]|={'V':'OLD','DV':'DEFAULT','AP':{'N':ref(80),'R':ref(81),'D':ref(81)}}
+        data[10]['DA']=b'/F1 10 Tf 0 g'
+        resources=b'/Font << /F1 70 0 R >> /ColorSpace << /Samples /DeviceGray >> /XObject << /Im 82 0 R /Art 83 0 R /Unused 91 0 R >>'
+        data[80]=stream(program,b'/Type /XObject /Subtype /Form /BBox [8 8 56 40] /Resources << '+resources+b' >>')
+        data[81]=stream(b'',b'/Type /XObject /Subtype /Form /BBox [8 8 56 40]')
+        data[82]=stream(b'\xff\0\0',b'/Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceRGB')
+        data[83]=stream(b'q 6 0 0 4 10 32 cm /Tile Do Q',b'/Type /XObject /Subtype /Form /BBox [8 8 56 40] /Resources << /XObject << /Tile 84 0 R >> >>')
+        data[84]=stream(b'1 0 0 rg 0 0 1 1 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 1 1] /Resources << >>')
+        data[91]=b'91 0 R'
+        return data
+    def painted(marks):
+        return ' '.join(f'{float(r)} {float(g)} {float(b)} rg {float(x)} {float(y)} {float(w)} {float(h)} re f'
+                        for (x,y,w,h),(r,g,b) in marks).encode()
+    for label,policy,program,art,choice,repeated in definitions:
+        data=objects(program)
+        outline=(F(1,2),F(7,10))
+        if label=='font-collision':
+            data[70]=dict(data[70],CharProcs={key:ref(71 if key=='space' else 75) for key in data[70]['CharProcs']})
+            data[75]=stream(b'600 0 d0 0 0 250 500 re f')
+            data[10]['DR']['Font']['F1']=ref(76)
+            data[76]=form_base()[70]
+            outline=(F(1,4),F(1,2))
+        if choice:
+            data[11]|={'FT':pdf_name('Ch'),'Ff':1<<17,'V':'OLD','Opt':['OLD','AB'],'DV':'OLD'}
+        before=art+widget_glyphs('OLD',x=10,y=11,color=black,outline=outline)
+        after=art+widget_glyphs('AB',x=10,y=21,color=black,outline=outline)
+        if repeated:
+            before+=widget_glyphs('OLD',x=10,y=21)
+            after+=widget_glyphs('AB',x=10,y=31)
+        if label=='append':after+=widget_glyphs('OLD',x=10,y=11)
+        for dpi in ((72,144) if label in ('inline-named-binary','repeated','font-collision') else (72,)):
+            prefix=f'update-art-{label}-{dpi}'
+            for mode,marks in [('source',before),('before',before),('after',after)]:
+                selected=dict(data)
+                extra={'tolerance':1}
+                if mode=='source':
+                    extra|={'update_policy':policy,'update_oracle':prefix+'-after','update_choice':choice}
+                else:
+                    selected[1]=dict(data[1]);selected[1].pop('AcroForm')
+                    selected[3]=dict(data[3]);selected[3].pop('Annots');selected[3]['Contents']=ref(50)
+                    selected[50]=stream(painted(marks))
+                yield Case(prefix+'-'+mode,widget_pdf(selected),RENDER,(requirement,),
+                           'Original Type3/artwork subject and independently authored before/after rectangle controls; update policy is explicit',
+                           oracle=widget_area_pixels(marks,size=(64,48),scale=dpi//72),dpi=dpi,extra=extra)
+    for label,program,change,error in [
+        ('form-text',b'/Art Do '+old,lambda o:o.update({84:stream(b'BT /F1 10 Tf (STATIC) Tj ET',b'/Subtype /Form /BBox [0 0 1 1]')}),'unsupported:appearance.update'),
+        ('form-cycle',b'/Art Do '+old,lambda o:o.update({84:stream(b'/Again Do',b'/Subtype /Form /BBox [0 0 1 1] /Resources << /XObject << /Again 83 0 R >> >>')}),'cycle'),
+        ('text-clip',b'BT /F1 10 Tf 4 Tr (OLD) Tj ET',lambda o:None,'unsupported:appearance.update'),
+        ('cross-text',b'BT /F1 10 Tf /Tx BMC (OLD) Tj EMC ET',lambda o:None,'unsupported:appearance.update'),
+        ('cross-graphics',b'q /Tx BMC Q EMC',lambda o:None,'unsupported:appearance.update'),
+        ('inline-truncated',b'BI /W 4 /H 1 /BPC 8 /CS /G ID 12',lambda o:None,'syntax'),
+        ('nonstream-xobject',b'/Unused Do '+old,lambda o:None,'syntax'),
+    ]:
+        data=objects(program);change(data)
+        yield Case('update-art-refuse-'+label,widget_pdf(data),OPEN,(requirement,),
+                   'Selected update refuses ambiguous text, malformed framing or resource cycles atomically; unchanged bytes remain available',
+                   extra={'update_policy':'preserve','update_error':error,'update_choice':False})

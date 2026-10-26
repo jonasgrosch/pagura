@@ -384,6 +384,14 @@ direct field identities. Complete field types/flags and reset/import/export
 workflows identified by G00. Define password-field handling explicitly; the
 current refusal is not silently relaxed. Share semantics between preview and save.
 
+Artwork-preserving updates replace the two appearance token scans
+with the existing content reader: inline framing, repeated balanced Tx sections,
+Image XObjects and recursively text-free Forms share preview/save behavior.
+It depends on group 03's accepted resource-aware inline framing. Unmarked Forms
+containing text and Tx sections crossing BT/q scopes remain explicit refusals;
+independent paired geometry and atomic-save controls await hosted acceptance.
+This does not provide the separate flattening or data-exchange APIs.
+
 Acceptance: independent field values and appearance expectations survive filling,
 preview, save/reopen and flattening in applicable readers. Untouched appearance
 artwork survives; failures are atomic and preserve drafts. Browser tests cover

@@ -1,12 +1,6 @@
 //! Explicit viewer policy for incomplete resources and flattened field text.
 
-use super::update::at_operand;
-use crate::features;
-use crate::program::Program;
-use pagura_core::{
-    Dictionary, Error, Limits, Name, Result, Value,
-    syntax::{Origin, Parser},
-};
+use pagura_core::{Dictionary, Error, Name, Result, Value};
 use pagura_document::Document;
 
 /// The standard 14 font names (9.6.2.2).
@@ -60,51 +54,4 @@ pub(crate) fn supply_font(
         return Err(Error::limit("appearance font resource budget exceeded"));
     }
     Ok(())
-}
-
-/// Removes old text-show operations while preserving non-text artwork
-/// verbatim. The caller first validates scopes and excludes inline images.
-/// Clipping text and external XObjects could carry inseparable artwork, so
-/// they remain unsupported.
-pub(super) fn without_text(bytes: &[u8], limits: &Limits) -> Result<Vec<u8>> {
-    let mut parser = Parser::new(bytes, Origin::Buffer, *limits);
-    let mut out = Program::new(limits);
-    let (mut start, mut copied, mut tokens) = (0, 0, 0);
-    let mut operands = Vec::new();
-    while let Some(next) = parser.peek() {
-        if tokens >= limits.operations {
-            return Err(Error::limit("appearance text replacement budget exceeded"));
-        }
-        tokens += 1;
-        if operands.is_empty() {
-            start = parser.offset();
-        }
-        if at_operand(&parser, next) {
-            if operands.len() >= limits.value_nodes {
-                return Err(Error::limit("appearance operand budget exceeded"));
-            }
-            operands.push(parser.parse()?);
-            continue;
-        }
-        let op = parser.word()?;
-        if op == b"Do" || op == b"Tr" && !matches!(operands.as_slice(), [Value::Integer(0..=3)]) {
-            return Err(Error::unsupported(
-                features::APPEARANCE_UPDATE,
-                "unmarked appearance contains inseparable text clipping or XObject artwork",
-            ));
-        }
-        if matches!(op, b"Tj" | b"TJ" | b"'" | b"\"") {
-            out.bytes(slice(bytes, copied..start)?)?;
-            copied = parser.offset();
-        }
-        operands.clear();
-    }
-    out.bytes(slice(bytes, copied..bytes.len())?)?;
-    Ok(out.finish())
-}
-
-fn slice(bytes: &[u8], range: std::ops::Range<usize>) -> Result<&[u8]> {
-    bytes
-        .get(range)
-        .ok_or(Error::syntax("invalid appearance text operation"))
 }

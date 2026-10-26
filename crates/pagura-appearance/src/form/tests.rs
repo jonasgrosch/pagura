@@ -202,17 +202,202 @@ fn text_style_scales_the_declared_size_by_the_vertical_text_scale() {
 
 #[test]
 fn text_update_preserves_nested_marked_content_and_appends_when_absent() {
-    let limits = Limits::default();
+    let document = document_for_style();
+    let resources = Dictionary::new();
     let policy = UpdatePolicy::Specification;
     let original = b"q\n/Other BMC /Tx BMC q /Nested BMC (EMC) Tj EMC Q EMC EMC\nQ\n";
-    let actual = update::replace(original, b"/Tx BMC (NEW) Tj EMC\n", &limits, policy).unwrap();
+    let actual = update::replace(
+        &document,
+        &resources,
+        original,
+        b"/Tx BMC (NEW) Tj EMC\n",
+        policy,
+    )
+    .unwrap();
     assert_eq!(actual, b"q\n/Other BMC /Tx BMC (NEW) Tj EMC\n EMC\nQ\n");
     assert_eq!(
-        update::replace(b"0 g", b"/Tx BMC EMC\n", &limits, policy).unwrap(),
+        update::replace(&document, &resources, b"0 g", b"/Tx BMC EMC\n", policy).unwrap(),
         b"0 g\n/Tx BMC EMC\n"
     );
-    assert!(update::replace(b"/Tx BMC", b"", &limits, policy).is_err());
-    assert!(update::replace(b"/Tx BMC EMC /Tx BMC EMC", b"", &limits, policy).is_err());
+    assert!(update::replace(&document, &resources, b"/Tx BMC", b"", policy).is_err());
+    assert_eq!(
+        update::replace(
+            &document,
+            &resources,
+            b"/Tx BMC EMC /Tx BMC EMC",
+            b"",
+            policy
+        )
+        .unwrap(),
+        b" "
+    );
+}
+
+#[test]
+fn updates_frame_binary_inline_samples_before_finding_repeated_tx_sections() {
+    let document = document_for_style();
+    let mut resources = Dictionary::new();
+    let mut spaces = Dictionary::new();
+    spaces.insert(Name::new(b"Samples"), Value::name(b"DeviceGray"));
+    resources.insert(Name::new(b"ColorSpace"), Value::Dictionary(spaces));
+    // The five samples themselves spell an apparent EI delimiter. Framing
+    // uses the declared row size, not a substring search through samples.
+    let artwork = b"q BI /W 5 /H 1 /BPC 8 /CS /Samples ID x EI  EI Q\n";
+    let old = [
+        artwork.as_slice(),
+        b"/Other BMC /Tx << /MCID 1 >> BDC q /Tx BMC (old) Tj EMC Q EMC EMC\n",
+        b"BX /Ignored 17 Future EX /Tx BMC (old) Tj EMC % retained\n",
+    ]
+    .concat();
+    let text = b"/Tx BMC (new) Tj EMC";
+    let result = update::replace(
+        &document,
+        &resources,
+        &old,
+        text,
+        UpdatePolicy::Specification,
+    )
+    .unwrap();
+    assert_eq!(
+        result,
+        [
+            artwork.as_slice(),
+            b"/Other BMC /Tx BMC (new) Tj EMC EMC\n",
+            b"BX /Ignored 17 Future EX /Tx BMC (new) Tj EMC % retained\n",
+        ]
+        .concat()
+    );
+    let unmarked = [artwork.as_slice(), b"BT (old) Tj ET"].concat();
+    let result = update::replace(
+        &document,
+        &resources,
+        &unmarked,
+        text,
+        UpdatePolicy::PreserveExisting,
+    )
+    .unwrap();
+    assert_eq!(
+        result,
+        [b"q\n".as_slice(), artwork, b"BT  ET\nQ\n", text].concat()
+    );
+}
+
+#[test]
+fn update_syntax_and_budgets_cover_the_shared_reader() {
+    let document = document_for_style();
+    let resources = Dictionary::new();
+    for old in [
+        b"BI /W 4 /H 1 /BPC 8 /CS /G ID 1234 EN".as_slice(),
+        b"/Tx BMC EMC EMC",
+        b"BX",
+        b"q 1 2 cm Q",
+    ] {
+        assert_eq!(
+            update::replace(&document, &resources, old, b"", UpdatePolicy::Specification)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
+    }
+    let document = Document::open(
+        fixture("classic", "blank.pdf"),
+        &OpenOptions {
+            limits: Limits {
+                operations: 3,
+                ..Limits::default()
+            },
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        update::replace(
+            &document,
+            &resources,
+            b"/Tx BMC EMC q Q",
+            b"",
+            UpdatePolicy::Specification
+        )
+        .unwrap_err()
+        .kind,
+        ErrorKind::Limit
+    );
+}
+
+#[test]
+fn update_spans_and_scope_depth_use_existing_budgets() {
+    for (limits, source, message) in [
+        (
+            Limits {
+                document_bytes: 16 * 1024,
+                ..Limits::default()
+            },
+            b"/Tx BMC EMC ".repeat(1025),
+            "appearance update storage budget exceeded",
+        ),
+        (
+            Limits {
+                depth: 8,
+                ..Limits::default()
+            },
+            [b"q ".repeat(9), b"Q ".repeat(9)].concat(),
+            "appearance graphics stack budget exceeded",
+        ),
+    ] {
+        let document = Document::open(
+            fixture("classic", "blank.pdf"),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let error = update::replace(
+            &document,
+            &Dictionary::new(),
+            &source,
+            b"",
+            UpdatePolicy::Specification,
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(error.message, message);
+    }
+}
+
+#[test]
+fn unmarked_form_artwork_uses_one_bounded_graph_walk() {
+    let document = Document::open(
+        fixture(
+            "annotation_display",
+            "update-art-form-artwork-72-source.pdf",
+        ),
+        &OpenOptions {
+            limits: Limits {
+                traversal_work: 2,
+                ..Limits::default()
+            },
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let mut objects = Dictionary::new();
+    objects.insert(Name::new(b"Art"), Value::Reference(ObjectId::new(83, 0)));
+    let mut resources = Dictionary::new();
+    resources.insert(Name::new(b"XObject"), Value::Dictionary(objects));
+    let error = update::replace(
+        &document,
+        &resources,
+        b"/Art Do",
+        b"",
+        UpdatePolicy::PreserveExisting,
+    )
+    .unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(
+        error.message,
+        "appearance artwork traversal budget exceeded"
+    );
 }
 
 #[test]
@@ -302,15 +487,18 @@ fn negative_font_size_is_valid_but_explicitly_unsupported() {
 
 #[test]
 fn text_updates_reject_sections_crossing_text_or_graphics_scopes() {
+    let document = document_for_style();
+    let resources = Dictionary::new();
     for content in [
         b"BT /Tx BMC (OLD) Tj EMC ET".as_slice(),
         b"q /Tx BMC Q EMC",
         b"/Tx BMC q EMC Q",
     ] {
         let error = update::replace(
+            &document,
+            &resources,
             content,
             b"/Tx BMC EMC",
-            &Limits::default(),
             UpdatePolicy::Specification,
         )
         .unwrap_err();
@@ -323,11 +511,12 @@ fn text_updates_reject_sections_crossing_text_or_graphics_scopes() {
 
 #[test]
 fn compatibility_replaces_unmarked_text_without_touching_vector_artwork() {
-    let limits = Limits::default();
+    let document = document_for_style();
+    let resources = Dictionary::new();
     let policy = UpdatePolicy::PreserveExisting;
     let old = b"q 0.7 G 1 1 30 20 re S BT /F1 10 Tf [(old) 20 (value)] TJ ET Q";
     let text = b"/Tx BMC BT /F1 10 Tf (new) Tj ET EMC";
-    let actual = update::replace(old, text, &limits, policy).unwrap();
+    let actual = update::replace(&document, &resources, old, text, policy).unwrap();
     assert_eq!(
         actual,
         b"q\nq 0.7 G 1 1 30 20 re S BT /F1 10 Tf  ET Q\nQ\n/Tx BMC BT /F1 10 Tf (new) Tj ET EMC"
@@ -337,7 +526,7 @@ fn compatibility_replaces_unmarked_text_without_touching_vector_artwork() {
         b"/Other Do",
         b"BT (unfinished) Tj",
     ] {
-        assert!(update::replace(content, text, &limits, policy).is_err());
+        assert!(update::replace(&document, &resources, content, text, policy).is_err());
     }
 }
 

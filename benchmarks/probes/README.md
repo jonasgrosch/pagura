@@ -761,6 +761,51 @@ paired baseline outcomes remain scoped to each configured render adapter.
 The sealed rich-field set contains 61 cases: 48 pixel controls and 13 explicit
 selected failures, bringing G01 to 644. All 596 earlier pixel definitions remain
 unchanged; only the non-pixel valued/no-RV classification is corrected above.
+
+### V02 artwork-preserving text and choice updates
+
+ISO 32000-2 12.7.4.3 requires existing resource names to win DR collisions and
+replaces Tx marked content, appending when no Tx exists. The library retains
+that policy. The browser's explicit `PreserveExisting` policy removes unmarked
+show operations while preserving surrounding artwork. Both now use the normal
+content reader's exact source spans and the accepted image owner's
+`inline_data_length_with_resources` framing; no second tokenizer, image framer,
+layout or interpreter is introduced. Group 03 checkpoint
+`42795ad266d7d7173563b4257fcbce8007470957` is an explicit prerequisite, privately
+merged as `4dd6846bdc14c0aa879a0d0eaaa7bdec82215bae`. Its source and controls are
+prerequisite changes, not additional group 07 implementation.
+
+Thirteen subjects have distinct ordinary before/after controls (39 pixel
+cases). Their authored Type3 glyphs advance six units at 10 pt; OLD occupies
+5 by 7 rectangles at x=10,16,22 and y=11. New AB has the same ink at x=10,16
+and y=21, centered from the 8/-2 metrics in [10,10,54,38]. A repeated Tx section
+under a literal ten-unit translation moves its replacement baseline to 31.
+The resource-collision subject instead uses 2.5 by 5 ink with the same advances,
+so replacing the existing font from DR would visibly fail. Red image/Form
+artwork occupies [10,32,16,36]. Five literal gray inline samples spell `x EI `,
+including a false delimiter, and each occupies two by four units. These exact
+rectangles independently define all expectations at 72/144 DPI; generated
+appearance bytes and baseline-renderer output never supply oracle pixels.
+
+The set covers raw, named-colour and filtered inline framing, Image XObjects,
+recursive text-free Forms, Tx replacement/append, repeated balanced Tx sections,
+choice display values and font-resource precedence. Seven selected-update
+failures cover unmarked Form text, clipping text, cross-BT/q scopes, truncated
+inline data, non-stream resources and a Form cycle. Unchanged no-op saves stay
+byte-identical and do not select those payloads. Edited previews/prepared
+streams, strict saved reopens, DV and alternate R/D preservation, repeated saves,
+reset and atomic failure retain one generation/persistence path. Token, storage,
+scope-depth and graph-walk limits use the existing budgets.
+
+The 919 existing annotation PDF/oracle files and all 1,026 combined G01 probe
+definitions are unchanged. The new set brings this private combined manifest
+to 1,065 controls and awaits hosted functional, native/WASI/host, save/reopen
+and cross-reader validation. Pixel observations measure configured rendering;
+they do not establish another reader's editing behavior. Ambiguous unmarked
+Form text and Tx scopes crossing BT/q remain explicit refusals. Broader font
+coverage, data exchange and a flatten API retain their separate group 07/04
+boundaries.
+
 ## R02 image integration controls
 
 The image bundle adds 214 controls to the six existing graphics/image

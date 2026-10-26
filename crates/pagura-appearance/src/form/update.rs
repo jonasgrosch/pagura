@@ -1,13 +1,11 @@
 //! Preserve existing artwork and resource precedence (12.7.4.3).
 
-use super::{UpdatePolicy, compatibility};
+use super::UpdatePolicy;
 use crate::features;
 use crate::program::Program;
 use crate::values::optional;
-use pagura_core::{
-    Dictionary, Error, Limits, Result, Value,
-    syntax::{Origin, Parser},
-};
+use pagura_content::{Content, Op, Reader};
+use pagura_core::{Dictionary, Error, Limits, Meter, Name, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use std::ops::Range;
 
@@ -62,172 +60,291 @@ pub(super) fn resources(
     Ok(result)
 }
 
-/// The existing content with its Tx section replaced by `text`; without a
-/// section, `text` follows the content, after the content's unmarked text
-/// is removed under [`UpdatePolicy::PreserveExisting`].
+/// Replace independently balanced Tx sections, preserving every other byte.
+/// The compatibility policy removes unmarked text only when Tx is absent.
 pub(super) fn replace(
+    document: &Document,
+    resources: &Dictionary,
     bytes: &[u8],
     text: &[u8],
-    limits: &Limits,
     policy: UpdatePolicy,
 ) -> Result<Vec<u8>> {
-    let region = text_region(bytes, limits)?;
-    let mut out = Program::new(limits);
-    if let Some(region) = region {
-        let (before, after) = bytes
-            .get(..region.start)
-            .zip(bytes.get(region.end..))
-            .ok_or(Error::syntax("invalid variable text section"))?;
-        out.bytes(before)?;
-        out.bytes(text)?;
-        out.bytes(after)?;
-    } else if policy == UpdatePolicy::PreserveExisting {
+    let limits = document.limits();
+    let mut tokens = Meter::new(limits.operations, "appearance update token budget exceeded");
+    let mut storage = Meter::new(
+        limits.document_bytes,
+        "appearance update storage budget exceeded",
+    );
+    let spans = scan(
+        document,
+        resources,
+        bytes,
+        policy,
+        &mut tokens,
+        &mut storage,
+    )?;
+    let unmarked = spans.regions.is_empty() && policy == UpdatePolicy::PreserveExisting;
+    if unmarked {
+        if spans.clipping {
+            return Err(Error::unsupported(
+                features::APPEARANCE_UPDATE,
+                "unmarked appearance contains inseparable text clipping",
+            ));
+        }
+        let mut stack = Vec::new();
+        let mut walk = Meter::new(
+            limits.traversal_work,
+            "appearance artwork traversal budget exceeded",
+        );
+        for name in &spans.xobjects {
+            artwork(
+                document,
+                resources,
+                name,
+                &mut stack,
+                &mut tokens,
+                &mut storage,
+                &mut walk,
+            )?;
+        }
+    }
+    let mut out = Program::new(&limits);
+    if unmarked {
         out.text("q\n")?;
-        out.bytes(&compatibility::without_text(bytes, limits)?)?;
-        out.text("\nQ\n")?;
-        out.bytes(text)?;
+    }
+    let mut copied = 0;
+    for region in if unmarked {
+        &spans.shown
     } else {
-        out.bytes(bytes)?;
-        out.text("\n")?;
+        &spans.regions
+    } {
+        out.bytes(slice(bytes, copied..region.start)?)?;
+        if !unmarked {
+            out.bytes(text)?;
+        }
+        copied = region.end;
+    }
+    out.bytes(slice(bytes, copied..bytes.len())?)?;
+    if unmarked {
+        out.text("\nQ\n")?;
+    }
+    if spans.regions.is_empty() {
+        if !unmarked {
+            out.text("\n")?;
+        }
         out.bytes(text)?;
     }
     Ok(out.finish())
 }
 
-/// Whether the parser is at an operand rather than an operator.
-pub(super) fn at_operand(parser: &Parser<'_>, next: u8) -> bool {
-    matches!(
-        next,
-        b'/' | b'(' | b'<' | b'[' | b'+' | b'-' | b'.' | b'0'..=b'9'
-    ) || parser.data().get(parser.offset()..).is_some_and(|b| {
-        b.starts_with(b"true") || b.starts_with(b"false") || b.starts_with(b"null")
-    })
+#[derive(Default)]
+struct Spans {
+    regions: Vec<Range<usize>>,
+    shown: Vec<Range<usize>>,
+    xobjects: Vec<Name>,
+    clipping: bool,
 }
 
-/// The byte range of the one top-level `/Tx BMC … EMC` section, which must
-/// not cross a text object or graphics state scope.
-fn text_region(bytes: &[u8], limits: &Limits) -> Result<Option<Range<usize>>> {
+/// The sole content walk for replacement and the compatibility text check.
+/// Inline framing is shared with ordinary interpretation, including named
+/// colour spaces and codec-delimited data. No samples are painted here.
+fn scan(
+    document: &Document,
+    resources: &Dictionary,
+    bytes: &[u8],
+    policy: UpdatePolicy,
+    tokens: &mut Meter,
+    storage: &mut Meter,
+) -> Result<Spans> {
+    let limits = document.limits();
     if bytes.len() > limits.decoded_bytes {
         return Err(Error::limit("existing appearance byte budget exceeded"));
     }
-    let mut parser = Parser::new(bytes, Origin::Buffer, *limits);
-    let mut operands = Vec::new();
-    let (mut start, mut depth, mut active, mut region) = (0, 0usize, None, None);
-    let mut work = 0usize;
-    let mut scope = Scope::default();
-    let mut start_scope = Scope::default();
-    while let Some(next) = parser.peek() {
-        if work >= limits.operations {
-            return Err(
-                Error::limit("appearance update token budget exceeded").at(parser.position())
-            );
+    let content = Content::from_bytes(bytes);
+    let mut reader = Reader::new(&content, &limits);
+    let mut sections = Sections::default();
+    let mut spans = Spans::default();
+    while let Some(operation) = reader.next(tokens)? {
+        let position = Position::Buffer(operation.offset);
+        if let Some(region) = sections
+            .step(&operation.op, operation.range.clone(), &limits)
+            .map_err(|error| error.at(position))?
+        {
+            storage.reserve_capacity(&mut spans.regions, 1)?;
+            spans.regions.push(region);
         }
-        work += 1;
-        if operands.is_empty() {
-            start = parser.offset();
-        }
-        if at_operand(&parser, next) {
-            if operands.len() >= limits.value_nodes {
-                return Err(Error::limit("appearance update operand budget exceeded"));
+        match operation.op {
+            Op::InlineImage(dictionary) => {
+                reader.inline_image_data(|data| {
+                    pagura_image::inline_data_length_with_resources(
+                        document,
+                        resources,
+                        &dictionary,
+                        data,
+                    )
+                })?;
             }
-            operands.push(parser.parse()?);
-            continue;
-        }
-        let operator = parser.word()?;
-        scope.step(operator, active.map(|_| start_scope.graphics), limits)?;
-        match operator {
-            b"BMC" | b"BDC" => {
-                let tx = operands
-                    .first()
-                    .and_then(Value::as_name)
-                    .is_some_and(|n| n.as_bytes() == b"Tx");
-                if tx && active.is_none() {
-                    if region.is_some() {
-                        return Err(Error::unsupported(
-                            features::APPEARANCE_UPDATE,
-                            "multiple variable text sections are unavailable",
-                        ));
-                    }
-                    if scope.text {
-                        return Err(Error::unsupported(
-                            features::APPEARANCE_UPDATE,
-                            "variable text section inside a text object is unavailable",
-                        ));
-                    }
-                    start_scope = scope;
-                    active = Some((start, depth));
-                }
-                depth = depth
-                    .checked_add(1)
-                    .filter(|d| *d <= limits.depth)
-                    .ok_or(Error::limit("appearance marked-content depth exceeded"))?;
+            Op::ShowText(_)
+            | Op::ShowTextAdjusted(_)
+            | Op::NextLineShowText(_)
+            | Op::NextLineShowTextSpaced { .. }
+                if policy == UpdatePolicy::PreserveExisting =>
+            {
+                storage.reserve_capacity(&mut spans.shown, 1)?;
+                spans.shown.push(operation.range);
             }
-            b"EMC" => {
-                depth = depth
-                    .checked_sub(1)
-                    .ok_or(Error::syntax("appearance EMC without BMC"))?;
-                if let Some((begin, level)) = active
-                    && level == depth
-                {
-                    if scope != start_scope {
-                        return Err(Error::unsupported(
-                            features::APPEARANCE_UPDATE,
-                            "variable text section crosses a graphics or text scope",
-                        ));
-                    }
-                    region = Some(begin..parser.offset());
-                    active = None;
-                }
+            Op::XObject(name) if policy == UpdatePolicy::PreserveExisting => {
+                storage.charge(name.heap_bytes())?;
+                storage.reserve_capacity(&mut spans.xobjects, 1)?;
+                spans.xobjects.push(name);
             }
-            b"BI" => {
-                return Err(Error::unsupported(
-                    features::APPEARANCE_UPDATE,
-                    "updating appearances with inline images is unavailable",
-                ));
-            }
+            Op::RenderMode(mode) => spans.clipping |= !(0..=3).contains(&mode),
             _ => (),
         }
-        operands.clear();
     }
-    if depth != 0 || scope != Scope::default() || !operands.is_empty() {
-        return Err(Error::syntax("unfinished appearance content"));
+    if !reader.is_balanced() || !sections.balanced() {
+        return Err(
+            Error::syntax("unfinished appearance content").at(content.position(content.end()))
+        );
     }
-    Ok(region)
+    Ok(spans)
 }
 
-/// The graphics-state depth and text-object state of a content position.
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
-struct Scope {
+/// Preserve Image XObjects and Forms whose whole reachable program is text-free.
+/// Forms containing text have no reliable field/artwork distinction, so the
+/// unmarked compatibility fallback refuses them instead of rewriting resources.
+fn artwork(
+    document: &Document,
+    resources: &Dictionary,
+    name: &Name,
+    stack: &mut Vec<ObjectId>,
+    tokens: &mut Meter,
+    storage: &mut Meter,
+    walk: &mut Meter,
+) -> Result<()> {
+    walk.charge(stack.len().saturating_add(1))?;
+    let value = resources
+        .get(b"XObject")
+        .map(|value| document.resolve_dictionary(value))
+        .transpose()?
+        .and_then(|objects| objects.get(name.as_bytes()))
+        .ok_or(Error::syntax("undefined appearance XObject"))?;
+    let id = value.as_reference().ok_or(Error::syntax(
+        "appearance XObject must be a stream reference",
+    ))?;
+    let object = document.object(id)?;
+    let dictionary = object
+        .dictionary()
+        .filter(|_| object.is_stream())
+        .ok_or(Error::syntax("appearance XObject must be a stream").in_object(id))?;
+    if dictionary.is_name(b"Subtype", b"Image") {
+        return Ok(());
+    }
+    if !dictionary.is_name(b"Subtype", b"Form") {
+        return Err(Error::unsupported(
+            features::APPEARANCE_UPDATE,
+            "unidentified appearance XObject",
+        )
+        .in_object(id));
+    }
+    if stack.contains(&id) {
+        return Err(Error::cycle("recursive appearance Form artwork").in_object(id));
+    }
+    if stack.len() >= document.limits().depth {
+        return Err(Error::limit("appearance Form artwork depth exceeded").in_object(id));
+    }
+    storage.reserve_capacity(stack, 1)?;
+    stack.push(id);
+    let resources = dictionary
+        .get(b"Resources")
+        .map(|value| document.resolve_dictionary(value))
+        .transpose()?
+        .unwrap_or(resources);
+    let before = storage.used();
+    let spans = scan(
+        document,
+        resources,
+        &document.stream_data(object)?,
+        UpdatePolicy::PreserveExisting,
+        tokens,
+        storage,
+    )
+    .map_err(|error| error.in_object(id))?;
+    let retained = storage.used() - before;
+    if !spans.shown.is_empty() || spans.clipping {
+        return Err(Error::unsupported(
+            features::APPEARANCE_UPDATE,
+            "unmarked Form artwork contains inseparable text",
+        )
+        .in_object(id));
+    }
+    for name in &spans.xobjects {
+        artwork(document, resources, name, stack, tokens, storage, walk)?;
+    }
+    drop(spans);
+    storage.refund(retained);
+    stack.pop();
+    Ok(())
+}
+
+fn slice(bytes: &[u8], range: Range<usize>) -> Result<&[u8]> {
+    bytes
+        .get(range)
+        .ok_or(Error::syntax("invalid appearance content span"))
+}
+
+/// Scope state used only to decide whether a Tx span can be replaced intact.
+#[derive(Default)]
+struct Sections {
     graphics: usize,
     text: bool,
+    depth: usize,
+    active: Option<Start>,
 }
 
-impl Scope {
-    /// Follows `op`; `minimum` is the graphics depth an open Tx section
-    /// started at, which a `Q` may not leave.
-    fn step(&mut self, op: &[u8], minimum: Option<usize>, limits: &Limits) -> Result<()> {
+struct Start {
+    offset: usize,
+    depth: usize,
+    graphics: usize,
+}
+
+impl Sections {
+    fn balanced(&self) -> bool {
+        self.graphics == 0 && !self.text && self.depth == 0
+    }
+
+    fn step(
+        &mut self,
+        op: &Op<'_>,
+        range: Range<usize>,
+        limits: &Limits,
+    ) -> Result<Option<Range<usize>>> {
         match op {
-            b"BT" => {
+            Op::BeginText => {
                 if self.text {
                     return Err(Error::syntax("nested appearance text object"));
                 }
                 self.text = true;
             }
-            b"ET" => {
+            Op::EndText => {
                 if !self.text {
                     return Err(Error::syntax("appearance ET without BT"));
                 }
                 self.text = false;
             }
-            b"q" => {
+            Op::Save => {
                 self.graphics = self
                     .graphics
                     .checked_add(1)
-                    .filter(|n| *n <= limits.depth)
+                    .filter(|&n| n <= limits.depth)
                     .ok_or(Error::limit("appearance graphics stack budget exceeded"))?;
             }
-            b"Q" => {
-                if minimum.is_some_and(|n| self.graphics <= n) {
+            Op::Restore => {
+                if self
+                    .active
+                    .as_ref()
+                    .is_some_and(|start| self.graphics <= start.graphics)
+                {
                     return Err(Error::unsupported(
                         features::APPEARANCE_UPDATE,
                         "variable text section crosses a graphics scope",
@@ -238,8 +355,47 @@ impl Scope {
                     .checked_sub(1)
                     .ok_or(Error::syntax("appearance Q without q"))?;
             }
+            Op::BeginMarkedContent(tag) | Op::BeginMarkedContentProperties { tag, .. } => {
+                if tag == b"Tx" && self.active.is_none() {
+                    if self.text {
+                        return Err(Error::unsupported(
+                            features::APPEARANCE_UPDATE,
+                            "variable text section inside a text object is unavailable",
+                        ));
+                    }
+                    self.active = Some(Start {
+                        offset: range.start,
+                        depth: self.depth,
+                        graphics: self.graphics,
+                    });
+                }
+                self.depth = self
+                    .depth
+                    .checked_add(1)
+                    .filter(|&n| n <= limits.depth)
+                    .ok_or(Error::limit("appearance marked-content depth exceeded"))?;
+            }
+            Op::EndMarkedContent => {
+                self.depth = self
+                    .depth
+                    .checked_sub(1)
+                    .ok_or(Error::syntax("appearance EMC without BMC"))?;
+                if let Some(start) = &self.active
+                    && start.depth == self.depth
+                {
+                    if self.text || self.graphics != start.graphics {
+                        return Err(Error::unsupported(
+                            features::APPEARANCE_UPDATE,
+                            "variable text section crosses a graphics or text scope",
+                        ));
+                    }
+                    let region = start.offset..range.end;
+                    self.active = None;
+                    return Ok(Some(region));
+                }
+            }
             _ => (),
         }
-        Ok(())
+        Ok(None)
     }
 }
