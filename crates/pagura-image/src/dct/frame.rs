@@ -136,24 +136,34 @@ impl Frame {
             .ok_or(Error::syntax("missing JPEG components"))?;
         let mcu_cols = (width as usize).div_ceil(8 * max_h);
         let mcu_rows = (height as usize).div_ceil(8 * max_v);
-        // Coefficients coexist with native planes and expanded samples. For
-        // P=12 the latter coexist with the final byte buffer as well.
-        // Sequential frames store native samples instead of coefficients;
-        // they keep this bound.
+        // Progressive coefficients (four bytes) coexist with the native
+        // planes reconstructed from them and with the expanded samples.
+        // Sequential frames reconstruct native samples into their planes
+        // during the scans, so only planes and expanded samples coexist. For
+        // P=12 planes and samples are words, and the samples coexist with
+        // the final byte buffer as well. Colour conversion adds rows of at
+        // most 28 bytes per pixel of width.
+        let progressive = matches!(process, 0xc2 | 0xca);
         let twelve_bit = data[0] == 12;
+        let plane_bytes = u64::from(twelve_bit) + 1;
+        let per_sample = if progressive {
+            4 + plane_bytes
+        } else {
+            plane_bytes
+        };
         let mut memory =
-            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 };
+            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 }
+                + u64::from(width) * 32;
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;
             memory = memory
-                .checked_add((c.stride * c.rows) as u64 * 64 * if twelve_bit { 6 } else { 5 })
+                .checked_add((c.stride * c.rows) as u64 * 64 * per_sample)
                 .ok_or(Error::limit("JPEG allocation overflow"))?;
         }
         if memory > limits.decoded_bytes as u64 {
             return Err(Error::limit("JPEG coefficient and sample budget exceeded"));
         }
-        let progressive = matches!(process, 0xc2 | 0xca);
         Ok(Self {
             width,
             height,
