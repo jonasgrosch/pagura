@@ -4,12 +4,12 @@
 //! resolved.
 
 use super::cells::STRIP;
-use super::certify::uncertified;
+use super::certify::{self, Windows};
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
-use super::union::{Meters, PROVEN_PIECES, Piece, Resolver, proven_runs, room};
+use super::union::{Meters, PROVEN_PIECES, Piece, Resolver, Run, proven_runs, room};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::geometry::{greater, lesser};
 use crate::stroke::{Spine, Tiling};
@@ -503,19 +503,15 @@ impl Shape {
         }
         // Only the original, uncut stored polygon can supply these edges.
         let shared = shared.filter(|_| frame.rect.is_none() && frame.paths.is_none());
-        // The heights the winding certificate leaves in doubt: none when
-        // certified throughout, all when unknown.
-        // A lone triangle bounds winding 0 or one sign of magnitude one,
-        // whatever its vertices.
-        let triangle =
-            polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
         let polygon_bytes = polygon.heap_bytes();
-        let doubtful = match winding {
-            Winding::Certified => Some(Vec::new()),
-            Winding::Check(_) if triangle => Some(Vec::new()),
-            Winding::Check(margin) => uncertified(&polygon, margin, bytes)?,
-            Winding::Unknown => None,
-        };
+        let Doubt {
+            slabs: doubtful,
+            located,
+        } = doubt(&polygon, winding, bytes)?;
+        // Where the doubt lies in a row is the polygon's: lines the frame
+        // cuts no longer bound the chains it was found among.
+        let located = located
+            .filter(|_| frame.rect.is_none() && frame.paths.and_then(Paths::convex).is_none());
         let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());
         let all = edges::lines(&polygon, bytes)?;
         drop(polygon);
@@ -567,9 +563,18 @@ impl Shape {
                 &frame,
                 (bounds, &chosen),
                 (work, bytes),
-                spine,
+                (
+                    spine,
+                    located.as_ref().map(|(windows, sign)| (windows, *sign)),
+                ),
             )?
         };
+        bytes.refund(
+            located
+                .as_ref()
+                .map_or(0, |(windows, _)| windows.heap_bytes()),
+        );
+        drop(located);
         Self::edges(
             (lines, Vec::new()),
             rule,
@@ -1177,6 +1182,35 @@ fn clip_convex(
 }
 
 /// The rows of `bounds` a line has area in, as `(first, last)`.
+/// What the winding certificate leaves a polygon in doubt.
+struct Doubt {
+    /// The heights in doubt: none when certified throughout, all when
+    /// unknown.
+    slabs: Option<Vec<[f64; 2]>>,
+    /// Where in those rows the doubt lies, with the common sign of the rest.
+    located: Option<(Windows, i32)>,
+}
+
+/// What the winding certificate leaves `polygon` in doubt.
+fn doubt(polygon: &Polygon, winding: Winding, bytes: &mut Meter) -> Result<Doubt> {
+    // A lone triangle bounds winding 0 or one sign of magnitude one,
+    // whatever its vertices.
+    let triangle = polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
+    let (slabs, located) = match winding {
+        Winding::Certified => (Some(Vec::new()), None),
+        Winding::Check(_) if triangle => (Some(Vec::new()), None),
+        Winding::Check(margin) => match certify::doubtful(polygon, margin, bytes)? {
+            Some(doubtful) => (
+                Some(doubtful.slabs),
+                Some((doubtful.windows, if doubtful.positive { 1 } else { -1 })),
+            ),
+            None => (None, None),
+        },
+        Winding::Unknown => (None, None),
+    };
+    Ok(Doubt { slabs, located })
+}
+
 /// The rows of `bounds` to resolve, each marked joint where a clip path's
 /// boundary crosses the shape's columns: those, and the rows that meet a
 /// slab the winding certificate leaves in doubt (every row without one).
@@ -1224,7 +1258,7 @@ fn resolve(
     frame: &Frame<'_>,
     (bounds, chosen): (DeviceRect, &[(u32, bool)]),
     (work, bytes): (&mut Meter, &mut Meter),
-    spine: Option<&Spine>,
+    (spine, located): (Option<&Spine>, Option<(&Windows, i32)>),
 ) -> Result<Resolved> {
     // The lines of each strip, then each row's pieces from its strip.
     let strip_rows =
@@ -1249,7 +1283,8 @@ fn resolve(
         rules.extend(paths.rules());
     }
     let mut resolver = Resolver::default();
-    let (mut pieces, mut sides, mut proven) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut pieces, mut sides, mut proven, mut runs) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut resolved = Resolved::default();
     let mut cover = spine.map(|spine| spine.cover(frame.rect));
     for &(y, joint) in chosen {
@@ -1277,8 +1312,30 @@ fn resolve(
         {
             cover.row(top, proven_runs(pieces.len()), &mut proven, (work, bytes))?;
         }
+        runs.clear();
+        room(&mut runs, proven.len(), bytes)?;
+        runs.extend(
+            proven
+                .iter()
+                .map(|&(left, right)| (left, right, Run::Proven)),
+        );
+        // Where the certificate located the row's doubt, the stretches
+        // between pass their pieces through as sides.
+        if groups == 1
+            && pieces.len() > PROVEN_PIECES
+            && let Some((windows, sign)) = located
+            && let Some(windows) = windows.row(i64::from(y))
+        {
+            certified_runs(
+                &mut runs,
+                windows,
+                (f64::from(bounds.x0), f64::from(bounds.x1)),
+                (sign, proven_runs(pieces.len())),
+                bytes,
+            )?;
+        }
         resolve_pieces(
-            (&pieces, &proven),
+            (&pieces, &runs),
             &rules[..groups],
             y,
             (&mut resolver, &mut sides, &mut resolved),
@@ -1289,9 +1346,54 @@ fn resolve(
 }
 
 /// Shared winding resolution and retained-row assembly for polygon and
+/// Adds a row's certified runs to `runs`, which holds its proven ranges in
+/// order: the stretches of `(left, right)` between the certificate's
+/// `windows`, on whole columns and clear of the proven ranges, carrying
+/// `sign`. While the row's ranges would pass `cap`, the narrowest are left
+/// to the sweep.
+fn certified_runs(
+    runs: &mut Vec<(f64, f64, Run)>,
+    windows: &[[f64; 2]],
+    (left, right): (f64, f64),
+    (sign, cap): (i32, usize),
+    bytes: &mut Meter,
+) -> Result<()> {
+    let proven = runs.len();
+    let mut edge = left;
+    for window in windows.iter().map(Some).chain([None]) {
+        let end = window.map_or(right, |w| w[0].floor().min(right));
+        let mut start = edge.ceil().max(left);
+        for k in 0..proven {
+            let (l, r, _) = runs[k];
+            if r <= start || l >= end {
+                continue;
+            }
+            if l > start {
+                room(runs, 1, bytes)?;
+                runs.push((start, l, Run::Certified(sign)));
+            }
+            start = start.max(r);
+        }
+        if start < end {
+            room(runs, 1, bytes)?;
+            runs.push((start, end, Run::Certified(sign)));
+        }
+        if let Some(w) = window {
+            edge = edge.max(w[1]);
+        }
+    }
+    let kept = cap.saturating_sub(proven);
+    if runs.len() - proven > kept {
+        runs[proven..].sort_unstable_by(|a, b| (b.1 - b.0).total_cmp(&(a.1 - a.0)));
+        runs.truncate(proven + kept);
+    }
+    runs.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+    Ok(())
+}
+
 /// joint clip preparation.
 fn resolve_pieces(
-    (pieces, proven): (&[Piece], &[(f64, f64)]),
+    (pieces, runs): (&[Piece], &[(f64, f64, Run)]),
     rules: &[FillRule],
     y: u32,
     (resolver, sides, resolved): (&mut Resolver, &mut Vec<Line>, &mut Resolved),
@@ -1300,7 +1402,7 @@ fn resolve_pieces(
     work.charge(pieces.len())?;
     sides.clear();
     let top = f64::from(y);
-    resolver.row_proven(pieces, rules, top, proven, (sides, Meters { work, bytes }))?;
+    resolver.row_proven(pieces, rules, top, runs, (sides, Meters { work, bytes }))?;
     resolved.push(y, sides, bytes)
 }
 
