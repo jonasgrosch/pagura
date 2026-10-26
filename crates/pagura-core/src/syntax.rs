@@ -8,10 +8,14 @@ mod window;
 
 use direct::Context;
 
+type ModeResult<M, T> = std::result::Result<T, <M as ParseMode>::Fault>;
+
 /// The direct-stream recovery state threaded through one parse, if enabled.
-type Streams<'a, 'b, 'h> = Option<Context<'a, 'b, 'h>>;
+type Streams<'a, 'b, 'h, M> = Option<Context<'a, 'b, 'h, M>>;
 pub use direct::{DirectStream, DirectStreamHandler, PathComponent};
-pub use window::{InputEnd, ParsedWindow, WindowRead};
+pub use window::{
+    CompleteInput, InputEnd, ParseFault, ParseMode, ParsedWindow, WindowInput, WindowRead,
+};
 
 use crate::repairs::{
     DICTIONARY_CLOSER, DICTIONARY_OPENER, DIRECT_STREAM, DUPLICATE_KEY, KEY_SOLIDUS,
@@ -77,15 +81,14 @@ impl Origin {
 
 /// A bounded, position-tracking PDF object parser over a byte slice.
 #[derive(Debug)]
-pub struct Parser<'a> {
+pub struct Parser<'a, M: ParseMode = CompleteInput> {
     data: &'a [u8],
     position: usize,
     origin: Origin,
     limits: Budgets,
     nodes: usize,
     diagnostics: Diagnostics,
-    window_end: InputEnd,
-    incomplete_window: bool,
+    mode: M,
 }
 
 /// The [`Limits`] fields the parser reads. A parser is created per object,
@@ -119,8 +122,7 @@ impl<'a> Parser<'a> {
             limits: Budgets::from(limits),
             nodes: 0,
             diagnostics: Diagnostics::new(Recovery::Strict),
-            window_end: InputEnd::Complete,
-            incomplete_window: false,
+            mode: CompleteInput,
         }
     }
 
@@ -139,7 +141,9 @@ impl<'a> Parser<'a> {
         parser.seek(offset)?;
         Ok(parser)
     }
+}
 
+impl<'a, M: ParseMode> Parser<'a, M> {
     /// Selects the recovery mode for repairs applied during parsing.
     #[must_use]
     pub fn with_recovery(mut self, mode: Recovery) -> Self {
@@ -167,10 +171,12 @@ impl<'a> Parser<'a> {
     /// # Errors
     ///
     /// Returns a syntax error if `offset` is beyond the end of the input.
-    pub fn seek(&mut self, offset: usize) -> Result<()> {
+    pub fn seek(&mut self, offset: usize) -> ModeResult<M, ()> {
         if offset > self.data.len() {
             self.window_boundary();
-            return Err(Error::syntax("offset outside input").at(self.origin.position(offset)));
+            return Err(self
+                .mode
+                .end(Error::syntax("offset outside input").at(self.origin.position(offset))));
         }
         self.position = offset;
         Ok(())
@@ -181,12 +187,12 @@ impl<'a> Parser<'a> {
         self.diagnostics.take()
     }
 
-    fn error(&self, message: &'static str) -> Error {
-        Error::syntax(message).at(self.position())
+    fn error(&self, message: &'static str) -> M::Fault {
+        Error::syntax(message).at(self.position()).into()
     }
 
-    fn limit(&self, message: &'static str) -> Error {
-        Error::limit(message).at(self.position())
+    fn limit(&self, message: &'static str) -> M::Fault {
+        Error::limit(message).at(self.position()).into()
     }
 
     fn current(&self) -> Option<u8> {
@@ -199,7 +205,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Counts one value against the per-object [`Limits::value_nodes`].
-    fn count_node(&mut self) -> Result<()> {
+    fn count_node(&mut self) -> ModeResult<M, ()> {
         if self.nodes >= self.limits.value_nodes {
             return Err(self.limit("object value budget exceeded"));
         }
@@ -207,13 +213,13 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn next_byte(&mut self) -> Result<u8> {
+    fn next_byte(&mut self) -> ModeResult<M, u8> {
         if self.current().is_none() {
             self.window_boundary();
         }
         let byte = self
             .current()
-            .ok_or_else(|| self.error("unexpected end of input"))?;
+            .ok_or_else(|| self.end_error("unexpected end of input"))?;
         self.position += 1;
         Ok(byte)
     }
@@ -253,7 +259,7 @@ impl<'a> Parser<'a> {
     /// # Errors
     ///
     /// Returns a syntax error if the next token is not a regular run.
-    pub fn word(&mut self) -> Result<&'a [u8]> {
+    pub fn word(&mut self) -> ModeResult<M, &'a [u8]> {
         self.skip_whitespace();
         let start = self.position;
         while self.current().is_some_and(is_regular) {
@@ -263,7 +269,11 @@ impl<'a> Parser<'a> {
             self.window_boundary();
         }
         if start == self.position {
-            return Err(self.error("expected token"));
+            return Err(if self.current().is_none() {
+                self.end_error("expected token")
+            } else {
+                self.error("expected token")
+            });
         }
         Ok(&self.data[start..self.position])
     }
@@ -289,7 +299,7 @@ impl<'a> Parser<'a> {
     /// # Errors
     ///
     /// Returns a syntax error for anything but ASCII digits that fit `u64`.
-    pub fn unsigned(&mut self) -> Result<u64> {
+    pub fn unsigned(&mut self) -> ModeResult<M, u64> {
         let token = self.word()?;
         if !token.iter().all(u8::is_ascii_digit) {
             return Err(self.error("expected unsigned integer"));
@@ -306,7 +316,7 @@ impl<'a> Parser<'a> {
     ///
     /// Returns syntax errors for malformed input and limit errors when a
     /// budget in [`Limits`] would be exceeded.
-    pub fn parse(&mut self) -> Result<Value> {
+    pub fn parse(&mut self) -> ModeResult<M, Value> {
         self.nodes = 0;
         self.value(0, &mut None)
     }
@@ -326,8 +336,8 @@ impl<'a> Parser<'a> {
     /// As [`Self::parse`], callback errors, or `syntax.direct-stream` in strict mode.
     pub fn parse_with_streams(
         &mut self,
-        handler: &mut DirectStreamHandler<'a, '_>,
-    ) -> Result<(Value, Vec<DirectStream>)> {
+        handler: &mut DirectStreamHandler<'a, '_, M>,
+    ) -> ModeResult<M, (Value, Vec<DirectStream>)> {
         self.nodes = 0;
         let mut context = Some(Context::new(handler, self.limits.document_bytes));
         let value = self.value(0, &mut context)?;
@@ -337,7 +347,11 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn value(&mut self, depth: usize, streams: &mut Streams<'a, '_, '_>) -> Result<Value> {
+    fn value(
+        &mut self,
+        depth: usize,
+        streams: &mut Streams<'a, '_, '_, M>,
+    ) -> ModeResult<M, Value> {
         if depth > self.limits.depth {
             return Err(self.limit("object nesting depth exceeded"));
         }
@@ -354,12 +368,20 @@ impl<'a> Parser<'a> {
             Some(_) if self.keyword(b"true") => Ok(Value::Boolean(true)),
             Some(_) if self.keyword(b"false") => Ok(Value::Boolean(false)),
             Some(_) if self.keyword(b"null") => Ok(Value::Null),
+            Some(_)
+                if self.mode.pending()
+                    && [&b"true"[..], &b"false"[..], &b"null"[..]]
+                        .iter()
+                        .any(|word| word.starts_with(self.rest())) =>
+            {
+                Err(self.end_error("incomplete object keyword"))
+            }
             Some(_) => Err(self.error("unrecognized object")),
-            None => Err(self.error("unexpected end of input")),
+            None => Err(self.end_error("unexpected end of input")),
         }
     }
 
-    fn push_bounded(&self, bytes: &mut Vec<u8>, byte: u8) -> Result<()> {
+    fn push_bounded(&self, bytes: &mut Vec<u8>, byte: u8) -> ModeResult<M, ()> {
         if bytes.len() >= self.limits.string_bytes {
             return Err(self.limit("string or name length budget exceeded"));
         }
@@ -368,14 +390,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a name at its solidus (clause 7.3.5).
-    fn name(&mut self) -> Result<Name> {
+    fn name(&mut self) -> ModeResult<M, Name> {
         self.position += 1;
         self.name_body()
     }
 
     /// Parses the regular characters of a name after its solidus, decoding
     /// `#xx` escapes (clause 7.3.5). A name without escapes is copied once.
-    fn name_body(&mut self) -> Result<Name> {
+    fn name_body(&mut self) -> ModeResult<M, Name> {
         let start = self.position;
         while self.current().is_some_and(|b| is_regular(b) && b != b'#') {
             self.position += 1;
@@ -401,8 +423,11 @@ impl<'a> Parser<'a> {
                     self.position += 2;
                     byte = (high << 4) | low;
                 } else {
-                    if self.data.len().saturating_sub(self.position) < 2 {
-                        self.window_boundary();
+                    if self.mode.extendable()
+                        && self.data.len().saturating_sub(self.position) < 2
+                        && self.current().is_none_or(|byte| hex_digit(byte).is_some())
+                    {
+                        return Err(self.end_error("incomplete name escape"));
                     }
                     self.diagnostics.repair(
                         Diagnostic::new(
@@ -426,7 +451,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a literal string (clause 7.3.4.2). Balanced parentheses nest
     /// without recursion, so nesting needs no separate budget.
-    fn literal_string(&mut self) -> Result<Vec<u8>> {
+    fn literal_string(&mut self) -> ModeResult<M, Vec<u8>> {
         self.position += 1;
         let mut bytes = Vec::new();
         let mut open = 1_usize;
@@ -461,7 +486,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Decodes the escape after a backslash; `None` for a line continuation.
-    fn escape(&mut self) -> Result<Option<u8>> {
+    fn escape(&mut self) -> ModeResult<M, Option<u8>> {
         let byte = match self.next_byte()? {
             b'n' => b'\n',
             b'r' => b'\r',
@@ -495,7 +520,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a hexadecimal string (clause 7.3.4.3).
-    fn hex_string(&mut self) -> Result<Vec<u8>> {
+    fn hex_string(&mut self) -> ModeResult<M, Vec<u8>> {
         self.position += 1;
         let mut bytes = Vec::new();
         let mut high = None;
@@ -520,7 +545,11 @@ impl<'a> Parser<'a> {
         Ok(bytes)
     }
 
-    fn array(&mut self, depth: usize, streams: &mut Streams<'a, '_, '_>) -> Result<Vec<Value>> {
+    fn array(
+        &mut self,
+        depth: usize,
+        streams: &mut Streams<'a, '_, '_, M>,
+    ) -> ModeResult<M, Vec<Value>> {
         self.position += 1;
         let mut values = Vec::new();
         loop {
@@ -541,8 +570,8 @@ impl<'a> Parser<'a> {
     fn dictionary(
         &mut self,
         depth: usize,
-        streams: &mut Streams<'a, '_, '_>,
-    ) -> Result<Dictionary> {
+        streams: &mut Streams<'a, '_, '_, M>,
+    ) -> ModeResult<M, Dictionary> {
         self.position += 2;
         self.duplicated_opener()?;
         let mut dictionary = Dictionary::new();
@@ -582,10 +611,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Skips a second `<<` before the first key, a repaired deviation.
-    fn duplicated_opener(&mut self) -> Result<()> {
+    fn duplicated_opener(&mut self) -> ModeResult<M, ()> {
         self.skip_whitespace();
         if self.rest().len() < 2 && b"<<".starts_with(self.rest()) {
             self.window_boundary();
+            if self.mode.extendable() {
+                return Err(self.end_error("incomplete dictionary opener"));
+            }
         }
         if !self.rest().starts_with(b"<<") {
             return Ok(());
@@ -596,20 +628,25 @@ impl<'a> Parser<'a> {
         if self.current() != Some(b'/') {
             return Err(self.error("dictionary key must be a name"));
         }
-        self.diagnostics.repair(
-            Diagnostic::new(
-                DICTIONARY_OPENER,
-                "duplicated dictionary opener before the first key ignored",
+        self.diagnostics
+            .repair(
+                Diagnostic::new(
+                    DICTIONARY_OPENER,
+                    "duplicated dictionary opener before the first key ignored",
+                )
+                .at(at),
             )
-            .at(at),
-        )
+            .map_err(Into::into)
     }
 
     /// Consumes `>>`, or a stray `)` and then `>>` as a repaired deviation.
     /// Returns whether the dictionary ended.
-    fn dictionary_closer(&mut self) -> Result<bool> {
+    fn dictionary_closer(&mut self) -> ModeResult<M, bool> {
         if self.rest().len() < 2 && b">>".starts_with(self.rest()) {
             self.window_boundary();
+            if self.mode.extendable() {
+                return Err(self.end_error("incomplete dictionary closer"));
+            }
         }
         if self.rest().starts_with(b">>") {
             self.position += 2;
@@ -622,6 +659,9 @@ impl<'a> Parser<'a> {
             self.skip_whitespace();
             if self.rest().len() < 2 && b">>".starts_with(self.rest()) {
                 self.window_boundary();
+                if self.mode.extendable() {
+                    return Err(self.end_error("incomplete dictionary closer"));
+                }
             }
             if self.rest().starts_with(b">>") {
                 self.diagnostics.repair(
@@ -640,7 +680,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a dictionary key: a name, or a repaired bare keyword.
-    fn key(&mut self, key_position: Position) -> Result<Name> {
+    fn key(&mut self, key_position: Position) -> ModeResult<M, Name> {
         let bare = self.current() != Some(b'/');
         if bare {
             self.bare_key(key_position)?;
@@ -651,7 +691,7 @@ impl<'a> Parser<'a> {
 
     /// Admits a key without its solidus (repair `syntax.key-solidus`) when
     /// the regular token starts with a letter and is not a reserved keyword.
-    fn bare_key(&mut self, key_position: Position) -> Result<()> {
+    fn bare_key(&mut self, key_position: Position) -> ModeResult<M, ()> {
         let tail = self.rest();
         let length = tail.iter().take_while(|&&byte| is_regular(byte)).count();
         let token = tail.get(..length).unwrap_or_default();
@@ -666,16 +706,19 @@ impl<'a> Parser<'a> {
         {
             return Err(self.error("dictionary key must be a name"));
         }
-        self.diagnostics.repair(
-            Diagnostic::new(KEY_SOLIDUS, "dictionary key has no leading solidus").at(key_position),
-        )
+        self.diagnostics
+            .repair(
+                Diagnostic::new(KEY_SOLIDUS, "dictionary key has no leading solidus")
+                    .at(key_position),
+            )
+            .map_err(Into::into)
     }
 
     fn dictionary_value(
         &mut self,
         depth: usize,
-        streams: &mut Streams<'a, '_, '_>,
-    ) -> Result<Value> {
+        streams: &mut Streams<'a, '_, '_, M>,
+    ) -> ModeResult<M, Value> {
         let start = self.offset();
         let dictionary = self.dictionary(depth, streams)?;
         let before = self.offset();
@@ -713,7 +756,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a number, or `N G R` when the integer starts a reference.
     /// Tokens whose digits and point span at most [`SHORT_DIGITS`] bytes convert without text parsing.
-    fn number_or_reference(&mut self) -> Result<Value> {
+    fn number_or_reference(&mut self) -> ModeResult<M, Value> {
         let start = self.position;
         let token = self.word()?;
         let digits = token
@@ -742,7 +785,12 @@ impl<'a> Parser<'a> {
                 _ => false,
             });
         if !valid {
-            return Err(Error::syntax("invalid number").at(self.origin.position(start)));
+            if self.mode.pending() && matches!(token, b"+" | b"-" | b"." | b"+." | b"-.") {
+                return Err(self.end_error("incomplete number"));
+            }
+            return Err(Error::syntax("invalid number")
+                .at(self.origin.position(start))
+                .into());
         }
         let negative = token.first() == Some(&b'-');
         if short && dots == 1 {
@@ -759,8 +807,13 @@ impl<'a> Parser<'a> {
                     _ => Err(self.error("real number out of range")),
                 };
             }
-            text.parse()
-                .map_err(|_| self.error("integer out of range"))?
+            match text.parse() {
+                Ok(integer) => integer,
+                Err(_) if self.mode.pending() && text.parse::<f64>().is_ok_and(f64::is_finite) => {
+                    return Err(self.end_error("incomplete real number"));
+                }
+                Err(_) => return Err(self.error("integer out of range")),
+            }
         };
         if !signed && let Some((reference, generation_zeroes)) = self.reference_tail(integer) {
             if generation_zeroes || (token.len() > 1 && token.first() == Some(&b'0')) {

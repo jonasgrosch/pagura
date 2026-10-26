@@ -1,6 +1,6 @@
 //! Source-backed recovery of direct streams (7.3.8.1).
 
-use super::Parser;
+use super::{CompleteInput, ModeResult, ParseMode, Parser};
 use crate::{Dictionary, Error, Meter, Name, Result};
 use std::ops::Range;
 
@@ -38,22 +38,22 @@ pub struct DirectStream {
 
 /// Payload consumer used by [`Parser::parse_with_streams`].
 /// It starts before `stream` and ends after a verified `endstream` token.
-pub type DirectStreamHandler<'a, 'h> =
-    dyn FnMut(&mut Parser<'a>, &Dictionary) -> Result<Option<Range<usize>>> + 'h;
+pub type DirectStreamHandler<'a, 'h, M = CompleteInput> =
+    dyn FnMut(&mut Parser<'a, M>, &Dictionary) -> ModeResult<M, Option<Range<usize>>> + 'h;
 
 /// Direct-stream recovery state for one [`Parser::parse_with_streams`] call.
 /// The handler borrow (`'b`) is independent of what the handler captures
 /// (`'h`), so a caller's closure is not forced to outlive its borrow.
-pub(super) struct Context<'a, 'b, 'h> {
-    pub(super) handler: &'b mut DirectStreamHandler<'a, 'h>,
+pub(super) struct Context<'a, 'b, 'h, M: ParseMode> {
+    pub(super) handler: &'b mut DirectStreamHandler<'a, 'h, M>,
     pub(super) path: Vec<PathComponent>,
     pub(super) found: Vec<DirectStream>,
     pub(super) count: usize,
     metadata: Meter,
 }
 
-impl<'a, 'b, 'h> Context<'a, 'b, 'h> {
-    pub(super) fn new(handler: &'b mut DirectStreamHandler<'a, 'h>, budget: usize) -> Self {
+impl<'a, 'b, 'h, M: ParseMode> Context<'a, 'b, 'h, M> {
+    pub(super) fn new(handler: &'b mut DirectStreamHandler<'a, 'h, M>, budget: usize) -> Self {
         Self {
             handler,
             path: Vec::new(),

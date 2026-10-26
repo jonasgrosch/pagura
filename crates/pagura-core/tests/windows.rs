@@ -137,7 +137,7 @@ fn boundary_observation_never_defers_resource_or_non_syntax_failures() {
         InputEnd::Extendable,
         |parser| {
             assert!(parser.at_end());
-            Err::<Value, _>(Error::limit("independent budget control"))
+            Err::<Value, _>(Error::limit("independent budget control").into())
         },
     );
     assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
@@ -145,8 +145,67 @@ fn boundary_observation_never_defers_resource_or_non_syntax_failures() {
         InputEnd::Extendable,
         |parser| {
             assert!(parser.at_end());
-            Err::<Value, _>(Error::missing_object("independent dependency control"))
+            Err::<Value, _>(Error::missing_object("independent dependency control").into())
         },
     );
     assert_eq!(result.unwrap_err().kind, ErrorKind::MissingObject);
+}
+
+#[test]
+fn terminal_unsigned_and_numeric_tokens_do_not_wait_for_unrelated_bytes() {
+    for bytes in [
+        &b"12x"[..],
+        b"18446744073709551616",
+        b"999999999999999999999999999999999999",
+    ] {
+        let error = Parser::new(bytes, Origin::Buffer, Limits::default())
+            .read_window(InputEnd::Extendable, Parser::unsigned)
+            .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+    }
+    for bytes in [&b"12x"[..], b"1..2", b"+x", b"1e3"] {
+        assert_eq!(
+            parse(bytes, InputEnd::Extendable, Recovery::Strict)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
+    }
+    assert!(matches!(
+        parse(
+            b"9223372036854775808",
+            InputEnd::Extendable,
+            Recovery::Strict
+        )
+        .unwrap(),
+        WindowRead::Incomplete { .. }
+    ));
+    let WindowRead::Complete(value) = parse(
+        b"9223372036854775808.0]",
+        InputEnd::Extendable,
+        Recovery::Strict,
+    )
+    .unwrap() else {
+        panic!("real suffix completes a valid number")
+    };
+    assert_eq!(value.value, Value::Real(9223372036854775808.0));
+}
+
+#[test]
+fn callback_syntax_failure_is_terminal_after_any_boundary_observation() {
+    for bytes in [&b""[..], b"12"] {
+        let error = Parser::new(bytes, Origin::Buffer, Limits::default())
+            .read_window(InputEnd::Extendable, |parser| {
+                if !bytes.is_empty() {
+                    let _ = parser.word()?;
+                }
+                assert!(parser.at_end());
+                Err::<Value, _>(Error::syntax("independent callback failure").into())
+            })
+            .unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Syntax, "independent callback failure")
+        );
+    }
 }
