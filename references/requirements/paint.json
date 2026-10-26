@@ -715,16 +715,41 @@
         "paint_jpx/sycc-premultiplied-alpha",
         "paint_jpx/sycc-16bit-boundary",
         "pagura-color tests/sycc.rs eight_bit_sycc_preserves_neutrals_and_decodes_chroma",
-        "paint_jpx/sycc-signed-invalid"
+        "paint_jpx/sycc-signed-invalid",
+        "paint_jpx/sycc-precision-1",
+        "paint_jpx/sycc-precision-2",
+        "paint_jpx/sycc-precision-3",
+        "paint_jpx/sycc-precision-4",
+        "paint_jpx/sycc-precision-5",
+        "paint_jpx/sycc-precision-6",
+        "paint_jpx/sycc-precision-7",
+        "paint_jpx/sycc-precision-8",
+        "paint_jpx/sycc-precision-9",
+        "paint_jpx/sycc-precision-10",
+        "paint_jpx/sycc-precision-11",
+        "paint_jpx/sycc-precision-12",
+        "paint_jpx/sycc-precision-13",
+        "paint_jpx/sycc-precision-14",
+        "paint_jpx/sycc-precision-15",
+        "paint_jpx/sycc-precision-16",
+        "paint_jpx/sycc-mixed-alpha-0",
+        "paint_jpx/sycc-mixed-alpha-1",
+        "paint_jpx/sycc-mixed-alpha-2",
+        "pagura-color tests/sycc.rs jp2_channel_precision_maps_to_the_same_colour_value_domain"
       ],
       "review": [
         {
           "locator": "IEC 61966-2-1:1999/AMD1:2003 F.4, equations F.15-F.17; T.800 I.5.3.3; ISO 32000-2 7.4.9 / Table 87",
           "rule": "For eight-bit unsigned sYCC, centre chroma on code 128 and convert to encoded sRGB using the Annex F inverse matrix. Clip to the destination gamut. Explicit PDF colour takes precedence; otherwise ignore Decode and device default replacements. Unassociate embedded premultiplied channels before colour conversion.",
           "verdict": "Primary equations checked in the publisher preview; independent rational pixel oracles and known byte examples authored. Hosted execution pending."
+        },
+        {
+          "locator": "T.800 I.5.3.3 and Table I.10; IEC 61966-2-1 Amendment 1 F.15/F.16",
+          "rule": "JP2 unsigned sYCC maps every channel from its own integer sample range to 0..255 before colour conversion, including palette-generated channels. Preserve the 128 colour-value chroma centre independently of stored precision.",
+          "verdict": "Primary mapping and code-value domain reviewed. Independent rational oracles cover every supported precision 1-16, a non-neutral 16-bit midpoint and mixed 1/3/10-bit palette channels with SMaskInData 0/1/2. Hosted execution pending."
         }
       ],
-      "gaps": "Other precisions and mixed-precision sYCC remain Unsupported(xobject.jpx-color). Broader masks, groups, interpolation, platform and competitor acceptance remain G01/R02 work."
+      "gaps": "The image decoder still bounds component precision to 1-16 bits. Signed sYCC is invalid per T.800 Table I.10. Broader masks, groups, interpolation, platform and competitor acceptance remain G01/R02 work."
     },
     {
       "id": "paint-jpx-indexed-alpha",

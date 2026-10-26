@@ -733,8 +733,11 @@ impl Source {
             Self::Gray => [n(0); 3],
             Self::Rgb => [n(0), n(1), n(2)],
             Self::Sycc => {
-                // IEC 61966-2-1 Amendment 1, F.15/F.16: eight-bit sYCC
-                // code values -> encoded sRGB. Gamut clipping is the same
+                // T.800 I.5.3.3 / Table I.10 maps each unsigned channel to
+                // 0..255 before IEC Annex F.15/F.16. `n` is already divided
+                // by that channel's maximum code, even for mixed precision;
+                // the chroma offset therefore remains 128/255, not a
+                // precision-dependent half-code. Gamut clipping is the same
                 // output policy used by the other source colour models;
                 // rounding waits until the final renderer quantization.
                 let y = n(0);

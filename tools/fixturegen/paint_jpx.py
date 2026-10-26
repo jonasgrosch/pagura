@@ -9,7 +9,7 @@ import struct
 from fractions import Fraction as F
 
 from . import content as colour, jpx
-from .model import Case, OPEN, UNSUPPORTED
+from .model import Case, OPEN
 from .paint import image_case, page
 from .pdf import stream
 
@@ -114,11 +114,42 @@ def sycc_cases():
     yield image_case('sycc-premultiplied-alpha', data, b'/Filter /JPXDecode /SMaskInData 2', [], 3, 1,
                      colors=[rgb((0, 0, 0)), rgb((F(255, 2),) * 3), rgb((128,) * 3)],
                      alpha=[F(a, 255) for a in alphas], tolerance=1, requirement=requirement)
-    # Do not silently apply eight-bit code scaling to other precisions.
-    data = encoded([[32768]] * 3, enumeration, method=1, bits=16)
-    image = stream(data, b'/Subtype /Image /Width 1 /Height 1 /Filter /JPXDecode')
-    yield Case('sycc-16bit-boundary', page(b'2 0 0 2 2 2 cm /I Do', [image], b'<< /XObject << /I 5 0 R >> >>'),
-               UNSUPPORTED, (requirement,), 'Higher precision sYCC remains explicit', feature='xobject.jpx-color')
+    # T.800 I.5.3.3 / Table I.10 maps each unsigned channel independently
+    # into 0..255 before IEC F.15/F.16. This differs from applying IEC's
+    # standalone N-bit encoding offset to raw JP2 samples. For example,
+    # [32768]*3 at 16 bits is [127,128,127], not an exactly neutral gray.
+    for bits in range(1, 17):
+        maximum = (1 << bits) - 1
+        pixels = [(0, 0, 0), (maximum // 2, (maximum + 1) // 2, (maximum + 1) // 2),
+                  (maximum, 0, maximum), (maximum, maximum, maximum)]
+        data = encoded([list(values) for values in zip(*pixels)], enumeration, method=1, bits=bits)
+        colours = [rgb(tuple(F(value * 255, maximum) for value in pixel)) for pixel in pixels]
+        yield image_case(f'sycc-precision-{bits}', data, b'/Filter /JPXDecode', [], 4, 1,
+                         colors=colours, tolerance=1, requirement=requirement)
+    yield image_case('sycc-16bit-boundary', encoded([[32768]] * 3, enumeration, method=1, bits=16),
+                     b'/Filter /JPXDecode', [], 1, 1, colors=[(127, 128, 127)], requirement=requirement)
+    # Palette output keeps independent 1/3/10-bit colour channels and an
+    # eight-bit opacity channel. Codestream indices do not define precision.
+    values = [(0, 0, 0, 0), (0, 1, 127, 128), (1, 4, 513, 255)]
+    palette = struct.pack('>HB', 3, 4) + bytes([0, 2, 9, 7])
+    palette += b''.join(bytes([y, cb]) + struct.pack('>H', cr) + bytes([a]) for y, cb, cr, a in values)
+    mapping = b''.join(struct.pack('>HBB', 0, 1, column) for column in range(4))
+    for mode in (0, 1, 2):
+        definitions = [(i, 0, i + 1) for i in range(3)] + [(3, max(mode, 1), 0)]
+        channels = struct.pack('>H', 4) + b''.join(struct.pack('>HHH', *row) for row in definitions)
+        extra = jpx.box(b'pclr', palette) + jpx.box(b'cmap', mapping) + jpx.box(b'cdef', channels)
+        data = jpx.jp2(jpx.codestream([[0, 1, 2]], 3, 1), 3, 1, 1, extra=extra)
+        data = data.replace(jpx.box(b'colr', b'\1\0\0' + struct.pack('>I', 17)),
+                            jpx.box(b'colr', b'\1\0\0' + enumeration), 1)
+        colours = []
+        for y, cb, cr, a in values:
+            codes = (F(y * 255), F(cb * 255, 7), F(cr * 255, 1023))
+            if mode == 2 and a:
+                codes = tuple(value * F(255, a) for value in codes)
+            colours.append(rgb(codes))
+        yield image_case(f'sycc-mixed-alpha-{mode}', data, b'/Filter /JPXDecode /SMaskInData %d' % mode,
+                         [], 3, 1, colors=colours, alpha=[F(row[3], 255) for row in values] if mode else None,
+                         tolerance=1, requirement=requirement)
     data = encoded([[128]] * 3, enumeration, method=1, signed=True)
     image = stream(data, b'/Subtype /Image /Width 1 /Height 1 /Filter /JPXDecode')
     yield Case('sycc-signed-invalid', page(b'2 0 0 2 2 2 cm /I Do', [image], b'<< /XObject << /I 5 0 R >> >>'),
