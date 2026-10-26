@@ -2017,6 +2017,44 @@
       "height": 8
     },
     {
+      "id": "content/tiling-constant-spacing",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-constant-spacing.pdf",
+      "sha256": "7291bba38dff545331495119fa62204a86d643f7d6daea2ef3ab7703d5976786",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-constant-spacing.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-constant-spacing-faster",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-constant-spacing-faster.pdf",
+      "sha256": "131606c7312910c4790d9caf17463f874e34f18a505b3a34e12d406781a3eb2f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-constant-spacing-faster.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
       "id": "content/tiling-underlying",
       "kind": "pdf",
       "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",

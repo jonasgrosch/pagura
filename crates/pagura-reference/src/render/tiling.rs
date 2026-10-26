@@ -2,7 +2,8 @@
 //! instance that can meet the mark is painted with its own translation,
 //! together forming one non-isolated, non-knockout group over the mark's
 //! backdrop, whose result the mark's coverage, alpha and blend mode then
-//! composite once (11.6.7).
+//! composite once (11.6.7). Constant spacing places the instances a whole
+//! number of device pixels apart ([`lattice`]).
 
 use super::transfer::Selection;
 use super::{Context, Contribution, Crop, Renderer};
@@ -11,7 +12,7 @@ use crate::color::Channels;
 use crate::pixel::Elements;
 use crate::shapes::Coverage;
 use pagura_core::{Error, Result};
-use pagura_interpret::{Composite, TilingColors, TilingPaint};
+use pagura_interpret::{Composite, Tiling, TilingColors, TilingPaint, TilingSpacing};
 use pagura_raster::{Point, Transform};
 
 impl Renderer<'_> {
@@ -37,7 +38,7 @@ impl Renderer<'_> {
         if rect.is_empty() {
             return Ok(());
         }
-        let to_device = tiling.matrix.then(context.device);
+        let to_device = lattice(tiling.matrix.then(context.device), tiling)?;
         let inverse = to_device.inverse().ok_or(Error::invalid_argument(
             "the reference has no singular tiling pattern",
         ))?;
@@ -128,6 +129,50 @@ fn colors(cells: &Buffer, backdrop: &Initial<'_>, n: usize) -> Vec<(u32, u32, Ch
 }
 
 /// The pattern-space bounding box of a device rectangle.
+/// The device transform of a tiling pattern's instances (8.7.3.1, Table
+/// 74). `TilingType 1` and `3` space cells consistently, "by a multiple of
+/// a device pixel": the lattice vectors `XStep·(a, b)` and `YStep·(c, d)`
+/// are rounded to whole pixels, a vanishing one to a unit step along its
+/// larger component, and the origin kept, distorting the cell slightly.
+/// `TilingType 1` admits no cell corner moved by more than a pixel.
+/// `TilingType 2` keeps the exact transform.
+fn lattice(t: Transform, tiling: &Tiling) -> Result<Transform> {
+    if tiling.spacing == TilingSpacing::NoDistortion {
+        return Ok(t);
+    }
+    let whole = |x: f64, y: f64| match (x.round(), y.round()) {
+        (0.0, 0.0) if x.abs() >= y.abs() => (x.signum(), 0.0),
+        (0.0, 0.0) => (0.0, y.signum()),
+        rounded => rounded,
+    };
+    let [x_step, y_step] = tiling.step;
+    let (a, b) = whole(t.a * x_step, t.b * x_step);
+    let (c, d) = whole(t.c * y_step, t.d * y_step);
+    let fitted = Transform::new(a / x_step, b / x_step, c / y_step, d / y_step, t.e, t.f);
+    if fitted.inverse().is_none() {
+        return Err(Error::invalid_argument(
+            "the reference has no collapsed tiling lattice",
+        ));
+    }
+    if tiling.spacing == TilingSpacing::Constant {
+        let b = tiling.bbox;
+        for (x, y) in [
+            (b.x0(), b.y0()),
+            (b.x1(), b.y0()),
+            (b.x0(), b.y1()),
+            (b.x1(), b.y1()),
+        ] {
+            let (exact, moved) = (Point::new(x, y) * t, Point::new(x, y) * fitted);
+            if (exact.x - moved.x).hypot(exact.y - moved.y) > 1.0 + 1e-12 {
+                return Err(Error::invalid_argument(
+                    "the reference has no tiling cell distorted by more than a pixel",
+                ));
+            }
+        }
+    }
+    Ok(fitted)
+}
+
 fn envelope(rect: pagura_raster::DeviceRect, inverse: Transform) -> [f64; 4] {
     let (x0, y0, x1, y1) = (
         f64::from(rect.x0),
