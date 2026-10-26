@@ -1,0 +1,47 @@
+%PDF-1.7
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 48 48] /Resources << >> /Contents 4 0 R /Annots [5 0 R] /Rotate 0 >>
+endobj
+4 0 obj
+<< /Length 0 >>
+stream
+
+endstream
+endobj
+5 0 obj
+<< /Type /Annot /Subtype /Sound /Rect [8 8 24 24] /F 4 /AP << /N 6 0 R >> /Sound 7 0 R  /Name /Speaker >>
+endobj
+6 0 obj
+<< /Length 207 /Type /XObject /Subtype /Form /BBox [0 0 32 32] /Resources << >> >>
+stream
+1 1 0 rg 2 2 28 28 re f 0 g 1 1 2 30 re 29 1 2 30 re 3 1 26 2 re 3 29 26 2 re 5 11 8 2 re 11 7 2 6 re 11 7 10 2 re 19 7 2 18 re 11 23 10 2 re 11 19 2 6 re 5 19 8 2 re 5 11 2 10 re 23 12 2 8 re 27 8 2 16 re f
+endstream
+endobj
+7 0 obj
+<< /Length 4 /Type /Sound /R 8000 /C 1 /B 8 /E /Raw>>
+stream
+€€€€
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000249 00000 n 
+0000000298 00000 n 
+0000000419 00000 n 
+0000000742 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+833
+%%EOF

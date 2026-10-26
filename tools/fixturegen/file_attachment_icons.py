@@ -47,7 +47,8 @@ def source(icon, *, stored=False, dpi=72, rotate=0, flags=0, extra=b'', page=b''
     return document(objects)
 
 
-def pixels(icon, *, dpi=72, rotate=0, flags=0, color=(1., 1., 0.), stroke_alpha=1., fill_alpha=1., visible=True):
+def pixels(ink, *, dpi=72, rotate=0, flags=0, color=(1., 1., 0.), stroke_alpha=1., fill_alpha=1., visible=True):
+    """Exact region-union coverage for framed icons in the common design box."""
     scale = dpi // 72
     size = 48 * scale
     grid = size * 2
@@ -71,7 +72,7 @@ def pixels(icon, *, dpi=72, rotate=0, flags=0, color=(1., 1., 0.), stroke_alpha=
     if visible:
         if color is not None:
             cover(background, [(2, 2, 30, 30)])
-        cover(foreground, FRAME + INK[icon])
+        cover(foreground, FRAME + ink)
     output = bytearray()
     for row in reversed(range(size)):
         for column in range(size):
@@ -89,7 +90,7 @@ def cases():
                     (REQUIREMENT, 'content-annotation-view'),
                     'Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence',
                     dpi=view.get('dpi', 72),
-                    oracle=pixels(icon if icon in INK else 'PushPin', color=color, stroke_alpha=stroke_alpha,
+                    oracle=pixels(INK.get(icon, INK['PushPin']), color=color, stroke_alpha=stroke_alpha,
                                   fill_alpha=fill_alpha, visible=visible, **view), extra={'tolerance': 1})
     for icon in INK:
         for dpi, rotate in ((72, 0), (144, 0), (72, 90)):
@@ -133,4 +134,4 @@ def cases():
                b'<< /Subtype /FileAttachment /Rect [8 8 24 24] /Name 6 0 R >>', b'/Graph']
     yield Case('indirect-name', document(objects), RENDER, (REQUIREMENT,),
                'Indirect icon names use the same original artwork without a file-service dependency',
-               oracle=pixels('Graph'), extra={'tolerance': 1})
+               oracle=pixels(INK['Graph']), extra={'tolerance': 1})

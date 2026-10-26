@@ -1,5 +1,5 @@
 //! Appearances of annotations that have no appearance stream (12.5.5):
-//! borders, ink/polygon paths, note/file icons and empty widgets (12.5.6).
+//! borders, ink/polygon paths, static icons and empty widgets (12.5.6).
 
 pub(crate) mod border;
 mod caret;
@@ -36,8 +36,9 @@ use pagura_document::Document;
 /// borders, Line/Ink/Polygon/PolyLine paths, plain and common RC/DS styled Line
 /// captions and FreeText with an explicit font provider, standard rubber stamps,
 /// four text-markup styles, Caret symbols,
-/// seven Text icons, four FileAttachment
-/// icons, and the MK background and border of empty text and signature widgets.
+/// seven Text icons, four FileAttachment icons, two static Sound icons,
+/// and the MK background and border of empty text and signature widgets.
+/// Icon artwork never resolves file or sound payloads and cannot activate media.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
 /// point, for Popup and Projection annotations, for links without a border,
@@ -105,8 +106,11 @@ pub fn annotation_appearance_with_fonts(
         b"Line" => line::generate(document, annotation, rect, fonts)?,
         b"Polygon" => polygon::generate(document, annotation, rect, true)?,
         b"PolyLine" => polygon::generate(document, annotation, rect, false)?,
-        b"Text" => icon::generate(document, annotation, rect)?,
-        b"FileAttachment" => icon::file_attachment(document, annotation, rect)?,
+        b"Text" => icon::generate(document, annotation, rect, icon::Kind::Text)?,
+        b"FileAttachment" => {
+            icon::generate(document, annotation, rect, icon::Kind::FileAttachment)?
+        }
+        b"Sound" => icon::generate(document, annotation, rect, icon::Kind::Sound)?,
         b"Widget" => widget::generate(document, annotation, rect)?,
         _ => {
             return Err(Error::unsupported(

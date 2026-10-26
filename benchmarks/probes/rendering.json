@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, static Sound AP controls and MediaBox-relative FixedPrint screen placement. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls and MediaBox-relative FixedPrint screen placement. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -4576,6 +4576,448 @@
         "height": 24,
         "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
         "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-72-0-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-72-0-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-72-0-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-72-0-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-144-0-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-144-0-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "4bef377d7fbbd6bd1bef1061f9bcd8c41764e3552381ac55d544bda8d768af07",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-144-0-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-144-0-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "4bef377d7fbbd6bd1bef1061f9bcd8c41764e3552381ac55d544bda8d768af07",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-72-90-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-72-90-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "c206cf9326b0a47b6bb4554c74fe6581b9a02ec1a0afb17624d3b35820d807eb",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-72-90-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-72-90-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "c206cf9326b0a47b6bb4554c74fe6581b9a02ec1a0afb17624d3b35820d807eb",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-144-90-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-144-90-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "00a238c411ecb8b0b9037555ba0665f123897f0eabdbfa64b195fa24a9c2ccf2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-144-90-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-144-90-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "00a238c411ecb8b0b9037555ba0665f123897f0eabdbfa64b195fa24a9c2ccf2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-72-0-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-72-0-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "a6b546c313976c7e27d4cea90fb69f9ead99f3bb150dba6d792ceb49f757d06f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-72-0-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-72-0-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "a6b546c313976c7e27d4cea90fb69f9ead99f3bb150dba6d792ceb49f757d06f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-144-0-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-144-0-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "bbf3d255825791e127c8e453f4d10901ff2a073d57b526abfddfee9027ad3617",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-144-0-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-144-0-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "bbf3d255825791e127c8e453f4d10901ff2a073d57b526abfddfee9027ad3617",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-72-90-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-72-90-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "522a36680128a4495b66eea47cbd760ec1c801255e7ff76cbd717bd7d0dabb53",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-72-90-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-72-90-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "522a36680128a4495b66eea47cbd760ec1c801255e7ff76cbd717bd7d0dabb53",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-144-90-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-144-90-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "bf568cb417a6b84798729c2afafa76b36f2af77cd2b88484c0ffdd6d1eeb004c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-144-90-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-144-90-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "bf568cb417a6b84798729c2afafa76b36f2af77cd2b88484c0ffdd6d1eeb004c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-explicit-view-12-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-explicit-view-12-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "0e9de56a04a7a781f679ee8d3931e532799c5156884def959ac0f58b9658659f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-explicit-view-12-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-explicit-view-12-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "0e9de56a04a7a781f679ee8d3931e532799c5156884def959ac0f58b9658659f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-explicit-view-20-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-explicit-view-20-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "8b0dfcf02bf6c69904113f522a241e08f35cc278c9ad7222e36e76da5591a566",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-explicit-view-20-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-explicit-view-20-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "8b0dfcf02bf6c69904113f522a241e08f35cc278c9ad7222e36e76da5591a566",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-explicit-view-28-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-explicit-view-28-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "a71ae97a18557f3448af1c45d66853be9850d176d276bd4343a54887686dbd3a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-explicit-view-28-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-explicit-view-28-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 96,
+        "rgb_sha256": "a71ae97a18557f3448af1c45d66853be9850d176d276bd4343a54887686dbd3a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-default",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-default",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-null-name",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-null-name",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-unknown-name",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-unknown-name",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-indirect-name",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-indirect-name",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "a6b546c313976c7e27d4cea90fb69f9ead99f3bb150dba6d792ceb49f757d06f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-green",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-green",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "7f95810818d938b8cb432baf3a5517ce5a56aa4f1ac3b85aa11d14945e8674d5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-transparent-background",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-transparent-background",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "2134a9dc701ccc4b786f787fa5696c161dfa3c119005cd125ac570046f8525c4",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-separate-opacity",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-separate-opacity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "711c905569ec85dabdba23791a268e92dd1a39bf22d60d3f6648e47ca19359ad",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-no-view",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-no-view",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "82eec5ad244bc79d0380bffcca90f9121334b8494ad52e593baff095a42b9583",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-hidden-malformed",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-hidden-malformed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "82eec5ad244bc79d0380bffcca90f9121334b8494ad52e593baff095a42b9583",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-stored-ignores-visual",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-stored-ignores-visual",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-generated-inert-payload",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-generated-inert-payload",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.sound-generated-ignored-fixed-print",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-generated-ignored-fixed-print",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 48,
+        "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
       }
     }
   ]

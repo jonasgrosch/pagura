@@ -26,8 +26,8 @@
     {
       "id": "annotation_display/sound-default-missing-ap",
       "kind": "pdf",
-      "description": "Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed",
-      "expected": "unsupported",
+      "description": "Original baseline observation input: a reader-chosen static icon, without a universal pixel oracle",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -35,14 +35,13 @@
       "sha256": "a241ecd8d5cb703c516f5d5abd891c5a421e24c9acb69bb4e6f7636df0f71a2d",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "annotation_display/sound-speaker-missing-ap",
       "kind": "pdf",
-      "description": "Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed",
-      "expected": "unsupported",
+      "description": "Original baseline observation input: a reader-chosen static icon, without a universal pixel oracle",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -50,14 +49,13 @@
       "sha256": "77a3f5d85b3260d54011e65747bcaadbf1a6b1c0e0344f265eca7abd1bbfae85",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "annotation_display/sound-mic-missing-ap",
       "kind": "pdf",
-      "description": "Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed",
-      "expected": "unsupported",
+      "description": "Original baseline observation input: a reader-chosen static icon, without a universal pixel oracle",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -65,8 +63,7 @@
       "sha256": "525e1765746e1ae300f08bd7f492791ce050eeb560452bd57bc010734ca4812d",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "annotation.appearance"
+      "repairs": []
     },
     {
       "id": "annotation_display/sound-speaker-stored",
@@ -1092,7 +1089,7 @@
       "id": "annotation_display/sound-view-144-0-4-missing",
       "kind": "pdf",
       "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -1101,7 +1098,6 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
       "dpi": 144
     },
     {
@@ -1153,7 +1149,7 @@
       "id": "annotation_display/sound-view-72-90-4-missing",
       "kind": "pdf",
       "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -1162,7 +1158,6 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
       "dpi": 72
     },
     {
@@ -1214,7 +1209,7 @@
       "id": "annotation_display/sound-view-144-90-4-missing",
       "kind": "pdf",
       "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -1223,7 +1218,6 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
       "dpi": 144
     },
     {
@@ -1275,7 +1269,7 @@
       "id": "annotation_display/sound-view-144-90-12-missing",
       "kind": "pdf",
       "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -1284,7 +1278,6 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
       "dpi": 144
     },
     {
@@ -1336,7 +1329,7 @@
       "id": "annotation_display/sound-view-144-90-20-missing",
       "kind": "pdf",
       "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -1345,7 +1338,6 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
       "dpi": 144
     },
     {
@@ -1397,7 +1389,7 @@
       "id": "annotation_display/sound-view-144-90-28-missing",
       "kind": "pdf",
       "description": "Raw matched Sound/Text view observation, without a universal reader-artwork oracle",
-      "expected": "unsupported",
+      "expected": "open",
       "requirements": [
         "content-static-annotation-placement"
       ],
@@ -1406,7 +1398,6 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
       "dpi": 144
     },
     {
@@ -1453,6 +1444,780 @@
       "strict_valid": true,
       "repairs": [],
       "dpi": 144
+    },
+    {
+      "id": "annotation_display/sound-speaker-72-0-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-72-0-generated.pdf",
+      "sha256": "227eec5652ecdd4d2eff8b0ffd914b767b36d8aaf5dc4aee20621df7477097f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-72-0-generated.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-72-0-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-72-0-stored.pdf",
+      "sha256": "0f899724a022c15e0ec026d6851c8cf649c8f6e2463536babb48df514661f2c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-72-0-stored.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-144-0-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-144-0-generated.pdf",
+      "sha256": "227eec5652ecdd4d2eff8b0ffd914b767b36d8aaf5dc4aee20621df7477097f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-144-0-generated.ppm",
+      "oracle_sha256": "8b98c6889de68dbdf085ca8b2935b97a91dab3847a8191c2d8d6f4e5d4879c35",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-144-0-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-144-0-stored.pdf",
+      "sha256": "0f899724a022c15e0ec026d6851c8cf649c8f6e2463536babb48df514661f2c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-144-0-stored.ppm",
+      "oracle_sha256": "8b98c6889de68dbdf085ca8b2935b97a91dab3847a8191c2d8d6f4e5d4879c35",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-72-90-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-72-90-generated.pdf",
+      "sha256": "b9005874ccdc042d6662149fad7bdc5dfdc1349f2241832fd73c9730ea1ce7ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-72-90-generated.ppm",
+      "oracle_sha256": "50003e2f8690f4f0bb2f6ac819b0a064dfc5ef22ad01ca24a7a04f673ac62b4e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-72-90-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-72-90-stored.pdf",
+      "sha256": "3784e2c333f67be2dd352a6bc1a926ed13711f71403d3f516b6c295e2da517b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-72-90-stored.ppm",
+      "oracle_sha256": "50003e2f8690f4f0bb2f6ac819b0a064dfc5ef22ad01ca24a7a04f673ac62b4e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-144-90-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-144-90-generated.pdf",
+      "sha256": "b9005874ccdc042d6662149fad7bdc5dfdc1349f2241832fd73c9730ea1ce7ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-144-90-generated.ppm",
+      "oracle_sha256": "15889ea6fff9de0d408d3a94c37227fb7bb8b2006f24125d8d04e2e7cb505c49",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-speaker-144-90-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-speaker-144-90-stored.pdf",
+      "sha256": "3784e2c333f67be2dd352a6bc1a926ed13711f71403d3f516b6c295e2da517b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-speaker-144-90-stored.ppm",
+      "oracle_sha256": "15889ea6fff9de0d408d3a94c37227fb7bb8b2006f24125d8d04e2e7cb505c49",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-72-0-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-72-0-generated.pdf",
+      "sha256": "e7f263b42a7fb4102c8693541e684225a48cfa83a1f01cc0500a5d52e3dfd5a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-72-0-generated.ppm",
+      "oracle_sha256": "64718b38676fc14ac44bfc8b4a63c348fddf54e2b452c8efbde068f34dd88a96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-72-0-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-72-0-stored.pdf",
+      "sha256": "69b3bc9b93372374ef7104414823fb00abb588b34ebbc9337e9a31c0b9818893",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-72-0-stored.ppm",
+      "oracle_sha256": "64718b38676fc14ac44bfc8b4a63c348fddf54e2b452c8efbde068f34dd88a96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-144-0-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-144-0-generated.pdf",
+      "sha256": "e7f263b42a7fb4102c8693541e684225a48cfa83a1f01cc0500a5d52e3dfd5a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-144-0-generated.ppm",
+      "oracle_sha256": "99a370171e31463a689fb39a66aa0f96b8b58fbd2235b9e4d7f77c72f0872f8f",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-144-0-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-144-0-stored.pdf",
+      "sha256": "69b3bc9b93372374ef7104414823fb00abb588b34ebbc9337e9a31c0b9818893",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-144-0-stored.ppm",
+      "oracle_sha256": "99a370171e31463a689fb39a66aa0f96b8b58fbd2235b9e4d7f77c72f0872f8f",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-72-90-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-72-90-generated.pdf",
+      "sha256": "ff41341a4d5a04291b1681713c1a1c9665681c83c67cace3fe46a4ae067cd634",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-72-90-generated.ppm",
+      "oracle_sha256": "7aae7297cb11ea0ef804427f17c2c596f9060449786636aa0cc5c5821df057fc",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-72-90-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-72-90-stored.pdf",
+      "sha256": "3ca4e9ccc3386774d992917e5cf8b650e2ab2b5b358b60bec0fc55f78f1d4b41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-72-90-stored.ppm",
+      "oracle_sha256": "7aae7297cb11ea0ef804427f17c2c596f9060449786636aa0cc5c5821df057fc",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-144-90-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-144-90-generated.pdf",
+      "sha256": "ff41341a4d5a04291b1681713c1a1c9665681c83c67cace3fe46a4ae067cd634",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-144-90-generated.ppm",
+      "oracle_sha256": "9a35fcae01d2ae4c6914d3f390bfc108b11e49807ec6554a8f74ca530a50c9d4",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-mic-144-90-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-mic-144-90-stored.pdf",
+      "sha256": "3ca4e9ccc3386774d992917e5cf8b650e2ab2b5b358b60bec0fc55f78f1d4b41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-mic-144-90-stored.ppm",
+      "oracle_sha256": "9a35fcae01d2ae4c6914d3f390bfc108b11e49807ec6554a8f74ca530a50c9d4",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-explicit-view-12-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-explicit-view-12-generated.pdf",
+      "sha256": "2217debccf33868cde1beb282ecb54b5994476a2595a78bb0d346a5b67462c5b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-explicit-view-12-generated.ppm",
+      "oracle_sha256": "3e36c3281a29578500d07f2f89b9b281cafad73f4c027f389576323f02151b90",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-explicit-view-12-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-explicit-view-12-stored.pdf",
+      "sha256": "ac1d7e99ab1d6741ad1324f25ac4b81af48e699d0c1f74d3d4abcbbcdc69ed52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-explicit-view-12-stored.ppm",
+      "oracle_sha256": "3e36c3281a29578500d07f2f89b9b281cafad73f4c027f389576323f02151b90",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-explicit-view-20-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-explicit-view-20-generated.pdf",
+      "sha256": "a49bebc0ce6d0f151a8cc8be1c752de182c1a49324cf05530373ba8ce6c2001b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-explicit-view-20-generated.ppm",
+      "oracle_sha256": "dd6a46887a3c84f4bcd54108200715ab8636a9644dcfce2e50e956ca688d7022",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-explicit-view-20-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-explicit-view-20-stored.pdf",
+      "sha256": "80fef56e527bc68f1fd4fa8d19db2cdf75120a4d193fda0d70593875a89a216e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-explicit-view-20-stored.ppm",
+      "oracle_sha256": "dd6a46887a3c84f4bcd54108200715ab8636a9644dcfce2e50e956ca688d7022",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-explicit-view-28-generated",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-explicit-view-28-generated.pdf",
+      "sha256": "578f4a99312d4788385de9826ecc5bceac679fe011fb21a6a995953827d9bfba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-explicit-view-28-generated.ppm",
+      "oracle_sha256": "cd8ac876fafd999cb44120f7db91878ae4025e8b559f0632d884b693220f4dcd",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-explicit-view-28-stored",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-explicit-view-28-stored.pdf",
+      "sha256": "f2887157667dee01c8e46a52cf019fb3141e77070528b1b36cf205b396005a44",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-explicit-view-28-stored.ppm",
+      "oracle_sha256": "cd8ac876fafd999cb44120f7db91878ae4025e8b559f0632d884b693220f4dcd",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-default",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-default.pdf",
+      "sha256": "ce6076a05dd1c43c90143e226a73d86e8862e5e79056cfc8ef4bc987c7a62726",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-default.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-null-name",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-null-name.pdf",
+      "sha256": "dca038deaead7c52f3a6fabffc871b7cb37b1b87ec847a145294582cfd4a7473",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-null-name.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-unknown-name",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-unknown-name.pdf",
+      "sha256": "829da11477337de8c9f1510214e6ad2c2e2028f79f01cb0acb0e70c3ba20190e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-unknown-name.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-indirect-name",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-indirect-name.pdf",
+      "sha256": "5d771c0b58562d187b02b35ae8387b3706806b3b437f6e76d2eeaa59208af7f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-indirect-name.ppm",
+      "oracle_sha256": "64718b38676fc14ac44bfc8b4a63c348fddf54e2b452c8efbde068f34dd88a96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-green",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-green.pdf",
+      "sha256": "bfba2f087e3d5ff9e3352ffbfeb82f8f6a97e7a0735301056d577825bf8f01cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-green.ppm",
+      "oracle_sha256": "aa07e2c7be59f34c05a977601b8d99f158f3801f955fae0f63f24cf1ff367e07",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-transparent-background",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-transparent-background.pdf",
+      "sha256": "a132920e37cc899dde0e6aa6da619947e6919896eaf3641dff1b86c743aa10c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-transparent-background.ppm",
+      "oracle_sha256": "8a654fb7cca8562a2403537046b8afa7408e9bded1a9465bd4f2f0490a6b13c9",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-separate-opacity",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-separate-opacity.pdf",
+      "sha256": "39711c210544d824faf946998739b02e7699b894c9db2af730846ed71189f2de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-separate-opacity.ppm",
+      "oracle_sha256": "e4569f8beeb65670ef2359bfa37d6321546ba0f183df81efec02bbe68efcb378",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-no-view",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-no-view.pdf",
+      "sha256": "f6eabcb653b771826b479817661daf62861635d118ddbf55f5aa91a0014ee1ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-no-view.ppm",
+      "oracle_sha256": "abcbabf25e09ec8d5e0901bbec36c8995419db3a8154f551392c474e65d5747e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-hidden-malformed",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-hidden-malformed.pdf",
+      "sha256": "333b9c103a5b59a79dab230c38084aa3cd5513abf363c9d0e71f9ea4e33e68e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-hidden-malformed.ppm",
+      "oracle_sha256": "abcbabf25e09ec8d5e0901bbec36c8995419db3a8154f551392c474e65d5747e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-stored-ignores-visual",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-stored-ignores-visual.pdf",
+      "sha256": "a643e1a3da46052b81d14f54f1440a44dcfee646e3828fa2a8effe20ffef6b73",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-stored-ignores-visual.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-generated-inert-payload",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-generated-inert-payload.pdf",
+      "sha256": "06ff89436ee97789f1d5b70fe8335b824cbd5c8dbddef710b454f8c786c984e1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-generated-inert-payload.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-generated-ignored-fixed-print",
+      "kind": "pdf",
+      "description": "Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/annotation_display/sound-generated-ignored-fixed-print.pdf",
+      "sha256": "7213494b4766b0f9a713344b62e817ac7d3e1ee2aa9ae7d8a629703c3ab27c2b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-generated-ignored-fixed-print.ppm",
+      "oracle_sha256": "688e640217f12b26d9efa8bae379483c8a86b66bcff77ceeefe81127a850c12e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/sound-wrong-name",
+      "kind": "pdf",
+      "description": "Malformed Sound visual entries fail when drawing is requested, without inspecting the sound object",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-wrong-name.pdf",
+      "sha256": "e5f9c9acaca78c0f03c63dcbc917497068e2d4e3eb75a505a96ac3fc4068b085",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/sound-wrong-color",
+      "kind": "pdf",
+      "description": "Malformed Sound visual entries fail when drawing is requested, without inspecting the sound object",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-wrong-color.pdf",
+      "sha256": "74e4b49532f75a8ff01a0ad8c043f6251af07c9d0c912302a4cf41feef06e029",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/sound-wrong-alpha",
+      "kind": "pdf",
+      "description": "Malformed Sound visual entries fail when drawing is requested, without inspecting the sound object",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-wrong-alpha.pdf",
+      "sha256": "0f73ed545c0ef0f9d4b7dac843c523e02effc75691e75d40b4d6b86179eadc64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/sound-name-reference-limit",
+      "kind": "pdf",
+      "description": "Sound icon names retain the existing indirect-reference depth limit",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-name-reference-limit.pdf",
+      "sha256": "4ced9238f945b80373568be6562dce5340a96f263ff461134038fe416a00edbe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
     }
   ]
 }

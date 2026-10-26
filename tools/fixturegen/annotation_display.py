@@ -2,9 +2,10 @@
 
 ISO 32000-2 12.5.5, 12.5.6.16/Table 188 and 12.5.6.22/Tables 193-194.
 The PDFs are 1.7: missing AP is not a PDF 2.0 conformance assertion. Sound
-Speaker/Mic artwork is recommended reader policy, not standardized pixels;
-missing-AP inputs record Pagura's current explicit gap without inventing an
-icon oracle. Stored Sound AP controls isolate static painting from playback.
+Speaker/Mic artwork is recommended reader policy, not standardized pixels.
+Matched raw observations establish static drawing and view behavior separately
+from our independently authored geometric icon oracles. Stored Sound AP
+controls isolate static painting from playback.
 
 FixedPrint has mandatory placement semantics. Expected colored rectangles are
 literal coordinates derived on paper, independently of the emitted AP and any
@@ -21,24 +22,36 @@ set FPDF_PRINTING; PDF.js uses display/ENABLE on a Node canvas, without an HTML
 annotation layer; Quartz draws with CoreGraphics without PDFKit. PyMuPDF,
 Poppler and Hayro keep their existing display adapters. A missing icon in a
 canvas/CoreGraphics-only configuration cannot prove its viewer lacks an icon.
-No engine has been executed for this batch; retain every baseline/configuration
-as unprobed until its exact adapter result is observed. Public API references
-identify configuration knobs, not runtime support in the pinned binaries:
+Scoped hosted observations and exact binary identities are recorded in the probe
+README. Public API references identify configuration knobs, not runtime support
+in other binaries or viewers:
 https://pdfium.googlesource.com/pdfium/+/refs/heads/main/public/fpdfview.h
 https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html
 https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_pixmap
 """
-from .model import Case, OPEN, RENDER, UNSUPPORTED
+from .file_attachment_icons import FRAME, pixels as icon_pixels
+from .model import Case, OPEN, RENDER
 from .pdf import document, opaque_rectangles, stream
 
 AREA = 'annotation_display'
 REQUIREMENT = 'content-static-annotation-placement'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
+# Original rectangular ink regions in a 32-unit grid. These are the geometric
+# union of one-unit orthogonal strokes with miter corners and butt endpoints,
+# independently authored rather than parsed from the product's polylines.
+SOUND_INK = {
+    'Speaker': [(5,11,13,13),(11,7,13,13),(11,7,21,9),(19,7,21,25),
+                (11,23,21,25),(11,19,13,25),(5,19,13,21),(5,11,7,21),
+                (23,12,25,20),(27,8,29,24)],
+    'Mic': [(11,11,21,13),(11,11,13,27),(11,25,21,27),(19,11,21,27),
+            (7,9,9,20),(7,9,25,11),(23,9,25,20),(15,4,17,10),(10,3,22,5)],
+}
 
 
 def source(*, subtype=b'Watermark', entries=b'', fixed=None, stored=True,
            page=b'', flags=4, body=False, media=b'0 0 32 24', rect=b'12 8 20 12',
-           appearance_entries=b'', sound_reference=b'7 0 R', objects=()):
+           appearance_entries=b'', artwork=ARTWORK, appearance_box=b'0 0 8 4',
+           sound_reference=b'7 0 R', objects=()):
     """One inert annotation and a four-sample unsigned PCM sound object."""
     appearance = b'/AP << /N 6 0 R >>' if stored else b''
     sound = b'/Sound ' + sound_reference if subtype == b'Sound' else b''
@@ -53,7 +66,8 @@ def source(*, subtype=b'Watermark', entries=b'', fixed=None, stored=True,
         + (b'' if body else b'/Annots [5 0 R] ') + page + b' >>',
         stream(b'0 g 12 8 4 4 re f 1 0 0 rg 16 8 4 4 re f' if body else b''),
         annotation,
-        stream(ARTWORK, b'/Type /XObject /Subtype /Form /BBox [0 0 8 4] /Resources << >> ' + appearance_entries),
+        stream(artwork, b'/Type /XObject /Subtype /Form /BBox [' + appearance_box
+               + b'] /Resources << >> ' + appearance_entries),
         stream(b'\x80' * 4, b'/Type /Sound /R 8000 /C 1 /B 8 /E /Raw'),
         *objects,
     ])
@@ -78,9 +92,8 @@ def cases():
                'Ordinary content independently paints the same black/red regions as stored AP controls',oracle=oracle())
     for name,entry in [('default',b''),('speaker',b'/Name /Speaker'),('mic',b'/Name /Mic')]:
         yield Case('sound-'+name+'-missing-ap',source(subtype=b'Sound',entries=entry,stored=False),
-                   UNSUPPORTED,(REQUIREMENT,),
-                   'Missing Sound AP records the current Pagura gap; reader-chosen static icon observation remains unprobed',
-                   feature='annotation.appearance')
+                   OPEN,(REQUIREMENT,),
+                   'Original baseline observation input: a reader-chosen static icon, without a universal pixel oracle')
     for name in [b'Speaker',b'Mic']:
         yield Case('sound-'+name.decode().lower()+'-stored',source(subtype=b'Sound',entries=b'/Name /'+name),
                    RENDER,(REQUIREMENT,),
@@ -212,10 +225,54 @@ def cases():
             for stored in (False,True):
                 name=(subtype.decode().lower()+f'-view-{dpi}-{rotation}-{flags}-'
                       + ('stored' if stored else 'missing'))
-                expected=UNSUPPORTED if subtype==b'Sound' and not stored else OPEN
                 yield Case(name,source(subtype=subtype,stored=stored,flags=flags,
                            entries=b'/Name /Speaker' if subtype==b'Sound' else b'/Name /Note',
-                           page=b'/Rotate %d' % rotation),expected,(REQUIREMENT,),
+                           page=b'/Rotate %d' % rotation),OPEN,(REQUIREMENT,),
                            'Raw matched Sound/Text view observation, without a universal reader-artwork oracle',
-                           feature='annotation.appearance' if expected==UNSUPPORTED else None,
                            extra={'dpi':dpi})
+
+    def sound_case(name, icon='Speaker', *, stored=False, entries=None, dpi=72, rotate=0, flags=4,
+                   color=(1.,1.,0.), stroke_alpha=1., fill_alpha=1., visible=True, **options):
+        ink=SOUND_INK[icon]
+        # The stored counterpart uses a filled union, not the generated strokes.
+        regions=' '.join(f'{x} {y} {xx-x} {yy-y} re' for x,y,xx,yy in FRAME+ink).encode()
+        return Case(name,source(subtype=b'Sound',stored=stored,flags=flags,
+                    entries=b'/Name /'+icon.encode() if entries is None else entries,
+                    page=b'/Rotate %d' % rotate,media=b'0 0 48 48',rect=b'8 8 24 24',
+                    artwork=b'1 1 0 rg 2 2 28 28 re f 0 g '+regions+b' f',
+                    appearance_box=b'0 0 32 32',**options),RENDER,(REQUIREMENT,'content-annotation-view'),
+                    'Independent filled-region unions verify original Sound artwork and ordinary or explicit-flag view placement',
+                    oracle=icon_pixels(ink,dpi=dpi,rotate=rotate,flags=flags,color=color,
+                                       stroke_alpha=stroke_alpha,fill_alpha=fill_alpha,visible=visible),
+                    dpi=dpi,extra={'tolerance':1})
+    for icon in SOUND_INK:
+        for dpi,rotate in ((72,0),(144,0),(72,90),(144,90)):
+            for stored in (False,True):
+                yield sound_case(f'sound-{icon.lower()}-{dpi}-{rotate}-'+('stored' if stored else 'generated'),
+                                 icon,stored=stored,dpi=dpi,rotate=rotate)
+    for flags in (12,20,28):
+        for stored in (False,True):
+            yield sound_case(f'sound-explicit-view-{flags}-'+('stored' if stored else 'generated'),
+                             dpi=144,rotate=90,flags=flags,stored=stored)
+    for name,entries,options in [
+        ('sound-default',b'',{}),('sound-null-name',b'/Name null',{}),
+        ('sound-unknown-name',b'/Name /CustomIcon',{}),
+        ('sound-indirect-name',b'/Name 8 0 R',{'objects':(b'/Mic',),'icon':'Mic'}),
+        ('sound-green',b'/Name /Mic /C [0 1 0]',{'icon':'Mic','color':(0.,1.,0.)}),
+        ('sound-transparent-background',b'/C []',{'color':None}),
+        ('sound-separate-opacity',b'/Name /Mic /CA .5 /ca .25',{'icon':'Mic','stroke_alpha':.5,'fill_alpha':.25}),
+        ('sound-no-view',b'/Name 8 0 R',{'flags':32,'visible':False,'objects':(b'8 0 R',)}),
+        ('sound-hidden-malformed',b'/Name (Speaker)',{'flags':2,'visible':False}),
+        ('sound-stored-ignores-visual',b'/Name (Speaker) /C (ignored) /CA /Bad',{'stored':True}),
+        ('sound-generated-inert-payload',b'',{'sound_reference':b'8 0 R','objects':(b'8 0 R',)}),
+        ('sound-generated-ignored-fixed-print',b'/FixedPrint 8 0 R',{'objects':(b'8 0 R',)}),
+    ]:
+        yield sound_case(name,entries=entries,**options)
+    for name,entry in [('sound-wrong-name',b'/Name (Speaker)'),('sound-wrong-color',b'/C [0 0]'),
+                       ('sound-wrong-alpha',b'/CA /Opaque')]:
+        yield Case(name,source(subtype=b'Sound',stored=False,entries=entry),OPEN,(REQUIREMENT,),
+                   'Malformed Sound visual entries fail when drawing is requested, without inspecting the sound object',
+                   extra={'render_error':'syntax'})
+    yield Case('sound-name-reference-limit',source(subtype=b'Sound',stored=False,
+               entries=b'/Name 8 0 R',objects=(b'8 0 R',)),OPEN,(REQUIREMENT,),
+               'Sound icon names retain the existing indirect-reference depth limit',extra={'render_error':'limit'})

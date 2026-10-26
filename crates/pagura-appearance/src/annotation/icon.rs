@@ -1,9 +1,9 @@
-//! Note and file attachment icons (12.5.6.4, 12.5.6.15). Predefined icons
+//! Note, file attachment and Sound icons (12.5.6.4, 12.5.6.15–16). Predefined icons
 //! use original geometric symbols by reader policy; no font is required.
 
 use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::stream::AppearanceStream;
-use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
 /// The icon's frame in its 16 × 16 design space.
@@ -14,40 +14,82 @@ const FRAME: Subpath<'static> = Subpath::Rect {
     height: 14.0,
 };
 
-/// The icon `Name` (Note by default) scaled from 16 × 16 units to `rect`:
-/// a frame filled with `C` (yellow by default) and black 1-unit lines.
+/// The predefined reader-artwork family. Media and file payloads are not read.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum Kind {
+    Text,
+    FileAttachment,
+    Sound,
+}
+
+/// The icon `Name`, scaled from 16 × 16 units to `rect`: a frame filled
+/// with `C` (yellow by default) and black 1-unit lines. Unknown names use
+/// the family's default (Note, `PushPin` or Speaker) by reader policy.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
+    kind: Kind,
 ) -> Result<Option<AppearanceStream>> {
-    let name = annotation
-        .get(b"Name")
-        .map(|value| document.resolve(value))
-        .transpose()?
-        .and_then(Value::as_name)
-        .map_or(b"Note".as_slice(), Name::as_bytes);
-    draw(document, annotation, rect, lines(name))
-}
-
-/// File attachment icons (12.5.6.15, Table 187). Unknown names use PushPin
-/// by reader policy; null is absent (7.3.9). A non-name is malformed.
-/// Geometry is original, font-free reader artwork. Payloads stay unopened.
-pub(super) fn file_attachment(
-    document: &Document,
-    annotation: &Dictionary,
-    rect: Rect,
-) -> Result<Option<AppearanceStream>> {
+    let default: &[u8] = match kind {
+        Kind::Text => b"Note",
+        Kind::FileAttachment => b"PushPin",
+        Kind::Sound => b"Speaker",
+    };
     let name = match annotation
         .get(b"Name")
         .map(|value| document.resolve(value))
         .transpose()?
     {
-        None | Some(Value::Null) => b"PushPin".as_slice(),
+        None | Some(Value::Null) => default,
         Some(Value::Name(name)) => name.as_bytes(),
-        Some(_) => return Err(Error::syntax("file attachment icon Name must be a name")),
+        // Preserve the existing Text-name fallback. Other icon families
+        // reject malformed visual entries independently of rectangle area.
+        Some(_) if matches!(kind, Kind::Text) => default,
+        Some(_) => return Err(Error::syntax("annotation icon Name must be a name")),
     };
-    draw(document, annotation, rect, file_lines(name))
+    let lines = match kind {
+        Kind::Text => lines(name),
+        Kind::FileAttachment => file_lines(name),
+        Kind::Sound => sound_lines(name),
+    };
+    draw(document, annotation, rect, lines)
+}
+
+/// Original rectilinear Speaker/Mic symbols, unrelated to measured reader
+/// pixels. Closed contours start inside an edge so their butt caps meet.
+fn sound_lines(name: &[u8]) -> &'static [&'static [(f64, f64)]] {
+    match name {
+        b"Mic" => &[
+            &[
+                (8., 6.),
+                (6., 6.),
+                (6., 13.),
+                (10., 13.),
+                (10., 6.),
+                (8., 6.),
+            ],
+            &[(4., 10.), (4., 5.), (12., 5.), (12., 10.)],
+            &[(8., 5.), (8., 2.)],
+            &[(5., 2.), (11., 2.)],
+        ],
+        _ => &[
+            &[
+                (4., 6.),
+                (6., 6.),
+                (6., 4.),
+                (10., 4.),
+                (10., 12.),
+                (6., 12.),
+                (6., 10.),
+                (3., 10.),
+                (3., 6.),
+                (4., 6.),
+            ],
+            &[(12., 6.), (12., 10.)],
+            &[(14., 4.), (14., 12.)],
+        ],
+    }
 }
 
 fn draw(

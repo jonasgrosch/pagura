@@ -223,16 +223,16 @@ they do not validate the later screen-placement batch or complete V01.
 
 ## Static annotation screen placement
 
-The added 46 pixel controls and 12 refusal/error controls in
+The initial 46 pixel controls and 12 refusal/error controls in
 [annotation_display.py](../../tools/fixturegen/annotation_display.py) distinguish
 ordinary page content, stored Sound appearances, ordinary Watermark appearances
-and `FixedPrint` screen placement. [Hosted run 40363840362](https://github.com/jonasgrosch/pagura/actions/runs/40363840362)
-at head `c5ddc1bf4d6e10ad82d3194ec3c905318871d72b`, measured merge
-`c7306bd759a249a8bc4e9d24d745ebaabcd22051`, passed all 352 Pagura controls in
-2,464 recorded cells. Combined artifact `12670780336` has SHA-256
-`d0a0013f560991bd63f263b8697ea93f81912bf99c5f50f124af8627ba02a1bf`;
+and `FixedPrint` screen placement. [Hosted run 40365754193](https://github.com/jonasgrosch/pagura/actions/runs/40365754193)
+at head `52cbbce87b3d35d77757d2ea085daf0e04609258`, measured merge
+`76a765502e7e2ffe72e1d16d8e171ecd76a6af8b`, passed all 352 Pagura controls in
+2,464 recorded cells. Combined artifact `12671551174` has SHA-256
+`d4d7b7f64e26d5ee154462e15ca3ffa67bd608e0b4f6d9f1aade99a4ff9d1ca3`;
 its report file SHA-256 is
-`acaa61e7febb2fe6a91442cc8a69a2459d10f3f794e2b782daf13ce3a97f326d`.
+`1a83867dbad74b8cc2d6aa966cb3bad063731274d50c52abddac33fed7d65090`.
 This does not complete V01 or prove physical print behavior. ISO 32000-2
 12.5.6.22 explicitly uses MediaBox dimensions for screen display. The existing
 appearance fitter uses the upright box of the origin-translated Rect after the
@@ -263,10 +263,9 @@ transparency-group controls exercise the same form path.
 Required-Type errors, malformed Matrix/H/V, indirect values, null defaults,
 reversed Rect, negative fractions, irrelevant cyclic entries, hidden/text-only
 short circuits, numeric overflow and existing reference/scene budgets accompany
-the pixel cases. Static painting never reads the Sound payload. Sound's missing
-AP cases retain the explicit Pagura refusal and have no universal pixel oracle:
-Speaker/Mic artwork is reader-chosen. Baseline observations and matched stored
-AP/ordinary controls must precede product substitute artwork. PDF.js canvas
+the pixel cases. Static painting never reads the Sound payload. Speaker/Mic
+artwork is reader-chosen; the following matched observations precede the original
+product symbols and remain distinct from their independent oracles. PDF.js canvas
 display omits its HTML annotation layer; CoreGraphics drawing omits PDFKit.
 Those configurations cannot establish full-viewer icon support. No adapter here
 requests playback or physical printing. Printer media/fit-to-paper scaling,
@@ -292,7 +291,7 @@ MuPDF 1.28.5 and Poppler 24.02.0 draw distinct Speaker and Mic substitutes, with
 absent Name identical to Speaker; their extents and artwork differ. PDFium
 156.0.8076.0, pdf.js 6.4.299 Node canvas and hayro 0.8.0 produce blank missing-AP
 output under the recorded configurations. Pagura explicitly reports
-`annotation.appearance`. CoreGraphics is still pending in this checkpoint.
+`annotation.appearance`. The completed CoreGraphics continuation is described below.
 Linux artifact `12669564145` has SHA-256
 `00adefa059f6a738fde18fd610c434e42abb783d9daf9a39310bf661ef629fc3`;
 its report file SHA-256 is
@@ -300,9 +299,53 @@ its report file SHA-256 is
 Raw images are in artifact `12670491376`; they supply observations, never copied
 product artwork or independent icon expectations.
 
-The next diagnostic adds 26 matched Sound/Text missing/stored-AP views at
-72/144 DPI, Rotate0/90 and explicit NoZoom/NoRotate combinations. The original
-three subject PDFs and control hashes are unchanged. These raw views adjudicate
-the Text-like view rule in 12.5.6.16 against the explicit Text rule in 12.5.6.4;
-no Sound sizing or rotation behavior changes before those observations. The
-33-case diagnostic remains outside the 352-oracle manifest and its pass totals.
+The 33-case Linux continuation [run 40367784509](https://github.com/jonasgrosch/pagura/actions/runs/40367784509),
+head `92d29ab9607fe22702f4245f8c259fd3a5e7dbb2`, adds 26 matched Sound/Text
+missing/stored-AP views at 72/144 DPI, Rotate0/90 and explicit NoZoom/NoRotate
+combinations. The original three subject PDFs and control hashes are unchanged.
+Report artifact `12671905928` has SHA-256
+`3a41529cc8ec2a3efd2948ed02f7ec9fd58852c17616489a101bcd88f1c5276c`;
+report file SHA-256 is
+`6944d5f9b95741848d5d3ef512d6bb8274aab791cda751ea77a3f375becc2b0e`.
+The paired macOS report records CoreGraphics on macOS 26.6.2 painting ordinary
+page content while leaving every Sound/Text annotation blank, including stored
+AP controls. This establishes the scope of the `drawPDFPage` adapter, not a
+PDFKit/viewer limitation. Its report artifact `12671676873` has SHA-256
+`1c79432343aea8d827d54d51cc4656dee0cd65faa32326b9ece74b1bf49af664`;
+report file SHA-256 is
+`53a8892feef47db1f06f833523386fbb20c569b448ff020ce7ba372451ded792`.
+Raw observations never contribute to pixel pass/fail totals, and renderer
+differences do not promote a family.
+
+Both MuPDF and Poppler scale missing Sound icons with DPI and rotate them with
+the page when F=4; their Text controls remain upright on rotated pages. For
+example, MuPDF's Speaker nonwhite bounds are `[12,12,22,22]` at 72 DPI,
+`[24,24,44,44]` at 144 DPI and `[4,24,24,44]` at 144 DPI/Rotate90. Poppler's
+corresponding bounds are `[13,12,19,16]`, `[26,25,38,32]` and `[16,26,23,38]`.
+All bounds are half-open device coordinates measured from the top left. All
+five baseline adapters also scale and rotate the stored Sound AP normally.
+Explicit NoRotate makes MuPDF/Poppler Sound upright. Their DPI export adapters
+scale Text and explicit-NoZoom stored controls too, so these observations do not
+establish interactive viewer zoom behavior.
+
+Clause 12.5.6.16 describes Sound as Text-like in most ways; the unconditional
+NoZoom/NoRotate rule is explicit for Text in 12.5.6.4. Pagura therefore keeps
+ordinary Sound placement, consistent with the two observed static fallbacks,
+and honors explicit Sound flags through its existing fixed-view contract.
+Text's existing fixed icon view and stored-AP precedence remain unchanged.
+No subtype-specific view or transform path is introduced.
+
+The Sound implementation adds original rectilinear Speaker/default and Mic
+symbols to the existing framed-icon owner. Its 34 new pixel controls use
+independently authored unions of rectangles: each orthogonal stroke expands by
+half a unit, miter corners meet at the offset-line intersections, and open ends
+stop at the butt plane. Stored counterparts fill those regions in one operation;
+generated counterparts stroke polylines. Exact quarter-pixel coverage and
+source-over formulas are shared with the file-icon oracle, whose existing
+fixtures and expectations remain byte-identical. The controls cover both icons,
+72/144 DPI, rotation, explicit view flags, color, opacity, null/default/unknown
+and indirect names, hidden/NoView, stored precedence and ignored cyclic payloads.
+Malformed visual values and reference/content/scene budgets have separate checks.
+The new G01 set has 386 oracles; this Sound increment still awaits hosted runtime
+validation. Custom artwork variants, interaction and playback remain outside
+these static drawing claims, and the V01 family remains partial.

@@ -368,14 +368,48 @@ fn file_attachment_default_null_unknown_and_indirect_names_are_consistent() {
 }
 
 #[test]
-fn file_attachment_icons_have_bounded_content_and_validate_visual_entries() {
+fn sound_defaults_and_indirect_names_ignore_media_payloads() {
     let area = rect(8.0, 8.0, 24.0, 24.0);
-    for name in [b"Graph".as_slice(), b"PushPin", b"Paperclip", b"Tag"] {
+    let expected = generate(b"<< /Subtype /Sound /Name /Speaker >>", area).unwrap();
+    for value in [
+        b"<< /Subtype /Sound >>".as_slice(),
+        b"<< /Subtype /Sound /Name null >>",
+        b"<< /Subtype /Sound /Name /Unknown >>",
+        b"<< /Subtype /Sound /Sound 999 0 R /A 999 0 R >>",
+    ] {
+        assert_eq!(generate(value, area).unwrap(), expected);
+    }
+    let microphone = generate(b"<< /Subtype /Sound /Name /Mic >>", area).unwrap();
+    assert_ne!(microphone, expected);
+    let document = Document::open(
+        fixture("annotation_display", "sound-indirect-name.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        annotation_appearance(
+            &document,
+            &dictionary(b"<< /Subtype /Sound /Name 8 0 R >>"),
+            area,
+        )
+        .unwrap(),
+        microphone
+    );
+}
+
+#[test]
+fn static_icons_have_bounded_content_and_validate_visual_entries() {
+    let area = rect(8.0, 8.0, 24.0, 24.0);
+    for (subtype, name) in [
+        (b"FileAttachment".as_slice(), b"Graph".as_slice()),
+        (b"FileAttachment", b"PushPin"),
+        (b"FileAttachment", b"Paperclip"),
+        (b"FileAttachment", b"Tag"),
+        (b"Sound", b"Speaker"),
+        (b"Sound", b"Mic"),
+    ] {
         let mut annotation = Dictionary::new();
-        annotation.insert(
-            pagura_core::Name::new(b"Subtype"),
-            Value::name(b"FileAttachment"),
-        );
+        annotation.insert(pagura_core::Name::new(b"Subtype"), Value::name(subtype));
         annotation.insert(pagura_core::Name::new(b"Name"), Value::name(name));
         let document = Document::open(
             fixture("forms", "text-quadding-0.pdf"),
@@ -400,6 +434,10 @@ fn file_attachment_icons_have_bounded_content_and_validate_visual_entries() {
         b"<< /Subtype /FileAttachment /Name 42 >>",
         b"<< /Subtype /FileAttachment /C [0 0] >>",
         b"<< /Subtype /FileAttachment /CA /Opaque >>",
+        b"<< /Subtype /Sound /Name (Speaker) >>",
+        b"<< /Subtype /Sound /Name 42 >>",
+        b"<< /Subtype /Sound /C [0 0] >>",
+        b"<< /Subtype /Sound /CA /Opaque >>",
     ] {
         assert_eq!(generate(text, area).unwrap_err().kind, ErrorKind::Syntax);
         assert_eq!(
@@ -409,6 +447,10 @@ fn file_attachment_icons_have_bounded_content_and_validate_visual_entries() {
     }
     assert_eq!(
         generate(b"<< /Subtype /FileAttachment >>", rect(8.0, 8.0, 8.0, 24.0)).unwrap(),
+        None
+    );
+    assert_eq!(
+        generate(b"<< /Subtype /Sound >>", rect(8.0, 8.0, 8.0, 24.0)).unwrap(),
         None
     );
 }
