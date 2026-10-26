@@ -108,6 +108,7 @@ struct Layout {
     baseline: f64,
 }
 
+#[derive(Clone, Copy)]
 struct Extent {
     width: f64,
     height: f64,

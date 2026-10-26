@@ -55,27 +55,26 @@ pub(super) fn prepare(
         let style = &text.styles[character.style];
         let family = font_name(style);
         work.charge(fonts.len())?;
-        let index = match fonts
+        let index = if let Some(index) = fonts
             .iter()
             .position(|font| font.family.as_bytes() == family.as_bytes())
         {
-            Some(index) => index,
-            None => {
-                font_storage.charge(256 * 64)?;
-                work.charge(256)?;
-                let (entry, resources) = font_resources(document, family.as_bytes())?;
-                font_storage.charge(entry.retained_bytes())?;
-                font_storage.charge(resources.retained_bytes())?;
-                let encoding = Encoding::load(document, &resources, family.as_bytes(), source)?;
-                let index = fonts.len();
-                font_storage.reserve_capacity(&mut fonts, 1)?;
-                entries.insert(Name::new(format!("Rich{index}").as_bytes()), entry);
-                fonts.push(Font {
-                    family: Name::new(family.as_bytes()),
-                    encoding,
-                });
-                index
-            }
+            index
+        } else {
+            font_storage.charge(256 * 64)?;
+            work.charge(256)?;
+            let (entry, resources) = font_resources(document, family.as_bytes())?;
+            font_storage.charge(entry.retained_bytes())?;
+            font_storage.charge(resources.retained_bytes())?;
+            let encoding = Encoding::load(document, &resources, family.as_bytes(), source)?;
+            let index = fonts.len();
+            font_storage.reserve_capacity(&mut fonts, 1)?;
+            entries.insert(Name::new(format!("Rich{index}").as_bytes()), entry);
+            fonts.push(Font {
+                family: Name::new(family.as_bytes()),
+                encoding,
+            });
+            index
         };
         let encoding = &fonts[index].encoding;
         let character_value = if matches!(character.value, '\n' | '\t') {

@@ -78,58 +78,54 @@ pub(super) fn generate(
         area.width(),
         fonts,
     )?;
-    if let Some(rich) = rich {
-        if !rich.fonts.is_empty() && area.width() > 0.0 && area.height() > 0.0 {
-            let mut out = Program::new(&limits);
-            out.text(&format!(
-                "q\n{} {} {} {} re W n\n",
-                area.x0(),
-                area.y0(),
-                area.width(),
-                area.height()
-            ))?;
-            rich.write(&mut out, (area.x0(), area.y1()), (1.0, 0.0))?;
-            out.text("Q\n")?;
-            marks.text(&out.finish(), rich.fonts, &Color::black())?;
-        }
-    } else if !text.is_empty() && area.width() > 0.0 && area.height() > 0.0 {
-        work.charge(256)?;
-        work.charge(text.len())?;
-        // Include the fixed reverse font map and the shared layout's worst-case
-        // character/line vectors, including their geometric spare capacity.
-        storage.charge(256 * 64)?;
-        storage.charge_product(text.len().saturating_add(1), 128)?;
-        let resources = resources(document, da.font.as_bytes(), &mut storage)?;
-        let font = Encoding::load(document, &resources, da.font.as_bytes(), fonts)?;
+    if area.width() > 0.0
+        && area.height() > 0.0
+        && (!text.is_empty() || rich.as_ref().is_some_and(|rich| !rich.fonts.is_empty()))
+    {
         let mut out = Program::new(&limits);
         out.text(&format!(
-            "q\n{} {} {} {} re W n\nBT\n",
+            "q\n{} {} {} {} re W n\n",
             area.x0(),
             area.y0(),
             area.width(),
             area.height()
         ))?;
-        let text = TextLayout {
-            text: &text,
-            multiline: true,
-            comb: None,
-            password: false,
-            quadding,
-            no_scroll: false,
+        let entries = if let Some(rich) = rich {
+            rich.write(&mut out, (area.x0(), area.y1()), (1.0, 0.0))?;
+            rich.fonts
+        } else {
+            work.charge(256)?;
+            work.charge(text.len())?;
+            // The fixed reverse map and the shared layout's worst-case vectors.
+            storage.charge(256 * 64)?;
+            storage.charge_product(text.len().saturating_add(1), 128)?;
+            let resources = resources(document, da.font.as_bytes(), &mut storage)?;
+            let font = Encoding::load(document, &resources, da.font.as_bytes(), fonts)?;
+            let text = TextLayout {
+                text: &text,
+                multiline: true,
+                comb: None,
+                password: false,
+                quadding,
+                no_scroll: false,
+            };
+            let layout_limits = pagura_core::Limits {
+                operations: work.remaining(),
+                ..limits
+            };
+            out.text("BT\n")?;
+            layout::write(&mut out, &font, &da, area, &text, &layout_limits)?;
+            out.text("ET\n")?;
+            let entries = document.resolve_dictionary(
+                resources
+                    .get(b"Font")
+                    .ok_or(Error::syntax("missing free text font resources"))?,
+            )?;
+            storage.charge(entries.retained_bytes())?;
+            entries.clone()
         };
-        let layout_limits = pagura_core::Limits {
-            operations: work.remaining(),
-            ..limits
-        };
-        layout::write(&mut out, &font, &da, area, &text, &layout_limits)?;
-        out.text("ET\nQ\n")?;
-        let entries = document.resolve_dictionary(
-            resources
-                .get(b"Font")
-                .ok_or(Error::syntax("missing free text font resources"))?,
-        )?;
-        storage.charge(entries.retained_bytes())?;
-        marks.text(&out.finish(), entries.clone(), &Color::black())?;
+        out.text("Q\n")?;
+        marks.text(&out.finish(), entries, &Color::black())?;
     }
     marks.finish(rect)
 }

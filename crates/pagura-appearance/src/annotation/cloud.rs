@@ -30,7 +30,7 @@ impl Effect {
                     .ok_or(Error::syntax("border effect S must be a name"))
             })
             .transpose()?;
-        match style.map(pagura_core::Name::as_bytes).unwrap_or(b"S") {
+        match style.map_or(b"S".as_slice(), pagura_core::Name::as_bytes) {
             b"S" => Ok(None),
             b"C" => {
                 let intensity = optional(document, effect, b"I")?
@@ -70,7 +70,6 @@ impl Effect {
     }
 
     pub(super) fn ellipse(&self, document: &Document, bounds: Rect, width: f64) -> Result<Outline> {
-        let mut builder = Builder::new(document, self.diameter(width)?)?;
         // Eight chords retain the ellipse's extrema; each chord is subdivided
         // before forming lobes. Curved border effects are reader artwork.
         const DIAGONAL: f64 = std::f64::consts::FRAC_1_SQRT_2;
@@ -85,6 +84,7 @@ impl Effect {
             (DIAGONAL, -DIAGONAL),
             (1.0, 0.0),
         ];
+        let mut builder = Builder::new(document, self.diameter(width)?)?;
         let cx = bounds.x0().midpoint(bounds.x1());
         let cy = bounds.y0().midpoint(bounds.y1());
         let points = UNIT.map(|(x, y)| {

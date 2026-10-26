@@ -10,7 +10,7 @@ use crate::features;
 use crate::fonts::FontSource;
 use crate::form::da::DefaultAppearance;
 use crate::values::optional;
-use pagura_core::{Diagnostics, Dictionary, Error, Limits, Meter, Result, Value, text_string};
+use pagura_core::{Diagnostics, Dictionary, Error, Limits, Meter, Result, text_string};
 use pagura_document::{Document, forms::Justification};
 use style::Style;
 
