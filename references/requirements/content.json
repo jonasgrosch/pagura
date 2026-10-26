@@ -1413,7 +1413,7 @@
         "12.7.4.3"
       ],
       "rule": "Generate plain FreeText and FreeTextTypeWriter using required DA, Contents decoded through the shared PDF text-string decoder, Q alignment and RD left/top/right/bottom insets. Share the form parser, reversible font encoder and whitespace/explicit-newline layout, with 1.2-em leading and the 12-point auto-size ceiling. Resolve only the selected font from AcroForm DR; missing exact standard-14 names use the explicit provider with WinAnsi where applicable. Present resources are never replaced and unrelated resources are not resolved. Reader artwork uses an optional C background, black BS/Border outline and two units of padding; text is clipped inside the padded rectangle. CA applies to the outline and ca (else CA) to fills/text. Stored appearances take precedence. Text/storage/work/geometry/output remain bounded; malformed selected entries fail before empty text output.",
-      "status": "implemented with 48 authored controls and 34 independent pixel expectations; hosted validation pending",
+      "status": "implemented with 50 authored controls and 37 independent pixel expectations; hosted validation pending",
       "tests": [
         "pagura-appearance annotation::tests::free_text::free_text_uses_explicit_fonts_and_its_own_resources",
         "pagura-appearance annotation::tests::free_text::empty_free_text_validates_style_and_needs_no_font_provider",
@@ -1462,12 +1462,60 @@
         "free_text_annotations/unknown-font",
         "free_text_annotations/present-bad-font",
         "free_text_annotations/callout",
+        "free_text_annotations/callout-no-line",
+        "free_text_annotations/callout-null-line",
         "free_text_annotations/rich-text",
         "free_text_annotations/default-style",
         "free_text_annotations/cloudy",
         "free_text_annotations/complex-text"
       ],
-      "gaps": "Expected line breaks and sizes are authored independently of product wrapping; AFM metrics and original quadratic glyph integrals establish pixels. Rich RC/DS, callouts, cloudy/relief/rounded borders, complex-script/CID encodings, negative sizes and oblique/reflected matrices remain explicit refusals. CL/LE are ignored when IT is not FreeTextCallout. Standard-font fallback is reader policy and needs host font data; no implicit system font lookup occurs. This subset does not establish annotation interaction or full FreeText parity."
+      "gaps": "Expected line breaks and sizes are authored independently of product wrapping; AFM metrics and original quadratic glyph integrals establish pixels. Rich RC/DS, cloudy/relief/rounded borders, complex-script/CID encodings, negative sizes and oblique/reflected matrices remain explicit refusals. CL/LE are covered separately by content-free-text-callouts; unused CL/LE are not resolved. Standard-font fallback is reader policy and needs host font data; no implicit system font lookup occurs. This subset does not establish annotation interaction or full FreeText parity."
+    },
+    {
+      "id": "content-free-text-callouts",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.6 Table 177",
+        "12.5.6.6 Figure 79",
+        "12.5.6.7 Table 179"
+      ],
+      "rule": "FreeTextCallout reads optional four- or six-number CL geometry in default user space with fixed stack storage; the scalar LE name applies to the first point, sharing all ten standard line-ending shapes. Direct and indirect coordinates/names work. Absent/null CL has no line and does not resolve LE; plain/TypeWriter intents do not resolve CL/LE. Validate exact cardinality, finite coordinates/differences, ending names and geometry/work bounds before empty text or zero-width suppression. Reader artwork paints the black dashed body and solid ending before the text box; closed endings use the optional C background color. Stroke uses CA and fills use ca (else CA); the appearance remains clipped to original Rect.",
+      "status": "implemented with 31 authored controls and 24 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::free_text::callout_geometry_is_validated_with_empty_text_and_no_border",
+        "free_text_callouts/None",
+        "free_text_callouts/Square",
+        "free_text_callouts/Circle",
+        "free_text_callouts/Diamond",
+        "free_text_callouts/OpenArrow",
+        "free_text_callouts/ClosedArrow",
+        "free_text_callouts/Butt",
+        "free_text_callouts/ROpenArrow",
+        "free_text_callouts/RClosedArrow",
+        "free_text_callouts/Slash",
+        "free_text_callouts/OpenArrow-144",
+        "free_text_callouts/ClosedArrow-144",
+        "free_text_callouts/Circle-144",
+        "free_text_callouts/null-ending",
+        "free_text_callouts/straight",
+        "free_text_callouts/vertical",
+        "free_text_callouts/rotated",
+        "free_text_callouts/opacity",
+        "free_text_callouts/separate-opacity",
+        "free_text_callouts/transparent-background",
+        "free_text_callouts/zero-width-filled-ending",
+        "free_text_callouts/no-text",
+        "free_text_callouts/hidden",
+        "free_text_callouts/indirect",
+        "free_text_callouts/cl-type",
+        "free_text_callouts/cl-short",
+        "free_text_callouts/cl-odd",
+        "free_text_callouts/cl-long",
+        "free_text_callouts/cl-value",
+        "free_text_callouts/le-type",
+        "free_text_callouts/unknown-ending"
+      ],
+      "gaps": "Literal unit-width elbow/straight/vertical stroke polygons, analytic ending regions and independently placed original glyph areas establish expectations. Shared Line/PolyLine controls preserve existing ending behavior. Wider diagonal/dashed callout combinations need additional evidence; rich text and cloudy borders remain explicit gaps. The prior zero-width callout control now renders with unchanged PDF bytes. Reader artwork and paint order are explicit policy, not standardized pixels."
     }
   ]
 }

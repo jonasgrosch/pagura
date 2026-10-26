@@ -909,8 +909,8 @@
     {
       "id": "free_text_annotations/callout",
       "kind": "pdf",
-      "description": "Remaining richer appearance surfaces retain explicit capability refusals",
-      "expected": "unsupported",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
       "requirements": [
         "content-free-text-appearances"
       ],
@@ -919,7 +919,61 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/callout.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/callout-no-line",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/callout-no-line.pdf",
+      "sha256": "7152e34eed1dd671bd5abaee617b0ac25a60b647e1e57948540992d9cc79508d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/callout-no-line.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "free_text_annotations/callout-null-line",
+      "kind": "pdf",
+      "description": "Authored line breaks/AFM placement, analytic original glyph areas and literal border regions establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-free-text-appearances"
+      ],
+      "path": "corpus/generated/free_text_annotations/callout-null-line.pdf",
+      "sha256": "feedbcdda90edf4b4091d2d0d3762b810d5534c6b976060ca5786cae3891c25f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/free_text_annotations/callout-null-line.ppm",
+      "oracle_sha256": "080d234d2149982a4ad365342cc63af2445491ee18943c4d11d8f0c3ea44f9c0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
     },
     {
       "id": "free_text_annotations/rich-text",

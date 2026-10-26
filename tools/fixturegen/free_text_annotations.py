@@ -28,7 +28,7 @@ def metrics(bold=False):
     return widths,vertical['Ascender'],vertical['Descender']
 
 
-def source(contents: bytes | None=b'(HI)', *, da: bytes | None=b'(/Helvetica 12 Tf 0 g)',rect=(4,4,124,44),q: int | str=0,border=0,
+def source(contents: bytes | None=b'(HI)', *, da: bytes | None=b'(/Helvetica 12 Tf 0 g)',rect=(4,4,124,44),q: int | str=0,border: float=0,
            background=None,alpha=1.,extra=b'',objects=(),catalog=b'',rotate=0,flags=0,stored=False):
     box=' '.join(str(v) for v in rect).encode()
     annotation=b'<< /Type /Annot /Subtype /FreeText /Rect ['+box+b']'
@@ -52,7 +52,7 @@ def source(contents: bytes | None=b'(HI)', *, da: bytes | None=b'(/Helvetica 12 
 
 
 def oracle(rows: tuple[str,...]=('HI',), *, size=12.,rect=(4,4,124,44),rd=(0,0,0,0),q=0,border=0.,background=None,
-           color=(0.,0.,0.),alpha=1.,text_alpha=None,dpi=72,rotate=0,visible=True,bold=False,leading=None):
+           color=(0.,0.,0.),alpha=1.,text_alpha=None,dpi=72,rotate=0,visible=True,bold=False,leading=None,underlay=None):
     widths,ascent,_=metrics(bold);scale=dpi/72
     x0,y0,x1,y1=rect;left,top,right,bottom=rd
     bounds=(x0+left,y0+bottom,x1-right,y1-top)
@@ -94,8 +94,9 @@ def oracle(rows: tuple[str,...]=('HI',), *, size=12.,rect=(4,4,124,44),rd=(0,0,0
                 covered=abs(sum(signed_area(edges,region) for bbox,edges in glyphs
                             if bbox[0]<xx+1 and bbox[2]>xx and bbox[1]<yy+1 and bbox[3]>yy))
             fg=quantized(covered)*ta
-            for b,c in zip(background or (1.,1.,1.),color):
-                base=int(255*(1-bg+b*bg)+.5)
+            base_pixel=(255,255,255) if underlay is None else underlay(xx,yy)
+            for initial,b,c in zip(base_pixel,background or (1.,1.,1.),color):
+                base=int(initial*(1-bg)+255*b*bg+.5)
                 base=int(base*(1-frame)+.5)
                 pixels.append(int(base*(1-fg)+255*c*fg+.5))
     return f'P6\n{width} {height}\n255\n'.encode()+pixels
@@ -149,8 +150,10 @@ def cases():
                          ('rd-cardinality',{'extra':b'/RD [1 2 3]'}),('unknown-font',{'da':b'(/Mystery 12 Tf)'}),
                          ('present-bad-font',{'da':b'(/Body 12 Tf)','catalog':catalog,'objects':(b'42',)})]:
         yield Case(name,source(**options),OPEN,(REQUIREMENT,),'Malformed selected values fail explicitly',extra={'render_error':'syntax'})
-    for name,options,feature in [('callout',{'extra':b'/IT /FreeTextCallout /CL [1 1 4 4]'},'annotation.appearance'),
-                                ('rich-text',{'extra':b'/RC (rich)'},'annotation.appearance'),
+    yield rendered('callout',extra=b'/IT /FreeTextCallout /CL [1 1 4 4]')
+    yield rendered('callout-no-line',extra=b'/IT /FreeTextCallout /LE 42')
+    yield rendered('callout-null-line',extra=b'/IT /FreeTextCallout /CL null /LE 999 0 R')
+    for name,options,feature in [('rich-text',{'extra':b'/RC (rich)'},'annotation.appearance'),
                                 ('default-style',{'extra':b'/DS (font: Helvetica)'},'annotation.appearance'),
                                 ('cloudy',{'extra':b'/BE << /S /C >>'},'annotation.appearance'),
                                 ('complex-text',{'contents':b'<FEFF03A9>'},'appearance.font-encoding')]:

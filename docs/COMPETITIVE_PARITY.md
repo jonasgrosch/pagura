@@ -537,16 +537,30 @@ AcroForm DR font is retained; an absent exact standard-14 name may use the expli
 provider. Present resources are never replaced and unused resources are not
 resolved. Reader policy paints the optional C background, black BS/Border outline
 and text clipped inside two units of padding. CA and ca retain their separate
-roles; stored appearances win. Forty-eight controls contain 34 independent pixel
+roles; stored appearances win. Fifty controls contain 37 independent pixel
 expectations with authored line breaks/sizes, AFM metrics and original quadratic
 glyph areas. Controls cover alignment at two resolutions, wrapping, explicit
 lines, clipping, auto sizing, colors/opacity, RD, rotation, indirection, DR selection,
 visibility, stored precedence and malformed input. Font, work, geometry, storage
 and output limits are also registered. Hosted validation is pending. Rich RC/DS,
-callouts and the form layout's richer font/matrix boundaries remain open.
+the form layout's richer font/matrix boundaries remain open.
+
+**FreeText callouts implemented:** optional CL arrays with two or three points
+use fixed stack geometry; the scalar LE names the first point's ending. All ten
+standard shapes share the existing ending implementation. Inactive or absent/null
+CL leaves LE unresolved. Cardinality, finite coordinates/differences and bounded
+geometry/work validate before empty text or zero-width output. Reader policy paints
+a black body and ending outline, with optional C interior in closed endings,
+before the text box; opacity and original Rect clipping remain explicit.
+Thirty-one controls include 24 independent pixel expectations from literal
+elbow/straight/vertical stroke polygons, analytic ending regions and original
+glyph areas. They cover every ending, two resolutions, rotation, separate opacity,
+zero width, empty text, visibility, indirection and malformed input. The former
+zero-width callout refusal now renders with unchanged PDF bytes. Hosted validation
+is pending; wider diagonal/dash combinations still need evidence.
 
 Complete richer FreeText and other ledger subtype appearances;
-add border effects, callouts, line endings and required font/layout support.
+add border effects, remaining callout combinations and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.
 

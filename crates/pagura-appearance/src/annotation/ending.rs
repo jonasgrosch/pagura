@@ -8,7 +8,7 @@ use super::border::Border;
 use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::features;
 use crate::values::optional;
-use pagura_core::{Dictionary, Error, Rect, Result};
+use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
 type Point = (f64, f64);
@@ -70,29 +70,7 @@ pub(super) fn read(document: &Document, annotation: &Dictionary) -> Result<[Styl
     let [start, end] = values else {
         return Err(Error::syntax("line endings require two names"));
     };
-    let parse = |value| {
-        let name = document
-            .resolve(value)?
-            .as_name()
-            .ok_or(Error::syntax("line ending must be a name"))?;
-        match name.as_bytes() {
-            b"None" => Ok(Style::None),
-            b"Square" => Ok(Style::Square),
-            b"Circle" => Ok(Style::Circle),
-            b"Diamond" => Ok(Style::Diamond),
-            b"OpenArrow" => Ok(Style::OpenArrow),
-            b"ClosedArrow" => Ok(Style::ClosedArrow),
-            b"Butt" => Ok(Style::Butt),
-            b"ROpenArrow" => Ok(Style::ReverseOpenArrow),
-            b"RClosedArrow" => Ok(Style::ReverseClosedArrow),
-            b"Slash" => Ok(Style::Slash),
-            _ => Err(Error::unsupported(
-                features::ANNOTATION_APPEARANCE,
-                "unknown line ending style",
-            )),
-        }
-    };
-    Ok([parse(start)?, parse(end)?])
+    Ok([Style::read(document, start)?, Style::read(document, end)?])
 }
 
 enum Shape {
@@ -123,6 +101,61 @@ impl Shape {
 }
 
 impl Style {
+    /// One named ending, shared by Line/PolyLine arrays and FreeText callouts.
+    pub(super) fn read(document: &Document, value: &Value) -> Result<Self> {
+        let name = document
+            .resolve(value)?
+            .as_name()
+            .ok_or(Error::syntax("line ending must be a name"))?;
+        match name.as_bytes() {
+            b"None" => Ok(Self::None),
+            b"Square" => Ok(Self::Square),
+            b"Circle" => Ok(Self::Circle),
+            b"Diamond" => Ok(Self::Diamond),
+            b"OpenArrow" => Ok(Self::OpenArrow),
+            b"ClosedArrow" => Ok(Self::ClosedArrow),
+            b"Butt" => Ok(Self::Butt),
+            b"ROpenArrow" => Ok(Self::ReverseOpenArrow),
+            b"RClosedArrow" => Ok(Self::ReverseClosedArrow),
+            b"Slash" => Ok(Self::Slash),
+            _ => Err(Error::unsupported(
+                features::ANNOTATION_APPEARANCE,
+                "unknown line ending style",
+            )),
+        }
+    }
+
+    /// FreeText reader artwork uses the same geometry with a black outline
+    /// and its optional background colour inside closed endings.
+    pub(super) fn draw_callout(
+        self,
+        marks: &mut Marks<'_>,
+        endpoint: Endpoint,
+        border: &Border,
+        interior: Option<&Color>,
+    ) -> Result<()> {
+        let Some(shape) = self.shape(endpoint, border.width)? else {
+            return Ok(());
+        };
+        let path = [shape.subpath()];
+        if shape.filled()
+            && let Some(interior) = interior
+        {
+            marks.fill(&path, interior)?;
+        }
+        if border.width > 0.0 {
+            marks.stroke(
+                &path,
+                &Color::black(),
+                Pen {
+                    width: border.width,
+                    dash: &[],
+                },
+            )?;
+        }
+        Ok(())
+    }
+
     pub(super) fn visible(self) -> bool {
         !matches!(self, Self::None)
     }

@@ -5,6 +5,8 @@
 //! policy. Only the DA font is copied from AcroForm DR. An absent resource
 //! may use an exact standard-14 name through the explicit font provider.
 
+mod callout;
+
 use super::border::{Border, inset_bounds, plain_effect};
 use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::features;
@@ -22,7 +24,8 @@ pub(super) fn generate(
     rect: Rect,
     fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
-    intent(document, annotation)?;
+    plain_text(document, annotation)?;
+    let callout = callout::Callout::read(document, annotation)?;
     plain_effect(document, annotation)?;
     let bounds = inset_bounds(document, annotation, rect)?;
     let border = Border::read(document, annotation)?;
@@ -40,30 +43,18 @@ pub(super) fn generate(
     let text = contents(document, annotation, &mut storage)?;
     let mut geometry = Meter::new(limits.path_segments, "free text geometry budget exceeded");
     geometry.charge(12)?; // Background, border and text clip: four edges each.
+    if callout.is_some() {
+        geometry.charge(48)?; // At most two body edges and one fixed ending.
+        work.charge(48)?;
+    }
     let mut marks = Marks::new(document, annotation);
     if bounds.width() == 0.0 || bounds.height() == 0.0 {
         return Ok(None);
     }
-    if let Some(background) = background {
-        marks.fill(&[rectangle(bounds)], &background)?;
+    if let Some(callout) = callout {
+        callout.draw(&mut marks, &border, background.as_ref())?;
     }
-    if border.width > 0.0 {
-        let inner = inset(bounds, border.width / 2.0)?;
-        let line = [(inner.x0(), inner.y0()), (inner.x1(), inner.y0())];
-        let path = if border.underline {
-            Subpath::Polyline(&line)
-        } else {
-            rectangle(inner)
-        };
-        marks.stroke(
-            &[path],
-            &Color::black(),
-            Pen {
-                width: border.width,
-                dash: &border.dash,
-            },
-        )?;
-    }
+    paint_box(&mut marks, bounds, &border, background.as_ref())?;
     let area = inset(bounds, border.width + 2.0)?;
     if !text.is_empty() && area.width() > 0.0 && area.height() > 0.0 {
         work.charge(256)?;
@@ -139,18 +130,7 @@ fn resources(document: &Document, name: &[u8], storage: &mut Meter) -> Result<Di
     Ok(resources)
 }
 
-fn intent(document: &Document, annotation: &Dictionary) -> Result<()> {
-    if let Some(intent) = optional(document, annotation, b"IT")? {
-        let name = intent
-            .as_name()
-            .ok_or(Error::syntax("free text IT must be a name"))?;
-        if !matches!(name.as_bytes(), b"FreeText" | b"FreeTextTypeWriter") {
-            return Err(Error::unsupported(
-                features::ANNOTATION_APPEARANCE,
-                "free text callout or unknown intent requires a stored appearance",
-            ));
-        }
-    }
+fn plain_text(document: &Document, annotation: &Dictionary) -> Result<()> {
     if optional(document, annotation, b"RC")?.is_some()
         || optional(document, annotation, b"DS")?.is_some()
     {
@@ -194,4 +174,33 @@ fn rectangle(bounds: Rect) -> Subpath<'static> {
         width: bounds.width(),
         height: bounds.height(),
     }
+}
+
+fn paint_box(
+    marks: &mut Marks<'_>,
+    bounds: Rect,
+    border: &Border,
+    background: Option<&Color>,
+) -> Result<()> {
+    if let Some(background) = background {
+        marks.fill(&[rectangle(bounds)], background)?;
+    }
+    if border.width > 0.0 {
+        let inner = inset(bounds, border.width / 2.0)?;
+        let line = [(inner.x0(), inner.y0()), (inner.x1(), inner.y0())];
+        let path = if border.underline {
+            Subpath::Polyline(&line)
+        } else {
+            rectangle(inner)
+        };
+        marks.stroke(
+            &[path],
+            &Color::black(),
+            Pen {
+                width: border.width,
+                dash: &border.dash,
+            },
+        )?;
+    }
+    Ok(())
 }

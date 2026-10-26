@@ -123,3 +123,54 @@ fn free_text_respects_work_geometry_mapping_and_output_budgets() {
         );
     }
 }
+
+#[test]
+fn callout_geometry_is_validated_with_empty_text_and_no_border() {
+    let document = document();
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    let mut annotation = dictionary(b"<< /Subtype /FreeText /DA (/Helvetica 12 Tf) /Contents () /IT /FreeTextCallout /BS << /W 0 >> >>");
+    annotation.insert(
+        pagura_core::Name::new(b"CL"),
+        Value::Array(vec![Value::Integer(0); 10_000]),
+    );
+    assert_eq!(
+        annotation_appearance(&document, &annotation, area)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Syntax
+    );
+    annotation.insert(
+        pagura_core::Name::new(b"CL"),
+        Value::Array(vec![
+            Value::Real(-f64::MAX),
+            Value::Integer(0),
+            Value::Real(f64::MAX),
+            Value::Integer(0),
+        ]),
+    );
+    assert_eq!(
+        annotation_appearance(&document, &annotation, area)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Limit
+    );
+    let limits = Limits {
+        path_segments: 59,
+        ..Limits::default()
+    };
+    let document = Document::open(
+        fixture("classic", "rectangle.pdf"),
+        &OpenOptions {
+            limits,
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let annotation = dictionary(b"<< /Subtype /FreeText /DA (/Helvetica 12 Tf) /Contents () /IT /FreeTextCallout /CL [4 4 12 12] /BS << /W 0 >> >>");
+    assert_eq!(
+        annotation_appearance(&document, &annotation, area)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Limit
+    );
+}
