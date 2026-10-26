@@ -3,7 +3,7 @@
 
 use super::{Page, branch, geometry};
 use crate::memory::{Reservation, path_bytes};
-use crate::source::{NeedData, ReadFault, ReadResult};
+use crate::source::{ByteSource, NeedData, ReadFault, ReadResult};
 use crate::view::ValueIdentity;
 use crate::{Document, repairs};
 use pagura_core::syntax::PathComponent;

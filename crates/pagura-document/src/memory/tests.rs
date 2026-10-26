@@ -161,7 +161,7 @@ fn reconstruction_charges_new_compressed_slots_and_releases_bootstrap_caches() {
 
 #[test]
 fn reservations_rollback_and_overflow_is_a_limit_error() {
-    let budget = super::Budget::new(100);
+    let budget = std::sync::Arc::new(super::Budget::new(100));
     {
         let mut reservation = budget.reservation();
         reservation.charge(80, ObjectId::new(1, 0)).unwrap();
