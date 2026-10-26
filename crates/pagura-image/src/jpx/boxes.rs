@@ -8,6 +8,13 @@ use super::{
     unsupported,
 };
 
+// T.801 Table M.33 (Opacity box) and T.800 Table I.16 (Channel Definition).
+const OPACITY_STRAIGHT: u8 = 0;
+const OPACITY_PREMULTIPLIED: u8 = 1;
+const OPACITY_CHROMA_KEY: u8 = 2;
+const CHANNEL_STRAIGHT: u16 = 1;
+const CHANNEL_PREMULTIPLIED: u16 = 2;
+
 struct BoxData<'a> {
     kind: &'a [u8],
     body: &'a [u8],
@@ -48,6 +55,7 @@ fn next_box<'a>(reader: &mut Reader<'a>, budget: &mut Budget<'_>) -> Result<BoxD
 
 #[derive(Default)]
 pub(super) struct Header {
+    base: usize,
     dimensions: Option<(u32, u32, u16, u8)>,
     depths: Option<Vec<u8>>,
     colors: Vec<ColorSpecification>,
@@ -55,7 +63,10 @@ pub(super) struct Header {
     mapping: Option<Vec<(u16, u8, u8)>>,
     channels: Option<Vec<(u16, u16, u16)>>,
     channels_use: ChannelsUse,
+    opacity: Option<super::OpacityKind>,
+    color_present: bool,
     baseline_color: bool,
+    resolution_seen: bool,
 }
 
 #[derive(Default, PartialEq, Eq)]
@@ -77,6 +88,34 @@ enum FileType {
     Jp2,
     JpxCompatible,
     JpxBaseline,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HeaderLocation {
+    Defaults,
+    Codestream,
+    Layer,
+    Colors,
+}
+
+impl HeaderLocation {
+    fn accepts(self, kind: &[u8]) -> bool {
+        match self {
+            Self::Defaults => matches!(
+                kind,
+                b"ihdr" | b"bpcc" | b"colr" | b"pclr" | b"cmap" | b"cdef" | b"res "
+            ),
+            Self::Codestream => matches!(kind, b"ihdr" | b"bpcc" | b"pclr" | b"cmap"),
+            Self::Layer => matches!(kind, b"cgrp" | b"opct" | b"cdef" | b"creg" | b"res "),
+            Self::Colors => kind == b"colr",
+        }
+    }
+}
+
+struct HeaderPolicy<'a> {
+    options: &'a Options,
+    selection: ColorSelection,
+    format: FileType,
 }
 
 fn file_type(box_data: &BoxData<'_>, budget: &mut Budget<'_>) -> Result<FileType> {
@@ -176,6 +215,13 @@ pub(super) fn parse<'a>(
     }
     let mut header = None;
     let mut codestream = None;
+    let mut stream_header_seen = false;
+    let mut layer_header_seen = false;
+    let policy = HeaderPolicy {
+        options,
+        selection,
+        format,
+    };
     while reader.remaining() != 0 {
         let b = next_box(&mut reader, budget)?;
         match b.kind {
@@ -183,9 +229,32 @@ pub(super) fn parse<'a>(
                 if header.is_some() || codestream.is_some() {
                     return Err(syntax("misplaced or repeated JP2 header", b.position));
                 }
-                header = Some(parse_header(
-                    b.body, b.position, budget, options, selection, format,
-                )?);
+                let mut defaults = Header {
+                    channels_use: match (options.ignore_opacity, selection) {
+                        (false, _) => ChannelsUse::Apply,
+                        (true, ColorSelection::First) => ChannelsUse::Ignore,
+                        (true, ColorSelection::Pdf) => ChannelsUse::DiscardOpacity,
+                    },
+                    ..Header::default()
+                };
+                defaults.read_boxes(&b, HeaderLocation::Defaults, budget, &policy)?;
+                header = Some(defaults);
+            }
+            b"jpch" | b"jplh" if format == FileType::JpxBaseline => {
+                let (seen, location) = if b.kind == b"jpch" {
+                    (&mut stream_header_seen, HeaderLocation::Codestream)
+                } else {
+                    (&mut layer_header_seen, HeaderLocation::Layer)
+                };
+                // M.9.2.2 selects codestream/layer zero. Later headers are
+                // length-delimited metadata for images PDF does not display.
+                if !*seen {
+                    let first = header.as_mut().ok_or_else(|| {
+                        syntax("JPX first-image header precedes defaults", b.position)
+                    })?;
+                    first.read_boxes(&b, location, budget, &policy)?;
+                    *seen = true;
+                }
             }
             b"jp2c" => {
                 if header.is_none() {
@@ -204,8 +273,8 @@ pub(super) fn parse<'a>(
             }
             b"jp2i" | b"xml " | b"uuid" | b"uinf" | b"free" => {}
             _ if format == FileType::JpxBaseline => {
-                // First-image jpch/jplh, fragment/cross-reference tables and
-                // other layouts need their own semantics, even with DCM=0.
+                // Selected-image fragments/cross-references and other layouts
+                // still need their own semantics, even with DCM=0.
                 return Err(unsupported(
                     "JPX first-image layout is not implemented",
                     b.position,
@@ -216,11 +285,11 @@ pub(super) fn parse<'a>(
     }
     let (stream, position) =
         codestream.ok_or_else(|| syntax("missing JP2 codestream", data.len()))?;
-    Ok((
-        stream,
-        position,
-        header.ok_or_else(|| syntax("missing JP2 header", 0))?,
-    ))
+    let mut header = header.ok_or_else(|| syntax("missing JP2 header", 0))?;
+    if format == FileType::JpxBaseline {
+        header.finish_first_image(budget)?;
+    }
+    Ok((stream, position, header))
 }
 
 /// A sole misplaced mapping has one matching header palette. Conflicting
@@ -254,114 +323,290 @@ fn misplaced_mapping(
     fields.finish()
 }
 
-fn parse_header(
-    data: &[u8],
-    base: usize,
-    budget: &mut Budget<'_>,
-    options: &Options,
-    selection: ColorSelection,
-    format: FileType,
-) -> Result<Header> {
-    let mut reader = Reader::new(data, base);
-    let mut header = Header {
-        channels_use: match (options.ignore_opacity, selection) {
-            (false, _) => ChannelsUse::Apply,
-            (true, ColorSelection::First) => ChannelsUse::Ignore,
-            (true, ColorSelection::Pdf) => ChannelsUse::DiscardOpacity,
-        },
-        ..Header::default()
-    };
-    let mut color_seen = false;
-    let mut color_ended = false;
-    let mut resolution_seen = false;
-    while reader.remaining() != 0 {
-        let b = next_box(&mut reader, budget)?;
-        if b.to_end {
-            return Err(syntax(
-                "zero-length JP2 child in a bounded superbox",
-                b.position,
-            ));
+impl Header {
+    fn read_boxes(
+        &mut self,
+        container: &BoxData<'_>,
+        location: HeaderLocation,
+        budget: &mut Budget<'_>,
+        policy: &HeaderPolicy<'_>,
+    ) -> Result<()> {
+        if location == HeaderLocation::Defaults {
+            self.base = container.position;
         }
-        if header.dimensions.is_none() && b.kind != b"ihdr" {
-            return Err(syntax("JP2 image header must be first", b.position));
-        }
-        if b.kind == b"colr" {
-            if color_ended {
+        let mut reader = Reader::new(container.body, container.position);
+        let mut color_seen = false;
+        let mut color_ended = false;
+        let mut layer_channels = false;
+        let mut registration_seen = false;
+        let mut variable_dimensions = false;
+        let mut depths_in_header = false;
+        while reader.remaining() != 0 {
+            let first = reader.position() == container.position;
+            let b = next_box(&mut reader, budget)?;
+            if b.to_end {
                 return Err(syntax(
-                    "noncontiguous JP2 colour specifications",
+                    "zero-length JP2 child in a bounded superbox",
                     b.position,
                 ));
             }
-            color_seen = true;
-        } else if color_seen {
-            color_ended = true;
-        }
-        let mut fields = Reader::new(b.body, b.position);
-        match b.kind {
-            b"ihdr" => {
-                if header.dimensions.is_some() {
-                    return Err(syntax("repeated JP2 image header", b.position));
-                }
-                header.dimensions = Some(read_dimensions(&mut fields, budget)?);
+            if location == HeaderLocation::Defaults
+                && ((policy.format != FileType::JpxBaseline
+                    && self.dimensions.is_none()
+                    && b.kind != b"ihdr")
+                    || (self.dimensions.is_none() && b.kind == b"ihdr" && !first))
+            {
+                return Err(syntax("JP2 image header must be first", b.position));
             }
-            b"bpcc" => {
-                if header.depths.is_some() {
-                    return Err(syntax("repeated JP2 bit depths", b.position));
+            if b.kind == b"colr" {
+                if color_ended {
+                    return Err(syntax(
+                        "noncontiguous JP2 colour specifications",
+                        b.position,
+                    ));
                 }
-                budget.charge::<u8>(b.body.len())?;
-                header.depths = Some(fields.take(fields.remaining())?.to_vec());
+                color_seen = true;
+                self.color_present = true;
+            } else if color_seen {
+                color_ended = true;
             }
-            b"colr" => header.read_color(&mut fields, budget, options, selection, format)?,
-            b"pclr" => {
-                if header.palette.is_some() {
-                    return Err(syntax("repeated JP2 palette", b.position));
+            if policy.format == FileType::JpxBaseline && !location.accepts(b.kind) {
+                if matches!(
+                    b.kind,
+                    b"ihdr"
+                        | b"bpcc"
+                        | b"colr"
+                        | b"pclr"
+                        | b"cmap"
+                        | b"cdef"
+                        | b"res "
+                        | b"cgrp"
+                        | b"opct"
+                        | b"creg"
+                ) {
+                    return Err(syntax("misplaced JPX header field", b.position));
                 }
-                header.palette = Some(parse_palette(&mut fields, budget)?);
-            }
-            b"cmap" => {
-                if header.mapping.is_some()
-                    || fields.remaining() == 0
-                    || !fields.remaining().is_multiple_of(4)
+                if location != HeaderLocation::Colors
+                    && matches!(
+                        b.kind,
+                        b"lbl " | b"jp2i" | b"xml " | b"uuid" | b"uinf" | b"free"
+                    )
                 {
-                    return Err(syntax("invalid JP2 component mapping", b.position));
+                    continue;
                 }
-                header.mapping = Some(read_mapping(&mut fields, budget)?);
-            }
-            b"cdef" => {
-                if header.channels.is_some() {
-                    return Err(syntax("repeated JP2 channel definition", b.position));
-                }
-                header.channels = Some(read_channels(&mut fields, budget)?);
-            }
-            b"res " => {
-                if resolution_seen {
-                    return Err(syntax("repeated JP2 resolution superbox", b.position));
-                }
-                resolution_seen = true;
-                parse_resolution(b.body, b.position, budget)?;
-            }
-            _ if format == FileType::JpxBaseline => {
                 return Err(unsupported(
                     "JPX image-header extension is not implemented",
                     b.position,
                 ));
             }
-            _ => {
-                continue;
+            if location == HeaderLocation::Layer {
+                if b.kind == b"cdef" {
+                    if self.opacity.is_some() {
+                        return Err(syntax(
+                            "JPX layer combines opacity and channel definitions",
+                            b.position,
+                        ));
+                    }
+                    layer_channels = true;
+                } else if b.kind == b"opct" && layer_channels {
+                    return Err(syntax(
+                        "JPX layer combines opacity and channel definitions",
+                        b.position,
+                    ));
+                } else if b.kind == b"creg" {
+                    if registration_seen {
+                        return Err(syntax("repeated JPX codestream registration", b.position));
+                    }
+                    registration_seen = true;
+                }
+            }
+            self.read_field(&b, location, budget, policy)?;
+            if b.kind == b"ihdr" {
+                variable_dimensions = self.dimensions.is_some_and(|(_, _, _, depth)| depth == 255);
+            } else if b.kind == b"bpcc" {
+                depths_in_header = true;
             }
         }
-        // The resolution superbox was consumed by its own reader.
-        if b.kind != b"res " {
-            fields.finish()?;
+        if policy.format == FileType::JpxBaseline && variable_dimensions && !depths_in_header {
+            return Err(syntax(
+                "JPX variable depths must share their image header",
+                container.position,
+            ));
         }
+        if (location == HeaderLocation::Defaults
+            && policy.format != FileType::JpxBaseline
+            && (self.dimensions.is_none() || !color_seen))
+            || (location == HeaderLocation::Colors && !color_seen)
+        {
+            return Err(syntax("incomplete JP2 header", container.position));
+        }
+        Ok(())
     }
-    if header.dimensions.is_none()
-        || !color_seen
-        || (format == FileType::JpxBaseline && !header.baseline_color)
-    {
-        return Err(syntax("incomplete JP2 header", base));
+
+    fn read_field(
+        &mut self,
+        b: &BoxData<'_>,
+        location: HeaderLocation,
+        budget: &mut Budget<'_>,
+        policy: &HeaderPolicy<'_>,
+    ) -> Result<()> {
+        let mut fields = Reader::new(b.body, b.position);
+        match b.kind {
+            b"ihdr" => {
+                if self.dimensions.is_some() {
+                    return Err(syntax("repeated JP2 image header", b.position));
+                }
+                self.dimensions = Some(read_dimensions(&mut fields, budget)?);
+            }
+            b"bpcc" => {
+                if self.depths.is_some() {
+                    return Err(syntax("repeated JP2 bit depths", b.position));
+                }
+                budget.charge::<u8>(b.body.len())?;
+                self.depths = Some(fields.take(fields.remaining())?.to_vec());
+            }
+            b"colr" => self.read_color(
+                &mut fields,
+                budget,
+                policy.options,
+                policy.selection,
+                policy.format,
+            )?,
+            b"pclr" => {
+                if self.palette.is_some() {
+                    return Err(syntax("repeated JP2 palette", b.position));
+                }
+                self.palette = Some(parse_palette(&mut fields, budget)?);
+            }
+            b"cmap" => {
+                if self.mapping.is_some()
+                    || fields.remaining() == 0
+                    || !fields.remaining().is_multiple_of(4)
+                {
+                    return Err(syntax("invalid JP2 component mapping", b.position));
+                }
+                self.mapping = Some(read_mapping(&mut fields, budget)?);
+            }
+            b"cdef" => {
+                if self.channels.is_some() {
+                    return Err(syntax("repeated JP2 channel definition", b.position));
+                }
+                self.channels = Some(read_channels(&mut fields, budget)?);
+            }
+            b"res " => {
+                if self.resolution_seen {
+                    return Err(syntax("repeated JP2 resolution superbox", b.position));
+                }
+                self.resolution_seen = true;
+                return parse_resolution(b.body, b.position, budget);
+            }
+            b"cgrp" if location == HeaderLocation::Layer => {
+                if self.color_present {
+                    return Err(syntax(
+                        "repeated JPX first-image colour specification",
+                        b.position,
+                    ));
+                }
+                return self.read_boxes(b, HeaderLocation::Colors, budget, policy);
+            }
+            b"opct" if location == HeaderLocation::Layer => {
+                if self.opacity.is_some() {
+                    return Err(syntax("repeated JPX opacity", b.position));
+                }
+                self.opacity = Some(match fields.u8()? {
+                    OPACITY_STRAIGHT => super::OpacityKind::Straight,
+                    OPACITY_PREMULTIPLIED => super::OpacityKind::Premultiplied,
+                    OPACITY_CHROMA_KEY => {
+                        return Err(unsupported(
+                            "JPX chroma-key opacity is not implemented",
+                            b.position,
+                        ));
+                    }
+                    _ => return Err(syntax("invalid JPX opacity type", b.position)),
+                });
+            }
+            b"creg" if location == HeaderLocation::Layer => read_registration(&mut fields, budget)?,
+            _ => return Ok(()), // JP2 I.8 unknown length-delimited metadata.
+        }
+        fields.finish()
     }
-    Ok(header)
+
+    fn finish_first_image(&mut self, budget: &mut Budget<'_>) -> Result<()> {
+        let (_, _, components, _) = self
+            .dimensions
+            .ok_or_else(|| syntax("incomplete JP2 header", self.base))?;
+        if !self.color_present || !self.baseline_color {
+            return Err(syntax("incomplete JP2 header", self.base));
+        }
+        if let Some(opacity) = self.opacity {
+            let count = self
+                .mapping
+                .as_ref()
+                .map_or(usize::from(components), Vec::len);
+            let count = u16::try_from(count)
+                .map_err(|_| Error::limit("JPX opacity channel count exceeds range"))?;
+            if count < 2 {
+                return Err(syntax("JPX opacity requires colour channels", self.base));
+            }
+            // M.11.7.6 describes the final channels, after palette expansion.
+            // Build the same definitions used by cdef and the existing PDF
+            // Indexed/SMaskInData owners; stored sample planes are unchanged.
+            let mut channels = budget.filled(usize::from(count), (0, 0, 0))?;
+            for (channel, definition) in (0..count).zip(&mut channels) {
+                *definition = if channel + 1 == count {
+                    (
+                        channel,
+                        if opacity == super::OpacityKind::Straight {
+                            CHANNEL_STRAIGHT
+                        } else {
+                            CHANNEL_PREMULTIPLIED
+                        },
+                        0,
+                    )
+                } else {
+                    (channel, 0, channel + 1)
+                };
+            }
+            self.channels = Some(channels); // opct overrides default cdef (M.11.7).
+        }
+        Ok(())
+    }
+}
+
+fn read_registration(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<()> {
+    budget.work(fields.remaining())?;
+    let x = fields.u16()?;
+    let y = fields.u16()?;
+    if x == 0 || y == 0 || fields.remaining() == 0 || !fields.remaining().is_multiple_of(6) {
+        return Err(syntax(
+            "invalid JPX codestream registration",
+            fields.position(),
+        ));
+    }
+    if fields.remaining() != 6 {
+        return Err(unsupported(
+            "JPX first-layer codestream combination is not implemented",
+            fields.position(),
+        ));
+    }
+    let stream = fields.u16()?;
+    let xr = fields.u8()?;
+    let yr = fields.u8()?;
+    let xo = fields.u8()?;
+    let yo = fields.u8()?;
+    if xr == 0 || yr == 0 {
+        return Err(syntax(
+            "invalid JPX registration sampling",
+            fields.position(),
+        ));
+    }
+    if stream != 0 || u16::from(xr) != x || u16::from(yr) != y || xo != 0 || yo != 0 {
+        return Err(unsupported(
+            "JPX nonidentity first-layer registration is not implemented",
+            fields.position(),
+        ));
+    }
+    Ok(())
 }
 
 fn read_channels(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Vec<(u16, u16, u16)>> {
@@ -862,72 +1107,4 @@ fn check_depth(depth: u8, component: &JpxComponent) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{BoxData, Budget, reader_requirements};
-    use pagura_core::{ErrorKind, Limits};
-
-    #[test]
-    fn explicit_lab_metadata_uses_one_budgeted_colour_record() {
-        use super::{ColorSelection, FileType, Header, JpxColor, Options, Reader};
-        let mut fields = vec![1, 0, 1, 0, 0, 0, 14];
-        for value in [100_u32, 0, 170, 128, 200, 96, 0x0044_3530] {
-            fields.extend(value.to_be_bytes());
-        }
-        let bytes = size_of::<super::ColorSpecification>();
-        for (decoded_bytes, operations, valid) in
-            [(bytes, 1, true), (bytes - 1, 1, false), (bytes, 0, false)]
-        {
-            let limits = Limits {
-                decoded_bytes,
-                operations,
-                ..Limits::default()
-            };
-            let mut header = Header::default();
-            let result = header.read_color(
-                &mut Reader::new(&fields, 80),
-                &mut Budget::new(&limits),
-                &Options::default(),
-                ColorSelection::Pdf,
-                FileType::JpxBaseline,
-            );
-            if valid {
-                result.unwrap();
-                let JpxColor::Lab(parameters) = &header.colors[0].color else {
-                    panic!("missing Lab parameters")
-                };
-                assert_eq!(parameters.ranges(), [100, 170, 200]);
-                assert_eq!(parameters.offsets(), [0, 128, 96]);
-                assert_eq!(parameters.illuminant(), 0x0044_3530);
-            } else {
-                assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
-            }
-        }
-    }
-
-    #[test]
-    fn reader_expression_inspects_exactly_its_bounded_body() {
-        // ML=1, FUAM=DCM=1, one standard feature (5, mask1), no vendor UUIDs.
-        let fields = [1, 1, 1, 0, 1, 0, 5, 1, 0, 0];
-        let box_data = BoxData {
-            kind: b"rreq",
-            body: &fields,
-            position: 40,
-            to_end: false,
-        };
-        let limits = Limits {
-            operations: 10,
-            ..Limits::default()
-        };
-        reader_requirements(&box_data, &mut Budget::new(&limits)).unwrap();
-        let limited = Limits {
-            operations: 9,
-            ..limits
-        };
-        assert_eq!(
-            reader_requirements(&box_data, &mut Budget::new(&limited))
-                .unwrap_err()
-                .kind,
-            ErrorKind::Limit
-        );
-    }
-}
+mod tests;

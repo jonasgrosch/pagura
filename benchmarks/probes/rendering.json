@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, enumerated D50 CIELab defaults/explicit ranges, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict. Six retained duplicate-METH1/METH2 subjects are historical malformed-input observations, not valid JPX acceptance; see fixture jpx_validity and the probe README. Original bytes, pixel expectations and tolerances are preserved.",
+  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, enumerated D50 CIELab defaults/explicit ranges, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict. Six retained duplicate-METH1/METH2 subjects are historical malformed-input observations, not valid JPX acceptance; see fixture jpx_validity and the probe README. Original bytes, pixel expectations and tolerances are preserved. First-image JPX header inheritance, cgrp, channel/palette ownership and opct controls reuse frozen diagnostic inputs; later-image metadata remains separately scoped.",
   "cases": [
     {
       "id": "control.blank",
@@ -4315,6 +4315,734 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-inherit",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-inherit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-inherit-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-inherit-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-inherit-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-inherit-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-inherit-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-inherit-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-inherit",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-inherit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-inherit-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-inherit-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-inherit-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-inherit-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-inherit-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-inherit-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.creg-identity",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/creg-identity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.creg-identity-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/creg-identity-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.creg-identity-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/creg-identity-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.creg-identity-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/creg-identity-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.cgrp-color",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/cgrp-color",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.cgrp-color-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/cgrp-color-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.cgrp-color-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/cgrp-color-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.cgrp-color-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/cgrp-color-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-palette",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-palette",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-palette-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-palette-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-palette-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-palette-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-palette-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-palette-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-cdef",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-cdef",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-cdef-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-cdef-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-cdef-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-cdef-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jplh-cdef-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jplh-cdef-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-ignored",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-ignored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "74085a3aa095b9878c421ab76d33c45e1eda54e6d01dd2fea17542cc36c38ff2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-ignored-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-ignored-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "74085a3aa095b9878c421ab76d33c45e1eda54e6d01dd2fea17542cc36c38ff2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-ignored-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-ignored-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "74085a3aa095b9878c421ab76d33c45e1eda54e6d01dd2fea17542cc36c38ff2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-ignored-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-ignored-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "74085a3aa095b9878c421ab76d33c45e1eda54e6d01dd2fea17542cc36c38ff2",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-palette",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-palette",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-palette-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-palette-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-palette-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-palette-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-straight-palette-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-straight-palette-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.combined-first-headers",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/combined-first-headers",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.combined-first-headers-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/combined-first-headers-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.combined-first-headers-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/combined-first-headers-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.combined-first-headers-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/combined-first-headers-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-palette",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-palette",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-palette-codec-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-palette-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-palette-brand-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-palette-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.opct-premultiplied-palette-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/opct-premultiplied-palette-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "df149f5aa2cad4f0caeedacf1d9674d22e540e38b7804ce0b2ac536fd8b5439d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-dimensions",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-dimensions",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-dimensions-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-dimensions-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-dimensions-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-dimensions-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.jpch-dimensions-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/jpch-dimensions-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_layout_probe.later-image-headers",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/later-image-headers",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.later-image-headers-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/later-image-headers-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.later-image-headers-brand-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/later-image-headers-brand-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_layout_probe.later-image-headers-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_layout_probe/later-image-headers-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6514fcc5337dbee15fa6cb0b69f874aa38dd7bc4e9ddbf9e6c8ed5e069dd6b44",
         "tolerance": 0
       }
     }

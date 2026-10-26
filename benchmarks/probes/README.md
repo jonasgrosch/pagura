@@ -446,8 +446,8 @@ prevent display. Legacy jp2-compatible behaviour remains unchanged. The
 hashes and the dated-edition distinction. No primary text is redistributed.
 
 Remaining applicable work includes 17–38-bit components, nonzero CRG, early packed
-headers, first-image jpch/jplh/opct metadata, ordered in-file fragments and
-cross-references, CIELab 14/default or explicit parameters, e-sRGB 20, ROMM-RGB 21,
+headers, ordered in-file fragments and cross-references, non-D50 CIELab
+illuminants, e-sRGB 20, ROMM-RGB 21,
 e-sYCC 24, and the restricted baseline array/nonlinear transforms. PDF 7.4.9 excludes
 CIEJab 19, multilayer composition/animation and used per-colour/multiple opacity;
 chroma-key metadata is ignored. These boundaries do not erase the permitted
@@ -600,3 +600,76 @@ choice without requiring a reader that lacks Any ICC to use it. Public image
 metadata and allocation-refusal checks now use this valid first-image container.
 No product code, reader-feature grant, acceptance tolerance, or prior expected
 pixel changed. Family comparison cells remain unprobed.
+
+
+## R02/R03 first-image JPX layout integration
+
+The private [diagnostic source 563fa4eb](https://github.com/jonasgrosch/pagura/tree/563fa4eb73170dc4209e3c939a67bdccea86ec49/tools/fixturegen/jpx_layout_probe.py)
+kept product code identical to df04. [Hosted run 40393543009](https://github.com/jonasgrosch/pagura/actions/runs/40393543009)
+measured 50 cases and 350 cells: twelve first-image subjects, each with an
+unchanged-codestream ordinary JP2 control, a flattened JPX-brand control and an
+independent RGB control, plus blank/rectangle. Pagura passed all 38 controls;
+ten subjects were explicit refusals and two (`cgrp-color`,
+`combined-first-headers`) were `adapter-error`. Source review attributes the
+latter to checking colour completeness before the layer header; the historical
+report outcomes are unchanged.
+
+| Observed engine | Matched subject/control evidence |
+| --- | --- |
+| PDF.js 6.4.299 / Node 26.8.1 / canvas 1.0.11 | Ten complete groups pass. `jpch-palette` and `combined-first-headers` fail despite passing codec/brand/RGB controls. |
+| MuPDF 1.28.5 / wrapper 2.0 | Seven complete groups pass. The two palette-header subjects fail with passing controls; opacity nonpasses remain scoped to their paired outputs. |
+| hayro 0.8.0 | Seven complete groups pass; palette/premultiplication nonpasses also affect codec controls. |
+| PDFium 156.0.8076.0 / pypdfium2 5.14.0 | Four complete header/identity-registration groups pass; opacity nonpasses also affect controls. |
+| Poppler 24.02.0 / PyGObject 3.48.2 | RGB controls fail, so the subjects do not establish layout-specific negative results. |
+| Quartz macOS 26.6.2 build 25G83 | Flattened JPX-brand controls fail; layout-specific negatives remain unadjudicated. |
+
+Saved pixels confirm that PDF.js/MuPDF render the two failing palette-header
+subjects as raw-index grayscale `(0,0,0)` through `(3,3,3)` while their flattened
+controls apply the palette. T.801 M.9.2.7/.8 and M.11.6 still make that metadata
+applicable. The independently authored expectations remain unchanged. The five
+malformed vectors and one unadjudicated chroma-key vector are outside this
+render diagnostic. Family comparison cells remain unprobed.
+
+| Artifact | ID | ZIP SHA-256 | Report SHA-256 |
+| --- | --- | --- | --- |
+| Ubuntu report | 12685997189 | `760877ec515a37b35c7147949e67a4ef5f183d593f533c4a4f1bca51aedcbb80` | `0203a6cdac75c3315e81898e3615bcee1ac61fba5f1ec7d02920cb34f3151a9f` |
+| macOS report | 12686036998 | `0b857196bcf57bfad2b80977f88ea6286e847c51818c99cbd5717d79867001e0` | `39eef77bee10408571784844499d1b5414c33cf39889fd6a72c81af3df5e5d7e` |
+| Ubuntu pixels | 12686187159 | `d7242931e0a8d42129adba6c8b4c83364c82c477218c9ceca7f6d092d04e7118` | — |
+| macOS pixels | 12686362765 | `3302cb27d29e81df555e24ee109d913d1dc178c46ab69250c92f4fc4d13876d7` | — |
+
+The measured Pagura binary SHA-256 is
+`07ea943d75a6f5dd35a40cb421ce884cc4e1460883e64d6df3456291ec9fe0ab`.
+Platform reports retain the complete engine/build/adapter identities and
+other-platform `not-run` rows; Linux failed on Pagura's expected missing cases,
+so combined-report jobs were skipped.
+
+The implementation keeps one box parser and one retained `Header`. It resolves
+first-image defaults, codestream fields and layer fields before checking their
+completeness, preserving ordinary JP2 error order. Explicit locations prevent
+duplicate first-image ownership; empty inherited headers differ from missing
+required fields. The selected layer accepts identity registration against
+codestream zero. Later-image headers remain bounded, irrelevant metadata when
+they are not dependencies of that layer.
+
+Opacity types 0/1 become the existing channel definitions after the palette's
+final channel count is known. The same `ChannelsUse` and PDF Indexed/SMaskInData
+paths preserve raw samples, alpha precision and premultiplication. Four final
+channels require exactly 24 retained bytes and five work units (one box plus
+four initialized definitions); one-short controls refuse before allocation.
+Identity registration reads ten bytes, with a nine-unit refusal. No extra
+sample pass, decoded plane, colour engine or external-data provider is added.
+
+All 54 diagnostic records retain their exact files/oracles. Two further paired
+groups cover dimensions supplied by `jpch` and unrelated later-image overrides.
+The area now has 56 render PDFs and six separate vectors; the full manifest
+has 388 observations, including the six historical malformed colour groups
+qualified above. Public raw-sample tests, native/WASI/browser-shim checks and
+reference conformance use the existing paths. Hosted acceptance of this new
+implementation is pending.
+
+The JPX requirement preserves the T.801 M.11.7.6/Table M.34 field-presence
+contradiction (and the repeated Otyp=0/undefined PR wording in Table M.33).
+Single-byte opacity types 0/1 are supported; chroma-key is explicitly
+unadjudicated, with no guessed pixel/error oracle. Selected-image fragments,
+cross-references, nonidentity registration and unimplemented required reader
+features remain explicit gaps.

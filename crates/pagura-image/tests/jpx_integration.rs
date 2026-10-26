@@ -45,6 +45,86 @@ fn main_header_markers_and_jpxb_requirements_preserve_public_samples() {
 }
 
 #[test]
+fn first_layer_opacity_preserves_stored_colour_and_final_palette_precision() {
+    for (name, alpha_bits) in [
+        ("opct-straight", 8),
+        ("jplh-cdef", 8),
+        ("opct-ignored", 0),
+        ("opct-straight-palette", 16),
+        ("combined-first-headers", 16),
+        ("opct-premultiplied", 8),
+        ("opct-premultiplied-palette", 16),
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("jpx_layout_probe", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let source = source(&document).unwrap();
+        assert_eq!(source.components(), 3, "{name}");
+        let premultiplied = name.contains("premultiplied");
+        let stored = if premultiplied {
+            [0, 0, 0, 21, 42, 63, 84, 42, 168, 255, 255, 255]
+        } else {
+            [0, 0, 0, 63, 126, 189, 126, 63, 252, 255, 255, 255]
+        };
+        for layout in [
+            pagura_image::Layout::Interleaved,
+            pagura_image::Layout::Native,
+        ] {
+            let decoded = source
+                .decode(
+                    &DecodeRequest::new(pagura_image::Reduce::Full, None, layout),
+                    &document.limits(),
+                    Recovery::Strict,
+                )
+                .unwrap()
+                .image;
+            assert_eq!((decoded.width, decoded.height), (4, 1));
+            for (index, expected) in stored.into_iter().enumerate() {
+                assert_eq!(decoded.samples.get(index), Some(expected), "{name}");
+            }
+            match decoded.mask {
+                MaskKind::None if alpha_bits == 0 => {}
+                MaskKind::Embedded(alpha) => {
+                    assert_eq!(alpha.bits_per_component, alpha_bits, "{name}");
+                    assert_eq!(alpha.premultiplied, premultiplied, "{name}");
+                    let expected = if alpha_bits == 16 {
+                        [0, 21845, 43690, 65535]
+                    } else {
+                        [0, 85, 170, 255]
+                    };
+                    for (index, sample) in expected.into_iter().enumerate() {
+                        assert_eq!(alpha.samples.get(index), Some(sample), "{name}");
+                    }
+                }
+                other => panic!("{name}: {other:?}"),
+            }
+        }
+    }
+}
+
+#[test]
+fn first_layer_malformed_ownership_and_opacity_are_syntax_errors() {
+    for name in [
+        "opct-and-cdef",
+        "opct-location",
+        "opct-reserved",
+        "opct-excess",
+        "first-image-duplicate",
+    ] {
+        let data = pagura_testkit::fixture("jpx_layout_probe", &format!("{name}.jpx"));
+        assert_eq!(
+            pagura_image::jpx::decode(&data, &Limits::default())
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax,
+            "{name}"
+        );
+    }
+}
+
+#[test]
 fn cielab_metadata_preserves_post_palette_precision_and_raw_samples() {
     for (name, bits, first) in [
         ("lab-default-8", [8; 3], [127, 128, 96]),
