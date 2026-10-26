@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "6b7754ed48def8b5d7d2fdee8c541a9eb323b39b",
+  "audited_revision": "3b8c884aa22ac35b3e3aec0d2ef0028c3024a311",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -12,7 +12,7 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "corpus/manifests/annotation_display.json": "fb7f04d9cdda8d4d7f683103112606237a2649b7cf6aa9dc374f37620d6d752e",
+    "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/caption_annotations.json": "f8b2f53a7dae3548db53813d21d423659d292507c60070456d573551ee7690e9",
     "corpus/manifests/caret_annotations.json": "388dd60ceba28ffde3d51d456b446bbe6c57f96b420d3cb74dff7f035cf95a3f",
     "corpus/manifests/circle_annotations.json": "0b333e347129ad536339916c86de9465b0bfc279a6a8226799b1dfa723e35ee7",
@@ -266,7 +266,7 @@
     "references/requirements/write.json": "4b4471e84dc53c6849058ee5fea0401b90e21c32d916b8cccda6188315279be7",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/editing_host_test.mjs": "22571ef2e3c3c3209123c78c84dbacbb416dddba1edd9c8950ffb5630541a933",
-    "tools/fixturegen/annotation_display.py": "75b50bcce48a7d34cd303994a1570b664f03fe64896f6b783d7743e56aeed81e",
+    "tools/fixturegen/annotation_display.py": "c5390a17f364e5e60e9bf0c4b78fd1c25ecc652557db6167c2ff37e0824ec0d0",
     "tools/fixturegen/caption_annotations.py": "218731bda9d174f372b6e8983bcec0c7b2c89dafe74f760c08824f2ced7319ea",
     "tools/fixturegen/caret_annotations.py": "1f09d1b11af910a1cf0a5ba21e25fad5eb153fd1b1a9f67608ade3ebdb542687",
     "tools/fixturegen/circle_annotations.py": "4ea27044fa8030a8323ac01a057b7943b1969ac14e93269f30666e1bbef5049d",
