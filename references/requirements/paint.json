@@ -725,7 +725,19 @@
         "paint_jpx_integration/lab-alpha-1",
         "paint_jpx_integration/lab-alpha-2",
         "paint_jpx_integration/premultiplied-inverted-decode",
-        "paint_jpx_integration/signed-icc-sample-boundary"
+        "paint_jpx_integration/signed-icc-sample-boundary",
+        "paint_jpx_integration/signed-trc-gray-8",
+        "paint_jpx_integration/signed-trc-gray-8-unsigned-control",
+        "paint_jpx_integration/signed-trc-gray-8-rgb-control",
+        "paint_jpx_integration/signed-trc-rgb-8",
+        "paint_jpx_integration/signed-trc-rgb-8-unsigned-control",
+        "paint_jpx_integration/signed-trc-rgb-8-rgb-control",
+        "paint_jpx_integration/signed-trc-gray-16",
+        "paint_jpx_integration/signed-trc-gray-16-unsigned-control",
+        "paint_jpx_integration/signed-trc-gray-16-rgb-control",
+        "paint_jpx_integration/signed-trc-rgb-16",
+        "paint_jpx_integration/signed-trc-rgb-16-unsigned-control",
+        "paint_jpx_integration/signed-trc-rgb-16-rgb-control"
       ],
       "review": [
         {
@@ -742,9 +754,14 @@
           "locator": "T.800 (06/2019) I.5.3.6, Table I.16, equation I-5; ISO 32000-2 EC3 Table 87 SMaskInData and 8.9.5.2; ICC.1:2010 6.3.4",
           "rule": "Equation I-5 associates the stored sample, so recover the original sample before the Decode linear mapping or ICC Lab input range mapping. Explicit PDF Indexed first selects the preblended base colour. A zero-opacity sample contributes no colour.",
           "verdict": "Independent order-sensitive controls retain their authored expectations: stored gray 64 with alpha 128 maps through Decode [1 0] to gray 1/2; stored Lab components 64 with alpha 128 map to L=50, a=-0.5, b=-0.5. Both product and independent reference must meet the fixed pixel oracle; changing both implementations cannot redefine it."
+        },
+        {
+          "locator": "T.800 (06/2019) I.5.3.3 and Table I.9; ICC.1:2010 input/display Gray and RGB matrix/TRC profile models",
+          "rule": "For the restricted XYZ matrix/TRC subset, map the original signed integer using the full component-precision denominator and clip negative inputs to the TRC input limit. Do not add an unsigned colour offset or normalize to the positive signed maximum.",
+          "verdict": "Independently authored native-size Gray/RGB controls at 8 and 16 bits each include a clipped unsigned JPX control with the identical ICC profile and a plain RGB control. Pinned-baseline execution pending; no broader signed profile policy is inferred."
         }
       ],
-      "gaps": "Remaining full JPX Part 2 colour models and decoder extensions are separate R03 work. Signed ICC samples have no standardized ICC interpretation. Competitive observations remain unadjudicated."
+      "gaps": "General signed ICC/profile combinations remain undefined by ICC. T.800 Table I.9 separately permits clipping negative inputs to restricted XYZ Gray/RGB matrix/TRC profiles; independent signed/unsigned/RGB controls probe that valid but discouraged subset. General Part 2 colour models and decoder extensions remain R03; competitive observations require individual adjudication."
     },
     {
       "id": "paint-jpx-sycc",

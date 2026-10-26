@@ -236,9 +236,46 @@ def inline_resources():
                [((2, 2, 1, 1), (0, 0, 0)), ((3, 2, 1, 1), (255, 255, 255))], requirement=INLINE)
 
 
+def signed_trc_cases():
+    """T.800 I.5.3.3/I.9 restricted-profile negative-input clipping controls.
+
+    Builders store signed source integers with an unsigned storage bias, while
+    the colour formula uses the original signed value and full bit precision.
+    These cases deliberately distinguish clipping from adding a colour offset
+    or normalizing by the positive signed maximum. Unsigned JPX controls use
+    the same profile, while ordinary RGB isolates final display sampling.
+    """
+    from dataclasses import replace
+    unit = colour.icc_curve('identity', ())
+    for bits in (8, 16):
+        bias, maximum = 1 << (bits - 1), (1 << bits) - 1
+        values = [0, bias // 2, bias - 1, bias, bias + bias // 2, maximum]
+        for components in (1, 3):
+            profile = colour.icc_profile(components, curve=unit)
+            planes = [values] if components == 1 else [values, values[::-1], [bias] * len(values)]
+            pixels = []
+            for codes in zip(*planes):
+                mapped = tuple(srgb(F(255 * max(0, code - bias), maximum)) for code in codes)
+                pixels.append(mapped * 3 if components == 1 else mapped)
+            name = f'signed-trc-{"gray" if components == 1 else "rgb"}-{bits}'
+            options = {'matrix': (6, 0, 0, 1, 2, 2), 'colors': pixels, 'tolerance': 1, 'requirement': ICC}
+            yield image_case(name, encoded(planes, profile, bits=bits, signed=True),
+                             b'/Filter /JPXDecode', [], 6, 1, **options)
+            unsigned = image_case(name + '-unsigned-control',
+                                  encoded([[max(0, code - bias) for code in plane] for plane in planes], profile, bits=bits),
+                                  b'/Filter /JPXDecode', [], 6, 1, **options)
+            yield replace(unsigned, description=f'Unsigned JPX ICC control for {AREA}/{name}',
+                          extra={**unsigned.extra, 'control_of': f'{AREA}/{name}'})
+            control = image_case(name + '-rgb-control', bytes(channel for pixel in pixels for channel in pixel),
+                                 b'/ColorSpace /DeviceRGB /BitsPerComponent 8', [], 6, 1, **options)
+            yield replace(control, description=f'Uncompressed RGB control for {AREA}/{name}',
+                          extra={**control.extra, 'control_of': f'{AREA}/{name}'})
+
+
 def cases():
     yield from profile_choices()
     yield from lab_cases()
     yield from indexed_palettes()
     yield from interactions()
     yield from inline_resources()
+    yield from signed_trc_cases()

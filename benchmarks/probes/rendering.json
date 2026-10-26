@@ -2653,6 +2653,162 @@
         "rgb_sha256": "adb705155477b8ecd9acc4e2fae97985986bc7c4de040635953b352574863fb6",
         "tolerance": 0
       }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-gray-8",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-gray-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9400a4040ce0b878342305759cdebe51375c8d4e15bbd91663b8e13f5431a66e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-gray-8-unsigned-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-gray-8-unsigned-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9400a4040ce0b878342305759cdebe51375c8d4e15bbd91663b8e13f5431a66e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-gray-8-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-gray-8-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9400a4040ce0b878342305759cdebe51375c8d4e15bbd91663b8e13f5431a66e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-rgb-8",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-rgb-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5d471d99e5d8d0dabb91a2ae272af8d8e779ec8a7e0693ae4d0e4b2e0c77a0b7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-rgb-8-unsigned-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-rgb-8-unsigned-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5d471d99e5d8d0dabb91a2ae272af8d8e779ec8a7e0693ae4d0e4b2e0c77a0b7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-rgb-8-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-rgb-8-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5d471d99e5d8d0dabb91a2ae272af8d8e779ec8a7e0693ae4d0e4b2e0c77a0b7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-gray-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-gray-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8a105f61372729bf2b41aea1d8e3c165d8549dd68556060a4293f02e37a31dbc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-gray-16-unsigned-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-gray-16-unsigned-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8a105f61372729bf2b41aea1d8e3c165d8549dd68556060a4293f02e37a31dbc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-gray-16-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-gray-16-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8a105f61372729bf2b41aea1d8e3c165d8549dd68556060a4293f02e37a31dbc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-rgb-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-rgb-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b088ca33cf140ff3b35e5cfed04b44999486046483421eb86cb9e0215cb78773",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-rgb-16-unsigned-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-rgb-16-unsigned-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b088ca33cf140ff3b35e5cfed04b44999486046483421eb86cb9e0215cb78773",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx_integration.signed-trc-rgb-16-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/signed-trc-rgb-16-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b088ca33cf140ff3b35e5cfed04b44999486046483421eb86cb9e0215cb78773",
+        "tolerance": 1
+      }
     }
   ]
 }

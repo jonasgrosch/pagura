@@ -868,6 +868,254 @@
       "width": 32,
       "height": 32,
       "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-gray-8",
+      "kind": "pdf",
+      "description": "signed trc gray 8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-gray-8.pdf",
+      "sha256": "a3e201e10f448942440575a8051b95c0bdd408251b9823a29a096a11a58e2c90",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-gray-8.ppm",
+      "oracle_sha256": "95121b0a2f528c1241568e8775e18f684405e1d0a4aead41c0e64aadb457c64e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-gray-8-unsigned-control",
+      "kind": "pdf",
+      "description": "Unsigned JPX ICC control for paint_jpx_integration/signed-trc-gray-8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-gray-8-unsigned-control.pdf",
+      "sha256": "65a3a51816239b161e6136cb2578d663479fef7ab50533593f3a913799f3217f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-gray-8-unsigned-control.ppm",
+      "oracle_sha256": "95121b0a2f528c1241568e8775e18f684405e1d0a4aead41c0e64aadb457c64e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-gray-8"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-gray-8-rgb-control",
+      "kind": "pdf",
+      "description": "Uncompressed RGB control for paint_jpx_integration/signed-trc-gray-8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-gray-8-rgb-control.pdf",
+      "sha256": "edb08ae6abc4a1edcfc8de83012403d488a98b33bd72fd20f58d9fd192d8b267",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-gray-8-rgb-control.ppm",
+      "oracle_sha256": "95121b0a2f528c1241568e8775e18f684405e1d0a4aead41c0e64aadb457c64e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-gray-8"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-rgb-8",
+      "kind": "pdf",
+      "description": "signed trc rgb 8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-rgb-8.pdf",
+      "sha256": "6b4a72f97ae8fb58fdddc3e0822ed2c5f789286f8fee010f9cb124f7868f9fe9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-rgb-8.ppm",
+      "oracle_sha256": "8a0150ab70f9996fe0b44c796056544932a95008fac4295a05ca82596d1e8538",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-rgb-8-unsigned-control",
+      "kind": "pdf",
+      "description": "Unsigned JPX ICC control for paint_jpx_integration/signed-trc-rgb-8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-rgb-8-unsigned-control.pdf",
+      "sha256": "bd6e51ab01d8685183b002559c93f4cfe45c4ce261e0f20314f697a7d7b083b6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-rgb-8-unsigned-control.ppm",
+      "oracle_sha256": "8a0150ab70f9996fe0b44c796056544932a95008fac4295a05ca82596d1e8538",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-rgb-8"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-rgb-8-rgb-control",
+      "kind": "pdf",
+      "description": "Uncompressed RGB control for paint_jpx_integration/signed-trc-rgb-8",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-rgb-8-rgb-control.pdf",
+      "sha256": "19230d0896999ee2e4cb04e5a9585ac419e7becc39a8754a3f277b5842214ff5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-rgb-8-rgb-control.ppm",
+      "oracle_sha256": "8a0150ab70f9996fe0b44c796056544932a95008fac4295a05ca82596d1e8538",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-rgb-8"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-gray-16",
+      "kind": "pdf",
+      "description": "signed trc gray 16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-gray-16.pdf",
+      "sha256": "14a09ddb079ef60bbf3b1409ff183761a9cb5b5795de76f64480e58b73a43398",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-gray-16.ppm",
+      "oracle_sha256": "dc700b7a96ab7deb6511d55e617e2dc816dabbef98666bdd97cb63c1343f67c0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-gray-16-unsigned-control",
+      "kind": "pdf",
+      "description": "Unsigned JPX ICC control for paint_jpx_integration/signed-trc-gray-16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-gray-16-unsigned-control.pdf",
+      "sha256": "bae7c12ec230bffcaf96ad4d3f852327f1fcd504323d8cdaf8ad6c61d0d3c8b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-gray-16-unsigned-control.ppm",
+      "oracle_sha256": "dc700b7a96ab7deb6511d55e617e2dc816dabbef98666bdd97cb63c1343f67c0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-gray-16"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-gray-16-rgb-control",
+      "kind": "pdf",
+      "description": "Uncompressed RGB control for paint_jpx_integration/signed-trc-gray-16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-gray-16-rgb-control.pdf",
+      "sha256": "ad64929d803212b22c692b841a0a377f32f4745e07deebb4781b3feb70d4a9ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-gray-16-rgb-control.ppm",
+      "oracle_sha256": "dc700b7a96ab7deb6511d55e617e2dc816dabbef98666bdd97cb63c1343f67c0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-gray-16"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-rgb-16",
+      "kind": "pdf",
+      "description": "signed trc rgb 16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-rgb-16.pdf",
+      "sha256": "e5bf08d3e71bfb6be0a18e857581e383618e812d1796e85948796bd5795ab5d3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-rgb-16.ppm",
+      "oracle_sha256": "360ea18b8b565c4666390adaad0d3ac2f0332c864e25006652d258b3756456f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-rgb-16-unsigned-control",
+      "kind": "pdf",
+      "description": "Unsigned JPX ICC control for paint_jpx_integration/signed-trc-rgb-16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-rgb-16-unsigned-control.pdf",
+      "sha256": "bebe73adee9f72e7f7869e97775c35b8e1ca181f0d017c3b27170ef5c7542202",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-rgb-16-unsigned-control.ppm",
+      "oracle_sha256": "360ea18b8b565c4666390adaad0d3ac2f0332c864e25006652d258b3756456f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-rgb-16"
+    },
+    {
+      "id": "paint_jpx_integration/signed-trc-rgb-16-rgb-control",
+      "kind": "pdf",
+      "description": "Uncompressed RGB control for paint_jpx_integration/signed-trc-rgb-16",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/signed-trc-rgb-16-rgb-control.pdf",
+      "sha256": "459de95810739852335d9f503c6d15b2fe5027218ccbd806730e5b54ea7e1e46",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/signed-trc-rgb-16-rgb-control.ppm",
+      "oracle_sha256": "360ea18b8b565c4666390adaad0d3ac2f0332c864e25006652d258b3756456f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_of": "paint_jpx_integration/signed-trc-rgb-16"
     }
   ]
 }

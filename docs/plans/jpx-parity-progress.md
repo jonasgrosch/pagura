@@ -47,7 +47,18 @@ only source/format/lint checks and small independent fixture authoring ran local
 under ADR 0031.
 
 Remaining boundaries: source precision above sixteen bits and full Part 2 decoder
-features are R03; signed sYCC is invalid under Table I.10; signed ICC samples have
-no standardized interpretation. Additional baseline colour models and general
+features are R03; signed sYCC is invalid under Table I.10; general signed ICC sample/profile combinations are not defined by ICC.
+T.800 Table I.9 additionally permits clipping negative inputs to a restricted
+matrix/TRC profile; that narrower policy is being probed independently rather
+than classified as invalid. Additional baseline colour models and general
 JPX compositing layers are not claimed by this integration bundle. A passed
 fixture is not competitive family parity, and no performance claim is made.
+
+The signed restricted-profile increment prepares native-size Gray/RGB controls
+at eight and sixteen bits. Its oracle subtracts the authoring/storage bias,
+uses the full precision denominator from I.5.3.3, and clips negative device
+inputs before the TRC. Every signed case has both an unsigned JPX control with
+the same ICC profile and an ordinary RGB control. The former isolates signed
+sample interpretation even when the latter exposes colour or sampling policy.
+These additional controls have only been authored; pinned-baseline observations
+and any resulting implementation remain pending.

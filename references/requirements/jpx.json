@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jpx",
-  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. Only Part 2 extension semantics (T.801), ICC profile conformance (ISO 15076-1/ICC.1) and external colour definitions remain pending primary-text review; their bytes/identifiers are preserved without colour conversion. Coding-pass prefix reconstruction is additionally verified against D.2.1/D.3, E-6-E-8 and H.1, with packet-boundary incomplete final volumes under B.10/B.12.3; no physical missing-byte repair is implied.",
+  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. The standalone decoder preserves colour descriptions without conversion. PDF colour selection additionally reviews T.801 M.11.7.2/Table M.23; forward ICC and sYCC interpretation are reviewed separately under the paint-jpx requirements. General Part 2 codestream, layering and additional colour-model semantics remain separate work. Coding-pass prefix reconstruction is additionally verified against D.2.1/D.3, E-6-E-8 and H.1, with packet-boundary incomplete final volumes under B.10/B.12.3; no physical missing-byte repair is implied.",
   "requirements": [
     {
       "id": "jpx-part1",
@@ -322,9 +322,12 @@
         "jpx/additional-codestream",
         "jpx/nested-zero-box",
         "jpx/resolution-empty",
-        "jpx/resolution-repeat"
+        "jpx/resolution-repeat",
+        "paint_jpx_integration/precedence-signed",
+        "paint_jpx_integration/approximation-quality",
+        "paint_jpx_integration/stable-equal-priority"
       ],
-      "gaps": "Full JPX baseline and method-3/full-ICC extension semantics require T.801. Restricted ICC profiles are retained, not validated or applied. Per-colour, unspecified and multiple-description cdef layouts return Unsupported.",
+      "gaps": "General JPX Part 2 codestream/layering and additional colour models remain open. Standalone JP2 uses the first colr; PDF retains ranked candidates for the existing ICC parser and colour resolver. Per-colour, unspecified and multiple-description cdef layouts remain explicit Unsupported boundaries.",
       "pdf_review": {
         "rule": "PDF requires full JPX packaging and baseline features, excludes colour 19, permits CMYK 12, and defers dictionary colour and opacity use to the stated image entries.",
         "verdict": "PDF rule checked; corrected / partial for the supported Part 1 subset; see codec_review and gaps",
@@ -346,10 +349,15 @@
         "implementation_expectations": "Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override."
       },
       "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.801 / ISO/IEC 15444-2",
-        "depends_on": "Full JPX baseline set, non-JP2 extension boxes, full ICC method 3 and extended colour negotiation; Part 1 cdef including premultiplied opacity is verified separately against T.800 I.5.3.6.",
-        "evidence": "JP2-compatible boxes and preserved metadata are exercised by generated vectors; no complete JPX baseline or colour-managed output claim."
+        "status": "reviewed selection subset; broader extensions remain open",
+        "standard": "ITU-T T.801 (08/2023) / ISO/IEC 15444-2",
+        "clauses": [
+          "M.3.1",
+          "M.11.7.2",
+          "Table M.23"
+        ],
+        "depends_on": "General JPX Part 2 codestream and layering features remain outside this integration. Full-profile transforms use the separately reviewed ICC parser.",
+        "evidence": "Independent colour precedence, approximation, stable-order and unavailable-profile controls in paint_jpx_integration; see paint-jpx-icc for conversion and signed-profile boundaries."
       }
     },
     {
@@ -461,7 +469,7 @@
         "verdict": "PDF rule checked; verified / caller integration for the supported Part 1 subset; see codec_review and gaps",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9 lines 3561-3702; 8.9.5 Table 87 lines 15635-15772",
         "implementation_expectations": "The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged.",
-        "documented_choice": "Raw codestream support is a standalone codec convenience; the PDF facade enforces full-file and dictionary rules. ICC payloads are preserved without profile conformance claims. ignore_opacity bypasses all cdef associations and retains source channel order; palette mapping and the inverse coding transform remain active.",
+        "documented_choice": "Standalone ignore_opacity retains source channel order and bypasses cdef interpretation. PDF SMaskInData 0 instead removes opacity and retains ordinary colour associations from the same parsed definitions; explicit PDF Indexed preserves its raw index and independently mapped opacity. Raw codestreams remain a standalone codec convenience and are rejected by the PDF facade.",
         "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
       "tests": [
@@ -469,7 +477,7 @@
         "jpx/pdf-colour-12",
         "jpx/pdf-depth-17"
       ],
-      "gaps": "The image facade uses decode_with_options with origin/kind metadata. PDF dictionary semantics and recovery diagnostics remain caller responsibilities; T.801-only baseline details remain pending.",
+      "gaps": "General JPX Part 2 codestream and layering remain R03. The image facade enforces PDF dictionaries and applies palette/channel selection from the same bounded metadata parser; the interpreter selects forward colour transforms.",
       "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.2, G.4, I.5.3.6, Table I.16, Table I.17",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
@@ -487,10 +495,14 @@
         "implementation_expectations": "The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged."
       },
       "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.801 / ISO/IEC 15444-2",
-        "depends_on": "Full JPX baseline set, non-JP2 extension boxes, full ICC method 3 and extended colour negotiation; Part 1 cdef including premultiplied opacity is verified separately against T.800 I.5.3.6.",
-        "evidence": "JP2-compatible boxes and preserved metadata are exercised by generated vectors; no complete JPX baseline or colour-managed output claim."
+        "status": "reviewed PDF selection subset; full Part 2 remains open",
+        "standard": "ITU-T T.801 (08/2023) / ISO/IEC 15444-2",
+        "clauses": [
+          "M.11.7.2",
+          "Table M.23"
+        ],
+        "depends_on": "General Part 2 codestream/layering and additional colour definitions remain separate.",
+        "evidence": "Public image-source tests and independent colour/palette/mask/inline controls; full functional verification remains bound to hosted source revisions."
       }
     },
     {
