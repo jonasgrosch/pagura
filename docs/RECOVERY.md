@@ -129,6 +129,10 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `file.header-offset`, `file.header-format`, `catalog.type-missing`:
   structure recovered by scanning; the last complete physical definition of
   an object wins.
+- `object.stray-delimiter` (7.3.7, 7.3.10): unmatched `>>` or `]` between a
+  complete indirect value and its `endobj` are ignored. A closing delimiter
+  cannot begin a value, so nothing that could hold content is skipped; any
+  other token before `endobj` remains an error.
 - `security.permissions-unsigned`, `security.literal-hash`,
   `security.hash-padding`: malformed encryption entries recovered; normal
   authentication is still required.
