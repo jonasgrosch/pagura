@@ -64,12 +64,12 @@ impl Planner<'_> {
         let group = scene
             .group(mask.group)
             .ok_or(Error::invalid_argument("scene group out of range"))?;
-        let format = self
+        let (format, upright) = self
             .storage
             .masks
             .get(&(id, scope.layout.process))
             .copied()
-            .unwrap_or(Format::F64);
+            .unwrap_or((Format::F64, 0.0));
         let layout = Layout {
             process: group.attributes.space.unwrap_or(scope.layout.process),
             spots: 0,
@@ -112,6 +112,7 @@ impl Planner<'_> {
             masked: true,
             paint: None,
             depth: scope.depth + 1,
+            upright,
         };
         budget.bytes.reserve_capacity(&mut self.open, 1)?;
         self.open.push(key);

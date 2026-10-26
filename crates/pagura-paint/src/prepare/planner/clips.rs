@@ -486,6 +486,7 @@ mod tests {
             masked: false,
             paint: None,
             depth: 0,
+            upright: 0.0,
         };
         test(planner, scope, budget);
     }

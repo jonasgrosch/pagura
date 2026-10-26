@@ -94,6 +94,8 @@ impl Planner<'_> {
                         masked: scope.masked,
                         paint: override_paint.clone().or_else(|| scope.paint.clone()),
                         depth: scope.depth + 1,
+                        // Cells are F64, where images sample exactly.
+                        upright: 0.0,
                     };
                     self.children(&inner, &cell.children, budget)?;
                 }

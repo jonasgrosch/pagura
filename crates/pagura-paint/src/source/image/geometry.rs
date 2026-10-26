@@ -257,18 +257,23 @@ impl Geometry {
         }
     }
 
-    /// The same placement upright, when its cross terms are noise: each
-    /// dropped, with its contribution at the centre of the image's device
-    /// extent kept in the offsets. That moves no sample position a pixel of
-    /// the image reaches by more than [`NEAR_UPRIGHT`] of a sample, nor of
-    /// the pixel's footprint along that axis, so no area average or
-    /// bilinear value moves by more than that part of the full range: a
-    /// sixteenth of a level, within ADR 0004's one level of the exact
-    /// result. The upright placement samples through separable plans.
-    /// Nearest samples keep the exact placement, since a move of any size
-    /// can select another sample. `None` where the placement is upright
-    /// already or not near it.
-    pub(super) fn near_upright(&self) -> Option<Self> {
+    /// The same placement upright, when its cross terms are noise, and the
+    /// part of the full range by which that may move any texel lane's
+    /// value. Each cross term is dropped, with its contribution at the
+    /// centre of the image's device extent kept in the offsets, so a
+    /// sample position a pixel of the image reaches moves by at most
+    /// `across` samples along the rows and `down` along the columns. An
+    /// area average over a footprint `|a|` samples wide then moves by at
+    /// most `across / |a|` of its lane's range, and a bilinear value by at
+    /// most `across` of it; `across / min(|a|, 1)` bounds both, and the
+    /// part is that plus the same for `down`. Every lane's range is within
+    /// the full range: converted colour, alpha and shape. Placements whose
+    /// terms move positions by more than [`NEAR_UPRIGHT`] of a sample or
+    /// footprint, or that are sampled nearest (a move of any size can
+    /// select another sample), keep the exact placement. Whether a part is
+    /// admissible is the target buffer's storage decision (ADR 0004 §3).
+    /// `None` where the placement is upright already or not near it.
+    pub(super) fn near_upright(&self) -> Option<(Self, f64)> {
         let t = self.inverse;
         if t.b == 0.0 && t.c == 0.0 || self.mode == Mode::Nearest {
             return None;
@@ -297,9 +302,8 @@ impl Geometry {
         // device column.
         let across = t.c.abs() * reach.y;
         let down = t.b.abs() * reach.x;
-        let near = across <= NEAR_UPRIGHT * t.a.abs().min(1.0)
-            && down <= NEAR_UPRIGHT * t.d.abs().min(1.0);
-        if !near {
+        let (along, over) = (across / t.a.abs().min(1.0), down / t.d.abs().min(1.0));
+        if !(along <= NEAR_UPRIGHT && over <= NEAR_UPRIGHT) {
             return None;
         }
         let inverse = Transform::new(
@@ -311,10 +315,13 @@ impl Geometry {
             t.f + t.b * centre.x,
         );
         let mode = mode(inverse, self.interpolate);
-        (mode == self.mode).then(|| Self {
-            inverse,
-            mode,
-            ..self.clone()
+        (mode == self.mode).then(|| {
+            let upright = Self {
+                inverse,
+                mode,
+                ..self.clone()
+            };
+            (upright, along + over)
         })
     }
 

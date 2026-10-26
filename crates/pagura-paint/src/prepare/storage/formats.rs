@@ -26,16 +26,28 @@ const F32_LIMIT: f64 = 0.5 - 1.0 / 4096.0;
 /// The room an N16 buffer leaves for dynamic stores, in words.
 const N16_ROOM: f64 = 0.5 - 1.0 / 68_719_476_736.0;
 
+/// The levels a store injects per part of the full range by which
+/// near-upright sampling moves its colour and alpha (ADR 0004 §3): the
+/// composite `x' = (1 - α) x + C` moves by `255 r` for its colour and by at
+/// most `256 r` for its alpha over a stored value of at most 256 levels.
+const UPRIGHT: f64 = 511.0;
+
+/// A buffer's resolution: its format, its bound in levels and whether
+/// that bound charges its near-upright image sampling.
+pub(super) type Resolved = Option<(Format, f64, bool)>;
+
 /// The most dynamic stores whose footprints N16 admission compares.
 pub(super) const FOOTPRINTS: usize = 4096;
 
 /// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
 /// any pixel, each injecting less than the room an N16 pixel leaves
-/// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
-/// does not depend on the region. Children and masks are resolved first.
+/// (ADR 0004 §6), near-upright sampling included where `upright`.
+/// Footprints are page-level device bounds, so the answer does not depend
+/// on the region. Children and masks are resolved first.
 pub(super) fn n16_admits(
     buffer: &Buffer,
-    resolved: &[Option<(Format, f64)>],
+    resolved: &[Resolved],
+    upright: bool,
     bytes: &mut Meter,
 ) -> Result<bool> {
     if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
@@ -46,14 +58,19 @@ pub(super) fn n16_admits(
             .get(node)
             .copied()
             .flatten()
-            .map_or(f64::INFINITY, |(_, bound)| bound)
+            .map_or(f64::INFINITY, |(_, bound, _)| bound)
     };
     let fits = buffer.dynamics.iter().all(|store| {
         let child = store
             .child
             .map_or(0.0, |c| bound(c) * (1.0 + 256.0 / 255.0) + F64_STORE);
         let mask = store.mask.map_or(0.0, |m| 256.0 / 255.0 * bound(m));
-        257.0 * (store.eta + child + mask) <= N16_ROOM
+        let near = if upright {
+            UPRIGHT * store.upright
+        } else {
+            0.0
+        };
+        257.0 * (store.eta + near + child + mask) <= N16_ROOM
     });
     if !fits {
         return Ok(false);
@@ -99,16 +116,18 @@ fn disjoint(rects: &mut [DeviceRect], bytes: &mut Meter) -> Result<bool> {
 
 impl Survey<'_> {
     /// Chooses formats from the innermost buffer outwards and records each
-    /// buffer's error bound in levels.
+    /// buffer's error bound in levels. Near-upright image sampling is
+    /// charged where a narrow format admits it, N16 before F32; elsewhere
+    /// the buffer's images sample exactly.
     pub(super) fn resolve(
         &self,
         node: usize,
-        resolved: &mut Vec<Option<(Format, f64)>>,
+        resolved: &mut Vec<Resolved>,
         depth: usize,
         bytes: &mut Meter,
     ) -> Result<(Format, f64)> {
-        if let Some(Some(done)) = resolved.get(node) {
-            return Ok(*done);
+        if let Some(Some((format, bound, _))) = resolved.get(node) {
+            return Ok((*format, *bound));
         }
         if depth > self.inputs.depth.saturating_mul(2) {
             return Err(Error::limit("compositing depth exceeded"));
@@ -124,22 +143,31 @@ impl Survey<'_> {
             injected += 256.0 / 255.0 * bound * count as f64;
         }
         let stores = buffer.stores as f64;
-        let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = !buffer.forced && buffer.page && n16_admits(buffer, resolved, bytes)?;
+        let wide = (stores * F64_STORE + MARGIN + injected, Format::F64, false);
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
-        let (bound, format) = if buffer.forced {
-            wide
-        } else if n16 {
-            // The page's bound is never used as a child's.
-            (0.5, Format::N16)
-        } else if f32_bound <= F32_LIMIT {
-            (f32_bound + MARGIN, Format::F32)
-        } else {
-            wide
-        };
+        let mut choice = wide;
+        if !buffer.forced {
+            let near = UPRIGHT * buffer.upright_sum;
+            for upright in [true, false] {
+                if upright && near == 0.0 {
+                    continue;
+                }
+                let charge = if upright { near } else { 0.0 };
+                if buffer.page && n16_admits(buffer, resolved, upright, bytes)? {
+                    // The page's bound is never used as a child's.
+                    choice = (0.5, Format::N16, upright);
+                    break;
+                }
+                if f32_bound + charge <= F32_LIMIT {
+                    choice = (f32_bound + charge + MARGIN, Format::F32, upright);
+                    break;
+                }
+            }
+        }
+        let (bound, format, upright) = choice;
         if let Some(slot) = resolved.get_mut(node) {
-            *slot = Some((format, bound));
+            *slot = Some((format, bound, upright));
         }
         Ok((format, bound))
     }
@@ -149,7 +177,7 @@ impl Survey<'_> {
     pub(super) fn widen(
         &self,
         root: usize,
-        resolved: &mut [Option<(Format, f64)>],
+        resolved: &mut [Resolved],
         bytes: &mut Meter,
     ) -> Result<()> {
         // 1: visited while narrow, 2: visited while F64.
@@ -160,11 +188,11 @@ impl Survey<'_> {
         bytes.reserve_capacity(&mut pending, 1)?;
         pending.push((root, false));
         while let Some((node, parent_wide)) = pending.pop() {
-            let Some(Some((format, _))) = resolved.get_mut(node) else {
+            let Some(Some((format, _, upright))) = resolved.get_mut(node) else {
                 continue;
             };
             if parent_wide {
-                *format = Format::F64;
+                (*format, *upright) = (Format::F64, false);
             }
             let wide = *format == Format::F64;
             let mark = if wide { 2 } else { 1 };
@@ -240,9 +268,10 @@ mod tests {
             eta: 1.0,
             child: None,
             mask: None,
+            upright: 0.0,
         });
         let mut no_scratch = Meter::new(0, "no proof scratch");
-        assert!(!n16_admits(buffer, &[None], &mut no_scratch).unwrap());
+        assert!(!n16_admits(buffer, &[None], false, &mut no_scratch).unwrap());
         buffer.forced = true;
         buffer.dynamics[0].eta = 0.0;
         let mut resolved = vec![None];

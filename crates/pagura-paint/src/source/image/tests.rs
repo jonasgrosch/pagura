@@ -47,6 +47,7 @@ fn prepared_with_budget(
         key: None,
         mask: MaskDescription::None,
         alpha_is_shape: false,
+        upright: 0.0,
     };
     let convert = (!stencil).then(|| converter(&space, 3));
     let prepared = Prepared::new(
@@ -114,6 +115,7 @@ fn masks_own_a_plan_only_for_independent_sampling() {
                         matte: None,
                     },
                     alpha_is_shape: false,
+                    upright: 0.0,
                 },
                 (decoded, Some(mask)),
                 (Transform::scale(0.05, 0.1), (0, 20), Orientation::Rows),
@@ -267,14 +269,30 @@ fn case(image: DecodedImage) -> Case {
 /// The new sampler for `case` under `unit_to_device`, into `target`
 /// channels.
 fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
-    let mut sampler = prepared_sampler(case, unit_to_device, target);
+    sampler_admitting(case, unit_to_device, target, 0.0)
+}
+
+/// [`sampler`] in a buffer whose storage admits near-upright sampling that
+/// moves values by `upright` of the full range.
+fn sampler_admitting(
+    case: &Case,
+    unit_to_device: Transform,
+    target: usize,
+    upright: f64,
+) -> ImageSampler {
+    let mut sampler = prepared_sampler(case, unit_to_device, target, upright);
     // A page with room to spare keeps the optional curve values.
     sampler.admit_curves(&mut meter());
     sampler
 }
 
-/// [`sampler`] before the optional curve values are admitted.
-fn prepared_sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
+/// [`sampler_admitting`] before the optional curve values are admitted.
+fn prepared_sampler(
+    case: &Case,
+    unit_to_device: Transform,
+    target: usize,
+    upright: f64,
+) -> ImageSampler {
     let inverse = unit_to_device.inverse().unwrap();
     let window = window(unit_to_device);
     let mask = case.mask.as_ref().map(|(mask, decode, kind)| {
@@ -299,6 +317,7 @@ fn prepared_sampler(case: &Case, unit_to_device: Transform, target: usize) -> Im
         key: case.key.as_deref(),
         mask: mask.as_ref().map_or(MaskDescription::None, |(_, d)| *d),
         alpha_is_shape: case.alpha_is_shape,
+        upright,
     };
     let convert = case
         .space
@@ -852,7 +871,8 @@ fn minified_masks_with_their_own_interpolate_average_with_the_image() {
             let (x0, y0, x1, y1) = window(unit_to_device);
             let orientation = Orientation::of(unit_to_device);
             let inverse = unit_to_device.inverse().unwrap();
-            let geometry = super::placement(&masked.image.image, inverse, orientation).unwrap();
+            let geometry =
+                super::placement(&masked.image.image, inverse, orientation, 0.0).unwrap();
             let plan = super::Sampling::new(&geometry, (x0, x1), &mut meter()).unwrap();
             masked.independent = Some((geometry, plan));
             let len = usize::try_from(x1 - x0).unwrap();
@@ -1522,8 +1542,8 @@ fn curve_values_are_declined_without_room() {
     let room = super::texels::Curved::bytes_of(3);
     let mut kept_any = false;
     for unit_to_device in placements(37, 29) {
-        let mut kept = prepared_sampler(&photo, unit_to_device, 3);
-        let mut declined = prepared_sampler(&photo, unit_to_device, 3);
+        let mut kept = prepared_sampler(&photo, unit_to_device, 3, 0.0);
+        let mut declined = prepared_sampler(&photo, unit_to_device, 3, 0.0);
         let bytes = declined.bytes();
         let mut short = pagura_core::Meter::new(room - 1, "test");
         declined.admit_curves(&mut short);
@@ -1613,19 +1633,20 @@ fn rounded_texels_keep_the_levels_of_exact_texels() {
 }
 
 /// Placements whose cross terms are float noise sample through upright
-/// plans, every pixel within 2^-12 of its exact value (a sixteenth of a
-/// level): minified area averages and magnified bilinear ones, with skews
-/// of 2^-15 of the image as producers write them. Placements turned more
-/// than that, or sampled nearest, keep their exact plans.
+/// plans where the buffer admits their part of the full range, every texel
+/// lane within that part of its exact value: minified area averages and
+/// magnified bilinear ones, with skews of 2^-15 of the image as producers
+/// write them. A buffer admitting less, placements turned more than that,
+/// and nearest samples keep their exact plans.
 #[test]
-fn near_upright_placements_sample_within_a_sixteenth_of_a_level() {
+fn near_upright_placements_sample_within_their_part_of_the_full_range() {
     let rgb = case(image((23, 17), 3, 8, bytes(23 * 17 * 3, 8, 71)));
     let mut smooth = rgb.clone();
     smooth.image.interpolate = true;
     let (w, h) = (23.0, 17.0);
     let skewed = |a: f64, d: f64, skew: f64| Transform::new(a, skew, skew * 0.5, d, 0.4, 0.3);
     let mut checked = 0;
-    for (case, unit_to_device, upright) in [
+    for (case, unit_to_device, near) in [
         (&rgb, skewed(w / 2.6, h / 3.1, 3.0e-5), true),
         (&rgb, skewed(w / 1.7, -h / 2.2, -6.1e-5), true),
         (&smooth, skewed(3.3 * w, 2.9 * h, 3.0e-5), true),
@@ -1633,36 +1654,44 @@ fn near_upright_placements_sample_within_a_sixteenth_of_a_level() {
         (&rgb, skewed(w / 2.6, h / 3.1, 0.05), false),
         (&rgb, skewed(3.3 * w, 2.9 * h, 3.0e-5), false),
     ] {
-        let sampler = sampler(case, unit_to_device, 3);
-        let prepared = sampler.prepared.as_deref().unwrap();
-        let t = prepared.geometry.inverse();
-        assert_eq!(t.b == 0.0 && t.c == 0.0, upright, "{unit_to_device:?}");
-        let mut storage = scratch(&sampler);
-        let mut oracle = oracle::Oracle::new(case, unit_to_device, 3);
-        let (x0, y0, x1, y1) = window(unit_to_device);
-        let len = usize::try_from(x1 - x0).unwrap();
-        let mut span = SpanColors::default();
-        for y in y0..y1 {
-            sampler.span(Pixels::new(x0, y, len), &mut storage, &mut span);
-            for (i, x) in (x0..x1).enumerate() {
-                let weight = coverage(unit_to_device, (x, y));
-                if weight * 255.0 < 0.5 {
-                    continue;
+        let exact = sampler(case, unit_to_device, 3);
+        let geometry = &exact.prepared.as_deref().unwrap().geometry;
+        let part = geometry.near_upright().map(|(_, part)| part);
+        assert_eq!(part.is_some(), near, "{unit_to_device:?}");
+        let part = part.unwrap_or(0.0);
+        assert!(part <= 2.0 / 4096.0);
+        // Admitting less than the part keeps the exact plan.
+        for (admitted, upright) in [(part * 0.999, false), (part, near)] {
+            let sampler = sampler_admitting(case, unit_to_device, 3, admitted);
+            let t = sampler.prepared.as_deref().unwrap().geometry.inverse();
+            assert_eq!(t.b == 0.0 && t.c == 0.0, upright, "{unit_to_device:?}");
+            let mut storage = scratch(&sampler);
+            let mut oracle = oracle::Oracle::new(case, unit_to_device, 3);
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let mut span = SpanColors::default();
+            let bound = if upright { part } else { 0.0 } + 1e-13;
+            for y in y0..y1 {
+                sampler.span(Pixels::new(x0, y, len), &mut storage, &mut span);
+                for (i, x) in (x0..x1).enumerate() {
+                    let weight = coverage(unit_to_device, (x, y));
+                    if weight * 255.0 < 0.5 {
+                        continue;
+                    }
+                    let expected = oracle.pixel(x, y);
+                    let alpha = span.alpha.get(i).copied().unwrap_or(1.0);
+                    for (c, &color) in span.colors[i * 3..i * 3 + 3]
+                        .iter()
+                        .zip(&expected.color[..3])
+                    {
+                        let (actual, exact) = (c * alpha * weight, color * expected.alpha * weight);
+                        assert!(
+                            (actual - exact).abs() <= bound,
+                            "{unit_to_device:?} pixel ({x}, {y}): {actual} vs {exact}"
+                        );
+                    }
+                    checked += 1;
                 }
-                let expected = oracle.pixel(x, y);
-                let alpha = span.alpha.get(i).copied().unwrap_or(1.0);
-                for (c, &color) in span.colors[i * 3..i * 3 + 3]
-                    .iter()
-                    .zip(&expected.color[..3])
-                {
-                    let (actual, exact) = (c * alpha * weight, color * expected.alpha * weight);
-                    let bound = if upright { 1.0 / 4096.0 } else { 1e-13 };
-                    assert!(
-                        (actual - exact).abs() <= bound,
-                        "{unit_to_device:?} pixel ({x}, {y}): {actual} vs {exact}"
-                    );
-                }
-                checked += 1;
             }
         }
     }

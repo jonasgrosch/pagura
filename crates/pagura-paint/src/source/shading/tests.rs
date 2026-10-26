@@ -182,6 +182,7 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
             x1: u32::MAX,
             y1: u32::MAX,
         },
+        upright: 0.0,
     };
     let Ok(converter) = Converter::new(&parsed.space, target, &composite.conversion) else {
         return;

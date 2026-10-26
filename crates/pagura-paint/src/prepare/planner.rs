@@ -160,6 +160,8 @@ pub(crate) struct Scope {
     pub(crate) paint: Option<(u32, Arc<Paint>)>,
     /// Nesting.
     pub(crate) depth: usize,
+    /// The receiving buffer's [`storage::Decision::upright`].
+    pub(crate) upright: f64,
 }
 
 impl<'s> Planner<'s> {
@@ -285,6 +287,7 @@ impl<'s> Planner<'s> {
             masked: false,
             paint: None,
             depth: 0,
+            upright: self.storage.page_upright,
         };
         self.children(&scope, &root.children, budget)
     }

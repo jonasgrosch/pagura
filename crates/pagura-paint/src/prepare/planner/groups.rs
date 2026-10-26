@@ -55,7 +55,7 @@ impl Planner<'_> {
         let plain = state.alpha == 1.0
             && state.blend == pagura_interpret::BlendMode::Normal
             && state.soft_mask.is_none();
-        let inner = |group: u32, layout: Layout| Scope {
+        let inner = |group: u32, layout: Layout, upright: f64| Scope {
             group,
             transform,
             crop: scope.crop,
@@ -67,9 +67,11 @@ impl Planner<'_> {
             masked: scope.masked,
             paint: scope.paint.clone(),
             depth: scope.depth + 1,
+            upright,
         };
         if decision.flatten {
-            return self.children(&inner(scope.group, scope.layout), &group.children, budget);
+            let flat = inner(scope.group, scope.layout, scope.upright);
+            return self.children(&flat, &group.children, budget);
         }
         self.serial += 1;
         let serial = self.serial;
@@ -96,7 +98,11 @@ impl Planner<'_> {
             },
             budget,
         )?;
-        self.children(&inner(child, layout), &group.children, budget)?;
+        self.children(
+            &inner(child, layout, decision.upright),
+            &group.children,
+            budget,
+        )?;
         let result = GroupResult {
             group: child,
             state: &state,

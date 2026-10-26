@@ -17,6 +17,7 @@ use crate::plan::Layout;
 use crate::prepare::bounds;
 use crate::prepare::index;
 use crate::prepare::overprint::{Keeping, Place};
+use crate::source::ImageSampler;
 use pagura_color::Process;
 use pagura_core::hash::FastMap;
 use pagura_core::{Error, Meter, Result};
@@ -27,7 +28,7 @@ use pagura_interpret::{
 use pagura_raster::{DeviceRect, Transform};
 
 /// What preparation needs to know about one transparency group.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Decision {
     /// Its members composite into the parent directly.
     pub(crate) flatten: bool,
@@ -39,6 +40,10 @@ pub(crate) struct Decision {
     /// Its members knock each other out; false for the opaque-member
     /// identity, which composites as source-over (11.4.6).
     pub(crate) knockout: bool,
+    /// The part of the full range by which near-upright image sampling may
+    /// move the values of its stores, as its format admits (ADR 0004 §3);
+    /// zero where images sample exactly.
+    pub(crate) upright: f64,
 }
 
 /// The decisions for a page.
@@ -46,12 +51,15 @@ pub(crate) struct Decision {
 pub(crate) struct Storage {
     /// The page buffer's format.
     pub(crate) page: Format,
+    /// [`Decision::upright`] of the page buffer.
+    pub(crate) page_upright: f64,
     /// Whether the page's knockout is real (not the opaque-member identity).
     pub(crate) page_knockout: bool,
     /// Transparency groups by group and parent blending space.
     pub(crate) groups: FastMap<(GroupId, Process), Decision>,
-    /// Soft masks by mask and parent blending space.
-    pub(crate) masks: FastMap<(MaskId, Process), Format>,
+    /// Soft masks by mask and parent blending space: the format and
+    /// [`Decision::upright`].
+    pub(crate) masks: FastMap<(MaskId, Process), (Format, f64)>,
     /// Whether the instances of a tiling pattern start transparent (Normal
     /// cell content), by pattern and blending space.
     pub(crate) cells: FastMap<(PatternId, Process), bool>,
@@ -158,7 +166,11 @@ impl Survey<'_> {
                 .get(node)
                 .copied()
                 .flatten()
-                .map_or(Format::F64, |(format, _)| format)
+                .map_or(Format::F64, |(format, _, _)| format)
+        };
+        let upright = |node: usize| match resolved.get(node).copied().flatten() {
+            Some((format, _, true)) if format != Format::F64 => self.buffers[node].upright_max,
+            _ => 0.0,
         };
         let mut groups = FastMap::default();
         bytes.reserve_map_capacity(&mut groups, self.groups.len())?;
@@ -168,13 +180,14 @@ impl Survey<'_> {
                 format: format(entry.buffer),
                 transparent: entry.transparent,
                 knockout: entry.knockout,
+                upright: upright(entry.buffer),
             };
             groups.insert(key, decision);
         }
         let mut masks = FastMap::default();
         bytes.reserve_map_capacity(&mut masks, self.masks.len())?;
         for (&key, &node) in &self.masks {
-            masks.insert(key, format(node));
+            masks.insert(key, (format(node), upright(node)));
         }
         let mut cells = FastMap::default();
         bytes.reserve_map_capacity(&mut cells, self.cells.len())?;
@@ -183,6 +196,7 @@ impl Survey<'_> {
         }
         Ok(Storage {
             page: format(page),
+            page_upright: upright(page),
             page_knockout,
             groups,
             masks,
@@ -234,6 +248,9 @@ struct Dynamic {
     child: Option<usize>,
     /// The soft mask of its opacity.
     mask: Option<usize>,
+    /// The part of the full range by which near-upright sampling may move
+    /// its values ([`ImageSampler::near_upright_part`]).
+    upright: f64,
 }
 
 /// A buffer described by its stores.
@@ -266,6 +283,10 @@ struct Buffer {
     theta: f64,
     /// Opaque constant stores only, apart from the dynamic ones.
     eta: f64,
+    /// The parts of the full range by which near-upright sampling may move
+    /// its stores' values: their sum, and the largest.
+    upright_sum: f64,
+    upright_max: f64,
     /// Child buffers composited into it, with their counts.
     children: Vec<(usize, usize)>,
     /// Masks of its stores, with their counts.
@@ -308,6 +329,8 @@ impl Buffer {
         self.dynamic = self.dynamic.saturating_add(other.dynamic);
         self.theta = self.theta.min(other.theta);
         self.eta += other.eta;
+        self.upright_sum += other.upright_sum;
+        self.upright_max = self.upright_max.max(other.upright_max);
         bytes.reserve_capacity(&mut self.children, other.children.len())?;
         self.children.extend_from_slice(&other.children);
         bytes.reserve_capacity(&mut self.masks, other.masks.len())?;
@@ -365,6 +388,8 @@ impl Survey<'_> {
             dynamic: 0,
             theta: 1.0,
             eta: 0.0,
+            upright_sum: 0.0,
+            upright_max: 0.0,
             children: Vec::new(),
             masks: Vec::new(),
             dynamics: Vec::new(),
@@ -391,14 +416,15 @@ impl Survey<'_> {
             let node = scene
                 .node(id)
                 .ok_or(Error::invalid_argument("scene node out of range"))?;
-            let (mark, kind, count, alpha_shape) = match node {
-                Node::Fill(fill) => (&fill.mark, self.paint(fill.paint)?, 1, true),
-                Node::Stroke(stroke) => (&stroke.mark, self.paint(stroke.paint)?, 1, true),
+            let (mark, kind, count, alpha_shape, upright) = match node {
+                Node::Fill(fill) => (&fill.mark, self.paint(fill.paint)?, 1, true, 0.0),
+                Node::Stroke(stroke) => (&stroke.mark, self.paint(stroke.paint)?, 1, true, 0.0),
                 Node::Glyphs(glyphs) => (
                     &glyphs.mark,
                     self.paint(glyphs.paint)?,
                     glyphs.placements.len(),
                     true,
+                    0.0,
                 ),
                 // A soft mask or embedded opacity gives an image alpha that
                 // is not its shape unless AIS.
@@ -410,8 +436,12 @@ impl Survey<'_> {
                         image.image.mask,
                         ImageMask::Soft { .. } | ImageMask::Embedded
                     ),
+                    ImageSampler::near_upright_part(
+                        &image.image,
+                        image.transform.then(context.transform),
+                    ),
                 ),
-                Node::Shading(shading) => (&shading.mark, Kind::Varying, 1, true),
+                Node::Shading(shading) => (&shading.mark, Kind::Varying, 1, true, 0.0),
                 Node::Group(group) => {
                     self.group(buffer, *group, context, depth, bytes)?;
                     continue;
@@ -436,6 +466,7 @@ impl Survey<'_> {
                 hulls: &hulls,
                 extent,
                 alpha_shape,
+                upright,
             };
             self.mark(buffer, state, &stores, context, depth, bytes)?;
             let released = hulls.capacity() * size_of::<Option<bounds::Hull>>();
@@ -580,6 +611,8 @@ impl Survey<'_> {
             };
             target.dynamic = target.dynamic.saturating_add(count);
             target.eta += eta * count as f64;
+            target.upright_sum += stores.upright * count as f64;
+            target.upright_max = target.upright_max.max(stores.upright);
             if target.dynamics.len() <= FOOTPRINTS {
                 bytes.reserve_capacity(&mut target.dynamics, rects.len())?;
                 target.dynamics.extend(rects.iter().map(|&rect| Dynamic {
@@ -587,6 +620,7 @@ impl Survey<'_> {
                     eta,
                     child: cell,
                     mask,
+                    upright: stores.upright,
                 }));
             }
         }
@@ -676,6 +710,7 @@ impl Survey<'_> {
             eta: 0.0,
             child: Some(child),
             mask,
+            upright: 0.0,
         });
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
@@ -807,6 +842,9 @@ struct Stores<'h> {
     extent: Option<bounds::Hull>,
     /// The source's alpha is its shape (not an image with a soft mask).
     alpha_shape: bool,
+    /// The part of the full range by which near-upright sampling may move
+    /// an image's values ([`ImageSampler::near_upright_part`]).
+    upright: f64,
 }
 
 /// Whether a store of `kind` under `state` is dynamic (ADR 0004 §6): all
@@ -866,6 +904,63 @@ mod tests {
             ErrorKind::Limit
         );
         assert_eq!(tight.used(), 0, "failed survey retained no allocation");
+    }
+
+    /// Near-upright image sampling is charged to the buffer it paints into
+    /// and admitted with the narrowest format that holds it: N16 for a part
+    /// small enough, F32 for a larger one, and nowhere in a buffer that is
+    /// F64 (here for a blend mode outside the narrow bounds).
+    #[test]
+    fn near_upright_images_are_admitted_with_the_format_that_bounds_them() {
+        use pagura_interpret::{Image, ImageNode};
+        let document = pagura_document::Document::open(
+            pagura_testkit::fixture("image", "samples-8-3-raw.pdf"),
+            &pagura_document::OpenOptions::default(),
+        )
+        .unwrap();
+        let source = document
+            .object_ids()
+            .find_map(|id| {
+                pagura_image::ImageSource::from_xobject(&document, document.object(id).ok()?).ok()
+            })
+            .unwrap();
+        let image = std::sync::Arc::new(Image {
+            source: std::sync::Arc::new(source),
+            space: Some(std::sync::Arc::new(pagura_color::ColorSpace::DeviceRgb)),
+            decode: std::sync::Arc::from([[0.0, 1.0]; 3]),
+            interpolate: false,
+            intent: None,
+            mask: ImageMask::None,
+        });
+        // Seven samples across 3.5 units: minified, so area averaged.
+        let page = |skew: f64, blend: BlendMode| {
+            let mut build = Build::new(8.0, 6.0);
+            let state = build.state(|state| state.blend = blend);
+            let transform = Transform::new(3.5, skew, 0.0, 1.5, 1.0, 1.0);
+            build.node(
+                GroupId(0),
+                Node::Image(ImageNode {
+                    image: std::sync::Arc::clone(&image),
+                    transform,
+                    stencil: None,
+                    mark: mark(state),
+                }),
+            );
+            let part = ImageSampler::near_upright_part(&image, transform.then(build.transform()));
+            let mut bytes = Meter::new(1 << 20, "survey memory");
+            let storage = survey(&build.scene, inputs(&build), &mut bytes).unwrap();
+            (part, storage.page, storage.page_upright)
+        };
+        assert_eq!(page(0.0, BlendMode::Normal), (0.0, Format::N16, 0.0));
+        let (part, format, upright) = page(1e-9, BlendMode::Normal);
+        assert!(part > 0.0 && part < 1e-7);
+        assert_eq!((format, upright), (Format::N16, part));
+        let (part, format, upright) = page(1e-5, BlendMode::Normal);
+        assert!(part > 1e-6 && part < 1e-3);
+        assert_eq!((format, upright), (Format::F32, part));
+        let (part, format, upright) = page(1e-5, BlendMode::Multiply);
+        assert!(part > 0.0);
+        assert_eq!((format, upright), (Format::F64, 0.0));
     }
 
     #[test]
