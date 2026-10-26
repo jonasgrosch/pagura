@@ -437,7 +437,7 @@ reversed direction, rotation, clipping, coincident endpoints, dashes, opacity,
 indirection and ending integration. Numeric overflow and content-budget controls
 are also registered. Hosted native/WASI/client and viewer checks pass at
 `e746f5e55` in [run 40302043210](https://github.com/jonasgrosch/pagura/actions/runs/40302043210);
-the remaining platform suites are running. Diagonal interactions still need
+all 12 checks now pass at that revision. Diagonal interactions still need
 further evidence. The three former leader refusals now
 render with unchanged PDF bytes.
 
@@ -457,7 +457,7 @@ captions need no fonts. Text/work/output and nonfinite-offset checks are registe
 Hosted native/WASI/client, partial-tile and viewer checks pass at `a406c638a` in
 [run 40305190338](https://github.com/jonasgrosch/pagura/actions/runs/40305190338).
 The harness uses protocol 1.4 full diagnostics on every surface, retaining both
-repair and informational assertions. The remaining platform suites are running.
+repair and informational assertions. All 12 hosted checks pass at that revision.
 Rich text, complex scripts/bidi, broader font selection and unsupported characters
 remain gaps; this does not establish full caption or annotation parity.
 
@@ -493,8 +493,11 @@ Forty-one controls include 33 independent pixel expectations from literal polygo
 rational winding/clip integration and blend equations. They cover two resolutions,
 vertical/skewed geometry, rotation, overlap, disjoint quads, opacity, underlying
 black/cyan page content, indirection, stored precedence and malformed values.
-Strict/repair and numeric/resource bounds are also registered. Hosted validation
-and competitor probes for this new subset are pending.
+Strict/repair and numeric/resource bounds are also registered. Hosted native/WASI/client, partial-tile and viewer pixel checks pass at
+`2c2a2ba54`. The full suites exposed incorrect strict_valid metadata for the
+alternate-order controls: the CLI audit includes rendering, so these now require
+strict refusal. Product recovery behavior and pixel expectations are unchanged;
+the full suites are rerunning. The 117-case G01 increment includes this subset.
 
 **Caret appearances implemented:** Sy None/P and RD insets use original filled
 chevron/pilcrow artwork with no font dependency. C and ca (else CA) style one
@@ -506,9 +509,27 @@ controls include 21 independent pixel expectations from literal page polygons
 and rational intersection areas, including direct stored appearances, two
 resolutions, unequal/asymmetric bounds, rotation, opacity, visibility, indirection
 and malformed fields. Numeric/budget controls and the earlier Circle/Square
-checks cover the shared reader. Hosted validation and competitor probes are pending.
+checks cover the shared reader. Hosted native/WASI/client, partial-tile and viewer
+pixel checks pass at `767603d14`; full suites are rerunning the corrected
+markup strict-audit metadata. The 117-case G01 increment includes this subset.
 
-Complete missing normal appearances for FreeText, Stamp and other ledger subtypes;
+**Rubber-stamp appearances implemented:** all fourteen standard Name values use
+original framed uppercase Helvetica-Bold/WinAnsi artwork through the configured
+font provider. Absent/null/custom names select Draft by reader policy. IT defaults
+to Stamp; image/snapshot/unknown intents require stored artwork. The smaller
+rectangle dimension sets frame width (1/32) and padding (1/8); text fits both
+available dimensions using AFM advances/ascent/descent. C defaults to red, CA
+styles the frame and ca (else CA) styles the text. Private font resources, fixed
+label storage and explicit work/content limits keep generation bounded.
+Thirty-eight controls include 33 independent pixel expectations for every standard
+name, short/long labels, two resolutions, direct stored artwork, rotation, tall
+rectangles, opacity, visibility, indirection and malformed fields. The oracle reads
+pinned TrueType points independently and integrates original quadratic curves by
+Green's theorem, with analytic clipping/hole/subdivision controls; existing
+straight-glyph rational oracles retain their behavior. Builds without font data
+explicitly report it. Hosted validation and competitor probes are pending.
+
+Complete missing normal appearances for FreeText and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.

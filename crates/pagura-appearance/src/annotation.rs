@@ -11,6 +11,7 @@ mod marks;
 mod markup;
 mod path;
 mod polygon;
+mod stamp;
 mod widget;
 
 use crate::features;
@@ -27,10 +28,11 @@ use pagura_document::Document;
 /// content is in default user space; the BBox clips every mark to the
 /// rectangle. Strokes use the annotation's `CA` and fills its `ca` (else
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
-/// resources. Caption fonts use private resources; page resources such as
+/// resources. Generated text uses private font resources; page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
 /// borders, Line/Ink/Polygon/PolyLine paths, plain Line captions with an explicit
-/// font provider, four text-markup styles, Caret symbols, seven Text icons, four FileAttachment
+/// font provider, standard rubber stamps, four text-markup styles, Caret symbols,
+/// seven Text icons, four FileAttachment
 /// icons, and the MK background and border of empty text and signature widgets.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
@@ -53,16 +55,17 @@ pub fn annotation_appearance(
     annotation_appearance_with_fonts(document, annotation, rect, &fonts)
 }
 
-/// Generates a normal annotation appearance using `fonts` for caption layout.
+/// Generates a normal annotation appearance using `fonts` for text layout.
 ///
 /// As [`annotation_appearance`], with host-supplied font metrics. Plain Line
 /// captions use Helvetica with WinAnsi encoding at 12 points; their generated
 /// font resource is resolved by the same provider when the stream is drawn.
+/// Rubber stamps use Helvetica-Bold/WinAnsi, fitted to the annotation rectangle.
 /// Existing callers without a provider still generate all non-text artwork.
 ///
 /// # Errors
 /// As [`annotation_appearance`], plus font loading or encoding errors when a
-/// caption needs unavailable data. Rich text remains explicitly unsupported.
+/// caption or stamp needs unavailable data. Rich text remains explicitly unsupported.
 pub fn annotation_appearance_with_fonts(
     document: &Document,
     annotation: &Dictionary,
@@ -90,6 +93,7 @@ pub fn annotation_appearance_with_fonts(
         b"StrikeOut" => markup::generate(document, annotation, rect, markup::Style::StrikeOut)?,
         b"Squiggly" => markup::generate(document, annotation, rect, markup::Style::Squiggly)?,
         b"Caret" => caret::generate(document, annotation, rect)?,
+        b"Stamp" => stamp::generate(document, annotation, rect, fonts)?,
         b"Line" => line::generate(document, annotation, rect, fonts)?,
         b"Polygon" => polygon::generate(document, annotation, rect, true)?,
         b"PolyLine" => polygon::generate(document, annotation, rect, false)?,

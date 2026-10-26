@@ -418,11 +418,8 @@ def extra_cases():
     yield case("type3-rotated-horizontal-width",b"1 0 0 rg BT /F 20 Tf 16 4 Td (A) Tj 0 0 1 rg (A) Tj ET",objects,FONT,[((4,4,12,8),BLUE)],requirement="paint-type3")
 
 
-def bundled_contours(path, character):
-    """Read simple TrueType contours independently, per the sfnt/glyf format.
-    The selected fixture letters have only on-curve points, so their covered
-    area has an exact rational polygon oracle, with no curve approximation.
-    """
+def bundled_points(path, character):
+    """Read simple TrueType coordinates and on-curve flags independently."""
     data = path.read_bytes()
     u16 = lambda at: struct.unpack_from('>H', data, at)[0]
     i16 = lambda at: struct.unpack_from('>h', data, at)[0]
@@ -465,12 +462,18 @@ def bundled_contours(path, character):
                 value += i16(pos); pos += 2
             axis.append(value)
         coordinates.append(axis)
-    assert all(flag & 1 for flag in flags), 'select straight-sided glyphs for an exact oracle'
     contours = []; start = 0
     for end in ends:
-        contours.append(list(zip(coordinates[0][start:end+1], coordinates[1][start:end+1])))
+        contours.append([(coordinates[0][i], coordinates[1][i], bool(flags[i] & 1)) for i in range(start,end+1)])
         start = end+1
     return contours, u16(tables[b'head']+18)
+
+
+def bundled_contours(path, character):
+    """Straight-only view for the existing exact rational polygon oracles."""
+    contours, units = bundled_points(path, character)
+    assert all(on for contour in contours for _,_,on in contour), 'select straight-sided glyphs for an exact oracle'
+    return [[(x,y) for x,y,_ in contour] for contour in contours], units
 
 
 def bundled_oracle(font_path, afm_path, text, *, advance=None, size=64):

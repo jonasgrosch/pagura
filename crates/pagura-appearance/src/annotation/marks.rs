@@ -22,6 +22,11 @@ impl Color {
         Self(vec![1.0, 1.0, 0.0])
     }
 
+    /// Red, the reader's default rubber-stamp ink.
+    pub(super) fn red() -> Self {
+        Self(vec![1.0, 0.0, 0.0])
+    }
+
     fn operator(&self, paint: Paint) -> &'static str {
         match (self.0.len(), paint) {
             (1, Paint::Fill) => "g",

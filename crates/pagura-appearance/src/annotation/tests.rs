@@ -1,5 +1,6 @@
 mod caret;
 mod markup;
+mod stamp;
 
 use super::*;
 use pagura_core::{ErrorKind, Limits, syntax::Origin, syntax::Parser};
@@ -233,7 +234,7 @@ fn nothing_is_generated_where_nothing_is_drawn() {
 fn unsupported_annotations_are_tagged() {
     let area = rect(0.0, 0.0, 8.0, 8.0);
     for text in [
-        b"<< /Subtype /Stamp >>".as_slice(),
+        b"<< /Subtype /Stamp /IT /StampImage >>".as_slice(),
         b"<< /Subtype /Square /BE << /S /C >> >>",
         b"<< /Subtype /Link /Border [2 2 1] >>",
         b"<< /Subtype /Link /BS << /S /I >> >>",

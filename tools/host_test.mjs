@@ -201,11 +201,16 @@ async function main() {
     client = new SessionClient(new TestWorker()); await client.hello();
     let tested = await testRenderCases({ client, root, native, wasiRun, cases: manifest.cases });
     const captions = JSON.parse(await readFile(join(root, 'corpus/manifests/caption_annotations.json'), 'utf8'));
-    const needsFont = captions.cases.find((entry) => entry.id === 'caption_annotations/inline-72');
-    const missingFont = await client.open(new Uint8Array(await readFile(join(root, needsFont.path))));
-    await assert.rejects(client.renderTile(missingFont.document, 0, 1, { x: 0, y: 0, width: 32, height: 32 }),
-      (error) => error instanceof HostError && error.category === 3 && error.tag === 'font.non-embedded');
-    await client.close(missingFont.document);
+    const stamps = JSON.parse(await readFile(join(root, 'corpus/manifests/stamp_annotations.json'), 'utf8'));
+    const fontAppearances = { cases: [...captions.cases, ...stamps.cases] };
+    for (const id of ['caption_annotations/inline-72', 'stamp_annotations/Draft']) {
+      const needsFont = fontAppearances.cases.find((entry) => entry.id === id);
+      const missingFont = await client.open(new Uint8Array(await readFile(join(root, needsFont.path))));
+      await assert.rejects(client.renderTile(missingFont.document, 0, 1,
+        { x: 0, y: 0, width: needsFont.width, height: needsFont.height }),
+        (error) => error instanceof HostError && error.category === 3 && error.tag === 'font.non-embedded');
+      await client.close(missingFont.document);
+    }
     await testReading(client, root, native, wasiRun);
     await testDocumentServices(client, root, native, wasiRun);
     await testDocumentServicesView();
@@ -302,10 +307,10 @@ async function main() {
       await bundled.hello();
       await testDiagnosticKinds(bundled, root, join(root, 'target/host-bundled/release/pagura-host'), wasiRun);
       tested += await testRenderCases({ client: bundled, root, native: join(root, 'target/host-bundled/release/pagura-host'),
-        wasiRun, cases: captions.cases });
+        wasiRun, cases: fontAppearances.cases });
     } finally { bundled.destroy(); }
     await testViewer(TestWorker, root, manifest, null, true);
-    await testViewer(TestWorker, root, captions, null, false, true);
+    await testViewer(TestWorker, root, fontAppearances, null, false, true);
     console.log(`Host checks passed: ${tested} independent render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles; v1.4 diagnostic kinds and separate viewer counts.`);
   } finally {
     client?.destroy();
@@ -557,7 +562,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     return { rgba, width, height };
   };
   try {
-    await import(`../web/viewer.mjs?test=${renderOnly ? 'caption-pixels' : diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
+    await import(`../web/viewer.mjs?test=${renderOnly ? 'font-appearance-pixels' : diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
     if (startup) {
       assert.equal(fakeWindow.paguraDebug, undefined);
       if (startup.error) {
@@ -581,7 +586,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       return;
     }
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
-      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/'].some((area) => entry.id.startsWith(area));
+      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/', 'stamp_annotations/'].some((area) => entry.id.startsWith(area));
       // The viewer supersamples reduced pages. At 25% it uses 4 device pixels
       // per CSS pixel (72 dpi overall); at 100% it uses 2 (144 dpi overall).
       // Compare icon oracles on that exact device grid: CSS box averaging is

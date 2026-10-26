@@ -1349,6 +1349,61 @@
         "caret_annotations/symbol-unknown"
       ],
       "gaps": "Exact chevron/pilcrow geometry and placement are documented reader artwork, not standardized pixels. Competitor comparison of this new subset remains pending."
+    },
+    {
+      "id": "content-stamp-appearances",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.12 Table 184",
+        "9.6.2.2"
+      ],
+      "rule": "Generate rubber-stamp appearances for all fourteen standard Name values, using Draft for absent/null/custom names by documented reader policy. IT defaults to Stamp; image/snapshot/unknown intents require stored artwork. Validate name/intent types and finite geometry before empty-color suppression. Reader artwork uses a red (or C) rectangular frame and centred uppercase Helvetica-Bold/WinAnsi through the configured font provider. Frame width is the smaller Rect dimension divided by 32; text padding is that dimension divided by 8 and the font size fits both available dimensions using AFM advances and ascent/descent. Frame uses CA and text ca (else CA). Fonts live in private appearance resources; stored appearances retain precedence. Fixed label storage, font-map/layout work, frame geometry and generated content stay bounded.",
+      "status": "implemented with 38 authored controls and 33 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::stamp::stamps_require_explicit_fonts_and_keep_private_resources",
+        "pagura-appearance annotation::tests::stamp::invisible_stamps_still_validate_names_intents_and_numeric_bounds",
+        "pagura-appearance annotation::tests::stamp::stamp_text_frame_and_output_respect_limits",
+        "tools/test_font_pixels.py",
+        "stamp_annotations/Approved",
+        "stamp_annotations/Experimental",
+        "stamp_annotations/NotApproved",
+        "stamp_annotations/AsIs",
+        "stamp_annotations/Expired",
+        "stamp_annotations/NotForPublicRelease",
+        "stamp_annotations/Confidential",
+        "stamp_annotations/Final",
+        "stamp_annotations/Sold",
+        "stamp_annotations/Departmental",
+        "stamp_annotations/ForComment",
+        "stamp_annotations/TopSecret",
+        "stamp_annotations/Draft",
+        "stamp_annotations/ForPublicRelease",
+        "stamp_annotations/Final-144",
+        "stamp_annotations/Draft-144",
+        "stamp_annotations/NotForPublicRelease-144",
+        "stamp_annotations/final-stored-72",
+        "stamp_annotations/final-stored-144",
+        "stamp_annotations/default",
+        "stamp_annotations/null-name",
+        "stamp_annotations/unknown-name",
+        "stamp_annotations/null-intent",
+        "stamp_annotations/indirect",
+        "stamp_annotations/color",
+        "stamp_annotations/opacity",
+        "stamp_annotations/separate-opacity",
+        "stamp_annotations/rotated",
+        "stamp_annotations/tall",
+        "stamp_annotations/hidden",
+        "stamp_annotations/no-view",
+        "stamp_annotations/no-color",
+        "stamp_annotations/stored-ignores-fields",
+        "stamp_annotations/name-type",
+        "stamp_annotations/intent-type",
+        "stamp_annotations/intent-StampImage",
+        "stamp_annotations/intent-StampSnapshot",
+        "stamp_annotations/intent-Unknown"
+      ],
+      "gaps": "Artwork is reader policy, not standardized pixels. The font oracle independently reads pinned TrueType points and integrates the original quadratics analytically using binary64 edge roots and Green integrals, with analytic controls for clipping, holes, reversal and subdivision. The existing straight-only oracle retains its rational path. Builds without font data report font.non-embedded. Image/snapshot artwork cannot be synthesized from absent content; its stored-appearance path remains supported. Popup/activation workflows are separate from this normal appearance."
     }
   ]
 }
