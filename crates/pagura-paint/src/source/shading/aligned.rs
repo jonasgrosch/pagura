@@ -15,7 +15,7 @@ use super::{Geometry, ShadingSource, Span, SpanColors, allocate};
 use crate::source::Precision;
 use pagura_color::MAX_COMPONENTS;
 use pagura_core::{Meter, Result};
-use pagura_raster::Point;
+use pagura_raster::{DeviceRect, Point};
 
 /// The most columns a column table holds.
 const MAX_COLUMNS: usize = 1 << 16;
@@ -56,8 +56,11 @@ struct Table {
 }
 
 impl Aligned {
+    /// The aligned evaluation of `source`, for marks painted in device
+    /// `columns` (first, one past the last) only.
     pub(super) fn new(
         source: &ShadingSource,
+        columns: (u32, u32),
         bytes: &mut Meter,
         functions: &mut Meter,
     ) -> Result<Option<Self>> {
@@ -98,7 +101,7 @@ impl Aligned {
             table: None,
         };
         if direction == Direction::Columns {
-            aligned.table = Table::new(source, axial, bytes, functions)?;
+            aligned.table = Table::new(source, axial, columns, bytes, functions)?;
         }
         Ok(Some(aligned))
     }
@@ -128,6 +131,60 @@ impl Aligned {
             Direction::Rows => Self::fill_row(source, axial, span, out),
             Direction::Columns => self.fill_columns(source, axial, span, out),
         }
+    }
+
+    /// The most pixels of `region` that execution evaluates rather than
+    /// takes from the column table or the extended ends. A column of the
+    /// column direction is evaluated only where neither serves it, which
+    /// depends on the column alone (see the module documentation). The row
+    /// direction evaluates once per span, which `region` does not bound.
+    /// Inspect no more columns than the admitted pixel count; wider sparse
+    /// regions retain the original conservative reservation.
+    pub(super) fn evaluated(
+        &self,
+        source: &ShadingSource,
+        axial: &Axial,
+        region: DeviceRect,
+        pixels: usize,
+    ) -> usize {
+        let width = usize::try_from(region.width()).unwrap_or(usize::MAX);
+        if pixels == 0 || region.height() == 0 {
+            return 0;
+        }
+        if width > pixels {
+            return pixels;
+        }
+        let height = usize::try_from(region.height()).unwrap_or(usize::MAX);
+        let columns = match self.direction {
+            Direction::Rows => width,
+            Direction::Columns => (region.x0..region.x1)
+                .filter(|&x| {
+                    self.served(x).is_none()
+                        && matches!(classify(source, axial, (x, region.y0)), Class::Other)
+                })
+                .count(),
+        };
+        columns.saturating_mul(height).min(pixels)
+    }
+
+    /// Whether execution evaluates pixel `(x, y)` rather than taking it from
+    /// the column table or an extended end, as `fill_columns` decides.
+    #[cfg(test)]
+    pub(super) fn evaluates(
+        &self,
+        source: &ShadingSource,
+        axial: &Axial,
+        (x, y): (u32, u32),
+    ) -> bool {
+        self.direction == Direction::Rows
+            || (self.served(x).is_none() && matches!(classify(source, axial, (x, y)), Class::Other))
+    }
+
+    /// The table index of column `x`, where the table serves it.
+    fn served(&self, x: u32) -> Option<usize> {
+        let table = self.table.as_ref()?;
+        let index = x.checked_sub(table.first)? as usize;
+        (table.valid.get(index) == Some(&true)).then_some(index)
     }
 
     /// One evaluation for the whole span when the row's projections are
@@ -175,8 +232,7 @@ impl Aligned {
         {
             let x = span.x.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
             if let Some(table) = &self.table
-                && let Some(index) = x.checked_sub(table.first).map(|i| i as usize)
-                && table.valid.get(index) == Some(&true)
+                && let Some(index) = self.served(x)
             {
                 color.copy_from_slice(
                     table
@@ -229,7 +285,9 @@ fn classify(source: &ShadingSource, axial: &Axial, (x, y): (u32, u32)) -> Class 
 }
 
 impl Table {
-    /// The pixels of the columns between the axis ends, evaluated on row 0.
+    /// The pixels of the columns between the axis ends that `columns`
+    /// holds, evaluated on row 0. Pixels of other columns are classified
+    /// and evaluated one by one, as are the columns past the axis ends.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -238,16 +296,20 @@ impl Table {
     fn new(
         source: &ShadingSource,
         axial: &Axial,
+        (from, to): (u32, u32),
         bytes: &mut Meter,
         functions: &mut Meter,
     ) -> Result<Option<Self>> {
         let t = source.transform();
         let end = Point::new(axial.start.x + axial.delta.x, axial.start.y + axial.delta.y);
         let (a, b) = (t.apply(axial.start).x, t.apply(end).x);
-        let first = (a.min(b).floor() - 2.0).clamp(0.0, f64::from(u32::MAX));
-        let last = (a.max(b).ceil() + 2.0).clamp(0.0, f64::from(u32::MAX));
+        let first = (a.min(b).floor() - 2.0).clamp(f64::from(from), f64::from(u32::MAX));
+        let last = (a.max(b).ceil() + 2.0).clamp(0.0, f64::from(to.saturating_sub(1)));
+        if !(first.is_finite() && last.is_finite() && first <= last) {
+            return Ok(None);
+        }
         let count = (last - first) as usize + 1;
-        if !(first.is_finite() && last.is_finite()) || count > MAX_COLUMNS {
+        if count > MAX_COLUMNS {
             return Ok(None);
         }
         let first = first as u32;

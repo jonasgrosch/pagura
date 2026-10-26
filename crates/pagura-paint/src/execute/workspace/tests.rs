@@ -1,19 +1,17 @@
 //! Reuse admits only owners in the next render reservation.
 
 use super::*;
+use crate::source::Source;
 use pagura_raster::{FillRule, MarkCoverage, Shape, ShapeOptions, Span, Transform};
 
 #[test]
 fn paint_headers_fit_the_new_plan_and_reuse_only_matching_capacity() {
-    let sources = [Source::Solid {
-        color: Box::new([0.0; 3]),
-        painted: pagura_color::Painted::all(3),
-    }];
+    let layouts = [None];
     let mut previous = allocate(4096).unwrap();
     previous.resize_with(4096, PaintScratch::default);
     let required = size_of::<PaintScratch>();
     let mut bytes = Meter::new(required, "test");
-    let storage = paint_storage(&sources, keep_paints(&sources, previous), &mut bytes).unwrap();
+    let storage = paint_storage(&layouts, keep_paints(&layouts, previous), &mut bytes).unwrap();
     assert_eq!(storage.len(), 1);
     assert_eq!(storage.capacity(), 1);
     assert_eq!(bytes.used(), required);
@@ -21,11 +19,11 @@ fn paint_headers_fit_the_new_plan_and_reuse_only_matching_capacity() {
 
     let pointer = storage.as_ptr();
     let mut bytes = Meter::new(required, "test");
-    let storage = paint_storage(&sources, keep_paints(&sources, storage), &mut bytes).unwrap();
+    let storage = paint_storage(&layouts, keep_paints(&layouts, storage), &mut bytes).unwrap();
     assert_eq!(storage.as_ptr(), pointer);
     assert_eq!(bytes.used(), required);
     let mut bytes = Meter::new(required - 1, "test");
-    assert!(paint_storage(&sources, keep_paints(&sources, storage), &mut bytes).is_err());
+    assert!(paint_storage(&layouts, keep_paints(&layouts, storage), &mut bytes).is_err());
 }
 
 #[test]
@@ -154,28 +152,25 @@ fn paint_normalization_keeps_headers_and_only_matching_image_owners() {
     let image = image_source();
     let mut free = Meter::new(usize::MAX, "test");
     let mut previous = allocate(1).unwrap();
-    previous.push(image.make_scratch(None, &mut free).unwrap());
+    previous.push(PaintScratch::make(image.scratch_layout(), None, &mut free).unwrap());
     let pointer = previous.as_ptr();
     let image_bytes = previous[0].bytes();
     assert!(image_bytes > 0);
-    let sources = [image];
-    let kept = keep_paints(&sources, previous).unwrap();
+    let layouts = [image.scratch_layout()];
+    let kept = keep_paints(&layouts, previous).unwrap();
     assert_eq!(kept.as_ptr(), pointer);
     assert_eq!(kept[0].bytes(), image_bytes);
     let required = size_of::<PaintScratch>() + image_bytes;
     let mut exact = Meter::new(required, "test");
-    let previous = paint_storage(&sources, Some(kept), &mut exact).unwrap();
+    let previous = paint_storage(&layouts, Some(kept), &mut exact).unwrap();
     assert_eq!(previous.as_ptr(), pointer);
     assert_eq!(exact.used(), required);
 
-    let sources = [Source::Solid {
-        color: Box::new([0.0; 3]),
-        painted: pagura_color::Painted::all(3),
-    }];
-    let kept = keep_paints(&sources, previous).unwrap();
+    let layouts = [None];
+    let kept = keep_paints(&layouts, previous).unwrap();
     assert_eq!(kept.as_ptr(), pointer);
     assert_eq!(kept[0].bytes(), 0);
-    assert!(kept[0].fits(&sources[0]));
+    assert!(kept[0].fits(None));
 }
 
 fn page_pointer(page: &PageBuffer) -> *const u8 {

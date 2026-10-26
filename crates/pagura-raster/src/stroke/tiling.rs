@@ -19,8 +19,10 @@
 //! span a half turn, a closed one that is not convex, and runs whose pens
 //! may meet), are not proven to tile: their union is still the stroke, and
 //! the rasterizer certifies or resolves its windings.
+//! The pieces are not emitted one by one: their outline is, every side two
+//! of them share left out, which keeps their nonzero winding everywhere.
 
-use super::{Outline, Pen, Run, cap, join, offsets, polygon};
+use super::{Outline, Pen, Run, cap, join_into, offsets, oriented};
 use crate::{LineCap, LineJoin, Point, Stroke};
 use pagura_core::{Error, Limits, Meter, Result};
 
@@ -58,16 +60,16 @@ impl Joint {
     }
 }
 
-/// Appends the pieces of `run` to `out`, whose union is the components'; end
-/// pieces that take their round caps differ from it only by slivers of
-/// rounding width (ADR 0004 §4). Returns whether no two pieces overlap: no
-/// joint overlaps and the centreline is proven not to return within the pen
-/// of itself.
+/// Appends the outline of the pieces of `run` to `out`, whose union is the
+/// components'; end pieces that take their round caps differ from it only
+/// by slivers of rounding width (ADR 0004 §4). Returns whether no two
+/// pieces overlap: no joint overlaps and the centreline is proven not to
+/// return within the pen of itself.
 pub(super) fn append(
     out: &mut impl Outline,
     run: &Run,
-    pen: Pen,
-    stroke: &Stroke,
+    (pen, stroke): (Pen, &Stroke),
+    chains: &mut Chains,
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<bool> {
@@ -78,7 +80,10 @@ pub(super) fn append(
         super::draw(out, run, pen, stroke, limits, bytes)?;
         return Ok(false);
     }
-    let before = bytes.used().saturating_sub(out.heap_bytes());
+    // The chains stay charged, as the output does, for the runs after.
+    let before = bytes
+        .used()
+        .saturating_sub(out.heap_bytes().saturating_add(chains.heap_bytes()));
     let result = (|| {
         let Pen { radius, .. } = pen;
         let points = &run.points;
@@ -119,43 +124,31 @@ pub(super) fn append(
         {
             return Err(Error::limit("stroke outline budget exceeded"));
         }
-        let end = segments.len() - 1;
-        for (i, &(direction, _)) in segments.iter().enumerate() {
-            let k = joints.after(i);
-            let ends = ((points[i], turns[i]), (points[k], turns[k]));
-            match &caps {
-                Some(caps) if i == 0 || i == end => {
-                    let chains = [
-                        (i == 0).then(|| caps.start()),
-                        (i == end).then(|| caps.end()),
-                    ];
-                    capped(out, ends, direction, radius, chains, limits, bytes)?;
-                }
-                _ => piece(out, ends, direction, radius, limits, bytes)?,
-            }
-        }
-        for (j, joint) in turns.iter().enumerate() {
-            if let (Joint::Turn(_) | Joint::Overlap, Some((before, after))) =
-                (joint, joints.around(j))
-            {
-                let tangents = [segments[before].0, segments[after].0];
-                join(out, points[j], tangents, pen, stroke, limits, bytes)?;
-            }
-        }
-        if let (false, None, [(start, _), ..], [.., (finish, _)]) =
-            (run.closed, &caps, segments.as_slice(), segments.as_slice())
-        {
+        let traced = Traced {
+            points,
+            segments: &segments,
+            turns: &turns,
+            joints,
+            pen,
+            stroke,
+            room: limits.path_segments.saturating_sub(out.len()),
+        };
+        trace(out, &traced, caps.as_ref(), chains, limits, bytes)?;
+        if let (false, None, LineCap::Round, [(start, _), ..], [.., (finish, _)]) = (
+            run.closed,
+            &caps,
+            stroke.cap,
+            segments.as_slice(),
+            segments.as_slice(),
+        ) {
             let back = Point::new(-start.x, -start.y);
             cap(out, *first, back, pen, stroke.cap, limits, bytes)?;
             cap(out, *last, *finish, pen, stroke.cap, limits, bytes)?;
         }
         Ok(proven)
     })();
-    bytes.refund(
-        bytes
-            .used()
-            .saturating_sub(before.saturating_add(out.heap_bytes())),
-    );
+    let kept = out.heap_bytes().saturating_add(chains.heap_bytes());
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(kept)));
     result
 }
 
@@ -502,52 +495,6 @@ impl Caps {
     }
 }
 
-/// An end segment's piece with the chains beyond the end lines of the caps
-/// it holds, `[start, end]`, as one outline: from the start's right corner
-/// along the right side, around the end, and back along the left side.
-fn capped(
-    out: &mut impl Outline,
-    ((p, start), (q, finish)): ((Point, Joint), (Point, Joint)),
-    direction: Point,
-    radius: f64,
-    chains: [Option<&[Point]>; 2],
-    limits: &Limits,
-    bytes: &mut Meter,
-) -> Result<()> {
-    let normal = Point::new(-direction.y * radius, direction.x * radius);
-    let corner = |point: Point, joint: Joint, left: bool| match joint {
-        Joint::Turn(turn) if turn.left == left => point + turn.offset,
-        _ if left => point + normal,
-        _ => point - normal,
-    };
-    // Through a joint itself, where the join's edges meet it.
-    let through = |point: Point, joint: Joint| (!matches!(joint, Joint::Straight)).then_some(point);
-    let [behind, ahead] = chains;
-    let before = bytes.used().saturating_sub(out.heap_bytes());
-    let result = (|| {
-        let mut outline = Vec::new();
-        let extra = behind.map_or(1, <[Point]>::len) + ahead.map_or(1, <[Point]>::len);
-        bytes.reserve(&mut outline, extra + 4)?;
-        outline.extend([corner(p, start, false), corner(q, finish, false)]);
-        match ahead {
-            Some(chain) => outline.extend_from_slice(chain),
-            None => outline.extend(through(q, finish)),
-        }
-        outline.extend([corner(q, finish, true), corner(p, start, true)]);
-        match behind {
-            Some(chain) => outline.extend_from_slice(chain),
-            None => outline.extend(through(p, start)),
-        }
-        polygon(out, &outline, limits, bytes)
-    })();
-    bytes.refund(
-        bytes
-            .used()
-            .saturating_sub(before.saturating_add(out.heap_bytes())),
-    );
-    result
-}
-
 /// Appends the chain of the cap polygon around `end`, its vertices `end`
 /// plus `circle`, beyond the end line, `outward` its unit normal: where its
 /// sides cross the line from the right, its vertices beyond, and where they
@@ -613,40 +560,247 @@ fn beyond(
     false
 }
 
-/// One segment's piece between its joints: the inner miter point on a
-/// turn's inner side (through the joint itself), the normal elsewhere.
-fn piece(
+/// The buffers of [`trace`], reused across a stroke's runs: an outline, and
+/// the left side it ends with, which is traced forward and taken back.
+#[derive(Default)]
+pub(super) struct Chains {
+    outline: Vec<Point>,
+    left: Vec<Point>,
+}
+
+impl Chains {
+    /// Heap bytes, charged while the chains are kept.
+    pub(super) fn heap_bytes(&self) -> usize {
+        self.outline
+            .capacity()
+            .saturating_add(self.left.capacity())
+            .saturating_mul(size_of::<Point>())
+    }
+}
+
+/// A run's geometry as its outline traces it: its points, its segments'
+/// directions and lengths, and how they meet.
+struct Traced<'a> {
+    points: &'a [Point],
+    segments: &'a [(Point, f64)],
+    turns: &'a [Joint],
+    joints: Joints,
+    pen: Pen,
+    stroke: &'a Stroke,
+    /// The outline segments the output admitted when the run began.
+    room: usize,
+}
+
+impl Traced<'_> {
+    /// Refuses a chain that no polygon within the outline budget closes,
+    /// before more joints are traced into it: a contour holds at least
+    /// either of its chains, plus its close.
+    fn fits(&self, chain: &[Point]) -> Result<()> {
+        if chain.len() >= self.room {
+            return Err(Error::limit("stroke outline budget exceeded"));
+        }
+        Ok(())
+    }
+
+    /// Segment `i`'s corner at its joint `j` on one side, as its piece has
+    /// it.
+    fn corner(&self, i: usize, j: usize, left: bool) -> Point {
+        let (direction, _) = self.segments[i];
+        let radius = self.pen.radius;
+        let normal = Point::new(-direction.y * radius, direction.x * radius);
+        match self.turns[j] {
+            Joint::Turn(turn) if turn.left == left => self.points[j] + turn.offset,
+            _ if left => self.points[j] + normal,
+            _ => self.points[j] - normal,
+        }
+    }
+
+    /// Whether the pieces on either side of inner joint `j` meet there:
+    /// only collinear segments' normals can differ, in the last place.
+    fn meets(&self, j: usize) -> bool {
+        self.joints.around(j).is_some_and(|(a, b)| {
+            !matches!(self.turns[j], Joint::Straight)
+                || (self.corner(a, j, true) == self.corner(b, j, true)
+                    && self.corner(a, j, false) == self.corner(b, j, false))
+        })
+    }
+
+    /// The outline on one side across inner joint `j`, from the corner of
+    /// the segment before to that of the one after: the inner miter point,
+    /// the join's vertices, or the joint itself between the two normals.
+    fn across(
+        &self,
+        j: usize,
+        left: bool,
+        chain: &mut Vec<Point>,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let Some((a, b)) = self.joints.around(j) else {
+            return Ok(());
+        };
+        let (from, to) = (self.corner(a, j, left), self.corner(b, j, left));
+        match self.turns[j] {
+            Joint::Straight => {}
+            Joint::Turn(turn) if turn.left == left => {}
+            _ => {
+                let tangents = [self.segments[a].0, self.segments[b].0];
+                let cross = tangents[0].cross(tangents[1]);
+                let drawn = cross != 0.0
+                    || (self.stroke.join == LineJoin::Round && tangents[0].dot(tangents[1]) < 0.0);
+                if drawn && (cross <= 0.0) == left {
+                    let start = chain.len();
+                    let point = self.points[j];
+                    join_into(point, tangents, self.pen, self.stroke, limits, chain, bytes)?;
+                    debug_assert_eq!((chain.get(start), chain.last()), (Some(&from), Some(&to)));
+                } else {
+                    bytes.reserve_capacity(chain, 3)?;
+                    chain.extend([from, self.points[j], to]);
+                }
+                return self.fits(chain);
+            }
+        }
+        bytes.reserve_capacity(chain, 1)?;
+        chain.push(from);
+        self.fits(chain)
+    }
+
+    /// One side of the part of `length` segments from segment `start`.
+    fn side(
+        &self,
+        (start, length): (usize, usize),
+        left: bool,
+        chain: &mut Vec<Point>,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let count = self.segments.len();
+        let joint = |t: usize| {
+            if self.joints.closed {
+                (start + t) % count
+            } else {
+                start + t
+            }
+        };
+        bytes.reserve_capacity(chain, 1)?;
+        chain.push(self.corner(start % count, joint(0), left));
+        for t in 1..length {
+            self.across(joint(t), left, chain, limits, bytes)?;
+        }
+        bytes.reserve_capacity(chain, 1)?;
+        chain.push(self.corner((start + length - 1) % count, joint(length), left));
+        Ok(())
+    }
+
+    /// The vertices of the end of an open run beyond its last piece, from
+    /// its right corner to its left: the held round cap's chain or the
+    /// square cap's far side. `back` takes the start, beyond the first.
+    fn end(
+        &self,
+        back: bool,
+        caps: Option<&Caps>,
+        chain: &mut Vec<Point>,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let held = caps.map(|caps| if back { caps.start() } else { caps.end() });
+        if let Some(held) = held {
+            bytes.reserve_capacity(chain, held.len())?;
+            chain.extend_from_slice(held);
+        } else if self.stroke.cap == LineCap::ProjectingSquare {
+            let (point, direction) = if back {
+                let (direction, _) = self.segments[0];
+                (self.points[0], Point::new(-direction.x, -direction.y))
+            } else {
+                let (direction, _) = self.segments[self.segments.len() - 1];
+                (self.points[self.segments.len()], direction)
+            };
+            // As `cap` makes it: its side along the end line is the piece's.
+            let n = direction.perp() * self.pen.radius;
+            let tip = point + direction * self.pen.radius;
+            bytes.reserve_capacity(chain, 2)?;
+            chain.extend([tip - n, tip + n]);
+        }
+        Ok(())
+    }
+
+    /// Whether the outline is reversed to take the orientation that
+    /// [`polygon`](super::polygon) gives the run's first piece.
+    fn reversed(&self) -> bool {
+        let k = self.joints.after(0);
+        let quad = [
+            self.corner(0, 0, false),
+            self.corner(0, k, false),
+            self.corner(0, k, true),
+            self.corner(0, 0, true),
+        ];
+        let area: f64 = quad
+            .iter()
+            .zip(quad.iter().cycle().skip(1))
+            .map(|(&a, &b)| (a - quad[0]).cross(b - quad[0]))
+            .sum();
+        area < 0.0
+    }
+}
+
+/// Appends the outline of a run's pieces, joins and square caps: their
+/// sides less the ones two of them share, which cancel in the nonzero
+/// winding. Pieces that meet at a joint share their vertices bit for bit
+/// (a turn's inner miter point, the join's ends at the normals, a square
+/// cap's end line), so at a turn the outline passes the inner miter point
+/// and the join's outer vertices, and beside an overlap also the joint
+/// itself where no join lies. A closed run whose pieces all meet has two
+/// loops; elsewhere each part between joints whose pieces do not meet is
+/// one contour, its ends the run's caps or those joints' end lines. Every
+/// contour takes the orientation the run's first piece takes.
+fn trace(
     out: &mut impl Outline,
-    ((p, start), (q, finish)): ((Point, Joint), (Point, Joint)),
-    direction: Point,
-    radius: f64,
+    run: &Traced<'_>,
+    caps: Option<&Caps>,
+    Chains { outline, left }: &mut Chains,
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<()> {
-    let normal = Point::new(-direction.y * radius, direction.x * radius);
-    let corner = |point: Point, joint: Joint, left: bool| match joint {
-        Joint::Turn(turn) if turn.left == left => point + turn.offset,
-        _ if left => point + normal,
-        _ => point - normal,
+    let count = run.segments.len();
+    let closed = run.joints.closed;
+    let reversed = run.reversed();
+    outline.clear();
+    left.clear();
+    let split = (usize::from(!closed)..count).find(|&j| !run.meets(j));
+    let (first, last) = match (closed, split) {
+        (true, None) => {
+            for j in 0..count {
+                run.across(j, false, outline, limits, bytes)?;
+                run.across(j, true, left, limits, bytes)?;
+            }
+            left.reverse();
+            oriented(out, outline, reversed, limits, bytes)?;
+            return oriented(out, left, reversed, limits, bytes);
+        }
+        (true, Some(split)) => (split, split + count),
+        (false, _) => (0, count),
     };
-    let mut piece = [Point::new(0.0, 0.0); 6];
-    let mut n = 0;
-    let mut push = |point: Point| {
-        piece[n] = point;
-        n += 1;
-    };
-    // Through the joint itself, where the join's edges meet it.
-    push(corner(p, start, false));
-    if !matches!(start, Joint::Straight) {
-        push(p);
+    let mut start = first;
+    while start < last {
+        let end = (start + 1..last)
+            .find(|&t| !run.meets(t % count))
+            .unwrap_or(last);
+        let part = (start, end - start);
+        outline.clear();
+        left.clear();
+        run.side(part, false, outline, limits, bytes)?;
+        run.side(part, true, left, limits, bytes)?;
+        if !closed && end == count {
+            run.end(false, caps, outline, bytes)?;
+        }
+        bytes.reserve_capacity(outline, left.len())?;
+        outline.extend(left.iter().rev());
+        if !closed && start == 0 {
+            run.end(true, caps, outline, bytes)?;
+        }
+        oriented(out, outline, reversed, limits, bytes)?;
+        start = end;
     }
-    push(corner(p, start, true));
-    push(corner(q, finish, true));
-    if !matches!(finish, Joint::Straight) {
-        push(q);
-    }
-    push(corner(q, finish, false));
-    polygon(out, &piece[..n], limits, bytes)
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1268,6 +1422,56 @@ mod tests {
     }
 
     #[test]
+    fn collinear_segments_whose_normals_differ_split_the_outline() {
+        // Straight joints whose segments' unit directions differ in the last
+        // place: their pieces do not meet, and the outline splits there.
+        let mut found = 0;
+        for k in 1..4000_u32 {
+            let t = f64::from(k);
+            let (dx, dy) = (0.3 + t * 0.000_731, 0.7 - t * 0.000_113);
+            let path = [
+                (6.0, 6.0),
+                (6.0 + 9.1 * dx, 6.0 + 9.1 * dy),
+                (6.0 + 23.7 * dx, 6.0 + 23.7 * dy),
+            ];
+            let points: Vec<Point> = path.iter().map(|&(x, y)| Point::new(x, y)).collect();
+            let joints = super::Joints {
+                closed: false,
+                segments: 2,
+            };
+            let segments = super::segments(&points, joints, &mut crate::testing::bytes()).unwrap();
+            let turns = super::turns(&segments, joints, 1.0, &mut crate::testing::bytes()).unwrap();
+            let traced = super::Traced {
+                points: &points,
+                segments: &segments,
+                turns: &turns,
+                joints,
+                pen: super::Pen {
+                    radius: 1.0,
+                    tolerance: TOLERANCE,
+                },
+                stroke: &Stroke::default(),
+                room: usize::MAX,
+            };
+            if !matches!(turns[1], super::Joint::Straight) || traced.meets(1) {
+                continue;
+            }
+            found += 1;
+            for cap in [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare] {
+                let stroke = Stroke {
+                    width: 2.0,
+                    cap,
+                    ..Stroke::default()
+                };
+                let difference =
+                    pieces_union_difference(&polyline(&path, false), Transform::IDENTITY, &stroke);
+                assert!(difference <= 1, "{path:?} {cap:?}: {difference}");
+            }
+        }
+        assert!(found > 0);
+    }
+
+    #[test]
     fn seeded_strokes_take_pieces_only_within_one_level_of_the_union() {
         let mut state = 0x9e37_79b9_7f4a_7c15_u64;
         let mut bits = || {
@@ -1325,5 +1529,100 @@ mod tests {
             }
         }
         assert!(taken > 200, "{taken}");
+    }
+
+    /// A closed star of 40 spikes, each tip and notch nearly a reversal:
+    /// round joins make most of its outline, on both sides.
+    fn star() -> Vec<(f64, f64)> {
+        (0..80_u32)
+            .map(|i| {
+                let angle = std::f64::consts::TAU * f64::from(i) / 80.0;
+                let radius = if i % 2 == 0 { 200.0 } else { 20.0 };
+                (radius * angle.cos(), radius * angle.sin())
+            })
+            .collect()
+    }
+
+    #[test]
+    fn traced_outlines_refuse_exactly_at_the_outline_budget() {
+        let path = polyline(&star(), true);
+        let stroke = Stroke {
+            width: 30.0,
+            join: LineJoin::Round,
+            ..Stroke::default()
+        };
+        let outline = |path_segments| {
+            let limits = Limits {
+                path_segments,
+                ..Limits::default()
+            };
+            pieces(
+                &path,
+                Transform::IDENTITY,
+                &stroke,
+                &limits,
+                (Tiling::Unproven, TOLERANCE),
+                &mut crate::testing::bytes(),
+            )
+        };
+        let (full, _, tiling) = outline(Limits::default().path_segments).unwrap();
+        assert_eq!(tiling, Tiling::Unproven);
+        let needed = full.segments().len();
+        assert!(needed > 7 * 80, "{needed}");
+        assert_eq!(outline(needed).unwrap().0, full);
+        let error = outline(needed - 1).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (
+                pagura_core::ErrorKind::Limit,
+                "stroke outline budget exceeded"
+            )
+        );
+    }
+
+    #[test]
+    fn tracing_stops_within_the_outline_budget() {
+        // Both chains of a closed run grow joint by joint before either
+        // closes; they stop where the budget refuses them, not after every
+        // join arc of the run.
+        let run = super::super::Run {
+            points: star().into_iter().map(|(x, y)| Point::new(x, y)).collect(),
+            closed: true,
+            tangent: Point::new(1.0, 0.0),
+            caps: [None; 2],
+            joins: Vec::new(),
+        };
+        let pen = super::Pen {
+            radius: 15.0,
+            tolerance: 0.001,
+        };
+        let stroke = Stroke {
+            width: 30.0,
+            join: LineJoin::Round,
+            ..Stroke::default()
+        };
+        let trace = |limits: &Limits, chains: &mut super::Chains| {
+            let mut out = PathBuilder::new();
+            super::append(
+                &mut out,
+                &run,
+                (pen, &stroke),
+                chains,
+                limits,
+                &mut crate::testing::bytes(),
+            )
+            .map(|_| out.len())
+        };
+        let full = trace(&Limits::default(), &mut super::Chains::default()).unwrap();
+        let limits = Limits {
+            path_segments: 7 * 80,
+            ..Limits::default()
+        };
+        assert!(full > 8 * limits.path_segments, "{full}");
+        let mut chains = super::Chains::default();
+        let error = trace(&limits, &mut chains).unwrap_err();
+        assert_eq!(error.message, "stroke outline budget exceeded");
+        let traced = chains.outline.len().max(chains.left.len());
+        assert!(traced < 2 * limits.path_segments, "{traced} of {full}");
     }
 }

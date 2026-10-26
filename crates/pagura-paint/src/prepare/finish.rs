@@ -200,6 +200,7 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         items: parts.items,
         masks: parts.masks,
         paints: parts.paints,
+        slots: parts.slots,
         conversions: parts.conversions,
         output: Output {
             layout,

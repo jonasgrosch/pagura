@@ -361,7 +361,7 @@ artifact `12673292246` has SHA-256
 report file SHA-256 is
 `a7b6a3900c9f74fd22133fb114c0000a334cf57569fcff924b9af72c2c73d31c`.
 [Native/WASI/client and save/reopen checks](https://github.com/jonasgrosch/pagura/actions/runs/40371829227)
-also passed, as did [full Ubuntu, macOS and Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40371829208). All twelve gates passed that retained head; the subsequent Redact batch awaits its own hosted validation.
+also passed, as did [full Ubuntu, macOS and Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40371829208). All twelve gates passed that retained head. The subsequent Redact batch is recorded below.
 Custom artwork variants, interaction and playback remain outside these static
 drawing claims, and the V01 family remains partial.
 
@@ -440,8 +440,17 @@ Separate error controls reject non-array, empty, short, nonnumeric, clockwise
 and concave QuadPoints; malformed CA; cyclic quad references; and overflowing
 orientation arithmetic. Existing shared limits also bound Rect fallback and
 explicit quads, including repeated scene recording under a tight byte budget.
-The resulting G01 set has 416 oracles. This Redact increment awaits hosted
-runtime validation; it does not implement applied redaction or promote V01.
+The resulting G01 set has 416 oracles. At `b042f0230d6cb7380b86c68f86b663c329eda740`,
+[hosted capability validation](https://github.com/jonasgrosch/pagura/actions/runs/40379150530)
+passes all 416 Pagura controls (2,912 recorded cells across seven engines).
+The combined report SHA-256 is
+`4876aa9666344b6f5682344ed10e16fad64094dfa8884a2c7db4d760a80d4df0`;
+artifact 12677898081 has ZIP digest
+`93f320dc8847cda4c431042f720155ad1caf139772d8dece21da84d514ffe8a6`.
+[Editing interoperability](https://github.com/jonasgrosch/pagura/actions/runs/40379145451)
+also passes that head. These results precede integration of one-pass base
+`9f9801a75`; that combined source needs fresh hosted validation. This increment
+does not implement applied redaction or promote V01.
 
 
 ## Source widget display diagnostic

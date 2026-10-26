@@ -506,6 +506,16 @@ impl Separable {
         self.taps == Taps::Nearest
     }
 
+    /// The source row and each pixel's source column of device pixels
+    /// `x .. x + len` of row `y`, for a placement whose pixels take their
+    /// nearest sample, as [`Self::gather`] reads them.
+    pub(super) fn nearest_samples(&self, pixels: Pixels<'_>) -> Option<(usize, &[u32])> {
+        let (cells, _) = self.cells(pixels);
+        let across = row(&self.geometry, self.taps, pixels.y);
+        (self.nearest() && cells.len() == pixels.len && across.first < across.end)
+            .then(|| (index(across.first), cells))
+    }
+
     /// Hands `finish` each pixel's sample of device pixels `x .. x + len`
     /// of row `y`, [`Rows::width`] values each (zeros where the row cannot
     /// be read), for a placement whose pixels take their nearest sample.
