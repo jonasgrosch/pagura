@@ -169,14 +169,41 @@ pub(crate) fn word(value: f64) -> u16 {
 /// A dynamic store into N16 words: `(1 − a)·x + a·t` for the target
 /// `t = 65535·c` evaluated in f64 and rounded once to the nearest word.
 pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    if let Colors::Strided { values, stride: 3 } = *colors
-        && full(alpha)
-    {
+    if let Colors::Strided { values, stride: 3 } = *colors {
         // At full opacity `(1 − a)·x + a·t` is `t`.
-        overwrite_n16(pixels, values);
+        let one = |pixel: &mut [u16; 4], color: &[f64], a: f64| {
+            mix_dynamic(pixel, targets(color, 65535.0), a, round_u16, f64::from);
+        };
+        by_runs((pixels, values, alpha), overwrite_n16, one);
         return;
     }
     dynamic(pixels, colors, alpha, 65535.0, round_u16, f64::from);
+}
+
+/// Stores of three-value colours at `alpha` over `pixels`: each run at full
+/// opacity by `opaque`, every other pixel by `one`.
+fn by_runs<T>(
+    (pixels, values, alpha): (&mut [T], &[f64], &[f64]),
+    opaque: impl Fn(&mut [T], &[f64]),
+    one: impl Fn(&mut T, &[f64], f64),
+) {
+    let len = pixels.len().min(alpha.len()).min(values.len() / 3);
+    if full(&alpha[..len]) {
+        opaque(&mut pixels[..len], &values[..len * 3]);
+        return;
+    }
+    let mut k = 0;
+    while k < len {
+        let run = alpha[k..len].iter().take_while(|&&a| a == 1.0).count();
+        opaque(&mut pixels[k..k + run], &values[k * 3..(k + run) * 3]);
+        k += run;
+        let rest = alpha[k..len].iter().take_while(|&&a| a != 1.0).count();
+        let colors = values[k * 3..(k + rest) * 3].as_chunks::<3>().0;
+        for ((pixel, color), &a) in pixels[k..k + rest].iter_mut().zip(colors).zip(&alpha[k..]) {
+            one(pixel, color, a);
+        }
+        k += rest;
+    }
 }
 
 /// The word a store at full opacity writes for colour value `value`:
@@ -221,7 +248,24 @@ pub(crate) fn full(alpha: &[f64]) -> bool {
 /// A dynamic store into F32 levels: `(1 − a)·x + a·t` for the target
 /// `t = 255·c` evaluated in f64 and rounded once to f32.
 pub(crate) fn dynamic_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
+    if let Colors::Strided { values, stride: 3 } = *colors {
+        let one = |pixel: &mut [f32; 4], color: &[f64], a: f64| {
+            mix_dynamic(pixel, targets(color, 255.0), a, single, f64::from);
+        };
+        by_runs((pixels, values, alpha), overwrite_dynamic_f32, one);
+        return;
+    }
     dynamic(pixels, colors, alpha, 255.0, single, f64::from);
+}
+
+/// Dynamic F32 stores of opaque colours, three values a pixel, at full
+/// opacity: `(1 − a)·x + a·t` is `0·x + t`, rounded once.
+fn overwrite_dynamic_f32(pixels: &mut [[f32; 4]], values: &[f64]) {
+    for (pixel, color) in pixels.iter_mut().zip(values.as_chunks::<3>().0) {
+        for (out, target) in pixel.iter_mut().zip(targets(color, 255.0)) {
+            *out = single(0.0 * f64::from(*out) + target);
+        }
+    }
 }
 
 fn dynamic<T: Copy>(
@@ -355,11 +399,12 @@ pub(crate) fn store_f32_runs(
 /// Stores `colors` at `alpha` into F32 levels on 0..255: full opacity
 /// overwrites, other stores evaluate `x += a·(t − x)` in f32.
 pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    if let Colors::Strided { values, stride: 3 } = *colors
-        && full(alpha)
-    {
+    if let Colors::Strided { values, stride: 3 } = *colors {
         // At full opacity the store is the target's levels.
-        overwrite_f32(pixels, values);
+        let one = |pixel: &mut [f32; 4], color: &[f64], a: f64| {
+            lerp(pixel, levels(color), single(a));
+        };
+        by_runs((pixels, values, alpha), overwrite_f32, one);
         return;
     }
     match *colors {
@@ -547,6 +592,66 @@ mod tests {
         dynamic_n16(&mut a, &fast, &alpha);
         dynamic_n16(&mut b, &general, &alpha);
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn stores_by_runs_are_stores_by_pixel() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let unit = |random: u64| f64::from(u32::try_from(random % 1_000_001).unwrap_or(0)) / 1e6;
+        for case in 0..400 {
+            let len = case % 37;
+            // Runs of full opacity between other opacities, zero included.
+            let alpha: Vec<f64> = (0..len)
+                .map(|k| match (k / 5 + case) % 3 {
+                    0 => 1.0,
+                    1 => unit(next()),
+                    _ => [0.0, 1.0, 0.5][k % 3],
+                })
+                .collect();
+            let colors: Vec<f64> = (0..len * 3).map(|_| unit(next()) * 1.2 - 0.1).collect();
+            // Four values a pixel take the general loops.
+            let padded: Vec<f64> = colors
+                .chunks(3)
+                .flat_map(|c| [c[0], c[1], c[2], 0.0])
+                .collect();
+            let (runs, general) = (
+                Colors::Strided {
+                    values: &colors,
+                    stride: 3,
+                },
+                Colors::Strided {
+                    values: &padded,
+                    stride: 4,
+                },
+            );
+            let words: Vec<[u16; 4]> = (0..len)
+                .map(|_| [0; 4].map(|_: u16| u16::try_from(next() % 65_536).unwrap_or(0)))
+                .collect();
+            let (mut a, mut b) = (words.clone(), words);
+            dynamic_n16(&mut a, &runs, &alpha);
+            dynamic_n16(&mut b, &general, &alpha);
+            assert_eq!(a, b, "n16 {case}");
+            let levels: Vec<[f32; 4]> = (0..len)
+                .map(|_| [0; 4].map(|_: u8| f32::from(u8::try_from(next() % 256).unwrap_or(0))))
+                .collect();
+            let bits = |pixels: &[[f32; 4]]| -> Vec<[u32; 4]> {
+                pixels.iter().map(|p| p.map(f32::to_bits)).collect()
+            };
+            let (mut a, mut b) = (levels.clone(), levels.clone());
+            dynamic_f32(&mut a, &runs, &alpha);
+            dynamic_f32(&mut b, &general, &alpha);
+            assert_eq!(bits(&a), bits(&b), "dynamic f32 {case}");
+            let (mut a, mut b) = (levels.clone(), levels);
+            store_f32(&mut a, &runs, &alpha);
+            store_f32(&mut b, &general, &alpha);
+            assert_eq!(bits(&a), bits(&b), "f32 {case}");
+        }
     }
 
     #[test]
