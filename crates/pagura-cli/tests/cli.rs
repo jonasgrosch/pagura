@@ -165,20 +165,15 @@ fn attachment_listing_preserves_filename_bytes_unicode_and_payload_choices() {
             .and_then(Json::as_str),
         Some("2f726177ff2f66696c65")
     );
-    assert!(
-        file.get("payloads")
-            .and_then(Json::as_array)
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        file.get("payloads").and_then(Json::as_array).unwrap(),
+        [] as [Json; 0]
     );
     for name in ["absent.pdf", "null-tree.pdf", "empty-tree.pdf"] {
         let report = service_report("attachments", "files", name).unwrap();
-        assert!(
-            report
-                .get("files")
-                .and_then(Json::as_array)
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            report.get("files").and_then(Json::as_array).unwrap(),
+            [] as [Json; 0]
         );
     }
 }
@@ -204,12 +199,9 @@ fn service_reports_reject_bad_types_and_preserve_strict_repairs() {
         ("attachments", "files", "invalid-unicode.pdf"),
     ] {
         let repaired = service_report(command, area, file).unwrap();
-        assert!(
-            !repaired
-                .get("repairs")
-                .and_then(Json::as_array)
-                .unwrap()
-                .is_empty()
+        assert_ne!(
+            repaired.get("repairs").and_then(Json::as_array).unwrap(),
+            [] as [Json; 0]
         );
         let output = pagura()
             .args([command, "--strict"])
@@ -234,7 +226,7 @@ fn extraction_writes_decoded_bytes_only_to_the_requested_new_file() {
         let target = scratch.0.join(name);
         let output = pagura().arg(command).arg(fixture_path(area, name)).args(args).arg(&target).output().unwrap();
         assert!(output.status.success(), "{name}: {:?}", output.stderr);
-        assert!(output.stdout.is_empty());
+        assert_eq!(output.stdout, [] as [u8; 0]);
         assert_eq!(std::fs::read(&target).unwrap(), expected);
         let repeated = pagura().arg(command).arg(fixture_path(area, name)).args(args).arg(&target).output().unwrap();
         assert_eq!(repeated.status.code(), Some(1));
