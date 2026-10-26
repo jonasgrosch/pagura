@@ -172,7 +172,7 @@ fn context<'a>(
         composite,
         store,
         limits,
-        region: pagura_raster::DeviceRect {
+        region: DeviceRect {
             x0: 0,
             y0: 0,
             x1: u32::MAX,
@@ -383,13 +383,68 @@ fn function_work_is_reserved_per_sample() {
     };
     let mut bytes = Meter::new(limits.render_bytes, "test bytes");
     let mut meter = Meter::new(usize::MAX, "function work");
-    prepare().reserve(1000, (&mut bytes, &mut meter)).unwrap();
+    prepare().reserve((1000, context.region), (&mut bytes, &mut meter)).unwrap();
     assert_eq!(meter.used(), 1000 * 4 * cost);
     let mut tight = Meter::new(1000 * 4 * cost - 1, "function work");
     let error = prepare()
-        .reserve(1000, (&mut bytes, &mut tight))
+        .reserve((1000, context.region), (&mut bytes, &mut tight))
         .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn aligned_reservations_cover_every_evaluated_pixel() {
+    let mut rng = Rng(0xa119);
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let (mut columns, mut smaller) = (0, 0);
+    for _ in 0..400 {
+        let parsed = shading(&mut rng);
+        let transform = transform(&mut rng);
+        for antialias in [false, true] {
+            let source = ShadingSource::new(
+                &parts(&parsed, antialias),
+                transform,
+                &context,
+                Use::Operator,
+                (
+                    &mut Meter::new(limits.render_bytes, "test bytes"),
+                    &mut Meter::new(usize::MAX, "test functions"),
+                ),
+            )
+            .unwrap();
+            let (Geometry::Axial(axial), Some(aligned)) = (&*source.geometry, &source.aligned)
+            else {
+                continue;
+            };
+            for _ in 0..8 {
+                let (x0, y0) = (rng.below(48) as u32, rng.below(48) as u32);
+                let region = DeviceRect {
+                    x0,
+                    y0,
+                    x1: x0 + 1 + rng.below(40) as u32,
+                    y1: y0 + 1 + rng.below(40) as u32,
+                };
+                let reserved = aligned.evaluated(&source, axial, region);
+                let evaluated = (region.y0..region.y1)
+                    .flat_map(|y| (region.x0..region.x1).map(move |x| (x, y)))
+                    .filter(|&pixel| aligned.evaluates(&source, axial, pixel))
+                    .count();
+                assert!(
+                    evaluated <= reserved,
+                    "{evaluated} > {reserved} in {region:?}"
+                );
+                let area = (region.width() * region.height()) as usize;
+                columns += usize::from(aligned.pixels() > 2);
+                smaller += usize::from(reserved < area);
+            }
+        }
+    }
+    assert!(
+        columns > 100 && smaller > 100,
+        "{columns} column regions, {smaller} smaller"
+    );
 }
 
 #[test]

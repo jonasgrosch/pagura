@@ -31,7 +31,7 @@ use pagura_color::{MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Rect, Result};
 use pagura_interpret::features;
 use pagura_interpret::{Shading, ShadingFunction, ShadingKind};
-use pagura_raster::{Point, Transform};
+use pagura_raster::{DeviceRect, Point, Transform};
 
 /// The function input of one sample: `t`, `(x, y)` or mesh values.
 type Input = [f64; MAX_COMPONENTS];
@@ -128,7 +128,7 @@ impl ShadingSource {
             Use::Operator,
             (&mut bytes, functions),
         )?
-        .reserve(pixels, (&mut bytes, functions))
+        .reserve((pixels, context.region), (&mut bytes, functions))
     }
 
     /// Prepares `shading` as a shading pattern's paint (8.7.4.4): samples
@@ -152,7 +152,7 @@ impl ShadingSource {
             Use::Pattern,
             (&mut bytes, functions),
         )?
-        .reserve(pixels, (&mut bytes, functions))
+        .reserve((pixels, context.region), (&mut bytes, functions))
     }
 
     fn new(
@@ -224,15 +224,22 @@ impl ShadingSource {
         Ok(source)
     }
 
-    /// Reserves execution work; preparation is charged before evaluation.
-    /// Where samples go through [`Self::fill_batched`], their colours are
-    /// also certified ahead for that many samples.
+    /// Reserves execution work for the pixels of `region`, at most
+    /// `pixels`, that evaluation fills; preparation is charged before
+    /// evaluation. Aligned sources evaluate only what their columns'
+    /// table cannot serve. Batched colours are also certified ahead.
     fn reserve(
         mut self,
-        pixels: usize,
+        (pixels, region): (usize, DeviceRect),
         (bytes, functions): (&mut Meter, &mut Meter),
     ) -> Result<Self> {
-        let samples = pixels
+        let evaluated = match (&*self.geometry, &self.aligned) {
+            (Geometry::Axial(axial), Some(aligned)) => {
+                aligned.evaluated(&self, axial, region).min(pixels)
+            }
+            _ => pixels,
+        };
+        let samples = evaluated
             .checked_mul(self.samples())
             .ok_or(Error::limit("shading sample count overflow"))?;
         functions.charge_product(samples, self.colors.cost())?;

@@ -15,7 +15,7 @@ use super::{Geometry, ShadingSource, Span, SpanColors, allocate};
 use crate::source::Precision;
 use pagura_color::MAX_COMPONENTS;
 use pagura_core::{Meter, Result};
-use pagura_raster::Point;
+use pagura_raster::{DeviceRect, Point};
 
 /// The most columns a column table holds.
 const MAX_COLUMNS: usize = 1 << 16;
@@ -130,6 +130,50 @@ impl Aligned {
         }
     }
 
+    /// The most pixels of `region` that execution evaluates rather than
+    /// takes from the column table or the extended ends. A column of the
+    /// column direction is evaluated only where neither serves it, which
+    /// depends on the column alone (see the module documentation). The row
+    /// direction evaluates once per span, which `region` does not bound.
+    pub(super) fn evaluated(
+        &self,
+        source: &ShadingSource,
+        axial: &Axial,
+        region: DeviceRect,
+    ) -> usize {
+        let height = usize::try_from(region.height()).unwrap_or(usize::MAX);
+        let columns = match self.direction {
+            Direction::Rows => usize::try_from(region.width()).unwrap_or(usize::MAX),
+            Direction::Columns => (region.x0..region.x1)
+                .filter(|&x| {
+                    self.served(x).is_none()
+                        && matches!(classify(source, axial, (x, region.y0)), Class::Other)
+                })
+                .count(),
+        };
+        columns.saturating_mul(height)
+    }
+
+    /// Whether execution evaluates pixel `(x, y)` rather than taking it from
+    /// the column table or an extended end, as `fill_columns` decides.
+    #[cfg(test)]
+    pub(super) fn evaluates(
+        &self,
+        source: &ShadingSource,
+        axial: &Axial,
+        (x, y): (u32, u32),
+    ) -> bool {
+        self.direction == Direction::Rows
+            || (self.served(x).is_none() && matches!(classify(source, axial, (x, y)), Class::Other))
+    }
+
+    /// The table index of column `x`, where the table serves it.
+    fn served(&self, x: u32) -> Option<usize> {
+        let table = self.table.as_ref()?;
+        let index = x.checked_sub(table.first)? as usize;
+        (table.valid.get(index) == Some(&true)).then_some(index)
+    }
+
     /// One evaluation for the whole span when the row's projections are
     /// nonzero.
     fn fill_row(source: &ShadingSource, axial: &Axial, span: Span<'_>, out: &mut SpanColors) {
@@ -175,8 +219,7 @@ impl Aligned {
         {
             let x = span.x.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
             if let Some(table) = &self.table
-                && let Some(index) = x.checked_sub(table.first).map(|i| i as usize)
-                && table.valid.get(index) == Some(&true)
+                && let Some(index) = self.served(x)
             {
                 color.copy_from_slice(
                     table
