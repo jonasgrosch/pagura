@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "863d5ea58f6c09d69d5f365c025da64c720a746f",
+  "audited_revision": "dd4844086c3cce2abeb535925d07bf9a426943a9",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -71,7 +71,7 @@
     "crates/pagura-font/README.md": "0f9109987ee7c8010b3118dc4ac5c109aeef38f2b01a4b1a4a201794035109bc",
     "crates/pagura-font/src/cff.rs": "57aa4eed7d211528b4bd1d7dfb3bf25c161ecfc42d0a74eaf86d42fb832e4a60",
     "crates/pagura-font/src/cff/dict.rs": "6fa742c3dc4d8774c67599bd55e580a433ca79002d1468d9c05bdb2b1c28828a",
-    "crates/pagura-font/src/cff/dict/tests.rs": "4aace28e067d64c6b2e84cdb16281769a5747ca50b5424847db7bf4779867a55",
+    "crates/pagura-font/src/cff/dict/tests.rs": "4e6773c1e6a1d08cc3c51702a987b20429c06a0997d3f9bf603bcb54d35d258f",
     "crates/pagura-font/src/lib.rs": "eb5b254373adcb1600c8967a9619541e1de483d7715bedb2df72dc19c54e7d31",
     "crates/pagura-font/src/sfnt/cmap.rs": "f5102915652641c02cd1e697c8b716491b6b65f27fe54c7d6ee3fcd3dd9dd383",
     "crates/pagura-font/src/sfnt/cmap/tests.rs": "77bd5f29f81693656fb69d67e25f6e24dff40f74b33757450f5f17543ae06fe0",
