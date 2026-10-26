@@ -1571,6 +1571,416 @@
       "tolerance": 1
     },
     {
+      "id": "image/jpeg-lossless-huffman-gray",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman gray",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-gray.pdf",
+      "sha256": "faabcd4447320c83f5bd6009ac3d9269fd27e7b7853a087cf8c22cd4cb1c2226",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-gray.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-gray-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman gray rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-gray-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-gray-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-gray"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-restart",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman restart",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-restart.pdf",
+      "sha256": "3b7512115216961854933e9f1135ecb3ba0780ded2ed22fe165c04a306e28d32",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-restart.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-restart-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman restart rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-restart-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-restart-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-restart"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb.pdf",
+      "sha256": "f5172fbecda90fff08f28ea5142dee95925e6760194a28cef94245ea15f9c7a1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-rgb-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman rgb rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-rgb-rgb-control.pdf",
+      "sha256": "dd2e75a2b8abc079178a25362e74618af989a8d11155900d683ae567dc30758b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-rgb-rgb-control.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-rgb"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit.pdf",
+      "sha256": "cbc9cfa7ed915258626fc03d0ed43bb9f68a470b0daa491cf1e9c0be770ccfb2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-16bit"
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit-point",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit point",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit-point.pdf",
+      "sha256": "ed8846870b630bd681198a342377c19bc382cc6430a46e35e332f08f0ec78f78",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit-point.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-huffman-16bit-point-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless huffman 16bit point rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-huffman-16bit-point-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-huffman-16bit-point-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-huffman-16bit-point"
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-gray",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic gray",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-gray.pdf",
+      "sha256": "fdba15120df0f159e0d3519a841b40894385a528a3a53179cadd0aacc9e4609e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-gray.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-gray-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic gray rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-gray-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-gray-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-arithmetic-gray"
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-restart",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic restart",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-restart.pdf",
+      "sha256": "b84fcfe12f0fd8c8d54df47218f43c8b880e6ac9099d9b13cd71bbaa1dd7f29b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-restart.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-restart-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic restart rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-restart-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-restart-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-arithmetic-restart"
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-rgb",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic rgb",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-rgb.pdf",
+      "sha256": "d440511e59a469b7c1d4d6a2502e3508e5954093018002867c8e35ccf791e80d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-rgb.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-rgb-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic rgb rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-rgb-rgb-control.pdf",
+      "sha256": "dd2e75a2b8abc079178a25362e74618af989a8d11155900d683ae567dc30758b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-rgb-rgb-control.ppm",
+      "oracle_sha256": "a2c81fdcf8d64433db8d622c59aba142cc9e1257d3eb560ca82634f2507b1ce1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-arithmetic-rgb"
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-16bit",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic 16bit",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit.pdf",
+      "sha256": "43742b71d0aebbac379493e44b4c8a01e5b81ae1cf3a3ddfcc021983f81b3274",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-16bit-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic 16bit rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-arithmetic-16bit"
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-16bit-point",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic 16bit point",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point.pdf",
+      "sha256": "644cc44a2cfbaa0378887a27507a178ba668f1047e1e4f20164548b07e12368f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "image/jpeg-lossless-arithmetic-16bit-point-rgb-control",
+      "kind": "pdf",
+      "description": "jpeg lossless arithmetic 16bit point rgb control",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-lossless"
+      ],
+      "path": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point-rgb-control.pdf",
+      "sha256": "386617938c9b5bcbbfb7c1be4a29a158987c7b431793780ac91c67cd116e5487",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-lossless-arithmetic-16bit-point-rgb-control.ppm",
+      "oracle_sha256": "2619eb72936cb2c2a2845bc0dd73b0dbdbfd0e3dcaa8df6306cbd987a7a93c2d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_of": "image/jpeg-lossless-arithmetic-16bit-point"
+    },
+    {
       "id": "image/samples-1-1-raw",
       "kind": "vector",
       "description": "MSB rows, row padding and exact unpacked samples",

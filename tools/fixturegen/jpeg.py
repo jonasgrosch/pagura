@@ -576,6 +576,104 @@ def verify_qm():
     model = Decoder(encoder.finish())
     assert [model.bit(0) for _ in decisions] == decisions
 
+def lossless_jpeg(*, precision=8, predictor=1, point=0, components=1, restart_rows=0, arithmetic=False):
+    """Independent T.81 H encoder; the original sample grid is the oracle.
+
+    Differences use modulo 2**16; neither overflow predictions nor negative
+    half-differences are clipped. High-precision display reduction is the same
+    explicitly declared full-range policy as the twelve-bit DCT fixtures.
+    """
+    from .image import Wire, segment
+    width, height = 5, 4
+    maximum = (1 << precision) - 1
+    seeds = [0, 255, 128, 63, 192, 255, 0, 129, 65, 191,
+             17, 240, 3, 252, 127, 221, 34, 189, 66, 128]
+    planes = [[((seeds[(i + c * 7) % len(seeds)] * maximum + 127) // 255) >> point
+               for i in range(width * height)] for c in range(components)]
+    data = b'\xff\xd8'
+    if arithmetic:
+        data += segment(0xcc, bytes([0, 16]))  # H.1.2.3.3: L=0, U=1.
+    else:
+        data += segment(0xc4, bytes([0]) + bytes([0] * 4 + [17] + [0] * 11) + bytes(range(17)))
+    data += segment(0xcb if arithmetic else 0xc3, bytes([precision]) + struct.pack('>HHB', height, width, components)
+                    + b''.join(bytes([c + 1, 17, 0]) for c in range(components)))
+    interval = restart_rows * width
+    if interval:
+        data += segment(0xdd, struct.pack('>H', interval))
+    data += segment(0xda, bytes([components]) + b''.join(bytes([c + 1, 0]) for c in range(components))
+                    + bytes([predictor, 0, point]))
+    wire, coder = Wire(), Encoder()
+    differences = [[0] * (width * height) for _ in planes]
+    start, sequence = 0, 0
+    for i in range(width * height):
+        if interval and i and i % interval == 0:
+            data += coder.finish() if arithmetic else wire.bytes(jpeg=True)
+            data += bytes([255, 208 + sequence % 8])
+            sequence += 1
+            start, wire, coder = i, Wire(), Encoder()
+        row, column = divmod(i, width)
+        for c, plane in enumerate(planes):
+            if i == start:
+                predicted = 1 << (precision - point - 1)
+            elif row == start // width:
+                predicted = plane[i - 1]
+            elif column == 0:
+                predicted = plane[i - width]
+            else:
+                a, b, corner = plane[i - 1], plane[i - width], plane[i - width - 1]
+                predicted = [a, b, corner, a + b - corner, a + ((b - corner) // 2),
+                             b + ((a - corner) // 2), (a + b) // 2][predictor - 1]
+            difference = (plane[i] - predicted + 32768) % 65536 - 32768
+            if arithmetic:
+                left = differences[c][i - 1] if column else 0
+                above = differences[c][i - width] if row > start // width else 0
+                context = 5 * dc_context(left, 0, 1) + dc_context(above, 0, 1)
+                key = lambda index: ('lossless', 0, index)
+                coder.bit(key(context), int(difference != 0))
+                if difference:
+                    negative = int(difference < 0)
+                    coder.bit(key(context + 1), negative)
+                    first = 129 if dc_context(above, 0, 1) >= 12 else 100
+                    write_magnitude(coder, key, difference, context + 2 + negative, first, first + 1)
+            else:
+                size = abs(difference).bit_length()
+                wire.put(size, 5)
+                if size != 16:
+                    wire.put(difference if difference >= 0 else difference + (1 << size) - 1, size)
+            differences[c][i] = difference
+    data += coder.finish() if arithmetic else wire.bytes(jpeg=True)
+    expected = bytes(((plane[i] << point) * 255 + maximum // 2) // maximum
+                     for i in range(width * height) for plane in planes)
+    return data + b'\xff\xd9', expected, width, height
+
+
+def lossless_cases():
+    """Compatibility probes: T.81 H is beyond PDF 7.4.8's required processes."""
+    from dataclasses import replace
+    from .paint import image_case
+    for arithmetic in (False, True):
+        coding = 'arithmetic' if arithmetic else 'huffman'
+        for suffix, options in [
+            ('gray', {}),
+            ('restart', {'predictor': 7, 'restart_rows': 1}),
+            ('rgb', {'predictor': 4, 'components': 3}),
+            ('16bit', {'precision': 16}),
+            ('16bit-point', {'precision': 16, 'predictor': 5, 'point': 3}),
+        ]:
+            encoded, expected, width, height = lossless_jpeg(arithmetic=arithmetic, **options)
+            components = options.get('components', 1)
+            colors = [tuple(expected[i:i + 3]) if components == 3 else (expected[i],) * 3
+                      for i in range(0, len(expected), components)]
+            name = f'jpeg-lossless-{coding}-{suffix}'
+            settings = {'matrix': (width, 0, 0, height, 2, 2), 'colors': colors, 'requirement': 'image-jpeg-lossless'}
+            space = b'/DeviceRGB' if components == 3 else b'/DeviceGray'
+            yield image_case(name, encoded, b'/BitsPerComponent 8 /ColorSpace ' + space
+                             + b'/Filter /DCTDecode /DecodeParms << /ColorTransform 0 >>', [], width, height, **settings)
+            control = image_case(name + '-rgb-control', bytes(v for color in colors for v in color),
+                                 b'/BitsPerComponent 8 /ColorSpace /DeviceRGB', [], width, height, **settings)
+            yield replace(control, extra={**control.extra, 'control_of': 'image/' + name})
+
+
 def cases():
     verify_qm()
     from .image import vector, image_pdf_vector
@@ -732,3 +830,4 @@ def cases():
                    ('image-jpeg-arithmetic' if options.get('arithmetic',True) else 'image-jpeg-12bit',),
                    'JPEG native-precision reconstruction painted on a pixel-aligned grid',
                    oracle=oracle,extra={'tolerance':1})
+    yield from lossless_cases()

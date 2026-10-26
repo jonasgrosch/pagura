@@ -806,6 +806,54 @@
         }
       ],
       "verdict": "Implemented at the JPEG and PDF image adapter boundary."
+    },
+    {
+      "id": "image-jpeg-lossless",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.8",
+        "T.81 B.2.2/Table B.2",
+        "T.81 B.2.3/Table B.3",
+        "T.81 H.1.1-H.1.2.3",
+        "T.81 H.2"
+      ],
+      "status": "gap; compatibility probes pending",
+      "tests": [
+        "image/jpeg-lossless-huffman-gray",
+        "image/jpeg-lossless-huffman-gray-rgb-control",
+        "image/jpeg-lossless-huffman-restart",
+        "image/jpeg-lossless-huffman-restart-rgb-control",
+        "image/jpeg-lossless-huffman-rgb",
+        "image/jpeg-lossless-huffman-rgb-rgb-control",
+        "image/jpeg-lossless-huffman-16bit",
+        "image/jpeg-lossless-huffman-16bit-rgb-control",
+        "image/jpeg-lossless-huffman-16bit-point",
+        "image/jpeg-lossless-huffman-16bit-point-rgb-control",
+        "image/jpeg-lossless-arithmetic-gray",
+        "image/jpeg-lossless-arithmetic-gray-rgb-control",
+        "image/jpeg-lossless-arithmetic-restart",
+        "image/jpeg-lossless-arithmetic-restart-rgb-control",
+        "image/jpeg-lossless-arithmetic-rgb",
+        "image/jpeg-lossless-arithmetic-rgb-rgb-control",
+        "image/jpeg-lossless-arithmetic-16bit",
+        "image/jpeg-lossless-arithmetic-16bit-rgb-control",
+        "image/jpeg-lossless-arithmetic-16bit-point",
+        "image/jpeg-lossless-arithmetic-16bit-point-rgb-control"
+      ],
+      "gaps": "Lossless JPEG is not a required PDF DCTDecode process. Primary-format-valid SOF3/SOF11 controls establish whether pinned PDF baselines accept this compatibility extension before product support is added. Hierarchical JPEG and deferred DNL are separate processes.",
+      "review": [
+        {
+          "locator": "T.81 H.1.1, H.1.2/Table H.1-H.3 and H.2",
+          "rule": "Lossless coding predicts unsigned 2\u201316-bit samples without a level shift, encodes modulo-65536 differences, and restores a point transform. Scan/restart starts use the reduced-precision midpoint. Row starts and first rows select their boundary predictors; other positions use the declared predictor with full intermediate integer precision and arithmetic half-difference shifts. Huffman category16 has no appended magnitude bits; arithmetic contexts use differences above and left and reset at scan/restart boundaries.",
+          "verdict": "Primary rules reviewed; independent source grids, predictive encoders and paired ordinary RGB controls authored. No decoder or measured renderer supplies the expected grid."
+        }
+      ],
+      "choices": [
+        {
+          "choice": "Map the restored native sample range to bytes with one full-range rounding for the PDF compatibility probe; retain original samples as the independent data model.",
+          "reason": "PDF7.4.8 specifies byte components and baseline/progressive JPEG, without prescribing a lossless/high-precision adaptation. This probe policy is not a normative PDF rule."
+        }
+      ]
     }
   ]
 }

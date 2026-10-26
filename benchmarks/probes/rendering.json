@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01/R02 independent synthetic RGB8 oracles: controls, ICC profile choice and Lab input, unsigned/mixed sYCC precision, palette-backed Indexed opacity, masks/groups/interpolation and resource-aware inline framing; native-size and equivalent ordinary RGB/soft-mask controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration and paired T.81 lossless-JPEG compatibility probes. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction is an explicit reader policy. No timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -2860,6 +2860,266 @@
         "height": 32,
         "rgb_sha256": "b11098bd81c6bf50765b9d58438807d5442cc997134155fb6e4bd33b863bcef1",
         "tolerance": 1
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-gray",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-gray",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-gray-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-gray-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-restart",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-restart",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-restart-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-restart-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-rgb",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-rgb",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "bea8866d9d85c8a8f9bae37af20ef3b7a759da685000cbc9cd596edc5d4b6d16",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-rgb-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-rgb-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "bea8866d9d85c8a8f9bae37af20ef3b7a759da685000cbc9cd596edc5d4b6d16",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-16bit",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-16bit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-16bit-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-16bit-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-16bit-point",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-16bit-point",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-huffman-16bit-point-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-huffman-16bit-point-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-gray",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-gray",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-gray-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-gray-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-restart",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-restart",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-restart-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-restart-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-rgb",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-rgb",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "bea8866d9d85c8a8f9bae37af20ef3b7a759da685000cbc9cd596edc5d4b6d16",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-rgb-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-rgb-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "bea8866d9d85c8a8f9bae37af20ef3b7a759da685000cbc9cd596edc5d4b6d16",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-16bit",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-16bit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-16bit-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-16bit-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-16bit-point",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-16bit-point",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "image.jpeg-lossless-arithmetic-16bit-point-rgb-control",
+      "capability": "images.codecs",
+      "operation": "render",
+      "fixture": "image/jpeg-lossless-arithmetic-16bit-point-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "686b43278edf9fbf32d9d4939fc788de9cf8e2bc1abf718a5e240d4b649d8554",
+        "tolerance": 0
       }
     }
   ]
