@@ -559,9 +559,12 @@ fn reconstruct_component(
                         if coefficient == 0.0 {
                             continue;
                         }
-                        band.plane.materialize(budget)?;
+                        // The first nonzero coefficient of the plane allocates it.
+                        if !nonzero {
+                            band.plane.materialize(budget)?;
+                            nonzero = true;
+                        }
                         band.plane.values[start + x] = coefficient * step;
-                        nonzero = true;
                     }
                     if nonzero {
                         band.plane.include_rows(block.y + y..block.y + y + 1);

@@ -573,6 +573,53 @@ impl Separable {
         }
     }
 
+    /// [`Self::gather`] of samples of `N` values, handed to `put` with each
+    /// of the first `len` outputs as they are read rather than gathered
+    /// first: the same samples, zeros where the row cannot be read.
+    pub(super) fn gather_each<R: Rows, const N: usize, O>(
+        &self,
+        rows: &R,
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
+        out: &mut [O],
+        put: impl Fn(&mut O, &[R::Value; N]),
+    ) {
+        let Pixels { y, len, .. } = pixels;
+        let zero = [R::Value::default(); N];
+        let count = len.min(out.len());
+        let out = &mut out[..count];
+        let Scratch { codes, texels, .. } = scratch;
+        let (cells, consecutive) = self.cells(pixels);
+        let cache = &mut R::Value::pick(codes, texels).cache;
+        let across = row(&self.geometry, self.taps, y);
+        let (low, high) = cells.iter().fold((u32::MAX, 0), |(low, high), &cell| {
+            (low.min(cell), high.max(cell))
+        });
+        if rows.width() != N || low > high || across.first >= across.end {
+            for out in out.iter_mut() {
+                put(out, &zero);
+            }
+            return;
+        }
+        let first = index(low);
+        let values = rows.row(index(across.first), (first, index(high) + 1), cache);
+        let samples = values.as_chunks::<N>().0;
+        if consecutive && samples.len() >= len {
+            // One sample per pixel in order: the row itself.
+            for (out, sample) in out.iter_mut().zip(samples) {
+                put(out, sample);
+            }
+            return;
+        }
+        let (read, rest) = out.split_at_mut(cells.len().min(out.len()));
+        for (out, &cell) in read.iter_mut().zip(cells) {
+            put(out, samples.get(index(cell) - first).unwrap_or(&zero));
+        }
+        for out in rest {
+            put(out, &zero);
+        }
+    }
+
     /// Writes `map` of each average of device pixels `x .. x + len` of row
     /// `y`, [`Rows::width`] values each, into the first values of each of
     /// `len` pixels of `stride` values of `out`, or with `None` into
