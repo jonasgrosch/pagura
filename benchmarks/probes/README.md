@@ -4,6 +4,9 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
+The companion [render manifest](rendering.json) adds six independent pixel
+oracles: blank and rectangle controls, fractional geometry, JPX RGB and straight/
+premultiplied JPX alpha. Its 36 cells use all six existing public render adapters.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
 |---|---|---|---|
@@ -51,14 +54,18 @@ local machine, run engines/tests only in hosted CI.
 ```sh
 # Source-only validation, without imports or invocation of external engines:
 python tools/capability_probes.py check
+python tools/capability_render.py check
 # Hosted Ubuntu, after installing the OS Poppler GLib/GI packages:
 python tools/competitors.py setup --engines pdfium,mupdf,pdfjs,hayro
 python tools/capability_probes.py run --engines pdfium,mupdf,pdfjs,poppler,hayro --output /tmp/linux.json
+python tools/capability_render.py run --engines pdfium,mupdf,pdfjs,poppler,hayro --output /tmp/render-linux.json
 # Hosted macOS:
 python tools/competitors.py setup --engines quartz
 python tools/capability_probes.py run --engines quartz --output /tmp/mac.json
+python tools/capability_render.py run --engines quartz --output /tmp/render-mac.json
 # Join reports from one workflow run/revision (no engine execution):
 python tools/capability_probes.py combine /tmp/linux.json /tmp/mac.json --output /tmp/combined.json
+python tools/capability_render.py combine /tmp/render-linux.json /tmp/render-mac.json --output /tmp/render-combined.json
 ```
 
 Each platform publishes `capability-document-services-<os>`, even when a probe
@@ -69,6 +76,18 @@ manifest, lock and native binary identities. Python/pdf.js/hayro dependencies
 are pinned; Poppler and CoreGraphics use the actual recorded OS versions, not
 an asserted lock pin. Workspace/cache paths become placeholders. Native
 diagnostics retain byte counts and hashes rather than raw logs.
+
+`capability-rendering-<os>` and `capability-rendering` retain the pixel observations
+separately. The exact PDF/oracle bytes and normalized RGB identities are hashed.
+P6/PAM/RGBA adapter output is normalized to RGB over white without resizing,
+alignment or inferred tolerance. Every pixel must meet the fixture's existing
+per-channel bound at the recorded dimensions. There is no majority-vote oracle.
+Fresh output, matching dimensions and attested comparisons are required for a
+pass; a successful process exit or leftover image cannot pass. Nonzero renderer
+exits remain unclassified adapter failures until investigated, never presumed
+backend rejections or unsupported features. These probes do not measure or
+compare the render adapters' timing output. Embedded ICC/sYCC and Indexed JPX
+alpha from the separate R02 implementation PR will be added after consolidation.
 
 `pass` requires the independent expectation, or an engine rejection for the
 invalid-input control. A wrong result is `incorrect`; a rejection of valid input
@@ -88,6 +107,8 @@ evidence, invalid envelopes, missing/duplicate cells, unattested passes, malform
 output, timeouts and missing executables. Report joining also rejects mixed
 revisions, fixtures, source hashes or workflow runs and incomplete/overlapping
 engine coverage. These controls use stubs, not competitor libraries.
+Pixel controls additionally cover wrong/corrupt output, stale files, dimension
+and hash mismatches, tolerance drift and process crashes.
 
 ## Attachment API controls
 

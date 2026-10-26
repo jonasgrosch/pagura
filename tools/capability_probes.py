@@ -297,10 +297,29 @@ def validate_report(report, manifest, inventory):
         if row["outcome"] == "pass":
             require(report["engines"][row["engine"]]["status"] == "available", "pass without engine identity")
             case = next(case for case in manifest["cases"] if case["id"] == row["case"])
-            require(case["oracle"] == "reject-invalid" or same_value(row.get("observed"), case["expected"]), "pass without matching oracle")
+            if case["oracle"] == "rgb8":
+                require(pixel_pass(case, row.get("observed")), "pass without matching pixel oracle")
+            else:
+                require(case["oracle"] == "reject-invalid" or same_value(row.get("observed"), case["expected"]), "pass without matching oracle")
             if case["oracle"] == "reject-invalid":
                 require(isinstance(row.get("reason"), str) and row["reason"].strip() and "observed" not in row, "pass without rejection evidence")
     require(seen == expected, "missing probe cells")
+
+
+def pixel_pass(case, observed):
+    """A pixel pass retains the declared bound, dimensions and both byte identities."""
+    if not isinstance(observed, dict):
+        return False
+    expected = case["expected"]
+    error = observed.get("max_channel_error")
+    actual_hash = observed.get("rgb_sha256")
+    return (type(error) is int and 0 <= error <= expected["tolerance"]
+            and type(observed.get("width")) is int and type(observed.get("height")) is int
+            and observed["width"] == expected["width"] and observed["height"] == expected["height"]
+            and observed.get("oracle_rgb_sha256") == expected["rgb_sha256"]
+            and isinstance(actual_hash, str) and len(actual_hash) == 64
+            and all(c in "0123456789abcdef" for c in actual_hash)
+            and (error != 0 or actual_hash == expected["rgb_sha256"]))
 
 
 def combine(reports, manifest, inventory):

@@ -11,12 +11,18 @@ on:
       - 'benchmarks/capabilities.json'
       - 'benchmarks/probes/**'
       - 'benchmarks/adapters/capability*'
+      - 'benchmarks/adapters/python_engine.py'
+      - 'benchmarks/adapters/pdfjs.mjs'
+      - 'benchmarks/adapters/quartz.swift'
       - 'benchmarks/adapters/hayro/**'
       - 'benchmarks/node-package*.json'
       - 'rust-toolchain.toml'
       - '.cargo/config.toml'
       - '.python-version'
       - 'references/requirements/**'
+      - 'corpus/manifests/classic.json'
+      - 'corpus/manifests/paint.json'
+      - 'tools/benchkit/images.py'
       - 'uv.lock'
       - 'pyproject.toml'
   workflow_dispatch:
@@ -41,10 +47,11 @@ jobs:
         with:
           version: 0.13.1
       - run: uv sync --locked --only-group lint
-      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/test_capabilities.py tools/test_capability_probes.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py tools/competitors.py
-      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/test_capabilities.py tools/test_capability_probes.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py tools/competitors.py
+      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py tools/competitors.py
+      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py tools/competitors.py
       - run: python tools/capabilities.py --check
       - run: python tools/capability_probes.py check
+      - run: python tools/capability_render.py check
       - run: python -m unittest discover -s tools -p "test_capabilit*.py" -v
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -83,7 +90,7 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Install Poppler GLib public API
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y python3-gi gir1.2-poppler-0.18
+        run: sudo apt-get update && sudo apt-get install -y python3-gi gir1.2-poppler-0.18 poppler-utils
       - name: Install isolated competitor adapters
         env:
           PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
@@ -97,6 +104,16 @@ jobs:
         with:
           name: capability-document-services-${{ matrix.os }}
           path: ${{ runner.temp }}/capability-report.json
+          if-no-files-found: error
+      - name: Probe independent render oracles
+        env:
+          PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
+        run: python tools/capability_render.py run --engines "${{ matrix.engines }}" --output "$RUNNER_TEMP/render-report.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: capability-rendering-${{ matrix.os }}
+          path: ${{ runner.temp }}/render-report.json
           if-no-files-found: error
   combined-report:
     needs: document-services
@@ -116,4 +133,23 @@ jobs:
         with:
           name: capability-document-services
           path: ${{ runner.temp }}/capability-report.json
+          if-no-files-found: error
+  combined-render-report:
+    needs: document-services
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: capability-rendering-*
+          path: ${{ runner.temp }}/render-inputs
+      - name: Require one source revision and all six render baselines
+        run: python tools/capability_render.py combine "$RUNNER_TEMP"/render-inputs/*/render-report.json --output "$RUNNER_TEMP/render-report.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: capability-rendering
+          path: ${{ runner.temp }}/render-report.json
           if-no-files-found: error

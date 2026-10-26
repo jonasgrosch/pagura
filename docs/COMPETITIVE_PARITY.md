@@ -162,6 +162,11 @@ six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstructi
 and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
 operation/configuration matrix and Pagura observations remain open. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
+The initial render slice adds six independent pixel oracles and 36 case/engine
+cells for empty/populated controls, fractional geometry and JPX colour/alpha.
+It retains wrong pixels as measured failures; hosted execution of this slice
+is pending. The separate R02 changes need their own expanded probes after
+consolidation onto the shared target.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.

@@ -29,6 +29,7 @@ COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
     ([sys.executable, "tools/capabilities.py", "--check"], {}),
     ([sys.executable, "tools/capability_probes.py", "check"], {}),
+    ([sys.executable, "tools/capability_render.py", "check"], {}),
     (["node", "tools/capability_pdfjs_test.mjs"], {}),
     # Cached CAVP, ACVP and Wycheproof suites for pagura-crypto; a no-op without the cache.
     ([sys.executable, "tools/signature_vectors.py"], {}),
