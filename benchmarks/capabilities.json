@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "774ade12cfe97bf08cebaed1b5a008884f93526a",
+  "audited_revision": "80c8231657df3e10c6cab369fff39f29f77b8afb",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -195,7 +195,7 @@
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
     "references/requirements/image.json": "c38f1c6f006b7997d2ca6103c11e6ccbb09ab5b7e9ca7dc72821d76aa6cfb948",
     "references/requirements/jbig2.json": "ee69056398af0d7757e076b88530d81885135766d3b839c404c185fdaee8fc10",
-    "references/requirements/jpx.json": "3105566b62c81b36e51fddb37b9bb01a20c0474ff8f170f7f61a3970bfc09c13",
+    "references/requirements/jpx.json": "61edf2f6b6cf87130a6b23340846df0a0cb82ba399c290af5f6519a84b0eee71",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
     "references/requirements/paint.json": "3ea2f792fe01aaba53f712f752b2392b701748be9ce6f21b0fa9b89a3f8a0897",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
@@ -229,8 +229,8 @@
     "tools/fixturegen/jpx_layout_probe.py": "a5edc0bf230217001ac0bcb33c5fab0a0e02e33f358006e659f14c5b9d95a055",
     "corpus/manifests/jpx_layout_probe.json": "d7cc49cfe79a0aabb9d2fcb893167fd5c58d2bea5ba242234631733bba4613e2",
     "crates/pagura-image/src/jpx/boxes/tests.rs": "c10bf234cdd56379892f84e2dc9b7a1261441c10d9a0c9dc070ecb15935371e8",
-    "tools/fixturegen/jpx_fragment_probe.py": "4ff1dc30c15a6774c308d64c5c84114501abe345234a7ba49bb90d3ef7e3a478",
-    "corpus/manifests/jpx_fragment_probe.json": "e6e9004b1c6b8c83f0bf5b88004e6bf8b973fecea2b238a3eb5830284c8d7646"
+    "tools/fixturegen/jpx_fragment_probe.py": "f5b0bed1e4e05712f5e3b83140003e78d0ffc964e4d5f6e630bc95f2a473f52b",
+    "corpus/manifests/jpx_fragment_probe.json": "8efbcac9a75fa6519da2fbf70d9b0bf83e5485f5bcd36b3f99440d5f8c612333"
   },
   "capabilities": [
     {
