@@ -54,14 +54,12 @@ fn options(limits: &Limits, band_height: u32) -> ShapeOptions<'_> {
 }
 
 fn canonical(edges: &Arc<GlyphEdges>, origin: Point, prep: &Prep<'_>) -> Shape {
-    let Kind::Curve {
-        outline, linear, ..
-    } = &edges.kind
-    else {
+    let Kind::Curve { source, .. } = &edges.kind else {
         panic!("a curve body with its point");
     };
     let mut bytes = crate::testing::bytes();
-    let (polygon, points) = polygon(outline, *linear, prep.limits, &mut bytes).unwrap();
+    let (polygon, points) =
+        polygon(&source.outline, source.linear, prep.limits, &mut bytes).unwrap();
     assert_eq!(points.len(), 1);
     let shape = translated(
         (&polygon, &points),

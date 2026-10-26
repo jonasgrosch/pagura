@@ -44,7 +44,6 @@ pub struct GlyphEdges {
     retained: usize,
     hull: Option<[f64; 4]>,
     pub(super) kind: Kind,
-    direct: Option<rounding::Direct>,
 }
 
 #[derive(Debug)]
@@ -59,24 +58,64 @@ pub(super) enum Kind {
         spline: Spline,
         relative: Relative,
         point: Option<Point>,
-        outline: Arc<Path>,
-        linear: Transform,
+        source: Arc<rounding::Proof>,
     },
     /// The polygon at the flattening tolerance with its geometric points'
     /// floor cells, and whether it is certified.
     Polygon {
         polygon: Polygon,
         points: Vec<Point>,
-        certified: bool,
-        /// Original curves retained for coverage-byte certification.
-        source: Option<(Arc<Path>, Transform)>,
-        /// Bounds and work for uncut short placements, computed once from
-        /// the canonical vertices without retaining another edge array.
-        summary: Option<Summary>,
-        /// An uncertified short polygon's sides with its overlaps resolved,
-        /// for the short placements no clip cuts.
-        resolved: Option<Box<Relative>>,
+        state: PolygonState,
     },
+}
+
+/// The polygon's placement proof. Resolved sides always retain the
+/// original curves that certify their coverage; a summary belongs only
+/// to a polygon with certified winding.
+#[derive(Debug)]
+pub(super) enum PolygonState {
+    Certified {
+        summary: Option<Summary>,
+        source: Option<Arc<rounding::Proof>>,
+    },
+    Checked {
+        source: Option<Arc<rounding::Proof>>,
+    },
+    Resolved {
+        relative: Box<Relative>,
+        source: Arc<rounding::Proof>,
+    },
+}
+
+impl PolygonState {
+    fn source(&self) -> Option<&rounding::Proof> {
+        match self {
+            Self::Certified { source, .. } | Self::Checked { source } => source.as_deref(),
+            Self::Resolved { source, .. } => Some(source),
+        }
+    }
+
+    fn relative(&self) -> Option<&Relative> {
+        match self {
+            Self::Resolved { relative, .. } => Some(relative),
+            _ => None,
+        }
+    }
+
+    fn summary(&self) -> Option<Summary> {
+        match self {
+            Self::Certified { summary, .. } => *summary,
+            _ => None,
+        }
+    }
+
+    fn winding(&self) -> Winding {
+        if matches!(self, Self::Certified { .. }) {
+            Winding::Certified
+        } else {
+            Winding::Check(0.0)
+        }
+    }
 }
 
 /// A certified glyph's edges relative to its origin: a placement adds its
@@ -197,19 +236,10 @@ impl GlyphEdges {
         let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
         bytes.charge_items::<Self>(1)?;
         let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
-        let relative = match &kind {
-            Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { .. } => None,
-        };
-        // A curve body with a point contour integrates its quadratics too.
-        // Cache their arithmetic allowance once on the glyph owner.
-        let direct =
-            relative.and_then(|relative| rounding::Direct::new(outline, transform, relative));
         Ok(Self {
             retained: bytes.used(),
             hull,
             kind,
-            direct,
         })
     }
 
@@ -243,16 +273,12 @@ impl GlyphEdges {
             // The certificate reads the curves the placements integrate.
             let relative = Relative::new(&spline, bytes)?;
             if spline_certified(&spline, &relative.curves, bytes)? {
-                // The outline's allocation includes the Arc counters and
-                // Path, whose segment vector is charged separately.
-                bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
-                let outline = Arc::new(outline.clone_with_bytes(bytes)?);
+                let source = rounding::Proof::new(outline, transform, Some(&relative), bytes)?;
                 return Ok(Kind::Curve {
                     spline,
                     relative,
                     point,
-                    outline,
-                    linear: transform,
+                    source,
                 });
             }
             let released = spline.retained_bytes() + relative.retained_bytes();
@@ -288,19 +314,30 @@ impl GlyphEdges {
             bytes.refund(doubtful.slabs.capacity() * size_of::<[f64; 2]>());
         }
         let source = if source_available {
-            bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
-            Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
+            Some(rounding::Proof::new(outline, transform, None, bytes)?)
         } else {
             None
+        };
+        let state = if certified {
+            PolygonState::Certified { summary, source }
+        } else {
+            match (resolved, source) {
+                (Some(relative), Some(source)) => PolygonState::Resolved { relative, source },
+                (_, source) => PolygonState::Checked { source },
+            }
         };
         Ok(Kind::Polygon {
             polygon,
             points,
-            certified,
-            source,
-            summary,
-            resolved,
+            state,
         })
+    }
+
+    fn source(&self) -> Option<&rounding::Proof> {
+        match &self.kind {
+            Kind::Curve { source, .. } => Some(source),
+            Kind::Polygon { state, .. } => state.source(),
+        }
     }
 
     /// The bounds of the outline's points under the linear map, relative to
@@ -319,7 +356,7 @@ impl GlyphEdges {
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { resolved, .. } => resolved.as_deref(),
+            Kind::Polygon { state, .. } => state.relative(),
         }
     }
 
@@ -554,8 +591,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             spline,
             relative,
             point,
-            outline,
-            linear,
+            source,
         } => {
             let Some(mut frame) = Frame::new(options) else {
                 return Ok(None);
@@ -578,7 +614,8 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // A clip path crosses it, or a rectangle cuts it with its
                 // point: its polygon, resolved with the clip.
                 _ => {
-                    let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
+                    let (polygon, points) =
+                        polygon(&source.outline, source.linear, options.limits, &mut bytes)?;
                     translated(
                         (&polygon, &points),
                         origin,
@@ -594,12 +631,9 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
         Kind::Polygon {
             polygon,
             points,
-            certified,
-            summary,
-            resolved,
-            ..
+            state,
         } => {
-            if let Some(relative) = resolved {
+            if let Some(relative) = state.relative() {
                 let hull = relative.placed_hull(origin, None)?;
                 let Some(mut frame) = Frame::new(options) else {
                     return Ok(None);
@@ -611,7 +645,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                     return Shape::translated(edges, relative, origin, hull, &frame, options);
                 }
             }
-            if let Some(summary) = summary {
+            if let Some(summary) = state.summary() {
                 let hull = summary.placed_hull(origin)?;
                 if Summary::short(hull) {
                     let Some(mut frame) = Frame::new(options) else {
@@ -621,7 +655,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                         frame.fit(hull);
                         if frame.rect.is_none() {
                             let shape = Shape::polygon_glyph(
-                                edges, *summary, origin, hull, &frame, options,
+                                edges, summary, origin, hull, &frame, options,
                             )?;
                             if let Some(shape) = &shape {
                                 bytes.charge(shape.retained_bytes())?;
@@ -631,11 +665,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                     }
                 }
             }
-            let winding = if *certified {
-                Winding::Certified
-            } else {
-                Winding::Check(0.0)
-            };
+            let winding = state.winding();
             translated(
                 (polygon, points),
                 origin,

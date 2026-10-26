@@ -13,9 +13,10 @@ pub(crate) use narrow::{
     store_n16, store_n16_runs, store_n16_uniform, targets, word,
 };
 
-use crate::blend::{Blend, BlendVisitor, with_blend};
+use crate::blend::{Blend, BlendVisitor, Normal, with_blend};
 use crate::plan::Layout;
 use pagura_interpret::BlendMode;
+use std::iter::repeat;
 
 /// The straight colours of a span's pixels.
 #[derive(Debug, Clone, Copy)]
@@ -108,7 +109,7 @@ impl BlendVisitor for Run<'_, '_> {
 
 fn colors<B: Blend, const KNOCKOUT: bool>(run: Run<'_, '_>) {
     match run.sources.colors {
-        Colors::Constant(color) => pixels::<B, KNOCKOUT>(run, std::iter::repeat(color)),
+        Colors::Constant(color) => pixels::<B, KNOCKOUT>(run, repeat(color)),
         Colors::Strided { values, stride } => {
             pixels::<B, KNOCKOUT>(run, values.chunks(stride.max(1)));
         }
@@ -129,6 +130,13 @@ const CMYK: Counts = Counts {
     preserve: 0,
 };
 
+/// RGB without spot channels or kept components.
+const RGB: Counts = Counts {
+    process: 3,
+    channels: 3,
+    preserve: 0,
+};
+
 fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
     run: Run<'_, '_>,
     colors: impl Iterator<Item = &'c [f64]>,
@@ -139,10 +147,20 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
         channels: layout.channels(),
         preserve: run.mode.preserve,
     };
-    // Normal onto CMYK with constant counts: the compiler unrolls the
-    // channel loops, while the operations and their order stay `paint`'s.
+    // Normal onto CMYK and separable modes onto RGB with constant counts:
+    // the compiler unrolls the channel loops and drops the tests of kept
+    // components, while the operations and their order stay `paint`'s.
+    // Overprinted CMYK keeps its counts and tests its kept components.
     if B::NORMAL && counts == CMYK {
         each::<B, KNOCKOUT>(run, colors, (CMYK, CMYK.channels + 3));
+    } else if B::NORMAL && (counts.process, counts.channels) == (CMYK.process, CMYK.channels) {
+        let kept = Counts {
+            preserve: counts.preserve,
+            ..CMYK
+        };
+        each::<B, KNOCKOUT>(run, colors, (kept, CMYK.channels + 3));
+    } else if B::SEPARABLE && counts == RGB {
+        each::<B, KNOCKOUT>(run, colors, (RGB, RGB.channels + 3));
     } else {
         each::<B, KNOCKOUT>(run, colors, (counts, layout.stride()));
     }
@@ -175,6 +193,64 @@ fn each<'c, B: Blend, const KNOCKOUT: bool>(
         for (target, ((&alpha, &shape), color)) in targets.zip(sources) {
             paint::<B, false>(target, color, [alpha, shape], &[], counts);
         }
+    }
+}
+
+/// The coverage of a constant source's pixels: one byte for all of them,
+/// or one each.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Coverage<'a> {
+    /// The same coverage everywhere.
+    Uniform(u8),
+    /// One coverage byte per pixel.
+    Bytes(&'a [u8]),
+}
+
+/// Normal source-over of the opaque constant `color` onto f64 `pixels` of
+/// `layout` at the opacity of each pixel's coverage: [`composite`] of a
+/// span whose alpha and shape are `c / 255` for coverage byte `c`.
+pub(crate) fn cover(pixels: &mut [f64], color: &[f64], layout: Layout, coverage: Coverage<'_>) {
+    let counts = Counts {
+        process: layout.process.components(),
+        channels: layout.channels(),
+        preserve: 0,
+    };
+    let stride = layout.stride();
+    match coverage {
+        Coverage::Uniform(c) => covered(pixels, color, (counts, stride), repeat(c)),
+        Coverage::Bytes(bytes) => covered(pixels, color, (counts, stride), bytes.iter().copied()),
+    }
+}
+
+fn covered(
+    pixels: &mut [f64],
+    color: &[f64],
+    (counts, stride): (Counts, usize),
+    coverage: impl Iterator<Item = u8>,
+) {
+    if counts == CMYK {
+        cover_each(pixels, color, (CMYK, CMYK.channels + 3), coverage);
+    } else if counts == RGB {
+        cover_each(pixels, color, (RGB, RGB.channels + 3), coverage);
+    } else {
+        cover_each(pixels, color, (counts, stride), coverage);
+    }
+}
+
+#[expect(
+    clippy::inline_always,
+    reason = "each call site specializes the loop for its counts"
+)]
+#[inline(always)]
+fn cover_each(
+    pixels: &mut [f64],
+    color: &[f64],
+    (counts, stride): (Counts, usize),
+    coverage: impl Iterator<Item = u8>,
+) {
+    for (pixel, c) in pixels.chunks_exact_mut(stride).zip(coverage) {
+        let opacity = UNIT[usize::from(c)];
+        paint::<Normal, false>(pixel, color, [opacity, opacity], &[], counts);
     }
 }
 

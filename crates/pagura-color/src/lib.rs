@@ -8,6 +8,7 @@
 //! [`Converter`] per colour space and target once, and evaluates functions
 //! and conversions without allocating or failing.
 
+mod batch;
 pub mod cie;
 mod components;
 mod convert;

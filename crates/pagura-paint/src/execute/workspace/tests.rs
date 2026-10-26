@@ -82,7 +82,7 @@ fn normalization_drops_incompatible_owners_before_replacement() {
     let plan = rendering.plan;
     let mut free = Meter::new(usize::MAX, "test");
     let mut previous = Workspace::new(plan, plan.sizes, None, &mut free).unwrap();
-    previous.page = PageBuffer::F64(allocate(4096).unwrap());
+    previous.page.pixels = PageBuffer::F64(allocate(4096).unwrap());
     previous.coverage = BandCoverage::with_capacity(coverage_capacity(64, 64), &mut free).unwrap();
     previous.capacity = (64, 4096);
     previous.paint_scratch = allocate(4096).unwrap();
@@ -113,7 +113,7 @@ fn exact_page_and_coverage_owners_keep_pointers_and_charges() {
     let plan = rendering.plan;
     let mut cold = Meter::new(usize::MAX, "test");
     let mut previous = Workspace::new(plan, plan.sizes, None, &mut cold).unwrap();
-    let page = page_pointer(&previous.page);
+    let page = page_pointer(previous.page.pixels());
     let coverage_bytes = previous.coverage.retained_bytes();
     let shape = Shape::fill(
         &crate::testing::rect_path([0.25, 0.25, 4.75, 1.75]),
@@ -141,7 +141,7 @@ fn exact_page_and_coverage_owners_keep_pointers_and_charges() {
     let mut reused = Meter::new(cold.used(), "test");
     let mut workspace = Workspace::new(plan, plan.sizes, Some(kept), &mut reused).unwrap();
     assert_eq!(reused.used(), cold.used());
-    assert_eq!(page_pointer(&workspace.page), page);
+    assert_eq!(page_pointer(workspace.page.pixels()), page);
     assert_eq!(workspace.coverage.retained_bytes(), coverage_bytes);
     rendering
         .rasterizer

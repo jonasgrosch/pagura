@@ -10,7 +10,7 @@
 //! Results are byte-identical. In all paths, a placement that crosses into
 //! the next band keeps its rows there instead of being walked again.
 
-use super::{DirectCoverage, Executor, Frame, Tops};
+use super::{Direct, Executor, Frame, Tops};
 use crate::plan::{Glyph, Item, Run, intersect};
 
 impl Executor<'_> {
@@ -20,10 +20,18 @@ impl Executor<'_> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
-        if let Some(color) = self.direct(mark, frame) {
+        if let Some(mut direct) = Direct::new(self.plan, &mut self.ws.page, mark, frame) {
             for glyph in &run.glyphs {
-                if self.meets(glyph, frame) {
-                    self.store_direct(DirectCoverage::Glyph(glyph.shape), frame, color);
+                if meets(glyph, frame, self.band) {
+                    let stored = direct.rasterize(|out| {
+                        self.shapes.rasterize_glyph_into(
+                            self.rasterizer,
+                            glyph.shape,
+                            self.band,
+                            out,
+                        );
+                    });
+                    self.ws.usage.work = self.ws.usage.work.saturating_add(stored);
                 }
             }
             return;
@@ -34,7 +42,7 @@ impl Executor<'_> {
         alone.extend(
             run.glyphs
                 .iter()
-                .filter(|glyph| glyph.alone && self.meets(glyph, frame))
+                .filter(|glyph| glyph.alone && meets(glyph, frame, self.band))
                 .map(|glyph| glyph.shape),
         );
         let mut next = 0;
@@ -50,7 +58,7 @@ impl Executor<'_> {
             self.store_coverage(mark, frame, &coverage);
         }
         for glyph in &run.glyphs {
-            if glyph.alone || !self.meets(glyph, frame) {
+            if glyph.alone || !meets(glyph, frame, self.band) {
                 continue;
             }
             self.shapes
@@ -60,11 +68,11 @@ impl Executor<'_> {
         self.ws.coverage = coverage;
         self.ws.run_shapes = alone;
     }
+}
 
-    /// Whether `glyph` can cover a pixel of `frame` in this band.
-    fn meets(&self, glyph: &Glyph, frame: Frame) -> bool {
-        glyph.bands[0] <= self.band
-            && self.band <= glyph.bands[1]
-            && !intersect(glyph.bounds, frame.rect).is_empty()
-    }
+/// Whether `glyph` can cover a pixel of `frame` in this band.
+fn meets(glyph: &Glyph, frame: Frame, band: u32) -> bool {
+    glyph.bands[0] <= band
+        && band <= glyph.bands[1]
+        && !intersect(glyph.bounds, frame.rect).is_empty()
 }
