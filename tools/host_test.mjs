@@ -1,5 +1,6 @@
 import { testAttachmentChecks, testAttachmentCheckView } from './attachment_checks_test.mjs';
 import { testPageAttachments } from './page_attachments_test.mjs';
+import { testPageAttachmentView } from './page_attachments_view_test.mjs';
 import { testPngExport, testPngExportView } from './png_export_test.mjs';
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
@@ -231,6 +232,7 @@ async function main() {
     await testDocumentServicesView();
     await testAttachmentChecks(client, root, native, wasiRun);
     await testPageAttachments(client, root, native, wasiRun, () => new SessionClient(new TestWorker()));
+    await testPageAttachmentView();
     await testAttachmentCheckView();
     await testPngExport(client, root, native, wasiRun);
     await testPngExportView();
@@ -463,6 +465,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
     'png-export-dialog', 'png-export-open', 'png-export-form', 'png-export-page', 'png-export-dpi', 'png-export-transparent', 'png-export-submit', 'png-export-close', 'png-export-status',
     'document-services-dialog', 'document-services-open', 'document-services-close', 'document-properties', 'document-attachments', 'document-services-status',
+    'document-page-attachments', 'document-page-attachments-title', 'document-attachment-page-form', 'document-attachment-page', 'document-attachment-page-submit',
     'edit-open', 'form-status', 'form-reset', 'form-download',
     'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
     'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'cache-summary', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];

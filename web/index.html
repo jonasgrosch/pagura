@@ -83,7 +83,14 @@
   <dialog id="document-services-dialog" aria-labelledby="document-services-title">
     <div class="dialog-heading"><h2 id="document-services-title">Properties and attachments</h2><button id="document-services-close">Done</button></div>
     <h3>Properties</h3><div id="document-properties"></div>
-    <h3>Attachments</h3><div id="document-attachments"></div>
+    <h3>Document attachments</h3><div id="document-attachments"></div>
+    <h3 id="document-page-attachments-title">Page attachments</h3>
+    <form id="document-attachment-page-form">
+      <label for="document-attachment-page">Page</label>
+      <input id="document-attachment-page" type="number" min="1" step="1" required aria-describedby="document-page-attachments-title">
+      <button id="document-attachment-page-submit" type="submit">Show page attachments</button>
+    </form>
+    <div id="document-page-attachments"></div>
     <p id="document-services-status" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="png-export-dialog" aria-labelledby="png-export-title">

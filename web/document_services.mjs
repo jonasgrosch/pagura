@@ -23,13 +23,18 @@ export class DocumentServices {
     const $ = id => document.getElementById(id);
     this.dialog = $('document-services-dialog'); this.openButton = $('document-services-open');
     this.info = $('document-properties'); this.files = $('document-attachments'); this.message = $('document-services-status');
+    this.pageFiles = $('document-page-attachments'); this.pageTitle = $('document-page-attachments-title');
+    this.pageForm = $('document-attachment-page-form'); this.pageInput = $('document-attachment-page'); this.pageSubmit = $('document-attachment-page-submit');
+    this.loading = false; this.selectedPage = null;
+    this.pageForm.addEventListener('submit', event => { event.preventDefault(); void this.selectPage(); });
     this.openButton.addEventListener('click', () => { void this.show(); });
     $('document-services-close').addEventListener('click', () => { this.reset(); this.openButton.focus(); });
     this.dialog.addEventListener('close', () => { this.serial++; });
   }
   controls() { this.openButton.disabled = this.state().handle === null; }
   reset() {
-    this.serial++; this.buttons = []; this.info.replaceChildren(); this.files.replaceChildren(); this.message.textContent = '';
+    this.serial++; this.buttons = []; this.loading = false; this.selectedPage = null;
+    this.info.replaceChildren(); this.files.replaceChildren(); this.pageFiles.replaceChildren(); this.message.textContent = '';
     if (this.dialog.open) this.dialog.close(); this.controls();
   }
   current(snapshot, serial) {
@@ -37,18 +42,47 @@ export class DocumentServices {
     return this.serial === serial && this.dialog.open && snapshot.epoch === now.epoch && snapshot.client === now.client && snapshot.handle === now.handle;
   }
   node(tag, text) { const node = this.document.createElement(tag); node.textContent = text; return node; }
-  async show() {
+  async selectPage() {
+    if (!this.dialog.open) return;
+    const count = this.state().count ?? 0, page = Number(this.pageInput.value) - 1;
+    if (!Number.isInteger(page) || page < 0 || page >= count) {
+      this.message.textContent = 'Choose a page in this document.'; return;
+    }
+    if (this.loading && page === this.selectedPage) return;
+    await this.show(page);
+  }
+  async show(selectedPage) {
     const snapshot = { ...this.state() }; if (snapshot.handle === null) return;
+    const count = snapshot.count ?? 0, page = selectedPage ?? snapshot.page ?? 0;
+    if (count && (!Number.isInteger(page) || page < 0 || page >= count)) return;
     const serial = ++this.serial; this.buttons = []; this.message.textContent = '';
+    this.loading = true; this.selectedPage = count ? page : null;
+    this.pageInput.value = count ? String(page + 1) : ''; this.pageInput.max = String(count);
+    this.pageInput.disabled = this.pageSubmit.disabled = count === 0;
+    this.pageTitle.textContent = count ? `Page ${page + 1} attachments` : 'Page attachments';
     this.info.replaceChildren(this.node('p', 'Loading properties…')); this.files.replaceChildren(this.node('p', 'Loading attachments…'));
+    this.pageFiles.replaceChildren(this.node('p', count ? 'Loading page attachments…' : 'This document has no pages.'));
     if (!this.dialog.open) this.dialog.showModal();
-    const results = await Promise.allSettled([snapshot.client.metadata(snapshot.handle), snapshot.client.attachments(snapshot.handle)]);
+    const requests = [snapshot.client.metadata(snapshot.handle), snapshot.client.attachments(snapshot.handle)];
+    if (count) requests.push(snapshot.client.pageAttachments(snapshot.handle, page));
+    const results = await Promise.allSettled(requests);
     if (!this.current(snapshot, serial)) return;
+    this.loading = false;
     this.info.replaceChildren(); this.files.replaceChildren();
     if (results[0].status === 'fulfilled') this.properties(results[0].value, snapshot, serial);
     else this.info.append(this.node('p', `Properties unavailable: ${results[0].reason}`));
     if (results[1].status === 'fulfilled') this.attachments(results[1].value, snapshot, serial);
     else this.files.append(this.node('p', `Attachments unavailable: ${results[1].reason}`));
+    if (count) {
+      this.pageFiles.replaceChildren();
+      if (results[2].status === 'fulfilled') {
+        this.attachments(results[2].value, snapshot, serial, { page, target: this.pageFiles });
+        this.message.textContent = `Page ${page + 1} attachments loaded.`;
+      } else {
+        this.pageFiles.append(this.node('p', `Page attachments unavailable: ${results[2].reason}`));
+        this.message.textContent = 'Page attachments are unavailable.';
+      }
+    }
   }
   properties(value, snapshot, serial) {
     const list = this.document.createElement('dl');
@@ -59,22 +93,29 @@ export class DocumentServices {
     if (value.metadataObject) this.info.append(this.button('Download metadata packet', snapshot, serial,
       () => snapshot.client.metadataBytes(snapshot.handle), 'metadata.xmp'));
   }
-  attachments(files, snapshot, serial) {
-    if (!files.length) { this.files.append(this.node('p', 'No catalog attachments.')); return; }
-    const list = this.document.createElement('ol'); this.files.append(list);
-    for (const file of files) {
+  attachments(files, snapshot, serial, { page = null, target = this.files } = {}) {
+    if (!files.length) { target.append(this.node('p', page === null ? 'No document attachments.' : 'No attachments on this page.')); return; }
+    const list = this.document.createElement('ol'); target.append(list);
+    for (const record of files) {
+      const file = page === null ? record : record.file, index = record.index;
       const item = this.document.createElement('li');
-      item.append(this.node('p', file.names.UF ?? byteName(file.names.F) ?? `Attachment ${file.index + 1}`));
-      if (file.description !== null) item.append(this.node('p', file.description));
+      item.append(this.node('p', file.names.UF ?? byteName(file.names.F) ?? `Attachment ${index + 1}`));
+      if (page !== null) {
+        if (record.contents !== null) item.append(this.node('p', `Annotation note: ${record.contents}`));
+        item.append(this.node('p', `Icon: ${record.icon === null ? 'PushPin (default)' : byteName(record.icon)}`));
+      }
+      if (file.description !== null) item.append(this.node('p', page === null ? file.description : `File description: ${file.description}`));
       for (const payload of file.payloads) {
         const name = keyNames[payload.key], label = file.payloads.length === 1 ? 'Download attachment' : `Download ${name} payload`;
         const group = this.document.createElement('div');
-        group.append(this.button(label, snapshot, serial, () => snapshot.client.attachmentBytes(snapshot.handle, file.index, payload.key), `attachment-${file.index + 1}-${name}.bin`));
+        const read = () => page === null ? snapshot.client.attachmentBytes(snapshot.handle, index, payload.key)
+          : snapshot.client.pageAttachmentBytes(snapshot.handle, page, index, payload.key);
+        group.append(this.button(label, snapshot, serial, read, `${page === null ? '' : `page-${page + 1}-`}attachment-${index + 1}-${name}.bin`));
         if (payload.declaredSize !== null) group.append(this.node('span', ` ${payload.declaredSize} bytes (declared)`));
         const result = this.node('p', 'Size and checksum have not been checked.');
         const check = this.node('button', file.payloads.length === 1 ? 'Check size and checksum' : `Check ${name} size and checksum`);
         check.type = 'button'; this.buttons.push(check);
-        check.addEventListener('click', () => { void this.check(snapshot, serial, file.index, payload.key, result); });
+        check.addEventListener('click', () => { void this.check(snapshot, serial, index, payload.key, result, page); });
         group.append(check, result);
         item.append(group);
       }
@@ -96,12 +137,13 @@ export class DocumentServices {
     } catch (error) { if (this.current(snapshot, serial)) this.message.textContent = `Download unavailable: ${error}`; }
     finally { if (this.current(snapshot, serial)) this.buttons.forEach(button => { button.disabled = false; }); }
   }
-  async check(snapshot, serial, index, key, result) {
+  async check(snapshot, serial, index, key, result, page = null) {
     if (!this.current(snapshot, serial) || this.buttons.some(button => button.disabled)) return;
     this.buttons.forEach(button => { button.disabled = true; });
     this.message.textContent = 'Checking attachment…'; result.textContent = 'Checking size and checksum…';
     try {
-      const checked = await snapshot.client.attachmentCheck(snapshot.handle, index, key);
+      const checked = await (page === null ? snapshot.client.attachmentCheck(snapshot.handle, index, key)
+        : snapshot.client.pageAttachmentCheck(snapshot.handle, page, index, key));
       if (!this.current(snapshot, serial)) return;
       const label = value => {
         if (value === AttachmentCheckStatus.NotDeclared) return 'not declared';

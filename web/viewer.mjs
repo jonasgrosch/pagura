@@ -37,7 +37,7 @@ const debug = new URL(window.location.href).searchParams.get('debug') === '1'
   && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(window.location.href).hostname);
 let source = null, recoveryAttempts = 0, recovering = false;
 
-const services = new DocumentServices({ state: () => ({ client, handle, epoch: documentEpoch }) });
+const services = new DocumentServices({ state: () => ({ client, handle, epoch: documentEpoch, page, count: layout.count }) });
 const reader = new ReadingView({
   state: () => ({ client, handle, epoch: documentEpoch, page, count: layout.count, zoom,
     scrollMatch: (index, y, points) => { const info = infos.get(index);
