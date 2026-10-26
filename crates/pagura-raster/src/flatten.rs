@@ -159,10 +159,10 @@ impl Polyline {
             return Ok(());
         };
         let after = self.tangents[0];
-        let before = if first != last {
-            Some((first - last) / (first - last).length())
-        } else {
+        let before = if first == last {
             self.tangents[1]
+        } else {
+            Some((first - last) / (first - last).length())
         };
         if first != last && self.curves[1] {
             self.join_to(first - last, bytes)?;

@@ -725,7 +725,7 @@ fn dash(
                 joins.push(join);
             }
         }
-        split_dashes(points, joins, closed, stroke, limits, bytes)
+        split_dashes(&points, &joins, closed, stroke, limits, bytes)
     })()
     .map(|mut runs| {
         for run in &mut runs {
@@ -744,8 +744,8 @@ fn dash(
 }
 
 fn split_dashes(
-    points: Vec<Point>,
-    joins: Vec<Join>,
+    points: &[Point],
+    joins: &[Join],
     closed: bool,
     stroke: &Stroke,
     limits: &Limits,
@@ -764,7 +764,7 @@ fn split_dashes(
         if distance == 0.0 {
             if index % 2 == 0 {
                 for (point, index) in [(a, index_in_path), (b, index_in_path + 1)] {
-                    run.push(point, source_join(&joins, index), bytes)?;
+                    run.push(point, source_join(joins, index), bytes)?;
                 }
             }
             continue;
@@ -787,7 +787,7 @@ fn split_dashes(
                     run.push(
                         interpolate(offset),
                         (offset == 0.0)
-                            .then(|| source_join(&joins, index_in_path))
+                            .then(|| source_join(joins, index_in_path))
                             .flatten(),
                         bytes,
                     )?;
@@ -795,7 +795,7 @@ fn split_dashes(
                 run.push(
                     interpolate(end),
                     (end == distance)
-                        .then(|| source_join(&joins, index_in_path + 1))
+                        .then(|| source_join(joins, index_in_path + 1))
                         .flatten(),
                     bytes,
                 )?;
@@ -818,7 +818,7 @@ fn split_dashes(
         run.tangent = tangent;
         result.push(run);
     }
-    join_seam(&mut result, &points, closed && initial_on, bytes)?;
+    join_seam(&mut result, points, closed && initial_on, bytes)?;
     Ok(result)
 }
 
