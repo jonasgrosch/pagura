@@ -178,8 +178,12 @@ They retain the original fixtures and tolerances and help isolate magnification
 from colour/alpha behavior; no family support verdict follows from these counts.
 `fae0f0122611e32ab0ee5783232e8a3c9c8ab776` adds eighty matched ordinary RGB/separate-soft-mask
 controls, retaining each independent oracle and tolerance. The current scope is
-166 fixtures and 1162 render cells; hosted execution and paired adjudication are
-pending. These are diagnostic controls, not new JPX support claims.
+166 fixtures and 1162 render cells. [Hosted run 40266437971](https://github.com/jonasgrosch/pagura/actions/runs/40266437971)
+completed every observation; all 166 Pagura oracles passed. The matched RGB
+controls reproduce some baseline disagreements on ordinary image paths; the
+[paired counts and scope](../benchmarks/probes/README.md#expanded-jpx-observations)
+remain evidence for sampling/color/opacity adjudication. These diagnostic
+controls do not establish new JPX support or competitor-defect claims.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.

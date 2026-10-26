@@ -211,10 +211,39 @@ original case in `control_of`; oracle bytes and declared tolerance are identical
 JPX/container profiles, palettes, Decode and default-colour overrides are absent
 from the controls. No renderer output supplies their samples.
 
-This separates ordinary image sampling/colour/soft-mask paths from the combined
-JPX path. A paired mismatch still needs configuration and normative analysis;
-it is not automatically a missing feature or defect. The expanded 166-case,
-1162-cell hosted run is pending. Original fixtures and tolerances remain intact.
+[Hosted run 40266437971](https://github.com/jonasgrosch/pagura/actions/runs/40266437971)
+completed all 1162 cells at merge revision
+`553be86291ad1f3c312188fa7041f85fa9b97c43`. Pagura met all 166 independent
+pixel oracles. For each engine, the eighty JPX/RGB pairs divide as follows:
+
+| Engine | Both meet oracle | JPX disagrees, RGB meets oracle | Both disagree | RGB-control passes |
+|---|---:|---:|---:|---:|
+| Pagura | 80 | 0 | 0 | 80 |
+| PDFium | 22 | 58 | 0 | 80 |
+| MuPDF | 17 | 22 | 41 | 39 |
+| pdf.js | 30 | 50 | 0 | 80 |
+| Poppler | 0 | 0 | 80 | 0 |
+| hayro | 34 | 46 | 0 | 80 |
+| CoreGraphics | 26 | 15 | 39 | 41 |
+
+No pair has a passing JPX image and a failing RGB control. Passing both means
+both meet the declared tolerance, not necessarily identical bytes. For example,
+78 Pagura pairs are byte-identical and the other two meet their one-level bound.
+
+The ordinary RGB controls reproduce some disagreements before JPX decoding is
+involved. Inspection of the magnified `sycc-neutral` RGB control shows intermediate
+gray samples and expanded edge coverage in the MuPDF/Poppler outputs under their
+recorded default adapters. Dimensions remain 32 by 32; the harness does not resize
+or align output. This is evidence of a sampling/coverage difference to adjudicate,
+not proof of a JPX codec defect or an adapter bug. Pairs where RGB meets the oracle
+and JPX does not narrow the investigation to differences between those image
+paths, including color, opacity and sampling. They still require configuration
+and normative analysis before any defect or unsupported-feature verdict.
+
+Original fixtures and tolerances remain intact. The current-head product checks
+also passed on hosted Linux/macOS/Windows in
+[run 40266438028](https://github.com/jonasgrosch/pagura/actions/runs/40266438028).
+These scoped results do not close R02, G01 or any family-wide parity claim.
 
 ## Next G01 increments
 
