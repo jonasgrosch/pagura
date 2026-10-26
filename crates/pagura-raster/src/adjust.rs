@@ -9,7 +9,7 @@
 //! diameter change in every direction by half a pixel (except the required
 //! minimum one-pixel pen), without introducing corners into flattened curves.
 
-use crate::flatten::{MAX_COORDINATE, TOLERANCE, flatten};
+use crate::flatten::{MAX_COORDINATE, Source, TOLERANCE, flatten};
 use crate::stroke::{Pen, Run};
 use crate::{LineCap, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
@@ -47,7 +47,12 @@ pub(crate) fn runs(
     bytes: &mut Meter,
 ) -> Result<(Vec<Run>, Pen, Transform)> {
     crate::stroke::validate(stroke, limits)?;
-    let contours = flatten(path, transform, limits, bytes)?;
+    let source = if stroke.dash_array.is_empty() {
+        Source::Stroke
+    } else {
+        Source::Dashed
+    };
+    let contours = flatten(path, transform, source, limits, bytes)?;
     if !contours.iter().any(|c| c.strokeable(stroke.cap)) {
         let pen = Pen {
             radius: 0.5,
@@ -90,7 +95,7 @@ pub(crate) fn runs(
             bytes.refund(released);
             continue;
         }
-        let runs = crate::stroke::dash_contour(contour, stroke, limits, bytes)?;
+        let runs = crate::stroke::dash_contour(contour, transform, stroke, limits, bytes)?;
         let header_bytes = runs.capacity().saturating_mul(size_of::<Run>());
         for run in runs {
             let mut run = run.transformed(transform);
@@ -172,7 +177,7 @@ fn general(
             bytes.refund(released);
             continue;
         }
-        let runs = crate::stroke::dash_contour(contour, stroke, limits, bytes)?;
+        let runs = crate::stroke::dash_contour(contour, transform, stroke, limits, bytes)?;
         let header_bytes = runs.capacity().saturating_mul(size_of::<Run>());
         for run in runs {
             bytes.reserve_capacity(&mut fitted_runs, 1)?;

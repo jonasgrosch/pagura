@@ -225,6 +225,7 @@ fn polygon_output_is_charged_beside_its_flattened_source() {
     let contours = crate::flatten::flatten(
         &path,
         Transform::IDENTITY,
+        crate::flatten::Source::Fill,
         &limits,
         &mut crate::testing::bytes(),
     )

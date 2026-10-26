@@ -38,5 +38,16 @@ class RoundedAreaTests(unittest.TestCase):
         self.assertAlmostEqual(inner_end[0],21+5*math.sin(.5))
         self.assertAlmostEqual(inner_end[1],11-5*math.cos(.5))
 
+    def test_circular_dash_pixel_is_an_exact_trapezoid(self):
+        # Pixel [22,23]×[26,27] is wholly inside the annulus about (21,21).
+        # Only the dash end cuts it; y=tan(theta)*x in circle-local coordinates.
+        # The preceding corner and line consume 3*pi+10 of the on-dash end at27.
+        theta=(17-3*math.pi)/6
+        expected=2-5.5/math.tan(theta)
+        contours=stroke_contours(radii=(6.,6.),dash=(3,3))
+        pixel=[[(x-22,y-26) for x,y in contour] for contour in contours]
+        self.assertAlmostEqual(polygon_coverage(pixel,1)[0],expected,delta=.000001)
+        self.assertEqual(255-int(255*expected+.5),192)
+
 if __name__=='__main__':
     unittest.main()

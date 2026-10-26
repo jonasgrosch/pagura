@@ -181,7 +181,7 @@
         "8.4.3.6",
         "8.5.3.2"
       ],
-      "status": "user-space outlines, degenerate subpath classification and shared user-space dashing",
+      "status": "user-space outlines, degenerate subpath classification and shared user-space dashing with bounded source-curve arclength and cap tangents",
       "tests": [
         "raster/cap-butt",
         "raster/cap-round",
@@ -239,7 +239,9 @@
         "raster/convex-miter-sixteen-reversed-inner-reverse-pdf",
         "cloud_annotations/source-curve-miter",
         "pagura-raster stroke::tests::source_curve_miter_has_the_analytic_triangle_area",
-        "pagura-raster stroke::tests::smooth_curve_joins_retain_equal_source_directions_through_zero_segments"
+        "pagura-raster stroke::tests::smooth_curve_joins_retain_equal_source_directions_through_zero_segments",
+        "pagura-raster stroke::tests::curved_dash_cuts_follow_user_arclength_and_true_tangents",
+        "pagura-raster stroke::tests::only_dashed_curves_retain_subdivision_controls"
       ],
       "gaps": "Broader curve-stroke offset, curved-dash and extreme-coordinate independent vectors remain",
       "rule": "Width, caps, joins, miter limits and degenerate subpaths determine stroke geometry; cap and join styles are defined in Tables 53 and 54. Dashes restart per subpath and retain user-space distances."

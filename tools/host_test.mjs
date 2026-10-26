@@ -337,7 +337,15 @@ async function testRenderCases({ client, root, native, wasiRun, cases }) {
     checkPixels(frames[3].value, rgb, entry.tolerance ?? 0, entry.id);
     const opened = await client.open(pdf);
     const info = await client.pageInfo(opened.document, 0);
-    assert.equal(info.width * scale, entry.width); assert.equal(info.height * scale, entry.height);
+    // PageInfo sizes are rounded at 72 dpi; scale the original crop before
+    // rounding again so a half-point page remains one pixel at 144 dpi.
+    let width = (info.crop[2] - info.crop[0]) * info.userUnit;
+    let height = (info.crop[3] - info.crop[1]) * info.userUnit;
+    if (info.rotation === 90 || info.rotation === 270) [width, height] = [height, width];
+    assert.equal(info.width, Math.ceil(width), `${entry.id}: page width at 72 dpi`);
+    assert.equal(info.height, Math.ceil(height), `${entry.id}: page height at 72 dpi`);
+    assert.equal(Math.ceil(width * scale), entry.width, `${entry.id}: oracle page width`);
+    assert.equal(Math.ceil(height * scale), entry.height, `${entry.id}: oracle page height`);
     const browserTile = await client.renderTile(opened.document, 0, scale, tile);
     bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
     const diagnostics = await client.diagnostics(opened.document);

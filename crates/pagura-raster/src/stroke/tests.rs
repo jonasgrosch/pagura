@@ -72,12 +72,14 @@ fn smooth_curve_joins_retain_equal_source_directions_through_zero_segments() {
         let mut contours = flatten(
             &path.finish(),
             Transform::IDENTITY,
+            Source::Stroke,
             &Limits::default(),
             &mut bytes,
         )
         .unwrap();
         let runs = dash_contour(
             contours.remove(0),
+            Transform::IDENTITY,
             &Stroke::default(),
             &Limits::default(),
             &mut bytes,
@@ -120,8 +122,22 @@ fn source_vertices_supply_dash_cap_directions() {
                 ..Stroke::default()
             };
             let mut bytes = crate::testing::bytes();
-            let mut contours = flatten(&path, Transform::IDENTITY, &limits, &mut bytes).unwrap();
-            let runs = dash_contour(contours.remove(0), &stroke, &limits, &mut bytes).unwrap();
+            let mut contours = flatten(
+                &path,
+                Transform::IDENTITY,
+                Source::Dashed,
+                &limits,
+                &mut bytes,
+            )
+            .unwrap();
+            let runs = dash_contour(
+                contours.remove(0),
+                Transform::IDENTITY,
+                &stroke,
+                &limits,
+                &mut bytes,
+            )
+            .unwrap();
             assert!(!runs.is_empty(), "every pattern paints part of the arch");
             if closed {
                 for run in &runs {
@@ -142,13 +158,14 @@ fn source_vertices_supply_dash_cap_directions() {
                         }),
                         _ => None,
                     };
-                    assert_eq!(
-                        run.caps,
-                        [
-                            tangent(run.points.first(), true),
-                            tangent(run.points.last(), false)
-                        ]
-                    );
+                    for (actual, expected) in run.caps.into_iter().zip([
+                        tangent(run.points.first(), true),
+                        tangent(run.points.last(), false),
+                    ]) {
+                        if expected.is_some() {
+                            assert_eq!(actual, expected);
+                        }
+                    }
                 }
             } else if dash_phase == 0.0 {
                 assert_eq!(
@@ -156,9 +173,91 @@ fn source_vertices_supply_dash_cap_directions() {
                     [Some(Point::new(0.0, 1.0)), Some(Point::new(0.0, -1.0))]
                 );
             } else {
-                assert!(runs.iter().all(|run| run.caps[0].is_none()));
+                assert!(runs.iter().all(|run| run.caps[0].is_some()));
             }
         }
+    }
+}
+
+#[test]
+fn curved_dash_cuts_follow_user_arclength_and_true_tangents() {
+    // q(t)=(8t,8t²); integrating |q'(t)| gives this independent
+    // antiderivative. The cuts at t=1/3 and t=2/3 lie inside dyadic subdivision pieces.
+    let length = |t: f64| 4.0 * t * (1.0 + 4.0 * t * t).sqrt() + 2.0 * (2.0 * t).asinh();
+    let [first, second] = [1.0 / 3.0, 2.0 / 3.0];
+    let stroke = Stroke {
+        dash_array: vec![length(first), length(second) - length(first), 1000.0],
+        ..Stroke::default()
+    };
+    let mut path = PathBuilder::new();
+    path.move_to(Point::default());
+    path.quad_to(Point::new(4.0, 0.0), Point::new(8.0, 8.0))
+        .unwrap();
+    let path = path.finish();
+    let limits = Limits::default();
+    for transform in [Transform::IDENTITY, Transform::scale(11.0, 3.0)] {
+        let mut bytes = crate::testing::bytes();
+        let mut contours = flatten(&path, transform, Source::Dashed, &limits, &mut bytes).unwrap();
+        let runs =
+            dash_contour(contours.remove(0), transform, &stroke, &limits, &mut bytes).unwrap();
+        assert_eq!(runs.len(), 2);
+        for (run, end, t) in [(&runs[0], 1, first), (&runs[1], 0, second)] {
+            let point = if end == 0 {
+                run.points.first()
+            } else {
+                run.points.last()
+            }
+            .unwrap();
+            assert!((*point - Point::new(8.0 * t, 8.0 * t * t)).length() < TOLERANCE / 64.0);
+            let direction = Point::new(1.0, 2.0 * t);
+            assert!((run.caps[end].unwrap() - direction / direction.length()).length() < 1e-5);
+        }
+    }
+    let mut bytes = crate::testing::bytes();
+    let mut contours = flatten(
+        &path,
+        Transform::IDENTITY,
+        Source::Dashed,
+        &limits,
+        &mut bytes,
+    )
+    .unwrap();
+    let limits = Limits {
+        raster_work: 0,
+        ..limits
+    };
+    assert_eq!(
+        dash_contour(
+            contours.remove(0),
+            Transform::IDENTITY,
+            &stroke,
+            &limits,
+            &mut bytes
+        )
+        .err()
+        .unwrap()
+        .message,
+        RASTER_WORK,
+    );
+}
+
+#[test]
+fn only_dashed_curves_retain_subdivision_controls() {
+    let mut path = PathBuilder::new();
+    path.move_to(Point::default());
+    path.quad_to(Point::new(0.0, 8.0), Point::new(8.0, 8.0))
+        .unwrap();
+    let path = path.finish();
+    for source in [Source::Fill, Source::Stroke, Source::Dashed] {
+        let contours = flatten(
+            &path,
+            Transform::IDENTITY,
+            source,
+            &Limits::default(),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
+        assert_eq!(contours[0].pieces.is_empty(), source != Source::Dashed);
     }
 }
 
@@ -195,6 +294,7 @@ fn a_fine_dash_pattern_stops_at_the_byte_budget() {
     let error = dash(
         points,
         Vec::new(),
+        (Vec::new(), TOLERANCE),
         false,
         &stroke,
         &Limits::default(),
@@ -275,6 +375,7 @@ fn table_55_run_sequences() {
         let runs = dash(
             vec![Point::new(0.0, 0.0), Point::new(length, 0.0)],
             Vec::new(),
+            (Vec::new(), TOLERANCE),
             false,
             &stroke,
             &Limits::default(),

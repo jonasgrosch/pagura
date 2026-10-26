@@ -188,7 +188,17 @@ This does not validate every annotation variant; native/WASI/client and
 save/reopen checks remain separate. No source-family comparison is promoted.
 
 The current manifest adds 57 controls for cloudy/rounded fill, stroke and dashes,
-unitless letter spacing, and an ordinary curved-path miter. Their seven-engine observations are pending. Rich controls
-use embedded literal Type3 glyphs, so expected character geometry does not depend
-on external font substitution. Cloud stroke expectations come from analytic curve
-normals and miter geometry; the shared stroker must meet those fixed expectations.
+unitless letter spacing, and an ordinary curved-path miter. The Linux report from
+[run 40350317258](https://github.com/jonasgrosch/pagura/actions/runs/40350317258),
+head `6fc72d23247cb3522a8b652e831bdfdda406c40d`, recorded 298/306 passing Pagura
+controls and eight dashed-curve disagreements. Artifact `12663743485` has SHA-256
+`f8cfec878599c0b7d3129e7dfa9269a8a8e12c4c36b7224ae4ac47b530fcc7da`.
+The combined report was skipped; this is not a completed seven-engine result.
+
+The shared stroker now retains accepted source-curve controls only for dashed
+strokes, measures bounded user-space arclength, and evaluates the original curve
+and tangent at each cut. Acceptance of this correction remains pending. Rich
+controls use embedded literal Type3 glyphs, so character expectations do not
+depend on external font substitution. Analytic curve normals, miter geometry and
+an exact circular-dash trapezoid establish stroke expectations; their pixel
+oracles and tolerances are unchanged.

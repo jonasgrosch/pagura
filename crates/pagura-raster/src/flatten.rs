@@ -99,6 +99,23 @@ pub(crate) struct Inspection<'a> {
 /// subdivision depth.
 pub(crate) type CurveStack = Vec<([Point; 4], Point, usize)>;
 
+/// Source evidence needed by the consumer; fills and solid strokes never
+/// retain the additional controls used to position interior dash cuts.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Source {
+    Fill,
+    Stroke,
+    Dashed,
+}
+
+/// The inner controls of one accepted cubic, whose endpoints remain in
+/// `Polyline::points[index..=index + 1]`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct CurvePiece {
+    pub(crate) index: usize,
+    pub(crate) controls: [Point; 2],
+}
+
 /// A flattened contour with source closure and geometric-point metadata.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Polyline {
@@ -110,6 +127,7 @@ pub(crate) struct Polyline {
     pub(crate) curves: [bool; 2],
     /// Sparse source joins; subdivision points retain their chord directions.
     pub(crate) joins: Vec<Join>,
+    pub(crate) pieces: Vec<CurvePiece>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -124,6 +142,11 @@ impl Polyline {
             .capacity()
             .saturating_mul(size_of::<Point>())
             .saturating_add(self.joins.capacity().saturating_mul(size_of::<Join>()))
+            .saturating_add(
+                self.pieces
+                    .capacity()
+                    .saturating_mul(size_of::<CurvePiece>()),
+            )
     }
 
     fn join_to(&mut self, direction: Point, bytes: &mut Meter) -> Result<()> {
@@ -262,6 +285,7 @@ pub(crate) fn validate(path: &Path, transform: Transform, limits: &Limits) -> Re
 pub(crate) fn flatten(
     path: &Path,
     transform: Transform,
+    source: Source,
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<Vec<Polyline>> {
@@ -277,7 +301,7 @@ pub(crate) fn flatten(
             flatness: Flatness::Distance,
             bytes,
             inspection: None,
-            source_joins: true,
+            source,
         },
     )?;
     let scratch = stack_bytes(&pending);
@@ -327,7 +351,7 @@ pub(crate) fn flatten_with(
             flatness,
             bytes,
             inspection: None,
-            source_joins: false,
+            source: Source::Fill,
         },
     )
 }
@@ -353,7 +377,7 @@ pub(crate) fn flatten_inspected(
             flatness,
             bytes,
             inspection: Some(inspection),
-            source_joins: false,
+            source: Source::Fill,
         },
     )
 }
@@ -412,7 +436,7 @@ fn flatten_using(
             }
             Segment::LineTo(point) => {
                 bounded_points([point], transform)?;
-                let joins = subdivision.source_joins.then_some(&mut *bytes);
+                let joins = (subdivision.source != Source::Fill).then_some(&mut *bytes);
                 current.record_tangents(position, [point; 3], false, joins)?;
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
                 append(&mut current.points, point, &mut count, limits, bytes)?;
@@ -429,7 +453,7 @@ fn flatten_using(
                 Some(([position, c1, c2, end], ELEVATION))
             }
             Segment::Close => {
-                if subdivision.source_joins {
+                if subdivision.source != Source::Fill {
                     current.close_joins(bytes)?;
                 }
                 current.closed = true;
@@ -438,19 +462,22 @@ fn flatten_using(
             }
         };
         if let Some((controls @ [_, c1, c2, end], elevation)) = piece {
-            let joins = subdivision.source_joins.then_some(&mut *bytes);
+            let joins = (subdivision.source != Source::Fill).then_some(&mut *bytes);
             current.record_tangents(position, [c1, c2, end], true, joins)?;
             current.degenerate &= [c1, c2, end].iter().all(|p| *p == position);
             curve(
                 (controls, elevation),
                 transform,
                 pending,
-                &mut current.points,
+                (
+                    &mut current.points,
+                    (subdivision.source == Source::Dashed).then_some(&mut current.pieces),
+                ),
                 &mut count,
                 limits,
                 Subdivision {
                     flatness: subdivision.flatness,
-                    source_joins: false,
+                    source: Source::Fill,
                     bytes,
                     inspection: subdivision.inspection.as_mut().map(|i| Inspection {
                         hulls: i.hulls.as_deref_mut(),
@@ -490,6 +517,7 @@ fn prepare<'a>(
             tangents: [None; 2],
             curves: [false; 2],
             joins: Vec::new(),
+            pieces: Vec::new(),
         });
     }
     let current = &mut result[index];
@@ -499,6 +527,7 @@ fn prepare<'a>(
     current.tangents = [None; 2];
     current.curves = [false; 2];
     current.joins.clear();
+    current.pieces.clear();
     Ok(current)
 }
 
@@ -524,7 +553,7 @@ struct Subdivision<'a> {
     flatness: Flatness,
     bytes: &'a mut Meter,
     inspection: Option<Inspection<'a>>,
-    source_joins: bool,
+    source: Source,
 }
 
 /// Rounding units of the coordinates' magnitude that elevating a quadratic
@@ -538,7 +567,7 @@ fn curve(
     (points, elevation): ([Point; 4], f64),
     transform: Transform,
     pending: &mut CurveStack,
-    out: &mut Vec<Point>,
+    (out, mut pieces): (&mut Vec<Point>, Option<&mut Vec<CurvePiece>>),
     count: &mut usize,
     limits: &Limits,
     subdivision: Subdivision<'_>,
@@ -547,7 +576,7 @@ fn curve(
         flatness,
         bytes,
         mut inspection,
-        source_joins: _,
+        source: _,
     } = subdivision;
     let magnitude = points
         .iter()
@@ -610,6 +639,13 @@ fn curve(
             {
                 bytes.reserve_capacity(hulls, 1)?;
                 hulls.push(hull);
+            }
+            if let Some(pieces) = &mut pieces {
+                bytes.reserve_capacity(pieces, 1)?;
+                pieces.push(CurvePiece {
+                    index: out.len() - 1,
+                    controls: [points[1], points[2]],
+                });
             }
             append(out, points[3], count, limits, bytes)?;
             let Some(next) = pending.pop() else {
@@ -882,11 +918,11 @@ mod tests {
                 (controls, 0.0),
                 Transform::IDENTITY,
                 &mut pending,
-                &mut out,
+                (&mut out, None),
                 &mut count,
                 &Limits::default(),
                 Subdivision {
-                    source_joins: false,
+                    source: Source::Fill,
                     flatness: Flatness::Area(allowance),
                     bytes: &mut bytes,
                     inspection: Some(Inspection {
@@ -1009,11 +1045,11 @@ mod tests {
                 (corner, 0.0),
                 transform,
                 &mut pending,
-                &mut points,
+                (&mut points, None),
                 &mut count,
                 &limits,
                 Subdivision {
-                    source_joins: false,
+                    source: Source::Fill,
                     flatness: Flatness::Distance,
                     bytes: &mut bytes,
                     inspection: None,
@@ -1051,6 +1087,7 @@ mod tests {
         let scaled = flatten(
             &path,
             Transform::scale(2e12, 1.0),
+            Source::Fill,
             &limits,
             &mut crate::testing::bytes(),
         )
@@ -1059,6 +1096,7 @@ mod tests {
         let invalid = flatten(
             &path,
             Transform::translate(f64::NAN, 0.0),
+            Source::Fill,
             &limits,
             &mut crate::testing::bytes(),
         )
@@ -1079,6 +1117,7 @@ mod tests {
         let contours = flatten(
             &path.finish(),
             Transform::IDENTITY,
+            Source::Fill,
             &Limits::default(),
             &mut crate::testing::bytes(),
         )
@@ -1169,11 +1208,11 @@ mod tests {
                 (points, 0.0),
                 transform,
                 &mut pending,
-                &mut actual,
+                (&mut actual, None),
                 &mut 0,
                 &Limits::default(),
                 Subdivision {
-                    source_joins: false,
+                    source: Source::Fill,
                     flatness: Flatness::Distance,
                     bytes: &mut crate::testing::bytes(),
                     inspection: None,
@@ -1259,11 +1298,11 @@ mod tests {
             (points, 0.0),
             transform,
             &mut Vec::new(),
-            &mut out,
+            (&mut out, None),
             &mut 1,
             &Limits::default(),
             Subdivision {
-                source_joins: false,
+                source: Source::Fill,
                 flatness: Flatness::Distance,
                 bytes: &mut crate::testing::bytes(),
                 inspection: None,
@@ -1357,6 +1396,7 @@ mod tests {
         let contours = flatten(
             &path.finish(),
             Transform::IDENTITY,
+            Source::Fill,
             &Limits::default(),
             &mut crate::testing::bytes(),
         )
