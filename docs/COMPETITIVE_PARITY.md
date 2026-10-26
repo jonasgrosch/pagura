@@ -1,7 +1,7 @@
 # Plan to close competitive PDF feature gaps
 
 Status: implementation in progress against `render/one-pass` at
-`9f9801a754203009a314644ba22afbfdc4f3e58b` (PR #118), reconciled 2026-10-26.
+`643cc3f2a203a661e95a3e0466a7a664cf5761e9` (PR #118), reconciled 2026-10-26.
 G00's reviewed source inventory is complete. G01 and the feature packages below
 remain open until their acceptance gates pass. The checked
 [capability inventory](CAPABILITIES.md) identifies support on this branch;
@@ -226,13 +226,18 @@ Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G
 The existing harness records engine/build identity, configuration, fixture hashes
 and separate unsupported/incorrect/limit/timeout/adapter-failure outcomes. Service
 and rendering probes expand with the feature groups that introduce their fixtures.
-The published appearance checkpoint `5321c0958` passes 463 rendering controls;
-image checkpoint `1ab267de8` passes 332 observations, including six explicitly
-classified malformed-input observations. Image head `fd0a125e9` adds first-image
-JPX handling and 56 controls, with hosted acceptance pending. Font checkpoint
-`e399327d7` passes 25 rendering controls and all three functional platforms.
+The accepted appearance checkpoint `fc0a302dc` passes 596 rendering controls and
+all functional/editing gates; subsequent head `a79d0cb99` adds shared RV/DS rich
+field generation and persistence, bringing the set to 644, with hosted acceptance
+pending. Image checkpoint `42795ad26` passes 388 observations and all twelve
+gates, including six explicitly classified malformed-input observations. Image
+head `f0f4d0be2` adds bounded internal JPX metadata references and 16 controls,
+with hosted acceptance pending. Font checkpoint `3e5d8e69c` passes 40 rendering
+controls and all three functional platforms; head `e568b4292` extends CFF2 DICT
+namespace handling and brings the set to 48, with hosted acceptance pending.
 Document services at `e02d3b400` pass 21 service probes and six render controls.
-These are separate feature-branch results, not an integrated release result.
+The new heads also integrate the one-pass base recorded above. The accepted
+checkpoints are separate feature-branch results, not an integrated release result.
 Exact run identities and observations live in each PR and its probe record.
 Fixture passes never promote an entire family. All 258 family comparison cells
 remain unprobed until the wider operation/configuration obligations are established.
