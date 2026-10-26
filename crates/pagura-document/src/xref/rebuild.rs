@@ -348,7 +348,7 @@ impl StreamSlots {
 /// encrypted rebuilt files use the same loading path.
 pub(crate) fn object_streams(
     document: &Document,
-    streams: Vec<ObjectId>,
+    streams: &[ObjectId],
     remaining: usize,
 ) -> ReadResult<StreamSlots> {
     let mut plan = StreamSlots::default();
@@ -358,7 +358,7 @@ pub(crate) fn object_streams(
         .get(b"Encrypt")
         .and_then(Value::as_reference);
     let mut visited = BTreeSet::new();
-    for id in streams {
+    for &id in streams {
         // A stream superseded by a later compressed definition is no stream.
         if !visited.insert(id)
             || plan.slots.contains_key(&id.number)

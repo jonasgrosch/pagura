@@ -1,17 +1,20 @@
 //! Opening: from cross-reference data to an immutable [`Document`].
 //!
 //! Security and reconstruction need to read objects before the document is
-//! complete. They read through scratch documents built from the builder's
-//! object table; dissolving a scratch document discards its caches and their
-//! retained-memory charges. The opened document is never changed, and it
+//! complete. One owned construction retains scratch dependencies across waits,
+//! then clears caches only after security or the object table changes. The
+//! opened document is never changed, and it
 //! publishes only objects parsed against its final object table, trailer and
 //! security handler (ARCHITECTURE invariant 8).
+
+mod loading;
+pub(crate) use loading::Build;
 
 use crate::source::{ReadFault, ReadResult};
 use crate::xref::rebuild::{self, StreamSlots};
 use crate::xref::{self, XrefOrigin, XrefTable};
 use crate::{
-    Document, Location, OpenOptions, Revision, Slot, catalog, diagnostics, history, memory, object,
+    Document, Location, OpenOptions, Revision, Slot, diagnostics, history, memory, object,
     security, source,
 };
 use pagura_core::{
@@ -181,42 +184,14 @@ impl DocumentBuilder {
         })
     }
 
-    /// Authenticates, reads reconstructed object streams and catalog, then
-    /// freezes the document and validates its catalog.
-    pub(crate) fn build(mut self, password: &[u8]) -> ReadResult<Document> {
-        let origin = std::mem::take(&mut self.origin);
-        if self
-            .trailer
-            .get(b"Encrypt")
-            .is_some_and(|value| !value.is_null())
-        {
-            let (builder, security) =
-                self.with_scratch(|document| security::read(document, password));
-            self = builder;
-            self.security = security?;
-        }
-        if let XrefOrigin::Rebuilt { streams, remaining } = origin {
-            let (builder, slots) =
-                self.with_scratch(|document| rebuild::object_streams(document, streams, remaining));
-            self = builder;
-            self.apply(slots?)?;
-            let (builder, root) = self.with_scratch(rebuild::root);
-            self = builder;
-            if let Some(root) = root? {
-                self.set_root(root)?;
+    /// Drives the same owned construction for complete-input callers.
+    pub(crate) fn build(self, password: &[u8]) -> ReadResult<Document> {
+        let mut build = Build::new(self);
+        loop {
+            if let Some(document) = build.advance(password)? {
+                return Ok(document);
             }
         }
-        let document = self.freeze();
-        catalog::validate(&document)?;
-        Ok(document)
-    }
-
-    /// Reads through a scratch document, then dissolves it with its caches.
-    fn with_scratch<T>(self, read: impl FnOnce(&Document) -> T) -> (Self, T) {
-        let mark = self.retained.used();
-        let document = self.freeze();
-        let result = read(&document);
-        (document.thaw(mark), result)
     }
 
     fn freeze(self) -> Document {
@@ -235,42 +210,6 @@ impl DocumentBuilder {
             diagnostics: Mutex::new(self.diagnostics),
             retained: self.retained,
             historical: history::Cache::default(),
-        }
-    }
-
-    /// Adds the compressed definitions and object streams that reconstruction
-    /// established, replacing superseded physical slots.
-    fn apply(&mut self, plan: StreamSlots) -> Result<()> {
-        for stream in plan.streams {
-            if let Entry::Vacant(entry) = self.object_streams.entry(stream) {
-                self.retained
-                    .charge(memory::stream_slot_bytes(), Some(ObjectId::new(stream, 0)))?;
-                entry.insert(OnceLock::new());
-            }
-        }
-        for (number, replacement) in plan.slots {
-            let id = ObjectId::new(number, 0);
-            match replacement.replaced {
-                Some(old) => {
-                    self.slots.remove(&old);
-                }
-                None => self.retained.charge(memory::slot_bytes(), Some(id))?,
-            }
-            self.slots.insert(id, Slot::new(replacement.location));
-        }
-        Ok(())
-    }
-
-    fn set_root(&mut self, root: ObjectId) -> Result<()> {
-        let before = self.trailer.retained_bytes();
-        self.trailer
-            .insert(Name::new(b"Root"), Value::Reference(root));
-        let after = self.trailer.retained_bytes();
-        if after >= before {
-            self.retained.charge(after - before, Some(root))
-        } else {
-            self.retained.release(before - after);
-            Ok(())
         }
     }
 }
@@ -311,47 +250,58 @@ fn structure_bytes(table: &XrefTable, revision_entries: bool) -> usize {
 }
 
 impl Document {
-    /// Dissolves a scratch document: its caches go, and the budget returns
-    /// to `mark`, its use before the document was frozen.
-    fn thaw(self, mark: usize) -> DocumentBuilder {
-        let Self {
-            bytes,
-            limits,
-            recovery,
-            trailer,
-            mut slots,
-            revisions,
-            mut object_streams,
-            security,
-            diagnostics,
-            retained,
-            ..
-        } = self;
-        for slot in slots.values_mut() {
+    /// Discards caches only when a completed construction stage changes their
+    /// security/table authority. Ordinary missing-range waits keep dependencies.
+    fn reset_construction_caches(&mut self, mark: usize) {
+        for slot in self.slots.values_mut() {
             slot.object.take();
             *slot
                 .waiting
                 .get_mut()
                 .unwrap_or_else(PoisonError::into_inner) = None;
         }
-        for contents in object_streams.values_mut() {
+        for contents in self.object_streams.values_mut() {
             contents.take();
         }
-        retained.rewind(mark);
-        DocumentBuilder {
-            bytes,
-            limits,
-            recovery,
-            trailer,
-            slots,
-            revisions,
-            object_streams,
-            security,
-            diagnostics: diagnostics
-                .into_inner()
-                .unwrap_or_else(PoisonError::into_inner),
-            retained,
-            origin: XrefOrigin::Primary,
+        self.boundaries.take();
+        self.pages.take();
+        self.historical = history::Cache::default();
+        self.retained.rewind(mark);
+    }
+
+    /// Adds the compressed definitions and object streams that reconstruction
+    /// established, replacing superseded physical slots.
+    fn apply(&mut self, plan: StreamSlots) -> Result<()> {
+        for stream in plan.streams {
+            if let Entry::Vacant(entry) = self.object_streams.entry(stream) {
+                self.retained
+                    .charge(memory::stream_slot_bytes(), Some(ObjectId::new(stream, 0)))?;
+                entry.insert(OnceLock::new());
+            }
+        }
+        for (number, replacement) in plan.slots {
+            let id = ObjectId::new(number, 0);
+            match replacement.replaced {
+                Some(old) => {
+                    self.slots.remove(&old);
+                }
+                None => self.retained.charge(memory::slot_bytes(), Some(id))?,
+            }
+            self.slots.insert(id, Slot::new(replacement.location));
+        }
+        Ok(())
+    }
+
+    fn set_root(&mut self, root: ObjectId) -> Result<()> {
+        let before = self.trailer.retained_bytes();
+        self.trailer
+            .insert(Name::new(b"Root"), Value::Reference(root));
+        let after = self.trailer.retained_bytes();
+        if after >= before {
+            self.retained.charge(after - before, Some(root))
+        } else {
+            self.retained.release(before - after);
+            Ok(())
         }
     }
 }

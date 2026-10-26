@@ -95,7 +95,12 @@ The two policies are `CompleteDocument` and `RequestedOperation`. Source identit
 and policy belong to a loading context; only finalized authoritative xref entries
 define absence/free references. Missing bytes cannot enter permanent result
 cells. A semantic unit owns provisional diagnostics and reservations, publishing
-them once on completion; successful dependencies survive an outer retry. Global
+them once on completion; successful dependencies survive an outer retry. The
+unpublished builder keeps one scratch document across security and catalog
+waits. It clears pre-authentication or provisional-table caches only after the
+corresponding completed stage changes their authority, then reclaims those
+charges before the next stage. Terminal failure drops the construction; no
+partially accepted state can resume. Global
 validation failures do not replace successful dependency values from a requested
 operation. Every retry is charged to the same loading-work allowance. The
 bootstrap, replacement parser windows and subsequent document readers share one
