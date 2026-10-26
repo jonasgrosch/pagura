@@ -326,8 +326,7 @@ mod tests {
     use pagura_testkit::fixture;
 
     #[test]
-    fn symbolic_truetype_ignores_encoding_and_nonsymbolic_uses_names()
-    -> pagura_document::source::ReadResult<()> {
+    fn symbolic_truetype_ignores_encoding_and_nonsymbolic_uses_names() -> ReadResult<()> {
         let open = |recovery| {
             Document::open(
                 fixture("text", "type3-differences.pdf"),

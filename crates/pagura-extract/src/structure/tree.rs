@@ -271,7 +271,7 @@ fn property(
     object: Option<ObjectId>,
     key: &[u8],
 ) -> ReadResult<Option<String>> {
-    Ok(super::entry(doc, dictionary, key)?
+    super::entry(doc, dictionary, key)?
         .map(|v| -> ReadResult<String> {
             let bytes = doc
                 .resolve(v)?
@@ -279,7 +279,7 @@ fn property(
                 .ok_or(Error::syntax("structure replacement must be a text string"))?;
             Ok(super::text_string(doc, bytes, object)?)
         })
-        .transpose()?)
+        .transpose()
 }
 
 pub(super) fn tagged(doc: &Document) -> ReadResult<bool> {

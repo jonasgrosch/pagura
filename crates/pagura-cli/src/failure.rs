@@ -6,8 +6,8 @@ use std::{fmt, io};
 /// request that does not fit the document.
 #[derive(Debug)]
 pub(crate) enum Failure {
-    /// The engine rejected the input or exhausted a budget.
-    Engine(pagura::Error),
+    /// A typed source wait or a terminal engine failure.
+    Engine(pagura::ReadFault),
     /// Reading the input or writing an output failed.
     Io(io::Error),
     /// The request does not fit the document, such as a page outside it.
@@ -19,7 +19,9 @@ impl Failure {
     /// `io` or `request`.
     pub(crate) fn kind(&self) -> &'static str {
         match self {
-            Self::Engine(error) => error.kind.name(),
+            Self::Engine(error) => error
+                .as_error()
+                .map_or("unavailable", |error| error.kind.name()),
             Self::Io(_) => "io",
             Self::Request(_) => "request",
         }
@@ -48,7 +50,13 @@ impl std::error::Error for Failure {
 
 impl From<pagura::Error> for Failure {
     fn from(error: pagura::Error) -> Self {
-        Self::Engine(error)
+        Self::Engine(error.into())
+    }
+}
+
+impl From<pagura::ReadFault> for Failure {
+    fn from(fault: pagura::ReadFault) -> Self {
+        Self::Engine(fault)
     }
 }
 

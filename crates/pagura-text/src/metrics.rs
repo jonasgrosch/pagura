@@ -449,7 +449,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn cid_metric_vectors() -> pagura_document::source::ReadResult<()> {
+    fn cid_metric_vectors() -> ReadResult<()> {
         for name in ["cid-metrics", "cid-default-metrics"] {
             let document = document(name)?;
             let metrics = Metrics::composite(&document, dictionary(&document)?)?;
@@ -467,7 +467,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_metric_vectors() -> pagura_document::source::ReadResult<()> {
+    fn invalid_metric_vectors() -> ReadResult<()> {
         for name in [
             "cid-width-reversed",
             "cid-width-overflow",
@@ -487,7 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_width_vector() -> pagura_document::source::ReadResult<()> {
+    fn missing_width_vector() -> ReadResult<()> {
         let document = document("simple-missing-width")?;
         let dictionary = dictionary(&document)?;
         let descriptor = dictionary

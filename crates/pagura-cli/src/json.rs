@@ -86,7 +86,10 @@ pub(crate) fn diagnostics(out: &mut impl Write, document: &Document) -> io::Resu
 /// error's `Display` adds.
 pub(crate) fn failure(out: &mut impl Write, failure: &Failure) -> io::Result<()> {
     let (feature, repair, message): (_, _, Cow<'_, str>) = match failure {
-        Failure::Engine(error) => (error.feature(), error.repair, error.message.into()),
+        Failure::Engine(fault) => match fault.as_error() {
+            Some(error) => (error.feature(), error.repair, error.message.into()),
+            None => (None, None, fault.to_string().into()),
+        },
         Failure::Io(_) | Failure::Request(_) => (None, None, failure.to_string().into()),
     };
     write!(out, "{{\"kind\":\"{}\",\"feature\":", failure.kind())?;
@@ -128,7 +131,8 @@ mod tests {
 
     #[test]
     fn failures_keep_their_kind_and_tags() {
-        let limit = Failure::Engine(pagura::Error::limit("input exceeds the file size budget"));
+        let limit =
+            Failure::Engine(pagura::Error::limit("input exceeds the file size budget").into());
         assert_eq!(
             written(|out| failure(out, &limit)),
             "{\"kind\":\"limit\",\"feature\":null,\"repair\":null,\
@@ -138,5 +142,21 @@ mod tests {
         assert!(written(|out| failure(out, &io)).starts_with("{\"kind\":\"io\""));
         let request = Failure::Request("page 9 outside the document's 2 pages".into());
         assert!(written(|out| failure(out, &request)).starts_with("{\"kind\":\"request\""));
+    }
+    #[test]
+    fn unavailable_input_has_no_terminal_error_or_repair_tag() {
+        use pagura::source::{ByteSource, SourceIdentity, SourceLimits, SparseBytes};
+        let source = SparseBytes::new(
+            SourceIdentity::new(17, [3; 32]),
+            8,
+            &pagura::Limits::default(),
+            &SourceLimits::default(),
+        )
+        .unwrap();
+        let waiting = Failure::from(source.materialize().unwrap_err());
+        assert_eq!(
+            written(|out| failure(out, &waiting)),
+            "{\"kind\":\"unavailable\",\"feature\":null,\"repair\":null,\"message\":\"source bytes are unavailable\"}"
+        );
     }
 }

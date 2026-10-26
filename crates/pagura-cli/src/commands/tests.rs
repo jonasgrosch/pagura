@@ -261,7 +261,7 @@ fn inspect_reports_counts_and_diagnostics_as_one_json_line() {
         panic!("strict inspect accepted trailing bytes");
     };
     assert_eq!(
-        error.repair.map(pagura::Repair::as_str),
+        error.as_error().unwrap().repair.map(pagura::Repair::as_str),
         Some("file.trailing-bytes")
     );
 }

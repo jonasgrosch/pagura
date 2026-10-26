@@ -794,7 +794,7 @@ mod tests {
     }
 
     #[test]
-    fn a_million_code_bfrange_stores_runs_not_codes() -> pagura_document::source::ReadResult<()> {
+    fn a_million_code_bfrange_stores_runs_not_codes() -> ReadResult<()> {
         // One 4-byte range over a million codes keeps three intervals: valid
         // destinations, surrogates (no text), valid again until the 2-byte
         // destination overflows and the range ends (9.10.3).
@@ -856,7 +856,7 @@ mod tests {
         );
     }
     #[test]
-    fn cmap_vectors() -> pagura_document::source::ReadResult<()> {
+    fn cmap_vectors() -> ReadResult<()> {
         for name in [
             "cmap-mixed",
             "cmap-bytewise",
@@ -918,8 +918,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn embedded_usecmap_chains_stop_at_the_depth_limit() -> pagura_document::source::ReadResult<()>
-    {
+    fn embedded_usecmap_chains_stop_at_the_depth_limit() -> ReadResult<()> {
         // Stream 4 inherits stream 5: a chain of two needs a depth of two.
         for (depth, limited) in [(1, true), (2, false)] {
             let document = Document::open(

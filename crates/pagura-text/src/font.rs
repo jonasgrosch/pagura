@@ -457,7 +457,7 @@ mod tests {
     use pagura_core::ErrorKind;
 
     #[test]
-    fn decode_limits_and_positions() -> pagura_document::source::ReadResult<()> {
+    fn decode_limits_and_positions() -> ReadResult<()> {
         let document = document("type3-differences")?;
         let mut font = PdfFont::load(&document, dictionary(&document)?)?;
         let unicode = font.unicode(&document, dictionary(&document)?, None)?;

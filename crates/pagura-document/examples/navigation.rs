@@ -90,7 +90,7 @@ fn inspect(bytes: Arc<[u8]>, kind: &str) -> ReadResult<Stats> {
         .count();
     Ok(stats)
 }
-fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args_os()
         .nth(1)
         .ok_or("expected an input PDF path")?;

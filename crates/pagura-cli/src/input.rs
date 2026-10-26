@@ -51,7 +51,7 @@ impl Source {
 /// read, is read again to its end.
 fn load(path: &Path, limits: &Limits) -> Result<Arc<[u8]>, Failure> {
     let mut file = File::open(path)?;
-    let too_large = || Failure::Engine(Error::limit("input exceeds the file size budget"));
+    let too_large = || Failure::Engine(Error::limit("input exceeds the file size budget").into());
     let limit = convert::usize_to_u64(limits.file_bytes);
     let metadata = file.metadata()?;
     if metadata.len() > limit {

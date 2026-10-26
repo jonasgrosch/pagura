@@ -113,7 +113,7 @@ fn substituted_programs_and_predefined_maps_belong_to_the_provider()
     let (document, dict) = load("tt-unicode-priority")?;
     let embedded = PdfFont::load(&document, &dict)?;
     let font::Source::Program { program, .. } = &embedded.source else {
-        return Err(Error::syntax("expected program"));
+        return Err(Error::syntax("expected program").into());
     };
     let mut data = provider(Arc::clone(program))?;
     let dict: Dictionary = [
@@ -143,14 +143,14 @@ fn substituted_programs_and_predefined_maps_belong_to_the_provider()
         shared: true,
     } = first.mapping
     else {
-        return Err(Error::syntax("expected shared CMap"));
+        return Err(Error::syntax("expected shared CMap").into());
     };
     let font::Mapping::Composite {
         map: second,
         shared: true,
     } = second.mapping
     else {
-        return Err(Error::syntax("expected shared CMap"));
+        return Err(Error::syntax("expected shared CMap").into());
     };
     assert!(Arc::ptr_eq(&first, &second));
     Ok(())
@@ -167,7 +167,7 @@ fn cid_to_gid_maps_are_owned_storage() -> pagura_document::source::ReadResult<()
     let mut font = PdfFont::load(&document, &dict)?;
     let before = font.retained_bytes();
     let font::Source::Program { cid_map, .. } = &mut font.source else {
-        return Err(Error::syntax("expected program"));
+        return Err(Error::syntax("expected program").into());
     };
     *cid_map = Some(cid::CidToGidMap::new(vec![0; 128].into())?);
     assert_eq!(font.accounted().retained_bytes(), before + 128);
@@ -189,7 +189,7 @@ fn embedded_program_storage_uses_the_programs_retained_accounting()
             program, cid_map, ..
         } = &font.source
         else {
-            return Err(Error::syntax("expected program"));
+            return Err(Error::syntax("expected program").into());
         };
         assert_eq!(
             super::source(&font.source),

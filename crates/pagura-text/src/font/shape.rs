@@ -145,7 +145,7 @@ mod tests {
     use super::*;
     use crate::objects::array;
     use pagura_core::syntax::{Origin, Parser};
-    use pagura_core::{Error, ObjectId, Result};
+    use pagura_core::{Error, ObjectId};
     use pagura_document::{Document, OpenOptions};
     use pagura_testkit::fixture;
 

@@ -124,10 +124,14 @@ fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags()
             if recovery == Recovery::Strict && !tag.is_empty() {
                 let error = result.unwrap_err();
                 assert_eq!(
-                    error.repair.map(|r| r.as_str().as_bytes()),
+                    error
+                        .as_error()
+                        .unwrap()
+                        .repair
+                        .map(|r| r.as_str().as_bytes()),
                     Some(tag.as_slice())
                 );
-                assert_eq!(error.object, Some(ObjectId::new(5, 0)));
+                assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(5, 0)));
                 assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
                 continue;
             }
@@ -273,7 +277,11 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode()
                 let error = result.unwrap_err();
                 let tag = fixture("text", &format!("{name}.strict.error"));
                 assert_eq!(
-                    error.repair.map(pagura_core::Repair::as_str),
+                    error
+                        .as_error()
+                        .unwrap()
+                        .repair
+                        .map(pagura_core::Repair::as_str),
                     Some(
                         std::str::from_utf8(&tag)
                             .map_err(|_| Error::syntax("invalid tag"))?

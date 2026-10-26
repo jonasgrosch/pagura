@@ -13,7 +13,11 @@ fn values(bytes: &[u8]) -> Vec<u16> {
         .collect()
 }
 
-pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8]) {
+pub(super) fn vector(
+    name: &str,
+    params: &BTreeMap<String, String>,
+    expected: &[u8],
+) -> pagura_document::source::ReadResult<()> {
     let document = Document::open(
         fixture("image", &format!("{name}.pdf")),
         &OpenOptions {
@@ -29,10 +33,13 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     let result =
         crate::tests::decode_xobject(&document, document.object(ObjectId::new(3, 0)).unwrap());
     if params["outcome"] == "repair" {
-        assert_repairs(name, params, &document);
+        assert_repairs(name, params, &document)?;
     } else if params["outcome"] != "valid" {
-        assert_rejected(name, params, &result.unwrap_err());
-        return;
+        let fault = result
+            .err()
+            .ok_or_else(|| pagura_core::Error::syntax("expected rejected image"))?;
+        assert_rejected(name, params, &fault)?;
+        return Ok(());
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
     assert_eq!(image.width, params["width"].parse().unwrap(), "{name}");
@@ -103,9 +110,17 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     } else {
         assert_eq!(image.mask, MaskKind::None, "{name}");
     }
+    Ok(())
 }
 
-fn assert_rejected(name: &str, params: &BTreeMap<String, String>, error: &pagura_core::Error) {
+fn assert_rejected(
+    name: &str,
+    params: &BTreeMap<String, String>,
+    fault: &pagura_document::source::ReadFault,
+) -> pagura_core::Result<()> {
+    let error = fault
+        .as_error()
+        .ok_or_else(|| pagura_core::Error::syntax("expected terminal image rejection"))?;
     match params["outcome"].as_str() {
         "syntax" => assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}"),
         "limit" => assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}"),
@@ -125,8 +140,13 @@ fn assert_rejected(name: &str, params: &BTreeMap<String, String>, error: &pagura
         let refused =
             crate::tests::decode_xobject(&repaired, repaired.object(ObjectId::new(3, 0)).unwrap())
                 .unwrap_err();
-        assert_eq!(refused.kind, error.kind, "{name}");
+        assert_eq!(
+            refused.as_error().map(|error| error.kind),
+            Some(error.kind),
+            "{name}"
+        );
     }
+    Ok(())
 }
 
 fn space_name(kind: &ImageKind) -> &str {
@@ -272,7 +292,11 @@ fn placed(image: jpx::JpxImage) -> jpx::Decoded {
     }
 }
 
-fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Document) {
+fn assert_repairs(
+    name: &str,
+    params: &BTreeMap<String, String>,
+    document: &Document,
+) -> pagura_document::source::ReadResult<()> {
     let strict = Document::open(
         fixture("image", &format!("{name}.pdf")),
         &OpenOptions {
@@ -281,8 +305,12 @@ fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Docu
         },
     )
     .unwrap();
-    let error = crate::tests::decode_xobject(&strict, strict.object(ObjectId::new(3, 0)).unwrap())
-        .unwrap_err();
+    let fault = crate::tests::decode_xobject(&strict, strict.object(ObjectId::new(3, 0))?)
+        .err()
+        .ok_or_else(|| pagura_core::Error::syntax("expected strict image rejection"))?;
+    let error = fault
+        .as_error()
+        .ok_or_else(|| pagura_core::Error::syntax("expected terminal image rejection"))?;
     assert_eq!(error.repair.unwrap().as_str(), params["repair"], "{name}");
     assert_eq!(error.object, Some(ObjectId::new(3, 0)), "{name}");
     assert!(matches!(error.position, Position::Stream { .. }), "{name}");
@@ -305,8 +333,9 @@ fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Docu
         assert!(matches!(report.position, Position::Stream { .. }), "{name}");
     }
     // A second use of the same XObject must not duplicate reports.
-    crate::tests::decode_xobject(document, document.object(ObjectId::new(3, 0)).unwrap()).unwrap();
+    crate::tests::decode_xobject(document, document.object(ObjectId::new(3, 0))?)?;
     assert_eq!(document.diagnostics(), reports, "{name}");
+    Ok(())
 }
 
 #[test]

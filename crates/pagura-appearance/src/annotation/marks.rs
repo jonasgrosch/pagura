@@ -125,7 +125,7 @@ impl<'a> Marks<'a> {
         self.color(color, Paint::Fill)?;
         self.path(path)?;
         self.painted = true;
-        self.content.text("f\n")
+        Ok(self.content.text("f\n")?)
     }
 
     /// Strokes `path` with `pen`.
@@ -155,7 +155,7 @@ impl<'a> Marks<'a> {
         self.content.text("] 0 d\n")?;
         self.path(path)?;
         self.painted = true;
-        self.content.text("S\n")
+        Ok(self.content.text("S\n")?)
     }
 
     /// The appearance: the marks in a form whose BBox is `rect`, or `None`

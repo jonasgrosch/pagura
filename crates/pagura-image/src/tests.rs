@@ -84,15 +84,15 @@ fn independent_vectors() {
             |key: &str, default: i64| p.get(key).map_or(default, |v| v.parse::<i64>().unwrap());
         let expected = fixture("image", &format!("{name}.out"));
         if p["kind"] == "pdf-image" {
-            crate::pdf_tests::vector(&name, &p, &expected);
+            crate::pdf_tests::vector(&name, &p, &expected).unwrap();
             continue;
         }
         if p["kind"] == "dictionary" {
-            dictionary_vector(&name, &p, &expected);
+            dictionary_vector(&name, &p, &expected).unwrap();
             continue;
         }
         if p["kind"] == "inline" {
-            inline_vector(&name, &p, &expected);
+            inline_vector(&name, &p, &expected).unwrap();
             continue;
         }
         if p["kind"] == "samples" {
@@ -248,6 +248,8 @@ fn image_and_codec_budgets_precede_allocations() {
     assert_eq!(
         decode_xobject(&doc, doc.object(ObjectId::new(3, 0)).unwrap())
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -283,7 +285,11 @@ fn fax_parameters_defaults_and_type_validation() {
     }
 }
 
-fn dictionary_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8]) {
+fn dictionary_vector(
+    name: &str,
+    params: &BTreeMap<String, String>,
+    expected: &[u8],
+) -> pagura_document::source::ReadResult<()> {
     let doc = Document::open(
         fixture("image", &format!("{name}.pdf")),
         &OpenOptions::default(),
@@ -291,7 +297,12 @@ fn dictionary_vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     .unwrap();
     let result = decode_xobject(&doc, doc.object(ObjectId::new(3, 0)).unwrap());
     if params["outcome"] != "valid" {
-        let error = result.unwrap_err();
+        let fault = result
+            .err()
+            .ok_or_else(|| pagura_core::Error::syntax("expected image rejection"))?;
+        let error = fault
+            .as_error()
+            .ok_or_else(|| pagura_core::Error::syntax("expected terminal image rejection"))?;
         assert_eq!(
             error.kind,
             if params["outcome"] == "limit" {
@@ -302,7 +313,7 @@ fn dictionary_vector(name: &str, params: &BTreeMap<String, String>, expected: &[
             "{name}"
         );
         assert!(error.object.is_some());
-        return;
+        return Ok(());
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
     assert_eq!(image.samples, Samples::Bytes(expected.to_vec()), "{name}");
@@ -320,9 +331,14 @@ fn dictionary_vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     if params.contains_key("interpolate") {
         assert!(image.interpolate);
     }
+    Ok(())
 }
 
-fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8]) {
+fn inline_vector(
+    name: &str,
+    params: &BTreeMap<String, String>,
+    expected: &[u8],
+) -> pagura_document::source::ReadResult<()> {
     use pagura_core::syntax::{Origin, Parser};
     let bytes = fixture("image", &format!("{name}.dict"));
     let dict = Parser::new(&bytes, Origin::Buffer, Limits::default())
@@ -363,12 +379,22 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
             },
         )
         .unwrap();
-        let error = decode_inline(&strict, &resources, dict, &data).unwrap_err();
+        let fault = decode_inline(&strict, &resources, dict, &data)
+            .err()
+            .ok_or_else(|| pagura_core::Error::syntax("expected strict image rejection"))?;
+        let error = fault
+            .as_error()
+            .ok_or_else(|| pagura_core::Error::syntax("expected terminal image rejection"))?;
         assert_eq!(error.repair.unwrap().as_str(), params["repair"], "{name}");
         assert_eq!(doc.diagnostics().len(), 1, "{name}");
         assert_eq!(doc.diagnostics()[0].tag(), params["repair"], "{name}");
     } else if params["outcome"] != "valid" {
-        let error = result.unwrap_err();
+        let fault = result
+            .err()
+            .ok_or_else(|| pagura_core::Error::syntax("expected image rejection"))?;
+        let error = fault
+            .as_error()
+            .ok_or_else(|| pagura_core::Error::syntax("expected terminal image rejection"))?;
         if params["outcome"] == "unsupported" {
             assert_eq!(
                 error.feature().unwrap().as_str(),
@@ -385,7 +411,7 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
                 "{name}"
             );
         }
-        return;
+        return Ok(());
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
     assert_eq!(image.samples, Samples::Bytes(expected.to_vec()), "{name}");
@@ -405,6 +431,7 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
         data.len(),
         "{name}"
     );
+    Ok(())
 }
 
 #[test]

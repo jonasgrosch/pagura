@@ -29,13 +29,13 @@ pub(super) fn generate(
     let value = inherited(document, annotation, b"V")?;
     let empty = value.is_none_or(|v| v.is_null() || v.as_string().is_some_and(<[u8]>::is_empty));
     if !matches!(kind.as_bytes(), b"Tx" | b"Sig") || !empty {
-        return Err(unsupported());
+        return Err(unsupported().into());
     }
     if let Some(rich) = inherited(document, annotation, b"RV")?
         && !rich.is_null()
         && rich.as_string() != Some(b"")
     {
-        return Err(unsupported());
+        return Err(unsupported().into());
     }
     let mut marks = Marks::new(document, annotation);
     if let Some(mk) = annotation.get(b"MK") {

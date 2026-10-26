@@ -26,7 +26,7 @@ fn only_outline_fonts_expose_their_program() -> pagura_document::source::ReadRes
         .ok_or_else(|| Error::syntax("missing embedded program"))?;
     let glyph = font.decode(b"\0\x11", None)?.remove(0);
     let GlyphShape::Outline { program: drawn, .. } = glyph.shape else {
-        return Err(Error::syntax("expected an outline glyph"));
+        return Err(Error::syntax("expected an outline glyph").into());
     };
     assert!(std::sync::Arc::ptr_eq(program, &drawn));
     Ok(())
@@ -77,7 +77,7 @@ fn type3_decoding_vectors() -> pagura_document::source::ReadResult<()> {
                 continue;
             }
             let GlyphShape::Type3 { procedure, matrix } = glyph.shape else {
-                return Err(Error::syntax("expected Type3 shape"));
+                return Err(Error::syntax("expected Type3 shape").into());
             };
             assert_eq!(procedure.number, uint(&row[5])?);
             if name == "type3-matrix" {
@@ -150,12 +150,12 @@ fn font_error_vectors() -> pagura_document::source::ReadResult<()> {
 }
 
 #[test]
-fn missing_cid_map_entry_uses_cid_zero() -> Result<()> {
+fn missing_cid_map_entry_uses_cid_zero() -> pagura_document::source::ReadResult<()> {
     check_program_vector("cid-map-missing-entry")?;
     check_program_vector("cid-map-explicit-zero")
 }
 
-fn check_program_vector(name: &str) -> Result<()> {
+fn check_program_vector(name: &str) -> pagura_document::source::ReadResult<()> {
     let document = open(name, Recovery::Repair)?;
     let (font, unicode) = load_text(&document, dictionary(&document)?, None)?;
     let glyphs = font.decode(&fixture("text", &format!("{name}.input")), Some(&unicode))?;
@@ -177,7 +177,7 @@ fn check_program_vector(name: &str) -> Result<()> {
             matrix: actual,
         } = &glyph.shape
         else {
-            return Err(Error::syntax("expected outline"));
+            return Err(Error::syntax("expected outline").into());
         };
         assert_eq!(id.0, uint(&row[5])?, "{name}");
         for (actual, expected) in [actual.a, actual.b, actual.c, actual.d, actual.e, actual.f]
