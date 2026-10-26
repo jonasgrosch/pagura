@@ -389,7 +389,11 @@ impl ShadingSource {
         match &*self.geometry {
             Geometry::Axial(g) => match aligned {
                 Some(aligned) => aligned.fill(self, g, span, out),
-                None => self.fill_with(g, span, out),
+                None => {
+                    if !self.fill_rows(g, span, out) {
+                        self.fill_with(g, span, out);
+                    }
+                }
             },
             Geometry::Radial(g) => self.fill_with(g, span, out),
             Geometry::Function(g) => self.fill_with(g, span, out),
@@ -495,6 +499,111 @@ impl ShadingSource {
                 }
             }
         }
+    }
+
+    /// [`Self::fill_with`] for an axial shading whose colours are kept to F32
+    /// levels and certified ahead, with one sample a pixel, no background
+    /// and no `BBox` test; false, with nothing written, otherwise.
+    ///
+    /// Along a row the parameter is affine in the column, so it is stepped,
+    /// `t₀ + k·β`, instead of computed from each pixel's point; each colour
+    /// comes from the ramp's polynomials ([`pagura_color::Ramp::piece`])
+    /// within [`pagura_color::APPROXIMATE`] of the exact colour, without its
+    /// levels' certificate. A pixel whose stepped parameter could fall on
+    /// the other side of `0` or `1` than the exact one, or whose input
+    /// error reaches a piece's end, takes the exact colour.
+    ///
+    /// Both parameters approximate the real one (`u` the unit roundoff):
+    /// the exact one rounds the point's two products and two sums, the two
+    /// differences, products and sum, and the quotient, so it is within
+    /// `8u·M` of it, where `M` is the parameter computed in magnitudes; the
+    /// stepped one has the first pixel's error, `β`'s rounding (`4u` of its
+    /// magnitudes) times `k`, and two more roundings. `M` grows along the
+    /// row, so its value at `far`, past the last pixel's column, bounds
+    /// every pixel's, and `32u·(M + |t₀| + far·|β|)` bounds the parameters'
+    /// distance with room to spare. Inside `0..1` neither parameter is
+    /// clamped, and the domain map `d₀ + t·w` rounds twice more for each, so
+    /// the inputs differ by at most `|w|` times that plus `4u·(|d₀| + |w|)`.
+    fn fill_rows(&self, axial: &Axial, span: Span<'_>, out: &mut SpanColors) -> bool {
+        let Some(ramp) = self.colors.ramp() else {
+            return false;
+        };
+        if span.precision != Precision::Level
+            || span.boundary.is_some()
+            || self.constant.is_some()
+            || !self.single_sample()
+            || self.pattern.as_ref().is_some_and(|p| p.bbox.is_some())
+            || axial.denominator == 0.0
+            || self.colors.inputs() != 1
+            || !self.colors.batched()
+        {
+            return false;
+        }
+        let channels = self.channels.max(1);
+        let len = out.alpha.len();
+        let i = self.inverse;
+        let (x0, y) = (f64::from(span.x) + 0.5, f64::from(span.y) + 0.5);
+        let start = axial.parameter(Point::new(x0, y) * i);
+        let step = (i.a * axial.delta.x + i.b * axial.delta.y) / axial.denominator;
+        let u = f64::EPSILON / 2.0;
+        let far = x0 + f64::from(u32::try_from(len).unwrap_or(u32::MAX));
+        let magnitude = ((i.a.abs() * far + i.c.abs() * y.abs() + i.e.abs() + axial.start.x.abs())
+            * axial.delta.x.abs()
+            + (i.b.abs() * far + i.d.abs() * y.abs() + i.f.abs() + axial.start.y.abs())
+                * axial.delta.y.abs())
+            / axial.denominator;
+        let error = 32.0 * u * (magnitude + start.abs() + far * step.abs());
+        let [d0, d1] = axial.domain;
+        let width = d1 - d0;
+        let input_error = (width.abs() * error + 4.0 * u * (d0.abs() + width.abs())) * (1.0 + 1e-6);
+        if !(error.is_finite() && input_error.is_finite() && error < 0.25) {
+            return false;
+        }
+        let mut hint = 0;
+        let mut piece: Option<pagura_color::Piece<'_>> = None;
+        let mut exact = Exact::default();
+        let SpanColors { colors, alpha, .. } = out;
+        for (k, alpha) in alpha.iter_mut().enumerate() {
+            let range = k * channels..(k + 1) * channels;
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "span lengths are far below 2^52"
+            )]
+            let t = start + k as f64 * step;
+            if t > error && t < 1.0 - error {
+                let x = d0 + t * width;
+                if !piece.is_some_and(|p| p.holds(x)) {
+                    piece = ramp.piece(x, input_error, &mut hint);
+                }
+                if let (Some(piece), Some(color)) = (piece, colors.get_mut(range.clone())) {
+                    piece.evaluate(x, color);
+                    for value in color.iter_mut() {
+                        *value += 0.0;
+                    }
+                    #[cfg(test)]
+                    APPROXIMATED.with(|count| count.set(count.get() + 1));
+                    *alpha = 1.0;
+                    continue;
+                }
+            }
+            // As `fill_batched` samples and converts it.
+            let column = span.x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
+            let point = Point::new(f64::from(column) + 0.5, f64::from(span.y) + 0.5) * self.inverse;
+            let mut input: Input = [0.0; MAX_COMPONENTS];
+            if axial.sample(point, &mut input) {
+                *alpha = 1.0;
+                if exact.push(k, input[0]) {
+                    exact.flush(&self.colors, colors, channels);
+                }
+            } else {
+                if let Some(color) = colors.get_mut(range) {
+                    color.fill(0.0);
+                }
+                *alpha = 0.0;
+            }
+        }
+        exact.flush(&self.colors, colors, channels);
+        true
     }
 
     /// One pixel's colour into `color`, returning its covered fraction.
@@ -749,6 +858,56 @@ impl Geometry {
                 return Err(Error::invalid_argument("unknown shading geometry"));
             }
         })
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Pixels [`ShadingSource::fill_rows`] approximated on this thread.
+    static APPROXIMATED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Pixels of a row whose colours [`ShadingSource::fill_rows`] converts
+/// exactly, a batch at a time: the distinct inputs of a run of equal ones
+/// convert once, as in [`ShadingSource::fill_batched`].
+#[derive(Default)]
+struct Exact {
+    /// Distinct inputs.
+    inputs: [f64; BATCH],
+    distinct: usize,
+    /// Each pixel's column in the span and its input's slot.
+    slots: [(usize, usize); BATCH],
+    count: usize,
+}
+
+impl Exact {
+    /// Adds pixel `k` of input `x`; true where the batch is full.
+    fn push(&mut self, k: usize, x: f64) -> bool {
+        let repeat = self.distinct > 0 && self.inputs[self.distinct - 1].to_bits() == x.to_bits();
+        if !repeat {
+            self.inputs[self.distinct] = x;
+            self.distinct += 1;
+        }
+        self.slots[self.count] = (k, self.distinct - 1);
+        self.count += 1;
+        self.count == BATCH
+    }
+
+    /// Converts the batch into the pixels' colours at F32 levels.
+    fn flush(&mut self, stage: &Colors, colors: &mut [f64], channels: usize) {
+        if self.count == 0 {
+            return;
+        }
+        let mut converted = [0.0; BATCH * pagura_color::MAX_CHANNELS];
+        let converted = &mut converted[..self.distinct * channels];
+        stage.convert_line(&self.inputs[..self.distinct], converted, Precision::Level);
+        for &(k, slot) in &self.slots[..self.count] {
+            for c in 0..channels {
+                // The sum of one sample is `0 + s` and its mean that over 1.
+                colors[k * channels + c] = (0.0 + converted[slot * channels + c]) / 1.0;
+            }
+        }
+        (self.distinct, self.count) = (0, 0);
     }
 }
 

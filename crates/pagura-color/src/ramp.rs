@@ -30,6 +30,9 @@ pub const MAX_RAMP_CHANNELS: usize = 4;
 /// leaves more samples undecided than bounding the power per sample.
 const CUBIC_RADIUS: f64 = 1.0 / (1_u64 << 36) as f64;
 
+/// How far a [`Piece`] may write a value from the exact one.
+pub const APPROXIMATE: f64 = 1.0 / (1_u64 << 30) as f64;
+
 /// The colour stage a ramp encloses: one function giving every colour
 /// component, or one function per component, each of one input.
 #[derive(Debug, Clone, Copy)]
@@ -51,12 +54,47 @@ pub struct Ramp {
     pieces: Vec<[f64; 2]>,
     /// `channels` terms per piece.
     terms: Vec<Term>,
+    /// For each piece, a bound on the error of an input below which every
+    /// channel's polynomial stays within [`APPROXIMATE`] of the exact value
+    /// at the exact input ([`Self::piece`]); zero where a channel bounds its
+    /// power per sample.
+    reach: Vec<f64>,
     /// For each bucket of inputs (see [`Self::bucket`]), the first piece
     /// that may hold an input in it, or `u32::MAX`.
     index: Vec<u32>,
     /// Buckets are `⌊(x − origin)·scale⌋`, clipped to the last.
     origin: f64,
     scale: f64,
+}
+
+/// One piece of a [`Ramp`] for inputs known within an error
+/// ([`Ramp::piece`]): for every input it holds, [`Self::evaluate`] writes
+/// values within [`APPROXIMATE`] of the exact ones at any input within the
+/// error of it.
+#[derive(Debug, Clone, Copy)]
+pub struct Piece<'a> {
+    /// The inputs held: the piece's, short of the error at both ends.
+    low: f64,
+    high: f64,
+    terms: &'a [Term],
+}
+
+impl Piece<'_> {
+    /// Whether the piece holds `x`.
+    #[inline]
+    pub fn holds(&self, x: f64) -> bool {
+        self.low <= x && x <= self.high
+    }
+
+    /// Writes the target's channels for `x`, an input the piece holds.
+    #[inline]
+    pub fn evaluate(&self, x: f64, output: &mut [f64]) {
+        for (out, term) in output.iter_mut().zip(self.terms) {
+            let [k0, k1, k2, k3] = term.k;
+            let t = x - term.centre;
+            *out = k0 + t * (k1 + t * (k2 + t * k3));
+        }
+    }
 }
 
 /// One channel on one piece: within `radius` of the cubic `k₀ + k₁·τ +
@@ -152,6 +190,7 @@ impl Ramp {
         bytes: &mut Meter,
     ) -> pagura_core::Result<()> {
         bytes.reserve(&mut self.pieces, limit)?;
+        bytes.reserve(&mut self.reach, limit)?;
         bytes.reserve(&mut self.terms, limit.saturating_mul(self.channels))?;
         let mut out = [Channel::Value(Affine::point(0.0)); MAX_RAMP_CHANNELS];
         let out = &mut out[..self.channels];
@@ -186,6 +225,7 @@ impl Ramp {
         drop(pending);
         bytes.refund(released);
         shrink(&mut self.pieces, bytes);
+        shrink(&mut self.reach, bytes);
         shrink(&mut self.terms, bytes);
         self.index(inputs, bytes)
     }
@@ -232,6 +272,7 @@ impl Ramp {
     /// Bytes held.
     pub fn bytes(&self) -> usize {
         self.pieces.capacity() * size_of::<[f64; 2]>()
+            + self.reach.capacity() * size_of::<f64>()
             + self.terms.capacity() * size_of::<Term>()
             + self.index.capacity() * size_of::<u32>()
     }
@@ -286,6 +327,44 @@ impl Ramp {
         true
     }
 
+    /// The piece that approximates the stage at every input within
+    /// `error` of `x` ([`Piece`]), or `None` where no piece holds all those
+    /// inputs, its polynomials are too steep for `error`, or a channel
+    /// bounds its power per sample. `hint` is a piece to start from: inputs
+    /// along a line take neighbouring pieces.
+    ///
+    /// Every input within `error` of an input the piece holds lies in the
+    /// piece, where the exact value at any of its inputs is within the
+    /// radius `R` of the polynomial evaluated there, and the polynomial
+    /// changes by at most its slope bound `S` times `error` between the two;
+    /// so the value written is within `2R + S·error` of the exact one, which
+    /// the piece's reach keeps within [`APPROXIMATE`].
+    #[inline]
+    pub fn piece(&self, x: f64, error: f64, hint: &mut usize) -> Option<Piece<'_>> {
+        let mut i = (*hint).min(self.pieces.len().saturating_sub(1));
+        while let Some(&[_, high]) = self.pieces.get(i)
+            && high < x
+        {
+            i += 1;
+        }
+        while let Some(&[low, _]) = self.pieces.get(i)
+            && x < low
+            && i > 0
+        {
+            i -= 1;
+        }
+        *hint = i;
+        let (&[low, high], &reach) = (self.pieces.get(i)?, self.reach.get(i)?);
+        let start = i * self.channels;
+        let terms = self.terms.get(start..start + self.channels)?;
+        let piece = Piece {
+            low: low + error,
+            high: high - error,
+            terms,
+        };
+        (error < reach && piece.holds(x)).then_some(piece)
+    }
+
     /// The piece holding `x`. Pieces are ordered, so the first piece from
     /// the bucket's on whose end reaches `x` is the only one that can.
     #[inline]
@@ -320,12 +399,45 @@ impl Ramp {
             };
             *term = t;
         }
+        let reach = terms[..out.len()]
+            .iter()
+            .map(|term| term.reach([low, high]))
+            .fold(f64::INFINITY, f64::min);
         self.pieces.push([low, high]);
+        self.reach.push(reach);
         self.terms.extend_from_slice(&terms[..out.len()]);
     }
 }
 
 impl Term {
+    /// A bound on the input error below which `2R + S·error` stays within
+    /// [`APPROXIMATE`] on the piece `low..=high`, with `S` a bound of the
+    /// polynomial's slope there (`|k₁| + 2|k₂|h + 3|k₃|h²`, `h` the largest
+    /// distance from the centre): zero for a power bounded per sample (its
+    /// terms hold the linear value, not the colour), unbounded for an exact
+    /// value.
+    fn reach(&self, [low, high]: [f64; 2]) -> f64 {
+        if self.margin != 0.0 {
+            return 0.0;
+        }
+        if self.radius == 0.0 {
+            return f64::INFINITY;
+        }
+        let h =
+            (high - self.centre).abs().max((self.centre - low).abs()) * (1.0 + 4.0 * f64::EPSILON);
+        let [_, k1, k2, k3] = self.k.map(f64::abs);
+        let slope = (k1 + h * (2.0 * k2 + h * 3.0 * k3)) * (1.0 + 8.0 * f64::EPSILON);
+        let room = APPROXIMATE - 2.0 * self.radius;
+        if !(room > 0.0 && slope.is_finite()) {
+            return 0.0;
+        }
+        if slope == 0.0 {
+            return f64::INFINITY;
+        }
+        // Rounded down past the quotient's rounding.
+        room / slope * (1.0 - 4.0 * f64::EPSILON)
+    }
+
     /// The term of `channel` enclosed over the input form `x` of the inputs
     /// `low..=high`.
     ///
