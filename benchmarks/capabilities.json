@@ -385,8 +385,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7.",
-      "remaining": "Remaining formats, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Selected vert/vrt2 substitutions and post 1/2/2.5/3 names have scoped hosted acceptance. Legacy post4 cmap admission and format8 numeric groups reuse the existing readers; all 25 integrated rendering controls pass at e399327d7. Current CFF2 FontDICT unknown operators are ignored through the existing DICT parser; new acceptance is pending.",
+      "remaining": "Remaining formats, legacy CFF2 matrix interpretation, post4 printer-name derivation, variations, executable programs and policy-controlled hinting; see the font inventory.",
       "sources": [
         "crates/pagura-font/README.md",
         "crates/pagura-font/src/lib.rs",
@@ -395,13 +395,16 @@
         "web/viewer.mjs",
         "crates/pagura-font/src/sfnt/vertical.rs",
         "crates/pagura-font/src/sfnt/names.rs",
-        "crates/pagura-font/src/sfnt/cmap.rs"
+        "crates/pagura-font/src/sfnt/cmap.rs",
+        "crates/pagura-font/src/cff.rs",
+        "crates/pagura-font/src/cff/dict.rs"
       ],
       "tests": [
         "crates/pagura-font/tests/vectors/static_fonts.rs",
         "crates/pagura-font/tests/vertical.rs",
         "crates/pagura-font/src/sfnt/vertical/tests.rs",
-        "crates/pagura-font/src/sfnt/cmap/tests.rs"
+        "crates/pagura-font/src/sfnt/cmap/tests.rs",
+        "crates/pagura-font/src/cff/dict/tests.rs"
       ],
       "requirements": [
         "font-bounds",
@@ -462,7 +465,16 @@
         "font_formats/cmap12-windows-utf16-isolated",
         "font_formats/cmap8-windows-ucs4-isolated",
         "font_formats/cmap12-unicode-utf16-isolated",
-        "font_formats/cmap8-unicode-ucs4-isolated"
+        "font_formats/cmap8-unicode-ucs4-isolated",
+        "font_formats/cff2-fd-none-simple",
+        "font_formats/cff2-fd-matrix-simple",
+        "font_formats/cff2-fd-none-cid",
+        "font_formats/cff2-fd-matrix-cid",
+        "font_formats/cff1-fd-matrix-explicit-top-cid",
+        "font_formats/cff2-fd-matrix-explicit-top-cid",
+        "font_formats/cff2-fd-small-matrix-cid",
+        "font_formats/cff-matrix-rectangle-1",
+        "font_formats/cff-matrix-rectangle-2"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2745,7 +2757,7 @@
       ],
       "review": "gap",
       "capability": "fonts.programs",
-      "rationale": "Synthetic CFF, CharstringType other than 2, CFF2 FontDICT matrices and unknown post versions remain unsupported; ordinary TrueType/CFF/CFF2 support exists.",
+      "rationale": "Synthetic CFF, CharstringType other than 2 and unknown post versions remain unsupported; ordinary TrueType/CFF/CFF2 support exists. Current CFF2 FontDICT ignores unknown operators, while a separate legacy matrix interpretation remains unimplemented.",
       "evidence": [
         {
           "path": "crates/pagura-font/src/cff.rs",

@@ -140,14 +140,18 @@ does nothing. Deprecated dotsection is accepted as a no-op (Appendix C).
 Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
-Remaining coverage: nondefault variation instances, CFF2 Font DICT matrices,
+Remaining coverage: nondefault variation instances, legacy CFF2 Font DICT matrix interpretation,
 derived post 4 printer names and unknown post formats, TrueType collections, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
 CFF CharstringType 1, standalone TN 5014 CIDFont programs or nonhorizontal
 Type 1 sbw advances. Unrecognized OtherSubrs use chapter 8’s required
-argument fallback rather than invoking PostScript. CFF2 Font DICT matrices
-are explicitly unsupported after a secondary outline disagreement, pending
-primary review. Format 14 UVS records do not change this API's single-code PDF
+argument fallback rather than invoking PostScript. Current CFF2 Font DICTs
+recognize only Private; unknown operators, including the deprecated FontMatrix,
+clear their operands without adding entries or a repair. CFF1 and CFF2 Top DICT
+matrices retain their existing behavior. The historical CFF2 matrix interpretation
+is a separate unresolved compatibility choice: the unchanged version-2 header
+does not identify which interpretation a producer intended. Nine preserved
+diagnostic PDFs and native stack/entry/work controls await hosted acceptance. Format 14 UVS records do not change this API's single-code PDF
 selection: 9.6.5.4 maps one code through a named base subtable, and 9.7.4.2
 selects CIDs/GIDs. A fixture includes a nondefault UVS mapping and confirms
 that it does not replace the base glyph.

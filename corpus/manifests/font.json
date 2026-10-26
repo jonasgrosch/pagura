@@ -1648,7 +1648,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/cff2-font-dict-matrix.expect",
-          "sha256": "68f6bd918d9e2cb790eb3d77cfec0b0e5778578cc504a5b9137f8175eed07a01"
+          "sha256": "6cf43909883ad640cdc03e6a7d08a1b298bc64e0b06a0ae713d8dfa2701eb607"
         },
         ".font": {
           "path": "corpus/generated/font/cff2-font-dict-matrix.font",

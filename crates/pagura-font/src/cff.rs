@@ -285,7 +285,7 @@ fn header(mut r: Cursor<'_>, data: &[u8], work: &mut Work<'_>) -> Result<Header>
                 return Err(r.error("invalid CFF2 header"));
             }
             r.seek(header)?;
-            let top = Dict::parse(r.take_cursor(size)?, Kind::Cff2, work)?;
+            let top = Dict::parse(r.take_cursor(size)?, Kind::Cff2Top, work)?;
             let global = Index::parse(&mut r, version, work)?;
             Ok(Header {
                 top,
@@ -437,18 +437,8 @@ impl Context<'_> {
             let at = Position::Buffer(font.start);
             work.work(font.len(), at)?;
             let bytes = read::slice(self.data, font, "CFF Font DICT outside font")?;
-            let mut dict = Dict::parse(bytes, if cff2 { Kind::Cff2 } else { Kind::Cff }, work)?;
-            if cff2 {
-                if dict.has(Operator::FONT_MATRIX) {
-                    // Secondary outline readers disagree for this unreviewed
-                    // CFF2 combination. Keep it explicit until primary review.
-                    return Err(unsupported(
-                        features::FORMAT,
-                        at,
-                        "CFF2 Font DICT matrices are not supported",
-                    ));
-                }
-            } else {
+            let mut dict = Dict::parse(bytes, if cff2 { Kind::Cff2Font } else { Kind::Cff }, work)?;
+            if !cff2 {
                 dict.validate(
                     Domain::Top {
                         strings: self.strings.len(),

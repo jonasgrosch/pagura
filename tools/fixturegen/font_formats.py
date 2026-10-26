@@ -4,7 +4,7 @@ OpenType post versions 2.0/2.5 and PDF 9.6.5.4. Version 2.5 uses the
 historical 0x00025000 tag and signed offsets into standard Macintosh names.
 These original fonts share outlines, metrics and cmap bytes within each pair.
 """
-from .font import truetype, u16, u32
+from .font import cff_font, truetype, u16, u32
 from .paint import BLACK, FONT, case
 from .pdf import stream
 from .text import text_cmap_records
@@ -85,6 +85,58 @@ def cmap_cases():
                            requirement=REQUIREMENT)
 
 
+def cff_objects(program, cid):
+    descriptor_at, stream_at = (7, 8) if cid else (6, 7)
+    if cid:
+        fonts = [b'<< /Type /Font /Subtype /Type0 /BaseFont /LegacyCFF /Encoding /Identity-H /DescendantFonts [6 0 R] >>',
+                 b'<< /Type /Font /Subtype /CIDFontType0 /BaseFont /LegacyCFF /CIDSystemInfo '
+                 b'<< /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 600 /FontDescriptor 7 0 R >>']
+    else:
+        fonts = [b'<< /Type /Font /Subtype /Type1 /BaseFont /LegacyCFF /FirstChar 65 /LastChar 65 '
+                 b'/Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>']
+    descriptor = (b'<< /Type /FontDescriptor /FontName /LegacyCFF /Flags %d /FontBBox [0 0 400 800] '
+                  b'/ItalicAngle 0 /Ascent 800 /Descent 0 /CapHeight 400 /StemV 50 /FontFile3 %d 0 R >>'
+                  % (4 if cid else 32, stream_at))
+    assert len(fonts) + 5 == descriptor_at
+    return [*fonts, descriptor, stream(program, b'/Subtype /OpenType')]
+
+
+def cff_matrix_cases():
+    # Current OpenType CFF2 recognizes only Private in a FontDICT: unknown
+    # operators clear their operands. Preserve the diagnostic bytes/oracles.
+    # The independent 20x40 rectangle also records the legacy interpretation;
+    # it is not the expected result of current-spec matrix ignoring.
+    for cid in (False, True):
+        for variant, label in (('fd4', 'none'), ('fd-matrix', 'matrix')):
+            program = truetype(cff=cff_font(conforming=True, cff2=True, variant=variant), cff2=True)
+            text = b'<0001>' if cid else b'(A)'
+            route = 'cid' if cid else 'simple'
+            yield case(f'cff2-fd-{label}-{route}', b'BT /F 50 Tf 1 0 0 1 4 4 Tm ' + text + b' Tj ET',
+                       cff_objects(program, cid), FONT, [((4, 4, 10, 20), BLACK)],
+                       requirement='font-cff', size=64)
+    # The CFF1 control supplies an explicit Top matrix, keeping its matrix
+    # composition unchanged. The diagnostic omitted-Top case is unresolved
+    # and remains in its original branch, not adopted as acceptance here.
+    top = b'\x1e\xa0\x01\xff\x8b\x8b\x1e\xa0\x01\xff\x8b\x8b'
+    small = b'\x1e\xa0\x02\xff\x8b\x8b\x1e\xa0\x02\xff\x8b\x8b'
+    variants = [
+        ('cff1-fd-matrix-explicit-top-cid', False, 'fd-array', top, None),
+        ('cff2-fd-matrix-explicit-top-cid', True, 'fd-matrix', top, None),
+        ('cff2-fd-small-matrix-cid', True, 'fd-matrix', None, small),
+    ]
+    for name, cff2, variant, top_matrix, fd_matrix in variants:
+        program = truetype(cff=cff_font(conforming=True, cid=not cff2, cff2=cff2, variant=variant,
+                                       top_matrix=top_matrix, fd_matrix=fd_matrix), cff2=cff2)
+        text = b'<0001>' if cff2 else b'<0011>'
+        yield case(name, b'BT /F 50 Tf 1 0 0 1 4 4 Tm ' + text + b' Tj ET',
+                   cff_objects(program, True), FONT, [((4, 4, 10, 20), BLACK)],
+                   requirement='font-cff', size=64)
+    for scale in (1, 2):
+        width, height = 10*scale, 20*scale
+        yield case(f'cff-matrix-rectangle-{scale}', b'0 g 4 4 %d %d re f' % (width, height),
+                   rectangles=[((4, 4, width, height), BLACK)], requirement='font-cff', size=64)
+
+
 def cases():
     # GID 1 is the existing independent 100 x 200 unit rectangle. At 100 pt,
     # its visible area is 10 x 20 pixels, independently of the 600-unit advance.
@@ -101,3 +153,4 @@ def cases():
                        font_objects(mode, version), FONT, [((4, 4, 10, 20), BLACK)],
                        requirement=REQUIREMENT)
     yield from cmap_cases()
+    yield from cff_matrix_cases()

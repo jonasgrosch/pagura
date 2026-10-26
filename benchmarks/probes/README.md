@@ -272,3 +272,32 @@ and report SHA-256
 All prior controls and tolerances are preserved. The corresponding
 [functional run](https://github.com/jonasgrosch/pagura/actions/runs/40395908628)
 passes on Ubuntu, macOS and Windows.
+
+
+## CFF2 Font DICT operator scope
+
+[Diagnostic run 40397598168](https://github.com/jonasgrosch/pagura/actions/runs/40397598168)
+at `fdfc47c1e` retains 12 cases. Pagura passes eight controls and refuses four
+matrix subjects. Hayro passes the paired CID control and applies the legacy
+matrix in two isolated cases, producing the independently authored 20×40
+rectangle. Other baseline engines miss the paired CFF2 control; their subject
+results do not establish a matrix-specific gap. MuPDF and PDF.js pass the CFF1
+control with an explicit Top matrix. The omitted-Top CFF1 observation remains
+unresolved and is excluded from the integrated acceptance set.
+
+Current [CFF2 FontDICT](https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#fontdict)
+and [stack decoding](https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#stack-based-cff2-decoding)
+rules require unknown operators to discard their operands. The existing parser
+now distinguishes that context, ignoring deprecated FontMatrix without changing
+CFF1 or Top DICT matrices. Legacy matrix application remains a separate
+compatibility question because both interpretations use the same version-2 header.
+The original diagnostic reports, fonts and pixel expectations remain unchanged.
+Nine of those PDFs/controls join the preceding 25 integrated controls; hosted
+acceptance of the implementation is pending.
+
+Linux artifact `12687168595` has ZIP SHA-256
+`763a9df7cff0b36950ebcb6ee43a15efbc987f0d0f94c25c97131b6649c8f8c0`
+and report SHA-256
+`ea7a6a90c330062312b7aa3da5f1a6987b4e26098dcca590df6a033d30982369`.
+The native `cff2-font-dict-matrix` expectation changes from the historical refusal
+to its independently authored untransformed outline, with identical font bytes.

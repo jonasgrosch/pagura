@@ -383,6 +383,186 @@
       "width": 32,
       "height": 32,
       "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-none-simple",
+      "kind": "pdf",
+      "description": "cff2 fd none simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-none-simple.pdf",
+      "sha256": "ce511426aa4ecad0478ad312d2d5fd2caa89223442ec610e52a6bbce603717ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-none-simple.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-simple",
+      "kind": "pdf",
+      "description": "cff2 fd matrix simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-simple.pdf",
+      "sha256": "72c0b775bacd1697e9baa8eaf667bdcee4426013b2d8288a6d3caa89fa0377c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-simple.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-none-cid",
+      "kind": "pdf",
+      "description": "cff2 fd none cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-none-cid.pdf",
+      "sha256": "b0d804eaad8ac90906816a05cd2c72df9e4ea1fa60f7682747b56c8c8838de2b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-none-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-cid",
+      "kind": "pdf",
+      "description": "cff2 fd matrix cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-cid.pdf",
+      "sha256": "dae1b45bb864f8ccc524a7a79ae8e4855de9a6f84e83f56711edeac21e8eacee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff1-fd-matrix-explicit-top-cid",
+      "kind": "pdf",
+      "description": "cff1 fd matrix explicit top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff1-fd-matrix-explicit-top-cid.pdf",
+      "sha256": "2f226e0d4b9a9576e57973d2ebac7abf8064f02161c92cced3507566c9cf1a0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff1-fd-matrix-explicit-top-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-explicit-top-cid",
+      "kind": "pdf",
+      "description": "cff2 fd matrix explicit top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-explicit-top-cid.pdf",
+      "sha256": "7ca43830efafd7093608557adc4e5b8f1ff6c7cdfefac88dc7f85d0d785db36b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-explicit-top-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-small-matrix-cid",
+      "kind": "pdf",
+      "description": "cff2 fd small matrix cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-small-matrix-cid.pdf",
+      "sha256": "e16f59b33c891f8e31158445eef6550c8ceffb149e3766654f82782716279dd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-small-matrix-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff-matrix-rectangle-1",
+      "kind": "pdf",
+      "description": "cff matrix rectangle 1",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff-matrix-rectangle-1.pdf",
+      "sha256": "17a0ffbc912427c6602fae353515b68ad0833eb2885e61b841d049d98804086b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff-matrix-rectangle-1.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff-matrix-rectangle-2",
+      "kind": "pdf",
+      "description": "cff matrix rectangle 2",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff-matrix-rectangle-2.pdf",
+      "sha256": "e106d4c72f4ebb7cf9b97e0f383f5b7b3058b99a87e8082ea0079946eec56ff4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff-matrix-rectangle-2.ppm",
+      "oracle_sha256": "5a45ef81dee2c916363a3466965c106607003a9e0ac859913bc6b559ddfb38b1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
     }
   ]
 }

@@ -139,7 +139,7 @@ def offset(n):
     return b"\x1d"+u32(n)
 
 
-def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False):
+def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False, top_matrix=None, fd_matrix=None):
     end = b"" if cff2 else b"\x0e"
     rect_subr = operands(100,0,0,200,-100,0)+b"\x05"+(b"" if cff2 else b"\x0b")
     rect = operands(0,0)+b"\x15"+number(-107)+b"\x0a"+end
@@ -207,6 +207,8 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
     fdselect = b"\x03"+u16(1)+u16(0)+b"\x00"+u16(5)
     def top(chars, chars_set, encoding, private_at, fdarray_at, fdselect_at, vstore_at=0):
         result = operands(393,394,0)+b"\x0c\x1e" if cid and conforming else b""
+        if top_matrix is not None:
+            result += top_matrix+b"\x0c\x07"
         result += offset(chars)+b"\x11"
         if not cff2:
             result += offset(chars_set)+b"\x0f"+(b"" if cid and conforming else offset(encoding)+b"\x10")
@@ -244,7 +246,8 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         if hostile == "fd-order": fdselect = fdselect[:11]+u32(0)+fdselect[15:]
     fonts = [offset(private_size)+offset(private_at)+b"\x12"]
     if variant in ("fd-array","fd4","fd4-wide","fd-matrix"):
-        fonts.append(offset(6 if cff2 else 18)+offset(private_at+first_private_len)+b"\x12"+(b"" if cff2 and variant != "fd-matrix" else operands(2,0,0,2,0,0)+b"\x0c\x07"))
+        matrix = b"" if cff2 and variant != "fd-matrix" else (operands(2,0,0,2,0,0) if fd_matrix is None else fd_matrix)+b"\x0c\x07"
+        fonts.append(offset(6 if cff2 else 18)+offset(private_at+first_private_len)+b"\x12"+matrix)
     if variant == "fd4-wide": fonts = [fonts[0]]*256+[fonts[1]]
     fdarray = index(fonts, cff2)
     select_at = fdarray_at+len(fdarray)
@@ -520,8 +523,10 @@ def cases():
     yield vector("cff2-private-blend-override",truetype(cff=cff_font(conforming=True,cff2=True,variable=True,variant="private-blend-override"),cff2=True),
                  "outline 1\nm 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n","font-cff","opentype")
 
+    # Current CFF2 FontDICT ignores the deprecated FontMatrix operator.
+    # The same original font bytes now expose the untransformed 200x400 path.
     yield vector("cff2-font-dict-matrix",truetype(cff=cff_font(conforming=True,cff2=True,variant="fd-matrix"),cff2=True),
-                 "unsupported font.format\n","font-cff","opentype")
+                 "count 5\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\n","font-cff","opentype")
     yield from specification_cases()
     yield from recovery_cases()
     yield from static_font_cases()
