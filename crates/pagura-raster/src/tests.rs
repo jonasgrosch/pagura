@@ -569,9 +569,14 @@ fn components(path: &Path, transform: Transform, stroke: &Stroke) -> Path {
     for contour in
         crate::flatten::flatten(path, transform, &limits, &mut crate::testing::bytes()).unwrap()
     {
-        for run in
-            crate::stroke::dash_contour(contour, stroke, &limits, &mut crate::testing::bytes())
-                .unwrap()
+        for run in crate::stroke::dash(
+            contour.points,
+            contour.closed,
+            stroke,
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
         {
             crate::stroke::draw(
                 &mut components,

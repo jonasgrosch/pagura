@@ -90,7 +90,7 @@ pub(crate) fn runs(
             bytes.refund(released);
             continue;
         }
-        let runs = crate::stroke::dash_contour(contour, stroke, limits, bytes)?;
+        let runs = crate::stroke::dash(contour.points, contour.closed, stroke, limits, bytes)?;
         let header_bytes = runs.capacity().saturating_mul(size_of::<Run>());
         for run in runs {
             let mut run = run.transformed(transform);
@@ -172,7 +172,7 @@ fn general(
             bytes.refund(released);
             continue;
         }
-        let runs = crate::stroke::dash_contour(contour, stroke, limits, bytes)?;
+        let runs = crate::stroke::dash(contour.points, contour.closed, stroke, limits, bytes)?;
         let header_bytes = runs.capacity().saturating_mul(size_of::<Run>());
         for run in runs {
             bytes.reserve_capacity(&mut fitted_runs, 1)?;

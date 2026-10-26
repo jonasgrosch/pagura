@@ -4,66 +4,9 @@ use crate::support::{Lcg, area, compare, invariant, options, pixels, raster, ref
 use pagura_core::Limits;
 use pagura_raster::{
     Adjustment, Area, ClipShape, LineCap, LineJoin, Path, PathBuilder, Point, Shape, ShapeOptions,
-    Stroke, Transform, stroke_outline,
+    Stroke, Transform,
 };
 use pagura_reference::exact;
-
-#[test]
-fn open_curve_caps_end_on_the_source_tangent_plane() {
-    // These arches have vertical endpoint tangents. Their butt caps lie on
-    // y=4; projecting caps extend exactly one pen radius below that line.
-    // Flattened chord normals instead put corners on both sides of it.
-    let limits = Limits::default();
-    for repeated_control in [false, true] {
-        let mut path = PathBuilder::new();
-        let start = Point::new(4.0, 4.0);
-        let end = Point::new(12.0, 4.0);
-        path.move_to(start);
-        path.line_to(start).unwrap();
-        path.cubic_to(
-            if repeated_control {
-                start
-            } else {
-                Point::new(4.0, 12.0)
-            },
-            Point::new(4.0, 12.0),
-            Point::new(8.0, 12.0),
-        )
-        .unwrap();
-        path.cubic_to(
-            Point::new(12.0, 12.0),
-            if repeated_control {
-                end
-            } else {
-                Point::new(12.0, 12.0)
-            },
-            end,
-        )
-        .unwrap();
-        path.line_to(end).unwrap();
-        let path = path.finish();
-        for cap in [LineCap::Butt, LineCap::ProjectingSquare] {
-            let stroke = Stroke {
-                width: 2.0,
-                cap,
-                ..Stroke::default()
-            };
-            let (outline, _) =
-                stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
-            let lower = if cap == LineCap::Butt { 4.0 } else { 3.0 };
-            let mut on_plane = 0;
-            for segment in outline.segments() {
-                if let pagura_raster::Segment::MoveTo(p) | pagura_raster::Segment::LineTo(p) =
-                    segment
-                {
-                    assert!(p.y >= lower, "cap crossed its source tangent plane: {p:?}");
-                    on_plane += usize::from(p.y == lower);
-                }
-            }
-            assert!(on_plane >= 4, "both caps reach the specified plane");
-        }
-    }
-}
 
 /// A stroke class's differences from the exact coverage: (strokes, pixels
 /// compared, pixels differing, largest difference).

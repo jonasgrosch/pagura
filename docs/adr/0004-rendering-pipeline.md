@@ -151,17 +151,6 @@ the endpoints' construction-space magnitude. This must fit in 1/4096 of the
 pen's flattening tolerance, which already accounts for device stretch;
 otherwise the run keeps the canonical components and their row union.
 
-Open curve caps retain the source Bézier's endpoint tangents, including the
-first nonzero derivative when an endpoint control repeats. Using the first or
-last flattened chord rotates the cap and introduces an error proportional to
-pen width. Endpoint tangents travel with only dashes touching those original
-open endpoints and transform with the pen. The first and last component edges
-use the corresponding normals. Such runs use the component union because the
-existing tiling certificate assumes chord-normal caps; closed joins and interior
-dash boundaries retain their existing construction. This is a correctness
-repair. The independent disk-area oracle and cap-plane controls retain their
-existing one-level and exact geometric bounds.
-
 Uncertified rows, and rows crossed by both a mark and a non-convex path clip,
 go through one exact row union during preparation. It cuts at edge ends and crossings,
 keeps the active edges ordered across each slab, and emits the boundaries of
