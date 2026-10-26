@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "e79f4310aac974e9bfa37dbe31523aa2ef2778e8",
+  "audited_revision": "234ccb03a981ffeb290fb8966ca11c45035fc5cd",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -21,7 +21,7 @@
     "corpus/manifests/file_annotations.json": "f3c88d0cdbf99a52e51bf6321e3aab73d428b7b8f278531f7bf89a94c247b448",
     "corpus/manifests/file_attachment_icons.json": "493b67db592c150500c7a86f773c30480f1d36b8c4540ffcf02a5a0a501e6f2d",
     "corpus/manifests/files.json": "f5ca2b13bd6a27f7b5cffd15ede3d9a86b2120eb64f71f92ab2f2089a6dbb12e",
-    "corpus/manifests/free_text_annotations.json": "93110745960e74079b796783ef3487d217474c58708365519d33371a07ea5d66",
+    "corpus/manifests/free_text_annotations.json": "0d3a246416c58af45d341e70cbb63b57fb623afed478d58387d29861116f03bd",
     "corpus/manifests/free_text_callouts.json": "b3353af7107c4276c5ad4bce09a664f993d7a9035def06c46e8a9615e54bf248",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/ink_annotations.json": "5a523896865a72152b9f189546862f6e46ed38b7a7c28675ebdf482b190d1244",
@@ -276,7 +276,7 @@
     "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
     "tools/fixturegen/files.py": "eb590a18a172631ce232d38ba5365749bf2b5a4f21362b93e04f1dc2f0d87d36",
     "tools/fixturegen/font_pixels.py": "22a0503c131e6c12cb34bda5cff1f3fa67f651c07e16383a807af8b957e080ba",
-    "tools/fixturegen/free_text_annotations.py": "e6068346f92cf9d4dabdcf637d2c2f3f1656c13fd671ae83e850b92fca0a3390",
+    "tools/fixturegen/free_text_annotations.py": "a0341ca7127f9e57011045e0228e3c60aedf80963123bfa208190c8c5c9e3b91",
     "tools/fixturegen/free_text_callouts.py": "aa14c98009857d99eeafbb940fa8bf73d74703906f72d42ee352dcbf4504b616",
     "tools/fixturegen/ink_annotations.py": "6f3f1795c854f785d2298b6f5ef690ba44f14f3e004fc8447becb57d09bb0eae",
     "tools/fixturegen/leader_annotations.py": "42f472ca738ee3050e77f21f479e3da0a7649227bc0f15dd436dace51532dc0a",
