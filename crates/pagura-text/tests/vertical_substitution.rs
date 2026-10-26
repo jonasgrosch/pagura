@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+//! Vertical provider glyph forms preserve PDF metrics, extraction and ownership.
 use pagura_core::{Error, ErrorKind, Limits, ObjectId, Result};
 use pagura_document::{Document, OpenOptions};
 use pagura_font::{FontFormat, FontProgram, GlyphId};
