@@ -79,15 +79,7 @@ fn sparse_objects_wait_for_length_and_tail_without_reading_payload_or_publishing
     }
     // This test isolates the post-index object owner. The table is literal;
     // the ordinary OpenJob supplies this same owner after authoritative xref.
-    let document = DocumentBuilder::new(
-        bytes,
-        &OpenOptions::default(),
-        table,
-        Vec::new(),
-        crate::Validation::RequestedOperation,
-    )
-    .unwrap()
-    .freeze();
+    let document = post_index(bytes, table).unwrap();
     let Err(ReadFault::Unavailable(missing)) = document.object(STREAM) else {
         panic!("indirect Length wait");
     };
@@ -149,4 +141,18 @@ fn sparse_objects_wait_for_length_and_tail_without_reading_payload_or_publishing
         Err(ReadFault::Invalid(_))
     ));
     assert_eq!(payload.bytes(), &[b'P'; 3957]);
+}
+
+fn post_index(
+    bytes: crate::source::View,
+    table: XrefTable,
+) -> pagura_core::Result<crate::Document> {
+    Ok(DocumentBuilder::new(
+        bytes,
+        &OpenOptions::default(),
+        table,
+        Vec::new(),
+        crate::Validation::RequestedOperation,
+    )?
+    .freeze())
 }
