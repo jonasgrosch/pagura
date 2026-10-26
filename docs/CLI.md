@@ -95,7 +95,8 @@ A mismatch produces the complete JSON report, an explanatory stderr message and
 exit 1. Matching or absent declarations produce exit 0. Authorization, selection,
 filter and resource errors produce exit 1 without successful check JSON. No
 payload file is created and source bytes remain unchanged. Decoding is bounded
-but whole-buffer; host/viewer checks and streaming remain open.
+but whole-buffer. Protocol 1.10 and viewer Check controls expose the same
+observations; streaming remains open.
 
 ## Inspection geometry (schema 2)
 

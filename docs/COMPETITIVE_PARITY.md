@@ -470,8 +470,12 @@ observations; the checksum follows Table 45 and is not an authenticity result.
 Seven independently generated compressed fixtures cover each combination.
 Tests also cover empty files, encrypted attachment-only payloads, explicit
 Identity, external-stream refusal and decode limits. Hosted checks are pending.
-The operation does not modify the source or create a payload file. Host/viewer
-checks, streaming and semantic/date/MIME/profile validation remain open.
+The operation does not modify the source or create a payload file. Protocol 1.10
+and explicit viewer Check controls now expose the same observations with exact
+BigInt sizes. Tests cover old versions, canonical messages, response/decode caps,
+selection/authentication, native/WASI/client parity and stale dialog callbacks.
+These host/viewer checks are pending hosted validation. Streaming and
+semantic/date/MIME/profile validation remain open.
 
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
 existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are
@@ -479,8 +483,9 @@ consumed and converted to straight RGBA in place. CLI `render`/`convert` accepts
 `--format png` and optional `--transparent`; default PPM behavior is preserved.
 Independent Python decoding checks pixels, CRC/chunk framing and zlib completion;
 API tests cover caller budgets and in-place conversion. Hosted runtime checks
-are pending. This is whole-buffer output; incremental PNG/DEFLATE, host/viewer
-export, persistent jobs, ancillary color metadata and backpressure remain open.
+are pending. This is whole-buffer output; incremental PNG/DEFLATE, persistent
+jobs, ancillary color metadata and backpressure remain open. Host/viewer export
+is covered by the next slice.
 
 **PNG host/viewer slice:** `335dbbd9c359b13d6f2ca30768bb0fd596907366` adds protocol
 1.9 complete-page PNG bytes with explicit resolution/background. Surface budgets
