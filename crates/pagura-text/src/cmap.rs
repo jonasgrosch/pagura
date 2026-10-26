@@ -871,12 +871,15 @@ mod tests {
             } else {
                 CMapRole::Encoding
             };
-            let map = load(
-                &document,
-                &Value::Reference(ObjectId::new(4, 0)),
-                role,
-                None,
-            )?;
+            let map = pagura_document::DiagnosticBatch::run(&document, |batch| {
+                load(
+                    &document,
+                    &Value::Reference(ObjectId::new(4, 0)),
+                    role,
+                    None,
+                    Report::new(batch),
+                )
+            })?;
             let input = fixture("text", &format!("{name}.input"));
             let mut offset = 0;
             let mut work = Meter::new(usize::MAX, "test");
@@ -929,12 +932,15 @@ mod tests {
                     ..pagura_document::OpenOptions::default()
                 },
             )?;
-            let result = load(
-                &document,
-                &Value::Reference(ObjectId::new(4, 0)),
-                CMapRole::Encoding,
-                None,
-            );
+            let result = pagura_document::DiagnosticBatch::run(&document, |batch| {
+                load(
+                    &document,
+                    &Value::Reference(ObjectId::new(4, 0)),
+                    CMapRole::Encoding,
+                    None,
+                    Report::new(batch),
+                )
+            });
             match result {
                 Err(error) if limited => {
                     assert_eq!(
