@@ -3238,6 +3238,747 @@
         "rgb_sha256": "8f62c344eff1568474fb693b8c18526629db443b9653a84264189c97693605de",
         "tolerance": 0
       }
+    },
+    {
+      "id": "annotations.cloud.Square-stroke-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/Square-stroke-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "987ad62ba411402cbe7ab73c0710629669b0c5d17110d4e1bb17208a1e2c1230",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.Square-stroke-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/Square-stroke-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "629a01c5b13598258cd97a1865ea479960538c61b08c33ed72fc84d71a20a967",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.Circle-stroke-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/Circle-stroke-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9259cf585f3f5b3a6d0ca2cbdd8189dafbf87e5a898627ae0f349ddb7744a73f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.Circle-stroke-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/Circle-stroke-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "5a15f15225e915623285398ed83a100c716dee9b6eca4b53d334beed5a643907",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.Polygon-stroke-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/Polygon-stroke-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "11a41e193efc7988bbaaec62e32d4d9bf35913fbe07d01684b5643cc6c8a3a77",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.Polygon-stroke-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/Polygon-stroke-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "9e9b74fb337a5433dfa2ea684d0bb1ea694cf72643a74921f221d72db93a0d7a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.FreeText-stroke-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/FreeText-stroke-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "987ad62ba411402cbe7ab73c0710629669b0c5d17110d4e1bb17208a1e2c1230",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.FreeText-stroke-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/FreeText-stroke-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "629a01c5b13598258cd97a1865ea479960538c61b08c33ed72fc84d71a20a967",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.dashed-1-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/dashed-1-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "53424854dd11ca04978f88c124e14640ff9653aa0e112c145f94d25e4f15c4fd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.dashed-1-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/dashed-1-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "248b8cfcdc8659475a0c83cd35e39cf93cd8b317d306ba04104b2fbf232d7edd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.dashed-2-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/dashed-2-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "36cb85e3bb027e79cc27192c13f9421ffda77f81bba15142f263ab7861bdf454",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.dashed-2-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/dashed-2-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c7a58329bd332d6fa7ff22bd88ef2d62f4c81ee5683d9738a0bbe4535fb8f16d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.stroke-opacity",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/stroke-opacity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "02a0290ecd269b14c42eead091cfeedc5a7708c343cd802c4072278be4f069a3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.cloud.stroke-rotated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "cloud_annotations/stroke-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "987ad62ba411402cbe7ab73c0710629669b0c5d17110d4e1bb17208a1e2c1230",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rich.unitless-spacing-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rich_annotations/unitless-spacing-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 64,
+        "rgb_sha256": "3f18724924bccdee514fc461ec7aed219e768a66a6c00b3e0636d864e50c5d11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rich.unitless-spacing-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rich_annotations/unitless-spacing-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 256,
+        "height": 128,
+        "rgb_sha256": "5744d72fb38a88eb4f22294143f133c2a0caad6c9d05df947add9f9ddce32b0c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.Link-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/Link-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.Square-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/Square-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.Widget-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/Widget-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.FreeText-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/FreeText-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.filled-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/filled-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c8566ecfac37514aaab6efa555bcf267633cbd984c44accc8dfd9622877ef705",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.stored-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/stored-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c8566ecfac37514aaab6efa555bcf267633cbd984c44accc8dfd9622877ef705",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-fill-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-fill-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c64166aa182343cff44652dfede3bd9565757bae1d8d2815d188c6fa52e94f95",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.Link-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/Link-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c0c1ecad6562aa612ab4bc4669cc1f3faad4920fe311b1573378094c6ad822a9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.Square-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/Square-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c0c1ecad6562aa612ab4bc4669cc1f3faad4920fe311b1573378094c6ad822a9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.Widget-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/Widget-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c0c1ecad6562aa612ab4bc4669cc1f3faad4920fe311b1573378094c6ad822a9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.FreeText-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/FreeText-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "c0c1ecad6562aa612ab4bc4669cc1f3faad4920fe311b1573378094c6ad822a9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.filled-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/filled-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "a12ad133f4099f2aa4a1ac0f5c24a56e8faba597902f8e6ad7e457f6ed6842fd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.stored-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/stored-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "a12ad133f4099f2aa4a1ac0f5c24a56e8faba597902f8e6ad7e457f6ed6842fd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-fill-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-fill-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "9a98b77b9368634c62ce635ed865c81a83f9b915f9b2902caea7ca2a3417306c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.rotated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "a12ad133f4099f2aa4a1ac0f5c24a56e8faba597902f8e6ad7e457f6ed6842fd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.opacity",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/opacity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "48410885121c741872ffeca903b47fa7daf2ac42ae56eccba193ec0b763aeb4e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.clamped-radii",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/clamped-radii",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "50d8b81f6aafa1683c9e1c05150b5710ec411622f11ad9bdf5722ded5192d2ba",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.zero-horizontal",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/zero-horizontal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b162b618978cac8af5ef9b823bb5c0a07e6ee5754b4d253813533c4757e168b2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.zero-vertical",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/zero-vertical",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b162b618978cac8af5ef9b823bb5c0a07e6ee5754b4d253813533c4757e168b2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.no-marks",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/no-marks",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "1a7493ff2f2bde5f78405d46eb01abfeaea9b0a95fa5b6cec211b05faa0cf1d3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.rd",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/rd",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "370202181a10cd0a6698f6d943cb8ec31c53c4e487a26c878f19477b8fa818cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.null-bs",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/null-bs",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.link-null-bs",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/link-null-bs",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.stored-ignores-fields",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/stored-ignores-fields",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c8566ecfac37514aaab6efa555bcf267633cbd984c44accc8dfd9622877ef705",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.bs-precedence",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/bs-precedence",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b162b618978cac8af5ef9b823bb5c0a07e6ee5754b4d253813533c4757e168b2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.indirect-radii",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/indirect-radii",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "568fefddeb5235ba8a5034ffd534e85cab47d4440059036826c96fd04bd779cd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "1a7493ff2f2bde5f78405d46eb01abfeaea9b0a95fa5b6cec211b05faa0cf1d3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.no-view",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/no-view",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "1a7493ff2f2bde5f78405d46eb01abfeaea9b0a95fa5b6cec211b05faa0cf1d3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-Square-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-Square-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "19d3b72bc645489a3eb189b4d08d06605d41847ec3d52b4add3d02172f89eb03",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-Widget-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-Widget-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "19d3b72bc645489a3eb189b4d08d06605d41847ec3d52b4add3d02172f89eb03",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-stored-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-stored-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "19d3b72bc645489a3eb189b4d08d06605d41847ec3d52b4add3d02172f89eb03",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.circular-dash-3-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/circular-dash-3-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b9afd121afdb9d51173e994869716dbc16030df9e9e1a9052a2c02e32de46931",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.circular-dash-7-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/circular-dash-7-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "43c3b9460e931ee34ca9e816e527e52a17889675cd9ae4c032b5e6bc8441b497",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-Square-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-Square-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "1b83b5e02d0b3031d7234b79a0c2f11885156da5d2e628a0dfffcafc4b74ddc7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-Widget-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-Widget-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "1b83b5e02d0b3031d7234b79a0c2f11885156da5d2e628a0dfffcafc4b74ddc7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-stored-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-stored-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "1b83b5e02d0b3031d7234b79a0c2f11885156da5d2e628a0dfffcafc4b74ddc7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.circular-dash-3-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/circular-dash-3-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "1927719e612f7d69a8e2de875566a552aca0a590ed6ea673760971fb93f1bc2a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.circular-dash-7-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/circular-dash-7-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "4be2fc36cb0c173eea8d1e5e722ca1cd6c5d4c69c58f76b5f28e52277ede5938",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-opacity",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-opacity",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "905ae3f2ee9f02c89d70c232c62e956e26b52fdda44e4fa7c1ff3ac1a3273915",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.rounded.ellipse-stroke-rotated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "rounded_annotations/ellipse-stroke-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "90a75fca87f776b1b63bc8b57e4e60bb495f1117117f052796a4c8534f7f57b4",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "graphics.source-curve-miter",
+      "capability": "render.graphics",
+      "operation": "render",
+      "fixture": "cloud_annotations/source-curve-miter",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 1,
+        "height": 1,
+        "rgb_sha256": "1733e446911fb72c4ef5cf461e9fb7d7cfa6bf27dffd9f431c493be4001d1f20",
+        "tolerance": 1
+      }
     }
   ]
 }

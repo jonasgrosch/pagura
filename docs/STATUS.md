@@ -183,8 +183,10 @@ untested competitor cells remain open in the parity plan; they are never a pass.
 
 At `919f87168`, hosted save/reopen, native/WASI and browser editing checks pass,
 including generated checkbox/radio Off and on states, source-state names,
-NeedAppearances selection and atomic failures; all three functional platforms pass. At `424839e7a`, Pagura passed all
-180 independent annotation render probes. These results cover those revisions;
-the 64 border/MK R controls also pass hosted save/reopen and browser checks at
-`8b0d4f21d`. The common rich-text/cloudy integration awaits validation on this
-consolidated revision. Wider V01/V02 gates remain open.
+NeedAppearances selection and atomic failures; all three functional platforms pass.
+The 64 border/MK R controls pass hosted save/reopen and browser checks at
+`8b0d4f21d`. At `e3ac6a553`, Pagura passes all 249 registered rendering controls,
+including common rich text, cloudy fills and stored appearance selection. The
+[probe record](../benchmarks/probes/README.md) binds those observations to the
+exact source and report artifact. New curved stroke/dash controls and the current
+corrections still require hosted validation. Wider V01/V02 gates remain open.

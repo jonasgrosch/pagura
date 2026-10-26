@@ -5,7 +5,7 @@
 ```
 pagura-cli       ──► pagura (the `pagura` command-line tool; the facade only)
 pagura-host      ──► pagura
-pagura           ──► pagura-render, pagura-appearance (form appearances), pagura-write, pagura-document, pagura-extract (page text), pagura-text and pagura-font (font kinds, provider types), pagura-raster (`Pixmap`), pagura-interpret, pagura-color and pagura-image (tags), pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
+pagura           ──► pagura-render, pagura-appearance (appearance data), pagura-write, pagura-document, pagura-extract (page text), pagura-text and pagura-font (font kinds, provider types), pagura-raster (`Pixmap`), pagura-interpret, pagura-color and pagura-image (tags), pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
 pagura-render    ──► pagura-paint, pagura-interpret, pagura-extract, pagura-text, pagura-document, pagura-raster
 pagura-paint     ──► pagura-interpret, pagura-color, pagura-image, pagura-raster
 pagura-interpret ──► pagura-content, pagura-appearance, pagura-color, pagura-image, pagura-raster, pagura-extract, pagura-text, pagura-font, pagura-document
@@ -40,7 +40,7 @@ oracle: only dev-dependencies name it.
 | `pagura-color` | colour spaces, prepared converters, ICC profile transforms and CIE colorimetry; PDF functions, prepared and total (ADR 0028, ADR 0034) | PDF objects |
 | `pagura-content` | content-stream tokenizer and typed operators (Annex A) with source positions | graphics state, resources |
 | `pagura-interpret` | the one interpreter: the graphics state machine over pages, forms, annotations and patterns into a `Device`, with `Needs` negotiation; the scene recorder and the text device (ADR 0034) | pixels, resolution |
-| `pagura-appearance` | form-field and annotation appearance generation, as appearance streams kept as data (12.5.5, 12.7.4.3) | interpretation, pixels |
+| `pagura-appearance` | shared form-field/annotation appearance selection and generation; font layout, border geometry and appearance streams kept as data (12.5.5, 12.7.4.3) | interpretation, pixels |
 | `pagura-paint` | the renderer: preparation and reservation of a scene for one region, the band executor, prepared paint, span kernels and storage formats (ADR 0034) | PDF objects, documents |
 | `pagura-render` | the thin rendering layer: `RenderContext` with its `Store`, `RenderOptions`, page recording, rendering by region and text extraction | interpretation and painting internals |
 | `pagura-reference` | test only: the slow, obviously correct f64 rasterizer and compositor for differential tests, and the exact coverage of single shapes for the band rasterizer's tests | product code |

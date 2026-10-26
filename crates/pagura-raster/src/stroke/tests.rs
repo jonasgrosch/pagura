@@ -1,7 +1,100 @@
 use super::*;
 
 #[test]
-fn only_open_source_endpoints_supply_dash_cap_directions() {
+fn source_curve_miter_has_the_analytic_triangle_area() {
+    // At (16,23.5), the source directions are (-1,-2) and (-1,2).
+    // The exterior miter has apex y=23.5-sqrt(5)/2 and side slope1/2.
+    // Only that triangle meets x[15.5,16], y[22.5,23]: its device area
+    // after2x scaling is sqrt(5)/2-3/4, which quantizes to94/255.
+    for closed in [false, true] {
+        let mut path = PathBuilder::new();
+        if closed {
+            path.move_to(Point::new(16.0, 23.5));
+            path.line_to(Point::new(8.5, 38.5)).unwrap();
+            path.line_to(Point::new(23.5, 23.5)).unwrap();
+        } else {
+            path.move_to(Point::new(23.5, 23.5));
+        }
+        path.quad_to(Point::new(19.75, 31.0), Point::new(16.0, 23.5))
+            .unwrap();
+        if closed {
+            path.close();
+        } else {
+            path.line_to(Point::new(8.5, 38.5)).unwrap();
+        }
+        let path = path.finish();
+        let transform = Transform::new(2.0, 0.0, 0.0, 2.0, -31.0, -45.0);
+        for dash_array in [vec![], vec![1000.0, 1.0]] {
+            let stroke = Stroke {
+                dash_array,
+                ..Stroke::default()
+            };
+            let actual = crate::testing::stroke(
+                crate::testing::window(1, 1),
+                &path,
+                &stroke,
+                transform,
+                &Limits::default(),
+            )
+            .unwrap();
+            assert_eq!(actual, [94], "closed={closed}");
+            let (outlined, pen) =
+                stroke_outline(&path, transform, &stroke, &Limits::default()).unwrap();
+            let filled = crate::testing::fill(
+                crate::testing::window(1, 1),
+                (&outlined, pen, crate::FillRule::NonZero),
+                &[],
+                &Limits::default(),
+            )
+            .unwrap();
+            assert_eq!(filled, [94]);
+        }
+    }
+}
+
+#[test]
+fn smooth_curve_joins_retain_equal_source_directions_through_zero_segments() {
+    for curved in [false, true] {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.0, 0.0));
+        path.quad_to(Point::new(0.0, 8.0), Point::new(8.0, 8.0))
+            .unwrap();
+        for _ in 0..32 {
+            path.line_to(Point::new(8.0, 8.0)).unwrap();
+        }
+        if curved {
+            path.quad_to(Point::new(16.0, 8.0), Point::new(16.0, 16.0))
+                .unwrap();
+        } else {
+            path.line_to(Point::new(16.0, 8.0)).unwrap();
+        }
+        let mut bytes = crate::testing::bytes();
+        let mut contours = flatten(
+            &path.finish(),
+            Transform::IDENTITY,
+            &Limits::default(),
+            &mut bytes,
+        )
+        .unwrap();
+        let runs = dash_contour(
+            contours.remove(0),
+            &Stroke::default(),
+            &Limits::default(),
+            &mut bytes,
+        )
+        .unwrap();
+        let run = &runs[0];
+        let join = run
+            .joins
+            .iter()
+            .find(|join| run.points[join.index] == Point::new(8.0, 8.0))
+            .unwrap();
+        assert_eq!(join.tangents, [Point::new(1.0, 0.0); 2]);
+    }
+}
+
+#[test]
+fn source_vertices_supply_dash_cap_directions() {
     let limits = Limits::default();
     for closed in [false, true] {
         let mut path = PathBuilder::new();
@@ -31,7 +124,32 @@ fn only_open_source_endpoints_supply_dash_cap_directions() {
             let runs = dash_contour(contours.remove(0), &stroke, &limits, &mut bytes).unwrap();
             assert!(!runs.is_empty(), "every pattern paints part of the arch");
             if closed {
-                assert!(runs.iter().all(|run| run.caps == [None; 2]));
+                for run in &runs {
+                    if run.closed {
+                        assert_eq!(run.caps, [None; 2]);
+                        continue;
+                    }
+                    let tangent = |point: Option<&Point>, start: bool| match point.copied() {
+                        Some(Point { x: 4.0, y: 4.0 }) => Some(if start {
+                            Point::new(0.0, 1.0)
+                        } else {
+                            Point::new(-1.0, 0.0)
+                        }),
+                        Some(Point { x: 12.0, y: 4.0 }) => Some(if start {
+                            Point::new(-1.0, 0.0)
+                        } else {
+                            Point::new(0.0, -1.0)
+                        }),
+                        _ => None,
+                    };
+                    assert_eq!(
+                        run.caps,
+                        [
+                            tangent(run.points.first(), true),
+                            tangent(run.points.last(), false)
+                        ]
+                    );
+                }
             } else if dash_phase == 0.0 {
                 assert_eq!(
                     runs[0].caps,
@@ -74,9 +192,16 @@ fn a_fine_dash_pattern_stops_at_the_byte_budget() {
         dash_array: vec![1e-7, 1e-7],
         ..Stroke::default()
     };
-    let error = dash(points, false, &stroke, &Limits::default(), &mut bytes)
-        .err()
-        .unwrap();
+    let error = dash(
+        points,
+        Vec::new(),
+        false,
+        &stroke,
+        &Limits::default(),
+        &mut bytes,
+    )
+    .err()
+    .unwrap();
     assert_eq!(error.message, RENDER_BYTES);
     assert_eq!(
         bytes.used(),
@@ -149,6 +274,7 @@ fn table_55_run_sequences() {
         };
         let runs = dash(
             vec![Point::new(0.0, 0.0), Point::new(length, 0.0)],
+            Vec::new(),
             false,
             &stroke,
             &Limits::default(),

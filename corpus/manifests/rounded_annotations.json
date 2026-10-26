@@ -623,6 +623,246 @@
       "strict_valid": true,
       "repairs": [],
       "feature": "annotation.appearance"
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Square-72",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Square-72.pdf",
+      "sha256": "8f9de2783c4f20dceb0bc44a81aa68795e490d83c2abc25ab71a6a916d34b7e0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Square-72.ppm",
+      "oracle_sha256": "3b4cba1a8b462225f6c708a213c8a0ee4893883f5525574e1473e49b49fac7e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Widget-72",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-72.pdf",
+      "sha256": "513918219f171876ebfc581fad889331563fd023807ec1df2a0ec44c4c6150a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-72.ppm",
+      "oracle_sha256": "3b4cba1a8b462225f6c708a213c8a0ee4893883f5525574e1473e49b49fac7e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-stored-72",
+      "kind": "pdf",
+      "description": "An independently authored finer cubic appearance meets the same conic-normal oracle",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-stored-72.pdf",
+      "sha256": "9ba2d11638b8db3a53adad81f55d24c9b8105ff13bc040af92ed054f59460b7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-stored-72.ppm",
+      "oracle_sha256": "3b4cba1a8b462225f6c708a213c8a0ee4893883f5525574e1473e49b49fac7e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-3-72",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-3-72.pdf",
+      "sha256": "8153d6ccaf0b1c65d0717c3ab8a3d55fafe057bb7905adec13cc967f2293fd09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/circular-dash-3-72.ppm",
+      "oracle_sha256": "493bd8d9f85444a999c7189fbf5627df518c3b1dee0c706ebe62e146bdaedd01",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-7-72",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-7-72.pdf",
+      "sha256": "ce21295d690d6ca1bca995dda4b1257ed4c9a181d7bae2a8735107f1862c15ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/circular-dash-7-72.ppm",
+      "oracle_sha256": "4d85bfd6cbe60f5413e39c4c63b9000591dd3c48a89af809cd38b573429233b7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Square-144",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Square-144.pdf",
+      "sha256": "8f9de2783c4f20dceb0bc44a81aa68795e490d83c2abc25ab71a6a916d34b7e0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Square-144.ppm",
+      "oracle_sha256": "3c674ed575834e21fb6426fec0bc11a417759d45bad0bbcfb2e8319c585587b4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Widget-144",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-144.pdf",
+      "sha256": "513918219f171876ebfc581fad889331563fd023807ec1df2a0ec44c4c6150a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-144.ppm",
+      "oracle_sha256": "3c674ed575834e21fb6426fec0bc11a417759d45bad0bbcfb2e8319c585587b4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-stored-144",
+      "kind": "pdf",
+      "description": "An independently authored finer cubic appearance meets the same conic-normal oracle",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-stored-144.pdf",
+      "sha256": "9ba2d11638b8db3a53adad81f55d24c9b8105ff13bc040af92ed054f59460b7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-stored-144.ppm",
+      "oracle_sha256": "3c674ed575834e21fb6426fec0bc11a417759d45bad0bbcfb2e8319c585587b4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-3-144",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-3-144.pdf",
+      "sha256": "8153d6ccaf0b1c65d0717c3ab8a3d55fafe057bb7905adec13cc967f2293fd09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/circular-dash-3-144.ppm",
+      "oracle_sha256": "586ec327e72e984d062843cc4bf2274728b44865e59b9ed907a88e317bc23ba5",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-7-144",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-7-144.pdf",
+      "sha256": "ce21295d690d6ca1bca995dda4b1257ed4c9a181d7bae2a8735107f1862c15ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/circular-dash-7-144.ppm",
+      "oracle_sha256": "2665dfaa25bc8c38ff7b0bdd7a186535b7b53c488b0aec33f57d7f01d920853d",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-opacity",
+      "kind": "pdf",
+      "description": "Conic-normal stroke coverage followed by opacity or page rotation establishes pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-opacity.pdf",
+      "sha256": "6091e049f0827dde8d910dc634492536db65d8f940984f3e32148742cac68d22",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-opacity.ppm",
+      "oracle_sha256": "04579d4f99f41273673049adf41d0b06f1fc0381de37a8ec96c42f033e054335",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-rotated",
+      "kind": "pdf",
+      "description": "Conic-normal stroke coverage followed by opacity or page rotation establishes pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-rotated.pdf",
+      "sha256": "98143a1e532a46781d63ad9c56967e69eb260701e1dcc54ee518d0993c4af987",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-rotated.ppm",
+      "oracle_sha256": "6f700c5e0059c5f8d1ebc4d3f0b45f86fb3a78079df7fbae29007886a06e11db",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
     }
   ]
 }

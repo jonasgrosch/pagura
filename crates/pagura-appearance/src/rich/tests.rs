@@ -100,7 +100,7 @@ fn default_styles_parse_units_shorthand_and_paragraph_margins() {
     assert!(style.bold && style.italic);
     assert_eq!(style.rise, 2.0);
     assert_eq!(style.alignment, Justification::Right);
-    assert_eq!(style::length("25.4mm", 12.0).unwrap(), 72.0);
+    assert_eq!(style::length("25.4mm").unwrap(), 72.0);
 }
 
 #[test]

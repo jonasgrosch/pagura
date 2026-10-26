@@ -222,8 +222,8 @@ Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G
 The existing harness records engine/build identity, configuration, fixture hashes
 and separate unsupported/incorrect/limit/timeout/adapter-failure outcomes. Service
 and rendering probes expand with the feature groups that introduce their fixtures.
-The current appearance work contains 180 independent render controls; the service
-work contains 21 controls across the six baselines and Pagura. Exact run identities
+Appearance controls are tracked in the render probe manifest; the service work
+contains 21 controls across the six baselines and Pagura. Exact run identities
 and observations live in [the probe record](../benchmarks/probes/README.md).
 Fixture passes never promote an entire family. All 258 family comparison cells
 remain unprobed until the wider operation/configuration obligations are established.
@@ -356,10 +356,11 @@ input/budget controls, stored-appearance precedence, partial tiles and native/WA
 client checks accompany the feature. Exact supported subvariants are in the
 branch's capability inventory; this list does not imply the entire V01 gate passes.
 
-Rich text, cloudy effects, wider border/callout combinations, nonempty widget
-fallback, interaction-selected R/D states and remaining font/layout cases stay
-assigned here or to V02. New implementations join this group instead of opening
-another PR for each subtype, ending, border or probe increment.
+Common RC/DS rich text, cloudy effects and stored R/D selection now share the
+appearance layer. Complete their remaining layout and accuracy boundaries,
+wider border/callout combinations, nonempty widget fallback and host interaction
+in this group or V02. Keep subtype, border and probe increments in the owning
+feature PR.
 
 Complete richer FreeText and other ledger subtype appearances;
 add border effects, remaining callout combinations and required font/layout support.

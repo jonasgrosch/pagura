@@ -1,18 +1,91 @@
-"""Rounded annotation rectangles with independent conic/rectangle areas.
+"""Rounded annotation rectangles with independent conic and normal-offset areas.
 
-Circular-corner strokes use exact parallel-set outer/inner radii. Unequal-axis
-corners have fill controls; their stroke/dash accuracy remains a separate gate.
+Circular-corner strokes use exact parallel-set radii. Elliptical-corner strokes
+use true conic normals; circular dashes use closed-form arc lengths and butt caps.
 Stored controls use independently constructed sixteen-arc paths.
 """
 import math
 from decimal import Decimal, localcontext
 
 from .circle_annotations import rectangle_area
+from .cloud_annotations import polygon_coverage
 from .model import Case, OPEN, RENDER, UNSUPPORTED
 from .pdf import document, stream
 
 AREA='rounded_annotations'
 REQUIREMENT='content-rounded-borders'
+
+
+def stroke_contours(rect=(4,4,28,28),radii=(8.,4.),width=2.,dash=()):
+    """Convex parallel curves, independent of the generated cubic appearance.
+
+    For q=(a cos(t),b sin(t)), |q''|<=a and the normal's second derivative
+    is bounded by 2ab(a²-b²)/b⁴+(a/b)², taking a>=b. Chord interpolation
+    error is at most max|offset''|*dt²/8. A conservative full-boundary strip
+    bound stays below 1/8 channel at 144dpi. Interior offsets here have no cusps.
+    """
+    half=width/2;x0,y0,x1,y1=rect;x0+=half;y0+=half;x1-=half;y1-=half
+    rx=min(radii[0],(x1-x0)/2);ry=min(radii[1],(y1-y0)/2);a,b=max(rx,ry),min(rx,ry)
+    assert 0<half<b*b/a, 'selected controls require regular convex offsets'
+    assert not dash or rx==ry, 'elliptical arc-length dashes need a separate bound'
+    centers=[(x1-rx,y0+ry),(x1-rx,y1-ry),(x0+rx,y1-ry),(x0+rx,y0+ry)]
+    def point(index,t):
+        theta=(index-1)*math.pi/2+t*math.pi/2;cx,cy=centers[index]
+        c,s=math.cos(theta),math.sin(theta);n=math.hypot(ry*c,rx*s)
+        return (cx+rx*c,cy+ry*s),(ry*c/n,rx*s/n)
+    segments=[]
+    for index in range(4):
+        # Length is used only for circular dashes. Solid elliptical controls
+        # consume every whole segment and do not approximate ellipse arclength.
+        segments.append((index,rx*math.pi/2))
+        end,_=point(index,1);start,_=point((index+1)%4,0)
+        segments.append((index+4,math.dist(end,start)))
+    total=sum(length for _,length in segments);intervals=[]
+    if dash:
+        cursor=0.;index=0
+        while cursor<total:
+            stop=min(total,cursor+dash[index%len(dash)])
+            if index%2==0:intervals.append((cursor,stop))
+            cursor=stop;index+=1
+    else:intervals=[(0.,total)]
+    second=a+half*(2*a*b*(a*a-b*b)/b**4+(a/b)**2)
+    perimeter=4*(x1-x0+y1-y0)+4*half*len(intervals)
+    samples=1
+    while second*(math.pi/(2*samples))**2/8*perimeter*4*255>=.125:samples*=2
+    contours=[]
+    for begin,end in intervals:
+        outer=[];inner=[];cursor=0.
+        for index,length in segments:
+            left,right=max(begin,cursor),min(end,cursor+length)
+            if left<right:
+                lo,hi=(left-cursor)/length,(right-cursor)/length
+                count=max(1,math.ceil((hi-lo)*samples)) if index<4 else 1
+                for step in range(count+1):
+                    t=lo+(hi-lo)*step/count
+                    if index<4:vertex,normal=point(index,t)
+                    else:
+                        one,normal=point(index-4,1);two,_=point((index-3)%4,0)
+                        vertex=(one[0]+t*(two[0]-one[0]),one[1]+t*(two[1]-one[1]))
+                    outer.append((vertex[0]+half*normal[0],vertex[1]+half*normal[1]))
+                    inner.append((vertex[0]-half*normal[0],vertex[1]-half*normal[1]))
+            cursor+=length
+        if dash:contours.append(outer+list(reversed(inner)))
+        else:contours.extend((outer,list(reversed(inner))))
+    return contours
+
+
+def stroke_oracle(*,rect=(4,4,28,28),radii=(8.,4.),width=2.,dash=(),dpi=72,rotate=0,alpha=1.):
+    scale=dpi/72;size=int(32*scale)
+    def point(p):
+        x,y=p
+        return (y*scale,(32-x)*scale) if rotate else (x*scale,y*scale)
+    contours=[[point(p) for p in contour] for contour in stroke_contours(rect,radii,width,dash)]
+    areas=polygon_coverage(contours,size);pixels=bytearray()
+    for y in reversed(range(size)):
+        for x in range(size):
+            coverage=int(areas[y*size+x]*255+.5)/255
+            pixels.extend([int(255*(1-coverage*alpha)+.5)]*3)
+    return f'P6\n{size} {size}\n255\n'.encode()+pixels
 
 
 def ellipse_region(bounds, region):
@@ -111,6 +184,27 @@ def source(*,shape='Square',rect=(4,4,28,28),radii=(6.,6.),width=2.,fill=None,co
     return document(values+list(objects))
 
 
+def stroke_cases():
+    for dpi in (72,144):
+        for shape in ('Square','Widget'):
+            yield Case(f'ellipse-stroke-{shape}-{dpi}',source(shape=shape,radii=(8.,4.)),RENDER,(REQUIREMENT,),
+                       'True ellipse normal offsets establish unequal-axis corner strokes',dpi=dpi,
+                       oracle=stroke_oracle(dpi=dpi),extra={'tolerance':1})
+        yield Case(f'ellipse-stroke-stored-{dpi}',source(radii=(8.,4.),stored=True),RENDER,(REQUIREMENT,),
+                   'An independently authored finer cubic appearance meets the same conic-normal oracle',dpi=dpi,
+                   oracle=stroke_oracle(dpi=dpi),extra={'tolerance':1})
+        for dash in ((3,3),(7,2)):
+            name=f'circular-dash-{dash[0]}-{dpi}'
+            border=f'[6 6 2 [{dash[0]} {dash[1]}]]'.encode()
+            yield Case(name,source(border=border),RENDER,(REQUIREMENT,),
+                       'Exact straight and circular arclengths position dash cuts with true normals and butt caps',dpi=dpi,
+                       oracle=stroke_oracle(radii=(6.,6.),dash=dash,dpi=dpi),extra={'tolerance':1})
+    for name,options in [('ellipse-stroke-opacity',{'alpha':.5}),('ellipse-stroke-rotated',{'rotate':90})]:
+        yield Case(name,source(radii=(8.,4.),**options),RENDER,(REQUIREMENT,),
+                   'Conic-normal stroke coverage followed by opacity or page rotation establishes pixels',
+                   oracle=stroke_oracle(**options),extra={'tolerance':1})
+
+
 def cases():
     def rendered(name,*,bounds=None,dpi=72,visible=True,**options):
         expected={k:options[k] for k in ('radii','width','fill','color','alpha','fill_alpha','rotate') if k in options}
@@ -140,3 +234,4 @@ def cases():
         yield Case(name,source(border=border,color=None),OPEN,(REQUIREMENT,),'Invalid radii/width validate before transparent output',extra={'render_error':'syntax'})
     yield Case('nonrectangular',source(shape='Ink',extra=b'/InkList [[4 4 28 28]]'),UNSUPPORTED,(REQUIREMENT,),
                'Legacy radii on non-rectangular path artwork remain explicit',feature='annotation.appearance')
+    yield from stroke_cases()

@@ -72,11 +72,11 @@ pub fn stored_appearance(
     Ok(Some(Appearance::Existing(id)))
 }
 
-/// The normal appearance selected for one widget (12.5.5). The set is
+/// The selected annotation appearance (12.5.5). The set is
 /// closed: an appearance is a stored stream, nothing, or generated data.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Appearance {
-    /// An existing indirect stream, selected using the replacement AS state.
+    /// An existing indirect stream selected by appearance mode and state.
     Existing(ObjectId),
     /// An undefined appearance state paints nothing (12.5.5).
     Hidden,

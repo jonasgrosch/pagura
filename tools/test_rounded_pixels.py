@@ -1,7 +1,8 @@
 """Closed-form checks for the rounded-rectangle fixture oracle."""
 import math
 import unittest
-from fixturegen.rounded_annotations import area, ellipse_region
+from fixturegen.rounded_annotations import area, ellipse_region, stroke_contours
+from fixturegen.cloud_annotations import polygon_coverage
 
 class RoundedAreaTests(unittest.TestCase):
     def test_quadrants_and_rectangular_parts(self):
@@ -11,6 +12,31 @@ class RoundedAreaTests(unittest.TestCase):
         self.assertEqual(area((0,0,4,4),(1,1),1,1),1.)
         self.assertEqual(area((0,0,4,4),(0,1),0,0),1.)
         self.assertAlmostEqual(sum(area((0,0,6,4),(2,1),x,y) for x in range(6) for y in range(4)),24-2*(4-math.pi))
+
+    def test_closed_parallel_curve_area_matches_steiner_difference(self):
+        # P=4*(22-12)+2*pi*6; area(outside)-area(inside)=width*P.
+        contours=stroke_contours(radii=(6.,6.))
+        coverage=polygon_coverage(contours,32)
+        self.assertAlmostEqual(sum(coverage),80+24*math.pi,delta=.0001)
+
+    def test_elliptical_offsets_follow_unit_normals_at_axes(self):
+        outer,inner=stroke_contours()
+        self.assertAlmostEqual(outer[0][0],19.)
+        self.assertAlmostEqual(outer[0][1],4.)
+        self.assertAlmostEqual(inner[-1][0],19.)
+        self.assertAlmostEqual(inner[-1][1],6.)
+        self.assertAlmostEqual(min(x for x,_ in outer),4.)
+        self.assertAlmostEqual(max(x for x,_ in outer),28.)
+        self.assertAlmostEqual(min(y for _,y in outer),4.)
+        self.assertAlmostEqual(max(y for _,y in outer),28.)
+
+    def test_dash_ends_at_exact_circular_arclength_with_butt_cap(self):
+        first=stroke_contours(radii=(6.,6.),dash=(3,3))[0]
+        outer_end=first[len(first)//2-1];inner_end=first[len(first)//2]
+        self.assertAlmostEqual(outer_end[0],21+7*math.sin(.5))
+        self.assertAlmostEqual(outer_end[1],11-7*math.cos(.5))
+        self.assertAlmostEqual(inner_end[0],21+5*math.sin(.5))
+        self.assertAlmostEqual(inner_end[1],11-5*math.cos(.5))
 
 if __name__=='__main__':
     unittest.main()

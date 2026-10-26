@@ -405,6 +405,46 @@
       "tolerance": 1
     },
     {
+      "id": "rich_annotations/unitless-spacing-72",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/unitless-spacing-72.pdf",
+      "sha256": "160e3df6ac7e6c58b2858e8baf851ea519d132e696bf1ee16fee79e5f72228b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/unitless-spacing-72.ppm",
+      "oracle_sha256": "20f28ac6b1faa7db0ac6ae9f2e014a04cc1ceaa42b90cb44d70027839aa132f7",
+      "dpi": 72,
+      "width": 128,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rich_annotations/unitless-spacing-144",
+      "kind": "pdf",
+      "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/unitless-spacing-144.pdf",
+      "sha256": "160e3df6ac7e6c58b2858e8baf851ea519d132e696bf1ee16fee79e5f72228b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rich_annotations/unitless-spacing-144.ppm",
+      "oracle_sha256": "83233035641f1a01b675209486e0ac1cdd673802ee26d84ce466b18a670ba102",
+      "dpi": 144,
+      "width": 256,
+      "height": 128,
+      "tolerance": 1
+    },
+    {
       "id": "rich_annotations/space-relative-spacing",
       "kind": "pdf",
       "description": "Literal original Type3 glyph rectangles and independently authored layout establish exact pixels",
@@ -1204,6 +1244,96 @@
       ],
       "path": "corpus/generated/rich_annotations/unsupported-layout.pdf",
       "sha256": "75f0e3445d4870cb6f1bf123ca4d885be0e4de963277358954888906315ccec8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/tab-stop",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/tab-stop.pdf",
+      "sha256": "2b0f06d6d1abd95bb11043c75cfafb4d1a72f54f74e9c1b6fd44fb9a3fd4cacf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/page-break-inside",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/page-break-inside.pdf",
+      "sha256": "a2261a8da09de0fcc9c95d4fd6d7f3ce2fb8521a0f67afd252e3c967bd5857a1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/unitless-font-size",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/unitless-font-size.pdf",
+      "sha256": "0bcdb4f798aecd093b5b211187b5f2befae7801abdedb08602d6555e112dc089",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/relative-font-size",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/relative-font-size.pdf",
+      "sha256": "16cb349eaf712ce1545d4a4d970e72a8199edebb0b202d83845e39c60a481055",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/unitless-rise",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/unitless-rise.pdf",
+      "sha256": "339a2b3305ab64892549f7fa5becbdd14f2d7237aed16efc10ec47888cf09f6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rich_annotations/relative-rise",
+      "kind": "pdf",
+      "description": "Unsupported semantics are never silently omitted",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-annotation-text"
+      ],
+      "path": "corpus/generated/rich_annotations/relative-rise.pdf",
+      "sha256": "38cb20019c09f67cdca8ca5adf31574a989658f355aa0e70a87bc6cf329cd226",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

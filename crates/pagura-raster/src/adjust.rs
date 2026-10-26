@@ -85,7 +85,7 @@ pub(crate) fn runs(
     let mut fitted_runs = Vec::new();
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
-            let released = contour.points.capacity().saturating_mul(size_of::<Point>());
+            let released = contour.heap_bytes();
             drop(contour);
             bytes.refund(released);
             continue;
@@ -167,7 +167,7 @@ fn general(
     let mut fitted_runs = Vec::new();
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
-            let released = contour.points.capacity().saturating_mul(size_of::<Point>());
+            let released = contour.heap_bytes();
             drop(contour);
             bytes.refund(released);
             continue;

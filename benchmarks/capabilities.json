@@ -956,7 +956,9 @@
         "raster-strokes",
         "raster-zero-area-fill"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "cloud_annotations/source-curve-miter"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -982,7 +984,7 @@
         "viewer": "partial"
       },
       "implemented": "Stored normal appearances and state dictionaries; generated icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions. Forms and annotations share stored normal/rollover/down selection as data; host/viewer rendering still selects normal appearance.",
-      "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, relative or interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; curved cloud stroke/dash and wider callout accuracy; other subtype synthesis; nonrectangular relief/radii; remaining rounded stroke/dash evidence; nonempty widgets and interaction-selected AP/R/AP/D states. Full V01 acceptance remains open.",
+      "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, unvalidated character/paragraph measurements and interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; curved cloud stroke/dash and wider callout accuracy; other subtype synthesis; nonrectangular relief/radii; remaining rounded stroke/dash evidence; nonempty widgets and interaction-selected AP/R/AP/D states. Full V01 acceptance remains open.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
@@ -1020,7 +1022,11 @@
         "crates/pagura-appearance/src/rich/xml.rs",
         "crates/pagura-appearance/src/rich/style.rs",
         "crates/pagura-appearance/src/rich/layout.rs",
-        "crates/pagura-appearance/src/stream.rs"
+        "crates/pagura-appearance/src/stream.rs",
+        "crates/pagura-raster/src/stroke.rs",
+        "crates/pagura-raster/src/flatten.rs",
+        "crates/pagura-raster/src/stroke/tiling.rs",
+        "crates/pagura-raster/src/adjust.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
@@ -1052,7 +1058,9 @@
         "crates/pagura-appearance/src/annotation/tests/cloud.rs",
         "crates/pagura-appearance/src/rich/tests.rs",
         "tools/fixturegen/cloud_annotations.py",
-        "tools/fixturegen/rich_annotations.py"
+        "tools/fixturegen/rich_annotations.py",
+        "tools/test_cloud_pixels.py",
+        "crates/pagura-raster/src/stroke/tests.rs"
       ],
       "requirements": [
         "content-annotation-generation",
@@ -1762,7 +1770,42 @@
         "content/annotation-appearance-streams",
         "content/annotation-appearance-states",
         "content/annotation-appearance-null",
-        "content/annotation-appearance-null-state"
+        "content/annotation-appearance-null-state",
+        "cloud_annotations/Square-stroke-72",
+        "cloud_annotations/Square-stroke-144",
+        "cloud_annotations/Circle-stroke-72",
+        "cloud_annotations/Circle-stroke-144",
+        "cloud_annotations/Polygon-stroke-72",
+        "cloud_annotations/Polygon-stroke-144",
+        "cloud_annotations/FreeText-stroke-72",
+        "cloud_annotations/FreeText-stroke-144",
+        "cloud_annotations/dashed-1-72",
+        "cloud_annotations/dashed-1-144",
+        "cloud_annotations/dashed-2-72",
+        "cloud_annotations/dashed-2-144",
+        "cloud_annotations/stroke-opacity",
+        "cloud_annotations/stroke-rotated",
+        "rich_annotations/unitless-spacing-72",
+        "rich_annotations/unitless-spacing-144",
+        "rich_annotations/tab-stop",
+        "rich_annotations/page-break-inside",
+        "rich_annotations/unitless-font-size",
+        "rich_annotations/relative-font-size",
+        "rich_annotations/unitless-rise",
+        "rich_annotations/relative-rise",
+        "rounded_annotations/ellipse-stroke-Square-72",
+        "rounded_annotations/ellipse-stroke-Widget-72",
+        "rounded_annotations/ellipse-stroke-stored-72",
+        "rounded_annotations/circular-dash-3-72",
+        "rounded_annotations/circular-dash-7-72",
+        "rounded_annotations/ellipse-stroke-Square-144",
+        "rounded_annotations/ellipse-stroke-Widget-144",
+        "rounded_annotations/ellipse-stroke-stored-144",
+        "rounded_annotations/circular-dash-3-144",
+        "rounded_annotations/circular-dash-7-144",
+        "rounded_annotations/ellipse-stroke-opacity",
+        "rounded_annotations/ellipse-stroke-rotated",
+        "cloud_annotations/source-curve-miter"
       ],
       "comparisons": {
         "pdfium": "unprobed",

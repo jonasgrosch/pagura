@@ -81,6 +81,9 @@ def cases():
     yield rendered('right',b'<body><p style="text-align:right">AB</p></body>',regions=[((110,50,115,57),BLACK),((116,50,121,57),BLACK)])
     yield rendered('margins',b'<body><p style="margin:2pt 3pt 4pt 5pt">AB</p></body>',regions=[((11,48,16,55),BLACK),((17,48,22,55),BLACK)])
     yield rendered('spacing',b'<body><p style="letter-spacing:1pt">AB</p></body>',regions=[ordinary[0],((13,50,18,57),BLACK)])
+    for dpi in (72,144):
+        # XFA3.3 chapter2: absent units mean inches, so .1 adds7.2pt.
+        yield rendered(f'unitless-spacing-{dpi}',b'<p style="letter-spacing:0.1">AB</p>',dpi=dpi,regions=[ordinary[0],((19.2,50,24.2,57),BLACK)])
     yield rendered('space-relative-spacing',b'<p style="letter-spacing:100%">AB</p>',regions=[ordinary[0],((18,50,23,57),BLACK)])
     yield rendered('negative-relative-spacing',b'<p style="letter-spacing:-50%">AB</p>',regions=[ordinary[0],((9,50,14,57),BLACK)])
     yield rendered('space-relative-size-order',b'<p style="letter-spacing:100%;font-size:20pt">AB</p>',regions=[((6,42,16,56),BLACK),((30,42,40,56),BLACK)])
@@ -121,6 +124,12 @@ def cases():
         yield Case(label,source(xml,extra=extra),OPEN,(REQUIREMENT,),'Invalid selected rich text fails explicitly',extra={'render_error':'syntax'})
     for label,xml in [('external-entity',b'<!DOCTYPE p><p>AB</p>'),('embedded-object',b'<p><span xfa:embed="other"/></p>'),
                        ('rtl',b'<p dir="rtl">AB</p>'),('unsupported-layout',b'<p style="tab-stops:20pt">AB</p>'),
+                       ('tab-stop',b'<p style="tab-stop:left 20pt">AB</p>'),
+                       ('page-break-inside',b'<p style="page-break-inside:avoid">AB</p>'),
+                       ('unitless-font-size',b'<p style="font-size:0.1">AB</p>'),
+                       ('relative-font-size',b'<p style="font-size:2em">AB</p>'),
+                       ('unitless-rise',b'<p style="vertical-align:0.1">AB</p>'),
+                       ('relative-rise',b'<p style="vertical-align:50%">AB</p>'),
                        ('relative-margin',b'<p style="margin-left:10%">AB</p>'),
                        ('relative-indent',b'<p style="text-indent:2em">AB</p>'),
                        ('unitless-leading',b'<p style="line-height:1.5">AB</p>'),

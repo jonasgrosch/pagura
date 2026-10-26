@@ -1533,7 +1533,7 @@
         "12.5.6.19"
       ],
       "rule": "Generate rounded rectangular legacy Border outlines for Link, Square, plain FreeText and supported empty widgets. Read finite nonnegative horizontal/vertical corner radii and border width; BS takes precedence without resolving unused Border, while null BS is absent. Reader artwork clamps each radius to half its centreline extent and uses two tangent 45-degree cubics per corner; either zero radius yields sharp corners. Square IC fills follow that outline; FreeText/widget backgrounds retain their existing rectangular policy. Geometry/work/output remain bounded. Existing appearances retain precedence and original BBox/annotation placement is unchanged.",
-      "status": "implemented with 32 authored controls and 28 independent pixel expectations; hosted validation pending",
+      "status": "implemented; 44 authored controls and 40 independent pixel expectations; current stroke/dash additions await hosted validation",
       "tests": [
         "pagura-appearance annotation::tests::rounded::rounded_border_limits_apply_before_invisible_output",
         "pagura-appearance annotation::tests::rounded::corner_types_and_numeric_range_are_validated",
@@ -1569,9 +1569,21 @@
         "rounded_annotations/radius-type",
         "rounded_annotations/negative-radius",
         "rounded_annotations/width-type",
-        "rounded_annotations/nonrectangular"
+        "rounded_annotations/nonrectangular",
+        "rounded_annotations/ellipse-stroke-Square-72",
+        "rounded_annotations/ellipse-stroke-Widget-72",
+        "rounded_annotations/ellipse-stroke-stored-72",
+        "rounded_annotations/circular-dash-3-72",
+        "rounded_annotations/circular-dash-7-72",
+        "rounded_annotations/ellipse-stroke-Square-144",
+        "rounded_annotations/ellipse-stroke-Widget-144",
+        "rounded_annotations/ellipse-stroke-stored-144",
+        "rounded_annotations/circular-dash-3-144",
+        "rounded_annotations/circular-dash-7-144",
+        "rounded_annotations/ellipse-stroke-opacity",
+        "rounded_annotations/ellipse-stroke-rotated"
       ],
-      "gaps": "Conic/rectangle integrals validate fills and circular-corner stroke offsets. Unequal-axis stroke/dash accuracy remains open. Nonzero legacy radii on nonrectangular Ink/Line/Polygon/Circle artwork remain unsupported. Filled forms share the same geometry; relief/cloudy controls have dedicated requirements. Eight-arc artwork is reader policy."
+      "gaps": "Conic/rectangle integrals validate fills and circular offsets. Independently bounded true ellipse normals and exact circular arclengths add unequal-axis stroke and circular dash expectations; their hosted accuracy gate remains open. Elliptical dashes, wider border combinations and nonrectangular legacy radii remain open. Filled forms share the geometry; relief/cloudy controls have dedicated requirements. Eight-arc artwork is reader policy."
     },
     {
       "id": "content-relief-borders",
@@ -1646,9 +1658,11 @@
         "12.5.6.9 Table 181"
       ],
       "rule": "Generate bounded convex parabolic cloud lobes for Square, Circle, Polygon and FreeText. Preserve declared BS width/dashes, opacity, RD and original appearance BBox. Validate finite intensity in [0,2]; zero intensity preserves the ordinary outline. Lobe shape and spacing are documented reader policy.",
-      "status": "implemented; independent quadratic fill controls and hosted checks pending",
+      "status": "implemented; independent fill/stroke controls authored, hosted validation pending",
       "tests": [
         "pagura-appearance annotation::tests::cloud",
+        "tools/test_cloud_pixels.py",
+        "cloud_annotations/source-curve-miter",
         "cloud_annotations/Square-72",
         "cloud_annotations/Square-144",
         "cloud_annotations/Circle-72",
@@ -1662,12 +1676,26 @@
         "cloud_annotations/opacity",
         "cloud_annotations/rotated",
         "cloud_annotations/width-affects-lobes",
+        "cloud_annotations/Square-stroke-72",
+        "cloud_annotations/Square-stroke-144",
+        "cloud_annotations/Circle-stroke-72",
+        "cloud_annotations/Circle-stroke-144",
+        "cloud_annotations/Polygon-stroke-72",
+        "cloud_annotations/Polygon-stroke-144",
+        "cloud_annotations/FreeText-stroke-72",
+        "cloud_annotations/FreeText-stroke-144",
+        "cloud_annotations/dashed-1-72",
+        "cloud_annotations/dashed-1-144",
+        "cloud_annotations/dashed-2-72",
+        "cloud_annotations/dashed-2-144",
+        "cloud_annotations/stroke-opacity",
+        "cloud_annotations/stroke-rotated",
         "cloud_annotations/bad-intensity",
         "cloud_annotations/negative",
         "cloud_annotations/excess",
         "cloud_annotations/bad-effect"
       ],
-      "gaps": "Cloud fill expectations integrate original quadratic contour segments exactly. Curved stroke/dash accuracy, richer rich-text layout and R/D interaction remain separate gates."
+      "gaps": "Fill expectations integrate quadratic contours exactly. Stroke controls use independently computed true normal offsets, closed-form arclength dash cuts and exact nonzero polygon coverage, with a geometry error bound below one-eighth channel at 144 dpi. Wider dash patterns, unequal-axis ellipses, concave polygons and curved PDF 2.0 Path effects need further independent coverage. Appearance-state interaction remains a separate gate."
     },
     {
       "id": "content-rich-annotation-text",
@@ -1701,6 +1729,8 @@
         "rich_annotations/right",
         "rich_annotations/margins",
         "rich_annotations/spacing",
+        "rich_annotations/unitless-spacing-72",
+        "rich_annotations/unitless-spacing-144",
         "rich_annotations/space-relative-spacing",
         "rich_annotations/negative-relative-spacing",
         "rich_annotations/space-relative-size-order",
@@ -1744,6 +1774,12 @@
         "rich_annotations/embedded-object",
         "rich_annotations/rtl",
         "rich_annotations/unsupported-layout",
+        "rich_annotations/tab-stop",
+        "rich_annotations/page-break-inside",
+        "rich_annotations/unitless-font-size",
+        "rich_annotations/relative-font-size",
+        "rich_annotations/unitless-rise",
+        "rich_annotations/relative-rise",
         "rich_annotations/relative-margin",
         "rich_annotations/relative-indent",
         "rich_annotations/unitless-leading",
@@ -1752,7 +1788,7 @@
         "rich_annotations/automatic-size",
         "rich_annotations/invalid-stream-utf16"
       ],
-      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Relative or nonzero unitless paragraph measurements and adjoining nonzero paragraph margins are explicitly refused until independently validated. Absolute paragraph measurements use pt/in/cm/mm; relative letter spacing resolves em and percent against the final font metrics, with percent based on the space advance. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
+      "gaps": "Font fallback lists, RTL and complex scripts, tab stops, lists, pagination, arbitrary font style matching and rich text automatic sizing are not complete. Relative or nonzero unitless font-size, baseline-shift and paragraph measurements and adjoining nonzero paragraph margins are explicitly refused until independently validated. Absolute character/paragraph measurements use pt/in/cm/mm; unitless letter spacing uses inches, as specified by XFA chapter 2; relative letter spacing resolves em and percent against the final font metrics, with percent based on the space advance. Independent original Type3 rectangles cover authored positions, mixed sizes/colors, alignment, margins, spacing, scaling, streams, opacity, clipping and rotations. Existing stored appearances remain preferred."
     }
   ]
 }

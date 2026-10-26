@@ -107,16 +107,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 None,
             )?,
         };
-        let drawn = match appearance {
-            Some(appearance) => appearance,
-            None => {
-                let fonts = SessionFonts(&self.session.fonts);
-                match pagura_appearance::annotation_appearance_with_fonts(
-                    document, d, rect, &fonts,
-                )? {
-                    Some(stream) => Appearance::Generated(stream),
-                    None => return Ok(()),
-                }
+        let drawn = if let Some(appearance) = appearance {
+            appearance
+        } else {
+            let fonts = SessionFonts(&self.session.fonts);
+            match pagura_appearance::annotation_appearance_with_fonts(document, d, rect, &fonts)? {
+                Some(stream) => Appearance::Generated(stream),
+                None => return Ok(()),
             }
         };
         // Text annotations keep their icon's size and orientation.
