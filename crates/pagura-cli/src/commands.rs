@@ -44,7 +44,7 @@ pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure
         Command::Inspect(source) => inspect(source, out)?,
         Command::Metadata(source) => document_services::metadata(source, out)?,
         Command::Attachments { source, page } => {
-            document_services::attachments(source, *page, out)?
+            document_services::attachments(source, *page, out)?;
         }
         Command::ExtractMetadata { source, output } => {
             document_services::extract_metadata(source, output)?;
