@@ -1,6 +1,6 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_12 } from './protocol.mjs';
-import { MetadataOwnerCode, PngBackground, RequestKind } from './protocol_constants.mjs';
+import { encodeRequest, responseMatches, FrameDecoder, HostError, VERSION_1_4, VERSION_1_12, VERSION_2 } from './protocol.mjs';
+import { MetadataOwnerCode, OutputCode, PngBackground, RequestKind, ValidationCode } from './protocol_constants.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
@@ -33,8 +33,8 @@ export class SessionClient {
   receive(frame) {
     if (frame.kind === 255 && frame.id === 0) { this.fail(frame.value); return; }
     const pending = this.pending;
-    if (!pending || frame.id !== pending.id || (frame.kind !== 255 && frame.kind !== pending.kind + 128)) throw new Error('Mismatched host response');
-    if (frame.value instanceof HostError && frame.value.category === 2) {
+    if (!pending || frame.id !== pending.id || !responseMatches(pending.kind, frame.kind, this.version)) throw new Error('Mismatched host response');
+    if (frame.value instanceof HostError && frame.value.category === 2 && this.version !== VERSION_2) {
       this.fail(new HostFailure('budget exceeded', frame.value)); return;
     }
     clearTimeout(this.timer); this.pending = null;
@@ -77,6 +77,22 @@ export class SessionClient {
     this.version = version;
     return result;
   }
+  createSource(length, version) { return this.request(RequestKind.SourceCreate, { length, version }); }
+  supplySource(source, version, offset, bytes) { return this.request(RequestKind.SourceSupply, { source, version, offset, bytes }); }
+  finishSource(source) { return this.request(RequestKind.SourceFinish, { source }); }
+  closeSource(source) { return this.request(RequestKind.SourceClose, { source }); }
+  openJob(source, { validation = ValidationCode.RequestedOperation, recovery = 1, password = new Uint8Array() } = {}) {
+    return this.request(RequestKind.OpenJob, { source, validation, recovery, password });
+  }
+  pageJob(document, page) { return this.request(RequestKind.PageJob, { document, page }); }
+  renderJob(document, page, { scale = 1, background = PngBackground.White, output = OutputCode.Png, tile = null } = {}) {
+    return this.request(RequestKind.RenderJob, { document, page, scale, background, output, tile });
+  }
+  advanceJob(job) { return this.request(RequestKind.JobAdvance, { job }); }
+  acknowledgeJob(job, sequence) { return this.request(RequestKind.JobAcknowledge, { job, sequence }); }
+  cancelJob(job) { return this.request(RequestKind.JobCancel, { job }); }
+  closeJob(job) { return this.request(RequestKind.JobClose, { job }); }
+  jobStats() { return this.request(RequestKind.JobStats); }
   open(bytes, recovery = 1, password = new Uint8Array()) { return this.request(2, { bytes, recovery, password }); }
   files(document, scope) { return this.request(RequestKind.Files, { document, scope }); }
   fileBytes(document, scope, index, key, related = null) { return this.request(RequestKind.FileBytes, { document, scope, index, key, related }); }

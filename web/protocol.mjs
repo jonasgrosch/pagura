@@ -1,8 +1,9 @@
+import { decodeProgressive, encodeProgressive } from './progressive_protocol.mjs';
 import { decodeFields, decodeWidgets, decodeStyles, encodeChanges } from './editing_protocol.mjs';
 import { decodeReading, encodeReading } from './reading_protocol.mjs';
 import { decodeDocumentService, encodeDocumentService } from './document_protocol.mjs';
 import { DiagnosticCode, ErrorCategory, MAX_FILE, MAX_FRAME, MAX_PASSWORD, OpenFlags, PngBackground, PositionKind, RequestKind, ResponseKind, TileStatus, Version } from './protocol_constants.mjs';
-/** Project-owned protocol v1 codec. See crates/pagura-host/PROTOCOL.md. */
+/** Project-owned protocol codec. See crates/pagura-host/PROTOCOL.md. */
 export { MAX_FILE, MAX_FRAME };
 export const VERSION_1_1 = Version.V1_1;
 export const VERSION_1_2 = Version.V1_2;
@@ -16,6 +17,7 @@ export const VERSION_1_9 = Version.V1_9;
 export const VERSION_1_10 = Version.V1_10;
 export const VERSION_1_11 = Version.V1_11;
 export const VERSION_1_12 = Version.V1_12;
+export const VERSION_2 = Version.V2;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -28,6 +30,7 @@ class Reader {
   u8() { return this.number(1, 'getUint8'); }
   u16() { return this.number(2, 'getUint16'); }
   u32() { return this.number(4, 'getUint32'); }
+  u64() { return this.number(8, 'getBigUint64'); }
   f64() { return this.number(8, 'getFloat64'); }
   offset64() {
     const value = this.number(8, 'getBigUint64');
@@ -35,6 +38,13 @@ class Reader {
     return Number(value);
   }
   text() { return utf8.decode(this.take(this.u32())); }
+  pageInfo() {
+    const crop = Array.from({ length: 4 }, () => this.f64());
+    const rotation = this.u16(), userUnit = this.f64(), width = this.u32(), height = this.u32();
+    if (!crop.every(Number.isFinite) || ![0, 90, 180, 270].includes(rotation)
+      || !Number.isFinite(userUnit) || userUnit <= 0 || !width || !height) throw new Error('Invalid page geometry');
+    return { crop, rotation, userUnit, width, height };
+  }
   object() { return { number: this.u32(), generation: this.u16() }; }
   context() {
     const present = this.u8();
@@ -71,15 +81,12 @@ export function decodeResponse(body) {
   const kind = r.u8(), id = r.u32();
   let value;
   switch (kind) {
+    case ResponseKind.SourceCreate: case ResponseKind.SourceSupply: case ResponseKind.SourceFinish: case ResponseKind.SourceClose:
+    case ResponseKind.JobCreated: case ResponseKind.JobProgress: case ResponseKind.JobAcknowledge: case ResponseKind.JobCancel:
+    case ResponseKind.JobClose: case ResponseKind.JobStats: case ResponseKind.NeedData: value = decodeProgressive(kind, r); break;
     case ResponseKind.Hello: value = { version: r.u32() }; break;
     case ResponseKind.Open: value = { document: r.u32(), pages: r.u32() }; break;
-    case ResponseKind.PageInfo: {
-      const crop = Array.from({ length: 4 }, () => r.f64());
-      const rotation = r.u16(), userUnit = r.f64(), width = r.u32(), height = r.u32();
-      if (!crop.every(Number.isFinite) || ![0, 90, 180, 270].includes(rotation)
-        || !Number.isFinite(userUnit) || userUnit <= 0 || !width || !height) throw new Error('Invalid page geometry');
-      value = { crop, rotation, userUnit, width, height }; break;
-    }
+    case ResponseKind.PageInfo: value = r.pageInfo(); break;
     case ResponseKind.Tile: {
       const width = r.u32(), height = r.u32(), size = width * height * 4;
       if (!width || !height || !Number.isSafeInteger(size)) throw new Error('Invalid tile dimensions');
@@ -158,6 +165,10 @@ export function encodeRequest(kind, id, values = {}) {
     return value;
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
+  if (kind >= RequestKind.SourceCreate && kind <= RequestKind.JobStats) {
+    const payload = encodeProgressive(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
+    view.setUint32(0, payload.length + 5, true); bytes[4] = kind; view.setUint32(5, id, true); bytes.set(payload, 9); return bytes;
+  }
   const reading = kind >= RequestKind.PageText && kind <= RequestKind.Bounds;
   if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes || kind >= RequestKind.AttachmentCheck && kind <= RequestKind.Thumbnail) {
     const payload = reading ? encodeReading(kind, values) : encodeDocumentService(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
@@ -206,4 +217,28 @@ export function encodeRequest(kind, id, values = {}) {
     view.setFloat64(offset, values.scale, true); offset += 8; bytes[offset] = values.background;
   }
   return bytes;
+}
+
+
+/** V2 uses shared creation/progress envelopes while every V1 response stays frozen. */
+function expectedResponse(kind) {
+  switch (kind) {
+    case RequestKind.OpenJob: case RequestKind.PageJob: case RequestKind.RenderJob: return ResponseKind.JobCreated;
+    case RequestKind.JobAdvance: return ResponseKind.JobProgress;
+    case RequestKind.JobAcknowledge: return ResponseKind.JobAcknowledge;
+    case RequestKind.JobCancel: return ResponseKind.JobCancel;
+    case RequestKind.JobClose: return ResponseKind.JobClose;
+    case RequestKind.JobStats: return ResponseKind.JobStats;
+    default: return kind + 128;
+  }
+}
+
+
+/** Availability is valid only for source-dependent operations in a V2 session. */
+export function responseMatches(request, response, version) {
+  if (response === ResponseKind.Error || response === expectedResponse(request)) return true;
+  if (response !== ResponseKind.NeedData || version !== Version.V2) return false;
+  if ([RequestKind.PageJob, RequestKind.RenderJob, RequestKind.JobAdvance].includes(request)) return true;
+  return request < RequestKind.SourceCreate && ![RequestKind.Hello, RequestKind.Open, RequestKind.Diagnostics,
+    RequestKind.Close, RequestKind.Generation, RequestKind.Stats, RequestKind.DiagnosticDetails, RequestKind.ReadingStats].includes(request);
 }

@@ -796,6 +796,14 @@ max_frame_bytes and reading_response_bytes. Registered source residency excludes
 closed registrations still pinned by consumers; source admission includes them.
 
 The native Session::handle entry point and stdio serve loop share ordering,
-version gates and dispatch. Native async scheduling, browser range driving,
-extraction jobs and WASI/runtime acceptance remain separate unfinished parts of
-the same group; this protocol checkpoint does not establish their completion.
+version gates and dispatch. The existing browser SessionClient negotiates V2
+explicitly, accepts shared creation/progress envelopes and keeps operational
+V2 quota failures separate from transport failure. ProgressiveDriver accepts
+caller-verified immutable range packets, shares identical active reads with
+per-consumer cancellation, and bounds active/queued input work. Its async
+iterator acknowledges output only when the consumer resumes, cancels obsolete
+viewport work, and closes terminal job handles. Breaking iteration cancels that
+job without closing a shared source. An HTTP adapter must verify validators,
+range/length and encoding before returning a packet; the driver follows no URL.
+The native/browser CPU worker pools, HTTP adapter, viewer/extraction integration
+and hosted WASI/runtime acceptance remain unfinished parts of the same group.

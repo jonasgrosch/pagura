@@ -54,9 +54,9 @@ struct Host {
 }
 
 impl Host {
-    fn new(config: SessionConfig) -> Result<Self> {
+    fn new(config: &SessionConfig) -> Result<Self> {
         let mut host = Self {
-            session: Session::new(config),
+            session: Session::new(*config),
             id: 0,
         };
         host.call(1, &0x0002_0000_u32.to_le_bytes())?;
@@ -128,7 +128,7 @@ fn ack(job: u32, sequence: u64) -> Vec<u8> {
 /// Independently authored classic index. Object 4 and unrelated object 5 are
 /// deliberately absent; no writer, engine or production parser builds the PDF.
 fn sparse() -> Result<Host> {
-    let mut host = Host::new(config())?;
+    let mut host = Host::new(&config())?;
     host.call(41, &creation(8192))?;
     for (offset, part) in [
         (0, b"%PDF-1.7\n".as_slice()),

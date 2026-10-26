@@ -4,7 +4,7 @@ use super::*;
 fn closed_sources_and_cancelled_jobs_release_only_their_owned_admission() -> Result<()> {
     fn send<T: Send>() {}
     send::<Session>();
-    let mut host = Host::new(config())?;
+    let mut host = Host::new(&config())?;
     assert_eq!(host.call(41, &creation(8192))?[0], 169);
     assert_eq!(host.call(45, &[1, 0, 0, 0, 1, 0, 0, 0, 0, 0])?[0], 173);
     let wait = host.event(1)?;
@@ -40,7 +40,7 @@ fn closed_sources_and_cancelled_jobs_release_only_their_owned_admission() -> Res
 
 #[test]
 fn finalization_holes_versions_conflicts_and_source_closure_are_terminal() -> Result<()> {
-    let mut host = Host::new(config())?;
+    let mut host = Host::new(&config())?;
     host.call(41, &creation(4))?;
     host.supply(0, b"abc")?;
     let mut stale = [
@@ -86,7 +86,7 @@ fn finalization_holes_versions_conflicts_and_source_closure_are_terminal() -> Re
 
 #[test]
 fn a_waiting_job_failure_is_stable_and_never_reports_completion() -> Result<()> {
-    let mut host = Host::new(config())?;
+    let mut host = Host::new(&config())?;
     host.call(41, &creation(8192))?;
     host.call(45, &[1, 0, 0, 0, 1, 0, 0, 0, 0, 0])?;
     assert_eq!(host.event(1)?[0], 179);
@@ -108,7 +108,7 @@ fn finalization_does_not_require_whole_file_assembly_and_cancel_discards_output(
     let mut limits = small.progressive_limits();
     limits.source.assembly_bytes = 1;
     small = small.with_progressive(limits);
-    let mut host = Host::new(small)?;
+    let mut host = Host::new(&small)?;
     host.call(41, &creation(4))?;
     host.supply(2, b"cd")?;
     host.supply(0, b"ab")?;
@@ -148,7 +148,7 @@ fn aggregate_admission_and_handle_caps_refuse_before_starting_work() -> Result<(
         sources: 1,
         ..options.progressive_limits()
     });
-    let mut host = Host::new(options)?;
+    let mut host = Host::new(&options)?;
     assert_eq!(host.call(41, &creation(8))?[0], 169);
     assert_eq!(host.call(41, &creation(8))?[5], 2);
     assert_eq!(host.call(45, &[1, 0, 0, 0, 1, 0, 0, 0, 0, 0])?[5], 2);
@@ -167,7 +167,7 @@ fn aggregate_admission_and_handle_caps_refuse_before_starting_work() -> Result<(
 #[test]
 fn terminal_job_handles_count_until_closed_and_small_frames_refuse_before_output() -> Result<()> {
     let options = config();
-    let mut host = Host::new(options.with_progressive(ProgressiveLimits {
+    let mut host = Host::new(&options.with_progressive(ProgressiveLimits {
         jobs: 1,
         ..options.progressive_limits()
     }))?;
@@ -184,7 +184,7 @@ fn terminal_job_handles_count_until_closed_and_small_frames_refuse_before_output
         reading_response_bytes: 128,
         ..config().session
     });
-    let mut host = Host::new(options)?;
+    let mut host = Host::new(&options)?;
     assert_eq!(host.call(47, &rendering(0))?[5], 2);
     assert_eq!(word(&host.call(52, &[])?, 9)?, 0);
     Ok(())

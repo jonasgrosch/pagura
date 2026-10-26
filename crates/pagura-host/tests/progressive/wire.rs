@@ -99,7 +99,7 @@ fn progressive_layouts_are_exact_and_truncated_inputs_are_never_accepted() -> Re
 
 #[test]
 fn native_session_order_failure_is_terminal_but_operational_errors_are_not() -> Result<()> {
-    let mut host = Host::new(config())?;
+    let mut host = Host::new(&config())?;
     let frame = frame(52, 1, &[]);
     let decoded = protocol::decode(&frame[4..], &Limits::default())?;
     let expected = host.session.handle(decoded).unwrap_err();
@@ -110,7 +110,7 @@ fn native_session_order_failure_is_terminal_but_operational_errors_are_not() -> 
             .unwrap_err(),
         expected
     );
-    let mut host = Host::new(config())?;
+    let mut host = Host::new(&config())?;
     assert_eq!(host.call(48, &words(&[99]))?[5], 7);
     assert_eq!(host.call(52, &[])?[0], 178);
     Ok(())

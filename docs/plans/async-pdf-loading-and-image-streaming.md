@@ -855,8 +855,13 @@ responses 169–179; exact layouts and ownership are in
 [pagura-host/PROTOCOL.md](../../crates/pagura-host/PROTOCOL.md#version-20-immutable-sources-and-owned-jobs).
 Source finalization, lease-following aggregate admission, explicit NeedData and
 one exact-ACK output slot are implemented. Hosted acceptance of this checkpoint,
-extraction messages, JS range driving, WASI parity and the bounded native/browser
-worker pools remain required. This does not complete P7/P8 or remove P3's bounded
+extraction messages, WASI parity and the bounded native/browser worker pools
+remain required. The JS payload codec uses the existing frame reader and serial
+client; ProgressiveDriver coordinates caller-verified immutable ranges and exact
+output acknowledgements. Identical active range reads are shared, their final
+consumer owns cancellation, range queues are bounded, and consumer demand drives
+output. Its literal lifecycle controls still require hosted acceptance; an HTTP
+validator/spool adapter and viewer integration remain unfinished. This does not complete P7/P8 or remove P3's bounded
 whole-scene retry limitation.
 
 
