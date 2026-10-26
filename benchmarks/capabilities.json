@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "8d758e1c0359b1b386c729c05d4fb6253cc2f7d4",
+  "audited_revision": "ae6daca4c001afdbf678c9dc14afd884f1d74958",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -246,7 +246,7 @@
     "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
     "crates/pagura-appearance/src/annotation/icon.rs": "dc0187460c1eb25d93a3979788e6eae1a6b2fa70afdaa60d6991a19db2b695c6",
     "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
-    "tools/host_test.mjs": "34e011c0081321cfdfe4f258c7ae862fc4fe6fbc64ecf2f6ae1f0addd71125cd",
+    "tools/host_test.mjs": "d4e40f9a1508120dbdbe3357d1cf22719b2cde203b37d548db211ed49f30e7c3",
     "corpus/manifests/file_attachment_icons.json": "493b67db592c150500c7a86f773c30480f1d36b8c4540ffcf02a5a0a501e6f2d"
   },
   "capabilities": [
