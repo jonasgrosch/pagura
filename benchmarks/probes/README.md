@@ -169,6 +169,8 @@ passes: 26 passes and the same 16 baseline disagreements overall. Pagura met
 five controls exactly and fractional coverage within its declared one-level
 bound.
 
+## Expanded JPX observations
+
 The 46-fixture R02 [run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286)
 at merge revision `4a058819a91f27311bf29c9f15c8ec976e3eb83b` completed all 322
 render observations without adapter failures. Pagura met every declared oracle.
