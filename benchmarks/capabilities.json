@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "f316be24c3dfee98ddddb96e5b5913bab10e803c",
+  "audited_revision": "b5777211e67cfacb86b91e576d4ab67d1b113d62",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -192,7 +192,7 @@
     "crates/pagura-raster/src/adjust.rs": "32f5fc4aaf986939d2416812971a7f955ab2fb5dc886241cbb76a887d60b6849",
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
-    "crates/pagura-raster/src/flatten.rs": "0ecb29c1812668a07cd405422ddfc9d395535dd405382a58bdff2d6800fc991a",
+    "crates/pagura-raster/src/flatten.rs": "158f8a7ff4f508444c6c70d4432d6d76199f2106a0fd85b9ee576c1327f840df",
     "crates/pagura-raster/src/stroke.rs": "0c9f204e7c6ad78005acedafc313e21fd08049625849cf1c99968ebf0fbcee1e",
     "crates/pagura-raster/src/stroke/tests.rs": "d8d0291a1dc2f4e2ce3b06caca7753316d5aad262a7934c0b2a9509b1cc2ba38",
     "crates/pagura-raster/src/stroke/tiling.rs": "000223c7f258e99e6f92ab28ebe144d80242367a3f24f3e6912be16bc294b784",
