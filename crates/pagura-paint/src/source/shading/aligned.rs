@@ -138,15 +138,25 @@ impl Aligned {
     /// column direction is evaluated only where neither serves it, which
     /// depends on the column alone (see the module documentation). The row
     /// direction evaluates once per span, which `region` does not bound.
+    /// Inspect no more columns than the admitted pixel count; wider sparse
+    /// regions retain the original conservative reservation.
     pub(super) fn evaluated(
         &self,
         source: &ShadingSource,
         axial: &Axial,
         region: DeviceRect,
+        pixels: usize,
     ) -> usize {
+        let width = usize::try_from(region.width()).unwrap_or(usize::MAX);
+        if pixels == 0 || region.height() == 0 {
+            return 0;
+        }
+        if width > pixels {
+            return pixels;
+        }
         let height = usize::try_from(region.height()).unwrap_or(usize::MAX);
         let columns = match self.direction {
-            Direction::Rows => usize::try_from(region.width()).unwrap_or(usize::MAX),
+            Direction::Rows => width,
             Direction::Columns => (region.x0..region.x1)
                 .filter(|&x| {
                     self.served(x).is_none()
@@ -154,7 +164,7 @@ impl Aligned {
                 })
                 .count(),
         };
-        columns.saturating_mul(height)
+        columns.saturating_mul(height).min(pixels)
     }
 
     /// Whether execution evaluates pixel `(x, y)` rather than taking it from

@@ -236,7 +236,7 @@ impl ShadingSource {
     ) -> Result<Self> {
         let evaluated = match (&*self.geometry, &self.aligned) {
             (Geometry::Axial(axial), Some(aligned)) => {
-                aligned.evaluated(&self, axial, region).min(pixels)
+                aligned.evaluated(&self, axial, region, pixels)
             }
             _ => pixels,
         };
