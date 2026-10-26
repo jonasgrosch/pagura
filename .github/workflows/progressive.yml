@@ -18,7 +18,7 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt
       - name: Check source and facade contracts
-        run: cargo clippy -p pagura-core -p pagura-codec -p pagura-document -p pagura-content -p pagura-image -p pagura-text -p pagura-raster -p pagura-paint -p pagura-render -p pagura -p pagura-cli -p pagura-host --all-targets --all-features -- -D warnings
+        run: cargo clippy -p pagura-core -p pagura-codec -p pagura-document -p pagura-content -p pagura-image -p pagura-text -p pagura-raster -p pagura-paint -p pagura-render -p pagura -p pagura-cli -p pagura-host --all-targets --all-features --keep-going -- -D warnings
       - name: Verify complete and extendable parser windows
         run: cargo test -p pagura-core
       - name: Verify complete-document and sparse-window contracts

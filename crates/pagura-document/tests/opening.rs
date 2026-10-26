@@ -145,7 +145,9 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
         } else {
             source.close();
         }
-        let expected = source.check().unwrap_err();
+        assert_eq!(document.check_source(), source.check());
+        assert_eq!(document.check_page(page), source.check());
+        let expected = ReadFault::Invalid(source.check().unwrap_err());
         assert_eq!(document.object(root.id()).unwrap_err(), expected);
         assert_eq!(document.pages().unwrap_err(), expected);
         assert_eq!(document.resolve(root.value()).unwrap_err(), expected);
@@ -162,9 +164,7 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
             authenticated.page(authenticated_page.index()).unwrap_err(),
             expected
         );
-        assert!(
-            matches!(document.materialize(), Err(ReadFault::Invalid(error)) if error == expected)
-        );
+        assert!(matches!(document.materialize(), Err(error) if error == expected));
         // An issued immutable lease survives close; a fresh materialization
         // still checks the provider before returning shared backing.
         assert_eq!(lease.bytes(), bytes);
@@ -204,7 +204,7 @@ fn stream_values_keep_source_or_decoded_storage_after_document_and_source_close(
         source.close();
         assert_eq!(
             document.stream_data(object).unwrap_err(),
-            source.check().unwrap_err()
+            ReadFault::Invalid(source.check().unwrap_err())
         );
         drop(document);
         assert!(source.retained_bytes() >= LENGTH);
@@ -314,7 +314,7 @@ fn historical_cache_preserves_registered_source_lifecycle() {
     source.close();
     assert_eq!(
         document.object_at_revision(1, id).unwrap_err(),
-        source.check().unwrap_err()
+        ReadFault::Invalid(source.check().unwrap_err())
     );
     assert!(source.retained_bytes() >= bytes.len());
     drop(document);

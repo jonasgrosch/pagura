@@ -138,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    fn normalization_keeps_symbolic_primary_on_the_generated_vectors() -> Result<()> {
+    fn normalization_keeps_symbolic_primary_on_the_generated_vectors() -> ReadResult<()> {
         use pagura_document::OpenOptions;
         use pagura_testkit::{Manifest, fixture};
         for case in Manifest::load("font").cases() {
