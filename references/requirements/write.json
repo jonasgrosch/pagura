@@ -57,9 +57,10 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura/tests/api/editing.rs: text, choice, checkbox/radio appearance round trips, Unicode/inheritance and atomic refusal"
+        "pagura/tests/api/editing.rs: text, choice, checkbox/radio appearance round trips, Unicode/inheritance and atomic refusal",
+        "pagura/tests/api/editing/button_states.rs: Off/on pairs, source state names, NeedAppearances, repeated saves and unselected-state atomic failure"
       ],
-      "gaps": "Buttons needing generated state appearances, nested direct fields/widgets, XFA and rich text. Changed password fields are refused; no password value/appearance is emitted."
+      "gaps": "Push buttons without stored artwork, nested direct fields/widgets, XFA and rich text. Changed password fields are refused; no password value/appearance is emitted. Generated checkbox/radio states are implemented together; hosted validation is pending."
     }
   ],
   "primary_text": {

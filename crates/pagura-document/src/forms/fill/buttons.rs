@@ -1,7 +1,7 @@
 //! Button V/AS selection without evaluating appearance programs (12.7.5.2).
 
 use super::{ButtonValue, FormFiller, WidgetState};
-use crate::forms::{ButtonKind, FieldFlags, FieldValue, Widget};
+use crate::forms::{ButtonKind, FieldFlags, FieldKind, FieldValue, Widget};
 use pagura_core::{Error, Meter, Name, Result};
 
 /// Whether widgets sharing the selected on state turn on together.
@@ -11,6 +11,50 @@ enum Selection {
     Exclusive,
     /// Check boxes, and radios in unison, turn on together (Table 229).
     Unison,
+}
+
+impl FormFiller<'_> {
+    /// The unambiguous on-state name for a checkbox or radio widget.
+    ///
+    /// Uses the same stored-state and missing-appearance selection as [`Self::set`].
+    /// This reads the source form and does not change the current selection.
+    ///
+    /// # Errors
+    /// Returns InvalidArgument for an absent/non-button widget, a push button or
+    /// several possible on states. Malformed export/state dictionaries return
+    /// their normal syntax or resolution error.
+    pub fn button_on_state(&self, index: usize) -> Result<Name> {
+        let widget = self
+            .form
+            .widgets
+            .get(index)
+            .ok_or(Error::invalid_argument("widget index is outside the form"))?;
+        let field = self
+            .form
+            .fields
+            .get(widget.field)
+            .ok_or(Error::invalid_argument("widget field index is absent"))?;
+        let FieldKind::Button {
+            kind,
+            export_values: exports,
+        } = &field.kind
+        else {
+            return Err(Error::invalid_argument("widget is not a button"));
+        };
+        if *kind == ButtonKind::Push {
+            return Err(Error::invalid_argument("push buttons have no value"));
+        }
+        if !exports.is_empty() && exports.len() != self.widgets(widget.field).count() {
+            return Err(Error::syntax("button Opt must have one export per widget"));
+        }
+        let ordinal = self
+            .widgets(widget.field)
+            .position(|(candidate, _)| candidate == index)
+            .ok_or(Error::invalid_argument(
+                "widget does not belong to the field",
+            ))?;
+        on_state(self, widget, ordinal, exports, None)
+    }
 }
 
 pub(super) fn validate(
