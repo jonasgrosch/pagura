@@ -158,4 +158,5 @@ def cases():
                                 ('cloudy',{'extra':b'/BE << /S /C >>'},'annotation.appearance'),
                                 ('complex-text',{'contents':b'<FEFF03A9>'},'appearance.font-encoding')]:
         yield Case(name,source(contents=options.get('contents',b'(HI)'),extra=options.get('extra',b'')),UNSUPPORTED,(REQUIREMENT,),
-                   'Remaining richer appearance surfaces retain explicit capability refusals',feature=feature)
+                   'Remaining richer appearance surfaces retain explicit capability refusals',feature=feature,
+                   information=('font.substituted',) if name=='complex-text' else ())
