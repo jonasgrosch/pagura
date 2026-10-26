@@ -21,7 +21,7 @@
         "files/encrypted-explicit-no-type",
         "files/encrypted-identity-no-type"
       ],
-      "gaps": "Annotation attachment discovery, collection and encrypted-payload models, MIME/date/associated-file conformance validation, streaming extraction, authoring and CLI/host/viewer integration remain open. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
+      "gaps": "Annotation attachment discovery, collection and encrypted-payload models, MIME/date/associated-file conformance validation, streaming extraction, authoring and CLI/host AF/RF selection remain open. Catalog CLI/host/viewer listing and extraction are implemented separately. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
     },
     {
       "id": "document-file-parameter-checks",
