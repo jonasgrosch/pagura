@@ -2,7 +2,7 @@
 
 use super::{SaveOptions, Transaction, features};
 use crate::form_appearance::{self, Appearance};
-use crate::forms::{ButtonKind, Field, FieldFlags, FieldKind, FieldValue, FilledValue, FormFiller};
+use crate::forms::{ButtonKind, Field, FieldFlags, FieldKind, FilledValue, FormFiller};
 use crate::{Dictionary, Document, Error, Name, NewObject, ObjectId, Result, Value};
 use pagura_core::text_string;
 
@@ -120,10 +120,7 @@ fn prepare_appearances(
                 if generated_button && filler.get(widget.field).is_none() {
                     // NeedAppearances may generate an untouched button. Make
                     // its preview selection explicit for the new state dictionary.
-                    let state = widget.appearance_state.or(match &field.value {
-                        Some(FieldValue::Name(name)) => Some(*name),
-                        _ => None,
-                    });
+                    let state = filler.button_appearance_state(index)?;
                     dictionary.insert(
                         Name::new(b"AS"),
                         Value::Name(state.cloned().unwrap_or_else(|| Name::new(b"Off"))),

@@ -2119,7 +2119,7 @@
         "12.7.8.3.2 Table 250"
       ],
       "status": "Normal button source/preview/persistence implemented with independent controls; this source checkpoint awaits hosted validation",
-      "rule": "ISO 32000-2 Tables 192/250 and 12.7.5.2: widget AS controls normal checkbox/radio display over disagreeing V; explicit edits select the new state. Source display retains stored AP. Missing normal artwork uses the shared form generator for source rendering, untouched preview, explicit regeneration and saving. CA uses the existing bounded DA/font/plain-text layout; the default toggle mark remains reader-chosen ZaDb. Push buttons use I/IF/TP through the existing Form BBox/Matrix parser and appearance fitting; Form streams remain source references interpreted by the ordinary XObject path. TP caption/icon halves and padding are declared reader policy. Table 250 controls scale conditions, proportions, alignment and border fit; alignment is ignored for anamorphic scaling. Push AP persistence creates a normal stream without V, DV or AS, and no-op saves retain exact source bytes. Malformed selected inputs have explicit errors; hidden/stored/text-only paths retain lazy reads. Paired observations establish caption/state generation in scoped adapters; icon synthesis is primary-defined scope independently checked here, not demonstrated competitor synthesis.",
+      "rule": "ISO 32000-2 Tables 192/250 and 12.7.5.2: widget AS controls normal checkbox/radio display over disagreeing V; explicit edits select the new state. Source display retains stored AP. Missing normal artwork uses the shared form generator for source rendering, untouched preview, explicit regeneration and saving. CA uses the existing bounded DA/font/plain-text layout; the default toggle mark remains reader-chosen ZaDb. Push buttons use I/IF/TP through the existing Form BBox/Matrix parser and appearance fitting; Form streams remain source references interpreted by the ordinary XObject path. TP caption/icon halves and padding are declared reader policy. Table 250 controls scale conditions, proportions, alignment and border fit; alignment is ignored for anamorphic scaling. Push AP persistence creates a normal stream without V, DV or AS, and no-op saves retain exact source bytes. Malformed selected inputs have explicit errors; hidden/stored/text-only paths retain lazy reads. Paired observations establish caption/state generation in scoped adapters; icon synthesis is primary-defined scope independently checked here, not demonstrated competitor synthesis. For missing AP and AS, Opt uses the existing numeric widget-ordinal on-state policy; duplicate export strings do not identify equal on states. Explicit non-Off AS is retained as the missing on-state name, including shared names under RadiosInUnison. The existing grouped filler index and already visited source Kids membership determine ordinals without another field-tree traversal. Null AS is absent (7.3.9). The generator, untouched preview and persisted AS share this selection.",
       "tests": [
         "annotation_display/button-observe-ordinary-content",
         "annotation_display/button-observe-ordinary-off",
@@ -2279,9 +2279,22 @@
         "crates/pagura/tests/api/editing/button_states.rs",
         "crates/pagura/tests/api/editing/widget_display.rs",
         "crates/pagura-document/src/forms/tests.rs",
-        "crates/pagura-interpret/tests/annotations.rs"
+        "crates/pagura-interpret/tests/annotations.rs",
+        "annotation_display/button-normal-opt-radio-0",
+        "annotation_display/button-normal-opt-radio-1",
+        "annotation_display/button-normal-opt-unison-0",
+        "annotation_display/button-normal-opt-unison-1",
+        "annotation_display/button-normal-opt-check-0",
+        "annotation_display/button-normal-opt-check-1",
+        "annotation_display/button-normal-opt-null-as",
+        "annotation_display/button-normal-opt-stored-control",
+        "annotation_display/button-normal-opt-unison-shared-state",
+        "annotation_display/button-normal-opt-check-shared-state",
+        "annotation_display/button-invalid-opt-count",
+        "annotation_display/button-normal-radio-unidentified",
+        "annotation_display/button-normal-radio-unidentified-off"
       ],
-      "gaps": "Rollover/down activation and action execution belong to host/interaction groups. Advanced rich, CID and complex-script captions, non-AcroForm source widgets and malformed membership repair retain existing boundaries. Caption partitioning/default toggle artwork is reader policy. The new checkpoint has no runtime acceptance claim until hosted gates complete."
+      "gaps": "Rollover/down activation and action execution belong to host/interaction groups. Advanced rich, CID and complex-script captions, non-AcroForm source widgets and malformed membership repair retain existing boundaries. Caption partitioning/default toggle artwork is reader policy. The new checkpoint has no runtime acceptance claim until hosted gates complete. Exclusive multi-widget radios with non-Off V but neither AS nor Opt cannot identify the selected child: missing-AP generation explicitly refuses annotation.appearance until an explicit edit supplies selection; an Off group remains renderable."
     }
   ]
 }

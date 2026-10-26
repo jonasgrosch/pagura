@@ -1,15 +1,15 @@
 //! Requested-widget field data, sharing the full form view's attribute readers.
 
 use super::{
-    FieldFlags, WidgetField,
+    ButtonKind, FieldFlags, FieldKind, FieldValue, WidgetField,
     attributes::{self, Inherited, Key},
-    values,
+    values, widgets,
 };
 use crate::{
     Document,
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Error, Result};
+use pagura_core::{Dictionary, Error, Name, Result};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Copy)]
@@ -29,7 +29,7 @@ pub(super) fn read<'a>(
     };
     let (form, form_source) = context.dictionary(form, catalog_source)?;
     let (dictionary, source) = (annotation, Source::default());
-    let ancestors = ancestry(
+    let (ancestors, membership) = ancestry(
         &mut context,
         Node { dictionary, source },
         Node {
@@ -86,11 +86,22 @@ pub(super) fn read<'a>(
         field.source,
     )?;
     let value = values::read(&mut context, &kind, effective.get(Key::V))?.map(|(value, _)| value);
+    let button_state = state(
+        &mut context,
+        &kind,
+        value.as_ref(),
+        Node {
+            dictionary: annotation,
+            source,
+        },
+        if separate { membership } else { (0, 1) },
+    )?;
     context.allocate::<WidgetField<'_>>(1, field.source)?;
     Ok(Some(WidgetField {
         kind,
         flags,
         value,
+        button_state,
         default_appearance: attributes::appearance(&mut context, effective.get(Key::Da))?,
         justification: attributes::quadding(&mut context, effective.get(Key::Q))?,
         dictionary: field.dictionary,
@@ -106,12 +117,44 @@ pub(super) fn read<'a>(
     }))
 }
 
+/// Resolve normal toggle selection without visiting another field subtree.
+fn state<'a>(
+    context: &mut Context<'a>,
+    kind: &FieldKind<'a>,
+    value: Option<&FieldValue<'a>>,
+    widget: Node<'a>,
+    membership: (usize, usize),
+) -> Result<Option<&'a Name>> {
+    let FieldKind::Button {
+        kind: ButtonKind::CheckBox | ButtonKind::Radio,
+        export_values,
+    } = kind
+    else {
+        return Ok(None);
+    };
+    let selected = widgets::state(context, widget.dictionary, widget.source)?;
+    let on = if selected.is_some() || export_values.is_empty() {
+        None
+    } else {
+        if export_values.len() != membership.1 {
+            return Err(widget
+                .source
+                .error(Error::syntax("button Opt must have one export per widget")));
+        }
+        // Charge the decimal String and its Name copy before allocating either.
+        context.allocate::<u8>(6 * size_of::<usize>(), widget.source)?;
+        Some(Name::new(membership.0.to_string().as_bytes()))
+    };
+    Ok(values::button_state(value, selected, on.as_ref()))
+}
+
 /// Walk only Parent edges, proving each forward membership along the way.
 fn ancestry<'a>(
     context: &mut Context<'a>,
     mut current: Node<'a>,
     form: Node<'a>,
-) -> Result<Vec<Node<'a>>> {
+) -> Result<(Vec<Node<'a>>, (usize, usize))> {
+    let mut membership = (0, 1);
     let mut ancestors = Vec::new();
     let mut seen = BTreeSet::new();
     loop {
@@ -128,16 +171,19 @@ fn ancestry<'a>(
             break;
         };
         let (dictionary, source) = context.dictionary(parent, current.source)?;
-        member(
+        let (ordinal, siblings) = member(
             context,
             Node { dictionary, source },
             b"Kids",
             current.dictionary,
         )?;
+        if ancestors.len() == 1 {
+            membership = (ordinal, siblings);
+        }
         current = Node { dictionary, source };
     }
     member(context, form, b"Fields", current.dictionary)?;
-    Ok(ancestors)
+    Ok((ancestors, membership))
 }
 
 /// Check the forward edge without descending into any sibling dictionary.
@@ -146,27 +192,27 @@ fn member<'a>(
     owner: Node<'a>,
     key: &[u8],
     child: &Dictionary,
-) -> Result<()> {
+) -> Result<(usize, usize)> {
     let entries = context.required(owner.dictionary, key, owner.source)?;
     let entries = attributes::array(context, entries, owner.source)?;
-    let mut found = false;
-    for entry in entries {
+    let mut found = None;
+    for (index, entry) in entries.iter().enumerate() {
         context.step(0, owner.source)?;
         let (entry, _) = context.resolve(entry, owner.source)?;
         if entry
             .as_dictionary()
             .is_some_and(|dictionary| std::ptr::eq(dictionary, child))
         {
-            if found {
+            if found.is_some() {
                 return Err(owner
                     .source
                     .error(Error::cycle("repeated widget field membership")));
             }
-            found = true;
+            found = Some(index);
         }
     }
-    if found {
-        Ok(())
+    if let Some(index) = found {
+        Ok((index, entries.len()))
     } else {
         Err(owner.source.error(Error::syntax(
             "widget Parent disagrees with Fields or Kids membership",

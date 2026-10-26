@@ -51,6 +51,7 @@ fn generated_on_names_share_the_fillers_source_selection() {
         ("/AS /Off /V /Value", b"Value"),
         ("/AS /Off /V /Off /DV /Default", b"Default"),
         ("/Opt [(Export)]", b"0"),
+        ("/Opt [(Export)] /AS /Explicit", b"Explicit"),
         ("", b"Yes"),
     ] {
         let annotation = format!(
@@ -305,4 +306,134 @@ fn persisting_off_validates_the_unselected_caption_without_partial_state() {
     );
     assert_eq!(document.original_bytes(), original);
     assert_eq!(filler.changes().count(), 1);
+}
+
+#[test]
+fn missing_as_uses_opt_ordinals_and_shared_on_names_preserve_unison() {
+    for suffix in [
+        "radio-1",
+        "unison-1",
+        "check-1",
+        "null-as",
+        "unison-shared-state",
+        "check-shared-state",
+    ] {
+        let name = format!("button-normal-opt-{suffix}");
+        let original = fixture("annotation_display", &format!("{name}.pdf"));
+        let document = open(original.clone()).unwrap();
+        let mut filler = document.form_filler().unwrap().unwrap();
+        let shared = suffix.ends_with("shared-state");
+        for (index, widget) in filler.form().widgets.iter().enumerate() {
+            let state = filler.button_appearance_state(index).unwrap();
+            let source = document.widget_field(widget.dictionary).unwrap().unwrap();
+            assert_eq!(source.button_state, state, "{name}: source/preview state");
+            assert_eq!(
+                state.map(Name::as_bytes),
+                if shared {
+                    Some(b"Shared".as_slice())
+                } else if index == 1 {
+                    Some(b"1".as_slice())
+                } else {
+                    None
+                },
+                "{name}"
+            );
+        }
+        let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
+        let reopened = open(saved).unwrap();
+        let form = reopened.acro_form().unwrap().unwrap();
+        for (index, widget) in form.widgets.iter().enumerate() {
+            let expected = if shared {
+                b"Shared".as_slice()
+            } else if index == 1 {
+                b"1".as_slice()
+            } else {
+                b"Off".as_slice()
+            };
+            assert_eq!(
+                widget.appearance_state.unwrap().as_bytes(),
+                expected,
+                "{name}: saved state"
+            );
+            let ap = reopened
+                .resolve_dictionary(widget.dictionary.get(b"AP").unwrap())
+                .unwrap();
+            let states = reopened.resolve_dictionary(ap.get(b"N").unwrap()).unwrap();
+            assert!(
+                states.get(expected).is_some(),
+                "{name}: dangling appearance state"
+            );
+        }
+        // Duplicate export strings do not conflate distinct numeric on names;
+        // equal explicit on names do turn on together under the existing flags.
+        filler
+            .set(
+                0,
+                FillValue::Button(ButtonValue::Widget {
+                    index: 0,
+                    state: None,
+                }),
+            )
+            .unwrap();
+        let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
+        let edited = open(saved.clone()).unwrap();
+        let image = pagura::render_page(
+            &edited,
+            edited.page(0).unwrap(),
+            &RenderOptions::from_dpi(72.0),
+        )
+        .unwrap();
+        let oracle = if shared {
+            format!("{name}.ppm")
+        } else {
+            "button-normal-opt-radio-0.ppm".to_owned()
+        };
+        assert_eq!(
+            crate::support::ppm(&image),
+            fixture("annotation_display", &oracle),
+            "{name}: explicit selection"
+        );
+        exported(&name, &saved, &original).unwrap();
+    }
+}
+
+#[test]
+fn ambiguous_exclusive_radio_display_requires_an_explicit_selection() {
+    let original = fixture("annotation_display", "button-normal-radio-unidentified.pdf");
+    let document = open(original.clone()).unwrap();
+    let mut filler = document.form_filler().unwrap().unwrap();
+    let error = pagura::render_page(
+        &document,
+        document.page(0).unwrap(),
+        &RenderOptions::default(),
+    )
+    .unwrap_err();
+    assert!(
+        matches!(error.kind, ErrorKind::Unsupported(feature) if feature.as_str() == "annotation.appearance")
+    );
+    assert!(
+        matches!(save_filled_form(&filler, &SaveOptions::default()).unwrap_err().kind, ErrorKind::Unsupported(feature) if feature.as_str() == "annotation.appearance")
+    );
+    assert_eq!(document.original_bytes(), original);
+    filler
+        .set(
+            0,
+            FillValue::Button(ButtonValue::Widget {
+                index: 0,
+                state: None,
+            }),
+        )
+        .unwrap();
+    let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
+    let reopened = open(saved).unwrap();
+    let image = pagura::render_page(
+        &reopened,
+        reopened.page(0).unwrap(),
+        &RenderOptions::from_dpi(72.0),
+    )
+    .unwrap();
+    assert_eq!(
+        crate::support::ppm(&image),
+        fixture("annotation_display", "button-normal-opt-radio-0.ppm")
+    );
 }

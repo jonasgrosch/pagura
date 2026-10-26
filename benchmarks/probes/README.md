@@ -631,7 +631,7 @@ through the ordinary interpreter; the shared appearance owner holds the one
 BBox/Matrix parser, upright bounds and fitting transform. Their former
 interpreter-local definitions are removed. Actions remain inert.
 
-The 74 new pixel controls bring G01 to **537**, preserving all prior 463
+The 85 new pixel controls bring G01 to **548**, preserving all prior 463
 identities, pixels and tolerances. Expected caption ink comes from the original
 Type3 widths and rectangles. For the 48-by-32 widget, the 16-by-8 icon fits to
 48-by-24 at page (8,12); unscaled fitting gives 16-by-8 at (24,20). The transformed
@@ -640,10 +640,19 @@ red. Ordinary Form Matrix/BBox controls use these geometry facts without an
 annotation. Caption/icon equal-half partitions and two-unit text padding are
 explicit reader policy. Border fitting, mixed-dimension anamorphic scaling,
 all TP positions, alignment, rotations, separate/inherited fields and AS/V
-selection have independent controls. Fifteen malformed input cases, ignored
+selection have independent controls. Sixteen malformed input cases, ignored
 entries, text-only laziness and existing program-byte budgets are also covered.
 Push saves produce AP/N streams with no V, DV or AS; toggle saves preserve both
-states and validate an unselected malformed caption atomically. Untouched
+states and validate an unselected malformed caption atomically. Missing AS with
+Opt compares V with the widget ordinal; duplicate export strings do not equate
+distinct on-state names. Explicit shared AS names remain shared for checkboxes
+and radios in unison. Numeric, shared-name, null-AS and stored controls verify
+source/preview/save selection, including persisted Off rather than dangling AS.
+The requested view reuses its existing Kids membership; the filler uses its
+existing grouped widget index. An exclusive multi-widget radio with non-Off V
+but no AP, AS or Opt refuses `annotation.appearance` rather than guessing the
+selected child; an explicit widget edit resolves that ambiguity. Off groups
+remain renderable. Untouched
 no-op saves remain byte-identical.
 
 The preceding retained head `5321c0958726c2174b1e0e1518debf34dee738e7`

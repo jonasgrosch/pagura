@@ -13,7 +13,7 @@ use crate::values::{number, optional, optional_dictionary};
 use pagura_core::{Diagnostics, Dictionary, Error, Meter, Name, Rect, Result, Value, text_string};
 use pagura_document::{
     Document,
-    forms::{ButtonKind, FieldValue, Justification},
+    forms::{ButtonKind, FieldFlags, FieldKind, FieldValue, Justification},
 };
 
 pub(super) fn generate(
@@ -23,15 +23,26 @@ pub(super) fn generate(
 ) -> Result<AppearanceStream> {
     let document = input.field.document;
     let limits = document.limits();
+    if kind == ButtonKind::Radio
+        && !input.field.flags.contains(FieldFlags::RADIOS_IN_UNISON)
+        && input.field.change.is_none()
+        && matches!(input.field.value, Some(FieldValue::Name(name)) if name.as_bytes() != b"Off")
+        && matches!(input.field.kind, FieldKind::Button { export_values, .. } if export_values.is_empty())
+        && optional(document, input.widget, b"AS")?.is_none()
+        && optional(document, input.field.dictionary, b"Kids")?
+            .and_then(Value::as_array)
+            .is_some_and(|kids| kids.len() > 1)
+    {
+        return Err(Error::unsupported(
+            crate::features::ANNOTATION_APPEARANCE,
+            "missing radio appearance needs AS, Opt or an explicit widget selection",
+        ));
+    }
     let style = Style::read(document, input.widget)?;
     let frame = crate::widget_rotation::frame(style.rotation, bounds(input.bounds)?)?;
     let bbox = frame.bounds;
     let mut content = Program::new(&limits);
     style.paint(&mut content, bbox)?;
-    let state = state.or(match input.field.value {
-        Some(FieldValue::Name(name)) => Some(*name),
-        _ => None,
-    });
     let mut resources = Dictionary::new();
     if kind == ButtonKind::Push || state.is_some_and(|name| name.as_bytes() != b"Off") {
         let mk = optional_dictionary(document, input.widget, b"MK")?;

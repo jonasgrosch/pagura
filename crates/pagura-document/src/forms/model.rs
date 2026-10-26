@@ -256,6 +256,9 @@ pub struct WidgetField<'a> {
     /// Effective source V for stateful fields, decoded without modifying source
     /// bytes. Push buttons do not use a value.
     pub value: Option<FieldValue<'a>>,
+    /// Candidate normal state for a missing checkbox/radio appearance. AS wins over V;
+    /// numeric Opt states select their widget ordinal. None means Off.
+    pub button_state: Option<&'a Name>,
     /// Effective DA, including AcroForm fallback.
     pub default_appearance: Option<&'a [u8]>,
     /// Effective Q, including AcroForm fallback.

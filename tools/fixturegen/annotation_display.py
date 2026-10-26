@@ -822,6 +822,33 @@ def normal_button_cases():
     objects[85]=stream(b'0 g -100 -100 300 300 re f',
                        b'/Type /XObject /Subtype /Form /BBox [2 3 18 11] /Matrix [0 1 -1 0 11 -2] /Resources << >>')
     yield case('ordinary-form-bbox-clip',objects,[((24,8,16,32),black)],preview=False)
+    # Table 230 permits ordinal on-state names even for duplicate exports.
+    # In-unison refers to equal on-state names, not equal export strings.
+    for mode,flags in [('radio',1<<15),('unison',(1<<15)|(1<<25)),('check',0)]:
+        for selected in (0,1):
+            objects=button_group_objects(flags,selected)
+            yield case(f'opt-{mode}-{selected}',objects,widget_glyphs('A',x=15+28*selected,y=21))
+    objects=button_group_objects(1<<15,1)
+    for index in (21,22):objects[index]['AS']=None
+    yield case('opt-null-as',objects,widget_glyphs('B',x=43,y=21))
+    objects=button_group_objects(1<<15,1)
+    for index in (0,1):
+        objects[21+index]|={'AS':pdf_name(str(index) if index==1 else 'Off'),
+                            'AP':{'N':{str(index):ref(86),'Off':ref(81)}}}
+    objects[86]=stream(b'0 g 7 13 5 7 re f',b'/Subtype /Form /BBox [0 0 20 32] /Resources << >>')
+    yield case('opt-stored-control',objects,widget_glyphs('B',x=43,y=21))
+    for mode,flags in [('unison',(1<<15)|(1<<25)),('check',0)]:
+        objects=button_group_objects(flags,1);objects[11]['V']=pdf_name('Shared')
+        for index in (21,22):objects[index]['AS']=pdf_name('Shared')
+        yield case('opt-'+mode+'-shared-state',objects,widget_glyphs('A',x=15,y=21)+widget_glyphs('B',x=43,y=21))
+    objects=button_group_objects(1<<15,1);objects[11].pop('Opt')
+    yield Case('button-normal-radio-unidentified',widget_pdf(objects),UNSUPPORTED,(BUTTON_REQUIREMENT,),
+               'Exclusive radio group has no AS/Opt evidence identifying the selected child; explicit edits can resolve it',feature='annotation.appearance')
+    objects[11]['V']=pdf_name('Off')
+    yield case('radio-unidentified-off',objects,[])
+    objects=button_group_objects(1<<15,1);objects[11]['Opt']=['one']
+    yield Case('button-invalid-opt-count',widget_pdf(objects),OPEN,(BUTTON_REQUIREMENT,),
+               'Opt requires one export per widget; a missing-AS source display validates the existing membership',extra={'render_error':'syntax'})
     for label,variant,change in [
         ('position-range','push-icon',lambda o:o[11]['MK'].update(TP=7)),
         ('position-real','push-icon',lambda o:o[11]['MK'].update(TP=1.0)),
@@ -842,3 +869,15 @@ def normal_button_cases():
         objects=button_objects(variant);change(objects)
         yield Case('button-invalid-'+label,widget_pdf(objects),OPEN,(BUTTON_REQUIREMENT,),
                    'Selected normal-button generation input has a named syntax boundary',extra={'render_error':'syntax'})
+
+
+def button_group_objects(flags,selected):
+    """Two distinct normal captions share duplicate export strings, not names."""
+    objects=button_objects('radio-caption');field=objects[11]
+    for key in ('Subtype','Rect','AS','MK'):field.pop(key,None)
+    field|={'Kids':[ref(21),ref(22)],'Ff':flags,'Opt':['same','same'],'V':pdf_name(str(selected))}
+    objects[10]['NeedAppearances']=True;objects[3]['Annots']=[ref(21),ref(22)]
+    for index in range(2):
+        objects[21+index]={'Subtype':pdf_name('Widget'),'Parent':ref(11),
+                           'Rect':[8+28*index,8,28+28*index,40],'MK':{'CA':'AB'[index]}}
+    return objects

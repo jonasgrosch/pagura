@@ -6982,6 +6982,149 @@
         "rgb_sha256": "2de4f7d27de6ddeeac98134c5e8b7ffa2ff631a53d3e1580caf6da791550d931",
         "tolerance": 1
       }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-radio-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-radio-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "5f3295daba33dd52bfdd7d7f86a1a9219d2ab41d07e804377d60ef8bd70121e1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-radio-1",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-radio-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e7b8d26e0ab7e37d6304d5fb9c6fb5df851a889d3f55ea33869cf76b4d578f43",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-unison-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-unison-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "5f3295daba33dd52bfdd7d7f86a1a9219d2ab41d07e804377d60ef8bd70121e1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-unison-1",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-unison-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e7b8d26e0ab7e37d6304d5fb9c6fb5df851a889d3f55ea33869cf76b4d578f43",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-check-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-check-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "5f3295daba33dd52bfdd7d7f86a1a9219d2ab41d07e804377d60ef8bd70121e1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-check-1",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-check-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e7b8d26e0ab7e37d6304d5fb9c6fb5df851a889d3f55ea33869cf76b4d578f43",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-null-as",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-null-as",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e7b8d26e0ab7e37d6304d5fb9c6fb5df851a889d3f55ea33869cf76b4d578f43",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-stored-control",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-stored-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e7b8d26e0ab7e37d6304d5fb9c6fb5df851a889d3f55ea33869cf76b4d578f43",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-unison-shared-state",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-unison-shared-state",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "260fd91b5806d404bdd306f2e0e97b98a9257ecaef982cdd3b7690d706027ed1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-opt-check-shared-state",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-opt-check-shared-state",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "260fd91b5806d404bdd306f2e0e97b98a9257ecaef982cdd3b7690d706027ed1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.button-normal-radio-unidentified-off",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/button-normal-radio-unidentified-off",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
     }
   ]
 }

@@ -292,6 +292,19 @@ impl Context<'_, '_> {
         original: Option<&Appearance>,
         state: Option<&Name>,
     ) -> Result<AppearanceStream> {
+        let state = if state.is_none()
+            && matches!(
+                self.field.kind,
+                FieldKind::Button {
+                    kind: pagura_document::forms::ButtonKind::CheckBox
+                        | pagura_document::forms::ButtonKind::Radio,
+                    ..
+                }
+            ) {
+            self.filler.button_appearance_state(self.index)?
+        } else {
+            state
+        };
         Generation {
             field: variable::Inputs {
                 document: self.document(),
@@ -437,24 +450,6 @@ pub(crate) fn source_widget(
             "XFA appearance generation is unavailable",
         ));
     }
-    let state = if matches!(
-        field.kind,
-        FieldKind::Button {
-            kind: pagura_document::forms::ButtonKind::CheckBox
-                | pagura_document::forms::ButtonKind::Radio,
-            ..
-        }
-    ) {
-        crate::values::optional(document, annotation, b"AS")?
-            .map(|value| {
-                value
-                    .as_name()
-                    .ok_or(Error::syntax("widget AS must be a name"))
-            })
-            .transpose()?
-    } else {
-        None
-    };
     Generation {
         field: variable::Inputs {
             document,
@@ -472,7 +467,7 @@ pub(crate) fn source_widget(
         fonts,
         policy: UpdatePolicy::Specification,
     }
-    .appearance(None, state)
+    .appearance(None, field.button_state)
 }
 
 /// The stored normal appearance a widget selects with its current state,
