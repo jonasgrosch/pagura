@@ -90,11 +90,10 @@ fn document_services_share_source_options_and_require_explicit_output_selection(
     );
     assert_eq!(
         run(&["attachments", "--strict", "a.pdf", "--password", "pw"]),
-        Ok(Command::Attachments(source(
-            "a.pdf",
-            b"pw",
-            Recovery::Strict
-        )))
+        Ok(Command::Attachments {
+            source: source("a.pdf", b"pw", Recovery::Strict),
+            page: None
+        })
     );
     assert_eq!(
         run(&["extract-metadata", "a.pdf", "x.xmp"]),
@@ -107,6 +106,7 @@ fn document_services_share_source_options_and_require_explicit_output_selection(
         run(&["extract-attachment", "a.pdf", "2", "UF", "data.bin"]),
         Ok(Command::ExtractAttachment {
             source: source("a.pdf", b"", Recovery::Repair),
+            page: None,
             index: 2,
             key: "UF".into(),
             output: PathBuf::from("data.bin")
@@ -116,6 +116,7 @@ fn document_services_share_source_options_and_require_explicit_output_selection(
         run(&["check-attachment", "--strict", "a.pdf", "0", "F"]),
         Ok(Command::CheckAttachment {
             source: source("a.pdf", b"", Recovery::Strict),
+            page: None,
             index: 0,
             key: "F".into()
         })
@@ -362,5 +363,75 @@ fn overprint_selects_the_preview_of_every_rendering_command() {
             args.extend(["--overprint", mode]);
             assert_eq!(preview(&args), expected, "{args:?}");
         }
+    }
+}
+
+#[test]
+fn attachment_page_selection_is_explicit_and_scoped_to_attachment_commands() {
+    assert_eq!(
+        run(&["attachments", "--page", "2", "a.pdf"]),
+        Ok(Command::Attachments {
+            source: source("a.pdf", b"", Recovery::Repair),
+            page: Some(2),
+        })
+    );
+    assert_eq!(
+        run(&[
+            "extract-attachment",
+            "a.pdf",
+            "3",
+            "UF",
+            "out.bin",
+            "--page",
+            "2"
+        ]),
+        Ok(Command::ExtractAttachment {
+            source: source("a.pdf", b"", Recovery::Repair),
+            page: Some(2),
+            index: 3,
+            key: "UF".into(),
+            output: PathBuf::from("out.bin"),
+        })
+    );
+    assert_eq!(
+        run(&[
+            "check-attachment",
+            "--strict",
+            "--page",
+            "0",
+            "a.pdf",
+            "1",
+            "F"
+        ]),
+        Ok(Command::CheckAttachment {
+            source: source("a.pdf", b"", Recovery::Strict),
+            page: Some(0),
+            index: 1,
+            key: "F".into(),
+        })
+    );
+    assert_eq!(
+        run(&["attachments", "--page"]),
+        Err("--page needs a value".into())
+    );
+    assert_eq!(
+        run(&["attachments", "--page", "-1", "a.pdf"]),
+        Err("--page must be a non-negative integer, not -1".into())
+    );
+    for command in [
+        "metadata",
+        "extract-metadata",
+        "inspect",
+        "render",
+        "text",
+        "scan",
+        "find",
+    ] {
+        let mut args = vec![command, "--page", "0", "a.pdf"];
+        if command == "find" {
+            args.push("query");
+        }
+        let error = run(&args).unwrap_err();
+        assert_eq!(error, format!("--page does not apply to {command}"));
     }
 }

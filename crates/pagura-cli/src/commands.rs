@@ -43,20 +43,28 @@ pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure
         Command::Licenses => licenses(out)?,
         Command::Inspect(source) => inspect(source, out)?,
         Command::Metadata(source) => document_services::metadata(source, out)?,
-        Command::Attachments(source) => document_services::attachments(source, out)?,
+        Command::Attachments { source, page } => {
+            document_services::attachments(source, *page, out)?
+        }
         Command::ExtractMetadata { source, output } => {
             document_services::extract_metadata(source, output)?;
         }
         Command::ExtractAttachment {
             source,
+            page,
             index,
             key,
             output,
         } => {
-            document_services::extract_attachment(source, *index, key, output)?;
+            document_services::extract_attachment(source, *page, *index, key, output)?;
         }
-        Command::CheckAttachment { source, index, key } => {
-            document_services::check_attachment(source, *index, key, out)?;
+        Command::CheckAttachment {
+            source,
+            page,
+            index,
+            key,
+        } => {
+            document_services::check_attachment(source, *page, *index, key, out)?;
         }
         Command::Text { source, page } => text(source, *page, out)?,
         Command::Find { source, query } => find(source, query, out)?,

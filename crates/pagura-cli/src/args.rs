@@ -12,10 +12,10 @@ use std::str::FromStr;
 pub(crate) const USAGE: &str = "\
 usage: pagura inspect [--strict] [--password TEXT] INPUT
        pagura metadata [--strict] [--password TEXT] INPUT
-       pagura attachments [--strict] [--password TEXT] INPUT
+       pagura attachments [--strict] [--password TEXT] [--page PAGE] INPUT
        pagura extract-metadata [--strict] [--password TEXT] INPUT OUTPUT
-       pagura extract-attachment [--strict] [--password TEXT] INPUT INDEX KEY OUTPUT
-       pagura check-attachment [--strict] [--password TEXT] INPUT INDEX KEY
+       pagura extract-attachment [--strict] [--password TEXT] [--page PAGE] INPUT INDEX KEY OUTPUT
+       pagura check-attachment [--strict] [--password TEXT] [--page PAGE] INPUT INDEX KEY
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
        pagura render [--strict] [--password TEXT] [--overprint MODE] [--timings]
@@ -87,6 +87,10 @@ options:
   --version        print the version
   --help, -h       print this help
 
+--page PAGE selects file-attachment annotations on the zero-based page for
+attachments, extract-attachment and check-attachment. INDEX then identifies the
+original page Annots slot, including other annotation types. No catalog fallback.
+
 An option that a command does not take is a usage error; --version accepts
 the rendering option --overprint and ignores it, so a harness can put it
 before every invocation. Exit status: 0 on success, 1
@@ -109,13 +113,14 @@ pub(crate) enum Command {
     Inspect(Source),
     /// Print typed document metadata as JSON.
     Metadata(Source),
-    /// Print catalog attachment entries as JSON, without decoding their payloads.
-    Attachments(Source),
+    /// Print catalog or selected-page attachment JSON without decoding payloads.
+    Attachments { source: Source, page: Option<usize> },
     /// Decode the document metadata stream to a new, caller-named file.
     ExtractMetadata { source: Source, output: PathBuf },
-    /// Decode a selected catalog attachment payload to a new, caller-named file.
+    /// Decode a selected catalog/page attachment payload to a new, caller-named file.
     ExtractAttachment {
         source: Source,
+        page: Option<usize>,
         index: usize,
         key: String,
         output: PathBuf,
@@ -123,6 +128,7 @@ pub(crate) enum Command {
     /// Compare selected attachment size/checksum declarations with decoded bytes.
     CheckAttachment {
         source: Source,
+        page: Option<usize>,
         index: usize,
         key: String,
     },
@@ -263,18 +269,20 @@ enum Flag {
     Password,
     Overprint,
     MaxPages,
+    Page,
     Format,
     Transparent,
     Version,
 }
 
 impl Flag {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 9] = [
         Self::Strict,
         Self::Timings,
         Self::Password,
         Self::Overprint,
         Self::MaxPages,
+        Self::Page,
         Self::Format,
         Self::Transparent,
         Self::Version,
@@ -287,6 +295,7 @@ impl Flag {
             Self::Password => "--password",
             Self::Overprint => "--overprint",
             Self::MaxPages => "--max-pages",
+            Self::Page => "--page",
             Self::Format => "--format",
             Self::Transparent => "--transparent",
             Self::Version => "--version",
@@ -301,6 +310,7 @@ struct Options {
     password: Vec<u8>,
     overprint: OverprintPreview,
     max_pages: Option<usize>,
+    page: Option<usize>,
     format: ImageFormat,
 }
 
@@ -335,6 +345,7 @@ impl Options {
                 };
             }
             Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
+            Flag::Page => self.page = Some(number(&value()?, "--page")?),
             Flag::Format => {
                 self.format = match value()?.to_str() {
                     Some("ppm") => ImageFormat::Ppm,
@@ -577,21 +588,33 @@ fn document_command(
     ) {
         return Ok(None);
     }
-    options.allow(name, &[Flag::Strict, Flag::Password])?;
+    if matches!(
+        name,
+        "attachments" | "extract-attachment" | "check-attachment"
+    ) {
+        options.allow(name, &[Flag::Strict, Flag::Password, Flag::Page])?;
+    } else {
+        options.allow(name, &[Flag::Strict, Flag::Password])?;
+    }
     let command = match (name, operands) {
         ("metadata", [input]) => Command::Metadata(options.chosen_source(input)),
-        ("attachments", [input]) => Command::Attachments(options.chosen_source(input)),
+        ("attachments", [input]) => Command::Attachments {
+            source: options.chosen_source(input),
+            page: options.page,
+        },
         ("extract-metadata", [input, output]) => Command::ExtractMetadata {
             source: options.chosen_source(input),
             output: PathBuf::from(output),
         },
         ("check-attachment", [input, index, key]) => Command::CheckAttachment {
             source: options.chosen_source(input),
+            page: options.page,
             index: number(index, "INDEX")?,
             key: text(key, "KEY")?.to_owned(),
         },
         ("extract-attachment", [input, index, key, output]) => Command::ExtractAttachment {
             source: options.chosen_source(input),
+            page: options.page,
             index: number(index, "INDEX")?,
             key: text(key, "KEY")?.to_owned(),
             output: PathBuf::from(output),

@@ -63,8 +63,22 @@
         "file_annotations/encrypted-no-type",
         "file_annotations/late-failure"
       ],
-      "gaps": "CLI/host/viewer annotation selection, activation policy, generic annotation/markup views and icon appearances remain separate work; no file execution, full annotation or profile validation is implied.",
+      "gaps": "Host/viewer annotation selection, activation policy, generic annotation/markup views and icon appearances remain separate work; no file execution, full annotation or profile validation is implied.",
       "rule": "Keep original Annots indexes and resolved annotation/file/payload identities distinct. Require indirect annotation dictionaries and FileAttachment FS/Rect. Normalize geometry, decode Contents without FS/Desc substitution, preserve icon names and apply the PushPin default. Validate shared discovery shape and matching attachment entries under source-located work/result limits. Never decode or activate a payload during discovery."
+    },
+    {
+      "id": "cli-annotation-attachments",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "explicit page attachment listing/extraction/checks implemented; hosted validation pending",
+      "tests": [
+        "pagura-cli/src/args/tests.rs attachment_page_selection_is_explicit_and_scoped_to_attachment_commands",
+        "pagura-cli/tests/cli.rs page_attachment_json_keeps_annotation_geometry_names_and_original_indexes",
+        "pagura-cli/tests/cli.rs annotation_extraction_selects_annots_indexes_without_catalog_fallback",
+        "pagura-cli/tests/cli.rs annotation_checks_record_scope_and_failures_have_no_completed_json"
+      ],
+      "gaps": "AF/RF selection, host/viewer annotation selection and streaming remain separate work.",
+      "rule": "Only attachment commands accept --page; page and Annots indexes start at zero. Page listing has a distinct annotations schema with source identity, geometry, Contents and icon/file fields. Selection matches the original Annots index and exact EF key without catalog fallback. Full view/authorization/decoding succeeds before output creation or completed check JSON; existing destinations are never overwritten."
     }
   ]
 }

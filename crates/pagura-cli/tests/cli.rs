@@ -709,3 +709,216 @@ fn scan_labels_unreadable_input_as_io() {
         "{text}"
     );
 }
+
+#[test]
+fn page_attachment_json_keeps_annotation_geometry_names_and_original_indexes() {
+    let output = pagura()
+        .args(["attachments", "--strict", "--page", "0"])
+        .arg(fixture_path("file_annotations", "populated.pdf"))
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{:?}", output.stderr);
+    let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
+    assert_eq!(report.get("page").and_then(Json::as_u64), Some(0));
+    let annotations = report.get("annotations").and_then(Json::as_array).unwrap();
+    assert_eq!(annotations.len(), 1);
+    let annotation = &annotations[0];
+    assert_eq!(annotation.get("index").and_then(Json::as_u64), Some(0));
+    assert_eq!(
+        annotation
+            .get("object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(8)
+    );
+    assert_eq!(
+        annotation.get("rectangle"),
+        Some(&Json::parse("[1,2,9,12]").unwrap())
+    );
+    assert_eq!(
+        annotation.get("contents").and_then(Json::as_str),
+        Some("Annotation Ω")
+    );
+    assert_eq!(
+        annotation.get("icon_hex").and_then(Json::as_str),
+        Some("5061706572636c6970")
+    );
+    assert_eq!(
+        annotation.get("declared_icon_hex"),
+        annotation.get("icon_hex")
+    );
+    let file = annotation.get("file").unwrap();
+    assert_eq!(
+        file.get("object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        file.get("description").and_then(Json::as_str),
+        Some("Attachment €")
+    );
+    assert_eq!(
+        file.get("names").unwrap().get("UF").and_then(Json::as_str),
+        Some("Grüße Ω.txt")
+    );
+    let output = pagura()
+        .args(["attachments", "--page", "0"])
+        .arg(fixture_path("file_annotations", "mixed.pdf"))
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    let annotations = report.get("annotations").and_then(Json::as_array).unwrap();
+    assert_eq!(
+        annotations
+            .iter()
+            .map(|annotation| annotation.get("index").and_then(Json::as_u64))
+            .collect::<Vec<_>>(),
+        [Some(1), Some(2)]
+    );
+    for name in ["page-only.pdf", "encrypted-no-type.pdf"] {
+        let output = pagura()
+            .args(["attachments", "--page", "0"])
+            .arg(fixture_path("file_annotations", name))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{name}: listing needs no payload authorization"
+        );
+        let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+        let annotations = report.get("annotations").and_then(Json::as_array).unwrap();
+        assert_eq!(annotations.len(), 1);
+        assert_eq!(annotations[0].get("contents"), Some(&Json::Null));
+        assert_eq!(
+            annotations[0].get("icon_hex").and_then(Json::as_str),
+            Some("5075736850696e")
+        );
+        assert_eq!(annotations[0].get("declared_icon_hex"), Some(&Json::Null));
+    }
+}
+
+#[test]
+fn annotation_extraction_selects_annots_indexes_without_catalog_fallback() {
+    let scratch = Scratch::new().unwrap();
+    let input = fixture_path("file_annotations", "mixed.pdf");
+    let target = scratch.0.join("selected.bin");
+    for success in [true, false] {
+        let output = pagura()
+            .args(["extract-attachment", "--page", "0"])
+            .arg(&input)
+            .args(["1", "UF"])
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.success(), success, "new output only");
+        assert!(
+            output.stdout.is_empty(),
+            "extraction never emits payload bytes on stdout"
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"attachment\0bytes\xff\n");
+    }
+    assert_eq!(
+        std::fs::read(&input).unwrap(),
+        fixture("file_annotations", "mixed.pdf")
+    );
+    let target = scratch.0.join("refused.bin");
+    for (name, page, index, key) in [
+        ("mixed.pdf", "0", "0", "UF"),
+        ("mixed.pdf", "0", "3", "UF"),
+        ("mixed.pdf", "99", "1", "UF"),
+        ("mixed.pdf", "0", "1", "Unix"),
+        ("late-failure.pdf", "0", "0", "UF"),
+        ("external.pdf", "0", "0", "F"),
+        ("encrypted-no-type.pdf", "0", "0", "F"),
+    ] {
+        let output = pagura()
+            .args(["extract-attachment", "--page", page])
+            .arg(fixture_path("file_annotations", name))
+            .args([index, key])
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{name} {page} {index} {key}");
+        assert!(
+            !target.exists(),
+            "failed selection/decoding must not create output"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "failed extraction has no success bytes"
+        );
+    }
+    let output = pagura()
+        .args([
+            "extract-attachment",
+            "--page",
+            "0",
+            "--password",
+            "attachment",
+        ])
+        .arg(fixture_path("file_annotations", "encrypted-no-type.pdf"))
+        .args(["0", "F"])
+        .arg(&target)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{:?}", output.stderr);
+    assert_eq!(std::fs::read(&target).unwrap(), b"attached file bytes");
+    assert_eq!(
+        std::fs::read_dir(&scratch.0).unwrap().count(),
+        2,
+        "only caller-selected files exist"
+    );
+}
+
+#[test]
+fn annotation_checks_record_scope_and_failures_have_no_completed_json() {
+    let output = pagura()
+        .args(["check-attachment", "--page", "0"])
+        .arg(fixture_path("file_annotations", "mixed.pdf"))
+        .args(["1", "UF"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    for (key, expected) in [
+        ("schema", 1),
+        ("page", 0),
+        ("index", 1),
+        ("decoded_size", 18),
+    ] {
+        assert_eq!(report.get(key).and_then(Json::as_u64), Some(expected));
+    }
+    for key in ["size", "checksum"] {
+        assert_eq!(report.get(key).and_then(Json::as_str), Some("match"));
+    }
+    for name in ["late-failure.pdf", "encrypted-no-type.pdf"] {
+        let output = pagura()
+            .args(["check-attachment", "--page", "0"])
+            .arg(fixture_path("file_annotations", name))
+            .args(["0", "F"])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{name}");
+        assert!(
+            output.stdout.is_empty(),
+            "failed check has no completed JSON"
+        );
+    }
+    for (name, page) in [("late-failure.pdf", "0"), ("mixed.pdf", "99")] {
+        let output = pagura()
+            .args(["attachments", "--page", page])
+            .arg(fixture_path("file_annotations", name))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(
+            output.stdout.is_empty(),
+            "malformed annotation views never produce partial JSON"
+        );
+    }
+}

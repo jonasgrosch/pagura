@@ -1,9 +1,11 @@
 //! CLI access to inert document services through the public facade.
 
+mod annotations;
+
 use crate::{args::Source, failure::Failure, input::write_new, json};
-use pagura::files::{EmbeddedFile, FileSpecification, NamedFile, ParameterCheck, Relationship};
+use pagura::files::{EmbeddedFile, FileSpecification, ParameterCheck, Relationship};
 use pagura::metadata::{DocumentInfo, Trapped};
-use pagura::{Name, ObjectId};
+use pagura::{Document, Name, ObjectId};
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -56,8 +58,15 @@ fn information(out: &mut impl Write, info: &DocumentInfo<'_>) -> io::Result<()> 
     write!(out, ",\"Trapped\":\"{trapped}\"}}")
 }
 
-pub(crate) fn attachments(source: &Source, out: &mut impl Write) -> Result<(), Failure> {
+pub(crate) fn attachments(
+    source: &Source,
+    page: Option<usize>,
+    out: &mut impl Write,
+) -> Result<(), Failure> {
     let document = source.open()?;
+    if let Some(page) = page {
+        return annotations::list(&document, page, out);
+    }
     let files = document.embedded_files()?;
     write!(out, "{{\"schema\":{ATTACHMENTS_SCHEMA},\"files\":[")?;
     for (index, file) in files.iter().enumerate() {
@@ -178,46 +187,71 @@ pub(crate) fn extract_metadata(source: &Source, output: &Path) -> Result<(), Fai
 
 pub(crate) fn extract_attachment(
     source: &Source,
+    page: Option<usize>,
     index: usize,
     key: &str,
     output: &Path,
 ) -> Result<(), Failure> {
     let document = source.open()?;
-    let files = document.embedded_files()?;
-    let bytes = attachment(&files, index, key)?.data()?;
+    let payload = attachment(&document, page, index, key)?;
+    let bytes = payload.data()?;
     write_new(output, &bytes)?;
     Ok(())
 }
 
-fn attachment<'a, 'document>(
-    files: &'a [NamedFile<'document>],
+fn attachment<'a>(
+    document: &'a Document,
+    page: Option<usize>,
     index: usize,
     key: &str,
-) -> Result<&'a EmbeddedFile<'document>, Failure> {
-    let file = files.get(index).ok_or_else(|| {
-        Failure::Request("attachment INDEX is outside the catalog listing".into())
-    })?;
-    file.specification
+) -> Result<EmbeddedFile<'a>, Failure> {
+    let specification = if let Some(page) = page {
+        document
+            .page(page)?
+            .attachment_annotations(document)?
+            .into_iter()
+            .find(|annotation| annotation.index == index)
+            .map(|annotation| annotation.specification)
+            .ok_or_else(|| {
+                Failure::Request(
+                    "INDEX does not identify a file attachment in this page's Annots".into(),
+                )
+            })?
+    } else {
+        document
+            .embedded_files()?
+            .into_iter()
+            .nth(index)
+            .map(|file| file.specification)
+            .ok_or_else(|| {
+                Failure::Request("attachment INDEX is outside the catalog listing".into())
+            })?
+    };
+    specification
         .embedded
-        .iter()
+        .into_iter()
         .find(|entry| entry.key.as_bytes() == key.as_bytes())
-        .map(|entry| &entry.file)
+        .map(|entry| entry.file)
         .ok_or_else(|| Failure::Request("attachment has no EF payload with this KEY".into()))
 }
 
 pub(crate) fn check_attachment(
     source: &Source,
+    page: Option<usize>,
     index: usize,
     key: &str,
     out: &mut impl Write,
 ) -> Result<(), Failure> {
     let document = source.open()?;
-    let files = document.embedded_files()?;
-    let payload = attachment(&files, index, key)?;
+    let payload = attachment(&document, page, index, key)?;
     let checked = payload.check_parameters()?;
     let size = check_name(checked.size)?;
     let checksum = check_name(checked.checksum)?;
-    write!(out, "{{\"schema\":1,\"index\":{index},\"key\":")?;
+    out.write_all(b"{\"schema\":1,")?;
+    if let Some(page) = page {
+        write!(out, "\"page\":{page},")?;
+    }
+    write!(out, "\"index\":{index},\"key\":")?;
     json::string(out, key)?;
     out.write_all(b",\"object\":")?;
     object(out, Some(payload.object()))?;
