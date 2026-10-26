@@ -189,7 +189,7 @@ pub(super) fn read(document: &Document) -> ReadResult<PageLabels> {
 const ROMAN: [(u64, &str, &str); 13] = [
     (1000, "M", "m"),
     (900, "CM", "cm"),
-    (500, "D", "dictionary"),
+    (500, "D", "d"),
     (400, "CD", "cd"),
     (100, "C", "c"),
     (90, "XC", "xc"),
@@ -291,6 +291,10 @@ mod tests {
             (1, "p-I"),
             (4, "p-IV"),
             (14, "p-XIV"),
+            (499, "p-CDXCIX"),
+            (500, "p-D"),
+            (501, "p-DI"),
+            (899, "p-DCCCXCIX"),
             (3999, "p-MMMCMXCIX"),
             (4000, "p-MMMM"),
         ] {
