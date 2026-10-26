@@ -1173,10 +1173,11 @@ impl Texels for MemoTexels<'_> {
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
-        let mut texel = [0.0; MAX_LANES];
-        let texel = &mut texel[..sum.len()];
-        self.write(&mut self.memo.borrow_mut(), index, texel);
-        for (sum, value) in sum.iter_mut().zip(texel.iter()) {
+        let mut memo = self.memo.borrow_mut();
+        let components = memo.layout.key.components;
+        let key = self.samples.get(index);
+        let values = memo.get(key, |texel| self.convert(index, components, texel));
+        for (sum, value) in sum.iter_mut().zip(values) {
             *sum += value * weight;
         }
     }
