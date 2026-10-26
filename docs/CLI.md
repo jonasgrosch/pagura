@@ -119,4 +119,5 @@ Library callers can render a page or tile with the existing APIs and call
 `pagura::png::encode_pixmap(surface, pagura::png::Level::Default, &limits)`. The
 surface is consumed on success or failure. `pagura::png::encode` also accepts
 caller-owned Gray, RGB or straight RGBA buffers and encoding options. Incremental
-PNG, resumable jobs and host/viewer PNG export remain D02 work.
+PNG and resumable jobs remain D02 work. Protocol 1.9 and the viewer expose a
+separate complete-page PNG export path, described in the [host protocol](../crates/pagura-host/PROTOCOL.md#version-19-complete-png-page-export).

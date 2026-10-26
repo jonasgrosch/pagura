@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `9c5c86f733cdba0be1ef9f0c6cc63a0ae2632f96`. G00 source inventory is complete for this revision.
+Source audit: `335dbbd9c359b13d6f2ca30768bb0fd596907366`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
@@ -39,7 +39,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `text.accessibility` / V04 | Text extraction and tagged accessibility | partial / partial / partial / partial | Geometric text/search, replacement text, a separate tagged logical view and a screen-reader-readable DOM layer. | Logical-view integration into viewer accessibility, namespaces, remaining replacements and bidi/script reconstruction. |
 | `viewer.layers-printing` / V05 | Optional content and print/export controls | partial / partial / partial / partial | Optional-content evaluation with View usage; library/CLI overprint choices. | Layer UI/configuration and Print/Export usage, print preferences and host/viewer overprint control. |
 | `render.band-output` / D01 | Band output and cooperative stopping | implemented / partial / missing / missing | RenderContext lends final RGBA bands after preflight; fallible consumers and stops between bands; CLI streams PPM. | Persistent pause/resume, host active-request cancellation and async backpressure; calls currently restart. |
-| `export.png` / D02 | PNG/zlib output integration | partial / partial / missing / missing | Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default. | Incremental PNG/DEFLATE, persistent output jobs, host/viewer export, async backpressure and ancillary color/profile metadata. Whole-buffer output is not streaming; broader export-format parity remains open. |
+| `export.png` / D02 | PNG/zlib output integration | partial / partial / partial / partial | Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default. Protocol 1.9 exports bounded complete PNG pages through the shared render store. The viewer selects page/DPI/background and includes click-time form values via a disposable saved snapshot, with explicit fixed-name downloads and stale-result suppression. | Incremental PNG/DEFLATE, persistent output jobs, active-request cancellation/backpressure and ancillary color/profile metadata. Output uses PDF orientation, without viewer-only rotation. Hosted runtime and real-browser integration checks for the new host/viewer path remain pending; whole-buffer output does not establish streaming or broader format parity. |
 | `export.image-assets` / D02 | Public image asset extraction | missing / missing / missing / missing | ImageSource describes encoded images and defers sample decoding for rendering. | Asset/resource/occurrence inventory, exact-stream eligibility and normalized isolated-image export APIs. |
 | `write.rewrite-encryption` / E01 | Writing, full rewrite and encryption output | partial / partial / partial / partial | Deterministic new PDF 1.7 output and classic/xref-stream incremental revisions. CLI roundtrip preserves original bytes only; host/viewer writing is limited to filled-form saves. | Full rewrite, object deletion/streams, PDF 2.0 output and encryption-on-write; modified saves currently require strict unencrypted input. |
 | `editing.general` / E02 | General document editing | partial / missing / partial / partial | Immutable transactions, rollback, no-op byte preservation and form editing. | Typed page/content/annotation authoring, merge/split, resource remapping, undo/redo and associated service edits. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 339 registered requirement IDs map to capability rows in the ledger.
+All 340 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery

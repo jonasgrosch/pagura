@@ -88,7 +88,7 @@ integration. Milestone numbers are outcomes, not completion claims.
   and whole-buffer PNG/zlib encoders already exist. P0–P9 subdivide these parity
   packages; they are not a duplicate roadmap. Parsed-object eviction and
   parent/overlay revisions remain separate ADR 0012 follow-ups.
-- **Host and viewer:** protocol v2 replacing versions 1.0–1.8; rendering in
+- **Host and viewer:** protocol v2 replacing versions 1.0–1.9; rendering in
   persistent band steps and host cancellation using the existing band driver;
   a JSPI transport so cross-origin
   isolation becomes optional, with the Atomics path as fallback (an ADR 0005
@@ -118,8 +118,9 @@ integration. Milestone numbers are outcomes, not completion claims.
   validation is pending. Annotation discovery, AF/RF host selection, streaming,
   attachment writes, metadata validation/writes, portfolios
   and remaining export APIs remain D02 work; whole-buffer PNG is connected to the
-  facade and CLI with independent tests awaiting hosted validation. Streaming PNG,
-  host/viewer PNG export and profile metadata remain open. Public-key security and
+  facade, CLI, protocol 1.9 and an explicit viewer download with disposable form
+  snapshots. Hosted runtime and real-browser checks remain pending. Streaming PNG,
+  active-request cancellation/backpressure and profile metadata remain open. Public-key security and
   encrypted history belong to D03; version/profile validation belongs to C01.
   Recognizing a version or PDF/X declaration does not establish conformance.
 - **Crate splits:** `pagura-interactive` (fields, navigation, actions) and

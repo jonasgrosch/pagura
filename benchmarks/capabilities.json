@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "9c5c86f733cdba0be1ef9f0c6cc63a0ae2632f96",
+  "audited_revision": "335dbbd9c359b13d6f2ca30768bb0fd596907366",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -92,13 +92,16 @@
     "crates/pagura-font/src/type1/tokens.rs": "be224d7bc43690b19690cc5a2d0e6187689517d923a5642c665e67d61cc2fccc",
     "crates/pagura-font/tests/vectors/static_fonts.rs": "fa510534b535daaf30a1253e84566fdaa5eabc3b3c1bd747d948bc898ff78040",
     "crates/pagura-host/src/control.rs": "1393e0b41fae2869d20f341bd69d4908c3af1fba0eb5b40eada3c215cb1643ea",
-    "crates/pagura-host/src/protocol.rs": "b85582a07232bc615debe09719fdbdcdc3bc5014ab2a80625044d04350e16d69",
-    "crates/pagura-host/src/protocol/codes.rs": "5eeaf29be3b3b1bf54b52d726aa0222bd35ec6f247724095e2d6c05e6b4d5646",
-    "crates/pagura-host/src/protocol/decode.rs": "3b165be1c37f894be85341163c07dbd1fd29f4f9d6fc61f293198dfdf0284446",
+    "crates/pagura-host/src/protocol.rs": "fbb8d537a517390de16f24f0f47362393db14903eb5f07739f030f33907d54d9",
+    "crates/pagura-host/src/protocol/codes.rs": "3e3214b3ef5cd7b097c2db43d9125bea81b87be9b46bdf5c689b7a135910b206",
+    "crates/pagura-host/src/protocol/decode.rs": "b83c79aab88ee345701818267951ba21f1ba3fc1d7904d5aa609985edfb56d6d",
+    "crates/pagura-host/src/protocol/encode.rs": "6e215d0832c123c1680b1a1d85f0d71819b19af544dce0bf050d8a7bde0b7ecc",
     "crates/pagura-host/src/reading.rs": "f932413f3ac372ee940108023ef423a2a9765f9eee77e49915adc3b535158227",
     "crates/pagura-host/src/reading/services.rs": "0398a89f6a7cfe5ef52c059f50955decef78d0e0b6847e04038e4ff1619913f9",
-    "crates/pagura-host/src/session.rs": "ba981736691888997a6b08a31be237ee6205f0e99453ffb4fcb6822d91103d0d",
+    "crates/pagura-host/src/session.rs": "14538a4d8664ea97677e6989cf2024750cd9e118f05efb6bd58c2f947701b8f7",
+    "crates/pagura-host/src/session/png.rs": "32a0c86bc17ce9821906caa3366e5b81acae03869de7dae87a61f10ca477f0b6",
     "crates/pagura-host/tests/document_services.rs": "e32619b78089937f99316c5800eeb5379dc7b2abc58a6adf1107be2491d538f8",
+    "crates/pagura-host/tests/png.rs": "7dc367f9527dc1113db706b8646a2db24fb8502f599bf3c949c979b2e110c69b",
     "crates/pagura-image/src/ccitt/codes.rs": "f2f2e9f5bea60db015b39952099e3b8d4ce46fc7684d971868dab1552c006f0d",
     "crates/pagura-image/src/dct.rs": "71242e5e55a91fb82f6acb650b57f42946203a2dd65793f7274c4fcd8f2e0030",
     "crates/pagura-image/src/dct/deferred.rs": "0201123a046a78ffc6e415e1e45feb07433ca05591305223c187145b7444bcdc",
@@ -191,7 +194,7 @@
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
-    "references/requirements/host.json": "94a660f71c009e60ff87b4656824dff4533c4f2855f727a4e6777349ccb20b57",
+    "references/requirements/host.json": "e0289e122d28d7ecd92f07f2fb40074352a66076185970643b1a7ab8f05fd561",
     "references/requirements/image.json": "3410e86abc83f72875194f80fe95c16e5719b091698d440adbfbd7d65133032a",
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
@@ -201,7 +204,7 @@
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
-    "references/requirements/render.json": "94b75b7cfff2065a5a4e9cc2782eb9c5507bb0cf9a437a0738c6ef3e92a8f2ce",
+    "references/requirements/render.json": "edd3f0d4c3b0612e707ffcead0bf4c97c04599900ae9b38f5fc40a7e0b406043",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
@@ -212,15 +215,19 @@
     "tools/fixturegen/files.py": "6cd188ad91852f555d6d9cb250086de5f48758d77f8bad0d082e932368dfd306",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
-    "tools/test_png_export.py": "51cfbc6f9ef94f648d507e8d04cca65a3bf0a09909e75acf58eb24983db15f47",
-    "web/client.mjs": "8007939f911b2d015409725e28aef98e6f8406b71b1673df359a347193f593e4",
+    "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
+    "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
+    "web/client.mjs": "548468ad422192f65445d56feccb41c263b084922e12f095b3f30f772c29f79c",
     "web/document_protocol.mjs": "89456c8d1914cb3889ca3b0a989f07bc1a5542d4d761dd61c069b57030816d1c",
-    "web/document_services.mjs": "3ea5c5abd4b62eb5c4ec4bccafbd3c5890abd9e6a9dc663afcdd87432fb8da7f",
-    "web/index.html": "c513ab12a7df90f961ebb2f28cd7dcdfc3b9227f89290e5d9cc70538e8b89aae",
+    "web/document_services.mjs": "3cdbb527f8840c00327cc51ff4f9853c5a202faa9ef53317ff6de8272539f930",
+    "web/index.html": "a3f001e7e383e0cb949422072bfef1a88d9196e72b17fe3b68e7c125d714ec54",
+    "web/png_export.mjs": "252c400472039145cf1c59fb4601ff7612ef2e970233b29b996d9410620f9b58",
+    "web/protocol.mjs": "4d0d0543353546f57ad2242aa714d9bc5b0ddec70c8b7104c0b42500566e304d",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
+    "web/style.css": "36703c3f236ab8a06a1985d643be8b56cf9f166b6d87142851a47b3e82425989",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
-    "web/viewer.mjs": "a0008a2c226b4b0b7ef2af3ff080b806b4a5a5b5a43c3e7ff743d5d90929ca1f",
+    "web/viewer.mjs": "a1133d105bfc279535e3778f29b53af68c6a2036d212cb38cd1b0801720ba050",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
   },
   "capabilities": [
@@ -1190,16 +1197,17 @@
         "pagura-codec",
         "pagura-raster",
         "pagura-cli",
-        "pagura-host"
+        "pagura-host",
+        "web"
       ],
       "surfaces": {
         "library": "partial",
         "cli": "partial",
-        "host": "missing",
-        "viewer": "missing"
+        "host": "partial",
+        "viewer": "partial"
       },
-      "implemented": "Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default.",
-      "remaining": "Incremental PNG/DEFLATE, persistent output jobs, host/viewer export, async backpressure and ancillary color/profile metadata. Whole-buffer output is not streaming; broader export-format parity remains open.",
+      "implemented": "Bounded whole-buffer Gray/RGB/straight-RGBA PNG and DEFLATE encoders. The facade encodes pixel buffers or consumes rendered page/tile Pixmaps, converting premultiplied RGBA in place. CLI render/convert explicitly selects PNG with a white or transparent background, page/range/DPI options and create-new output; PPM remains the default. Protocol 1.9 exports bounded complete PNG pages through the shared render store. The viewer selects page/DPI/background and includes click-time form values via a disposable saved snapshot, with explicit fixed-name downloads and stale-result suppression.",
+      "remaining": "Incremental PNG/DEFLATE, persistent output jobs, active-request cancellation/backpressure and ancillary color/profile metadata. Output uses PDF orientation, without viewer-only rotation. Hosted runtime and real-browser integration checks for the new host/viewer path remain pending; whole-buffer output does not establish streaming or broader format parity.",
       "sources": [
         "crates/pagura-codec/src/png.rs",
         "crates/pagura-codec/src/flate/encode.rs",
@@ -1208,18 +1216,31 @@
         "web/viewer.mjs",
         "crates/pagura/src/png.rs",
         "crates/pagura-raster/src/pixmap.rs",
-        "crates/pagura-cli/src/commands.rs"
+        "crates/pagura-cli/src/commands.rs",
+        "crates/pagura-host/src/session/png.rs",
+        "crates/pagura-host/src/protocol/codes.rs",
+        "crates/pagura-host/src/protocol/decode.rs",
+        "crates/pagura-host/src/protocol/encode.rs",
+        "web/png_export.mjs",
+        "web/protocol.mjs",
+        "web/client.mjs",
+        "web/document_services.mjs",
+        "web/index.html",
+        "web/style.css"
       ],
       "tests": [
         "crates/pagura/tests/api/png.rs",
         "crates/pagura-cli/src/args/tests.rs",
-        "tools/test_png_export.py"
+        "tools/test_png_export.py",
+        "crates/pagura-host/tests/png.rs",
+        "tools/png_export_test.mjs"
       ],
       "requirements": [
         "encode-flate",
         "encode-png",
         "filter-flate",
-        "png-export"
+        "png-export",
+        "host-png-export"
       ],
       "fixtures": [
         "classic/blank",
