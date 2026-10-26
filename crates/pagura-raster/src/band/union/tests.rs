@@ -540,3 +540,97 @@ fn dense_rows_cost_their_chunks() {
         whole.used()
     );
 }
+
+/// The quadrilaterals a pen of radius `r` sweeps along the closed polyline
+/// of `count` segments around a circle of radius `around` at `centre`, as a
+/// stroker emits them where its segments are shorter than its pen.
+fn fan(centre: (f64, f64), around: f64, (count, r): (u32, f64), turn: f64) -> Vec<(Line, u8)> {
+    let at = |k: u32| {
+        let t = turn + std::f64::consts::TAU * f64::from(k) / f64::from(count);
+        (centre.0 + around * t.cos(), centre.1 + around * t.sin())
+    };
+    let mut lines = Vec::new();
+    for k in 0..count {
+        let (p, q) = (at(k), at(k + 1));
+        let length = (q.0 - p.0).hypot(q.1 - p.1);
+        let normal = ((p.1 - q.1) / length * r, (q.0 - p.0) / length * r);
+        lines.extend(polygon(
+            &[
+                (p.0 + normal.0, p.1 + normal.1),
+                (p.0 - normal.0, p.1 - normal.1),
+                (q.0 - normal.0, q.1 - normal.1),
+                (q.0 + normal.0, q.1 + normal.1),
+            ],
+            0,
+        ));
+    }
+    lines
+}
+
+/// The sides of `pieces` in row `0..1` with the swaps inside the covered
+/// set, or with every sub-slab placed and joined, the work charged, and how
+/// many sub-slabs the swaps took.
+fn swept(pieces: &[Piece], rules: &[FillRule], full: bool) -> (Vec<Line>, usize, usize) {
+    let mut out = Vec::new();
+    let mut work = Meter::new(usize::MAX, "work");
+    let mut bytes = Meter::new(usize::MAX, "bytes");
+    let mut resolver = Resolver {
+        full,
+        ..Resolver::default()
+    };
+    let meters = Meters {
+        work: &mut work,
+        bytes: &mut bytes,
+    };
+    resolver
+        .row(pieces, rules, 0.0, (&mut out, meters))
+        .unwrap();
+    (out, work.used(), resolver.swapped)
+}
+
+/// Fans of quadrilaterals crossing many times over inside their union, alone,
+/// twice over, beside and over random polygons and across chunks, under
+/// either rule: the swaps leave every
+/// side as the full sweep emits it, bit for bit and in the same order, and
+/// charge no more.
+#[test]
+fn swaps_inside_the_union_keep_every_side() {
+    let mut rng = Lcg(2_026);
+    let mut swapped = 0;
+    for case in 0..400_usize {
+        let mut lines = Vec::new();
+        for _ in 0..=case % 4 {
+            let centre = (rng.grid(0.0, 64, 8), rng.grid(-0.5, 17, 8));
+            let count = 8 + rng.next() % 40;
+            let r = rng.grid(0.25, 12, 8);
+            let around = r * f64::from(1 + rng.next() % 8) / 64.0;
+            lines.extend(fan(centre, around, (count, r), rng.grid(0.0, 64, 8)));
+        }
+        // Every edge twice, as strokes drawn twice or shared sides give.
+        if case % 7 == 1 {
+            lines.extend_from_within(..);
+        }
+        if case % 3 == 0 {
+            lines.extend(random_lines(&mut rng, 1 + case % 8, 1));
+        }
+        let rule = [FillRule::NonZero, FillRule::EvenOdd][usize::from(case % 5 == 4)];
+        let pieces = pieces(&lines);
+        let ((fast, fast_work, taken), (full, full_work, _)) = (
+            swept(&pieces, &[rule], false),
+            swept(&pieces, &[rule], true),
+        );
+        let bits = |sides: &[Line]| -> Vec<[u64; 4]> {
+            sides
+                .iter()
+                .map(|l| [l.a.x, l.a.y, l.b.x, l.b.y].map(f64::to_bits))
+                .collect()
+        };
+        assert_eq!(bits(&fast), bits(&full), "case {case}");
+        assert!(
+            fast_work <= full_work,
+            "case {case}: {fast_work} {full_work}"
+        );
+        swapped += taken;
+    }
+    assert!(swapped > 100_000, "{swapped}");
+}
