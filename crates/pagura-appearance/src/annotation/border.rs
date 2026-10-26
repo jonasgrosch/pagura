@@ -79,22 +79,7 @@ pub(super) fn generate(
 
 /// Table 180 specifies RD in left, top, right, bottom order, unlike a Rect.
 fn shape_bounds(document: &Document, annotation: &Dictionary, rect: Rect) -> Result<Rect> {
-    if let Some(effect) = optional(document, annotation, b"BE")? {
-        let effect = effect
-            .as_dictionary()
-            .ok_or(Error::syntax("annotation BE must be a dictionary"))?;
-        if let Some(style) = optional(document, effect, b"S")? {
-            let style = style
-                .as_name()
-                .ok_or(Error::syntax("border effect S must be a name"))?;
-            if style != b"S" {
-                return Err(Error::unsupported(
-                    features::ANNOTATION_APPEARANCE,
-                    "cloudy or unrecognized annotation border effect",
-                ));
-            }
-        }
-    }
+    plain_effect(document, annotation)?;
     let Some(differences) = optional(document, annotation, b"RD")? else {
         return Ok(rect);
     };
@@ -115,6 +100,27 @@ fn shape_bounds(document: &Document, annotation: &Dictionary, rect: Rect) -> Res
         rect.y1() - top,
     )
     .ok_or(Error::syntax("invalid annotation shape bounds"))
+}
+
+/// Border effects apply to Square/Circle and Polygon (Tables 180/181).
+pub(super) fn plain_effect(document: &Document, annotation: &Dictionary) -> Result<()> {
+    if let Some(effect) = optional(document, annotation, b"BE")? {
+        let effect = effect
+            .as_dictionary()
+            .ok_or(Error::syntax("annotation BE must be a dictionary"))?;
+        if let Some(style) = optional(document, effect, b"S")? {
+            let style = style
+                .as_name()
+                .ok_or(Error::syntax("border effect S must be a name"))?;
+            if style != b"S" {
+                return Err(Error::unsupported(
+                    features::ANNOTATION_APPEARANCE,
+                    "cloudy or unrecognized annotation border effect",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// An annotation border: BS, else Border, else solid and 1 unit wide

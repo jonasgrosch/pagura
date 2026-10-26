@@ -184,7 +184,11 @@ The annotation render increment expands the shared manifest to 45 oracles and
 controls with explicit 72/144 dpi, visibility, view flags, geometry and opacity.
 Reports pin each adapter's annotation settings. Reader artwork, sampling and
 API-layer differences require adjudication; no fixture promotes a family cell.
-The expanded matrix awaits its own hosted result.
+[Run 40288310225](https://github.com/jonasgrosch/pagura/actions/runs/40288310225)
+at merge revision `f7eac50605d5990162ebaf9b5a74009fffb81c5e` records 121 passes
+and 194 pixel disagreements, with Pagura passing all 45 controls. Retained images
+show artwork, border/inset, overlap-opacity and edge-coverage differences; these
+are observations for adjudication, not competitor defect or family-parity claims.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
@@ -350,10 +354,23 @@ has its own byte cap. Thirty-four controls include 25 independent pixel oracles
 for corners, crossing paths, dashes, diagonals, two resolutions, rotation, opacity,
 clipping and stored/generated appearances. Geometry validates even with zero
 width or an empty color. Native/WASI/client, partial-tile and viewer checks are
-registered; hosted execution is pending. PDF 2.0 Path generation remains explicit.
+registered and pass at `28e4f3fe5` in
+[run 40287592540](https://github.com/jonasgrosch/pagura/actions/runs/40287592540).
+Ink PDF 2.0 Path generation remains explicit.
+
+**Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
+commands form bounded geometry in default user space. Polygon closes the path
+and uses nonzero IC fill; PolyLine remains open. Path overrides Vertices, with
+indirect operands, moveto/lineto pairs and cubic commands. Null/plain polygon
+border effects and absent/null/None polyline endings work. Forty-five controls
+include 27 independent pixel oracles from convex clipping, literal stroke regions
+and an exact quadratic integral, covering curved fills, straight cubic strokes,
+closed/open geometry, winding, two resolutions, rotation, opacity, indirection
+and malformed data. Host/viewer checks are registered; hosted execution is pending.
+Cloudy borders, non-None endings and Ink Path remain explicit gaps.
 
 Complete missing normal appearances for FreeText, text markup, Line,
-Polygon/PolyLine, Stamp, Caret and other ledger subtypes;
+Stamp, Caret and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.

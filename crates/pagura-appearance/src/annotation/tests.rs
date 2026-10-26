@@ -497,3 +497,68 @@ fn ink_generation_bounds_aggregate_segments_storage_and_output() {
         );
     }
 }
+
+#[test]
+fn polygon_paths_override_vertices_and_resolve_indirect_operands() {
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    for subtype in ["Polygon", "PolyLine"] {
+        let vertices = format!("<< /Subtype /{subtype} /Vertices [4 4 28 4 4 28] >>");
+        let path =
+            format!("<< /Subtype /{subtype} /Vertices /Ignored /Path [[4 4] [28 4] [4 28]] >>");
+        assert_eq!(
+            generate(vertices.as_bytes(), area).unwrap(),
+            generate(path.as_bytes(), area).unwrap()
+        );
+    }
+    let document = Document::open(
+        fixture("polygon_annotations", "indirect-path.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        annotation_appearance(
+            &document,
+            &dictionary(b"<< /Subtype /Polygon /Path 6 0 R /IC [1 0 0] /BS << /W 0 >> >>"),
+            area,
+        )
+        .unwrap(),
+        generate(
+            b"<< /Subtype /Polygon /Path [[4 8] [12 8 20 12 28 20] [28 4] [4 4]] /IC [1 0 0] /BS << /W 0 >> >>",
+            area,
+        )
+        .unwrap()
+    );
+}
+
+#[test]
+fn polygon_geometry_is_bounded_before_empty_mark_selection() {
+    for geometry in ["/Vertices [4 4 28 4 4 28]", "/Path [[4 4] [28 4] [4 28]]"] {
+        for limits in [
+            Limits {
+                path_segments: 2,
+                ..Limits::default()
+            },
+            Limits {
+                render_bytes: 1,
+                ..Limits::default()
+            },
+        ] {
+            let document = Document::open(
+                fixture("forms", "text-quadding-0.pdf"),
+                &OpenOptions {
+                    limits,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            let annotation =
+                dictionary(format!("<< /Subtype /Polygon {geometry} /BS << /W 0 >> >>").as_bytes());
+            assert_eq!(
+                annotation_appearance(&document, &annotation, rect(0.0, 0.0, 32.0, 32.0))
+                    .unwrap_err()
+                    .kind,
+                ErrorKind::Limit,
+            );
+        }
+    }
+}

@@ -1,10 +1,12 @@
 //! Appearances of annotations that have no appearance stream (12.5.5):
-//! link, square and circle borders, ink, note/file icons and empty widgets (12.5.6).
+//! borders, ink/polygon paths, note/file icons and empty widgets (12.5.6).
 
 mod border;
 mod icon;
 mod ink;
 mod marks;
+mod path;
+mod polygon;
 mod widget;
 
 use crate::features;
@@ -22,7 +24,7 @@ use pagura_document::Document;
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
 /// resources; its Resources hold nothing else, so page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
-/// borders, straight-connected Ink paths, seven Text icons, four FileAttachment
+/// borders, Ink/Polygon/PolyLine paths, seven Text icons, four FileAttachment
 /// icons, and the MK background and border of empty text and signature widgets.
 ///
 /// Nothing is drawn, and `None` returned, for a rectangle that is a single
@@ -57,6 +59,8 @@ pub fn annotation_appearance(
         b"Square" => border::generate(document, annotation, rect, border::Shape::Square)?,
         b"Circle" => border::generate(document, annotation, rect, border::Shape::Circle)?,
         b"Ink" => ink::generate(document, annotation, rect)?,
+        b"Polygon" => polygon::generate(document, annotation, rect, true)?,
+        b"PolyLine" => polygon::generate(document, annotation, rect, false)?,
         b"Text" => icon::generate(document, annotation, rect)?,
         b"FileAttachment" => icon::file_attachment(document, annotation, rect)?,
         b"Widget" => widget::generate(document, annotation, rect)?,

@@ -269,7 +269,31 @@ independent oracles are unchanged from the corresponding product fixtures:
 region unions, conic integrals and convex-polygon intersections. Stored icon/ink
 controls fill regions independently of the generated stroke programs. Circle
 stored controls use separately authored paths, checked against the exact conic.
-The expanded matrix awaits hosted execution.
+[Hosted run 40288310225](https://github.com/jonasgrosch/pagura/actions/runs/40288310225)
+measured merge revision `f7eac50605d5990162ebaf9b5a74009fffb81c5e`: 121 passes
+and 194 pixel disagreements across the 315 cells. Every cell completed, and
+Pagura passed all 45 independent expectations.
+
+| Engine | Passes / 45 | Pixel disagreements |
+|---|---:|---:|
+| Pagura | 45 | 0 |
+| PDFium | 15 | 30 |
+| MuPDF | 9 | 36 |
+| pdf.js | 24 | 21 |
+| Poppler | 11 | 34 |
+| hayro | 12 | 33 |
+| CoreGraphics | 5 | 40 |
+
+These are exact-oracle observations, **not capability or product rankings**.
+Inspection of retained synthetic images shows different generated artwork,
+border/inset choices, opacity at crossed strokes and edge coverage. For example,
+the generated red circle gains a border in the measured MuPDF/pdf.js output;
+the paired stored circle does not. Hayro paints the stored circle but leaves the
+generated control blank. Stored circle edge errors remain between 10 and 53
+channel levels among those five non-Quartz baselines at the two resolutions,
+even when the shape is visibly present. The exact RD control also differs in
+position/extent. These separate cases need spec/configuration adjudication;
+no tolerance was changed and no blank output was promoted to unsupported.
 
 Configuration is explicit in the reports. PDFium sets `draw_annots=True`, MuPDF
 sets `annots=True`, and pdf.js requests display intent with `AnnotationMode.ENABLE`.

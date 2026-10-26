@@ -68,6 +68,21 @@ pub(super) enum Subpath<'a> {
     Ellipse(Rect),
     /// An open polyline (`m`, then `l`).
     Polyline(&'a [(f64, f64)]),
+    /// A polygon (`m`, `l`, then `h`).
+    Polygon(&'a [(f64, f64)]),
+    /// PDF 2.0 annotation path operators, optionally closed for a polygon.
+    Operators {
+        commands: &'a [PathOperator],
+        closed: bool,
+    },
+}
+
+/// Operands of one validated annotation Path entry (Table 181).
+#[derive(Debug, Clone, Copy)]
+pub(super) enum PathOperator {
+    Move([f64; 2]),
+    Line([f64; 2]),
+    Cubic([f64; 6]),
 }
 
 /// A stroke's line width and dash array, with phase 0 and otherwise the
@@ -230,10 +245,27 @@ impl<'a> Marks<'a> {
                     self.content.text("re\n")?;
                 }
                 Subpath::Ellipse(bounds) => self.ellipse(bounds)?,
-                Subpath::Polyline(points) => {
+                Subpath::Polyline(points) | Subpath::Polygon(points) => {
                     for (i, &(x, y)) in points.iter().enumerate() {
                         self.numbers(&[x, y])?;
                         self.content.text(if i == 0 { "m\n" } else { "l\n" })?;
+                    }
+                    if matches!(subpath, Subpath::Polygon(_)) {
+                        self.content.text("h\n")?;
+                    }
+                }
+                Subpath::Operators { commands, closed } => {
+                    for command in commands {
+                        let (values, operator): (&[f64], &str) = match command {
+                            PathOperator::Move(values) => (values, "m\n"),
+                            PathOperator::Line(values) => (values, "l\n"),
+                            PathOperator::Cubic(values) => (values, "c\n"),
+                        };
+                        self.numbers(values)?;
+                        self.content.text(operator)?;
+                    }
+                    if closed {
+                        self.content.text("h\n")?;
                     }
                 }
             }

@@ -508,7 +508,7 @@
         "12.5.6.8"
       ],
       "rule": "Visible link, square and circle borders remain inside Rect. BS overrides Border. Zero-width borders and absent interior colours are transparent. Seven note icons have geometric appearances selected by project device policy; exact-area coverage and channel rounding are project policies.",
-      "status": "link/square/circle, InkList and predefined note/file icon appearance generation",
+      "status": "link/square/circle, InkList, Polygon/PolyLine and predefined note/file icon appearance generation",
       "tests": [
         "content/annotation-icon-Comment",
         "content/annotation-icon-Key",
@@ -883,7 +883,7 @@
         "12.5.6.13 Table 185"
       ],
       "rule": "InkList paths contain coordinate pairs in default user space. Reader policy joins samples with straight segments, butt caps and miter joins in one stroke, applying C, CA and BS width/dash. All paths validate before painting or returning an empty mark; indirect paths/coordinates resolve. Aggregate segment and temporary-storage bounds charge repeated indirect paths, and generated content has independent byte limits. Stored appearances retain precedence and the annotation rectangle clips the generated appearance.",
-      "status": "InkList generation implemented; hosted accuracy validation pending",
+      "status": "InkList generation implemented; native/WASI/client/partial-tile/viewer accuracy checks passed at 28e4f3fe5",
       "tests": [
         "pagura-appearance annotation::tests::ink_paths_resolve_indirect_arrays_and_coordinates",
         "pagura-appearance annotation::tests::ink_validates_geometry_even_when_color_or_width_suppresses_marks",
@@ -924,6 +924,68 @@
         "ink_annotations/stored-ignores-geometry"
       ],
       "gaps": "PDF 2.0 Path generation, richer border styles, handwriting recognition and popup interaction remain separate. Independent pixel expectations use literal stroke regions, exact region unions and convex clipping; stored controls fill the regions instead of emitting the generator stroke path."
+    },
+    {
+      "id": "content-polygon-appearances",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "12.5.4 Tables 168-169",
+        "12.5.5",
+        "12.5.6.9 Table 181"
+      ],
+      "rule": "Polygon closes its geometry and fills IC with the nonzero rule; PolyLine leaves endpoints open and IC applies only to line endings. Vertices are finite coordinate pairs in default user space. A present Path overrides Vertices and begins with one moveto pair, followed by lineto pairs or six cubic operands. Arrays and coordinates resolve indirectly. BS width/dash, C, CA and independent ca apply under the original annotation rectangle. Null/plain polygon border effects and absent/null/None polyline endings are supported. Temporary storage, segment counts and emitted content are bounded before painting.",
+      "status": "Polygon/PolyLine vertices and PDF 2.0 path appearance generation implemented; hosted accuracy validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::polygon_paths_override_vertices_and_resolve_indirect_operands",
+        "pagura-appearance annotation::tests::polygon_geometry_is_bounded_before_empty_mark_selection",
+        "polygon_annotations/triangle-72",
+        "polygon_annotations/triangle-stored-72",
+        "polygon_annotations/polygon-border-72",
+        "polygon_annotations/polyline-72",
+        "polygon_annotations/curve-fill-72",
+        "polygon_annotations/curve-line-72",
+        "polygon_annotations/triangle-144",
+        "polygon_annotations/triangle-stored-144",
+        "polygon_annotations/polygon-border-144",
+        "polygon_annotations/polyline-144",
+        "polygon_annotations/curve-fill-144",
+        "polygon_annotations/curve-line-144",
+        "polygon_annotations/clockwise",
+        "polygon_annotations/rotated",
+        "polygon_annotations/separate-opacity",
+        "polygon_annotations/self-crossing",
+        "polygon_annotations/path-lines",
+        "polygon_annotations/path-precedence",
+        "polygon_annotations/null-path",
+        "polygon_annotations/plain-effect",
+        "polygon_annotations/null-effect",
+        "polygon_annotations/none-endings",
+        "polygon_annotations/null-endings",
+        "polygon_annotations/indirect-vertices",
+        "polygon_annotations/indirect-path",
+        "polygon_annotations/no-mark",
+        "polygon_annotations/no-stroke-color",
+        "polygon_annotations/vertices-missing",
+        "polygon_annotations/vertices-null",
+        "polygon_annotations/vertices-type",
+        "polygon_annotations/vertices-empty",
+        "polygon_annotations/vertices-odd",
+        "polygon_annotations/vertices-number",
+        "polygon_annotations/path-type",
+        "polygon_annotations/path-empty",
+        "polygon_annotations/path-first-curve",
+        "polygon_annotations/path-operands",
+        "polygon_annotations/path-entry",
+        "polygon_annotations/path-number",
+        "polygon_annotations/effect",
+        "polygon_annotations/endings-type",
+        "polygon_annotations/endings-count",
+        "polygon_annotations/ending-name",
+        "polygon_annotations/cloudy",
+        "polygon_annotations/arrow"
+      ],
+      "gaps": "Cloudy/relief/rounded borders and non-None polyline endings remain explicit. Ink PDF 2.0 Path remains separate. Independent expectations use convex clipping, literal stroke-region unions and closed-form quadratic integrals; no product or competitor path evaluator generates expected pixels."
     }
   ]
 }
