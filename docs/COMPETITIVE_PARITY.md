@@ -69,9 +69,13 @@ changes and fixes are accounted for in the replacement group.
 | 17 | Signature creation and timestamp/evidence insertion | S02 | 13, 14; signing-provider ADR |
 | 18 | Version, extension and exact profile conformance | C01 | Relevant feature groups |
 
-The current review consolidation retains #213 for document services and complete
-PNG export, #256 for appearance generation, and the #182/#187 image work as one
-image-integration group. The independent source branches remain recoverable.
+The current review set has four PRs: [#213](https://github.com/jonasgrosch/pagura/pull/213)
+for document services and complete PNG export, [#256](https://github.com/jonasgrosch/pagura/pull/256)
+for appearance generation, [#182](https://github.com/jonasgrosch/pagura/pull/182)
+for image decoding, and [#273](https://github.com/jonasgrosch/pagura/pull/273)
+for font mapping and vertical CID substitution. Thirty-six superseded task PRs
+are closed; their source branches remain recoverable. Progressive source/jobs
+work is still private within group 11. Unrelated PRs are outside this budget.
 A retained PR is draft until its advertised boundary, public surfaces and hosted
 checks are complete. Remaining work stays assigned in this plan, even if a group
 cannot yet claim the entire package's acceptance gate.
@@ -222,9 +226,14 @@ Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G
 The existing harness records engine/build identity, configuration, fixture hashes
 and separate unsupported/incorrect/limit/timeout/adapter-failure outcomes. Service
 and rendering probes expand with the feature groups that introduce their fixtures.
-The current appearance work contains 180 independent render controls; the service
-work contains 21 controls across the six baselines and Pagura. Exact run identities
-and observations live in [the probe record](../benchmarks/probes/README.md).
+The published appearance checkpoint `5321c0958` passes 463 rendering controls;
+image checkpoint `1ab267de8` passes 332 observations, including six explicitly
+classified malformed-input observations. Image head `fd0a125e9` adds first-image
+JPX handling and 56 controls, with hosted acceptance pending. Font checkpoint
+`e399327d7` passes 25 rendering controls and all three functional platforms.
+Document services at `e02d3b400` pass 21 service probes and six render controls.
+These are separate feature-branch results, not an integrated release result.
+Exact run identities and observations live in each PR and its probe record.
 Fixture passes never promote an entire family. All 258 family comparison cells
 remain unprobed until the wider operation/configuration obligations are established.
 Hayro/CoreGraphics text adapter gaps and artwork/font/sampling disagreements remain
@@ -263,8 +272,10 @@ External-resource fixtures prove no implicit IO and stable object/revision ident
 Owner: `pagura-image`, `pagura-color`, `pagura-interpret`, `pagura-paint`; depends on G01.
 
 The one-pass base already integrates embedded ICC, eight-bit sYCC and direct
-Indexed opacity. The image group consolidates broader sYCC precision and matched
-controls with remaining colour selection, Lab input, palettes and inline framing.
+Indexed opacity. The image group consolidates broader sYCC precision, ranked colour/ICC selection,
+D50 CIELab input, palettes, inline framing and first-image JPX header/opacity
+handling through the existing decoder and channel owners. Non-D50/signed Lab,
+17–38-bit JPX, nonidentity registration and selected-image fragments remain open.
 Only the branch inventory and source-bound hosted results establish what has landed.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
@@ -297,9 +308,14 @@ as such with a standards/baseline reason, not silently removed.
 
 Owner: `pagura-font`, `pagura-text`, `pagura-data`; depends on G00/G01.
 
-Deliver vertical substituted CJK glyph forms/metrics and provider coverage first.
-Then close baseline-supported collections, cmap/post formats, variable instances,
-CFF2 matrices, synthetic/legacy font programs and nonhorizontal advances.
+Group 04 in #273 implements selected vertical CJK substitutions through the
+existing provider path, legacy post 2.5 names, post 4 admission for cmap use,
+reserved post-index validation and format 8 numeric lookup. Its scoped hosted
+checks pass; PDF metrics and extraction remain independent of substitution.
+Remaining work includes baseline-supported collections, other cmap/post
+obligations, variable instances, CFF2 matrix policy, synthetic/legacy font programs
+and nonhorizontal advances. Diagnostic matrix observations are unresolved; they
+do not yet define product behavior.
 Review TrueType/OpenType and remaining Type 1 primary sources. Use bounded
 font-program evaluation for executable font/CMap cases; general document-script
 execution is a separate V03 contract. Treat hinting as an explicit rendering
@@ -350,15 +366,17 @@ relevant R04/R05 work.
 
 The consolidated appearance group covers standard icons, geometric markup,
 Line/PolyLine endings and leaders, captions, text markup, Caret, stamps, FreeText
-and shared rectangular border styles. It reuses font encoding/layout and the
+and shared rectangular border styles. It also includes rich FreeText, cloudy
+effects, callouts, Sound icons, Redact preview, FixedPrint screen geometry and
+missing text/choice widget appearances. It reuses font encoding/layout and the
 same border geometry for filled forms. Independent authored pixels, malformed
 input/budget controls, stored-appearance precedence, partial tiles and native/WASI
 client checks accompany the feature. Exact supported subvariants are in the
 branch's capability inventory; this list does not imply the entire V01 gate passes.
 
-Rich text, cloudy effects, wider border/callout combinations, nonempty widget
-fallback, interaction-selected R/D states and remaining font/layout cases stay
-assigned here or to V02. New implementations join this group instead of opening
+Normal button caption/icon generation and its source/preview/save state rules
+are under review in this same group. Remaining border/callout combinations,
+interaction-selected R/D states and font/layout cases stay assigned here or to V02. New implementations join this group instead of opening
 another PR for each subtype, ending, border or probe increment.
 
 Complete richer FreeText and other ledger subtype appearances;
@@ -645,12 +663,13 @@ performance superiority remain separate claims.
 
 ## Current implementation order
 
-1. Finish the three consolidated image, appearance and document-service groups,
-   including simplification, public integration and their hosted failures.
-2. Keep G00 evidence accurate and expand G01 probes in those same groups.
-3. Prepare font, colour/graphics and AcroForm groups against their exact dependencies.
-4. Prepare source/jobs, rewrite, host-action and signing contracts before changing
-   those boundaries; implement independent groups in parallel.
+1. Complete the four consolidated image, appearance, font and document-service
+   groups, including simplification, public integration and hosted checks.
+2. Continue progressive sources/jobs in parallel through the existing parser and
+   render executor; open one group-11 PR when its advertised boundary is complete.
+3. Keep G00 evidence accurate and expand G01 probes in the same feature PRs.
+4. Prepare colour/graphics, AcroForm, rewrite, host-action and signing work against
+   their exact dependencies and explicit contracts.
 5. Reserve final compatibility, robustness and performance evidence for the actual
    integrated release candidate. A draft or a green subset cannot close the plan.
 
