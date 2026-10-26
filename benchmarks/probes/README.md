@@ -322,8 +322,13 @@ Three further PDF 2.0 Ink Path controls add non-linear circular strokes at
 disagreement in [run 40292322329](https://github.com/jonasgrosch/pagura/actions/runs/40292322329):
 four seam pixels differ by two to five levels; all other pixels are within one.
 The 72-dpi and partial-opacity controls pass. The source cap repair retains
-Bézier endpoint tangents instead of flattened chord directions; hosted verification
-of the repair is pending. These cases retain actual/oracle images through the
+Bézier endpoint tangents instead of flattened chord directions.
+[Run 40293996869](https://github.com/jonasgrosch/pagura/actions/runs/40293996869),
+measured merge revision `07236d25c82a47ffbb9ad44fc58de816267d40e3` from head
+`75c497380`, passes all 48 Pagura controls. The three curved controls have maximum
+channel errors of 0, 1 and 1 respectively. The full report has 124 passes and
+212 pixel disagreements across 336 cells; competitor counts remain observations
+of these settings and artwork, not feature verdicts. These cases retain actual/oracle images through the
 same report pipeline. The historical
 315-cell result above does not cover this increment.
 

@@ -383,6 +383,48 @@
       "tolerance": 1
     },
     {
+      "id": "polygon_annotations/path-ignored-coordinate",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-ignored-coordinate.pdf",
+      "sha256": "4fbfd58d5d9a74417a0b48384a0be2317a7dbfd157260402a31964c85f79c37e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/path-ignored-coordinate.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/path-ignored-cycle",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-ignored-cycle.pdf",
+      "sha256": "940270ebdb696765c78916b42198bdcd67b15f525e22dd446942d00d07704a90",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/path-ignored-cycle.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
       "id": "polygon_annotations/null-path",
       "kind": "pdf",
       "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",

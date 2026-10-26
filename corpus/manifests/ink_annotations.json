@@ -892,47 +892,107 @@
     {
       "id": "ink_annotations/pdf2-inklist-missing",
       "kind": "pdf",
-      "description": "InkList remains required and validates even with a usable optional Path",
-      "expected": "open",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
       "requirements": [
-        "content-ink-appearances"
+        "content-ink-appearances",
+        "content-annotation-generation"
       ],
       "path": "corpus/generated/ink_annotations/pdf2-inklist-missing.pdf",
       "sha256": "eeca9b6dff7b931783a2e33cd635e6e230b3e09ac84a0ad3a11347d2d24898c0",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "render_error": "syntax"
+      "oracle": "corpus/generated/ink_annotations/pdf2-inklist-missing.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
     },
     {
       "id": "ink_annotations/pdf2-inklist-null",
       "kind": "pdf",
-      "description": "InkList remains required and validates even with a usable optional Path",
-      "expected": "open",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
       "requirements": [
-        "content-ink-appearances"
+        "content-ink-appearances",
+        "content-annotation-generation"
       ],
       "path": "corpus/generated/ink_annotations/pdf2-inklist-null.pdf",
       "sha256": "76f50c752c0eda2e70dd1ca2dd7a43f3ede9be157e6ae2a8cbb217f21c1b92a7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "render_error": "syntax"
+      "oracle": "corpus/generated/ink_annotations/pdf2-inklist-null.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
     },
     {
       "id": "ink_annotations/pdf2-inklist-invalid",
       "kind": "pdf",
-      "description": "InkList remains required and validates even with a usable optional Path",
-      "expected": "open",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
       "requirements": [
-        "content-ink-appearances"
+        "content-ink-appearances",
+        "content-annotation-generation"
       ],
       "path": "corpus/generated/ink_annotations/pdf2-inklist-invalid.pdf",
       "sha256": "3f94c838c9a265b6e0080b69c33c3eca3099abcbebfb62fb2a21a96392b32c34",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "render_error": "syntax"
+      "oracle": "corpus/generated/ink_annotations/pdf2-inklist-invalid.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/pdf2-ignored-coordinate",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/pdf2-ignored-coordinate.pdf",
+      "sha256": "918a6dbdde60cb8f04dd8ffcb68e937322f5fef937b9f3da39f586b68d61f83c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/pdf2-ignored-coordinate.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ink_annotations/pdf2-ignored-cycle",
+      "kind": "pdf",
+      "description": "Exact union/convex-region coverage independently checks InkList stroke geometry and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-ink-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/ink_annotations/pdf2-ignored-cycle.pdf",
+      "sha256": "961c1691489a402d5e15d7d6a584c7547a9bea92c17f00d5c74830528cb728de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ink_annotations/pdf2-ignored-cycle.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
     }
   ]
 }

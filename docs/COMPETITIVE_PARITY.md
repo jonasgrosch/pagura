@@ -356,10 +356,11 @@ clipping and stored/generated appearances. Geometry validates even with zero
 width or an empty color. Native/WASI/client, partial-tile and viewer checks are
 registered and pass at `28e4f3fe5` in
 [run 40287592540](https://github.com/jonasgrosch/pagura/actions/runs/40287592540).
-The PDF 2.0 Ink Path increment reuses the bounded operator reader. InkList
-remains required and validates first; its copied samples are released before
-Path allocation. A present Path supplies the geometry and null falls back to
-InkList. The expanded 49 controls contain 33 independent pixel expectations,
+The PDF 2.0 Ink Path increment reuses the bounded operator reader. Current
+[Table 185 errata](https://pdf-issues.pdfa.org/32000-2-2020/clause12.html) makes
+InkList ignored when Path is present: no legacy resolution or allocation occurs.
+Null Path falls back to InkList. Rendering does not validate required-key document
+conformance. The expanded 51 controls contain 38 independent pixel expectations,
 including non-linear circular strokes checked against exact disk areas, straight
 cubics, mixed operators, indirection, precedence and malformed required entries.
 Hosted native/WASI validation found a 144-dpi curved-stroke oracle disagreement.
@@ -368,7 +369,11 @@ and 336 cells, retaining actual/oracle pixels for investigation. Existing oracle
 bytes and tolerances are unchanged. The retained report localizes the failure to
 four seam pixels: source Bézier endpoint tangents were lost during flattening.
 The repair preserves those tangents for open endpoint caps, including dashes
-that reach an original endpoint; its hosted validation is pending.
+that reach an original endpoint; native/WASI/client, partial-tile and viewer checks passed at `75c497380` in
+[run 40293996890](https://github.com/jonasgrosch/pagura/actions/runs/40293996890).
+The 48-case G01 report passes all Pagura controls at that revision; the four
+144-dpi seam pixels are now within one level of the independent oracle.
+Additional ignored-legacy controls await their own hosted validation.
 
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path
@@ -380,7 +385,10 @@ and an exact quadratic integral, covering curved fills, straight cubic strokes,
 closed/open geometry, winding, two resolutions, rotation, opacity, indirection
 and malformed data. Native/WASI/client, partial-tile and viewer checks pass at
 `0e2c68e0e` in [run 40289812941](https://github.com/jonasgrosch/pagura/actions/runs/40289812941).
-Cloudy borders and non-None endings remain explicit gaps.
+Two further controls check ignored malformed and cyclic Vertices under the
+current Table 181 errata, bringing the corpus to 47 controls / 29 pixel oracles;
+their hosted validation is pending. Cloudy borders and non-None endings remain
+explicit gaps.
 
 Complete missing normal appearances for FreeText, text markup, Line,
 Stamp, Caret and other ledger subtypes;
