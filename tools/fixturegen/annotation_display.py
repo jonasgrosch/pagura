@@ -30,11 +30,12 @@ https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html
 https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_pixmap
 """
 from .file_attachment_icons import FRAME, pixels as icon_pixels
-from .model import Case, OPEN, RENDER
+from .model import Case, OPEN, RENDER, UNSUPPORTED
 from .pdf import document, opaque_rectangles, stream
 
 AREA = 'annotation_display'
 REQUIREMENT = 'content-static-annotation-placement'
+REDACT_REQUIREMENT = 'content-redact-preview'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
 # Original rectangular ink regions in a 32-unit grid. These are the geometric
 # union of one-unit orthogonal strokes with miter corners and butt endpoints,
@@ -51,7 +52,7 @@ SOUND_INK = {
 def source(*, subtype=b'Watermark', entries=b'', fixed=None, stored=True,
            page=b'', flags=4, body=False, media=b'0 0 32 24', rect=b'12 8 20 12',
            appearance_entries=b'', artwork=ARTWORK, appearance_box=b'0 0 8 4',
-           sound_reference=b'7 0 R', objects=()):
+           sound_reference=b'7 0 R', objects=(), content=None, catalog=b''):
     """One inert annotation and a four-sample unsigned PCM sound object."""
     appearance = b'/AP << /N 6 0 R >>' if stored else b''
     sound = b'/Sound ' + sound_reference if subtype == b'Sound' else b''
@@ -60,11 +61,12 @@ def source(*, subtype=b'Watermark', entries=b'', fixed=None, stored=True,
                   + b' /Rect [' + rect + b'] /F %d ' % flags
                   + appearance + b' ' + sound + b' ' + fixed_entry + b' ' + entries + b' >>')
     return document([
-        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'<< /Type /Catalog /Pages 2 0 R'+(b' '+catalog if catalog else b'')+b' >>',
         b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
         b'<< /Type /Page /Parent 2 0 R /MediaBox [' + media + b'] /Resources << >> /Contents 4 0 R '
         + (b'' if body else b'/Annots [5 0 R] ') + page + b' >>',
-        stream(b'0 g 12 8 4 4 re f 1 0 0 rg 16 8 4 4 re f' if body else b''),
+        stream(content if content is not None else
+               b'0 g 12 8 4 4 re f 1 0 0 rg 16 8 4 4 re f' if body else b''),
         annotation,
         stream(artwork, b'/Type /XObject /Subtype /Form /BBox [' + appearance_box
                + b'] /Resources << >> ' + appearance_entries),
@@ -276,3 +278,36 @@ def cases():
     yield Case('sound-name-reference-limit',source(subtype=b'Sound',stored=False,
                entries=b'/Name 8 0 R',objects=(b'8 0 R',)),OPEN,(REQUIREMENT,),
                'Sound icon names retain the existing indirect-reference depth limit',extra={'render_error':'limit'})
+
+    # Redact annotations identify content before application. Table 195 assigns
+    # IC, RO and overlay text to the later removal/replacement phase. Probe their
+    # effect on previews without applying redactions or treating them as AP.
+    content=b'0 1 1 rg 12 12 32 20 re f 0 g 12 20 32 4 re f'
+    quads=b'/QuadPoints [14 14 24 14 24 20 14 20 30 24 40 24 40 30 30 30]'
+    overlay=b'/OverlayText (R) /DA (/F0 8 Tf 0 g) /Q 1'
+    fonts={
+        'catalog':b'/AcroForm << /DR << /Font << /F0 8 0 R >> >> >>',
+        'objects':(
+            b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 600 800] /FontMatrix [.001 0 0 .001 0 0] '
+            b'/CharProcs << /R 9 0 R >> /Encoding << /Type /Encoding /Differences [82 /R] >> '
+            b'/FirstChar 82 /LastChar 82 /Widths [600] /Resources << >> >>',
+            stream(b'600 0 d0 0 0 400 800 re f'),
+        ),
+    }
+    yield Case('redact-observe-ordinary-content',source(body=True,content=content,media=b'0 0 64 48'),
+               OPEN,(REDACT_REQUIREMENT,),'Ordinary cyan/black page marks identify content that a non-destructive preview must preserve')
+    for variant,entries,options in [
+        ('rect',b'',{}),('quads',quads,{}),('border-color',b'/C [0 0 1]',{}),
+        ('interior',b'/IC [0 1 0]',{}),('quad-interior',quads+b' /IC [0 1 0]',{}),
+        ('overlay',overlay,fonts),('repeat',overlay+b' /Repeat true',fonts),
+        ('replacement-form',b'/RO 8 0 R /IC [0 1 0] '+overlay,{'objects':(
+            stream(b'0 1 0 rg 0 0 16 20 re f 0 0 1 rg 16 0 16 20 re f',
+                   b'/Type /XObject /Subtype /Form /BBox [0 0 32 20] /Resources << >>'),)}),
+    ]:
+        for stored in (False,True):
+            yield Case('redact-observe-'+variant+'-'+('stored' if stored else 'missing'),
+                       source(subtype=b'Redact',stored=stored,entries=entries,content=content,
+                              media=b'0 0 64 48',rect=b'12 12 44 32',**options),
+                       OPEN if stored else UNSUPPORTED,(REDACT_REQUIREMENT,),
+                       'Matched Redact preview observation: normal AP is separate from post-application fill, text and RO',
+                       feature=None if stored else 'annotation.appearance')

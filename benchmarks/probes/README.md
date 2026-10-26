@@ -280,9 +280,11 @@ observations, with diagnostic hashes. Blank output is an observation, never a
 feature verdict. The raw reports have kind `raw-render-observations` and are not
 added to oracle pass/fail totals or accepted by the oracle-report combiner.
 Hosted actual images remain artifacts and never become product icon oracles.
-The capability workflow's manual `sound_observations` input runs just this
-diagnostic batch on explicit Ubuntu/macOS runners, without repeating the full
-platform, service or pixel-oracle suites.
+The capability workflow's manual `annotation_observations` choice selects
+`sound`, `redact` or `none`. Either annotation set runs only its diagnostic batch
+on explicit Ubuntu/macOS runners; `none` runs the ordinary inventory, service
+and pixel-oracle suites. The CLI's `observe` command keeps Sound as its default;
+`--annotation-set redact` selects Redact preview inputs.
 
 The Linux report from [run 40365811257](https://github.com/jonasgrosch/pagura/actions/runs/40365811257),
 head `52cbbce87b3d35d77757d2ea085daf0e04609258`, records identical ordinary and
@@ -349,3 +351,30 @@ Malformed visual values and reference/content/scene budgets have separate checks
 The new G01 set has 386 oracles; this Sound increment still awaits hosted runtime
 validation. Custom artwork variants, interaction and playback remain outside
 these static drawing claims, and the V01 family remains partial.
+
+## Redact preview observations
+
+ISO 32000-2 12.5.6.23/Table 195 separates non-destructive identification from
+applying redactions. QuadPoints identifies the intended region; absent quads
+use Rect. IC, RO, OverlayText, Repeat, DA and Q describe replacement artwork
+after content removal, and RO is distinct from normal annotation AP. These
+entries do not require a static display renderer to remove content or draw
+post-application replacements. Sanitizing removal remains group 16.
+
+The first bounded diagnostic has 18 raw cases: blank and cyan/black ordinary
+page content, plus missing/stored normal AP pairs for Rect, two quads, border
+colour, interior colour, quad/interior combination, overlay text, repetition
+and a replacement RO form. Overlay inputs carry an original embedded Type3
+glyph and explicit resources; the RO form has distinct green/blue artwork.
+Every stored normal AP has black/red artwork, so its precedence can be observed
+separately from replacement entries. The underlying page content remains in
+every annotated PDF. No redaction is applied and no audio, actions or external
+resources are used. The source fixture coordinates and PDF identities are
+retained with each raw report; no expected preview pixels are copied from a
+reader.
+
+This checkpoint adds no product code. Pagura's missing Redact AP remains an
+explicit `annotation.appearance` refusal pending observed preview policy and
+independent geometry controls. All previous Sound subjects, PDFs and pixel
+oracles remain unchanged. The 18 raw cases are outside the 386-control oracle
+manifest and its pass totals; all baseline Redact observations are pending.

@@ -182,6 +182,30 @@ class RenderProbeTests(unittest.TestCase):
                     self.assertNotIn('pixel_comparison', result)
                     self.assertNotIn('observed', result)
 
+    def test_redact_observations_keep_preview_separate_from_application(self):
+        data = render.redact_observations(self.manifest)
+        rows = render.fixtures(data, observations=True)
+        self.assertEqual(len(rows), 18)
+        for variant in ('rect', 'quads', 'border-color', 'interior', 'quad-interior',
+                        'overlay', 'repeat', 'replacement-form'):
+            for suffix in ('missing', 'stored'):
+                key = 'annotations.display.redact-observe-' + variant + '-' + suffix
+                self.assertEqual(rows[key]['dpi'], 72)
+                self.assertNotIn('oracle', rows[key])
+        self.assertIn('annotations.display.redact-observe-ordinary-content', rows)
+        with self.assertRaisesRegex(ValueError, 'paired'):
+            render.redact_observations({'cases': []})
+        original = render.read_json
+        def missing_pair(path):
+            data = original(path)
+            data['cases'] = [row for row in data['cases']
+                             if row['id'] != 'annotation_display/redact-observe-repeat-stored']
+            return data
+        with patch.object(render, 'read_json', side_effect=missing_pair), self.assertRaisesRegex(ValueError, 'paired'):
+            render.redact_observations(self.manifest)
+        with self.assertRaises(ValueError):
+            render.validate_manifest(data, self.inventory)
+
 
 if __name__ == '__main__':
     unittest.main()

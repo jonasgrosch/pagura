@@ -990,7 +990,7 @@
         "viewer": "partial"
       },
       "implemented": "Stored normal appearances and state dictionaries; generated Text/FileAttachment/Sound icons, geometric and text markup, Line endings/leaders/captions, Caret, standard stamps and FreeText/callouts. Plain and common RC/DS styled text share bounded font loading and layout. Cloudy Square/Circle/Polygon/FreeText borders share one bounded path builder. Annotation and form borders share rounded/relief geometry and quarter-turn empty-widget orientation. Stored artwork wins; painting never resolves attachment or sound payloads. Independent pixels cover placement, clipping, opacity, visibility and two resolutions. Forms and annotations share stored normal/rollover/down selection as data; host/viewer rendering still selects normal appearance. Watermark FixedPrint screen placement reuses shared MediaBox page geometry and the existing NoRotate view; authored controls cover all quarter turns, nonzero origins, asymmetric crop, UserUnit, DPI, NoZoom and AP matrices/groups. Hidden/text-only requests skip placement data; stored Sound AP never reads its sound payload. The retained 352-control hosted run covers these screen-placement pixels. MuPDF/Poppler raw Sound observations preceded the original Speaker/Mic geometry; ordinary Sound scale/rotation and explicit view flags use the existing view contract. Its 34 new independent pixel controls and malformed/default/ignored-entry/budget checks await hosted runtime validation; full V01 remains partial.",
-      "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, unvalidated character/paragraph measurements and interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; broader unequal-ellipse/concave/curved cloud and diagonal/overlapping callout accuracy; other subtype synthesis and custom artwork variants; nonrectangular relief/radii and elliptical dashed-border evidence; nonempty widgets and interaction-selected AP/R/AP/D states. FixedPrint physical print media/scaling, tiling and n-up remain V05 contract/probe gaps. Full V01 acceptance remains open.",
+      "remaining": "Rich font fallback lists, RTL/complex-script/CID layout, tabs/lists/pagination, unvalidated character/paragraph measurements and interacting paragraph margins, arbitrary styled-font matching and rich automatic sizing; broader unequal-ellipse/concave/curved cloud and diagonal/overlapping callout accuracy; other subtype synthesis and custom artwork variants, including Redact previews pending matched baseline observations (post-application replacement/removal stays group 16); nonrectangular relief/radii and elliptical dashed-border evidence; nonempty widgets and interaction-selected AP/R/AP/D states. FixedPrint physical print media/scaling, tiling and n-up remain V05 contract/probe gaps. Full V01 acceptance remains open.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
@@ -1093,7 +1093,8 @@
         "content-relief-borders",
         "content-cloudy-borders",
         "content-rich-annotation-text",
-        "content-static-annotation-placement"
+        "content-static-annotation-placement",
+        "content-redact-preview"
       ],
       "fixtures": [
         "file_attachment_icons/null-annots",
@@ -1938,7 +1939,24 @@
         "annotation_display/sound-wrong-name",
         "annotation_display/sound-wrong-color",
         "annotation_display/sound-wrong-alpha",
-        "annotation_display/sound-name-reference-limit"
+        "annotation_display/sound-name-reference-limit",
+        "annotation_display/redact-observe-ordinary-content",
+        "annotation_display/redact-observe-rect-missing",
+        "annotation_display/redact-observe-rect-stored",
+        "annotation_display/redact-observe-quads-missing",
+        "annotation_display/redact-observe-quads-stored",
+        "annotation_display/redact-observe-border-color-missing",
+        "annotation_display/redact-observe-border-color-stored",
+        "annotation_display/redact-observe-interior-missing",
+        "annotation_display/redact-observe-interior-stored",
+        "annotation_display/redact-observe-quad-interior-missing",
+        "annotation_display/redact-observe-quad-interior-stored",
+        "annotation_display/redact-observe-overlay-missing",
+        "annotation_display/redact-observe-overlay-stored",
+        "annotation_display/redact-observe-repeat-missing",
+        "annotation_display/redact-observe-repeat-stored",
+        "annotation_display/redact-observe-replacement-form-missing",
+        "annotation_display/redact-observe-replacement-form-stored"
       ],
       "comparisons": {
         "pdfium": "unprobed",

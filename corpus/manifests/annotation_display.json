@@ -2218,6 +2218,252 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/redact-observe-ordinary-content",
+      "kind": "pdf",
+      "description": "Ordinary cyan/black page marks identify content that a non-destructive preview must preserve",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-ordinary-content.pdf",
+      "sha256": "5fd51eddb0cdf38237e167115d55edd2c88bdd42872db095a6d68d70d587645f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-rect-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-rect-missing.pdf",
+      "sha256": "9eccb62196ff04c0bc7fd2c583be1f6722a0efb84715bf2c6c773cdd93d08570",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-rect-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-rect-stored.pdf",
+      "sha256": "63d35db456c5493a809adcd7cf13a742611cc4b73831f78d99c0746e11252e65",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-quads-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quads-missing.pdf",
+      "sha256": "32351b29ddb996890507562ba63f0089604385dbe3c493dc2fb54b8be902272a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-quads-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quads-stored.pdf",
+      "sha256": "0c9f489cfef504f951c42b1fdefa12ad29ea0329aa026641fe5bf10318fdaf17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-border-color-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-border-color-missing.pdf",
+      "sha256": "bd40ce785a955beb2863c8d38b99bd78876ba9d273062d8e0683b13713624f30",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-border-color-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-border-color-stored.pdf",
+      "sha256": "37d716d522dd1a2346145613004c48c727b32809e2be88919f0377f325de4689",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-interior-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-interior-missing.pdf",
+      "sha256": "1b8760f9000edd5d056d2d99c3dd82d6cc4bd939eecfc9f574040694171f0fe1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-interior-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-interior-stored.pdf",
+      "sha256": "11d1690ea8910c639d786ab78109348fbc802783074aeb03564290f947e00803",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-quad-interior-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quad-interior-missing.pdf",
+      "sha256": "13d50d89913f7f5640d88022d3ad4143fc779107027274f35e7db4494721dc40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-quad-interior-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quad-interior-stored.pdf",
+      "sha256": "eb7cdf8f15dffa8d6b94331b2fd6f021d161111cbd98ed9a8c45517e00786119",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-overlay-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-overlay-missing.pdf",
+      "sha256": "1e662447d5f353840a0fb5264cb3f79c55d9ba2729721f97ed98b58e244fca7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-overlay-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-overlay-stored.pdf",
+      "sha256": "1f1ec5ced4b3deaecd8b0d666733224e5dc50c86d9d87bd37902bdeda576ccbf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-repeat-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-repeat-missing.pdf",
+      "sha256": "50fefde322bf1bd95ad6bd49be6e91f5aae370ca4cbe03c826b8d338dbbf64d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-repeat-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-repeat-stored.pdf",
+      "sha256": "293c736a29e7002420520dcff4c815bcf077f79001fdf3fda295939334ad94d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-replacement-form-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "unsupported",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-replacement-form-missing.pdf",
+      "sha256": "4b7152b8eda1339f93c381644efd7e0204dbbb5cfba7f7bdb999a7f8a4515569",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_display/redact-observe-replacement-form-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-replacement-form-stored.pdf",
+      "sha256": "52f30b5c59419d14bb7af7b037eeab1961176748ec00983c178e44e222d353c8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
     }
   ]
 }

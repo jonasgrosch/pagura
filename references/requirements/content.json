@@ -1935,6 +1935,38 @@
         "pagura-interpret annotations::static_appearances_use_existing_reference_and_scene_budgets"
       ],
       "gaps": "FixedPrint physical print media, fit-to-paper scaling, printer margins, tiling and n-up remain V05 adapter/contract gaps. Speaker/Mic artwork has no universal pixel oracle; original geometric symbols are independently checked, not copied from readers. Matched missing/stored Sound and Text inputs at 72/144 DPI, Rotate0/90 and explicit flags record scoped adapter behavior separately from pixel verdicts. Unknown Sound icon names use Speaker by reader policy. Interaction and playback remain V03 gaps; static painting never reads sound or action payloads. Current baseline adapters use display only; PDF.js omits its HTML annotation layer and Quartz omits PDFKit, so these configurations cannot establish full-viewer icon support or interactive zoom semantics. This requirement does not promote the V01 family."
+    },
+    {
+      "id": "content-redact-preview",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.3 Table 167",
+        "12.5.5",
+        "12.5.6.10 Table 182",
+        "12.5.6.23 Table 195"
+      ],
+      "status": "Primary applicability reviewed; matched raw baseline probes authored; missing-AP preview generation remains unsupported",
+      "rule": "Redact annotations identify content without removing it. QuadPoints denotes the intended region, with Rect used when quads are absent. IC, RO and OverlayText/Repeat/DA/Q describe replacement artwork after content removal; RO is distinct from normal AP and takes precedence over the other replacement entries. Stored AP uses ordinary annotation fitting. Preview policy must be observed separately from sanitizing removal and independently validated before adding generated artwork.",
+      "tests": [
+        "annotation_display/redact-observe-ordinary-content",
+        "annotation_display/redact-observe-rect-missing",
+        "annotation_display/redact-observe-rect-stored",
+        "annotation_display/redact-observe-quads-missing",
+        "annotation_display/redact-observe-quads-stored",
+        "annotation_display/redact-observe-border-color-missing",
+        "annotation_display/redact-observe-border-color-stored",
+        "annotation_display/redact-observe-interior-missing",
+        "annotation_display/redact-observe-interior-stored",
+        "annotation_display/redact-observe-quad-interior-missing",
+        "annotation_display/redact-observe-quad-interior-stored",
+        "annotation_display/redact-observe-overlay-missing",
+        "annotation_display/redact-observe-overlay-stored",
+        "annotation_display/redact-observe-repeat-missing",
+        "annotation_display/redact-observe-repeat-stored",
+        "annotation_display/redact-observe-replacement-form-missing",
+        "annotation_display/redact-observe-replacement-form-stored"
+      ],
+      "gaps": "Missing-AP preview synthesis and baseline artwork/view policy remain unprobed. The raw inputs do not prescribe universal preview pixels or promote V01. Applying redactions and destroying all identified content remain group 16; this static renderer does not apply replacement RO, interior fill or overlay text as a removal operation."
     }
   ]
 }
