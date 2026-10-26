@@ -8,9 +8,10 @@ pagura metadata input.pdf
 pagura attachments input.pdf
 pagura extract-metadata input.pdf packet.xmp
 pagura extract-attachment input.pdf 0 UF payload.bin
+pagura check-attachment input.pdf 0 UF
 ```
 
-All four accept `--strict` and `--password TEXT`. Reported repairs are enabled by
+All five accept `--strict` and `--password TEXT`. Reported repairs are enabled by
 default; strict mode rejects them. Success exits 0, input/operation/output errors
 exit 1, and malformed command arguments exit 2. Extraction produces no stdout.
 JSON readers should check `schema` and ignore additional fields within that
@@ -57,7 +58,8 @@ the extraction command. Each record contains:
 All `_hex` strings use two lowercase hexadecimal digits per byte. They preserve
 non-UTF-8 bytes; decoded Unicode strings are ordinary JSON strings. Tree keys,
 filenames and payload identities are distinct. Payloads are decoded only during
-extraction. MIME names and sizes are declarations, not verified properties.
+extraction or an explicit parameter check. MIME names and sizes in the listing
+are unverified declarations.
 
 `extract-attachment INPUT INDEX KEY OUTPUT` selects the listed entry and its
 exact EF key (`F`, `UF`, `DOS`, `Mac` or `Unix`). It never guesses between F and UF.
@@ -72,7 +74,28 @@ overwritten. Output IO failures are reported and may leave a partial new file.
 These commands currently cover catalog metadata and EmbeddedFiles only. The
 library's object-local metadata, AF arrays and RF related files are not CLI
 selection targets yet. Annotation attachment discovery, streaming extraction,
-checksums, editing and host/viewer integration remain in D02.
+editing and host AF/RF selection remain in D02. Protocol 1.8 and the viewer
+already support catalog listing and extraction.
+
+## Attachment parameter checks (schema 1)
+
+`check-attachment INPUT INDEX KEY` uses the same catalog index and exact EF key
+as extraction. It completely decodes and authorizes the payload before writing
+JSON, even when Size and CheckSum are absent. The report contains `schema: 1`,
+`index`, `key`, the payload `object`, actual `decoded_size`, `size`, `checksum`,
+`repairs` and `information`. Both check fields are `match`, `mismatch` or
+`not-declared`; a missing declaration is never reported as a successful comparison.
+
+Size is compared with the uncompressed byte length. CheckSum is compared with
+MD5 over decrypted bytes after all filters, per ISO 32000-2 Table 45. This checks
+producer declarations, not authenticity, file content, MIME types or dates.
+The library exposes the same observations through `EmbeddedFile::check_parameters`.
+
+A mismatch produces the complete JSON report, an explanatory stderr message and
+exit 1. Matching or absent declarations produce exit 0. Authorization, selection,
+filter and resource errors produce exit 1 without successful check JSON. No
+payload file is created and source bytes remain unchanged. Decoding is bounded
+but whole-buffer; host/viewer checks and streaming remain open.
 
 ## Inspection geometry (schema 2)
 

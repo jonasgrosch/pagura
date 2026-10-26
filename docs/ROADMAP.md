@@ -115,7 +115,9 @@ integration. Milestone numbers are outcomes, not completion claims.
   embedded payload extraction are implemented in the library. CLI catalog listings
   and explicit-file metadata/attachment extraction are available. Protocol 1.8 and
   viewer controls add bounded catalog reads and explicit byte downloads; hosted
-  validation is pending. Annotation discovery, AF/RF host selection, streaming,
+  Linux/macOS/Windows checks passed. Library/CLI size and checksum checks now
+  distinguish absent declarations, matches and mismatches; their hosted checks
+  are pending. Host/viewer parameter checks, annotation discovery, AF/RF host selection, streaming,
   attachment writes, metadata validation/writes, portfolios
   and export APIs remain D02 work; public-key security and encrypted history (D03), and
   version/profile validation (C01). Recognizing a version or PDF/X declaration

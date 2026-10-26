@@ -427,9 +427,10 @@ byte/Unicode names, source identity, payload filtering, absent/null/empty cases,
 malformed types, cycles, reported text/tree repairs, budgets and synthetic
 attachment authorization. EF/RF context selects attachment crypt filters even
 when the stream omits its optional Type; an explicit Identity filter retains
-its meaning. Hosted product checks are pending. Annotation discovery,
-collection/encrypted-payload models, validation, streaming, writes and
-host/viewer integration remain open; this does not complete D02.
+its meaning. Hosted library checks passed in
+[run 40263961382](https://github.com/jonasgrosch/pagura/actions/runs/40263961382).
+Annotation discovery, collection/encrypted-payload models, semantic validation,
+streaming, writes and CLI/host AF/RF selection remain open; this does not complete D02.
 
 **Metadata implementation started:** `8b328025a502cd9b7a3c5c61f2bac94aea12f5a9` adds typed Info strings and
 trapping declarations, document language, and document/object metadata-stream
@@ -456,9 +457,21 @@ preparation separately. Listings never decode payloads. The viewer uses inert
 text, exact declared sizes and explicit downloads with fixed names; stale
 document/dialog requests cannot download. Native/WASI/client tests cover exact
 independent fixture bytes, old versions, malformed requests, authorization and
-limits; UI tests cover inert labels, failures and races. Hosted checks are pending.
+limits; UI tests cover inert labels, failures and races. Hosted Linux/macOS/Windows
+checks pass at `92eab7f34` in
+[run 40269303206](https://github.com/jonasgrosch/pagura/actions/runs/40269303206).
 Object-local metadata, CLI/host AF/RF selection, attachment-only viewer password
 reauthentication, streaming, validation and writes remain open.
+
+**Attachment parameter checks:** library/facade `EmbeddedFile::check_parameters`
+and CLI `check-attachment` compare Size and CheckSum against completely decoded,
+authorized bytes. Absent declarations, matches and mismatches are separate
+observations; the checksum follows Table 45 and is not an authenticity result.
+Seven independently generated compressed fixtures cover each combination.
+Tests also cover empty files, encrypted attachment-only payloads, explicit
+Identity, external-stream refusal and decode limits. Hosted checks are pending.
+The operation does not modify the source or create a payload file. Host/viewer
+checks, streaming and semantic/date/MIME/profile validation remain open.
 
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose
