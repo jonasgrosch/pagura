@@ -81,7 +81,7 @@ fn no_border(document: &Document, annotation: &Dictionary) -> ReadResult<bool> {
     }
     if let Some(style) = annotation.get(b"BS") {
         let style = document.resolve_dictionary(style)?;
-        return Ok(style
+        return style
             .get(b"W")
             .map(|value| -> ReadResult<f64> {
                 document
@@ -90,7 +90,7 @@ fn no_border(document: &Document, annotation: &Dictionary) -> ReadResult<bool> {
                     .ok_or_else(|| Error::syntax("border width must be numeric").into())
             })
             .transpose()
-            .map(|width| width == Some(0.0))?);
+            .map(|width| width == Some(0.0));
     }
     if let Some(border) = annotation.get(b"Border") {
         let values = document

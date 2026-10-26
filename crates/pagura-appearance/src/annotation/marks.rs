@@ -269,7 +269,7 @@ pub(super) fn scalar(
     dictionary: &Dictionary,
     key: &[u8],
 ) -> ReadResult<Option<f64>> {
-    Ok(dictionary
+    dictionary
         .get(key)
         .map(|value| -> ReadResult<f64> {
             document
@@ -277,7 +277,7 @@ pub(super) fn scalar(
                 .as_number()
                 .ok_or_else(|| Error::syntax("annotation parameter must be numeric").into())
         })
-        .transpose()?)
+        .transpose()
 }
 
 #[cfg(test)]

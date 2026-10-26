@@ -4,7 +4,7 @@ use crate::support::{
     dictionary, load_text, near, number, open, rejected, row, text, uint, values,
 };
 use pagura_core::{
-    Error, Limits, Recovery, Result,
+    Error, Limits, Recovery,
     syntax::{Origin, Parser},
 };
 use pagura_raster::Transform;

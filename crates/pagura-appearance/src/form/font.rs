@@ -138,12 +138,12 @@ fn extent(
 }
 
 fn metric(document: &Document, dictionary: &Dictionary, key: &[u8]) -> ReadResult<Option<f64>> {
-    Ok(optional(document, dictionary, key)?
+    optional(document, dictionary, key)?
         .map(|value| -> ReadResult<f64> {
             document
                 .resolve(value)?
                 .as_number()
                 .ok_or_else(|| Error::syntax("font metric must be numeric").into())
         })
-        .transpose()?)
+        .transpose()
 }

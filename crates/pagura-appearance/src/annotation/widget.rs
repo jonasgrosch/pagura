@@ -110,7 +110,7 @@ fn characteristics(
         width: border.width,
         dash: &border.dash,
     };
-    Ok(marks.stroke(&[path], &color, pen)?)
+    marks.stroke(&[path], &color, pen)
 }
 
 /// The value of `key` in the field dictionary or its nearest ancestor that
