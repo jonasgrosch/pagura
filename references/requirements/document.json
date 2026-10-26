@@ -23,7 +23,8 @@
       ],
       "status": "implemented",
       "tests": [
-        "classic/undefined-reference-is-null"
+        "classic/undefined-reference-is-null",
+        "classic/undefined-contents-is-null"
       ],
       "gaps": ""
     },

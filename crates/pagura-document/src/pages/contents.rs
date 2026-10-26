@@ -8,6 +8,11 @@ pub(crate) fn read<'a>(document: &'a Document, page: &Page) -> Result<Vec<&'a In
     let Some(mut value) = page.dictionary().get(b"Contents") else {
         return Ok(Vec::new());
     };
+    // A reference to an undefined object is null (7.3.10), and a null entry
+    // is an absent one (7.3.9): the page has no content (Table 31).
+    if document.resolve(value)?.is_null() {
+        return Ok(Vec::new());
+    }
     let mut owner = document.object(page.id())?;
     let mut path = page.source_path().to_vec();
     path.push(PathComponent::Key(Name::new(b"Contents")));
