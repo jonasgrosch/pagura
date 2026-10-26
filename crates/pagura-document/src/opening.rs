@@ -1,8 +1,10 @@
 //! Owned complete-document source admission and opening.
 
-use crate::source::{ByteSource, LoadingLimits, NeedData, ReadFault, ReadResult, View};
+use crate::source::{
+    ByteSource, LoadingLimits, LoadingWork, NeedData, ReadFault, ReadResult, View,
+};
 use crate::{Document, OpenOptions, builder, xref};
-use pagura_core::{Diagnostics, Error, Meter, Recovery, Result};
+use pagura_core::{Diagnostics, Error, Recovery, Result};
 use std::sync::Arc;
 
 /// The result of advancing an owned document opener.
@@ -68,7 +70,7 @@ struct Admission {
 #[derive(Debug)]
 pub struct OpenJob {
     state: State,
-    work: Meter,
+    work: Arc<LoadingWork>,
 }
 
 impl OpenJob {
@@ -88,11 +90,13 @@ impl OpenJob {
         if options.password.len() > options.limits.string_bytes {
             return Err(Error::limit("password byte budget exceeded"));
         }
+        let work = Arc::new(LoadingWork::new(loading.work));
         let loader = xref::Loader::new(
             Arc::clone(&source),
             options.limits,
             loading,
             options.recovery,
+            Arc::clone(&work),
         )?;
         Ok(Self {
             state: State::Active(Box::new(Active {
@@ -100,12 +104,12 @@ impl OpenJob {
                 options: options.clone(),
                 phase: Phase::Index(Box::new(loader)),
             })),
-            work: Meter::new(loading.work, "loading work budget exceeded"),
+            work,
         })
     }
 
     /// Cumulative admitted work, retained after completion or cancellation.
-    pub const fn work(&self) -> usize {
+    pub fn work(&self) -> usize {
         self.work.used()
     }
 
@@ -122,7 +126,7 @@ impl OpenJob {
             State::Cancelled => return Ok(Opening::Cancelled),
             State::Failed(error) => return Err(error.clone().into()),
         };
-        match active.advance(&mut self.work) {
+        match active.advance(&self.work) {
             Ok(Opening::Ready(document)) => {
                 self.state = State::Complete;
                 Ok(Opening::Ready(document))
@@ -153,10 +157,10 @@ impl OpenJob {
 }
 
 impl Active {
-    fn advance(&mut self, work: &mut Meter) -> ReadResult<Opening> {
+    fn advance(&mut self, work: &LoadingWork) -> ReadResult<Opening> {
         match &mut self.phase {
             Phase::Index(loader) => {
-                let primary = match loader.advance(work) {
+                let primary = match loader.advance() {
                     Ok(()) => loader.take_completed(),
                     Err(ReadFault::Invalid(error))
                         if self.options.recovery == Recovery::Repair
@@ -179,7 +183,7 @@ impl Active {
         }
     }
 
-    fn admit(&mut self, work: &mut Meter) -> ReadResult<Opening> {
+    fn admit(&mut self, work: &LoadingWork) -> ReadResult<Opening> {
         let Phase::Admitting(admission) = &mut self.phase else {
             return Ok(Opening::Yielded);
         };

@@ -90,7 +90,10 @@ define absence/free references. Missing bytes cannot enter permanent result
 cells. A semantic unit owns provisional diagnostics and reservations, publishing
 them once on completion; successful dependencies survive an outer retry. Global
 validation failures do not replace successful dependency values from a requested
-operation. Every retry is charged to the same loading-work allowance.
+operation. Every retry is charged to the same loading-work allowance. The
+bootstrap, replacement parser windows and subsequent document readers share one
+loading-work owner. It charges before each read and parse; its synchronization
+protects only counter arithmetic, never source reads or recursive dependencies.
 
 Semantic diagnostic attempts use the existing bounded document log's identity
 and suppression rules. The attempt publishes on success or terminal rejection,

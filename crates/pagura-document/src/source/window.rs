@@ -6,7 +6,7 @@ use pagura_core::syntax::{
     InputEnd, Origin, ParseFault, ParsedWindow, Parser, WindowInput, WindowRead,
 };
 use pagura_core::{Error, Limits, Meter, Recovery, Result};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 /// Loading work separate from PDF syntax, source residency and rendering.
 ///
@@ -27,6 +27,31 @@ impl Default for LoadingLimits {
             window_bytes: 16 * 1024 * 1024,
             work: 1024 * 1024 * 1024,
         }
+    }
+}
+
+/// One cumulative loading-work owner shared across bootstrap and later readers.
+/// A lock covers only the charge arithmetic, never source access or parsing.
+#[derive(Debug)]
+pub(crate) struct LoadingWork(Mutex<Meter>);
+
+impl LoadingWork {
+    pub(crate) fn new(limit: usize) -> Self {
+        Self(Mutex::new(Meter::new(
+            limit,
+            "loading work budget exceeded",
+        )))
+    }
+
+    pub(crate) fn charge(&self, count: usize) -> Result<()> {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .charge(count)
+    }
+
+    pub(crate) fn used(&self) -> usize {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).used()
     }
 }
 
@@ -51,7 +76,7 @@ pub struct Window {
     at: usize,
     length: usize,
     cap: usize,
-    work: Meter,
+    work: Arc<LoadingWork>,
     waiting: Option<NeedData>,
     terminal: Option<Error>,
 }
@@ -70,6 +95,22 @@ impl Window {
         limits: Limits,
         loading: LoadingLimits,
     ) -> Result<Self> {
+        Self::new_with_work(
+            source,
+            offset,
+            limits,
+            loading,
+            Arc::new(LoadingWork::new(loading.work)),
+        )
+    }
+
+    pub(crate) fn new_with_work(
+        source: Arc<dyn ByteSource>,
+        offset: u64,
+        limits: Limits,
+        loading: LoadingLimits,
+        work: Arc<LoadingWork>,
+    ) -> Result<Self> {
         source.check()?;
         let length = super::length(source.len(), &limits)?;
         let at = ByteRange::new(offset, offset)?.offsets(source.len())?.start;
@@ -83,7 +124,7 @@ impl Window {
             at,
             length: INITIAL_BYTES.min(loading.window_bytes).min(length - at),
             cap: loading.window_bytes,
-            work: Meter::new(loading.work, "loading work budget exceeded"),
+            work,
             waiting: None,
             terminal: None,
         })
@@ -102,7 +143,7 @@ impl Window {
     }
 
     /// Cumulative loading work, including discarded incomplete attempts.
-    pub const fn work(&self) -> usize {
+    pub fn work(&self) -> usize {
         self.work.used()
     }
 
@@ -251,6 +292,65 @@ impl Window {
                 Ok((lease, Some(missing)))
             }
             Err(error) => Err(error),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LoadingLimits, LoadingWork, Window};
+    use crate::source::{CompleteBytes, ReadFault, SourceIdentity, SourceLimits};
+    use pagura_core::{ErrorKind, Limits};
+    use std::{cell::Cell, sync::Arc};
+
+    #[test]
+    fn dependent_windows_share_one_precharged_budget_without_holding_its_lock() {
+        let limits = Limits::default();
+        let source = Arc::new(
+            CompleteBytes::new(
+                SourceIdentity::new(81, [23; 32]),
+                Arc::from(b"1 2 ".as_slice()),
+                &limits,
+                &SourceLimits::default(),
+            )
+            .unwrap(),
+        );
+        // The first 4-byte window costs 1 + 4; its 2-byte dependency costs
+        // 1 + 2. No allowance remains for a third read or parser callback.
+        let work = Arc::new(LoadingWork::new(8));
+        let make = |offset| {
+            Window::new_with_work(
+                source.clone(),
+                offset,
+                limits,
+                LoadingLimits::default(),
+                Arc::clone(&work),
+            )
+        };
+        let mut first = make(0).unwrap();
+        let mut dependency = make(2).unwrap();
+        let value = first
+            .read(|parser| {
+                let value = parser.unsigned()?;
+                let other = dependency.read(|parser| parser.unsigned())?;
+                Ok((value, other.value))
+            })
+            .unwrap();
+        assert_eq!(value.value, (1, 2));
+        assert_eq!(first.work(), 8);
+        assert_eq!(dependency.work(), 8);
+        let mut another = make(0).unwrap();
+        let called = Cell::new(false);
+        for _ in 0..3 {
+            let result = another.read(|parser| {
+                called.set(true);
+                parser.unsigned()
+            });
+            assert!(
+                matches!(result, Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Limit)
+            );
+            assert_eq!(another.work(), 8);
+            assert!(!called.get());
         }
     }
 }

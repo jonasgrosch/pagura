@@ -1,11 +1,9 @@
 //! Owned range bootstrap using the complete reader's grammar and revision chain.
 
 use super::{XrefTable, boundary, chain, parse_section, section_header, stream};
-use crate::source::{ByteSource, LoadingLimits, ReadFault, ReadResult, Window};
+use crate::source::{ByteSource, LoadingLimits, LoadingWork, ReadFault, ReadResult, Window};
 use pagura_core::convert::usize_to_u64;
-use pagura_core::{
-    Diagnostic, Diagnostics, Error, ErrorKind, Limits, Meter, Position, Recovery, Result,
-};
+use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Limits, Position, Recovery, Result};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -37,6 +35,7 @@ pub(crate) struct Loader {
     source: Arc<dyn ByteSource>,
     limits: Limits,
     loading: LoadingLimits,
+    work: Arc<LoadingWork>,
     recovery: Recovery,
     length: usize,
     window: Window,
@@ -51,13 +50,17 @@ impl Loader {
         limits: Limits,
         loading: LoadingLimits,
         recovery: Recovery,
+        work: Arc<LoadingWork>,
     ) -> Result<Self> {
         let length = crate::source::length(source.len(), &limits)?;
-        let window = Window::new(Arc::clone(&source), 0, limits, loading)?.with_recovery(recovery);
+        let window =
+            Window::new_with_work(Arc::clone(&source), 0, limits, loading, Arc::clone(&work))?
+                .with_recovery(recovery);
         Ok(Self {
             source,
             limits,
             loading,
+            work,
             recovery,
             length,
             window,
@@ -67,25 +70,19 @@ impl Loader {
         })
     }
 
-    /// One completed grammar unit per advance. Child-window admission is
-    /// bounded by the owner's remaining work; every actual delta is recorded
-    /// even on an incomplete or invalid result. No limit resets on a probe.
-    pub(crate) fn advance(&mut self, work: &mut Meter) -> ReadResult<()> {
-        let before = self.window.work();
-        let next = self.step();
-        work.charge(self.window.work() - before)?;
-        match next? {
+    /// One completed grammar unit per advance. Every window charges the same
+    /// owner before reading/parsing, including incomplete and failed probes.
+    pub(crate) fn advance(&mut self) -> ReadResult<()> {
+        match self.step()? {
             Next::Stay => {}
             Next::Seek(offset) => self.window.seek(usize_to_u64(offset))?,
             Next::Restart(offset) => {
-                self.window = Window::new(
+                self.window = Window::new_with_work(
                     Arc::clone(&self.source),
                     usize_to_u64(offset),
                     self.limits,
-                    LoadingLimits {
-                        work: work.remaining(),
-                        ..self.loading
-                    },
+                    self.loading,
+                    Arc::clone(&self.work),
                 )?
                 .with_recovery(self.recovery);
             }

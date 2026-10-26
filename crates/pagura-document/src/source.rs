@@ -15,6 +15,7 @@ pub use complete::CompleteBytes;
 pub use sparse::{SparseBytes, Supply};
 pub use types::{ByteLease, ByteRange, NeedData, ReadFault, ReadResult, SourceIdentity};
 pub(crate) use view::View;
+pub(crate) use window::LoadingWork;
 pub use window::{LoadingLimits, Window};
 
 use pagura_core::{Error, Limits, Result};
