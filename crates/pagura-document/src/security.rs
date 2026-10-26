@@ -624,6 +624,7 @@ impl Document {
     /// # Errors
     /// Opening/budget errors, or `Password` when credentials do not authenticate.
     pub fn reauthenticate(&self, password: &[u8]) -> Result<Self> {
+        self.bytes.check()?;
         if password.len() > self.limits.string_bytes {
             return Err(Error::limit("password byte budget exceeded"));
         }
@@ -632,7 +633,7 @@ impl Document {
             recovery: self.recovery,
             password: password.to_vec(),
         };
-        let authenticated = Self::open(self.original_bytes(), &options)?;
+        let authenticated = crate::builder::open(self.bytes.clone(), &options)?;
         if authenticated
             .security
             .as_ref()

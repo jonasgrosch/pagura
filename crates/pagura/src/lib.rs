@@ -107,7 +107,8 @@ pub mod signatures;
 /// the feature-selected one.
 pub use pagura_appearance as form_appearance;
 pub use pagura_document::{
-    Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenOptions, Page, Rotation,
+    Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenJob, OpenOptions, Opening,
+    Page, Rotation,
 };
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{

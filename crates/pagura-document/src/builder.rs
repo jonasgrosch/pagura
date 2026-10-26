@@ -11,7 +11,7 @@ use crate::xref::rebuild::{self, StreamSlots};
 use crate::xref::{self, XrefOrigin, XrefTable};
 use crate::{
     Document, Location, OpenOptions, Revision, Slot, catalog, diagnostics, history, memory, object,
-    security,
+    security, source,
 };
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, INDEX_ENTRY_OVERHEAD, Limits, Name, ObjectId, Recovery,
@@ -24,7 +24,8 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 /// Opens `bytes`: from the primary cross-reference data, then, in repair
 /// mode after a structural failure of that data or of the document built
 /// from it, once from reconstructed data (ADR 0003).
-pub(crate) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> Result<Document> {
+pub(crate) fn open(bytes: source::View, options: &OpenOptions) -> Result<Document> {
+    bytes.check()?;
     let mut diagnostics = Diagnostics::new(options.recovery);
     let header = xref::header(&bytes, &mut diagnostics)?;
     let mut attempt = Diagnostics::new(options.recovery);
@@ -35,7 +36,7 @@ pub(crate) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> Result<Document> 
             .cloned()
             .chain(attempt.take())
             .collect();
-        DocumentBuilder::new(Arc::clone(&bytes), options, table, reported)?.build(&options.password)
+        DocumentBuilder::new(bytes.clone(), options, table, reported)?.build(&options.password)
     });
     match primary {
         Err(error) if options.recovery == Recovery::Repair && xref::structural(&error) => {
@@ -50,7 +51,7 @@ pub(crate) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> Result<Document> 
 /// A document under construction: its object table, trailer and security
 /// handler, with no cached object.
 pub(crate) struct DocumentBuilder {
-    bytes: history::Bytes,
+    bytes: source::View,
     limits: Limits,
     recovery: Recovery,
     trailer: Dictionary,
@@ -65,14 +66,14 @@ pub(crate) struct DocumentBuilder {
 
 impl DocumentBuilder {
     fn new(
-        bytes: Arc<[u8]>,
+        bytes: source::View,
         options: &OpenOptions,
         table: XrefTable,
         reported: Vec<Diagnostic>,
     ) -> Result<Self> {
         let retained = Arc::new(memory::Budget::new(options.limits.document_bytes));
         Self::assemble(
-            bytes.into(),
+            bytes,
             options.limits,
             options.recovery,
             table,
@@ -84,7 +85,7 @@ impl DocumentBuilder {
     /// A strict snapshot of an earlier revision of `source`, reading a prefix
     /// of its bytes and charging its cache to `source`'s budget too (7.5.6).
     pub(crate) fn revision(
-        bytes: history::Bytes,
+        bytes: source::View,
         source: &Document,
         table: XrefTable,
     ) -> Result<Self> {
@@ -101,7 +102,7 @@ impl DocumentBuilder {
 
     /// Charges the table's eager metadata, then builds the slot map from it.
     fn assemble(
-        bytes: history::Bytes,
+        bytes: source::View,
         limits: Limits,
         recovery: Recovery,
         table: XrefTable,
@@ -353,7 +354,7 @@ mod tests {
             ..OpenOptions::default()
         };
         let bytes: Arc<[u8]> = Arc::from(b"%PDF-1.7\n".as_slice());
-        let Err(error) = DocumentBuilder::new(bytes, &options, table, Vec::new()) else {
+        let Err(error) = DocumentBuilder::new(bytes.into(), &options, table, Vec::new()) else {
             panic!("the trailer does not fit beside one slot");
         };
         assert_eq!(error.kind, ErrorKind::Limit);

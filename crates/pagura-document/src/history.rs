@@ -6,10 +6,7 @@ use crate::{
     view::{Context, Source},
 };
 use pagura_core::{Error, ErrorKind, ObjectId, Position, Result};
-use std::{
-    ops::Deref,
-    sync::{Arc, Mutex, OnceLock, PoisonError},
-};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 #[derive(Debug, Default)]
 pub(crate) struct Cache {
@@ -23,28 +20,6 @@ pub(crate) struct Snapshot {
     loading: Mutex<()>,
 }
 
-#[derive(Debug)]
-pub(crate) struct Bytes {
-    source: Arc<[u8]>,
-    end: usize,
-}
-impl Deref for Bytes {
-    type Target = [u8];
-    fn deref(&self) -> &[u8] {
-        &self.source[..self.end]
-    }
-}
-impl From<Arc<[u8]>> for Bytes {
-    fn from(source: Arc<[u8]>) -> Self {
-        let end = source.len();
-        Self { source, end }
-    }
-}
-impl From<Vec<u8>> for Bytes {
-    fn from(source: Vec<u8>) -> Self {
-        Self::from(Arc::<[u8]>::from(source))
-    }
-}
 impl Document {
     /// Loads an object as it existed in a source revision (7.5.6).
     /// `revision` indexes [`Self::revisions`], newest first. Identity includes
@@ -72,6 +47,7 @@ impl Document {
         index: usize,
         ctx: &mut Context<'_>,
     ) -> Result<&Document> {
+        self.bytes.check()?;
         if index >= self.revisions.len() {
             return Err(Error::invalid_argument("revision index outside document"));
         }
@@ -163,10 +139,7 @@ impl Document {
         let upper = self.revisions[index - 1].offset();
         let (boundary, consumed) = crate::revision_bounds::boundary(ctx, revision, upper, source)?;
         ctx.scan(consumed, source)?;
-        let bytes = Bytes {
-            source: self.bytes.source.clone(),
-            end: boundary.eol,
-        };
+        let bytes = self.bytes.prefix(boundary.eol)?;
         let mut table = crate::xref::XrefTable::default();
         if let Some(previous) = previous {
             ctx.allocate::<usize>(previous.slots.len().saturating_mul(12), source)?;

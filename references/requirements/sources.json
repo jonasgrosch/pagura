@@ -47,6 +47,18 @@
       ],
       "gaps": "Protocol, CLI and native/browser transport integration remain group 11 obligations.",
       "rule": "PNG emits one canonical zlib stream using fixed DEFLATE and IDAT boundaries independent of input splits or output demand. Admission reserves bounded row/history/token/code/output storage and checks conservative work and output quotas. Pixel rows and output chunks stay bounded; held chunks retain their allocation charge. Only explicit completion after one checksum and IEND signifies success. Cancellation preserves existing leases without producing completion."
+    },
+    {
+      "id": "source-opening-admission",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "complete-document admission implemented; hosted validation pending",
+      "tests": [
+        "pagura-document/tests/opening.rs",
+        "pagura/tests/api/source.rs"
+      ],
+      "gaps": "Requested-operation opening, incremental bootstrap and partial-document ReadFault propagation remain pending in the same group.",
+      "rule": "An owned opener returns exact missing ranges, does no work on unchanged waits, and publishes one ordinary Document only after explicit complete-source admission and validation. The document retains the admitted immutable lease without copying it; reauthentication and historical prefixes share that allocation and consistency provider. Closure or conflicting supply is checked before cached object, page, stream, historical and render-scene access. Cancellation and terminal failure never publish success; retained lease charges survive producer/source closure until the last owner releases them."
     }
   ]
 }

@@ -79,6 +79,7 @@ impl Document {
         dictionary: &'a Dictionary,
         key: &[u8],
     ) -> Result<Option<&'a Value>> {
+        self.bytes.check()?;
         let Some(value) = dictionary.get(key) else {
             return Ok(None);
         };

@@ -23,6 +23,7 @@ pub(crate) enum Usage {
 }
 
 pub(crate) fn raw<'a>(document: &'a Document, object: &IndirectObject) -> Result<&'a [u8]> {
+    document.bytes.check()?;
     let range = object
         .stream_range()
         .ok_or_else(|| Error::syntax("object is not a stream").in_object(object.id()))?;

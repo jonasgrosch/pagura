@@ -16,6 +16,7 @@ impl Document {
         id: ObjectId,
         path: &mut Vec<ObjectId>,
     ) -> Result<&IndirectObject> {
+        self.bytes.check()?;
         if path.contains(&id) {
             return Err(Error::cycle("object loading cycle").in_object(id));
         }
@@ -68,6 +69,7 @@ impl Document {
         value: &'a Value,
         path: &mut Vec<ObjectId>,
     ) -> Result<(&'a Value, Option<ObjectId>)> {
+        self.bytes.check()?;
         static NULL: Value = Value::Null;
         let mut current = value;
         let mut origin = None;
@@ -115,6 +117,7 @@ impl Document {
     /// A parser over the original file, configured with this document's
     /// limits and recovery mode.
     pub(crate) fn file_parser(&self, offset: usize) -> Result<Parser<'_>> {
+        self.bytes.check()?;
         Ok(
             Parser::with_offset(&self.bytes, offset, Origin::File, self.limits)?
                 .with_recovery(self.recovery),

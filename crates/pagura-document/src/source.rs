@@ -8,11 +8,13 @@ mod complete;
 mod memory;
 mod sparse;
 mod types;
+mod view;
 mod window;
 
 pub use complete::CompleteBytes;
 pub use sparse::{SparseBytes, Supply};
 pub use types::{ByteLease, ByteRange, NeedData, ReadFault, ReadResult, SourceIdentity};
+pub(crate) use view::View;
 pub use window::{LoadingLimits, Window};
 
 use pagura_core::{Error, Limits, Result};
@@ -93,7 +95,7 @@ pub trait ByteSource: std::fmt::Debug + Send + Sync {
     }
 }
 
-fn length(length: u64, limits: &Limits) -> Result<usize> {
+pub(crate) fn length(length: u64, limits: &Limits) -> Result<usize> {
     usize::try_from(length)
         .ok()
         .filter(|&length| length <= limits.file_bytes)

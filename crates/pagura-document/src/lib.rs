@@ -23,6 +23,7 @@ mod memory;
 pub mod metadata;
 pub mod navigation;
 mod object;
+mod opening;
 mod options;
 mod pages;
 pub mod repairs;
@@ -35,6 +36,7 @@ mod view;
 mod xref;
 
 pub use object::{IndirectObject, ObjectSource};
+pub use opening::{OpenJob, Opening};
 pub use options::OpenOptions;
 pub use pages::Page;
 pub use pagura_codec::{ImageCodec, Prefix};
@@ -56,7 +58,7 @@ pub struct Document {
     /// Identifies this document to its pages: they hold a weak reference,
     /// which keeps the allocation, and so its address, from being reused.
     token: Arc<()>,
-    bytes: history::Bytes,
+    bytes: source::View,
     limits: Limits,
     recovery: Recovery,
     trailer: Dictionary,
@@ -123,7 +125,7 @@ impl Document {
         if bytes.len() > options.limits.file_bytes {
             return Err(Error::limit("file size budget exceeded"));
         }
-        builder::open(bytes, options)
+        builder::open(bytes.into(), options)
     }
 
     /// The original, unmodified file bytes.
@@ -395,6 +397,7 @@ impl Document {
     /// Returns errors from interpreting the page tree, including a limit error
     /// if retaining its complete pages/resources exceeds [`Limits::document_bytes`].
     pub fn pages(&self) -> Result<&[Page]> {
+        self.bytes.check()?;
         let pages = if let Some(pages) = self.pages.get() {
             pages
         } else {
@@ -454,6 +457,7 @@ impl Document {
 
     /// Fails with `InvalidArgument` unless `page` came from this document.
     pub(crate) fn check_page(&self, page: &Page) -> Result<()> {
+        self.bytes.check()?;
         if std::ptr::eq(page.document().as_ptr(), Arc::as_ptr(&self.token)) {
             Ok(())
         } else {
@@ -464,6 +468,7 @@ impl Document {
     /// Sorted offsets where physical objects and revisions start, built on
     /// first use and charged to the retained budget.
     pub(crate) fn boundaries(&self) -> Result<&[usize]> {
+        self.bytes.check()?;
         let boundaries = if let Some(boundaries) = self.boundaries.get() {
             boundaries
         } else {
