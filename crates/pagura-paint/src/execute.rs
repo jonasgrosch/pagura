@@ -35,8 +35,9 @@ use std::ops::Range;
 #[cfg(test)]
 mod tests;
 
-/// An admitted constant store and the matching page storage, borrowed
-/// together so execution cannot pair a colour with the wrong format.
+/// An admitted constant store and the matching storage of the page or a
+/// group, borrowed together so execution cannot pair a colour with the
+/// wrong format.
 enum Direct<'a> {
     N16(StoreOut<'a, [u16; 4]>),
     Dynamic(StoreOut<'a, Dynamic>),
@@ -45,10 +46,15 @@ enum Direct<'a> {
 }
 
 impl<'a> Direct<'a> {
-    fn new(plan: &'a Plan, page: &'a mut PageBand, mark: &Mark, frame: Frame) -> Option<Self> {
+    fn new(
+        plan: &'a Plan,
+        (page, wide, levels): (&'a mut PageBand, &'a mut [f64], &'a mut [[f32; 4]]),
+        mark: &Mark,
+        frame: Frame,
+    ) -> Option<Self> {
         let compositing = &mark.compositing;
         if mark.records
-            || frame.buffer != Buffer::Page
+            || frame.knockout
             || compositing.mask.is_some()
             || compositing.blend != pagura_interpret::BlendMode::Normal
             || compositing.overprint != 0
@@ -60,8 +66,32 @@ impl<'a> Direct<'a> {
             .constant()
             .filter(|(color, _)| color.len() >= frame.layout.channels())?;
         let alpha = compositing.alpha;
+        // A group's buffer stores as its span stores do; extents and the
+        // background are the page's.
+        let pixels = area(frame.rect);
+        match frame.buffer {
+            Buffer::Page => {}
+            Buffer::Wide(offset) => {
+                let page = wide.get_mut(offset..offset + pixels * frame.layout.stride())?;
+                return (alpha == 1.0).then_some(Self::F64(WideOut {
+                    page,
+                    extents: None,
+                    rect: frame.rect,
+                    layout: frame.layout,
+                    color,
+                    row: None,
+                    stored: 0,
+                }));
+            }
+            Buffer::Levels(offset) => {
+                let page = levels.get_mut(offset..offset + pixels)?;
+                let color = (Levels(kernel::levels(color), alpha), [0.0; 4]);
+                return Some(Self::F32(StoreOut::new(page, None, frame.rect, color)));
+            }
+        }
         let background = plan.output.background;
         let (pixels, extents) = page.parts_mut();
+        let extents = Some(extents);
         Some(match (pixels, mark.words) {
             (PageBuffer::N16(page), words) => {
                 let background = background.map(|b| u16::from(b) * 257);
@@ -89,7 +119,7 @@ impl<'a> Direct<'a> {
                     background.map(f32::from),
                 ),
             )),
-            (PageBuffer::F64(page), _) if alpha == 1.0 && !frame.knockout => Self::F64(WideOut {
+            (PageBuffer::F64(page), _) if alpha == 1.0 => Self::F64(WideOut {
                 page,
                 extents,
                 rect: frame.rect,
@@ -353,7 +383,12 @@ impl<'a> Executor<'a> {
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
-        if let Some(mut direct) = Direct::new(self.plan, &mut self.ws.page, mark, frame) {
+        let storage = (
+            &mut self.ws.page,
+            &mut self.ws.wide[..],
+            &mut self.ws.levels[..],
+        );
+        if let Some(mut direct) = Direct::new(self.plan, storage, mark, frame) {
             let stored = direct.rasterize(|out| {
                 self.shapes
                     .rasterize_into(self.rasterizer, mark.cover, self.band, out);
@@ -670,7 +705,8 @@ impl Stores for Levels {
 /// pixel's coverage, within the frame's `rect`.
 struct StoreOut<'a, S: Stores> {
     page: &'a mut [S::Pixel],
-    extents: &'a mut Extents,
+    /// The page's stored columns; none for a group's buffer.
+    extents: Option<&'a mut Extents>,
     rect: DeviceRect,
     width: usize,
     color: S,
@@ -693,20 +729,20 @@ struct Columns {
 
 impl<'a, S: Stores> StoreOut<'a, S> {
     /// Stores of `color` into `page`, the pixels of `rect` row by row,
-    /// where pixels no store reached hold `background`.
+    /// where on the page pixels no store reached hold `background`.
     fn new(
         page: &'a mut [S::Pixel],
-        extents: &'a mut Extents,
+        extents: Option<&'a mut Extents>,
         rect: DeviceRect,
         (color, background): (S, S::Pixel),
     ) -> Self {
         Self {
             page,
+            background: extents.is_some() && color.opaque() == Some(background),
             extents,
             rect,
             width: u32_to_usize(rect.width()),
             color,
-            background: color.opaque() == Some(background),
             row: None,
             stored: 0,
         }
@@ -720,7 +756,7 @@ impl<'a, S: Stores> StoreOut<'a, S> {
         if self.background {
             // A store of the background, at any coverage, leaves a pixel
             // that holds it as it is: only stored columns can change.
-            let (lo, hi) = self.extents.get(row)?;
+            let (lo, hi) = self.extents.as_ref()?.get(row)?;
             start = start.max(self.rect.x0 + lo);
             stop = stop.min(self.rect.x0 + hi);
         }
@@ -741,7 +777,9 @@ impl<'a, S: Stores> StoreOut<'a, S> {
     /// Records stores at `lo .. hi` of `columns`.
     fn stored(&mut self, columns: &Columns, (lo, hi): (usize, usize)) {
         let at = |k: usize| columns.column + u32::try_from(k).unwrap_or(u32::MAX);
-        self.extents.mark(columns.row, at(lo), at(hi));
+        if let Some(extents) = &mut self.extents {
+            extents.mark(columns.row, at(lo), at(hi));
+        }
         self.stored += hi - lo;
     }
 }
@@ -790,7 +828,8 @@ impl<S: Stores> RowOut for StoreOut<'_, S> {
 /// its coverage's opacity, as a span of the mark does.
 struct WideOut<'a> {
     page: &'a mut [f64],
-    extents: &'a mut Extents,
+    /// The page's stored columns; none for a group's buffer.
+    extents: Option<&'a mut Extents>,
     rect: DeviceRect,
     layout: Layout,
     color: &'a [f64],
@@ -835,7 +874,9 @@ impl WideOut<'_> {
             kernel::cover(pixels, self.color, self.layout, coverage);
         }
         let at = |k: usize| column + u32::try_from(k).unwrap_or(u32::MAX);
-        self.extents.mark(row, at(0), at(count));
+        if let Some(extents) = &mut self.extents {
+            extents.mark(row, at(0), at(count));
+        }
         self.stored += count;
     }
 }
