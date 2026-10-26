@@ -21,7 +21,8 @@ def cases():
 
     yield case('populated', b'<<' + BASE + b'/Contents ' + text('Annotation Ω') + b'/Name /Paperclip /Custom (kept) >>')
     yield case('page-only', names=b'')
-    yield case('many', annots=b'[' + b'8 0 R ' * 200 + b']')
+    yield case('many', b'<<' + BASE + b'/Contents ' + text('Repeated attachment description ' * 256) + b' >>',
+               annots=b'[' + b'8 0 R ' * 200 + b']')
     yield case('absent', annots=b'null')
     yield case('empty', annots=b'[]')
     yield Case('missing', source(), OPEN, (REQUIREMENT,), 'Missing Annots is an empty view')

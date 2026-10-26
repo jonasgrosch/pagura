@@ -230,15 +230,21 @@ fn malformed_annotations_and_reference_cycles_never_return_partial_views() {
 
 #[test]
 fn discovery_and_decoding_have_independent_budgets_and_authorization() {
-    for limits in [
-        Limits {
-            traversal_work: 32,
-            ..Limits::default()
-        },
-        Limits {
-            document_bytes: 32768,
-            ..Limits::default()
-        },
+    for (limits, message) in [
+        (
+            Limits {
+                traversal_work: 32,
+                ..Limits::default()
+            },
+            "navigation traversal budget exceeded",
+        ),
+        (
+            Limits {
+                document_bytes: 512 * 1024,
+                ..Limits::default()
+            },
+            "navigation result budget exceeded",
+        ),
     ] {
         let document = open(
             "many",
@@ -249,9 +255,11 @@ fn discovery_and_decoding_have_independent_budgets_and_authorization() {
         )
         .unwrap();
         let page = document.page(0).unwrap();
+        let error = page.attachment_annotations(&document).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
         assert_eq!(
-            page.attachment_annotations(&document).unwrap_err().kind,
-            ErrorKind::Limit
+            error.message, message,
+            "the requested view budget, not page-cache preparation, must refuse this fixture"
         );
     }
     for name in ["flate", "absent-payload-type"] {
