@@ -2,7 +2,7 @@
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{
-    Error, Value,
+    Error, Result, Value,
     syntax::{Origin, Parser, is_whitespace},
 };
 #[derive(Debug, Clone, Copy)]
@@ -109,16 +109,19 @@ pub(crate) fn boundary(
             ))
             .into());
     }
+    let boundary = end_marker(bytes, parser.offset(), end, source)?;
+    Ok((boundary, boundary.eol - offset))
+}
+
+fn end_marker(bytes: &[u8], mut at: usize, end: usize, source: Source) -> Result<Boundary> {
     // %%EOF is a comment to the ordinary tokenizer. Only PDF whitespace may
     // intervene here; skip_whitespace would swallow the boundary itself.
-    let mut at = parser.offset();
+
     while bytes.get(at).is_some_and(|&b| is_whitespace(b)) && at < end {
         at += 1;
     }
     if !bytes.get(at..end).is_some_and(|b| b.starts_with(b"%%EOF")) {
-        return Err(source
-            .error(Error::syntax("signature revision lacks EOF marker"))
-            .into());
+        return Err(source.error(Error::syntax("signature revision lacks EOF marker")));
     }
     let eof = at + 5;
     let eol = match bytes.get(eof..end) {
@@ -128,9 +131,7 @@ pub(crate) fn boundary(
     };
     // A marker followed by ordinary text is not an EOF comment boundary.
     if eol == eof && eof < end && !bytes.get(eof).is_some_and(|&b| is_whitespace(b)) {
-        return Err(source
-            .error(Error::syntax("signature EOF marker has trailing text"))
-            .into());
+        return Err(source.error(Error::syntax("signature EOF marker has trailing text")));
     }
-    Ok((Boundary { eof, eol }, eol - offset))
+    Ok(Boundary { eof, eol })
 }

@@ -179,22 +179,12 @@ fn parse(
     repairs: &mut pagura_core::Diagnostics,
 ) -> std::result::Result<(IndirectObject, Vec<Diagnostic>), ParseFault<NeedData>> {
     let zero_catalog = zero_catalog_header(document, id, offset);
-    let number = if zero_catalog {
-        0
+    let expected = if zero_catalog {
+        ObjectId::new(0, id.generation)
     } else {
-        u64::from(id.number)
+        id
     };
-    let header_matches = parser.unsigned().ok() == Some(number)
-        && parser.unsigned().ok() == Some(u64::from(id.generation))
-        && parser.keyword(b"obj");
-    if !header_matches {
-        return Err(
-            Error::syntax("cross-reference entry disagrees with object header")
-                .at(Position::File(offset))
-                .in_object(id)
-                .into(),
-        );
-    }
+    header(parser, expected)?;
     let (value, direct) = parser
         .parse_with_streams(&mut |parser, dictionary| {
             if document.security.is_none()
@@ -286,6 +276,26 @@ fn parse(
     let mut object = IndirectObject::new(id, value, stream, source);
     object.direct = direct;
     Ok((object, repairs.take()))
+}
+
+/// Matches one complete object header without treating a pending token as an
+/// absent header. The caller supplies the authoritative xref identity.
+fn header(
+    parser: &mut Parser<'_, WindowInput<NeedData>>,
+    expected: ObjectId,
+) -> std::result::Result<(), ParseFault<NeedData>> {
+    if parser.unsigned()? != u64::from(expected.number)
+        || parser.unsigned()? != u64::from(expected.generation)
+        || !parser.keyword_with_boundary(b"obj")?
+    {
+        return Err(
+            Error::syntax("cross-reference entry disagrees with object header")
+                .at(parser.position())
+                .in_object(expected)
+                .into(),
+        );
+    }
+    Ok(())
 }
 
 fn direct_objects(

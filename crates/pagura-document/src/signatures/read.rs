@@ -111,17 +111,21 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> ReadResult<Signa
     // Later lazy loads can discover repairs. Make every coverage result
     // conservative after all source dictionaries have been inspected.
     if !doc.diagnostics().is_empty() || doc.suppressed_diagnostics() != 0 {
-        for signature in result
-            .fields
-            .iter_mut()
-            .filter_map(|f| f.signature.as_mut())
-            .chain(result.usage_rights.iter_mut())
-            .chain(result.certification.iter_mut())
-        {
-            signature.results.revision_coverage = RevisionCoverage::RepairedDocument;
-        }
+        mark_repaired(&mut result);
     }
     Ok(result)
+}
+
+fn mark_repaired(result: &mut Signatures<'_>) {
+    for signature in result
+        .fields
+        .iter_mut()
+        .filter_map(|f| f.signature.as_mut())
+        .chain(result.usage_rights.iter_mut())
+        .chain(result.certification.iter_mut())
+    {
+        signature.results.revision_coverage = RevisionCoverage::RepairedDocument;
+    }
 }
 
 fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> ReadResult<Source> {
