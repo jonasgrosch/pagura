@@ -165,6 +165,8 @@ impl Plan {
         if let Paint::Colors(paint) = &mut paint
             && let Strategy::Memo(layout) = &mut paint.1
         {
+            // The memo holds at most a key per texel read.
+            layout.bound(pixels.saturating_mul(geometry.cost()));
             layout.fit(image, mask.map(|mask| &mask.image.image), work, bytes)?;
         }
         // Keep work and function admission before stencil recolouring, as

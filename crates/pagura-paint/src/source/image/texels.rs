@@ -1000,6 +1000,14 @@ impl MemoLayout {
         slots.saturating_mul(1 + self.held)
     }
 
+    /// Retains at most `reads` keys: a source drawn small, or mostly
+    /// outside the region, reads fewer texels than its samples, and each
+    /// read adds at most one key. What the memo holds never changes a
+    /// value, so this sizes its table alone.
+    pub(super) fn bound(&mut self, reads: usize) {
+        self.limit = self.limit.min(reads.max(1));
+    }
+
     /// Tightens only a source proven to have few distinct sample keys.
     pub(super) fn fit(
         &mut self,
@@ -1396,6 +1404,12 @@ mod tests {
             embedded: false,
         };
         assert!(MemoLayout::new(key, (3, true), 1_000_000, false).bytes() <= 8_000_000);
+        // A large source drawn into few pixels keeps a table for its reads.
+        let mut drawn = MemoLayout::new(key, (3, true), 15_000_000, false);
+        assert!(drawn.bytes() > 60_000_000);
+        drawn.bound(5_712 * 4);
+        assert_eq!(drawn.limit, 5_712 * 4);
+        assert!(drawn.bytes() < 3_000_000);
         assert!(MemoLayout::new(key, (4, true), 64, false).bytes() <= (8 << 12) * 5 * 8);
         let mut memo = MemoLayout::new(key, (3, true), 0, false).make().unwrap();
         let texel = |key: u64| {
