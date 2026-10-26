@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "93b4e780751bd80da9a261e4382e73f6ac873edf",
+  "audited_revision": "99da186aafc3f685594e1ee55616f0babb3bee7b",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -13,7 +13,7 @@
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
-    "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
+    "corpus/manifests/image.json": "2cf8e712709083c16356922d2e66ac13482c2731399282f76f87f969efd4f6bf",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "53c41ce4c58ea6d0b21ff15c8d3356cd1a5ecc4950f9e8baae5961db929832ba",
     "corpus/manifests/paint_jpx_integration.json": "8ec5fc45c3c281c7a6e20e74439ea4659e030553c120c4c10f516fb8eabd4823",
@@ -179,7 +179,7 @@
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
-    "references/requirements/image.json": "3410e86abc83f72875194f80fe95c16e5719b091698d440adbfbd7d65133032a",
+    "references/requirements/image.json": "c1cec9934189452ae9d31a6dc2a89b9b0e228bf1fc758bac331a2c167225c762",
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "46c773802fbd309d3959f3c335348142300fce4a1bbee6cc6996e378ceac8ff7",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
@@ -193,6 +193,7 @@
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
+    "tools/fixturegen/jpeg.py": "be6d8adcae79369f095a08dffc4d1ccd7f3de3402f55f33decf4fc68277f1fba",
     "tools/fixturegen/paint_jpx.py": "8b0982a69967d8529afc9cbf19c082cd492304a190e5ceb6ef3012e9f1728745",
     "tools/fixturegen/paint_jpx_integration.py": "582ea12ec7e4d04b748ee0a7efc80eb174f58ce5d899508697f794682a93513f",
     "tools/fixturegen/paint_jpx_native.py": "42cc8e73d3c54091027572e095c890637ce69d940641707b2caed6cfb5e348a7",
@@ -517,7 +518,8 @@
         "crates/pagura-image/src/source/header.rs"
       ],
       "tests": [
-        "tools/fixturegen/paint_jpx_integration.py"
+        "tools/fixturegen/paint_jpx_integration.py",
+        "tools/fixturegen/jpeg.py"
       ],
       "requirements": [
         "decoder-output-cap",
@@ -593,12 +595,33 @@
         "jpx-wavelet",
         "predictor-png",
         "predictor-tiff",
-        "paint-inline-resources"
+        "paint-inline-resources",
+        "image-jpeg-lossless"
       ],
       "fixtures": [
         "paint_jpx_integration/inline-resource-0",
         "paint_jpx_integration/inline-resource-1",
-        "paint_jpx_integration/inline-five-components"
+        "paint_jpx_integration/inline-five-components",
+        "image/jpeg-lossless-huffman-gray",
+        "image/jpeg-lossless-huffman-gray-rgb-control",
+        "image/jpeg-lossless-huffman-restart",
+        "image/jpeg-lossless-huffman-restart-rgb-control",
+        "image/jpeg-lossless-huffman-rgb",
+        "image/jpeg-lossless-huffman-rgb-rgb-control",
+        "image/jpeg-lossless-huffman-16bit",
+        "image/jpeg-lossless-huffman-16bit-rgb-control",
+        "image/jpeg-lossless-huffman-16bit-point",
+        "image/jpeg-lossless-huffman-16bit-point-rgb-control",
+        "image/jpeg-lossless-arithmetic-gray",
+        "image/jpeg-lossless-arithmetic-gray-rgb-control",
+        "image/jpeg-lossless-arithmetic-restart",
+        "image/jpeg-lossless-arithmetic-restart-rgb-control",
+        "image/jpeg-lossless-arithmetic-rgb",
+        "image/jpeg-lossless-arithmetic-rgb-rgb-control",
+        "image/jpeg-lossless-arithmetic-16bit",
+        "image/jpeg-lossless-arithmetic-16bit-rgb-control",
+        "image/jpeg-lossless-arithmetic-16bit-point",
+        "image/jpeg-lossless-arithmetic-16bit-point-rgb-control"
       ],
       "comparisons": {
         "pdfium": "unprobed",
