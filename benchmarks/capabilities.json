@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "864730249720ca950ac2ce0b72ebc77010ad36de",
+  "audited_revision": "1b81d8a9c87e05d9f96854a79e490d2058edddb9",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -16,7 +16,7 @@
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "53c41ce4c58ea6d0b21ff15c8d3356cd1a5ecc4950f9e8baae5961db929832ba",
-    "corpus/manifests/paint_jpx_integration.json": "7d72f11b516da44b9f6bb0519378a73189a45b686092dbe1cbd8e7df8468ce87",
+    "corpus/manifests/paint_jpx_integration.json": "27a70db3d606d94af8ed1cc62c3a6f7b2b1526479b4a65a6c7a46084677a4526",
     "corpus/manifests/paint_jpx_native.json": "75a6ab361ffffa315aaba12ae32aa2cbf9374877078fe840acf7c24a1d65d639",
     "corpus/manifests/paint_jpx_rgb.json": "6e744ad7f3c3244a4f3ba5e7e5da9d464b4ebbdc97da7b90b5ae582935bf555f",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
@@ -94,15 +94,15 @@
     "crates/pagura-image/src/jbig2/mod.rs": "0683dce08a1aac00f4fea6a9a981f00ebe79567b3437c5e7d682aa6ca768be2e",
     "crates/pagura-image/src/jbig2/symbol.rs": "a6208a6ef9a1fc52bbec1439d5776065d0f6e2e166832685aa2706bbd11dab93",
     "crates/pagura-image/src/jbig2/text.rs": "657f4867588db7eb7a89cc26db71098a6586b7cfdc77e515ca1ab5d0ed38ab11",
-    "crates/pagura-image/src/jpx/boxes.rs": "6f573a66421abd17e60ef9ab374c9539d02223f1cf07df2bcb35c02d8182fb92",
+    "crates/pagura-image/src/jpx/boxes.rs": "a18183647eb244cfe6a06ee9568b555744ad1253cb6e4f11e8bc64e90d3145dd",
+    "crates/pagura-image/src/jpx/channels.rs": "57f4ce764aa9fb331cbea36a23768355d50eb46b7dab09d5d03ac0f5e90313d7",
     "crates/pagura-image/src/jpx/codestream.rs": "f852cf1da82881cc08b842679ee07abaa054a48bdc9cd6ea0553994bce5a652c",
     "crates/pagura-image/src/jpx/coding.rs": "5aac836ecb8b3f63d134fa26d86a0c9d8e3f25c83539df9c88d5ffa0b2149abf",
-    "crates/pagura-image/src/jpx/mod.rs": "3918f6036ea6755fe7dd83b059cf79749e75b41ed90f0a1266bae2c934012df5",
+    "crates/pagura-image/src/jpx/mod.rs": "e747e524bd324038cfb7573082934bc25aefa3d92e68faeb8e58684e88165651",
     "crates/pagura-image/src/jpx/packet.rs": "59c21e1adb720a157b2934dbf7665ed7ba90e3541ff48abe60b6a6cbee66c0eb",
     "crates/pagura-image/src/jpx/wavelet.rs": "4581edddd14389a5ba8d29b0564532c37595f67d7c6547b057da6ec0b12b9661",
-    "crates/pagura-image/src/jpx_channels.rs": "2e61a0178ed31d82d3ca120a4d55870def09e3dedc785036d9373464efd83ec4",
-    "crates/pagura-image/src/jpx_image.rs": "2d88fd361f551744b36416224b833a652d674778ee56eb291c04eaa8c5cd5ef8",
-    "crates/pagura-image/src/lib.rs": "38078b4840d62b0f3b8ca67917aab679a9d3f4aea35909b34ce6fb456f27fc5e",
+    "crates/pagura-image/src/jpx_image.rs": "90e98e64d44f94f749993b72e3708d88f346e2bbe2f3c07acd2a55676aa4d1cc",
+    "crates/pagura-image/src/lib.rs": "1f54e4088ba249f256145b90bae06c98a339008b6525468c9a8ad8915661b1d3",
     "crates/pagura-image/src/parameters.rs": "c454ce06a8fb47ae4ac72db37c527b629da6c80da6ca0699abf8dafaf0a4f0a4",
     "crates/pagura-image/src/source.rs": "1bc95dfb49654a500a4645e79c44a11a414d01ed929128c1c04049adef575612",
     "crates/pagura-image/src/source/header.rs": "2d6ed0718498aa12679be55a7008f146f6b0521e6e5395bf8a38f3097ef3222a",
@@ -181,7 +181,7 @@
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
-    "references/requirements/paint.json": "08385091582f53745c2de026039c6fc649b0de2483c7fd3646d66467837900be",
+    "references/requirements/paint.json": "0f577b0e7bb9b3988b66c139244b3693f42dd753bd6aebd75bfd3d0a501f6854",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
@@ -192,7 +192,7 @@
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/fixturegen/paint_jpx.py": "8b0982a69967d8529afc9cbf19c082cd492304a190e5ceb6ef3012e9f1728745",
-    "tools/fixturegen/paint_jpx_integration.py": "96c6abf9c454a720e50497b0b71113b6b1b773f1716cd0fbe59bf7d22b8f7810",
+    "tools/fixturegen/paint_jpx_integration.py": "fae62f13031b2cd6cc386f98c07f2a6d7f6f8712b06075ecff61b694eaa0ee51",
     "tools/fixturegen/paint_jpx_native.py": "42cc8e73d3c54091027572e095c890637ce69d940641707b2caed6cfb5e348a7",
     "tools/fixturegen/paint_jpx_rgb.py": "a17ada3e3639f186ec340d8e90005cb44ca950d5b4e36f2f7c9eed8af0130e30",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
@@ -630,7 +630,8 @@
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
-        "crates/pagura-image/src/jpx/boxes.rs"
+        "crates/pagura-image/src/jpx/boxes.rs",
+        "crates/pagura-image/src/jpx/channels.rs"
       ],
       "tests": [
         "crates/pagura-paint/src/source/image/tests.rs",
@@ -693,7 +694,8 @@
         "paint_jpx_integration/icc-alpha-group-1",
         "paint_jpx_integration/icc-alpha-interpolate-1",
         "paint_jpx_integration/icc-alpha-interpolate-2",
-        "paint_jpx_integration/icc-raw-color-key"
+        "paint_jpx_integration/icc-raw-color-key",
+        "paint_jpx_integration/indexed-only-opacity"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2857,7 +2859,7 @@
           "needle": "JPEG 2000 coefficient precision exceeds 30 bit planes"
         },
         {
-          "path": "crates/pagura-image/src/jpx/boxes.rs",
+          "path": "crates/pagura-image/src/jpx/channels.rs",
           "needle": "per-colour JP2 opacity is not implemented"
         },
         {
@@ -3123,7 +3125,7 @@
       "rationale": "PDF Indexed palettes retain their source index and independently mapped opacity. Distinct source indices cannot define one PDF Indexed sample; incomplete/per-colour associations and sample representations above sixteen bits remain explicit boundaries.",
       "evidence": [
         {
-          "path": "crates/pagura-image/src/jpx_channels.rs",
+          "path": "crates/pagura-image/src/jpx/channels.rs",
           "needle": "crate::features::JPX_SAMPLE_LAYOUT,"
         },
         {
