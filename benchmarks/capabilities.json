@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "e24be4cc3bffa20ffc22cb59a824710cb383f18d",
+  "audited_revision": "223c6967c2e5f6aee6f33c3e2585289afba142df",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -186,7 +186,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/text.json": "1eb891c87685c9b2c0348e1e990a0267ee792e0061475b02497745a772d1948f",
+    "references/requirements/text.json": "265bd5d6d2e6263542522ca46d0d173aeb928d823f96a9ab1b017b58a9de0a87",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
