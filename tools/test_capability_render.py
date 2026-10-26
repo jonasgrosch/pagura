@@ -69,6 +69,27 @@ class RenderProbeTests(unittest.TestCase):
             with self.subTest(key=key, value=value):
                 self.assertFalse(pixel_pass(case, {**observed, key: value}))
 
+    def test_declared_resolution_reaches_each_adapter_without_resizing(self):
+        rows = render.validate_manifest(self.manifest, self.inventory)
+        row = rows['annotations.circle-fill-144']
+        self.assertEqual((row['dpi'], row['width'], row['height']), (144, 64, 64))
+        for name in render.render_inventory(self.inventory)['engines']:
+            command = render.command_for(name, ['adapter'], row, Path('/tmp/probe.ppm'))
+            if name == 'poppler':
+                self.assertEqual(command[command.index('-r') + 1], '144')
+            else:
+                self.assertEqual(command[-2:], ['144', '0'])
+        original_read = render.read_json
+        def changed_read(path):
+            data = original_read(path)
+            if path.name == 'circle_annotations.json':
+                for case in data['cases']:
+                    case['dpi'] = invalid
+            return data
+        for invalid in (True, 0, 96, 288):
+            with patch.object(render, 'read_json', side_effect=changed_read), self.assertRaisesRegex(ValueError, 'declared'):
+                render.validate_manifest(self.manifest, self.inventory)
+
     def test_stale_success_wrong_pixels_crash_and_timeout_are_distinct(self):
         row = render.validate_manifest(self.manifest, self.inventory)['control.rectangle']
         correct = (render.ROOT / row['oracle']).read_bytes()

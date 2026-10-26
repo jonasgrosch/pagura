@@ -43,7 +43,8 @@ if (process.argv[2] === '--version') {
   const page = await document.getPage(index + 1);
   const viewport = page.getViewport({scale: Number(dpi) / 72});
   const surface = document.canvasFactory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
-  await page.render({canvasContext: surface.context, viewport, background: 'rgb(255,255,255)'}).promise;
+  await page.render({canvasContext: surface.context, viewport, background: 'rgb(255,255,255)',
+    intent: 'display', annotationMode: pdfjs.AnnotationMode.ENABLE}).promise;
   const width = surface.canvas.width, height = surface.canvas.height;
   // Canvas 1.x can defer raster playback until readback. A one-pixel read
   // flushes the complete recording here; full pixel extraction stays in emit.

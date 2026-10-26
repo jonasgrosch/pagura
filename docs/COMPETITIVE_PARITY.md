@@ -179,6 +179,12 @@ The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
 these are observations pending sampling/colour/alpha adjudication, not established
 competitor defects. The Pagura-inclusive hosted probe run recorded all six subject cases passing. The separate R02 changes need their own expanded probes after
 consolidation onto the shared target.
+The annotation render increment expands the shared manifest to 45 oracles and
+315 engine/case cells: 39 stored/generated icon, circle/ellipse and InkList
+controls with explicit 72/144 dpi, visibility, view flags, geometry and opacity.
+Reports pin each adapter's annotation settings. Reader artwork, sampling and
+API-layer differences require adjudication; no fixture promotes a family cell.
+The expanded matrix awaits its own hosted result.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.

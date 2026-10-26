@@ -5,10 +5,11 @@ catalog and first-page annotation attachment bytes, and text** using independent
 controls and a non-PDF rejection control. Pagura joins all six baseline columns,
 yielding 147 document-service cells. Its observations use the public CLI only.
 G01 remains open: these twenty-one cases do not establish family or product parity.
-The companion [render manifest](rendering.json) adds six independent pixel
-oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
-premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
-existing public render adapters. The ledger retains six competitor columns;
+The companion [render manifest](rendering.json) contains 45 independent pixel
+oracles: the original six graphics/JPX controls and 39 annotation controls. Its
+315 cells use the public Pagura CLI and all six existing public render adapters.
+Fixtures select 72 or 144 dpi explicitly; dimensions, pixel hashes and tolerances
+remain tied to their authored manifests. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Engine | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -89,7 +90,7 @@ an asserted lock pin. Workspace/cache paths become placeholders. Native
 diagnostics retain byte counts and hashes rather than raw logs.
 
 `capability-rendering-<os>` and `capability-rendering` retain the pixel observations
-separately. Joining requires all six baselines plus Pagura. The CLI version and
+separately. Joining requires all six baselines plus Pagura across all 315 cells. The CLI version and
 actual Pagura binary hash are recorded; the hosted workflow builds default
 features from its checkout using the pinned toolchain. Outside that workflow,
 a pre-existing binary has no asserted source revision. The exact PDF/oracle bytes and normalized RGB identities are hashed.
@@ -258,6 +259,38 @@ These observations still need matched uncompressed controls and explicit
 sampling/configuration adjudication; they do not establish competitor defects.
 No oracle or tolerance was changed after measurement. Reproduce from the
 reports' exact source, native-artifact and fixture hashes, not the current branch.
+
+## Annotation rendering controls
+
+Thirty-nine additional cases pair stored and generated FileAttachment icons,
+Circle/ellipse appearances and InkList strokes. They cover 72/144 dpi, rotation,
+NoZoom/NoRotate, visibility, rectangle insets, dashes, clipping and opacity. The
+independent oracles are unchanged from the corresponding product fixtures:
+region unions, conic integrals and convex-polygon intersections. Stored icon/ink
+controls fill regions independently of the generated stroke programs. Circle
+stored controls use separately authored paths, checked against the exact conic.
+The expanded matrix awaits hosted execution.
+
+Configuration is explicit in the reports. PDFium sets `draw_annots=True`, MuPDF
+sets `annots=True`, and pdf.js requests display intent with `AnnotationMode.ENABLE`.
+The Node pdf.js adapter measures canvas output; an HTML annotation layer is not
+present. Hayro enables `InterpreterSettings.render_annotations`; Poppler uses
+its normal `pdftoppm` annotation path without `-hide-annotations`. The Quartz
+adapter calls `CGContext.drawPDFPage`, without adding a PDFKit annotation layer
+or implementing replacement appearances. Public API contracts are documented by
+[pdf.js](https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html#~RenderParameters),
+[hayro](https://docs.rs/hayro-interpret/0.8.0/hayro_interpret/struct.InterpreterSettings.html)
+and [CoreGraphics](https://developer.apple.com/documentation/coregraphics/cgcontext/drawpdfpage(_:)).
+Each report records the exact wrapper/source and executable identity alongside
+these settings; historical reports cannot be relabeled with this configuration.
+
+An icon's prescribed name does not standardize its artwork. Generated icon or
+stroke differences can reflect reader policy; stored/generated controls help
+separate that from appearance handling. Missing canvas output can also reflect
+an API-layer boundary, especially for web annotations or CoreGraphics. Such
+observations require adjudication before any feature verdict. A blank result,
+nonzero exit or pixel mismatch is never silently converted into an unsupported
+feature or a passing comparison. Pagura must meet every independent oracle.
 
 ## Next G01 increments
 

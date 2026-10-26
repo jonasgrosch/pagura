@@ -40,6 +40,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("page range outside document".into());
     }
     let opened = started.elapsed();
+    let interpreter = InterpreterSettings {
+        render_annotations: true,
+        ..Default::default()
+    };
     let mut stages = Vec::new();
     let mut cache = None;
     for index in first..=last {
@@ -55,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let pixmap = hayro::render(
             page,
             cache,
-            &InterpreterSettings::default(),
+            &interpreter,
             &RenderSettings::default(),
             &settings,
         );
