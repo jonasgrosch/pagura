@@ -286,7 +286,7 @@ def cases():
     quads=b'/QuadPoints [14 14 24 14 24 20 14 20 30 24 40 24 40 30 30 30]'
     overlay=b'/OverlayText (R) /DA (/F0 8 Tf 0 g) /Q 1'
     fonts={
-        'catalog':b'/AcroForm << /DR << /Font << /F0 8 0 R >> >> >>',
+        'catalog':b'/AcroForm << /Fields [] /DR << /Font << /F0 8 0 R >> >> >>',
         'objects':(
             b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 600 800] /FontMatrix [.001 0 0 .001 0 0] '
             b'/CharProcs << /R 9 0 R >> /Encoding << /Type /Encoding /Differences [82 /R] >> '

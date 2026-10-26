@@ -2387,7 +2387,7 @@
         "content-redact-preview"
       ],
       "path": "corpus/generated/annotation_display/redact-observe-overlay-missing.pdf",
-      "sha256": "1e662447d5f353840a0fb5264cb3f79c55d9ba2729721f97ed98b58e244fca7f",
+      "sha256": "90d5649ca8d508a391172a78ca186492d6c6c78436e1813efccad08bdd7429c9",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -2402,7 +2402,7 @@
         "content-redact-preview"
       ],
       "path": "corpus/generated/annotation_display/redact-observe-overlay-stored.pdf",
-      "sha256": "1f1ec5ced4b3deaecd8b0d666733224e5dc50c86d9d87bd37902bdeda576ccbf",
+      "sha256": "5d367b45e1f7ecd38fff36b073abba809341ca1c30a42feb8d2d183faba855d2",
       "pages": 1,
       "strict_valid": true,
       "repairs": []
@@ -2416,7 +2416,7 @@
         "content-redact-preview"
       ],
       "path": "corpus/generated/annotation_display/redact-observe-repeat-missing.pdf",
-      "sha256": "50fefde322bf1bd95ad6bd49be6e91f5aae370ca4cbe03c826b8d338dbbf64d9",
+      "sha256": "1855500fd047058081f1ab018699a16b6b964ba88fced78b382ed8340d9f570f",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -2431,7 +2431,7 @@
         "content-redact-preview"
       ],
       "path": "corpus/generated/annotation_display/redact-observe-repeat-stored.pdf",
-      "sha256": "293c736a29e7002420520dcff4c815bcf077f79001fdf3fda295939334ad94d9",
+      "sha256": "323debb96c29a269d022262695826f794c06024d89186431857cf888b4ef8819",
       "pages": 1,
       "strict_valid": true,
       "repairs": []
