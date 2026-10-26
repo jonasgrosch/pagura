@@ -13,7 +13,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/ordinary-content.pdf",
-      "sha256": "9b99a0684deccafe20808c98b23796563964257c6d50f6c565754eaa75caf27c",
+      "sha256": "e5de6e26b6db87e8180b795be8f1e8a0be198c3ed7d5b10a3b8e6f95534e8b51",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -32,7 +32,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/sound-default-missing-ap.pdf",
-      "sha256": "a2c0e0bcab8b608b57cf654bc2a4d449f7e746d71190483286ca00f0d0e35785",
+      "sha256": "a241ecd8d5cb703c516f5d5abd891c5a421e24c9acb69bb4e6f7636df0f71a2d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -47,7 +47,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/sound-speaker-missing-ap.pdf",
-      "sha256": "e8f3038695f2cdc8b5bbc3f17fd9bc2754004869b91bcddef1fc5ad63d3a54fb",
+      "sha256": "77a3f5d85b3260d54011e65747bcaadbf1a6b1c0e0344f265eca7abd1bbfae85",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -62,7 +62,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/sound-mic-missing-ap.pdf",
-      "sha256": "81ee10d49b29650505c6fe736d79710beeb5ad793fb4be75d1ee21296c97a722",
+      "sha256": "525e1765746e1ae300f08bd7f492791ce050eeb560452bd57bc010734ca4812d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -77,7 +77,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/sound-speaker-stored.pdf",
-      "sha256": "0b9ed7d0e130d8dbfca2215aaef9ebd95e71c27a42b016ce857e8ef9eb14ca8d",
+      "sha256": "515dc9cf02790cc673a532369b2e5e3c3eb875a0235acdb4ebae875a93eb0cf7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -96,7 +96,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/sound-mic-stored.pdf",
-      "sha256": "101846caa70b8e83cb47d69d46c48365627cb6bc6ccab18536d862449ac4413c",
+      "sha256": "f00ba90a472d24b7df6306d5838016e76e5e8caf1a594824d6fd290fe54e191c",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -115,7 +115,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/sound-hidden-missing-ap.pdf",
-      "sha256": "23fa70774608455801b62a44a78ad361feea31706324cd7b7138dae2e6777171",
+      "sha256": "d490ecdc288b3321d8e6ded7a30b5b0b990dfa32d8ceb38c5310c25bc845247c",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -134,7 +134,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/watermark-ordinary-72.pdf",
-      "sha256": "3d16b57b7c0e5aa119c91f7bc7993f0dfd2f70bf93f60d13a9206b9c3c8f5689",
+      "sha256": "f4e39b263881d55ee994f454e13769d0b295f1dba87a208ebeb5c9dce050da1e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -153,7 +153,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/watermark-ordinary-144.pdf",
-      "sha256": "3d16b57b7c0e5aa119c91f7bc7993f0dfd2f70bf93f60d13a9206b9c3c8f5689",
+      "sha256": "f4e39b263881d55ee994f454e13769d0b295f1dba87a208ebeb5c9dce050da1e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -172,7 +172,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-default-72.pdf",
-      "sha256": "9d8a0cadde7db36e13939a9a5ceaccb2031e11f550fc3d71883a2b30b7db4376",
+      "sha256": "a1d511416b2f5eb0a071b75ebf4cff34572ae17e501dc724338c4f16d9ef53b1",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -191,7 +191,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-matrix-72.pdf",
-      "sha256": "0c633f8b8514fdcc556a2c46796949c8d952ba2e0176768a84f9b613c93ec726",
+      "sha256": "357631cb50e50cc5372db97df68c34b491b3f0779bf652090a1fc9593ebba2dc",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -210,7 +210,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-percent-72.pdf",
-      "sha256": "fcd3a78cd6b3d380f24cf63c7d34005a79780e1d03c3f1bed1d8de1319c89255",
+      "sha256": "44d8f21e34ef7c41e5b570cada531921351c0769ac25f896e8594b434744c683",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -229,7 +229,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-percent-144.pdf",
-      "sha256": "fcd3a78cd6b3d380f24cf63c7d34005a79780e1d03c3f1bed1d8de1319c89255",
+      "sha256": "44d8f21e34ef7c41e5b570cada531921351c0769ac25f896e8594b434744c683",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -248,7 +248,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-rotated-matrix-72.pdf",
-      "sha256": "0d3ee5cc286c36515da1e1da25da90594b342a27235d14b76c31be3cca646ccf",
+      "sha256": "ac9cd53ddf1fa46ead3e8067e424fc802aa4b0727a4c985507470887cf08f7e4",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -267,7 +267,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-rotated-matrix-144.pdf",
-      "sha256": "0d3ee5cc286c36515da1e1da25da90594b342a27235d14b76c31be3cca646ccf",
+      "sha256": "ac9cd53ddf1fa46ead3e8067e424fc802aa4b0727a4c985507470887cf08f7e4",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -286,7 +286,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-crop-72.pdf",
-      "sha256": "5b5ab654e31dfe2a73d5da0a4fb081f86888f1965028df0f7e0b064eda514c03",
+      "sha256": "4339d07c7280ee6a98d2cb42f24088db7e43591992f6d8cbe124bd95d1e98589",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -305,7 +305,7 @@
         "content-static-annotation-placement"
       ],
       "path": "corpus/generated/annotation_display/fixed-print-only-display.pdf",
-      "sha256": "5600a847fb5df16798e39f3676b8e465a691ab3eeb1f01ac4b5d9b69980a9a6f",
+      "sha256": "003bb7ea336b0c3cce70a6eecb0065c08629b5f53df5497609d86c62a59a4386",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -314,6 +314,749 @@
       "dpi": 72,
       "width": 32,
       "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-0-72",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-0-72.pdf",
+      "sha256": "825817ab78fa2485c7df410b12a70fca2122d2d3ec96416df1f92f4ad3ab19ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-0-72.ppm",
+      "oracle_sha256": "6da809d790c6f87ede7ab290fb4cdefb89ffb0816ad19202a4eaf048ba553c57",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-0-144",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-0-144.pdf",
+      "sha256": "825817ab78fa2485c7df410b12a70fca2122d2d3ec96416df1f92f4ad3ab19ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-0-144.ppm",
+      "oracle_sha256": "c16725fa108c70f8942a179ee8b458fe93e0bf3c363c0ab75f2d5b196c5c5474",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/fixed-crop-rotate-0",
+      "kind": "pdf",
+      "description": "Asymmetric CropBox clips the MediaBox-based location, including a clipped right edge at 90 degrees",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-crop-rotate-0.pdf",
+      "sha256": "376064a1ae4faab3275b3581f75a227bec8db0cc01b071512c3ab3db42a86339",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-crop-rotate-0.ppm",
+      "oracle_sha256": "7449b6acc74bf1c24770bacba4fc1bcd699476ad8a1aa4fe978b2b727b6d8153",
+      "dpi": 72,
+      "width": 24,
+      "height": 17
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-90-72",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-90-72.pdf",
+      "sha256": "499d75f2691b36c16a9f692e3750508cfc9b6e1fa041d62ec6656211a6af549f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-90-72.ppm",
+      "oracle_sha256": "aa7123ae6e4e03868ceaca18dfccee274c4f75535e4b50825f18d5622c379c0d",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-90-144",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-90-144.pdf",
+      "sha256": "499d75f2691b36c16a9f692e3750508cfc9b6e1fa041d62ec6656211a6af549f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-90-144.ppm",
+      "oracle_sha256": "f6fc1a89176865929ba9709167d0585105c5315f6df41401641211b6bac5a15f",
+      "dpi": 144,
+      "width": 48,
+      "height": 64
+    },
+    {
+      "id": "annotation_display/fixed-crop-rotate-90",
+      "kind": "pdf",
+      "description": "Asymmetric CropBox clips the MediaBox-based location, including a clipped right edge at 90 degrees",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-crop-rotate-90.pdf",
+      "sha256": "35a53841ff74a025d0692d13a3653a9b0ba67ad1359a74a33cd69f6570e7536a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-crop-rotate-90.ppm",
+      "oracle_sha256": "3927619dab600afb755b596b34bca33df80ce8af266fb58a8451601c1be3c2f9",
+      "dpi": 72,
+      "width": 17,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-180-72",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-180-72.pdf",
+      "sha256": "99f98ecc00890247ee78700528aa0a523fad977e65f5653113f4492e81424020",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-180-72.ppm",
+      "oracle_sha256": "6da809d790c6f87ede7ab290fb4cdefb89ffb0816ad19202a4eaf048ba553c57",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-180-144",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-180-144.pdf",
+      "sha256": "99f98ecc00890247ee78700528aa0a523fad977e65f5653113f4492e81424020",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-180-144.ppm",
+      "oracle_sha256": "c16725fa108c70f8942a179ee8b458fe93e0bf3c363c0ab75f2d5b196c5c5474",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/fixed-crop-rotate-180",
+      "kind": "pdf",
+      "description": "Asymmetric CropBox clips the MediaBox-based location, including a clipped right edge at 90 degrees",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-crop-rotate-180.pdf",
+      "sha256": "f7bde9045e4dd1583f6c96c27afa82ef5a2ca0dc302a87b1f5ab52cc86e0f3c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-crop-rotate-180.ppm",
+      "oracle_sha256": "1aec089551b0a375a3d03258e85015f7ac54602d49213552d133d1da0fa57227",
+      "dpi": 72,
+      "width": 24,
+      "height": 17
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-270-72",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-270-72.pdf",
+      "sha256": "3bfb17b7adca135b896bcc4385439dcdef60f7d10d8178982fbfcdef65922bc9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-270-72.ppm",
+      "oracle_sha256": "aa7123ae6e4e03868ceaca18dfccee274c4f75535e4b50825f18d5622c379c0d",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/fixed-origin-rotate-270-144",
+      "kind": "pdf",
+      "description": "Shifted media origin and page rotation retain upright, media-relative artwork at ordinary display zoom",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-origin-rotate-270-144.pdf",
+      "sha256": "3bfb17b7adca135b896bcc4385439dcdef60f7d10d8178982fbfcdef65922bc9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-origin-rotate-270-144.ppm",
+      "oracle_sha256": "f6fc1a89176865929ba9709167d0585105c5315f6df41401641211b6bac5a15f",
+      "dpi": 144,
+      "width": 48,
+      "height": 64
+    },
+    {
+      "id": "annotation_display/fixed-crop-rotate-270",
+      "kind": "pdf",
+      "description": "Asymmetric CropBox clips the MediaBox-based location, including a clipped right edge at 90 degrees",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-crop-rotate-270.pdf",
+      "sha256": "b5f5dbde77836bb805537c6c48dc17891fbc315fe431e482145ac5f95bd08b64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-crop-rotate-270.ppm",
+      "oracle_sha256": "a50852818ab0257205d442f17896030e997fefd23964181e5a9c4bea2c8fc365",
+      "dpi": 72,
+      "width": 17,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/ordinary-origin-rotate-0",
+      "kind": "pdf",
+      "description": "Absent FixedPrint retains the original Rect and rotates the authored black/red artwork with the page",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/ordinary-origin-rotate-0.pdf",
+      "sha256": "ef03de87aa6fd3689c1dc49347e1fbf47a43e787a84ef9cc3ccb6d3becfb0567",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/ordinary-origin-rotate-0.ppm",
+      "oracle_sha256": "a08706976c52ba2acbf9ced4e045b77b64aff53d97d5581e309ce2f2b475936b",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/ordinary-origin-rotate-90",
+      "kind": "pdf",
+      "description": "Absent FixedPrint retains the original Rect and rotates the authored black/red artwork with the page",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/ordinary-origin-rotate-90.pdf",
+      "sha256": "9e4915247c4e4ec9ae89e779e40ad22123040a75dcd979f53b743a4b2fc71588",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/ordinary-origin-rotate-90.ppm",
+      "oracle_sha256": "5dbbfad535bec8c2b81ed4961c78dfaa3e925a051da2c29239956802ad265fde",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/ordinary-origin-rotate-180",
+      "kind": "pdf",
+      "description": "Absent FixedPrint retains the original Rect and rotates the authored black/red artwork with the page",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/ordinary-origin-rotate-180.pdf",
+      "sha256": "a9b4840df84598595437064a3ff378d6f256653dbf7907deb72ce4e1d66541e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/ordinary-origin-rotate-180.ppm",
+      "oracle_sha256": "54577e9b11e2940cc754a86161a262e6998afc9d3c2b90dd41810e4245bd4919",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/ordinary-origin-rotate-270",
+      "kind": "pdf",
+      "description": "Absent FixedPrint retains the original Rect and rotates the authored black/red artwork with the page",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/ordinary-origin-rotate-270.pdf",
+      "sha256": "5d96fbbbd0354549dc536539957684a8f97b469134fdae7d5f6ed316ae1dbdd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/ordinary-origin-rotate-270.ppm",
+      "oracle_sha256": "ff67ec42b72b7bf6af84d776fcc7598ccf6f5a791acf24330af68a97b75890cb",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/fixed-default-rotate-90",
+      "kind": "pdf",
+      "description": "Default placement reaches the lower-left media edge after rotation; pre-view bounds cannot cull it",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-default-rotate-90.pdf",
+      "sha256": "a0bfecbb2a796d227197fcde48ab1455426c49c939a5ab6179e8a056d319595b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-default-rotate-90.ppm",
+      "oracle_sha256": "7a2121f5f6a8855168602a1999ce0b58c6a3980da3fbd0d2d4d7765c17bbbd5a",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/fixed-user-unit-72",
+      "kind": "pdf",
+      "description": "UserUnit doubles the 24x32 rotated media and 8x4 artwork; DPI independently scales the full display",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-user-unit-72.pdf",
+      "sha256": "2e2b645aa2439dea47d21941c12ee5d7ec574388e84aeb29a8eb1184d8c723f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-user-unit-72.ppm",
+      "oracle_sha256": "f6fc1a89176865929ba9709167d0585105c5315f6df41401641211b6bac5a15f",
+      "dpi": 72,
+      "width": 48,
+      "height": 64
+    },
+    {
+      "id": "annotation_display/fixed-user-unit-144",
+      "kind": "pdf",
+      "description": "UserUnit doubles the 24x32 rotated media and 8x4 artwork; DPI independently scales the full display",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-user-unit-144.pdf",
+      "sha256": "2e2b645aa2439dea47d21941c12ee5d7ec574388e84aeb29a8eb1184d8c723f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-user-unit-144.ppm",
+      "oracle_sha256": "f69719af20a4721975c26ce26cb8030e1f7807c285604dcf10a21887ca1bf7e4",
+      "dpi": 144,
+      "width": 96,
+      "height": 128
+    },
+    {
+      "id": "annotation_display/fixed-no-zoom-144",
+      "kind": "pdf",
+      "description": "NoZoom fixes only artwork size: its media-relative upper-left anchor still moves with the 144 DPI view",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-no-zoom-144.pdf",
+      "sha256": "6642a38d8bb56dde7dfc85712a78ade98bf59d7ac41e4ac6cce4f476d97fa258",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-no-zoom-144.ppm",
+      "oracle_sha256": "340280f10052c7bb9055e2466d36335b3660f1715637615319589460ec75cfab",
+      "dpi": 144,
+      "width": 64,
+      "height": 48
+    },
+    {
+      "id": "annotation_display/fixed-ap-matrix",
+      "kind": "pdf",
+      "description": "FixedPrint Matrix changes the upright target; the separate AP Matrix turns authored black left into black below",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-ap-matrix.pdf",
+      "sha256": "d8eeef7d7d4bb732312f47adb191bcae07923fb1943fd62922415b51a11781f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-ap-matrix.ppm",
+      "oracle_sha256": "5fed559035275f2848b0af39a1f0176a61ff66d32fb183fe5f611fe3603bcedf",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-group",
+      "kind": "pdf",
+      "description": "An AP transparency group uses the same media placement and page-rotation cancellation",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-group.pdf",
+      "sha256": "4074639a502741042ad01f2c1ff38d3f74e7d11053d9b30e5ea59a9f38351582",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-group.ppm",
+      "oracle_sha256": "aa7123ae6e4e03868ceaca18dfccee274c4f75535e4b50825f18d5622c379c0d",
+      "dpi": 72,
+      "width": 24,
+      "height": 32
+    },
+    {
+      "id": "annotation_display/fixed-null",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-null.pdf",
+      "sha256": "4a1420bd0bf7eaa3d851954d6a77553fd259a47209b95b2f28cd87da2ddbc9e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-null.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-indirect-null",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-indirect-null.pdf",
+      "sha256": "617aac3c07f8a090271439322c8b408fa8862dd35102c2c6399dc2843a458364",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-indirect-null.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-null-defaults",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-null-defaults.pdf",
+      "sha256": "5ee11788f56f5cc322fd435023c66abb9552e347d0c8bc1787773dfa3cb30727",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-null-defaults.ppm",
+      "oracle_sha256": "ace6f601241ed3289caa133ffbcd187eae47923c5810b74ac1ad464ac50450fa",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-reversed-rect",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-reversed-rect.pdf",
+      "sha256": "d8a8ad385c43dfc6885e1186d1425d01f9d501a3e3d2deb088db50c839c6bbf3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-reversed-rect.ppm",
+      "oracle_sha256": "ace6f601241ed3289caa133ffbcd187eae47923c5810b74ac1ad464ac50450fa",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-negative-offset",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-negative-offset.pdf",
+      "sha256": "1e6e7e5e9786f5e03278fca73666a8b15e7e17da51c4359aa9e71d8e04b0546b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-negative-offset.ppm",
+      "oracle_sha256": "4394446483b714b30017b65bff0cdfcfb27bf6b059c2d9ca89b34b8ed600128b",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-unknown-entry",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-unknown-entry.pdf",
+      "sha256": "3212a217245f5f4bb2444457cb9119fb7ac3b7c2fb945c01fc47e22f0ea48d09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-unknown-entry.ppm",
+      "oracle_sha256": "ace6f601241ed3289caa133ffbcd187eae47923c5810b74ac1ad464ac50450fa",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-indirect-values",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-indirect-values.pdf",
+      "sha256": "1542755c0cb736e3ab05495d2a4cb93d463e63b9ae1711dab03d2d2e499c84b6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-indirect-values.ppm",
+      "oracle_sha256": "de04daad67d3848b7eba3ae0041c6cc919bf8900aff058e7875a9d761ec3fb67",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/sound-ignored-fixed-print",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-ignored-fixed-print.pdf",
+      "sha256": "1f6b026ac7bdd21ef9ec0ecfd923e043bddf80c73512b27504319efd575a0afa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-ignored-fixed-print.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/sound-inert-payload",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/sound-inert-payload.pdf",
+      "sha256": "6048560bb2b5214127854558f6f5b4b0ef017d28480faf23644ad0b85f142320",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/sound-inert-payload.ppm",
+      "oracle_sha256": "f64ef16617a4f59c3a8955226efda43df4549e5fde67444b06022aa87d2bd596",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-hidden-malformed",
+      "kind": "pdf",
+      "description": "Defaults and ignored data preserve the declared static display without following irrelevant references",
+      "expected": "render",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-hidden-malformed.pdf",
+      "sha256": "f8d60308aee1b969683b160999d36db3e9c2e5ea8fc08d2f1be528e94ea37c3c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/fixed-hidden-malformed.ppm",
+      "oracle_sha256": "b85314eed1c6dd67b790718c6c1aed002adb160be804b43587c6f4bb90048dfd",
+      "dpi": 72,
+      "width": 32,
+      "height": 24
+    },
+    {
+      "id": "annotation_display/fixed-not-dictionary",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-not-dictionary.pdf",
+      "sha256": "3423c554aa6d672f6e1508af8f62cf04ea4cc208a2ab24fb896ebca859016c42",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-missing-type",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-missing-type.pdf",
+      "sha256": "310295d35769eae05fffe12d0905621156572b07f8479280af029cbc57ff731f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-wrong-type",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-wrong-type.pdf",
+      "sha256": "b19eac271c3a2dd5fc869c0f295376022519d3bc38f44a753c4174110d6d5885",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-matrix-count",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-matrix-count.pdf",
+      "sha256": "1de07a14c48bed904822f8b0f3c2c9388202e99e88760926e96d1a53fcacf710",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-matrix-number",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-matrix-number.pdf",
+      "sha256": "f2fa31922b54e975b16691aac617410b947977211e628f1511d27f4248f299d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-horizontal-type",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-horizontal-type.pdf",
+      "sha256": "99acee2c5130a9b411daf72e083819fac8f9cc8adb30b3aaee5d5e1dc8dc5f8f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-vertical-type",
+      "kind": "pdf",
+      "description": "Malformed required placement data is a syntax error when the appearance is requested",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-vertical-type.pdf",
+      "sha256": "9bb3dce94d241262d46818052dea85c14ca260145b242b12c52b5ebdfe871a8c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/fixed-reference-limit",
+      "kind": "pdf",
+      "description": "Existing reference depth and finite geometry limits reject hostile placement without new quotas",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-reference-limit.pdf",
+      "sha256": "b29e5b8a3c78b78847f8beae37eab87462586a1385191054b73864d69c6d69d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/fixed-numeric-limit",
+      "kind": "pdf",
+      "description": "Existing reference depth and finite geometry limits reject hostile placement without new quotas",
+      "expected": "open",
+      "requirements": [
+        "content-static-annotation-placement"
+      ],
+      "path": "corpus/generated/annotation_display/fixed-numeric-limit.pdf",
+      "sha256": "b5e34ecc86a08d61376fc7cffac3072685ce3990356fd50430ffc4efc10f9fc8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
     }
   ]
 }

@@ -4,9 +4,9 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) contains 306 independent pixel
+The companion [render manifest](rendering.json) contains 352 independent pixel
 oracles for basic graphics, JPX and stored/generated annotation appearances. Its
-2,142 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
+2,464 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -187,7 +187,7 @@ measured merge `444760a59d27dfa185448c41d59d6ea59ee030d5` from head
 This does not validate every annotation variant; native/WASI/client and
 save/reopen checks remain separate. No source-family comparison is promoted.
 
-The current manifest adds 57 controls for cloudy/rounded fill, stroke and dashes,
+The following checkpoint added 57 controls for cloudy/rounded fill, stroke and dashes,
 unitless letter spacing, and an ordinary curved-path miter. The Linux report from
 [run 40350317258](https://github.com/jonasgrosch/pagura/actions/runs/40350317258),
 head `6fc72d23247cb3522a8b652e831bdfdda406c40d`, recorded 298/306 passing Pagura
@@ -204,9 +204,63 @@ Its Linux report artifact `12665528340` has SHA-256
 The lone short circular dash at 144 dpi exposed a preceding chord-normal strip
 protruding beyond the final butt-cap plane. The shared run now retains smooth
 source tangents at dashed subdivision vertices; a noncircular quadratic pixel
-control and exact circular trapezoid check accompany this correction. Acceptance
-of the current head remains pending. Rich
+control and exact circular trapezoid check accompany this correction. Rich
 controls use embedded literal Type3 glyphs, so character expectations do not
 depend on external font substitution. Analytic curve normals, miter geometry and
 an exact circular-dash trapezoid establish stroke expectations; their pixel
 oracles and tolerances are unchanged.
+
+[Hosted run 40357415540](https://github.com/jonasgrosch/pagura/actions/runs/40357415540)
+measured merge `f3174f872c245459c236b285e530cb835af2e54d` from retained head
+`85486f465e7ca2294c9313558138875ef0988cdc`: all 306 Pagura controls passed,
+within a completed 2,142-cell seven-engine report. Combined artifact
+`12667638001` has SHA-256
+`f00d715b913d0e85ae660f0ccf426d99e22215926d3c1128be1f6e0273540805`.
+[Native/WASI/client and save/reopen checks](https://github.com/jonasgrosch/pagura/actions/runs/40357415274)
+and [full Ubuntu/macOS/Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40357415839)
+also passed at that retained head. These results cover the stated fixture set;
+they do not validate the later screen-placement batch or complete V01.
+
+## Static annotation screen placement
+
+The added 46 pixel controls and 12 refusal/error controls in
+[annotation_display.py](../../tools/fixturegen/annotation_display.py) distinguish
+ordinary page content, stored Sound appearances, ordinary Watermark appearances
+and `FixedPrint` screen placement. Their hosted results are pending. ISO 32000-2
+12.5.6.22 explicitly uses MediaBox dimensions for screen display. The existing
+appearance fitter uses the upright box of the origin-translated Rect after the
+FixedPrint Matrix; the shared page-view mapping locates its media anchor and the
+existing NoRotate view cancels page rotation. UserUnit and ordinary display zoom
+remain intact. CropBox clips this placement and does not redefine its media.
+
+The source AP has a black left half and red right half in an 8×4 box. For
+MediaBox `[10 -6 42 18]`, H=.5 and V=.25, the independently authored y-up
+display coordinates are:
+
+| Page Rotate | Displayed media | Target x,y,w,h | CropBox `[13 -4 37 13]` viewport | Cropped target x,y,w,h |
+|---|---|---|---|---|
+| 0 | 32×24 | 16,6,8,4 | 24×17 | 13,4,8,4 |
+| 90 | 24×32 | 12,8,8,4 | 17×24 | 10,3,8,4 |
+| 180 | 32×24 | 16,6,8,4 | 24×17 | 11,1,8,4 |
+| 270 | 24×32 | 12,8,8,4 | 17×24 | 7,5,8,4 |
+
+The four crop offsets are respectively `(3,2)`, `(2,5)`, `(5,5)` and `(5,3)`;
+the 90-degree control clips one unit of the red edge. UserUnit2 on the 90-degree
+page doubles media to 48×64 and target to `(24,16,16,8)` before DPI scaling.
+At 144 DPI the NoZoom control instead keeps artwork 8×4 while its ordinary
+media anchor moves to `(32,20)`, yielding target `(32,16,8,4)`. Literal rectangle
+oracles never call the product mapping. Rotated ordinary AP counterparts prove
+that absent FixedPrint retains normal page rotation; separate AP Matrix and
+transparency-group controls exercise the same form path.
+
+Required-Type errors, malformed Matrix/H/V, indirect values, null defaults,
+reversed Rect, negative fractions, irrelevant cyclic entries, hidden/text-only
+short circuits, numeric overflow and existing reference/scene budgets accompany
+the pixel cases. Static painting never reads the Sound payload. Sound's missing
+AP cases retain the explicit Pagura refusal and have no universal pixel oracle:
+Speaker/Mic artwork is reader-chosen. Baseline observations and matched stored
+AP/ordinary controls must precede product substitute artwork. PDF.js canvas
+display omits its HTML annotation layer; CoreGraphics drawing omits PDFKit.
+Those configurations cannot establish full-viewer icon support. No adapter here
+requests playback or physical printing. Printer media/fit-to-paper scaling,
+nonprintable margins, tiling and n-up remain V05 contract and probe gaps.

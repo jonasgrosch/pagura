@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, static Sound AP controls and MediaBox-relative FixedPrint screen placement. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -3978,6 +3978,604 @@
         "height": 1,
         "rgb_sha256": "1733e446911fb72c4ef5cf461e9fb7d7cfa6bf27dffd9f431c493be4001d1f20",
         "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.ordinary-content",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/ordinary-content",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.sound-speaker-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-speaker-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.sound-mic-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-mic-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.sound-hidden-missing-ap",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-hidden-missing-ap",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.watermark-ordinary-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/watermark-ordinary-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.watermark-ordinary-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/watermark-ordinary-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "bddadbef0c0663fb2a8291ec889ed44b9d79d4d4e45898e3ef94619aed9d9c78",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-default-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-default-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "47fb4fd7ae03ba17937271ebcae8777835e75ed7709e9e7e66b5852ebb7c3a73",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-matrix-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-matrix-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "49bb0403d361e8a178da05a59e70e5c748f44d80d61fead4a4d02e9fcd7919e3",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-percent-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-percent-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "66e7b82b37a761b9fe3afe9dd7f1058f8734c556fbf472c8b951dbf4dbd7188e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-percent-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-percent-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "16e4605972449be3bfb096b0aa5eb7a64957232b04dd0a12db469f4e2be86a06",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-rotated-matrix-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-rotated-matrix-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "670b1810da228dd91a9d0c69c27f700fdc4f3746fc6c72d370102e906e878336",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-rotated-matrix-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-rotated-matrix-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e7cbc02aad95f5bcbb25be620180ab8a9dcd06b38d810665982288d0399d6a54",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-crop-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-crop-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 20,
+        "rgb_sha256": "351a62802bd4fdfa2c8e20bc236260fe012110782765c7afea49f1d3ea6cc21e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-print-only-display",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-print-only-display",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-0-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-0-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "66e7b82b37a761b9fe3afe9dd7f1058f8734c556fbf472c8b951dbf4dbd7188e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-0-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-0-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "16e4605972449be3bfb096b0aa5eb7a64957232b04dd0a12db469f4e2be86a06",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-crop-rotate-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-crop-rotate-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 17,
+        "rgb_sha256": "d49cbdb3fe59c578b8e6440c609da82d20e5a583235b806a05c713b850727dba",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-90-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-90-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "631a4ccb6f1145ce940d607fc9b42be2c8a18267f68787675eeea9feb2da26ce",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-90-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-90-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 64,
+        "rgb_sha256": "2d60058778543c79fc4f5407c51a0e60fd5a9a495bc8bc5d212e61aa6d1a66d3",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-crop-rotate-90",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-crop-rotate-90",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 17,
+        "height": 24,
+        "rgb_sha256": "5bf8e137bbc40e0a7ead00dac664746ba688c14284b6b40f90b551a8c071ea8a",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-180-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-180-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "66e7b82b37a761b9fe3afe9dd7f1058f8734c556fbf472c8b951dbf4dbd7188e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-180-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-180-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "16e4605972449be3bfb096b0aa5eb7a64957232b04dd0a12db469f4e2be86a06",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-crop-rotate-180",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-crop-rotate-180",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 17,
+        "rgb_sha256": "e7101df2d3fb9763dc811a7c87717cecee300a5eafb895ce636fe87956a28759",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-270-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-270-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "631a4ccb6f1145ce940d607fc9b42be2c8a18267f68787675eeea9feb2da26ce",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-origin-rotate-270-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-origin-rotate-270-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 64,
+        "rgb_sha256": "2d60058778543c79fc4f5407c51a0e60fd5a9a495bc8bc5d212e61aa6d1a66d3",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-crop-rotate-270",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-crop-rotate-270",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 17,
+        "height": 24,
+        "rgb_sha256": "0c4af7bb3ee209cc8b8bf251b348b470b47b4ee6f9f44af583bbd68d12e3a789",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.ordinary-origin-rotate-0",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/ordinary-origin-rotate-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "4cd013df0df5e2f5d1891bf5203d3bd56ff597f571c4753b309a5c377bb7b526",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.ordinary-origin-rotate-90",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/ordinary-origin-rotate-90",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "60ef9c7e36cc813bf47dc7555a967087f711721afc44e7f49fe928f64c46a1cd",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.ordinary-origin-rotate-180",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/ordinary-origin-rotate-180",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "abb6ae41c967e6a7436acbbcbbb50ca0f171f4c434eabd433bd21a9f5d76aa23",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.ordinary-origin-rotate-270",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/ordinary-origin-rotate-270",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "d9ed88d2acbd1ec9b4942eb4e585a2923f13101423b5e2040eb4407ea69406e1",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-default-rotate-90",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-default-rotate-90",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "cb8a2f0967eb8ef5538756f9e78b8957a275d38586a9ada4d789e5b708bb6fe2",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-user-unit-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-user-unit-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 48,
+        "height": 64,
+        "rgb_sha256": "2d60058778543c79fc4f5407c51a0e60fd5a9a495bc8bc5d212e61aa6d1a66d3",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-user-unit-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-user-unit-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 96,
+        "height": 128,
+        "rgb_sha256": "26aa237fbfc19a717b952c6a5e6512d8f5a0772284e839e71b637fd06ddb14a3",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-no-zoom-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-no-zoom-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "8e6f02a29982e9535530b1d83d511186b842a0edd861c8e0f9702f34327873a3",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-ap-matrix",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-ap-matrix",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "649f8121d5cbf8e8e041b85fbd1348cfd82283f9506a3f9b3a55706756e88a08",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-group",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-group",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 24,
+        "height": 32,
+        "rgb_sha256": "631a4ccb6f1145ce940d607fc9b42be2c8a18267f68787675eeea9feb2da26ce",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-null",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-null",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-indirect-null",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-indirect-null",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-null-defaults",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-null-defaults",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "47fb4fd7ae03ba17937271ebcae8777835e75ed7709e9e7e66b5852ebb7c3a73",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-reversed-rect",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-reversed-rect",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "47fb4fd7ae03ba17937271ebcae8777835e75ed7709e9e7e66b5852ebb7c3a73",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-negative-offset",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-negative-offset",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "9131f5612d78f0089aa3227186ffd84d8be9b76365324d976fa37de49b5c56e1",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-unknown-entry",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-unknown-entry",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "47fb4fd7ae03ba17937271ebcae8777835e75ed7709e9e7e66b5852ebb7c3a73",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-indirect-values",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-indirect-values",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "e71bdf35e6c879e3bc1063bbc781a90ec06f7d15641cb63c218ec4d609843b1b",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.sound-ignored-fixed-print",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-ignored-fixed-print",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.sound-inert-payload",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/sound-inert-payload",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "annotations.display.fixed-hidden-malformed",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/fixed-hidden-malformed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 24,
+        "rgb_sha256": "adea5e0a9361c2700525b2452f81230a0f5c1fb310669e1a5b1d779143b9e297",
+        "tolerance": 0
       }
     }
   ]

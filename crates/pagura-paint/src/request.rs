@@ -65,12 +65,7 @@ impl RenderRequest {
             return Err(Error::invalid_argument("scale must be positive and finite"));
         }
         let r = space.crop;
-        let rotation = match space.rotation {
-            Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0(), r.y1()),
-            Rotation::Clockwise90 => Transform::new(0.0, 1.0, 1.0, 0.0, -r.y0(), -r.x0()),
-            Rotation::Clockwise180 => Transform::new(-1.0, 0.0, 0.0, 1.0, r.x1(), -r.y0()),
-            Rotation::Clockwise270 => Transform::new(0.0, -1.0, -1.0, 0.0, r.y1(), r.x1()),
-        };
+        let rotation = Transform::page_view(r, space.rotation);
         let factor = scale * space.user_unit;
         let (width, height) = match space.rotation {
             Rotation::None | Rotation::Clockwise180 => (r.width(), r.height()),

@@ -162,7 +162,7 @@ async function main() {
   manifest.cases.push(...roundedAnnotations.cases);
   const reliefAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/relief_annotations.json'), 'utf8'));
   manifest.cases.push(...reliefAnnotations.cases);
-  for (const area of ['cloud_annotations', 'rich_annotations']) {
+  for (const area of ['cloud_annotations', 'rich_annotations', 'annotation_display']) {
     const annotations = JSON.parse(await readFile(join(root, `corpus/manifests/${area}.json`), 'utf8'));
     manifest.cases.push(...annotations.cases);
   }
@@ -587,7 +587,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       return;
     }
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
-      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/', 'stamp_annotations/', 'free_text_annotations/', 'free_text_callouts/', 'rounded_annotations/', 'relief_annotations/', 'cloud_annotations/', 'rich_annotations/'].some((area) => entry.id.startsWith(area));
+      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/', 'stamp_annotations/', 'free_text_annotations/', 'free_text_callouts/', 'rounded_annotations/', 'relief_annotations/', 'cloud_annotations/', 'rich_annotations/', 'annotation_display/'].some((area) => entry.id.startsWith(area));
       // The viewer supersamples reduced pages. At 25% it uses 4 device pixels
       // per CSS pixel (72 dpi overall); at 100% it uses 2 (144 dpi overall).
       // Compare icon oracles on that exact device grid: CSS box averaging is

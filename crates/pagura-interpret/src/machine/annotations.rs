@@ -46,7 +46,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             _ => None,
         };
         for value in values {
-            self.annotation(value, page.resources(), filled.as_ref())
+            self.annotation(value, page, filled.as_ref())
                 .map_err(|error| error.in_object_opt(value.as_reference()))?;
         }
         Ok(())
@@ -55,7 +55,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     fn annotation(
         &mut self,
         value: &Value,
-        resources: &Dictionary,
+        page: &Page,
         filled: Option<&FilledWidgets<'_, '_>>,
     ) -> Result<()> {
         let document = self.document();
@@ -97,6 +97,16 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return Ok(());
         }
         let rect = rectangle(document, d, b"Rect")?;
+        let (rect, flags) = if subtype == b"Watermark"
+            && let Some(rect) = fixed_print(document, d, rect, page)?
+        {
+            // The existing fixed view cancels page rotation about the media
+            // anchor. Display zoom and UserUnit retain their usual meaning.
+            (rect, flags | NO_ROTATE)
+        } else {
+            (rect, flags)
+        };
+        let resources = page.resources();
         let text_icon = subtype == b"Text";
         let appearance = match self.filled(filled, d, rect)? {
             Some(appearance) => Some(appearance),
@@ -325,6 +335,102 @@ fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> Result<Rect> {
     .ok_or(Error::syntax("invalid annotation rectangle"))
 }
 
+/// Screen placement of a `FixedPrint` watermark (12.5.6.22, Tables 193–194).
+/// `MediaBox` defines the media; `CropBox` clips the resulting display as usual.
+/// The returned upright rectangle's upper-left corner is in default user
+/// space. The existing `NoRotate` view keeps the fitted appearance upright at
+/// that anchor. This does not supply physical print media, tiling or n-up.
+fn fixed_print(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+    page: &Page,
+) -> Result<Option<Rect>> {
+    let Some(value) = annotation.get(b"FixedPrint") else {
+        return Ok(None);
+    };
+    let value = document.resolve(value)?;
+    if matches!(value, Value::Null) {
+        return Ok(None);
+    }
+    let dictionary = value
+        .as_dictionary()
+        .ok_or(Error::syntax("FixedPrint must be a dictionary"))?;
+    let entry = |key: &[u8]| {
+        dictionary
+            .get(key)
+            .map(|value| document.resolve(value))
+            .transpose()
+            .map(|value| value.filter(|value| !matches!(value, Value::Null)))
+    };
+    if entry(b"Type")?
+        .and_then(Value::as_name)
+        .is_none_or(|name| name != b"FixedPrint")
+    {
+        return Err(Error::syntax("FixedPrint Type must be FixedPrint"));
+    }
+    let mut matrix = Transform::IDENTITY;
+    if let Some(value) = entry(b"Matrix")? {
+        let Some(values @ [_, _, _, _, _, _]) = value.as_array() else {
+            return Err(Error::syntax("FixedPrint Matrix requires six numbers"));
+        };
+        let mut components = [0.0; 6];
+        for (target, value) in components.iter_mut().zip(values) {
+            *target = document
+                .resolve(value)?
+                .as_number()
+                .ok_or(Error::syntax("FixedPrint Matrix requires six numbers"))?;
+        }
+        matrix = super::matrix(components);
+    }
+    let fraction = |key: &[u8]| {
+        entry(key)?
+            .map(|value| {
+                value
+                    .as_number()
+                    .ok_or(Error::syntax("FixedPrint offset must be numeric"))
+            })
+            .transpose()
+            .map(|value| value.unwrap_or(0.0))
+    };
+    let origin = Rect::from_corners(0.0, 0.0, rect.width(), rect.height())
+        .ok_or(Error::limit("FixedPrint rectangle exceeds numeric range"))?;
+    let target = envelope(origin, matrix)?;
+    let view = Transform::page_view(page.media_box(), page.rotation());
+    let media = envelope(page.media_box(), view)?;
+    let anchor = Point::new(
+        target.x0() + fraction(b"H")? * media.width(),
+        media.height() - (target.y1() + fraction(b"V")? * media.height()),
+    );
+    let anchor = view
+        .inverse()
+        .ok_or(Error::limit(
+            "FixedPrint media transform exceeds numeric range",
+        ))?
+        .apply(anchor);
+    Rect::from_corners(
+        anchor.x,
+        anchor.y - target.height(),
+        anchor.x + target.width(),
+        anchor.y,
+    )
+    .map(Some)
+    .ok_or(Error::limit("FixedPrint placement exceeds numeric range"))
+}
+
+/// The upright envelope shared by appearance fitting and `FixedPrint` Matrix.
+fn envelope(rect: Rect, transform: Transform) -> Result<Rect> {
+    let points = Path::rect_corners(rect).map(|point| transform.apply(point));
+    if points.iter().any(|point| !point.is_finite()) {
+        return Err(Error::limit("appearance bounds exceed numeric range"));
+    }
+    let x0 = points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
+    let x1 = points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
+    let y0 = points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
+    let y1 = points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
+    Rect::from_corners(x0, y0, x1, y1).ok_or(Error::limit("appearance bounds exceed numeric range"))
+}
+
 /// The transform that fits the upright envelope of the transformed `BBox`
 /// into the annotation rectangle (12.5.5, Algorithm 8.1); `None` when
 /// either has no area.
@@ -334,18 +440,8 @@ fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> Result<Rect> {
 /// `Syntax` for a matrix that collapses a box with area, `Limit` for a fit
 /// beyond the numeric range.
 pub(crate) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
-    let points = [
-        Point::new(b.x0(), b.y0()),
-        Point::new(b.x1(), b.y0()),
-        Point::new(b.x0(), b.y1()),
-        Point::new(b.x1(), b.y1()),
-    ]
-    .map(|p| p * m);
-    let x0 = points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
-    let x1 = points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
-    let y0 = points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
-    let y1 = points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
-    if x1 <= x0 || y1 <= y0 {
+    let bounds = envelope(b, m)?;
+    if bounds.is_empty() {
         if b.width() == 0.0 || b.height() == 0.0 {
             return Ok(None);
         }
@@ -354,9 +450,16 @@ pub(crate) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transfo
     if r.width() == 0.0 || r.height() == 0.0 {
         return Ok(None);
     }
-    let sx = r.width() / (x1 - x0);
-    let sy = r.height() / (y1 - y0);
-    let a = Transform::new(sx, 0.0, 0.0, sy, r.x0() - sx * x0, r.y0() - sy * y0);
+    let sx = r.width() / bounds.width();
+    let sy = r.height() / bounds.height();
+    let a = Transform::new(
+        sx,
+        0.0,
+        0.0,
+        sy,
+        r.x0() - sx * bounds.x0(),
+        r.y0() - sy * bounds.y0(),
+    );
     if !a.is_finite() {
         return Err(Error::limit("appearance fitting exceeds numeric range"));
     }
