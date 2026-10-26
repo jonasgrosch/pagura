@@ -747,7 +747,16 @@
         "paint_jpx_integration/signed-trc-mixed-alpha-1",
         "paint_jpx_integration/signed-trc-mixed-alpha-2",
         "paint_jpx_integration/signed-trc-candidate-fallback",
-        "paint_jpx_integration/signed-trc-no-device-fallback"
+        "paint_jpx_integration/signed-trc-no-device-fallback",
+        "paint_jpx_integration/any-icc-precedence-signed",
+        "paint_jpx_integration/any-icc-precedence-signed-codec-control",
+        "paint_jpx_integration/any-icc-precedence-signed-rgb-control",
+        "paint_jpx_integration/any-icc-approximation-quality",
+        "paint_jpx_integration/any-icc-approximation-quality-codec-control",
+        "paint_jpx_integration/any-icc-approximation-quality-rgb-control",
+        "paint_jpx_integration/any-icc-stable-equal-priority",
+        "paint_jpx_integration/any-icc-stable-equal-priority-codec-control",
+        "paint_jpx_integration/any-icc-stable-equal-priority-rgb-control"
       ],
       "review": [
         {
@@ -769,6 +778,11 @@
           "locator": "T.800 (06/2019) I.5.3.3 and Table I.9; ICC.1:2010 input/display Gray and RGB matrix/TRC profile models",
           "rule": "For the restricted XYZ matrix/TRC subset, map the original signed integer using the full component-precision denominator and clip negative inputs to the TRC input limit. Do not add an unsigned colour offset or normalize to the positive signed maximum.",
           "verdict": "Independent native-size Gray/RGB controls at 8 and 16 bits have identical-profile unsigned JPX and plain RGB counterparts. Mixed signed/unsigned palette precision, SMaskInData 0/1/2, restricted-candidate fallback and refusal of undefined signed device fallback add integration controls. The original general-signed boundary fixture now uses a valid full Lab profile, keeping its Unsupported expectation; no valid restricted-TRC case is mislabeled as invalid."
+        },
+        {
+          "locator": "T.801 M.11.7.1/.2 and Cor4 M.11.1/Table M.14",
+          "rule": "Both a Colour Group box and the JP2 Header default group forbid repeated METH1 or repeated METH2, while permitting multiple METH3/METH4 records. Representations describe related/equivalent colours; distinct methods alone do not establish equivalence.",
+          "verdict": "Three original repeated-METH2 ranking files (precedence-signed, approximation-quality, stable-equal-priority) retain exact bytes/oracles as annotated malformed-input observations. New any-icc counterparts use two METH3 records plus one low-precedence METH2 exact fallback. MinV1 and rreq declare Part1 feature5 and Any ICC feature44 in FUAM; DCM requires only feature5 because the restricted fallback produces the same intended colour. Each has an identical-codestream ordinary JP2 control and an independent RGB control. The three valid groups add nine render cases; no reader-feature grant or product change is needed, and hosted acceptance is pending."
         }
       ],
       "gaps": "General signed Lab/LUT and nonrestricted ICC combinations remain outside the T.800 Table I.9 restricted XYZ Gray/RGB matrix/TRC clipping rule; they remain Unsupported unless a later restricted candidate applies. Permitted JPX baseline colour definitions and restricted codestream transforms remain R03; PDF excludes CIEJab19. Scoped baseline observations do not establish family parity."

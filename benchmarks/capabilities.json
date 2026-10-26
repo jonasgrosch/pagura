@@ -1088,8 +1088,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Explicit PDF override; embedded Gray/RGB/CMYK; unsigned 1\u201316-bit and mixed-precision sYCC; ICC forward profiles with physical Lab input ranges. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles preserve raw precision and apply T.800 negative-input clipping, including mixed signed palettes and opacity. Ranked candidates use signed precedence, approximation and stable order, skip unsupported selected profiles/transforms, and keep candidate/intent cache identities distinct. Enumerated CIELab 14 defaults and explicit EP map unsigned 1\u201316-bit post-palette channels onto three physical Lab intervals, including extended L; ordinary PDF L remains 0\u2013100. D50, fractional low-precision offsets, ranked explicit-D50 fallback and alpha reuse existing owners; 323-control hosted acceptance is pending.",
-      "remaining": "Other enumerated baseline colours and non-D50 CIELab illuminants remain R03. Signed CIELab remains outside the unsigned M-18 mapping; zero-range validity stays unadjudicated and unavailable after candidate exhaustion. CIEJab19 is excluded by PDF 7.4.9. Signed sRGB/Gray/sYCC enumerations are invalid under T.800 Table I.10. General signed Lab/LUT and nonrestricted ICC combinations stay Unsupported unless a later restricted candidate applies. No unsigned-device fallback or general clipping policy is guessed; scoped results do not establish family parity.",
+      "implemented": "Explicit PDF override; embedded Gray/RGB/CMYK; unsigned 1\u201316-bit and mixed-precision sYCC; ICC forward profiles with physical Lab input ranges. Signed restricted XYZ Gray/RGB matrix/TRC input/display profiles preserve raw precision and apply T.800 negative-input clipping, including mixed signed palettes and opacity. Ranked candidates use signed precedence, approximation and stable order, skip unsupported selected profiles/transforms, and keep candidate/intent cache identities distinct. Enumerated CIELab 14 defaults and explicit EP map unsigned 1\u201316-bit post-palette channels onto three physical Lab intervals, including extended L; ordinary PDF L remains 0\u2013100. D50, fractional low-precision offsets and alpha reuse existing owners. The 323-row hosted pixel result includes six annotated malformed duplicate-colour observations; it is not a valid-input count. New conforming METH3 ranking/codec/RGB controls await hosted validation.",
+      "remaining": "Other enumerated baseline colours and non-D50 CIELab illuminants remain R03. Signed CIELab remains outside the unsigned M-18 mapping; zero-range validity stays unadjudicated and unavailable after candidate exhaustion. CIEJab19 is excluded by PDF 7.4.9. Signed sRGB/Gray/sYCC enumerations are invalid under T.800 Table I.10. General signed Lab/LUT and nonrestricted ICC combinations stay Unsupported unless a later restricted candidate applies. No unsigned-device fallback or general clipping policy is guessed; scoped results do not establish family parity. File-level fallback from unsupported Lab to an equivalent distinct-method colour profile remains unproved; the three historical repeated-METH1 fallback files cannot establish it. Repeated-METH2 ranking observations are also malformed; only the new distinct conforming controls can attest that file layout.",
       "sources": [
         "crates/pagura-image/src/jpx_image.rs",
         "crates/pagura-interpret/src/machine/image/describe.rs",
@@ -1377,7 +1377,16 @@
         "jpx_lab_probe/lab-alpha-2",
         "jpx_lab_probe/lab-alpha-2-rgb-control",
         "jpx_lab_probe/lab-fallback-rgb",
-        "jpx_lab_probe/lab-fallback-rgb-control"
+        "jpx_lab_probe/lab-fallback-rgb-control",
+        "paint_jpx_integration/any-icc-precedence-signed",
+        "paint_jpx_integration/any-icc-precedence-signed-codec-control",
+        "paint_jpx_integration/any-icc-precedence-signed-rgb-control",
+        "paint_jpx_integration/any-icc-approximation-quality",
+        "paint_jpx_integration/any-icc-approximation-quality-codec-control",
+        "paint_jpx_integration/any-icc-approximation-quality-rgb-control",
+        "paint_jpx_integration/any-icc-stable-equal-priority",
+        "paint_jpx_integration/any-icc-stable-equal-priority-codec-control",
+        "paint_jpx_integration/any-icc-stable-equal-priority-rgb-control"
       ],
       "comparisons": {
         "pdfium": "unprobed",

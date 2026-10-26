@@ -22,7 +22,9 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 1
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH2"
     },
     {
       "id": "paint_jpx_integration/approximation-quality",
@@ -42,7 +44,9 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 1
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH2"
     },
     {
       "id": "paint_jpx_integration/future-then-supported",
@@ -122,7 +126,189 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH2"
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-precedence-signed",
+      "kind": "pdf",
+      "description": "any icc precedence signed",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-precedence-signed.pdf",
+      "sha256": "debbc68bf0b02af7eb06d6205ed33319dbab63b1c055c4153559561117ecbf8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-precedence-signed.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
       "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-precedence-signed-codec-control",
+      "kind": "pdf",
+      "description": "any icc precedence signed codec control",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-precedence-signed-codec-control.pdf",
+      "sha256": "6b687070fcc0a4a8ddd062113d05acc3b8686d24538f9e9704d61e116898dc61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-precedence-signed-codec-control.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-precedence-signed-rgb-control",
+      "kind": "pdf",
+      "description": "any icc precedence signed rgb control",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-precedence-signed-rgb-control.pdf",
+      "sha256": "f040cba250f7c7e4b2c7e5e41f7360da184cb2ab918d13c506bc677e0778e82a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-precedence-signed-rgb-control.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-approximation-quality",
+      "kind": "pdf",
+      "description": "any icc approximation quality",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-approximation-quality.pdf",
+      "sha256": "ca33c296c70936271ba07ff6451bb6a0479917d0d995a1f81bf447152067cc8d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-approximation-quality.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-approximation-quality-codec-control",
+      "kind": "pdf",
+      "description": "any icc approximation quality codec control",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-approximation-quality-codec-control.pdf",
+      "sha256": "6b687070fcc0a4a8ddd062113d05acc3b8686d24538f9e9704d61e116898dc61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-approximation-quality-codec-control.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-approximation-quality-rgb-control",
+      "kind": "pdf",
+      "description": "any icc approximation quality rgb control",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-approximation-quality-rgb-control.pdf",
+      "sha256": "f040cba250f7c7e4b2c7e5e41f7360da184cb2ab918d13c506bc677e0778e82a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-approximation-quality-rgb-control.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-stable-equal-priority",
+      "kind": "pdf",
+      "description": "any icc stable equal priority",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-stable-equal-priority.pdf",
+      "sha256": "c496156d5a4693acd4bd339ec41961d706da714f4ad4149e5ab173ccc146bc75",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-stable-equal-priority.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-stable-equal-priority-codec-control",
+      "kind": "pdf",
+      "description": "any icc stable equal priority codec control",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-stable-equal-priority-codec-control.pdf",
+      "sha256": "6b687070fcc0a4a8ddd062113d05acc3b8686d24538f9e9704d61e116898dc61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-stable-equal-priority-codec-control.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_jpx_integration/any-icc-stable-equal-priority-rgb-control",
+      "kind": "pdf",
+      "description": "any icc stable equal priority rgb control",
+      "expected": "render",
+      "requirements": [
+        "paint-jpx-icc"
+      ],
+      "path": "corpus/generated/paint_jpx_integration/any-icc-stable-equal-priority-rgb-control.pdf",
+      "sha256": "f040cba250f7c7e4b2c7e5e41f7360da184cb2ab918d13c506bc677e0778e82a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_jpx_integration/any-icc-stable-equal-priority-rgb-control.ppm",
+      "oracle_sha256": "eb6dc5ffa438adb6525d543be9effcef7a610b3062c5cb3c43b2fab199bc1845",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     },
     {
       "id": "paint_jpx_integration/all-profiles-unavailable",

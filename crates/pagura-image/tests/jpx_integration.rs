@@ -123,7 +123,7 @@ fn cielab_parameter_lengths_and_metadata_budgets_are_explicit() {
 
 #[test]
 fn ranked_candidates_remain_visible_without_decoding() {
-    let document = document("precedence-signed", Limits::default()).unwrap();
+    let document = document("any-icc-precedence-signed", Limits::default()).unwrap();
     let source = source(&document).unwrap();
     let ImageKind::EmbeddedColor {
         color: JpxColor::Alternatives(choices),
@@ -137,7 +137,7 @@ fn ranked_candidates_remain_visible_without_decoding() {
             .iter()
             .map(|c| (c.precedence, c.approximation))
             .collect::<Vec<_>>(),
-        [(2, 1), (-2, 1)]
+        [(2, 1), (-2, 4), (-128, 1)]
     );
     assert!(
         choices
@@ -209,7 +209,7 @@ fn pdf_index_and_opacity_have_separate_sample_precision_and_order() {
 
 #[test]
 fn candidate_metadata_and_palette_adaptation_obey_output_limits() {
-    for name in ["precedence-signed", "indexed-palette-1-1-2"] {
+    for name in ["any-icc-precedence-signed", "indexed-palette-1-1-2"] {
         let document = document(
             name,
             Limits {

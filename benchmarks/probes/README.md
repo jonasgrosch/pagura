@@ -520,18 +520,22 @@ The ordinary PDF Lab constructor still fixes L* to `[0,100]`; explicit JPEG
 requirements recognise Cor4 features 56/57, while actual colour selection still
 checks channel precision, sign, illuminant and the chosen encoding. D50 is the
 implemented illuminant. Other illuminants, signed Lab and zero-range records
-remain explicit unavailable candidates; a supported lower-ranked specification
-can be selected, including an explicit sRGB alternative, but an exhausted Lab
-list never becomes implicit DeviceRGB. The public decoded-image fallback follows
+remain explicit unavailable candidates. The selector can choose a supported
+lower-ranked specification; an exhausted Lab list never becomes implicit
+DeviceRGB. The historical duplicate-enumeration files exercise tolerance of
+malformed groups, as qualified below, and do not establish valid-file fallback. The public decoded-image fallback follows
 the same rule; it does not replace selection of an explicit colour candidate.
 Zero-range validity remains unadjudicated rather than receiving an invented
 Syntax verdict.
 
 The 35 original diagnostic records and all 70 files are unchanged. The original
 26 render expectations and all 274 integrated controls are preserved in the
-323-case rendering manifest. Its 49 CIELab-area render controls include the
+original 323 rendering rows, now retained in a 332-case manifest. The 49
+CIELab-area observations include the
 original 24 PDFs plus one-/two-bit defaults, a 1/2/16-bit palette, extended
-lightness, ranked fallback and straight/premultiplied alpha with RGB controls.
+lightness and straight/premultiplied alpha with RGB controls. Three historical
+ranked-fallback files are malformed colour groups; their exact observations
+remain visible rather than being counted as valid JPX acceptance.
 All use the existing independent CIE arithmetic and geometry generators;
 neither Pagura nor another renderer supplies expected pixels. At
 `L*=120, a*=-80, b*=80`, the declared extended interval gives RGB8
@@ -547,5 +551,52 @@ malformed EP lengths return Syntax; typed colour selection checks unsupported
 sign/illuminant/range boundaries. The colour-record parser's exact source budget
 is one `ColorSpecification` and one allocation-initialisation operation;
 one-short byte and zero-operation controls must refuse it before insertion.
-The new implementation's hosted acceptance is pending; the green d167 result
-above applies to the preceding 274-control checkpoint.
+The [63e render run](https://github.com/jonasgrosch/pagura/actions/runs/40390162187)
+measured 323/323 Pagura observations and 2,261 total cells at merge
+`fdd6a4c126815a07b3b34030144da1922a9b5bde`. Artifact `12684685868` has ZIP
+SHA-256 `91ad9c65a1c2691bcb669dfc94fb09faa158bee2cec97532bc2c0f129894406d`
+and report SHA-256
+`65ac18d18af959c70fb4780cd23cbe6718ca0caa71101b7f5c2aef0b2613ce85`.
+The six malformed subjects below are included in that count. The functional
+run at 63e failed a test-only Clippy lint; df04 corrects that assertion without
+changing product behaviour or expected pixels. The new valid ranking controls
+below await their own hosted evidence.
+
+
+## JPX colour-group validity qualification
+
+T.801 M.11.7.1 explicitly applies to both the Colour Group box (`cgrp`) and
+the JP2 Header default group (`jp2h`): each permits at most one enumerated
+record (METH1) and one restricted ICC record (METH2), while multiple Any ICC
+(METH3) and vendor (METH4) records are permitted. The methods must describe
+related/equivalent colours. Neither Cor3 nor Cor4 alters that clause.
+
+Six historical subjects violate the repeated-method rule. They remain byte for
+byte identical, with unchanged oracles, tolerances and historical report rows:
+
+| Fixture area | Historical malformed subjects |
+| --- | --- |
+| `jpx_lab_probe` | `lab-fallback-illuminant`, `lab-fallback-zero-range`, `lab-fallback-rgb` repeat METH1. |
+| `paint_jpx_integration` | `precedence-signed`, `approximation-quality`, `stable-equal-priority` repeat METH2. |
+
+Their fixture manifests now label `jpx_validity` and `evidence_scope`; they are
+malformed-input observations, not valid JPX acceptance. The existing
+`strict_valid` field describes strict PDF opening, not embedded JPEG 2000
+format validity, and is unchanged. Lab selector tests are named and documented
+as these historical tolerance observations. A distinct ICC RGB alternative to
+unsupported Lab would also need an independently established equivalent colour
+transform. That file-level fallback remains open; replacing the method byte
+alone would not establish it.
+
+Three new `any-icc-*` ranking subjects use permitted repeated METH3 records and
+one low-precedence restricted ICC fallback with the same intended exact colour.
+Each has an ordinary JP2 control with identical codestream samples and an
+independent RGB control: nine new rendering rows. MinV1/rreq follow Cor4;
+FUAM declares Part1 feature5 and Any ICC feature44, while DCM needs only
+feature5 because the restricted fallback produces the intended colour.
+The independent unit-TRC/Bradford-sRGB profile builder and scalar sRGB arithmetic
+supply all bytes and expectations. These controls can expose a wrong ranking
+choice without requiring a reader that lacks Any ICC to use it. Public image
+metadata and allocation-refusal checks now use this valid first-image container.
+No product code, reader-feature grant, acceptance tolerance, or prior expected
+pixel changed. Family comparison cells remain unprobed.

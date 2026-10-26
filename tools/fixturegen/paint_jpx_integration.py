@@ -6,6 +6,7 @@ standard-derived builders. Expected colours, alpha and geometry come from
 primary formulae, never another PDF engine or product output.
 """
 import struct
+from dataclasses import replace
 from fractions import Fraction as F
 
 from . import content as colour, jpx
@@ -25,11 +26,16 @@ def colr(method, data, precedence=0, approximation=1):
     return jpx.box(b'colr', struct.pack('>BbB', method, precedence, approximation) + data)
 
 
-def container(planes, specifications, *, bits=8, signed=False, extra=b'', origin=(0, 0), brand=b'jpx '):
+def container(planes, specifications, *, bits=8, signed=False, extra=b'', origin=(0, 0), brand=b'jpx ', requirements=None):
     width = len(planes[0])
     header = jpx.box(b'ihdr', struct.pack('>IIH4B', 1, width, len(planes), bits - 1 + 128 * int(signed), 7, 0, 0))
     header += b''.join(specifications) + extra
-    return (jpx.box(b'jP  ', b'\r\n\x87\n') + jpx.box(b'ftyp', brand + bytes(4) + b'jp2 ')
+    file_type = brand + bytes(4) + b'jp2 '
+    reader = b''
+    if requirements is not None:
+        file_type = b'jpx ' + struct.pack('>I', 1) + b'jpx jpxb'
+        reader = jpx.box(b'rreq', requirements)
+    return (jpx.box(b'jP  ', b'\r\n\x87\n') + jpx.box(b'ftyp', file_type) + reader
             + jpx.box(b'jp2h', header)
             + jpx.box(b'jp2c', jpx.codestream(planes, width, 1, bits=bits, signed=signed, origin=origin)))
 
@@ -62,8 +68,31 @@ def profile_choices():
         ('stable-equal-priority', [colr(2, exact, 3), colr(2, approximate, 3)]),
     ]
     for name, specs in choices:
-        yield image_case(name, container(planes, specs, brand=b'jp2 ' if name.startswith('jp2') else b'jpx '),
+        observed = image_case(name, container(planes, specs, brand=b'jp2 ' if name.startswith('jp2') else b'jpx '),
+                              b'/Filter /JPXDecode', [], 3, 1, colors=pixels, tolerance=1, requirement=ICC)
+        if name in ('precedence-signed', 'approximation-quality', 'stable-equal-priority'):
+            observed = replace(observed, extra={**observed.extra, 'jpx_validity': 'malformed-duplicate-method',
+                                                'evidence_scope': 'historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH2'})
+        yield observed
+    # M.11.7.1 permits repeated Any ICC (METH3), but not Restricted ICC
+    # (METH2), in both jp2h and cgrp. Keep the old bytes above as observations;
+    # these distinct files establish the same ranking obligations legally.
+    # Cor4 Table M.14: FUAM needs Part1 (5) and Any ICC (44). DCM needs only
+    # Part1, since the single restricted profile supplies the same exact colour.
+    requirements = struct.pack('>BBBH', 1, 3, 1, 2) + struct.pack('>HBHBH', 5, 1, 44, 2, 0)
+    ranked = [
+        ('precedence-signed', [colr(3, approximate, -2, 4), colr(3, exact, 2)]),
+        ('approximation-quality', [colr(3, approximate, 3, 4), colr(3, exact, 3, 1)]),
+        ('stable-equal-priority', [colr(3, exact, 3, 4), colr(3, approximate, 3, 4)]),
+    ]
+    for name, specs in ranked:
+        data = container(planes, [*specs, colr(2, exact, -128)], requirements=requirements)
+        yield image_case('any-icc-' + name, data, b'/Filter /JPXDecode', [], 3, 1,
+                         colors=pixels, tolerance=1, requirement=ICC)
+        yield image_case('any-icc-' + name + '-codec-control', encoded(planes, exact),
                          b'/Filter /JPXDecode', [], 3, 1, colors=pixels, tolerance=1, requirement=ICC)
+        yield image_case('any-icc-' + name + '-rgb-control', bytes(v for pixel in pixels for v in pixel),
+                         b'/ColorSpace /DeviceRGB /BitsPerComponent 8', [], 3, 1, colors=pixels, requirement=ICC)
     yield image_case('all-profiles-unavailable', container(planes, [colr(3, future, 4), colr(3, future, 3)]),
                      b'/Filter /JPXDecode', [], 3, 1, colors=samples, requirement=ICC,
                      resources=b'/ColorSpace << /DefaultRGB /DeviceGray >>')

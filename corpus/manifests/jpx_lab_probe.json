@@ -1689,7 +1689,9 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 1
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH1"
     },
     {
       "id": "jpx_lab_probe/lab-fallback-illuminant-rgb-control",
@@ -1729,7 +1731,9 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 1
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH1"
     },
     {
       "id": "jpx_lab_probe/lab-fallback-zero-range-rgb-control",
@@ -1769,7 +1773,9 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 1
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; repeated METH1 and unproved Lab/RGB equivalence"
     },
     {
       "id": "jpx_lab_probe/lab-fallback-rgb-control",

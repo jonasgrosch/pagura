@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, enumerated D50 CIELab defaults/explicit ranges, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, enumerated D50 CIELab defaults/explicit ranges, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict. Six retained duplicate-METH1/METH2 subjects are historical malformed-input observations, not valid JPX acceptance; see fixture jpx_validity and the probe README. Original bytes, pixel expectations and tolerances are preserved.",
   "cases": [
     {
       "id": "control.blank",
@@ -4198,6 +4198,123 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "322f7d8d6e15d439582bc8d64d315159c9bf513e2efd25f351a0d659153f08ec",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-precedence-signed",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-precedence-signed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-precedence-signed-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-precedence-signed-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-precedence-signed-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-precedence-signed-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-approximation-quality",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-approximation-quality",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-approximation-quality-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-approximation-quality-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-approximation-quality-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-approximation-quality-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-stable-equal-priority",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-stable-equal-priority",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-stable-equal-priority-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-stable-equal-priority-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.integration.any-icc-stable-equal-priority-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx_integration/any-icc-stable-equal-priority-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d11a18dfb42a4bc54c6e69ef572491ed00d232e535509298b636b63281035427",
         "tolerance": 0
       }
     }

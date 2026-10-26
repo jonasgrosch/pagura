@@ -342,10 +342,12 @@ fn unavailable_lab_candidates_do_not_assume_device_rgb() {
 }
 
 #[test]
-fn lab_reader_features_do_not_bypass_selected_colour_interpretation() {
+fn historical_duplicate_lab_records_keep_candidate_semantics() {
     use pagura_color::Intent;
     use pagura_core::ObjectId;
     use pagura_image::{ImageKind, ImageSource, jpx::JpxColor};
+    // These preserved files repeat METH1, forbidden by T.801 M.11.7.1.
+    // They check the existing tolerant selector, not valid-file acceptance.
     for name in ["lab-fallback-illuminant", "lab-fallback-zero-range"] {
         let document = Document::open(
             pagura_testkit::fixture("jpx_lab_probe", &format!("{name}.pdf")),
@@ -384,10 +386,12 @@ fn lab_reader_features_do_not_bypass_selected_colour_interpretation() {
 }
 
 #[test]
-fn unsupported_lab_does_not_hide_an_explicit_rgb_alternative() {
+fn historical_duplicate_lab_rgb_records_keep_candidate_semantics() {
     use pagura_color::Intent;
     use pagura_core::ObjectId;
     use pagura_image::{ImageKind, ImageSource};
+    // The historical bytes also lack a proof of Lab/RGB equivalence. This
+    // remains a candidate-selection observation, not a valid JPX colour group.
     let document = Document::open(
         pagura_testkit::fixture("jpx_lab_probe", "lab-fallback-rgb.pdf"),
         &OpenOptions::default(),

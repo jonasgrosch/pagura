@@ -163,8 +163,10 @@ def interactions():
         # encoding, so the independently derived RGB oracle is unchanged.
         data = container(raw, header, lab_box(defaults(subject.depths)), 57,
                          alternatives=(lab_box(parameters),))
-        yield image_case('lab-fallback-' + name, data, b'/Filter /JPXDecode', [], 4, 1,
-                         colors=colors, tolerance=1, **options)
+        observed = image_case('lab-fallback-' + name, data, b'/Filter /JPXDecode', [], 4, 1,
+                              colors=colors, tolerance=1, **options)
+        yield replace(observed, extra={**observed.extra, 'jpx_validity': 'malformed-duplicate-method',
+                                       'evidence_scope': 'historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH1'})
         yield image_case('lab-fallback-' + name + '-rgb-control', bytes(v for pixel in colors for v in pixel),
                          b'/ColorSpace /DeviceRGB /BitsPerComponent 8', [], 4, 1, colors=colors, **options)
     # The file lists explicit Lab (feature57) in FUAM, but its sRGB alternative
@@ -173,8 +175,10 @@ def interactions():
     data = container(raw, header, struct.pack('>I', 16), 0,
                      alternatives=(lab_box((100, 0, 170, 128, 200, 96, 0x00443635)),),
                      required=(57,), display_mask=1)
-    yield image_case('lab-fallback-rgb', data, b'/Filter /JPXDecode', [], 4, 1,
-                     colors=subject.pixels, tolerance=1, **options)
+    observed = image_case('lab-fallback-rgb', data, b'/Filter /JPXDecode', [], 4, 1,
+                          colors=subject.pixels, tolerance=1, **options)
+    yield replace(observed, extra={**observed.extra, 'jpx_validity': 'malformed-duplicate-method',
+                                   'evidence_scope': 'historical malformed-input observation; repeated METH1 and unproved Lab/RGB equivalence'})
     yield image_case('lab-fallback-rgb-control', bytes(v for pixel in subject.pixels for v in pixel),
                      b'/ColorSpace /DeviceRGB /BitsPerComponent 8', [], 4, 1, colors=subject.pixels, **options)
     # CIELab's offsets must be applied after removing sample premultiplication.
