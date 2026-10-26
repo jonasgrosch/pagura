@@ -148,7 +148,7 @@ class RenderProbeTests(unittest.TestCase):
         self.assertEqual(blank['nonwhite_pixels'], 0)
         self.assertIsNone(blank['nonwhite_bounds'])
 
-    def test_raw_drawing_never_infers_a_refusal_from_an_arbitrary_error(self):
+    def test_rendering_never_infers_a_refusal_from_an_arbitrary_error(self):
         row = render.fixtures(render.sound_observations(self.manifest), observations=True)[
             'annotations.display.sound-speaker-missing-ap']
         with tempfile.TemporaryDirectory() as temporary:
@@ -174,13 +174,17 @@ class RenderProbeTests(unittest.TestCase):
                 ('pdfium', b'', b'unsupported sound', 'renderer-error'),
                 ('pdfium', b'{"schema":true,"status":"unsupported","feature":"sound.icon"}', b'', 'renderer-error'),
                 ('pagura', b'', b'could not open the document', 'renderer-error'),
+                ('pdfium', b'', b'pagura: unsupported [annotation.appearance]: missing', 'renderer-error'),
+                ('pagura', b'', b'pagura: unsupported [invalid tag]: missing', 'renderer-error'),
             ]:
-                with self.subTest(engine=engine, outcome=outcome), patch.object(
-                        render.subprocess, 'run', side_effect=run(stdout, stderr)):
-                    result = render.invoke(['stub'], row, directory, observations=True, engine=engine)
-                    self.assertEqual(result['outcome'], outcome)
-                    self.assertNotIn('pixel_comparison', result)
-                    self.assertNotIn('observed', result)
+                for observations in (False, True):
+                    with self.subTest(engine=engine, outcome=outcome, observations=observations), patch.object(
+                            render.subprocess, 'run', side_effect=run(stdout, stderr)):
+                        result = render.invoke(['stub'], row, directory, observations=observations, engine=engine)
+                        expected = 'adapter-error' if outcome == 'renderer-error' and not observations else outcome
+                        self.assertEqual(result['outcome'], expected)
+                        self.assertNotIn('pixel_comparison', result)
+                        self.assertNotIn('observed', result)
 
 
 if __name__ == '__main__':

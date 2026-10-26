@@ -284,6 +284,11 @@ The capability workflow's manual `sound_observations` input runs just this
 diagnostic batch on explicit Ubuntu/macOS runners, without repeating the full
 platform, service or pixel-oracle suites.
 
+Oracle runs use the same named-refusal parser. A verified Pagura CLI tag or
+structured backend refusal is recorded as `unsupported`; other failures keep
+their unclassified error outcome. Pagura still requires a pixel pass in every
+oracle case. Earlier reports retain their original classifications.
+
 The Linux report from [run 40365811257](https://github.com/jonasgrosch/pagura/actions/runs/40365811257),
 head `52cbbce87b3d35d77757d2ea085daf0e04609258`, records identical ordinary and
 stored-AP controls across PDFium, MuPDF, pdf.js, Poppler, hayro and Pagura.

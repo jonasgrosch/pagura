@@ -179,11 +179,12 @@ def invoke(command, row, directory, *, observations=False, engine=None):
         return {'outcome': 'adapter-error', 'reason': 'render diagnostics exceed 64 KiB'}
     diagnostic = {f'{path.name}_sha256': sha(path.read_bytes()) for path in logs}
     if result.returncode:
+        feature = explicit_refusal(directory, engine)
+        if feature:
+            return {'outcome': 'unsupported', 'feature': feature, **diagnostic}
         if observations:
-            feature = explicit_refusal(directory, engine)
-            return ({'outcome': 'unsupported', 'feature': feature, **diagnostic} if feature else
-                    {'outcome': 'renderer-error', 'reason': 'unclassified renderer failure; no feature verdict',
-                     'exit_code': result.returncode, **diagnostic})
+            return {'outcome': 'renderer-error', 'reason': 'unclassified renderer failure; no feature verdict',
+                    'exit_code': result.returncode, **diagnostic}
         return {'outcome': 'adapter-error', 'reason': 'unclassified renderer failure; requires investigation',
                 'exit_code': result.returncode, **diagnostic}
     if not output.is_file() or output.stat().st_size > 64 * 1024 * 1024:
