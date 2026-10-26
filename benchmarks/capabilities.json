@@ -124,7 +124,7 @@
     "crates/pagura-paint/src/prepare/tests/formats.rs": "66cc22c9ae8219158c8b5b372abab98806e0a7dde0c92e56367c2b67840ef66d",
     "crates/pagura-paint/src/prepare/tests/streaming.rs": "4b0f2831d7045dd10be103fbc6a6bbb931b0cd837e6ce11dbcbbe2926649c0da",
     "crates/pagura-paint/src/source/image/tests.rs": "4d07336b4e4c795f833d9adc9dbd97b72a737e554e0e6ccfe72c9e0a3b60fc38",
-    "crates/pagura-paint/src/source/image/texels.rs": "779fbf7f771dc1db7b17a4a23d8bd442f460b8820a34dc41e78ca3cef93ed5d8",
+    "crates/pagura-paint/src/source/image/texels.rs": "51d9d0e1b21a20ea7c1d707d172f8aaa3cd80b373a7edee773bd9cd6bae7b118",
     "crates/pagura-paint/src/source/shading.rs": "e7356b3ae4b39ec7c2b331734eb9d9c0392353e4d2915dab3821136e62dd0066",
     "crates/pagura-pki/README.md": "78b4b7263e9b6d8dffbb680c9c7a704d5467927792da30d0a5933fa98c8262a5",
     "crates/pagura-pki/src/der.rs": "6c7621b84679165da74f16bbfab6a67cefe3dd74cf62dbf22177d64fed0101fa",
