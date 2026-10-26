@@ -105,7 +105,7 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
         panic!("admitted document")
     };
     assert_eq!(job.work(), 3336);
-    assert_eq!(document.original_bytes(), bytes);
+    assert_eq!(document.materialize().unwrap().bytes(), bytes);
     assert_eq!(document.object_count(), 4);
     assert_eq!(document.page_count().unwrap(), 1);
     assert_eq!(document.page(0).unwrap().id(), ObjectId::new(3, 0));
@@ -369,7 +369,7 @@ fn bootstrap_retains_completed_header_tail_and_index_before_complete_admission()
     };
     assert_eq!(job.work(), work + 1 + 4096);
     assert_eq!(document.page_count().unwrap(), 1);
-    assert_eq!(document.original_bytes(), bytes);
+    assert_eq!(document.materialize().unwrap().bytes(), bytes);
     assert_eq!(document.diagnostics(), []);
 }
 

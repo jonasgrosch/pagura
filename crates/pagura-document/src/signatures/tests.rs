@@ -183,7 +183,8 @@ fn independent_structures() {
             if let Some(ranges) = &signature.byte_range {
                 assert_eq!(ranges.signed_bytes().len(), 2);
                 for (chunk, range) in ranges.signed_bytes().zip(ranges.ranges()) {
-                    let original = &doc.original_bytes()[range.clone()];
+                    let lease = doc.materialize().unwrap();
+                    let original = &lease.bytes()[range.clone()];
                     assert!(std::ptr::eq(chunk, original));
                     assert_eq!(chunk, original);
                 }

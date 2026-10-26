@@ -276,6 +276,10 @@ the document and shared by historical prefix views. Every later document read
 still checks the source's terminal state, including when a complete lease or
 parsed dependency is already cached. Previously handed-out immutable leases
 remain readable according to the source lifetime contract.
+`source_len()` reports the already-admitted immutable extent without a read.
+Checked signature byte ranges own a source lease, so their two digest chunks
+remain usable after source close; the structural inspection itself explicitly
+materializes complete input and still observes closure before cached reads.
 
 Complete-only conversion belongs at `Document::open` and protocol v1 admission,
 after admission has made unavailable byte reads impossible for that invocation.

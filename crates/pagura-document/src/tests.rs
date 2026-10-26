@@ -556,7 +556,7 @@ mod field_recovery {
             assert_eq!(strict.as_error().unwrap().kind, ErrorKind::Syntax, "{name}");
             assert_eq!(strict.as_error().unwrap().repair, Some(tag), "{name}");
             let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
-            assert_eq!(document.original_bytes(), bytes);
+            assert_eq!(document.materialize().unwrap().bytes(), bytes);
             assert_eq!(document.page_count().unwrap(), 1);
             let object = document.object(ObjectId::new(4, 0)).unwrap();
             assert_eq!(

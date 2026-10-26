@@ -23,7 +23,7 @@ fn independent_fixture_has_valid_object_and_page_graph() {
         &*document.stream_data(streams[0]).unwrap(),
         b"1 0 0 rg 8 8 48 32 re f\n"
     );
-    assert_eq!(document.original_bytes(), bytes.as_slice());
+    assert_eq!(document.materialize().unwrap().bytes(), bytes.as_slice());
     assert_eq!(document.diagnostics(), [] as [pagura::Diagnostic; 0]);
 }
 

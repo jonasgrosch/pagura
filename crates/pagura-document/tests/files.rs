@@ -53,7 +53,10 @@ fn filenames_tree_keys_parameters_and_payloads_keep_their_own_identity() {
         );
         assert_eq!(file.data().unwrap().as_ref(), b"attachment\0bytes\xff\n");
     }
-    assert_eq!(document.original_bytes(), fixture("files", "populated.pdf"));
+    assert_eq!(
+        document.materialize().unwrap().bytes(),
+        fixture("files", "populated.pdf")
+    );
 }
 
 #[test]

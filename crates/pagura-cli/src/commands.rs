@@ -80,7 +80,7 @@ pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure
         Command::Roundtrip { source, output } => {
             let document = source.open()?;
             document.pages()?;
-            write_new(output, document.original_bytes())?;
+            write_new(output, document.materialize()?.bytes())?;
         }
         Command::Microbench {
             source,
@@ -111,7 +111,7 @@ fn inspect(source: &Source, out: &mut impl Write) -> Result<(), Failure> {
         json::INSPECT_SCHEMA,
         pages.len(),
         document.object_count(),
-        document.original_bytes().len(),
+        document.source_len(),
     )?;
     for (index, page) in pages.iter().enumerate() {
         if index > 0 {

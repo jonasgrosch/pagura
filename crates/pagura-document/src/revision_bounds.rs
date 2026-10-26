@@ -16,7 +16,8 @@ pub(crate) fn boundary(
     end: usize,
     source: Source,
 ) -> ReadResult<(Boundary, usize)> {
-    let bytes = ctx.document.original_bytes();
+    let lease = ctx.document.materialize()?;
+    let bytes = lease.bytes();
     let offset = revision.end_section;
     let mut parser =
         Parser::with_offset(&bytes[..end], offset, Origin::File, ctx.document.limits())?;

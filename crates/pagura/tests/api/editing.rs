@@ -183,7 +183,10 @@ fn rollback_failed_sets_and_dangling_references_are_atomic() {
     );
     transaction.reset(reference);
     assert!(transaction.is_empty());
-    assert_eq!(transaction.rollback().original_bytes(), original);
+    assert_eq!(
+        transaction.rollback().materialize().unwrap().bytes(),
+        original
+    );
 }
 
 #[test]
@@ -310,7 +313,7 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
         ErrorKind::Limit
     );
     assert!(transaction.get(id).is_some());
-    assert_eq!(document.original_bytes(), original);
+    assert_eq!(document.materialize().unwrap().bytes(), original);
     let document = Document::open(
         original,
         &OpenOptions {
@@ -562,7 +565,7 @@ fn nested_direct_fields_never_replace_the_enclosing_form() {
             .kind,
         ErrorKind::Unsupported(features::DIRECT_FIELD)
     );
-    assert_eq!(document.original_bytes(), original);
+    assert_eq!(document.materialize().unwrap().bytes(), original);
 }
 
 #[test]

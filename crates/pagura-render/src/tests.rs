@@ -122,7 +122,7 @@ fn the_pixel_budget_bounds_the_region() {
         ..pagura_core::Limits::default()
     };
     let document = document(&[media_box(40, 24)]);
-    let bytes = document.original_bytes().to_vec();
+    let bytes = document.materialize().unwrap().bytes().to_vec();
     let options = pagura_document::OpenOptions {
         limits,
         ..pagura_document::OpenOptions::default()

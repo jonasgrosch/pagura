@@ -67,7 +67,7 @@ fn safe_dictionary_deviations_are_strict_errors_and_reported_repairs() {
                 .any(|item| item.repair() == Some(tag)),
             "{name}"
         );
-        assert_eq!(document.original_bytes(), bytes);
+        assert_eq!(document.materialize().unwrap().bytes(), bytes);
         let diagnostics = document.diagnostics();
         document.pages().unwrap();
         assert_eq!(document.diagnostics(), diagnostics);
@@ -169,7 +169,7 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
             document.pages().unwrap();
             document.object(ObjectId::new(6, 0)).unwrap();
             assert_eq!(document.retained.used(), retained);
-            assert_eq!(document.original_bytes(), bytes);
+            assert_eq!(document.materialize().unwrap().bytes(), bytes);
         }
         let error = Document::open(
             bytes.clone(),

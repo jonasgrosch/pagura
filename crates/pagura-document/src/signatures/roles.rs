@@ -48,7 +48,7 @@ pub(super) fn read(
     facts: &super::history::Facts,
 ) -> ReadResult<Roles> {
     let mut roles = Roles {
-        source_end: doc.original_bytes().len(),
+        source_end: doc.source_len(),
         ..Roles::default()
     };
     read_form(doc, ctx, &mut roles)?;

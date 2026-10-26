@@ -104,7 +104,7 @@ mod tests {
             assert_eq!(strict.repair, Some(tag));
             let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
             assert_eq!(document.page_count().unwrap(), 1);
-            assert_eq!(document.original_bytes(), bytes);
+            assert_eq!(document.materialize().unwrap().bytes(), bytes);
             if name == "pages-type-missing" {
                 for number in 1..=3 {
                     assert!(

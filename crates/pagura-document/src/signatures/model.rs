@@ -215,7 +215,7 @@ pub struct Signature<'a> {
     /// Presence alone authenticates nothing; consult the separate result states.
     pub contents: &'a [u8],
     /// Checked source ranges, or None when structure checks failed.
-    pub byte_range: Option<ByteRange<'a>>,
+    pub byte_range: Option<ByteRange>,
     /// Modification-detection references, in source order.
     pub references: Vec<SignatureReference<'a>>,
     /// Asserted M date string; never a validated signing time.

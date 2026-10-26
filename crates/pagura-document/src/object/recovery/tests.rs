@@ -132,7 +132,7 @@ fn unusable_lengths_are_repaired_lazily_and_keep_exact_bytes() {
             b"1 0 0 rg 8 8 48 32 re f\n",
             "{name}"
         );
-        assert_eq!(document.original_bytes(), bytes);
+        assert_eq!(document.materialize().unwrap().bytes(), bytes);
         assert_eq!(
             document
                 .diagnostics()

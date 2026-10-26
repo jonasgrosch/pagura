@@ -130,8 +130,13 @@ fn historical_objects_are_prefix_bound_and_cached() {
         Some(b"new".as_slice())
     );
     assert!(std::ptr::eq(
-        doc.revision_document(1).unwrap().original_bytes().as_ptr(),
-        doc.original_bytes().as_ptr()
+        doc.revision_document(1)
+            .unwrap()
+            .materialize()
+            .unwrap()
+            .bytes()
+            .as_ptr(),
+        doc.materialize().unwrap().bytes().as_ptr()
     ));
     let used = doc.retained.used();
     std::thread::scope(|scope| {

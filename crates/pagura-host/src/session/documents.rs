@@ -71,7 +71,7 @@ impl Documents {
         password: &[u8],
     ) -> ReadResult<Response> {
         // Preflight retained source/handle budgets before opening the snapshot.
-        self.admit(self.document(handle)?.original_bytes().len())?;
+        self.admit(self.document(handle)?.source_len())?;
         let document = self.document(handle)?.reauthenticate(password)?;
         let (document, pages) = self.insert(document)?;
         let mut out = crate::wire::Writer::new(8);
@@ -96,7 +96,7 @@ impl Documents {
     }
 
     fn insert(&mut self, document: Document) -> ReadResult<(u32, u32)> {
-        let retained = self.admit(document.original_bytes().len())?;
+        let retained = self.admit(document.source_len())?;
         let pages = u32::try_from(document.page_count()?)
             .map_err(|_| Error::limit("page count exceeds protocol range"))?;
         let handle = self.next_handle;
@@ -125,7 +125,7 @@ impl Documents {
             .remove(&handle.get())
             .ok_or_else(|| unknown(handle))?;
         self.texts.close(handle.get());
-        let released = slot.context.document().original_bytes().len();
+        let released = slot.context.document().source_len();
         self.source_bytes = self.source_bytes.saturating_sub(released);
         Ok(Response::Close)
     }

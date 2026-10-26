@@ -1,5 +1,5 @@
 //! Source-bound byte ranges (12.8.1, Table 255; 12.8.3.3.1).
-use crate::source::{ReadFault, ReadResult};
+use crate::source::{ByteLease, ReadFault, ReadResult};
 use crate::{
     ObjectSource,
     view::{Context, Source},
@@ -34,14 +34,14 @@ pub enum ByteRangeError {
     /// The signature's enclosing object ends beyond the last signed byte.
     SignatureOutsideSignedBytes,
 }
-/// Exactly two checked ranges borrowing original bytes. No digest is computed.
+/// Exactly two checked ranges retaining an immutable source lease. No digest is computed.
 /// Private state prevents constructing ranges that are unchecked or mismatched.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ByteRange<'a> {
-    bytes: &'a [u8],
+#[derive(Debug, Clone)]
+pub struct ByteRange {
+    bytes: ByteLease,
     ranges: [Range<usize>; 2],
 }
-impl<'a> ByteRange<'a> {
+impl ByteRange {
     /// Original file ranges in digest order.
     pub fn ranges(&self) -> &[Range<usize>; 2] {
         &self.ranges
@@ -51,16 +51,25 @@ impl<'a> ByteRange<'a> {
         self.ranges[1].end
     }
     /// Streaming borrowed chunks in digest order. There is no concatenated copy.
-    pub fn signed_bytes(&self) -> impl ExactSizeIterator<Item = &'a [u8]> + Clone + '_ {
-        self.ranges.iter().map(|range| &self.bytes[range.clone()])
+    pub fn signed_bytes(&self) -> impl ExactSizeIterator<Item = &[u8]> + Clone + '_ {
+        self.ranges
+            .iter()
+            .map(|range| &self.bytes.bytes()[range.clone()])
     }
 }
 
-pub(super) fn check<'a>(
-    ctx: &mut Context<'a>,
-    dictionary: &'a Dictionary,
+impl PartialEq for ByteRange {
+    fn eq(&self, other: &Self) -> bool {
+        self.ranges == other.ranges && self.bytes.bytes() == other.bytes.bytes()
+    }
+}
+impl Eq for ByteRange {}
+
+pub(super) fn check(
+    ctx: &mut Context<'_>,
+    dictionary: &Dictionary,
     source: Source,
-) -> ReadResult<Result<ByteRange<'a>, ByteRangeError>> {
+) -> ReadResult<Result<ByteRange, ByteRangeError>> {
     if dictionary
         .iter()
         .any(|(_, v)| matches!(v, Value::Reference(_)))
@@ -79,7 +88,8 @@ pub(super) fn check<'a>(
     if start != 0 {
         return Ok(Err(ByteRangeError::DoesNotStartAtZero));
     }
-    let bytes = ctx.document.original_bytes();
+    let lease = ctx.document.materialize()?;
+    let bytes = lease.bytes();
     let Some(end) = next.checked_add(tail).filter(|&end| end <= bytes.len()) else {
         return Ok(Err(ByteRangeError::OutsideFile));
     };
@@ -123,7 +133,7 @@ pub(super) fn check<'a>(
         return Ok(Err(ByteRangeError::ContentsGapMismatch));
     }
     Ok(Ok(ByteRange {
-        bytes,
+        bytes: lease,
         ranges: [0..length, next..end],
     }))
 }

@@ -124,7 +124,7 @@ mod recovery_tests {
             let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
             let pages = document.pages().unwrap();
             assert_eq!(pages.len(), count, "{name}");
-            assert_eq!(document.original_bytes(), bytes);
+            assert_eq!(document.materialize().unwrap().bytes(), bytes);
             let letter = matches!(name, "pages-media-missing" | "pages-media-empty");
             let size = if letter { [612.0, 792.0] } else { [64.0, 64.0] };
             let expected = Rect::from_corners(0.0, 0.0, size[0], size[1]).unwrap();

@@ -45,7 +45,7 @@ fn information_and_xmp_are_distinct_immutable_sources() {
             b"<object-metadata>separate packet</object-metadata>"
         );
         assert_eq!(
-            document.original_bytes(),
+            document.materialize().unwrap().bytes(),
             fixture("metadata", &format!("{name}.pdf"))
         );
     }

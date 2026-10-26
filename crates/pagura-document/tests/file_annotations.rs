@@ -45,7 +45,7 @@ fn annotations_preserve_source_order_identity_description_and_file_handles() {
         );
     }
     assert_eq!(
-        document.original_bytes(),
+        document.materialize().unwrap().bytes(),
         fixture("file_annotations", "populated.pdf")
     );
     let document = open("mixed", &OpenOptions::default()).unwrap();

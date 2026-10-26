@@ -3,8 +3,9 @@
 //! The source object and core parser determine token boundaries. Only fixed-size
 //! binary security fields can bypass EOL normalization, after a length mismatch.
 
-use crate::source::ReadResult;
+use crate::source::{ByteRange, ReadResult};
 use crate::{Document, ObjectSource, repairs};
+use pagura_core::convert::usize_to_u64;
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, ObjectId, Position};
 use pagura_crypto::standard::{self, FileKey, SecurityParams};
@@ -138,10 +139,13 @@ fn literal_hashes(
     let ObjectSource::File(range) = object.source() else {
         return Ok(());
     };
-    let Some(bytes) = document.original_bytes().get(..range.end) else {
-        return Ok(());
-    };
-    let mut parser = Parser::with_offset(bytes, range.start, Origin::File, document.limits())?
+    let lease = document.bytes.lease(ByteRange::new(
+        usize_to_u64(range.start),
+        usize_to_u64(range.end),
+    )?)?;
+    let bytes = lease.bytes();
+    let mut parser = Parser::new(bytes, Origin::File, document.limits())
+        .with_origin_offset(range.start)?
         .with_recovery(document.recovery());
     parser.unsigned()?;
     parser.unsigned()?;
@@ -178,6 +182,7 @@ fn literal_hashes(
         let key = parser.parse()?;
         parser.skip_whitespace();
         let start = parser.offset();
+        let position = parser.position();
         let value = parser.parse()?;
         if let Some(index) = key
             .as_name()
@@ -190,7 +195,7 @@ fn literal_hashes(
                 && let Some(raw) = raw_literal(token, expected)
                 && value.as_string() != Some(raw.as_slice())
             {
-                replacements[index] = Some((raw, Position::File(start)));
+                replacements[index] = Some((raw, position));
             }
         }
     }

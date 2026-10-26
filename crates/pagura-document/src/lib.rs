@@ -137,8 +137,15 @@ impl Document {
         }
     }
 
-    /// The original, unmodified file bytes.
-    pub fn original_bytes(&self) -> &[u8] {
+    /// The immutable source prefix length, without reading source bytes.
+    /// The length has already been admitted under the target and file limits.
+    pub fn source_len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    /// Complete-input compatibility inside the object-recovery owner. Removed
+    /// with its range-window migration; public consumers use explicit leases.
+    pub(crate) fn original_bytes(&self) -> &[u8] {
         &self.bytes
     }
 

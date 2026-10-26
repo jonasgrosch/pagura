@@ -20,9 +20,7 @@ pub(super) fn read(ctx: &mut Context<'_>) -> ReadResult<Vec<Option<Boundary>>> {
             };
             let end = index
                 .checked_sub(1)
-                .map_or(ctx.document.original_bytes().len(), |i| {
-                    revisions[i].offset()
-                });
+                .map_or(ctx.document.source_len(), |i| revisions[i].offset());
             if end <= revision.end_section {
                 return Ok(None);
             }

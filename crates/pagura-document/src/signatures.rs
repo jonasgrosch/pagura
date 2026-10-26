@@ -1,7 +1,7 @@
 //! Inert signature views and byte-range structure checks (12.7.5.5, 12.8).
 //!
 //! This module performs no cryptography. A checked byte range is not verified
-//! integrity. Original dictionaries and bytes remain borrowed and unmodified;
+//! integrity. Original dictionaries remain borrowed and bytes remain leased and unmodified;
 //! appearances are never evidence (12.7.5.5). No URLs, actions or scripts run.
 //! Supported modification rules follow 12.8.2.2–12.8.2.4 and Tables 236,
 //! 257 and 259. Comparisons freeze policy in the signed revision, preserve every
@@ -62,6 +62,8 @@ impl Document {
     /// Form repairs follow the form reader's policy;
     /// signature source syntax is checked strictly and never repaired.
     pub fn signatures(&self) -> ReadResult<Signatures<'_>> {
+        // Source identity and historical coverage currently require complete input.
+        let _source = self.materialize()?;
         let mut ctx = crate::view::Context::new(self);
         let mut result = read::read(self, &ctx)?;
         let facts = history::discover(self, &mut ctx, &mut result);

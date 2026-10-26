@@ -358,7 +358,10 @@ fn authentication_creates_a_fresh_snapshot_and_failure_preserves_the_source() {
         selected().data().unwrap_err().as_error().unwrap().kind,
         ErrorKind::Password
     );
-    assert_eq!(authenticated.original_bytes(), source.as_slice());
+    assert_eq!(
+        authenticated.materialize().unwrap().bytes(),
+        source.as_slice()
+    );
 }
 
 #[test]

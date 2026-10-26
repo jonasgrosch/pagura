@@ -407,7 +407,7 @@ mod direct_tests {
                 content.extend_from_slice(&document.stream_data(stream).unwrap());
             }
             assert_eq!(content, CONTENT, "{name}");
-            assert_eq!(document.original_bytes(), bytes);
+            assert_eq!(document.materialize().unwrap().bytes(), bytes);
             if name == "direct-stream-encrypted" {
                 assert_eq!(streams[0].id(), ObjectId::new(3, 0));
                 assert_eq!(

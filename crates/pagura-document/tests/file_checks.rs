@@ -41,7 +41,7 @@ fn uncompressed_size_and_checksum_declarations_have_distinct_outcomes() {
             );
         }
         assert_eq!(
-            document.original_bytes(),
+            document.materialize().unwrap().bytes(),
             fixture("files", &format!("{name}.pdf"))
         );
     }
