@@ -88,6 +88,8 @@ pub use pagura_core::{
 };
 /// Interactive form source views and in-memory filling (12.7). Actions are inert data.
 pub use pagura_document::forms;
+/// Document information, language and inert metadata-stream access (14.3).
+pub use pagura_document::metadata;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
