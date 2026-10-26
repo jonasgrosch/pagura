@@ -559,8 +559,8 @@ and report SHA-256
 `65ac18d18af959c70fb4780cd23cbe6718ca0caa71101b7f5c2aef0b2613ce85`.
 The six malformed subjects below are included in that count. The functional
 run at 63e failed a test-only Clippy lint; df04 corrects that assertion without
-changing product behaviour or expected pixels. The new valid ranking controls
-below await their own hosted evidence.
+changing product behaviour or expected pixels. The valid ranking controls
+below have separate hosted evidence.
 
 
 ## JPX colour-group validity qualification
@@ -600,6 +600,18 @@ choice without requiring a reader that lacks Any ICC to use it. Public image
 metadata and allocation-refusal checks now use this valid first-image container.
 No product code, reader-feature grant, acceptance tolerance, or prior expected
 pixel changed. Family comparison cells remain unprobed.
+
+At source `1ab267de8d0320afe46b058543f14d882a92cb93`,
+[run 40395397775](https://github.com/jonasgrosch/pagura/actions/runs/40395397775)
+passed all 332 Pagura observations, including the nine valid ranking rows;
+the report contains 2,324 cells at merge
+`9957038b21ac87b3fe679ef9867e317aeb8afed4`. The six historical malformed
+subjects remain separately qualified. Artifact `12686353712` has ZIP SHA-256
+`c0b47dc132ed55ac557525432f427290a8df1d5b4f8ef8d69a1f2676b0bde737`
+and report SHA-256
+`148b32fcebb218b381d1afaf81d2716a6bff533a9692f87c3ffec2e2227c260e`.
+Functional run `40395397708` passed Ubuntu, macOS and Windows; editing run
+`40395397724` also passed. This evidence predates the first-image integration.
 
 
 ## R02/R03 first-image JPX layout integration

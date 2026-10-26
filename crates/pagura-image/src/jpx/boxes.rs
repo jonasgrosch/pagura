@@ -99,8 +99,10 @@ enum HeaderLocation {
 }
 
 impl HeaderLocation {
-    fn accepts(self, kind: &[u8]) -> bool {
-        match self {
+    /// Owned fields are read; unrelated metadata is skipped after validation.
+    fn accepts(self, b: &BoxData<'_>) -> Result<bool> {
+        let kind = b.kind;
+        let accepted = match self {
             Self::Defaults => matches!(
                 kind,
                 b"ihdr" | b"bpcc" | b"colr" | b"pclr" | b"cmap" | b"cdef" | b"res "
@@ -108,7 +110,37 @@ impl HeaderLocation {
             Self::Codestream => matches!(kind, b"ihdr" | b"bpcc" | b"pclr" | b"cmap"),
             Self::Layer => matches!(kind, b"cgrp" | b"opct" | b"cdef" | b"creg" | b"res "),
             Self::Colors => kind == b"colr",
+        };
+        if accepted {
+            return Ok(true);
         }
+        if matches!(
+            kind,
+            b"ihdr"
+                | b"bpcc"
+                | b"colr"
+                | b"pclr"
+                | b"cmap"
+                | b"cdef"
+                | b"res "
+                | b"cgrp"
+                | b"opct"
+                | b"creg"
+        ) {
+            return Err(syntax("misplaced JPX header field", b.position));
+        }
+        if self != Self::Colors
+            && matches!(
+                kind,
+                b"lbl " | b"jp2i" | b"xml " | b"uuid" | b"uinf" | b"free"
+            )
+        {
+            return Ok(false);
+        }
+        Err(unsupported(
+            "JPX image-header extension is not implemented",
+            b.position,
+        ))
     }
 }
 
@@ -370,34 +402,8 @@ impl Header {
             } else if color_seen {
                 color_ended = true;
             }
-            if policy.format == FileType::JpxBaseline && !location.accepts(b.kind) {
-                if matches!(
-                    b.kind,
-                    b"ihdr"
-                        | b"bpcc"
-                        | b"colr"
-                        | b"pclr"
-                        | b"cmap"
-                        | b"cdef"
-                        | b"res "
-                        | b"cgrp"
-                        | b"opct"
-                        | b"creg"
-                ) {
-                    return Err(syntax("misplaced JPX header field", b.position));
-                }
-                if location != HeaderLocation::Colors
-                    && matches!(
-                        b.kind,
-                        b"lbl " | b"jp2i" | b"xml " | b"uuid" | b"uinf" | b"free"
-                    )
-                {
-                    continue;
-                }
-                return Err(unsupported(
-                    "JPX image-header extension is not implemented",
-                    b.position,
-                ));
+            if policy.format == FileType::JpxBaseline && !location.accepts(&b)? {
+                continue;
             }
             if location == HeaderLocation::Layer {
                 if b.kind == b"cdef" {

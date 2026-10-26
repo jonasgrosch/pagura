@@ -66,7 +66,7 @@ fn reader_expression_inspects_exactly_its_bounded_body() {
     );
 }
 
-fn boxed(kind: &[u8; 4], body: &[u8]) -> Vec<u8> {
+fn boxed(kind: [u8; 4], body: &[u8]) -> Vec<u8> {
     let mut data = u32::try_from(body.len() + 8)
         .unwrap()
         .to_be_bytes()
@@ -81,23 +81,23 @@ fn dimensions(components: u16) -> Vec<u8> {
     data.extend(4_u32.to_be_bytes());
     data.extend(components.to_be_bytes());
     data.extend([7, 7, 0, 0]);
-    boxed(b"ihdr", &data)
+    boxed(*b"ihdr", &data)
 }
 
 fn color() -> Vec<u8> {
-    boxed(b"colr", &[1, 0, 1, 0, 0, 0, 16])
+    boxed(*b"colr", &[1, 0, 1, 0, 0, 0, 16])
 }
 
 /// Box-only framing controls; the codestream is never entropy-decoded here.
 fn file(defaults: Option<&[u8]>, extra: &[u8]) -> Vec<u8> {
-    let mut data = boxed(b"jP  ", &[13, 10, 135, 10]);
-    data.extend(boxed(b"ftyp", b"jpx \0\0\0\x01jpx jpxb"));
-    data.extend(boxed(b"rreq", &[1, 1, 1, 0, 1, 0, 5, 1, 0, 0]));
+    let mut data = boxed(*b"jP  ", &[13, 10, 135, 10]);
+    data.extend(boxed(*b"ftyp", b"jpx \0\0\0\x01jpx jpxb"));
+    data.extend(boxed(*b"rreq", &[1, 1, 1, 0, 1, 0, 5, 1, 0, 0]));
     if let Some(defaults) = defaults {
-        data.extend(boxed(b"jp2h", defaults));
+        data.extend(boxed(*b"jp2h", defaults));
     }
     data.extend(extra);
-    data.extend(boxed(b"jp2c", &[255, 79, 255, 217]));
+    data.extend(boxed(*b"jp2c", &[255, 79, 255, 217]));
     data
 }
 
@@ -116,9 +116,9 @@ fn first_headers_inherit_only_missing_owners_and_require_complete_metadata() {
     let dimensions = dimensions(3);
     let color = color();
     let defaults = [dimensions.clone(), color.clone()].concat();
-    let empty_headers = [boxed(b"jpch", &[]), boxed(b"jplh", &[])].concat();
-    let layer_color = boxed(b"jplh", &boxed(b"cgrp", &color));
-    let stream_dimensions = boxed(b"jpch", &dimensions);
+    let empty_headers = [boxed(*b"jpch", &[]), boxed(*b"jplh", &[])].concat();
+    let layer_color = boxed(*b"jplh", &boxed(*b"cgrp", &color));
+    let stream_dimensions = boxed(*b"jpch", &dimensions);
     for (defaults, extra) in [
         (defaults.as_slice(), &[][..]),
         (defaults.as_slice(), empty_headers.as_slice()),
@@ -132,16 +132,16 @@ fn first_headers_inherit_only_missing_owners_and_require_complete_metadata() {
     // Explicitly empty/missing layer colour is not an instruction to guess RGB.
     for data in [
         file(Some(&dimensions), &empty_headers),
-        file(Some(&dimensions), &boxed(b"jplh", &boxed(b"cgrp", &[]))),
+        file(Some(&dimensions), &boxed(*b"jplh", &boxed(*b"cgrp", &[]))),
         file(Some(&color), &empty_headers),
         file(None, &empty_headers),
-        file(Some(&defaults), &boxed(b"jpch", &dimensions)),
+        file(Some(&defaults), &boxed(*b"jpch", &dimensions)),
         file(Some(&defaults), &layer_color),
     ] {
         assert_eq!(parse(&data).err().unwrap().kind, ErrorKind::Syntax);
     }
     // A selected first-header dependency is not made irrelevant by later data.
-    let first_extension = boxed(b"jpch", &boxed(b"cref", &[]));
+    let first_extension = boxed(*b"jpch", &boxed(*b"cref", &[]));
     assert!(matches!(
         parse(&file(Some(&defaults), &first_extension))
             .err()
@@ -153,8 +153,8 @@ fn first_headers_inherit_only_missing_owners_and_require_complete_metadata() {
     // their internal metadata cannot change the selected first image.
     let later_headers = [
         empty_headers,
-        boxed(b"jpch", &[255]),
-        boxed(b"jplh", &[255]),
+        boxed(*b"jpch", &[255]),
+        boxed(*b"jplh", &[255]),
     ]
     .concat();
     let header = parse(&file(Some(&defaults), &later_headers)).unwrap();
@@ -221,7 +221,7 @@ fn implicit_opacity_uses_exactly_one_definition_per_final_channel() {
             baseline_color: true,
             ..super::Header::default()
         };
-        let body = boxed(b"opct", &[1]);
+        let body = boxed(*b"opct", &[1]);
         let b = BoxData {
             kind: b"jplh",
             body: &body,
@@ -263,7 +263,7 @@ fn identity_registration_has_a_bounded_extent_and_refuses_other_dependencies() {
     }
     let defaults = [dimensions(3), color()].concat();
     for body in [&identity[..9], &[0; 10][..]] {
-        let extra = boxed(b"jplh", &boxed(b"creg", body));
+        let extra = boxed(*b"jplh", &boxed(*b"creg", body));
         assert_eq!(
             parse(&file(Some(&defaults), &extra)).err().unwrap().kind,
             ErrorKind::Syntax
@@ -272,7 +272,7 @@ fn identity_registration_has_a_bounded_extent_and_refuses_other_dependencies() {
     for index in [5, 8, 9] {
         let mut other = identity;
         other[index] = 1;
-        let extra = boxed(b"jplh", &boxed(b"creg", &other));
+        let extra = boxed(*b"jplh", &boxed(*b"creg", &other));
         assert!(matches!(
             parse(&file(Some(&defaults), &extra)).err().unwrap().kind,
             ErrorKind::Unsupported(_)
@@ -284,11 +284,11 @@ fn identity_registration_has_a_bounded_extent_and_refuses_other_dependencies() {
 fn first_image_depth_ownership_and_default_opacity_override_are_explicit() {
     let mut variable = dimensions(3);
     variable[18] = 255; // ihdr BPC; its bpcc must be in the same superbox.
-    let depths = boxed(b"bpcc", &[7, 11, 15]);
+    let depths = boxed(*b"bpcc", &[7, 11, 15]);
     let complete = [variable.clone(), depths.clone(), color()].concat();
     parse(&file(Some(&complete), &[])).unwrap();
     for defaults in [complete, [variable, color()].concat()] {
-        let misplaced = boxed(b"jpch", &depths);
+        let misplaced = boxed(*b"jpch", &depths);
         assert_eq!(
             parse(&file(Some(&defaults), &misplaced))
                 .err()
@@ -301,8 +301,8 @@ fn first_image_depth_ownership_and_default_opacity_override_are_explicit() {
     for row in [[0_u16, 0, 1], [1, 0, 2], [2, 0, 3], [3, 1, 0]] {
         cdef.extend(row.into_iter().flat_map(u16::to_be_bytes));
     }
-    let channels = boxed(b"cdef", &cdef);
-    let opacity = boxed(b"opct", &[1]);
+    let channels = boxed(*b"cdef", &cdef);
+    let opacity = boxed(*b"opct", &[1]);
     let options = super::Options::default();
     let policy = super::HeaderPolicy {
         options: &options,
