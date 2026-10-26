@@ -310,8 +310,20 @@ edge cases and malformed/limit cases have separate recorded outcomes.
 Owner: `pagura-document`, `pagura-appearance`, `pagura-interpret`; depends on G01,
 relevant R04/R05 work.
 
+**File attachment icons implemented:** `8d758e1c0` generates Graph, PushPin,
+Paperclip and Tag when no normal appearance exists (Table 187). These are
+original geometric symbols with a yellow default background and black outlines;
+unknown names use PushPin by reader policy. Null/absent names use the standard
+default. Existing appearances retain precedence, and C/CA/ca style only generated
+marks. Forty-two authored fixtures include 39 independent pixel expectations,
+stored appearances built from filled regions instead of stroked polylines,
+72/144 dpi, rotation, explicit NoZoom/NoRotate, visibility, colors and opacity.
+Host checks also compare native/WASI/client and partial-tile pixels. Payload
+resolution, authentication and activation remain separate from drawing. Source
+checks pass; hosted execution of this rendering increment is pending.
+
 Complete missing normal appearances for FreeText, text markup, Ink, Line,
-Circle, Polygon/PolyLine, Stamp, Caret, FileAttachment and other ledger subtypes;
+Circle, Polygon/PolyLine, Stamp, Caret and other ledger subtypes;
 add border effects, callouts, line endings and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.
@@ -498,9 +510,9 @@ reference/geometry indirection, external files, duplicates, malformed/late failu
 reported Unicode repair, budgets, compressed and encrypted payloads. Discovery
 keeps payload decoding and authorization lazy; no file is activated. Independent
 blank/red-rectangle oracles cover direct/indirect null Annots and indirect Rect
-coordinates. The renderer now handles those valid forms. Typed-view fixtures
-separately require malformed-input errors or the exact registered missing-icon
-appearance tag; they do not claim that discovery implements icon generation. Library/facade and independent render checks pass on hosted Linux/macOS/Windows at `5172155b3` in
+coordinates. The renderer now handles those valid forms. Typed-view fixtures distinguish malformed visual fields from file-specification
+validation. The V01 icon increment now replaces the previous appearance refusal
+for valid FileAttachment annotations; independent icon oracles are described above. Library/facade and independent render checks pass on hosted Linux/macOS/Windows at `5172155b3` in
 [run 40277191350](https://github.com/jonasgrosch/pagura/actions/runs/40277191350). CLI attachment
 commands now accept `--page PAGE` with distinct annotation JSON and exact original
 Annots index/EF selection for extraction and checks. Tests cover selection without
@@ -513,13 +525,14 @@ the shared file record and decode/check helpers. Tests cover version gates,
 original slots, independent count/response/decode limits, authentication and
 native/WASI/client equivalence. The host/browser suite passes at `e28dc0798` in
 [run 40278830687](https://github.com/jonasgrosch/pagura/actions/runs/40278830687);
-the broader functional matrix is pending. The viewer now lists page attachments
+the Linux/macOS/Windows functional matrix also passes in
+[run 40278830795](https://github.com/jonasgrosch/pagura/actions/runs/40278830795). The viewer now lists page attachments
 separately, starts on the current page and offers explicit page selection,
 downloads and parameter checks. Original slots/EF keys and fixed download names
 are preserved. Annotation Contents and file descriptions remain separate inert
 labels. Page changes invalidate old lists and decode callbacks; page-listing
 errors preserve independent document controls. New UI race/selection checks
-await hosted execution and real-browser validation. Icon appearance/activation,
+pass in the hosted browser shim; real-browser interaction validation remains open. Icon activation,
 AF/RF selection and attachment-only password reauthentication remain open.
 
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the

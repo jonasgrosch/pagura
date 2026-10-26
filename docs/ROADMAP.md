@@ -58,7 +58,9 @@ integration. Milestone numbers are outcomes, not completion claims.
 - **M5 gaps (R05/R06):** inverse/destination ICC transforms, calibrated blending
   destinations and remaining transfer/graphics combinations. Gray/RGB/CMYK
   groups, knockout and process/spot overprint display simulation already exist.
-- **M6 integration:** annotation/form appearances (V01/V02), tagged
+- **M6 integration:** four standard FileAttachment icons are implemented with
+  independent pixel controls awaiting hosted validation. Remaining annotation/form
+  appearances (V01/V02), tagged
   accessibility (V04), layers/printing (V05) and PDF integration of existing PKI
   path/CRL validation (S01). XFA/scripts and signature creation need explicit
   scope ADRs (V03/S02); an intentional exclusion remains a competitive difference.

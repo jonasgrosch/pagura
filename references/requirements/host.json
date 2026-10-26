@@ -280,7 +280,7 @@
       "id": "host-page-attachments",
       "reference": "project-policy",
       "clauses": [],
-      "status": "protocol 1.11 host/client page attachment listing, retrieval and checks implemented; hosted validation pending",
+      "status": "protocol 1.11 host/client page attachment listing, retrieval and checks implemented; hosted Linux/macOS/Windows checks pass at e28dc0798",
       "rule": "Kinds 28\u201330 select one page and preserve original Annots slots. Responses retain annotation identity, normalized rectangle, Contents, declared icon and the nested file specification. Exact page/slot/EF selection never falls back to a catalog entry. Discovery is lazy; complete authorized decoding precedes byte or check responses. Listings are bounded by 1024 entries, document traversal/result limits and reading-response bytes. Invalid views return errors without a partial listing. Older negotiated sessions remain usable.",
       "tests": [
         "pagura-host/tests/page_attachments.rs",
@@ -288,19 +288,19 @@
         "file_annotations/listing-limit",
         "pagura-host protocol::tests::protocol_constants"
       ],
-      "gaps": "Icon synthesis/activation, AF/RF selection, streaming and active-request cancellation remain separate work. Viewer selection is specified by viewer-page-attachments."
+      "gaps": "Icon activation, AF/RF selection, streaming and active-request cancellation remain separate work. Viewer selection is specified by viewer-page-attachments."
     },
     {
       "id": "viewer-page-attachments",
       "reference": "project-policy",
       "clauses": [],
-      "status": "explicit page attachment selection, download and parameter checks implemented; hosted validation pending",
+      "status": "explicit page attachment selection, download and parameter checks implemented; hosted browser-shim checks pass at dde52cd7f; real-browser validation pending",
       "rule": "The properties dialog lists the current page separately from document attachments and accepts a bounded, one-based page selection. Original Annots slots and exact EF keys select downloads and checks. Source names, Contents, descriptions and icon names remain inert text; generated download names never derive from a PDF filename. Listing never decodes payloads. Immutable document/client/epoch and dialog selection snapshots discard obsolete listings, downloads and checks. Only one decode operation can start per current dialog selection. A page listing error preserves independent properties and document attachment controls.",
       "tests": [
         "tools/page_attachments_view_test.mjs",
         "tools/host_test.mjs"
       ],
-      "gaps": "Real-browser interaction validation, icon appearance/activation, AF/RF selection, attachment-only password reauthentication and streaming remain open."
+      "gaps": "Real-browser interaction validation, icon activation, AF/RF selection, attachment-only password reauthentication and streaming remain open."
     }
   ]
 }

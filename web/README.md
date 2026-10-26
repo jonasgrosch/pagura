@@ -437,7 +437,7 @@ Protocol 1.8 provides properties/catalog reads, 1.10 adds parameter checks and
 `tools/attachment_checks_test.mjs`, `tools/page_attachments_test.mjs`,
 `tools/page_attachments_view_test.mjs` and the corresponding `pagura-host/tests`
 files. Catalog properties/check workflows have passing hosted evidence recorded
-in [the plan](../docs/COMPETITIVE_PARITY.md); the new page viewer controls await
-hosted execution and real-browser interaction validation. AF/RF selection,
-attachment-only password prompts, icon appearance/activation, streaming,
+in [the plan](../docs/COMPETITIVE_PARITY.md); the new page viewer controls pass the hosted browser shim, with real-browser
+interaction validation still open. AF/RF selection,
+attachment-only password prompts, icon activation, streaming,
 metadata validation and editing remain open.
