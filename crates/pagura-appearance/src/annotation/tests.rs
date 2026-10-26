@@ -1,6 +1,7 @@
 mod caret;
 mod free_text;
 mod markup;
+mod rounded;
 mod stamp;
 
 use super::*;
@@ -237,7 +238,7 @@ fn unsupported_annotations_are_tagged() {
     for text in [
         b"<< /Subtype /Stamp /IT /StampImage >>".as_slice(),
         b"<< /Subtype /Square /BE << /S /C >> >>",
-        b"<< /Subtype /Link /Border [2 2 1] >>",
+        b"<< /Subtype /Ink /InkList [[1 1 2 2]] /Border [2 2 1] >>",
         b"<< /Subtype /Link /BS << /S /I >> >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",
         b"<< /Subtype /Widget /FT /Ch >>",

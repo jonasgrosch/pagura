@@ -28,7 +28,7 @@ pub(super) fn generate(
     let callout = callout::Callout::read(document, annotation)?;
     plain_effect(document, annotation)?;
     let bounds = inset_bounds(document, annotation, rect)?;
-    let border = Border::read(document, annotation)?;
+    let border = Border::read_rectangular(document, annotation)?;
     let background = color(document, annotation, b"C", None)?;
     let quadding = quadding(document, annotation)?;
     let limits = document.limits();
@@ -42,7 +42,7 @@ pub(super) fn generate(
     let da = DefaultAppearance::parse(da_bytes, &limits)?;
     let text = contents(document, annotation, &mut storage)?;
     let mut geometry = Meter::new(limits.path_segments, "free text geometry budget exceeded");
-    geometry.charge(12)?; // Background, border and text clip: four edges each.
+    geometry.charge(8 + border.outline_segments())?; // Background, border and text clip.
     if callout.is_some() {
         geometry.charge(48)?; // At most two body edges and one fixed ending.
         work.charge(48)?;
@@ -191,7 +191,7 @@ fn paint_box(
         let path = if border.underline {
             Subpath::Polyline(&line)
         } else {
-            rectangle(inner)
+            border.outline(inner)
         };
         marks.stroke(
             &[path],

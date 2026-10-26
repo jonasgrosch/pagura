@@ -18,6 +18,7 @@ mod widget;
 use crate::features;
 use crate::fonts::{FontSource, ProviderFonts};
 use crate::stream::AppearanceStream;
+use crate::values::optional_dictionary;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
@@ -124,8 +125,7 @@ fn no_border(document: &Document, annotation: &Dictionary) -> Result<bool> {
     {
         return Ok(true);
     }
-    if let Some(style) = annotation.get(b"BS") {
-        let style = document.resolve_dictionary(style)?;
+    if let Some(style) = optional_dictionary(document, annotation, b"BS")? {
         return style
             .get(b"W")
             .map(|value| {

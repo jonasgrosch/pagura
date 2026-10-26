@@ -536,7 +536,10 @@ rectangles, opacity, visibility, indirection and malformed fields. The oracle re
 pinned TrueType points independently and integrates original quadratic curves by
 Green's theorem, with analytic clipping/hole/subdivision controls; existing
 straight-glyph rational oracles retain their behavior. Builds without font data
-explicitly report it. Hosted validation and competitor probes are pending.
+explicitly report it. Hosted native/WASI/client, partial-tile and viewer checks
+pass at `05dd8d1db` in [run 40311664712](https://github.com/jonasgrosch/pagura/actions/runs/40311664712),
+as do the Windows/Ubuntu full suites. Remaining platform/report checks are pending.
+The 180-case G01 increment adds the stamp subset.
 
 **Plain FreeText appearances implemented:** required DA, decoded Contents, Q and
 RD feed the existing form parser, reversible font encoder and variable-text
@@ -567,6 +570,20 @@ glyph areas. They cover every ending, two resolutions, rotation, separate opacit
 zero width, empty text, visibility, indirection and malformed input. The former
 zero-width callout refusal now renders with unchanged PDF bytes. Hosted validation
 is pending; wider diagonal/dash combinations still need evidence.
+
+**Rounded rectangular borders implemented:** legacy Border radii now apply to
+Link/Square, plain FreeText and supported empty widgets. BS precedence keeps unused
+Border unresolved, and null BS is absent. Reader artwork clamps each radius to
+half the centreline extent, using two 45-degree tangent cubics per corner; either
+zero radius produces sharp corners. Square interiors follow the outline while
+FreeText/widget backgrounds retain their rectangular policy. Fixed geometry/work
+and output limits protect generation. Thirty-two controls include 28 independent
+pixel expectations from closed-form quarter-ellipse/rectangle areas and circular
+parallel-set strokes, with separately authored sixteen-arc stored artwork. They
+cover two resolutions, opacity, rotation, RD, clamped/zero radii, indirection,
+visibility, stored precedence and malformed values. Hosted validation is pending.
+Unequal-axis stroke/dash evidence, nonrectangular legacy radius handling and the
+separate filled-form border path remain open; relief/cloudy borders are still gaps.
 
 Complete richer FreeText and other ledger subtype appearances;
 add border effects, remaining callout combinations and required font/layout support.

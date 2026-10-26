@@ -3,8 +3,8 @@
 use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
 use crate::features;
 use crate::stream::AppearanceStream;
-use crate::values::{number, numbers, optional};
-use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
+use crate::values::{number, numbers, optional, optional_dictionary};
+use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result, Value};
 use pagura_document::Document;
 
 /// The annotation whose border is drawn.
@@ -33,7 +33,11 @@ pub(super) fn generate(
         plain_effect(document, annotation)?;
         inset_bounds(document, annotation, rect)?
     };
-    let border = Border::read(document, annotation)?;
+    let border = if shape == Shape::Circle {
+        Border::read(document, annotation)?
+    } else {
+        Border::read_rectangular(document, annotation)?
+    };
     let inset = (border.width * 0.5)
         .min(bounds.width() * 0.5)
         .min(bounds.height() * 0.5);
@@ -48,12 +52,7 @@ pub(super) fn generate(
     let outline = if shape == Shape::Circle {
         Subpath::Ellipse(inner)
     } else {
-        Subpath::Rect {
-            x: inner.x0(),
-            y: inner.y0(),
-            width: inner.width(),
-            height: inner.height(),
-        }
+        border.outline(inner)
     };
     if shape != Shape::Link
         && let Some(interior) = color(document, annotation, b"IC", None)?
@@ -149,13 +148,56 @@ pub(super) struct Border {
     pub(super) width: f64,
     pub(super) dash: Vec<f64>,
     pub(super) underline: bool,
+    radii: [f64; 2],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Corners {
+    Square,
+    Rounded,
 }
 
 impl Border {
+    /// Styles for paths whose own geometry does not consume corner radii.
     pub(super) fn read(document: &Document, annotation: &Dictionary) -> Result<Self> {
+        Self::read_with_corners(document, annotation, Corners::Square)
+    }
+
+    /// Styles for a rectangular border, including legacy Border corner radii.
+    pub(super) fn read_rectangular(document: &Document, annotation: &Dictionary) -> Result<Self> {
+        Self::read_with_corners(document, annotation, Corners::Rounded)
+    }
+
+    /// The border centreline; radii are clamped to half each extent when written.
+    pub(super) fn outline(&self, bounds: Rect) -> Subpath<'static> {
+        if self.radii.contains(&0.0) {
+            Subpath::Rect {
+                x: bounds.x0(),
+                y: bounds.y0(),
+                width: bounds.width(),
+                height: bounds.height(),
+            }
+        } else {
+            Subpath::RoundedRect {
+                bounds,
+                radii: self.radii,
+            }
+        }
+    }
+
+    /// Worst-case number of edges in one rectangular outline.
+    pub(super) fn outline_segments(&self) -> usize {
+        if self.radii.contains(&0.0) { 4 } else { 12 }
+    }
+
+    fn read_with_corners(
+        document: &Document,
+        annotation: &Dictionary,
+        corners: Corners,
+    ) -> Result<Self> {
+        let mut radii = [0.0; 2];
         let (mut width, mut dash, mut style) = (1.0, Vec::new(), b"S".as_slice());
-        if let Some(bs) = annotation.get(b"BS") {
-            let bs = document.resolve_dictionary(bs)?;
+        if let Some(bs) = optional_dictionary(document, annotation, b"BS")? {
             width = scalar(document, bs, b"W")?.unwrap_or(1.0);
             style = bs
                 .get(b"S")
@@ -181,20 +223,17 @@ impl Border {
             if rest.len() > 1 {
                 return Err(Error::syntax("invalid annotation Border"));
             }
-            let radii = [
-                document.resolve(horizontal)?.as_number(),
-                document.resolve(vertical)?.as_number(),
-            ];
-            if radii != [Some(0.0), Some(0.0)] {
+            radii = [number(document, horizontal)?, number(document, vertical)?];
+            if radii.iter().any(|radius| *radius < 0.0) {
+                return Err(Error::syntax("negative annotation corner radius"));
+            }
+            if corners == Corners::Square && radii != [0.0, 0.0] {
                 return Err(Error::unsupported(
                     features::ANNOTATION_APPEARANCE,
-                    "rounded annotation borders are not implemented",
+                    "rounded borders require rectangular annotation geometry",
                 ));
             }
-            width = document
-                .resolve(line)?
-                .as_number()
-                .ok_or(Error::syntax("invalid annotation border width"))?;
+            width = number(document, line)?;
             if let Some(array) = rest.first() {
                 dash = numbers(document, array)?;
             }
@@ -208,7 +247,18 @@ impl Border {
                 "relief annotation borders are not implemented",
             ));
         }
+        if !radii.contains(&0.0) {
+            // At most a fill and a stroke, each with eight arcs and four edges.
+            let limits = document.limits();
+            Meter::new(
+                limits.path_segments,
+                "rounded border geometry budget exceeded",
+            )
+            .charge(24)?;
+            Meter::new(limits.operations, "rounded border work budget exceeded").charge(24)?;
+        }
         Ok(Self {
+            radii,
             width,
             dash,
             underline: style == b"U",

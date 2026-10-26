@@ -1,6 +1,8 @@
 //! The content of a generated annotation appearance: filled and stroked
 //! paths in device colours under the annotation's constant opacity.
 
+mod rounded;
+
 use crate::program::Program;
 use crate::stream::{AppearanceStream, form_dictionary};
 use crate::values::numbers;
@@ -69,6 +71,8 @@ pub(super) enum Subpath<'a> {
         width: f64,
         height: f64,
     },
+    /// A rectangle with bounded elliptical corner radii.
+    RoundedRect { bounds: Rect, radii: [f64; 2] },
     /// An ellipse in `bounds`, using eight tangent cubic arcs.
     Ellipse(Rect),
     /// An open polyline (`m`, then `l`).
@@ -273,6 +277,7 @@ impl<'a> Marks<'a> {
                     self.numbers(&[x, y, width, height])?;
                     self.content.text("re\n")?;
                 }
+                Subpath::RoundedRect { bounds, radii } => self.rounded_rectangle(bounds, radii)?,
                 Subpath::Ellipse(bounds) => self.ellipse(bounds)?,
                 Subpath::Polyline(points) | Subpath::Polygon(points) => {
                     for (i, &(x, y)) in points.iter().enumerate() {

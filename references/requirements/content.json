@@ -1358,7 +1358,7 @@
         "9.6.2.2"
       ],
       "rule": "Generate rubber-stamp appearances for all fourteen standard Name values, using Draft for absent/null/custom names by documented reader policy. IT defaults to Stamp; image/snapshot/unknown intents require stored artwork. Validate name/intent types and finite geometry before empty-color suppression. Reader artwork uses a red (or C) rectangular frame and centred uppercase Helvetica-Bold/WinAnsi through the configured font provider. Frame width is the smaller Rect dimension divided by 32; text padding is that dimension divided by 8 and the font size fits both available dimensions using AFM advances and ascent/descent. Frame uses CA and text ca (else CA). Fonts live in private appearance resources; stored appearances retain precedence. Fixed label storage, font-map/layout work, frame geometry and generated content stay bounded.",
-      "status": "implemented with 38 authored controls and 33 independent pixel expectations; hosted validation pending",
+      "status": "implemented with 38 controls and 33 independent pixel expectations; hosted native/WASI/client/viewer and Windows/Ubuntu checks pass at 05dd8d1db; final platform/report checks pending",
       "tests": [
         "pagura-appearance annotation::tests::stamp::stamps_require_explicit_fonts_and_keep_private_resources",
         "pagura-appearance annotation::tests::stamp::invisible_stamps_still_validate_names_intents_and_numeric_bounds",
@@ -1469,7 +1469,7 @@
         "free_text_annotations/cloudy",
         "free_text_annotations/complex-text"
       ],
-      "gaps": "Expected line breaks and sizes are authored independently of product wrapping; AFM metrics and original quadratic glyph integrals establish pixels. Rich RC/DS, cloudy/relief/rounded borders, complex-script/CID encodings, negative sizes and oblique/reflected matrices remain explicit refusals. CL/LE are covered separately by content-free-text-callouts; unused CL/LE are not resolved. Standard-font fallback is reader policy and needs host font data; no implicit system font lookup occurs. This subset does not establish annotation interaction or full FreeText parity."
+      "gaps": "Expected line breaks and sizes are authored independently of product wrapping; AFM metrics and original quadratic glyph integrals establish pixels. Rich RC/DS, cloudy/relief borders and wider rounded-border evidence, complex-script/CID encodings, negative sizes and oblique/reflected matrices remain explicit refusals. CL/LE are covered separately by content-free-text-callouts; unused CL/LE are not resolved. Standard-font fallback is reader policy and needs host font data; no implicit system font lookup occurs. This subset does not establish annotation interaction or full FreeText parity."
     },
     {
       "id": "content-free-text-callouts",
@@ -1516,6 +1516,56 @@
         "free_text_callouts/unknown-ending"
       ],
       "gaps": "Literal unit-width elbow/straight/vertical stroke polygons, analytic ending regions and independently placed original glyph areas establish expectations. Shared Line/PolyLine controls preserve existing ending behavior. Wider diagonal/dashed callout combinations need additional evidence; rich text and cloudy borders remain explicit gaps. The prior zero-width callout control now renders with unchanged PDF bytes. Reader artwork and paint order are explicit policy, not standardized pixels."
+    },
+    {
+      "id": "content-rounded-borders",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.2 Table 166",
+        "12.5.6.5",
+        "12.5.6.8",
+        "12.5.6.19"
+      ],
+      "rule": "Generate rounded rectangular legacy Border outlines for Link, Square, plain FreeText and supported empty widgets. Read finite nonnegative horizontal/vertical corner radii and border width; BS takes precedence without resolving unused Border, while null BS is absent. Reader artwork clamps each radius to half its centreline extent and uses two tangent 45-degree cubics per corner; either zero radius yields sharp corners. Square IC fills follow that outline; FreeText/widget backgrounds retain their existing rectangular policy. Geometry/work/output remain bounded. Existing appearances retain precedence and original BBox/annotation placement is unchanged.",
+      "status": "implemented with 32 authored controls and 28 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::rounded::rounded_border_limits_apply_before_invisible_output",
+        "pagura-appearance annotation::tests::rounded::corner_types_and_numeric_range_are_validated",
+        "tools/test_rounded_pixels.py",
+        "rounded_annotations/Link-72",
+        "rounded_annotations/Square-72",
+        "rounded_annotations/Widget-72",
+        "rounded_annotations/FreeText-72",
+        "rounded_annotations/filled-72",
+        "rounded_annotations/stored-72",
+        "rounded_annotations/ellipse-fill-72",
+        "rounded_annotations/Link-144",
+        "rounded_annotations/Square-144",
+        "rounded_annotations/Widget-144",
+        "rounded_annotations/FreeText-144",
+        "rounded_annotations/filled-144",
+        "rounded_annotations/stored-144",
+        "rounded_annotations/ellipse-fill-144",
+        "rounded_annotations/rotated",
+        "rounded_annotations/opacity",
+        "rounded_annotations/clamped-radii",
+        "rounded_annotations/zero-horizontal",
+        "rounded_annotations/zero-vertical",
+        "rounded_annotations/no-marks",
+        "rounded_annotations/rd",
+        "rounded_annotations/null-bs",
+        "rounded_annotations/link-null-bs",
+        "rounded_annotations/stored-ignores-fields",
+        "rounded_annotations/bs-precedence",
+        "rounded_annotations/indirect-radii",
+        "rounded_annotations/hidden",
+        "rounded_annotations/no-view",
+        "rounded_annotations/radius-type",
+        "rounded_annotations/negative-radius",
+        "rounded_annotations/width-type",
+        "rounded_annotations/nonrectangular"
+      ],
+      "gaps": "Closed-form quarter-ellipse and rectangle integrals validate fills; circular-corner stroke expectations use exact parallel-set radius offsets. Stored controls use independently authored sixteen-arc paths. Unequal-axis stroke and dash accuracy need further independent evidence. Legacy nonzero radii on nonrectangular Ink/Line/Polygon/Circle artwork remain explicit refusals; filled form-widget styling is a separate V02 path. Relief/cloudy borders remain open. Eight-arc geometry is documented reader artwork, not an exact mathematical conic promise."
     }
   ]
 }
