@@ -8,11 +8,14 @@ use std::ops::Range;
 use std::sync::Arc;
 
 /// Output allocations admitted for one render, separately from paint budgets.
+/// Public fields intentionally permit functional record update, as `Limits` does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OutputLimits {
     /// Live immutable output slots; consumers must release a slot to reuse it.
     pub slots: usize,
-    /// Combined slot capacities and session bookkeeping, including leased slots.
+    /// Slot capacities, slot headers and the heap-owned active controller.
+    /// Excludes the inline `RenderSession` and shared budget-counter allocation;
+    /// prepared scene and scratch storage obey the separate paint budgets.
     pub bytes: usize,
 }
 
@@ -173,6 +176,8 @@ impl RenderSession {
 
     /// Output storage still owned by the session or any outstanding lease.
     /// After terminal completion/cancellation, only consumer-held slots remain.
+    /// Fixed inline session and budget-counter overhead are excluded, as in
+    /// [`OutputLimits::bytes`]; this is allocation accounting, not RSS.
     pub fn output_bytes(&self) -> usize {
         self.output.used()
     }
