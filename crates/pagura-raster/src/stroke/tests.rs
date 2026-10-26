@@ -333,3 +333,82 @@ fn assembled_outlines_keep_only_their_output_charged() {
         assert_eq!(bytes.used(), out.heap_bytes(), "{accept:?}");
     }
 }
+
+#[test]
+fn round_joins_within_one_step_take_their_normals_only() {
+    // The arc's own count of steps between the normals, as `join_into`
+    // finds it where the turn exceeds a step.
+    let steps = |a: Point, b: Point, pen: Pen| {
+        let cross = a.cross(b);
+        let side = if cross > 0.0 { -pen.radius } else { pen.radius };
+        let (n1, n2) = (a.perp() * side, b.perp() * side);
+        let (start, end) = (n1.y.atan2(n1.x), n2.y.atan2(n2.x));
+        let angle = if cross > 0.0 {
+            (end - start).rem_euclid(std::f64::consts::TAU)
+        } else {
+            -(start - end).rem_euclid(std::f64::consts::TAU)
+        };
+        let step = 2.0 * (1.0 - (pen.tolerance / pen.radius).min(1.0)).acos();
+        (angle.abs() / step).ceil().max(1.0)
+    };
+    let mut state = 0x2545_f491_4f6c_dd1d_u64;
+    let mut next = || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let unit = (state >> 11) as f64 / (1u64 << 53) as f64;
+        unit
+    };
+    let stroke = Stroke {
+        join: LineJoin::Round,
+        ..Stroke::default()
+    };
+    let mut counts = [0_usize; 2];
+    for case in 0..200_000 {
+        let radius = 0.01 + 20.0 * next() * next();
+        let pen = Pen {
+            radius,
+            tolerance: TOLERANCE / (0.2 + 8.0 * next()),
+        };
+        let heading = next() * std::f64::consts::TAU;
+        // Turns around one step, and anywhere.
+        let step = 2.0 * (1.0 - (pen.tolerance / radius).min(1.0)).acos();
+        let turn = if case % 2 == 0 {
+            step * (0.999_999 + 2e-6 * next()) * if next() < 0.5 { 1.0 } else { -1.0 }
+        } else {
+            (next() - 0.5) * std::f64::consts::TAU
+        };
+        let a = Point::new(heading.cos(), heading.sin());
+        let b = Point::new((heading + turn).cos(), (heading + turn).sin());
+        let mut points = Vec::new();
+        let drawn = join_into(
+            Point::new(3.0, 4.0),
+            [a, b],
+            pen,
+            &stroke,
+            &Limits::default(),
+            &mut points,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
+        if drawn.is_none() {
+            continue;
+        }
+        let count = steps(a, b, pen);
+        assert_eq!(
+            f64::from(u32::try_from(points.len()).unwrap()),
+            count + 1.0,
+            "{a:?} {b:?} {radius} {}",
+            pen.tolerance
+        );
+        if case % 2 == 0 {
+            counts[usize::from(count > 1.0)] += 1;
+        }
+    }
+    // Turns around one step fall on both sides of it.
+    assert!(counts[0] > 1000 && counts[1] > 1000, "{counts:?}");
+}
