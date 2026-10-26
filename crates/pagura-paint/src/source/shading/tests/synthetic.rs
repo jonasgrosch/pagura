@@ -854,3 +854,89 @@ fn approximated_rows_stay_within_their_bound() {
         "{pixels} approximated pixels, {approximated} of {values} values moved"
     );
 }
+
+/// Rows of axial shadings whose samples all hit write the F32 levels of
+/// the colours their spans give, bit for bit, as a store at full opacity
+/// does; rows where a sample may miss write nothing.
+#[test]
+fn rows_write_the_levels_of_their_colours() {
+    let mut rng = Rng(0x1e7e_15ed);
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let icc = icc_rgb();
+    let (mut written, mut declined) = (0, 0);
+    for case in 0..120 {
+        let pieces = (0..3).map(|_| function(&mut rng, 3)).collect::<Vec<_>>();
+        let bound = rng.quarter(0.25, 0.5);
+        let stitched = Function::stitching(StitchingFunction {
+            domain: [0.0, 1.0],
+            range: None,
+            functions: pieces,
+            bounds: vec![bound, bound + 1e-4],
+            encode: vec![[0.0, 1.0]; 3],
+        })
+        .unwrap();
+        let start = Point::new(rng.quarter(0.0, 96.0), rng.quarter(0.0, 96.0));
+        let end = Point::new(
+            start.x + rng.quarter(-96.0, 96.0) + 0.25,
+            start.y + rng.quarter(-96.0, 96.0),
+        );
+        let space = if rng.below(2) == 0 {
+            icc.clone()
+        } else {
+            ColorSpace::DeviceRgb
+        };
+        let parsed = Parsed {
+            name: String::from("levels"),
+            space: Arc::new(space),
+            function: Some(ShadingFunction::Single(Arc::new(stitched))),
+            kind: ShadingKind::Axial {
+                start,
+                end,
+                domain: [0.0, 1.0],
+                extend: [rng.below(4) != 0, rng.below(4) != 0],
+            },
+            bbox: None,
+            antialias: false,
+            background: None,
+            old_mesh: Vec::new(),
+        };
+        let s = [8.0, 16.0][rng.below(2) as usize];
+        let transform = Transform::new(0.8 * s, 0.6 * s, -0.6 * s, 0.8 * s, 0.0, 0.0);
+        let source = prepared(&parts(&parsed, false), transform, &context, Use::Operator);
+        let mut kept = SpanColors::default();
+        for row in 0..8_u32 {
+            let (x0, y) = (u32::try_from(rng.below(512)).unwrap(), row * 160);
+            let len = 1 + rng.below(1500) as usize;
+            let mut levels = vec![[-1.0_f32; 4]; len];
+            let direct = source.levels(x0, y, &mut levels);
+            source.span(x0, y, len, Precision::Level, &mut kept);
+            if !direct {
+                declined += 1;
+                assert!(
+                    levels.iter().all(|&p| p == [-1.0; 4]),
+                    "case {case}: written"
+                );
+                continue;
+            }
+            written += 1;
+            assert!(
+                kept.alpha.is_empty(),
+                "case {case} row {y}: a sample misses"
+            );
+            for (k, pixel) in levels.iter().enumerate() {
+                let want = crate::kernel::levels(&kept.colors[k * 3..(k + 1) * 3]);
+                assert_eq!(
+                    pixel.map(f32::to_bits),
+                    want.map(f32::to_bits),
+                    "case {case} row {y} pixel {k}"
+                );
+            }
+        }
+    }
+    assert!(
+        written > 300 && declined > 50,
+        "{written} written, {declined} declined"
+    );
+}
