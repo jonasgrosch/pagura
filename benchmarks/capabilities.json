@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "3fb66b42cd80a63ae5340f3c5aa104666b84f291",
+  "audited_revision": "7ba8bb84f165c113aa638cd26a1ac0a4cd4f8394",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -173,7 +173,7 @@
     "crates/pagura-interpret/src/resources/optional.rs": "7f4b11d80f0458cdf4e9a1c01fdcb6869ef398fc44d5ed93337e1a7465e199b1",
     "crates/pagura-interpret/src/resources/pattern.rs": "f38e0ceeb427c250e4034f61d2bcdc13bf73b67ee7d5489b737611da3a1cb92d",
     "crates/pagura-interpret/src/resources/shading.rs": "cd81d6e8ffbb39d6ec4bcd0e12bd7319b12e0c417f19431f5ee1e0a742ec1d57",
-    "crates/pagura-interpret/tests/annotations.rs": "583e086994b03a73af284525514acf66a85fa58aae893f834e31ed14d7b19051",
+    "crates/pagura-interpret/tests/annotations.rs": "0d714a54e9dba5cd6ba24722790238ed0aff2bc3729d3784e5346e37d004930a",
     "crates/pagura-paint/src/execute.rs": "9defb2bcec9183609708c1abc1905eec898204a1b6511321ae61c6f68de7cdec",
     "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
     "crates/pagura-paint/src/prepare/finish.rs": "77bb757520b9d7cf3ae61c9b5a32d063986b03d3afd25f7923985d3a62dc9286",
@@ -230,7 +230,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "c685bc90ebe2af8e40dccac7151431bd1ddca6f0fb410bbd27d332cfaa4b1def",
+    "references/requirements/content.json": "4a2149f06234d323b50a6725c58f3d5da2a45310949bb5eb02f58aed28644a0e",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
