@@ -4,9 +4,9 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) now contains 86 independent pixel
+The companion [render manifest](rendering.json) now contains 166 independent pixel
 oracles: six initial controls, forty valid R02 colour/opacity fixtures and forty
-matched native-sampling controls. Its 602 cells use the public Pagura CLI and all
+matched native-sampling controls and eighty ordinary RGB controls. Its 1162 cells use the public Pagura CLI and all
 six existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
@@ -188,8 +188,33 @@ configuration. They do not measure supported PDF features: twofold-magnified
 samples can differ because of resampling policy. The additional forty
 `paint_jpx_native` controls use identical codestreams and primary-formula colour
 expectations at one sample per pixel with integer placement. They preserve every
-original fixture and tolerance. Their first hosted run is pending; matched
-uncompressed controls and configuration adjudication also remain open.
+original fixture and tolerance. The [native-control run 40261494371](https://github.com/jonasgrosch/pagura/actions/runs/40261494371)
+at merge revision `740c9a9cc9441ab76cdd3147cde1684e95d5bfed` completed all 602
+observations, including all 86 Pagura oracles. Within its forty native controls:
+
+| Engine | Pixel passes | Pixel disagreements |
+|---|---:|---:|
+| Pagura | 40 | 0 |
+| PDFium | 11 | 29 |
+| MuPDF | 17 | 23 |
+| pdf.js | 15 | 25 |
+| Poppler | 0 | 40 |
+| hayro | 17 | 23 |
+| CoreGraphics | 26 | 14 |
+
+Native placement removes magnification from these cases, but the remaining
+observations still do not establish engine defects. The eighty `paint_jpx_rgb`
+controls replace each of the forty JPX images at both placements with ordinary,
+uncompressed DeviceRGB samples from the independent primary-formula colours.
+Opacity uses a separate eight-bit DeviceGray soft mask. Each control names its
+original case in `control_of`; oracle bytes and declared tolerance are identical.
+JPX/container profiles, palettes, Decode and default-colour overrides are absent
+from the controls. No renderer output supplies their samples.
+
+This separates ordinary image sampling/colour/soft-mask paths from the combined
+JPX path. A paired mismatch still needs configuration and normative analysis;
+it is not automatically a missing feature or defect. The expanded 166-case,
+1162-cell hosted run is pending. Original fixtures and tolerances remain intact.
 
 ## Next G01 increments
 

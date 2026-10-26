@@ -170,12 +170,16 @@ competitor defects. The first Pagura-inclusive run passed all six subject
 oracles. The 46-fixture R02 follow-up completed all 322 render observations in
 [run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286),
 with Pagura passing all 46 independent oracles. Baseline pixel disagreements
-remain unadjudicated. Forty additional native-sampling controls bring the current
+remain unadjudicated. Forty additional native-sampling controls brought the
 manifest to 86 fixtures and 602 render cells. Their hosted execution in
 [run 40261494371](https://github.com/jonasgrosch/pagura/actions/runs/40261494371)
 completed all observations, with all 86 Pagura oracles passing.
 They retain the original fixtures and tolerances and help isolate magnification
 from colour/alpha behavior; no family support verdict follows from these counts.
+`fae0f0122611e32ab0ee5783232e8a3c9c8ab776` adds eighty matched ordinary RGB/separate-soft-mask
+controls, retaining each independent oracle and tolerance. The current scope is
+166 fixtures and 1162 render cells; hosted execution and paired adjudication are
+pending. These are diagnostic controls, not new JPX support claims.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
