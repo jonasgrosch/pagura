@@ -3,7 +3,7 @@
 Status: proposed implementation plan, reconciled against `render/one-pass` at
 `19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
 The documentation reconciliation and G00 source inventory are delivered: 90 tag
-candidates reviewed, 332 registered requirements assigned, and six baseline API
+candidates reviewed, 335 registered requirements assigned, and six baseline API
 catalogs reconciled across 43 capability families in the
 [checked capability inventory](CAPABILITIES.md). G01 runtime probes are in
 progress; later packages remain open. Component names identify ownership, not
@@ -171,7 +171,9 @@ oracles. The 46-fixture R02 follow-up completed all 322 render observations in
 [run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286),
 with Pagura passing all 46 independent oracles. Baseline pixel disagreements
 remain unadjudicated. Forty additional native-sampling controls bring the current
-manifest to 86 fixtures and 602 render cells, pending their hosted execution.
+manifest to 86 fixtures and 602 render cells. Their hosted execution in
+[run 40261494371](https://github.com/jonasgrosch/pagura/actions/runs/40261494371)
+completed all observations, with all 86 Pagura oracles passing.
 They retain the original fixtures and tolerances and help isolate magnification
 from colour/alpha behavior; no family support verdict follows from these counts.
 
@@ -230,8 +232,9 @@ colour-value domain before IEC conversion. Independent fixtures cover every
 supported precision 1-16, the non-neutral 16-bit midpoint, and mixed 1/3/10-bit
 palette output with SMaskInData 0/1/2. All 46 render probes passed for Pagura in
 [run 40259337286](https://github.com/jonasgrosch/pagura/actions/runs/40259337286).
-Product checks passed on Linux and macOS before integration superseded the
-Windows run; checks on the current one-pass integration remain pending.
+Head `4aade8d9e` passed full hosted Ubuntu/macOS/Windows checks in
+[run 40261494369](https://github.com/jonasgrosch/pagura/actions/runs/40261494369).
+Checks after the final landing-branch reconciliation remain pending.
 Decoder precision above 16 bits remains R03 work.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
