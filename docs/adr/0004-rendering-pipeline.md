@@ -82,7 +82,17 @@ exact result.
   f64 evaluation. Feeding is transitive: a group or soft mask whose result
   enters such a buffer feeds the operation too. The renderer's
   classification of each operation, with its amplification bound, decides
-  the side (`BlendMode::amplifies` for blend modes).
+  the side (`BlendMode::amplifies` for blend modes). Knockout is
+  source-over, and so non-amplifying, where every member's opacity equals
+  its shape (the opaque-member identity) or where its Normal members'
+  footprints share no pixel (the disjoint-member identity): at a pixel of
+  one member, (1 - s) b + s ((1 - α/s) b + (α/s) c) = (1 - α) b + α c.
+  Footprints are conservative device bounds, a pixel wider than a mark's
+  hull, except a glyph placement's: its outline's control hull under L at
+  its origin, grown by 2^-32 of the coordinates' magnitude and 2^-32
+  pixels, far beyond the rasterizer's rounding of that geometry (the
+  flattener's hull allowance stays below 2^-41 of it), so that its far
+  edges keep a geometric point's floor cell.
 - **Sources** enter composition as f64 values from prepared converters,
   functions and samplers. The storage bounds of sections 5 and 6 include
   encoding them and reserve a margin for their f64 evaluation.
@@ -521,12 +531,12 @@ one dynamic store at each pixel it touches, evaluated in f64 from B's stored
 values and rounded once to the parent's format. A narrow child is an isolated
 group, a non-isolated group of Normal content (source-over is associative, so
 it composites as an isolated one) or a soft mask, in an RGB blending space,
-without knockout other than the opaque-member identity, composited with
-Normal into a narrow parent. Every other child is F64, since no inequality
-bounds what narrow children inject into an F64 parent. Let B's colour and
-alpha channels be within E_c(B) and E_α(B) levels of their reference, and m be
-the composite's opacity factor (constant alpha, coverage and soft-mask
-value). The composite x' = (1 - m α/255) x + m c then injects
+without knockout other than the opaque- and disjoint-member identities,
+composited with Normal into a narrow parent. Every other child is F64, since
+no inequality bounds what narrow children inject into an F64 parent. Let B's
+colour and alpha channels be within E_c(B) and E_α(B) levels of their
+reference, and m be the composite's opacity factor (constant alpha, coverage
+and soft-mask value). The composite x' = (1 - m α/255) x + m c then injects
 
     η ≤ m (E_c(B) + (256/255) E_α(B)) + 2^-40 levels,
 
@@ -569,10 +579,10 @@ dynamic store at an N16 pixel, because two nearest-word roundings exceed its
 room; N16 children; narrow children of F64 parents; blend modes other than
 Normal and transfer functions in a buffer, whose results depend on the
 backdrop in a way the lemma does not model; non-isolated groups whose content
-is not all Normal, because removing the backdrop divides by the group's
-alpha; knockout groups other than the opaque-member identity; non-RGB
-blending spaces, spot channels and overprint simulation, whose conversions
-and spot accumulation the lemma does not cover; and promotion of byte-stored
+is not all Normal, because removing the backdrop divides by the group's alpha;
+knockout groups other than the opaque- and disjoint-member identities; non-RGB
+blending spaces, spot channels and overprint simulation, whose conversions and
+spot accumulation the lemma does not cover; and promotion of byte-stored
 chunks to N16 (ADR 0034), which needs a bound for a start already rounded to
 bytes and work aligned to a global chunk grid.
 

@@ -2,7 +2,7 @@
 //! outwards by the error bounds of their stores, then widened to F64 from
 //! the outermost buffer inwards.
 
-use super::{Buffer, Survey};
+use super::{Buffer, Dynamic, Survey};
 use crate::format::Format;
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::DeviceRect;
@@ -31,16 +31,12 @@ pub(super) const FOOTPRINTS: usize = 4096;
 
 /// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
 /// any pixel, each injecting less than the room an N16 pixel leaves
-/// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
-/// does not depend on the region. Children and masks are resolved first.
+/// (ADR 0004 §6). Children and masks are resolved first.
 pub(super) fn n16_admits(
     buffer: &Buffer,
     resolved: &[Option<(Format, f64)>],
     bytes: &mut Meter,
 ) -> Result<bool> {
-    if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
-        return Ok(false);
-    }
     let bound = |node: usize| {
         resolved
             .get(node)
@@ -55,7 +51,18 @@ pub(super) fn n16_admits(
         let mask = store.mask.map_or(0.0, |m| 256.0 / 255.0 * bound(m));
         257.0 * (store.eta + child + mask) <= N16_ROOM
     });
-    if !fits {
+    Ok(fits && disjoint_footprints(buffer, |store| store.rect, bytes)?)
+}
+
+/// Whether every dynamic store of `buffer` has a footprint and no two share
+/// a pixel, by `footprint`. Footprints are page-level device bounds, so the
+/// answer does not depend on the region.
+pub(super) fn disjoint_footprints(
+    buffer: &Buffer,
+    footprint: impl Fn(&Dynamic) -> DeviceRect,
+    bytes: &mut Meter,
+) -> Result<bool> {
+    if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
         return Ok(false);
     }
     let mut rects = Vec::new();
@@ -64,7 +71,7 @@ pub(super) fn n16_admits(
         buffer
             .dynamics
             .iter()
-            .map(|store| store.rect)
+            .map(footprint)
             .filter(|rect| !rect.is_empty()),
     );
     let admitted = disjoint(&mut rects, bytes)?;
@@ -230,13 +237,15 @@ mod tests {
         buffer.stores = 1;
         buffer.dynamic = 1;
         fixture.reserve_capacity(&mut buffer.dynamics, 1).unwrap();
+        let rect = DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: 2,
+            y1: 2,
+        };
         buffer.dynamics.push(Dynamic {
-            rect: DeviceRect {
-                x0: 0,
-                y0: 0,
-                x1: 2,
-                y1: 2,
-            },
+            rect,
+            apart: rect,
             eta: 1.0,
             child: None,
             mask: None,
