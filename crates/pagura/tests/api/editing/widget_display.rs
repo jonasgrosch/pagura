@@ -90,6 +90,14 @@ fn explicitly_saving_source_values_persists_the_same_missing_appearance() {
             FillValue::Text("AB\nCD"),
         ),
         ("widget-observe-text-comb-72-missing", FillValue::Text("AB")),
+        (
+            "widget-observe-text-inherited-72-missing",
+            FillValue::Text("AB"),
+        ),
+        (
+            "widget-observe-text-null-inheritance-72-missing",
+            FillValue::Text("AB"),
+        ),
         ("widget-source-separate", FillValue::Text("AB")),
         ("widget-source-siblings", FillValue::Text("AB")),
         (
