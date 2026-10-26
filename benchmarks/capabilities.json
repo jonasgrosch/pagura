@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "0ae632a427188bf59d7e373f0163d394d78e4328",
+  "audited_revision": "2146b93dcc8be6cf3b1d7dad2910a36edf355784",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -106,18 +106,20 @@
     "crates/pagura-document/src/source/memory.rs": "bd3ba68608505d87d010cbe3245563867aa431e0366070e94a43520e89728145",
     "crates/pagura-document/src/source/sparse.rs": "2ecc4711fc19f0c3122758d0126b0d3b9bd44b8c4ab1b7ff5b36f188e3fd1946",
     "crates/pagura-document/src/source/types.rs": "9c313bf813eab52ddce696f78695a7e55741e272951b8a878d828d658e60bd6c",
-    "crates/pagura-document/src/source/window.rs": "697f021fd995cce14019c2d4b0ba60eb8c1e440af34497d59b4d5021f0b70f8f",
+    "crates/pagura-document/src/source/window.rs": "94176a1f217d4123ed9919168e7c68691962ef112abef92cd21c02e8ff229988",
     "crates/pagura-document/src/stream.rs": "6cba9215aaf803d8275e54402630c0b9ce15c5805401d668da4aa866605a02c6",
-    "crates/pagura-document/src/xref.rs": "90950e09b60a00424f5871ccd23b5bc70040e1d3bf9937461b87311460fb6977",
+    "crates/pagura-document/src/xref.rs": "378f5ab10ab80b17a6fb49db6583aeea2504e1598e43f0e09e0a8efb2db942f9",
+    "crates/pagura-document/src/xref/boundary.rs": "a21f7492f1bb687f4d8739c8821a61172d10322cebecae373cb54c32bb767805",
+    "crates/pagura-document/src/xref/boundary/tests.rs": "60560b942c8415b01c33542bce01035a7a521398d406d925dcf5938ba25cd8a8",
     "crates/pagura-document/src/xref/chain.rs": "6c6c49b8c2580a39c1f4637b44e8b271efacda432b964745062bdfe0f7d2fa4d",
     "crates/pagura-document/src/xref/stream.rs": "56794cf5920332203d2f51f65bd32c3cf78c9b6389c370fdef639cb6536896dc",
-    "crates/pagura-document/src/xref/tests.rs": "01f633e516269f71e8d1de0dd59f17c9eb05e69ccd3fb9f810aa79b46262e1fc",
+    "crates/pagura-document/src/xref/tests.rs": "f302e4871fc2f979f9decd4eb07dc1a5378a9eab6b8139aadbeefa8c988a6a69",
     "crates/pagura-document/tests/file_annotations.rs": "18a147044a9981155308d85a1db0af8359cd45fac61762ccd9462da25c1bf76d",
     "crates/pagura-document/tests/file_checks.rs": "a56894c90ab0136849074f125631eb403903526f0616b325745c8bee3b975f97",
     "crates/pagura-document/tests/files.rs": "6392ce4f2af68c9d79fb9cbf8c0c84020724ee28a10b30c73c20f398b44f59fb",
     "crates/pagura-document/tests/metadata.rs": "308c95e0f3d6038505a662ecc1eb25a40fd287067de77bcf8f9f16ecd24b5d70",
     "crates/pagura-document/tests/sources.rs": "c5395cd0ee073648709e7fa6b3fe16c95ff7883cca5bc85bdbc84838a1a366ae",
-    "crates/pagura-document/tests/windows.rs": "6c054b63ce45a465c41d695a017de7d60534edea92cbf807c6881c3c2327e424",
+    "crates/pagura-document/tests/windows.rs": "65dc0425643a70d9b953870f430cebe3d704418aa9b196269ff1eb5d5fa36d0d",
     "crates/pagura-extract/src/features.rs": "96c570d9e51e100d7e5ec75c08607d65e22038c0f5db1c99322ee04987dbd864",
     "crates/pagura-extract/src/lib.rs": "9f99ff35f57983ebce2ec84d618f0eb258dd13fea8a12264a84b3759e84a0dec",
     "crates/pagura-extract/src/structure/content.rs": "fcedc48f6f79294eccc2fa5b9dc90cde53f9527ffece4d1ce9d11205bbefef81",
@@ -262,7 +264,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "edd3f0d4c3b0612e707ffcead0bf4c97c04599900ae9b38f5fc40a7e0b406043",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/sources.json": "d7536b61f2e63b307b86122d61360c6f859510e0bdb5a38574e6699af8bd04f5",
+    "references/requirements/sources.json": "c5a12bb2baa20fa2de54a9da3bcdd8c5793eb50b9d1989c9936b798a1755d50a",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
@@ -402,7 +404,8 @@
         "crates/pagura-document/src/xref.rs",
         "crates/pagura-document/src/xref/stream.rs",
         "crates/pagura-document/src/stream.rs",
-        "crates/pagura-document/src/xref/chain.rs"
+        "crates/pagura-document/src/xref/chain.rs",
+        "crates/pagura-document/src/xref/boundary.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
@@ -412,7 +415,8 @@
         "crates/pagura-core/tests/memory.rs",
         "crates/pagura-core/src/store.rs",
         "crates/pagura-document/tests/windows.rs",
-        "crates/pagura-document/src/xref/tests.rs"
+        "crates/pagura-document/src/xref/tests.rs",
+        "crates/pagura-document/src/xref/boundary/tests.rs"
       ],
       "requirements": [
         "document-loading-bounds",
