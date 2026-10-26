@@ -155,61 +155,90 @@ fn missing_quantizer_reports_the_entropy_data_position() {
 #[test]
 fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     let data = fixture("image", "jpeg-12bit-sequential.in");
-    // Six 8x8 blocks: the u16 planes the scan reconstructs, and the
-    // expanded u16 samples plus the final bytes through conversion, beside
-    // the conversion's rows.
-    let bytes = 24 * 16 * (2 + 2 + 1) + 24 * super::transform::ROW_BYTES;
+    // Six 8x8 blocks: the u16 planes the scan reconstructs and the expanded
+    // u16 samples beside the conversion's rows are working memory; the final
+    // bytes are the output.
+    let working = 24 * 16 * (2 + 2) + 24 * super::transform::ROW_BYTES;
+    let output = 24 * 16;
     let limits = Limits {
-        decoded_bytes: bytes,
+        decode_bytes: working,
+        decoded_bytes: output,
         ..Limits::default()
     };
     assert!(super::decode(&data, Some(0), &limits).is_ok());
-    let error = super::decode(
-        &data,
-        Some(0),
-        &Limits {
-            decoded_bytes: bytes - 1,
+    for limits in [
+        Limits {
+            decode_bytes: working - 1,
             ..limits
         },
-    )
-    .unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
+        Limits {
+            decoded_bytes: output - 1,
+            ..limits
+        },
+    ] {
+        let error = super::decode(&data, Some(0), &limits).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+    }
+}
+
+/// A 1000×1000 frame of three components without subsampling: 125×125
+/// blocks of 64 samples each.
+fn header(precision: u8) -> Vec<u8> {
+    let mut data = vec![precision, 0x03, 0xe8, 0x03, 0xe8, 3];
+    for id in 1..=3 {
+        data.extend([id, 0x11, 0]);
+    }
+    data
 }
 
 #[test]
-fn sequential_frames_budget_their_sample_planes_not_coefficients() {
-    // 1000×1000 without subsampling: 125×125 blocks of 64 samples per
-    // component beside the expanded samples and the conversion's rows.
-    let header = |precision: u8| {
-        let mut data = vec![precision, 0x03, 0xe8, 0x03, 0xe8, 3];
-        for id in 1..=3 {
-            data.extend([id, 0x11, 0]);
-        }
-        data
-    };
-    let pixels = 1000 * 1000 * 3;
+fn frames_admit_working_memory_against_decode_bytes_and_samples_against_decoded_bytes() {
+    let samples = 1000 * 1000 * 3;
     let rows = 1000 * super::transform::ROW_BYTES;
     let planes = 3 * 125 * 125 * 64;
-    for (precision, process, bytes) in [
-        (8, 0xc0, pixels + planes + rows),
-        (8, 0xc1, pixels + planes + rows),
-        (12, 0xc1, 3 * pixels + 2 * planes + rows),
-        (8, 0xc2, pixels + 5 * planes + rows),
-        (12, 0xc2, 3 * pixels + 6 * planes + rows),
+    for (precision, process, working) in [
+        (8, 0xc0, planes + rows),
+        (8, 0xc1, planes + rows),
+        (12, 0xc1, 2 * samples + 2 * planes + rows),
+        (8, 0xc2, 5 * planes + rows),
+        (12, 0xc2, 2 * samples + 6 * planes + rows),
     ] {
-        let limits = |decoded_bytes| Limits {
+        let limits = |decode_bytes, decoded_bytes| Limits {
+            decode_bytes,
             decoded_bytes,
             ..Limits::default()
         };
         let data = header(precision);
+        let case = format!("{precision}-bit {process:#x}");
         assert!(
-            super::Frame::header(&data, process, &limits(bytes)).is_ok(),
-            "{precision}-bit {process:#x}"
+            super::Frame::header(&data, process, &limits(working, samples)).is_ok(),
+            "{case}"
         );
-        let Err(error) = super::Frame::header(&data, process, &limits(bytes - 1)) else {
-            panic!("{precision}-bit {process:#x} admitted below its planes and samples");
+        let Err(error) = super::Frame::header(&data, process, &limits(working - 1, samples)) else {
+            panic!("{case} admitted below its working memory");
         };
-        assert_eq!(error.kind, ErrorKind::Limit);
-        assert_eq!(error.message, "JPEG coefficient and sample budget exceeded");
+        assert_eq!(error.message, "JPEG plane and coefficient budget exceeded");
+        let Err(error) = super::Frame::header(&data, process, &limits(working, samples - 1)) else {
+            panic!("{case} admitted below its samples");
+        };
+        assert_eq!(error.message, "image sample budget exceeded");
     }
+}
+
+#[test]
+fn native_planes_are_admitted_against_decode_bytes() {
+    // A block flag per 64 samples and a prefix table per component, beside
+    // the conversion's rows.
+    let need = 3 * 125 * 125 * 65 + 3 * 4096 * 4 + 1000 * super::transform::ROW_BYTES;
+    let limits = |decode_bytes| Limits {
+        decode_bytes,
+        ..Limits::default()
+    };
+    let native = super::Native { transposed: false };
+    let mut frame = super::Frame::header(&header(8), 0xc0, &limits(need)).unwrap();
+    super::deferred::prepare(&mut frame, (None, None), &limits(need), native).unwrap();
+    let mut frame = super::Frame::header(&header(8), 0xc0, &limits(need)).unwrap();
+    let error =
+        super::deferred::prepare(&mut frame, (None, None), &limits(need - 1), native).unwrap_err();
+    assert_eq!(error.message, "JPEG native plane budget exceeded");
 }
