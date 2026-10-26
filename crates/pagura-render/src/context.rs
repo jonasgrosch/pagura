@@ -176,7 +176,7 @@ impl RenderContext {
     /// As [`Self::scene`] and [`Self::render_scene`]. No partial page is ever
     /// returned.
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> ReadResult<Pixmap> {
-        self.render_scene(&*self.scene(page)?, options, None)
+        Ok(self.render_scene(&*self.scene(page)?, options, None)?)
     }
 
     /// Renders one tile of the page. Tiles of one page with the same options
@@ -192,7 +192,7 @@ impl RenderContext {
         options: &RenderOptions,
         tile: Tile,
     ) -> ReadResult<Pixmap> {
-        self.render_scene(&*self.scene(page)?, options, Some(tile))
+        Ok(self.render_scene(&*self.scene(page)?, options, Some(tile))?)
     }
 
     /// Renders `tile` of a scene this context recorded, or its whole page
@@ -357,7 +357,10 @@ impl RenderContext {
     /// `Limits::depth`.
     pub fn content_bounds(&self, page: &Page) -> ReadResult<Option<Rect>> {
         let scene = self.scene(page)?;
-        crate::bounds::content_bounds(&scene, self.document.limits().depth)
+        Ok(crate::bounds::content_bounds(
+            &scene,
+            self.document.limits().depth,
+        )?)
     }
 }
 

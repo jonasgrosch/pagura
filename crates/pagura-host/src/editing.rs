@@ -5,6 +5,7 @@ pub(crate) use styles::encode as styles;
 
 use crate::protocol::Reader;
 use crate::wire::Writer;
+use pagura::ReadResult;
 use pagura::editing::{SaveOptions, save_filled_form};
 use pagura::forms::{
     AcroForm, ButtonKind, ButtonValue, ChoiceSelection, ChoiceStyle, Field, FieldFlags, FieldKind,
@@ -20,14 +21,14 @@ pub(crate) const MAX_OPTIONS: usize = 4096;
 /// document's `document_bytes`.
 pub(crate) const MAX_BYTES: usize = 32 * 1024 * 1024;
 
-pub(crate) fn fields(document: &Document) -> Result<Vec<u8>> {
+pub(crate) fn fields(document: &Document) -> ReadResult<Vec<u8>> {
     let mut out = Writer::new(document.limits().document_bytes.min(MAX_BYTES));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
         return Ok(out.finish());
     };
     if form.fields.len() > MAX_FIELDS {
-        return Err(Error::limit("browser form field budget exceeded"));
+        return Err(Error::limit("browser form field budget exceeded").into());
     }
     out.count(form.fields.len())?;
     let mut options = 0usize;
@@ -140,11 +141,11 @@ fn write_options(
     Ok(())
 }
 
-pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
+pub(crate) fn save(document: &Document, changes: &[u8]) -> ReadResult<Vec<u8>> {
     let mut reader = Reader::new(changes);
     let count = index(reader.u32()?)?;
     if count > MAX_FIELDS {
-        return Err(Error::limit("browser form change budget exceeded"));
+        return Err(Error::limit("browser form change budget exceeded").into());
     }
     if count == 0 {
         reader.finish()?;
@@ -173,7 +174,8 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
         if previous.is_some_and(|previous| field <= previous) {
             return Err(Error::invalid_argument(
                 "form changes must have unique ascending field indexes",
-            ));
+            )
+            .into());
         }
         previous = Some(field);
         match reader.u8()? {
@@ -185,7 +187,7 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
                 if count > MAX_OPTIONS
                     || count.saturating_mul(size_of::<usize>()) > document.limits().document_bytes
                 {
-                    return Err(Error::limit("browser choice index budget exceeded"));
+                    return Err(Error::limit("browser choice index budget exceeded").into());
                 }
                 let mut indices = Vec::new();
                 indices
@@ -216,7 +218,7 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
                     FillValue::Choice(ChoiceSelection::Text(text(&mut reader, document)?)),
                 )?;
             }
-            _ => return Err(Error::invalid_argument("unknown browser form change kind")),
+            _ => return Err(Error::invalid_argument("unknown browser form change kind").into()),
         }
     }
     reader.finish()?;
@@ -238,7 +240,7 @@ fn index(value: u32) -> Result<usize> {
 }
 
 /// Map only widgets actually listed by this page, never the optional P backlink.
-pub(crate) fn widgets(document: &Document, page: &Page) -> Result<Vec<u8>> {
+pub(crate) fn widgets(document: &Document, page: &Page) -> ReadResult<Vec<u8>> {
     let mut out = Writer::new(document.limits().document_bytes.min(MAX_BYTES));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
@@ -283,12 +285,12 @@ pub(crate) fn widgets(document: &Document, page: &Page) -> Result<Vec<u8>> {
     Ok(out.finish())
 }
 
-fn overlay_visible(document: &Document, widget: &pagura::forms::Widget<'_>) -> Result<bool> {
-    let integer = |value: &pagura::Value| {
+fn overlay_visible(document: &Document, widget: &pagura::forms::Widget<'_>) -> ReadResult<bool> {
+    let integer = |value: &pagura::Value| -> ReadResult<i64> {
         document
             .resolve(value)?
             .as_integer()
-            .ok_or(Error::syntax("annotation flag or rotation must be integer"))
+            .ok_or_else(|| Error::syntax("annotation flag or rotation must be integer").into())
     };
     let flags = widget
         .dictionary
@@ -297,7 +299,7 @@ fn overlay_visible(document: &Document, widget: &pagura::forms::Widget<'_>) -> R
         .transpose()?
         .unwrap_or(0);
     if flags < 0 || flags & !1023 != 0 {
-        return Err(Error::syntax("invalid annotation flags"));
+        return Err(Error::syntax("invalid annotation flags").into());
     }
     let rotation = widget
         .dictionary

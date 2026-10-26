@@ -3,6 +3,7 @@
 use super::Response;
 use crate::protocol::{ActionCode, Field, FitCode, OutlineStyle, ResponseKind};
 use crate::wire::Writer;
+use pagura::ReadResult;
 use pagura::navigation::{ActionKind, Destination, DestinationView, NamedAction, Target};
 use pagura::{Document, Error, Result};
 
@@ -106,7 +107,7 @@ fn name_entry(dictionary: &pagura::Dictionary, key: &[u8]) -> String {
 
 /// `u32 count | Link[count]`, where a Link is `u32 quad_count |
 /// Quad[quad_count] | Target`.
-pub(crate) fn links(document: &Document, page: Field<u32>, cap: usize) -> Result<Response> {
+pub(crate) fn links(document: &Document, page: Field<u32>, cap: usize) -> ReadResult<Response> {
     let links = document
         .page(page.index()?)
         .map_err(|error| error.at(page.position()))?
@@ -141,7 +142,7 @@ pub(crate) fn links(document: &Document, page: Field<u32>, cap: usize) -> Result
 
 /// `u32 count | Outline[count]`, where an Outline is `u32 depth | text title
 /// | u8 initially_open | u8 style | f64 red, green, blue | Target`.
-pub(crate) fn outlines(document: &Document, cap: usize) -> Result<Response> {
+pub(crate) fn outlines(document: &Document, cap: usize) -> ReadResult<Response> {
     let items = document.outlines()?;
     let mut out = Writer::new(cap);
     out.count(items.len())?;
@@ -164,7 +165,7 @@ pub(crate) fn outlines(document: &Document, cap: usize) -> Result<Response> {
 }
 
 /// `u32 count | text label[count]`, one label per page.
-pub(crate) fn labels(document: &Document, cap: usize) -> Result<Response> {
+pub(crate) fn labels(document: &Document, cap: usize) -> ReadResult<Response> {
     let labels = document.page_labels()?;
     let mut out = Writer::new(cap);
     out.count(document.page_count()?)?;

@@ -89,9 +89,9 @@ pub fn render_page(
 ) -> ReadResult<Pixmap> {
     with_renderer(document, provider, |renderer| {
         let scene = renderer.record(page)?;
-        renderer
+        Ok(renderer
             .render(&scene, (options, None), &mut Scratch::default(), |_| false)
-            .map(|(pixmap, _)| pixmap)
+            .map(|(pixmap, _)| pixmap)?)
     })
 }
 
@@ -110,14 +110,14 @@ pub fn render_tile(
 ) -> ReadResult<Pixmap> {
     with_renderer(document, provider, |renderer| {
         let scene = renderer.record(page)?;
-        renderer
+        Ok(renderer
             .render(
                 &scene,
                 (options, Some(tile)),
                 &mut Scratch::default(),
                 |_| false,
             )
-            .map(|(pixmap, _)| pixmap)
+            .map(|(pixmap, _)| pixmap)?)
     })
 }
 

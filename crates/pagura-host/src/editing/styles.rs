@@ -1,9 +1,10 @@
 //! Native editor metrics from stored appearance glyphs, with declared DA fallback.
 use super::{MAX_BYTES, Writer, aliases, overlay_visible};
+use pagura::ReadResult;
 use pagura::forms::{FieldKind, Justification};
-use pagura::{Document, Name, Page, Result, Value};
+use pagura::{Document, ErrorKind, Name, Page, ReadFault, Value};
 
-pub(crate) fn encode(document: &Document, page: &Page) -> Result<Vec<u8>> {
+pub(crate) fn encode(document: &Document, page: &Page) -> ReadResult<Vec<u8>> {
     let mut out = Writer::new(document.limits().document_bytes.min(MAX_BYTES));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
@@ -47,33 +48,7 @@ pub(crate) fn encode(document: &Document, page: &Page) -> Result<Vec<u8>> {
         ) {
             baseline = 2.0 + size * 0.8;
         }
-        let appearance = widget
-            .dictionary
-            .get(b"AP")
-            .and_then(|value| document.resolve_dictionary(value).ok())
-            .and_then(|dictionary| dictionary.get(b"N"))
-            .and_then(Value::as_reference);
-        let appearance = appearance.filter(|id| {
-            if remaining == 0 {
-                return false;
-            }
-            let size = document
-                .object(*id)
-                .and_then(|object| document.stream_data(object))
-                .map(|bytes| bytes.len());
-            match size {
-                Ok(size) if size <= remaining => {
-                    remaining -= size;
-                    true
-                }
-                _ => {
-                    remaining = 0;
-                    false
-                }
-            }
-        });
-        if let Some(id) = appearance
-            && let Ok(text) = pagura::appearance_text(document, page, id, widget.rectangle)
+        if let Some(text) = stored_text(document, page, widget, &mut remaining)?
             && let Some(glyph) = text.glyphs.first()
             && glyph.em.is_finite()
             && glyph.em > 0.0
@@ -103,4 +78,48 @@ pub(crate) fn encode(document: &Document, page: &Page) -> Result<Vec<u8>> {
         }])?;
     }
     Ok(out.finish())
+}
+
+/// Appearance metrics are advisory. Malformed/unsupported appearance data keeps
+/// the declared DA fallback, while unavailable data and terminal source/budget
+/// failures cannot become successful substitute metrics.
+fn stored_text(
+    document: &Document,
+    page: &Page,
+    widget: &pagura::forms::Widget<'_>,
+    remaining: &mut usize,
+) -> ReadResult<Option<pagura::text::PositionedText>> {
+    let result = (|| -> ReadResult<_> {
+        let appearance = widget
+            .dictionary
+            .get(b"AP")
+            .map(|value| document.resolve_dictionary(value))
+            .transpose()?
+            .and_then(|dictionary| dictionary.get(b"N"))
+            .and_then(Value::as_reference);
+        let Some(id) = appearance.filter(|_| *remaining > 0) else {
+            return Ok(None);
+        };
+        let size = document.stream_data(document.object(id)?)?.len();
+        if size > *remaining {
+            *remaining = 0;
+            return Ok(None);
+        }
+        *remaining -= size;
+        pagura::appearance_text(document, page, id, widget.rectangle).map(Some)
+    })();
+    match result {
+        Err(ReadFault::Invalid(error))
+            if matches!(
+                error.kind,
+                ErrorKind::Syntax
+                    | ErrorKind::MissingObject
+                    | ErrorKind::Cycle
+                    | ErrorKind::Unsupported(_)
+            ) =>
+        {
+            Ok(None)
+        }
+        result => result,
+    }
 }

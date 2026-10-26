@@ -9,7 +9,8 @@ use crate::config::SessionConfig;
 use crate::protocol::{self, Request, RequestFrame, Response, SessionStats, Version, layout};
 use crate::{editing, reading};
 use documents::Documents;
-use pagura::{Error, Position, Result};
+use pagura::ReadResult;
+use pagura::{Error, Position, ReadFault, Result};
 use std::io::{self, Read, Write};
 use transport::Incoming;
 
@@ -108,7 +109,14 @@ impl Session {
             if let Err(error) = self.order(&frame) {
                 return self.fail(&mut output, frame.id, error);
             }
-            let response = self.execute(frame.request).unwrap_or_else(Response::Error);
+            // V1 can create only complete-buffer documents. A source wait has
+            // no PDF error category and no v1 frame: preserve its typed cause
+            // as a transport failure if that admission invariant is broken.
+            let response = match self.execute(frame.request) {
+                Ok(response) => response,
+                Err(ReadFault::Invalid(error)) => Response::Error(error),
+                Err(fault) => return Err(io::Error::other(fault)),
+            };
             // The document owns its source now; release a potentially large
             // request buffer before allocating the encoded response.
             drop(body);
@@ -147,7 +155,7 @@ impl Session {
     }
 
     /// Runs one ordered request; failures are operational error responses.
-    fn execute(&mut self, request: Request<'_>) -> Result<Response> {
+    fn execute(&mut self, request: Request<'_>) -> ReadResult<Response> {
         let version = self.require(request.kind().since())?;
         match request {
             Request::Reauthenticate { document, password } => {
@@ -165,17 +173,15 @@ impl Session {
             Request::Generation {
                 document,
                 generation,
-            } => self.documents.select_generation(document, generation),
+            } => Ok(self.documents.select_generation(document, generation)?),
             Request::GenerationTile { generation, tile } => self.generation_tile(generation, tile),
-            Request::Diagnostics(handle) => self
-                .documents
-                .diagnostics(handle)
-                .map(Response::Diagnostics),
-            Request::DiagnosticDetails(handle) => self
-                .documents
-                .diagnostics(handle)
-                .map(Response::DiagnosticDetails),
-            Request::Close(handle) => self.documents.close(handle),
+            Request::Diagnostics(handle) => {
+                Ok(Response::Diagnostics(self.documents.diagnostics(handle)?))
+            }
+            Request::DiagnosticDetails(handle) => Ok(Response::DiagnosticDetails(
+                self.documents.diagnostics(handle)?,
+            )),
+            Request::Close(handle) => Ok(self.documents.close(handle)?),
             Request::Stats => Ok(Response::Stats(self.stats())),
             Request::Reading(request) => self.reading(request).map(Response::Reading),
             Request::FormFields(handle) => {
@@ -204,7 +210,7 @@ impl Session {
         }
     }
 
-    fn reading(&mut self, request: reading::Request<'_>) -> Result<reading::Response> {
+    fn reading(&mut self, request: reading::Request<'_>) -> ReadResult<reading::Response> {
         let cap = self.config.session.reading_response_bytes;
         match request {
             reading::Request::Service { document, request } => {
@@ -212,7 +218,7 @@ impl Session {
             }
             reading::Request::Text(page) => {
                 let text = self.documents.text(page)?;
-                reading::page_text(&text, cap)
+                Ok(reading::page_text(&text, cap)?)
             }
             reading::Request::Search(search) => {
                 let pages = self.documents.document(search.document)?.page_count()?;
@@ -228,11 +234,13 @@ impl Session {
             reading::Request::Labels(handle) => {
                 reading::labels(self.documents.document(handle)?, cap)
             }
-            reading::Request::Stats => {
-                reading::stats(self.stats(), self.documents.text_accounting(), cap)
-            }
+            reading::Request::Stats => Ok(reading::stats(
+                self.stats(),
+                self.documents.text_accounting(),
+                cap,
+            )?),
             reading::Request::Bounds(page) => {
-                reading::bounds(self.documents.content_bounds(page)?, cap)
+                Ok(reading::bounds(self.documents.content_bounds(page)?, cap)?)
             }
             reading::Request::Metadata(handle) => {
                 reading::metadata(self.documents.document(handle)?, cap)

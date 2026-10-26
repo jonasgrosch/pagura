@@ -191,7 +191,10 @@ fn pages_of_another_document_are_rejected() {
         context.text_page(page).map(drop),
         context.content_bounds(page).map(drop),
     ] {
-        assert_eq!(result.unwrap_err().kind, ErrorKind::InvalidArgument);
+        assert_eq!(
+            result.unwrap_err().as_error().unwrap().kind,
+            ErrorKind::InvalidArgument
+        );
     }
 }
 

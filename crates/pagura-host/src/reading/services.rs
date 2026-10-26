@@ -5,13 +5,14 @@
 use super::{MAX_ATTACHMENTS, Response};
 use crate::protocol::{AttachmentCheckStatus, AttachmentKey, Field, ResponseKind};
 use crate::wire::Writer;
+use pagura::ReadResult;
 use pagura::files::{
     EmbeddedFile, FilePayload, FileSpecification, NamedFile, ParameterCheck, Relationship,
 };
 use pagura::metadata::Trapped;
 use pagura::{Document, Error, Name, ObjectId, Result};
 
-pub(crate) fn metadata(document: &Document, cap: usize) -> Result<Response> {
+pub(crate) fn metadata(document: &Document, cap: usize) -> ReadResult<Response> {
     let mut out = Writer::new(cap);
     let info = document.information()?;
     out.flag(info.is_some())?;
@@ -40,7 +41,7 @@ pub(crate) fn metadata(document: &Document, cap: usize) -> Result<Response> {
     Ok(Response::new(ResponseKind::Metadata, out))
 }
 
-pub(crate) fn metadata_bytes(document: &Document, cap: usize) -> Result<Response> {
+pub(crate) fn metadata_bytes(document: &Document, cap: usize) -> ReadResult<Response> {
     let mut out = Writer::new(cap);
     let packet = document.metadata()?;
     out.flag(packet.is_some())?;
@@ -50,10 +51,10 @@ pub(crate) fn metadata_bytes(document: &Document, cap: usize) -> Result<Response
     Ok(Response::new(ResponseKind::MetadataBytes, out))
 }
 
-pub(crate) fn attachments(document: &Document, cap: usize) -> Result<Response> {
+pub(crate) fn attachments(document: &Document, cap: usize) -> ReadResult<Response> {
     let files = document.embedded_files()?;
     if files.len() > MAX_ATTACHMENTS {
-        return Err(Error::limit("catalog attachment listing budget exceeded"));
+        return Err(Error::limit("catalog attachment listing budget exceeded").into());
     }
     let mut out = Writer::new(cap);
     out.count(files.len())?;
@@ -105,7 +106,7 @@ pub(crate) fn attachment_bytes(
     index: Field<u32>,
     key: Field<AttachmentKey>,
     cap: usize,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     let files = document.embedded_files()?;
     let file = attachment(files, index, key)?;
     payload_bytes(&file, cap, ResponseKind::AttachmentBytes)
@@ -115,7 +116,7 @@ pub(super) fn payload_bytes(
     file: &EmbeddedFile<'_>,
     cap: usize,
     kind: ResponseKind,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     let mut out = Writer::new(cap);
     blob(&mut out, &file.data()?)?;
     Ok(Response::new(kind, out))
@@ -126,7 +127,7 @@ pub(crate) fn attachment_check(
     index: Field<u32>,
     key: Field<AttachmentKey>,
     cap: usize,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     let files = document.embedded_files()?;
     let file = attachment(files, index, key)?;
     payload_check(&file, cap, ResponseKind::AttachmentCheck)
@@ -136,11 +137,11 @@ pub(super) fn payload_check(
     file: &EmbeddedFile<'_>,
     cap: usize,
     kind: ResponseKind,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     // Object id (6), decoded size (8) and two observations (2). Refuse an
     // undersized response budget before decoding, without implying a check.
     if cap < 16 {
-        return Err(Error::limit("attachment check response budget exceeded"));
+        return Err(Error::limit("attachment check response budget exceeded").into());
     }
     let checked = file.check_parameters()?;
     let mut out = Writer::new(cap);
@@ -166,7 +167,7 @@ fn attachment(
     files: Vec<NamedFile<'_>>,
     index: Field<u32>,
     key: Field<AttachmentKey>,
-) -> Result<EmbeddedFile<'_>> {
+) -> ReadResult<EmbeddedFile<'_>> {
     let file = files.into_iter().nth(index.index()?).ok_or_else(|| {
         Error::invalid_argument("attachment index outside catalog name tree").at(index.position())
     })?;

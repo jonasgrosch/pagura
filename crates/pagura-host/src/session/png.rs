@@ -2,14 +2,16 @@
 
 use super::Session;
 use crate::protocol::{PngBackground, PngRequest, layout};
-use pagura::{Error, OverprintPreview, RenderOptions, Result, Rgba8, png};
+use pagura::ReadResult;
+use pagura::{Error, OverprintPreview, RenderOptions, Rgba8, png};
 
 impl Session {
-    pub(super) fn page_png(&mut self, request: PngRequest) -> Result<Vec<u8>> {
+    pub(super) fn page_png(&mut self, request: PngRequest) -> ReadResult<Vec<u8>> {
         let scale = request.scale.get();
         if !(scale.is_finite() && scale > 0.0) {
             return Err(Error::invalid_argument("scale must be positive and finite")
-                .at(request.scale.position()));
+                .at(request.scale.position())
+                .into());
         }
         let options = RenderOptions {
             scale,
@@ -28,7 +30,7 @@ impl Session {
         if pixels > u64::try_from(limits.pixels).unwrap_or(u64::MAX)
             || pixels > u64::try_from(limits.decoded_bytes / 4).unwrap_or(u64::MAX)
         {
-            return Err(Error::limit("PNG page surface budget exceeded"));
+            return Err(Error::limit("PNG page surface budget exceeded").into());
         }
         // PNG encoding has a stream-byte budget; framing has its own cap.
         // Lowering only the output limit preserves each budget's meaning.
@@ -38,6 +40,6 @@ impl Session {
         let scene = self.documents.scene(request.page)?;
         let (context, _) = self.documents.page(request.page)?;
         let surface = context.render_scene(&scene, &options, None)?;
-        png::encode_pixmap(surface, png::Level::Default, &limits)
+        Ok(png::encode_pixmap(surface, png::Level::Default, &limits)?)
     }
 }

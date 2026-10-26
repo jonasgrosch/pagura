@@ -3,6 +3,7 @@
 use crate::cache::{self, PageCache, PageKey};
 use crate::config::{SessionConfig, SessionLimits};
 use crate::protocol::{Field, PageRef, Response, SessionStats};
+use pagura::ReadResult;
 use pagura::{
     Diagnostic, Document, Error, Limits, OpenOptions, Page, Recovery, Rect, RenderContext,
     RenderOptions, Result, Scene, TextPage,
@@ -52,7 +53,7 @@ impl Documents {
         bytes: &[u8],
         recovery: Recovery,
         password: &[u8],
-    ) -> Result<Response> {
+    ) -> ReadResult<Response> {
         self.admit(bytes.len())?;
         let options = OpenOptions {
             limits: self.engine,
@@ -68,7 +69,7 @@ impl Documents {
         &mut self,
         handle: Field<u32>,
         password: &[u8],
-    ) -> Result<Response> {
+    ) -> ReadResult<Response> {
         // Preflight retained source/handle budgets before opening the snapshot.
         self.admit(self.document(handle)?.original_bytes().len())?;
         let document = self.document(handle)?.reauthenticate(password)?;
@@ -94,7 +95,7 @@ impl Documents {
         Ok(retained)
     }
 
-    fn insert(&mut self, document: Document) -> Result<(u32, u32)> {
+    fn insert(&mut self, document: Document) -> ReadResult<(u32, u32)> {
         let retained = self.admit(document.original_bytes().len())?;
         let pages = u32::try_from(document.page_count()?)
             .map_err(|_| Error::limit("page count exceeds protocol range"))?;
@@ -134,11 +135,13 @@ impl Documents {
     }
 
     pub(super) fn document(&self, handle: Field<u32>) -> Result<&Document> {
-        self.slot(handle).map(|slot| slot.context.document())
+        let document = self.slot(handle)?.context.document();
+        document.check_source()?;
+        Ok(document)
     }
 
     /// The document's rendering context and the page.
-    pub(super) fn page(&self, page: PageRef) -> Result<(&RenderContext, &Page)> {
+    pub(super) fn page(&self, page: PageRef) -> ReadResult<(&RenderContext, &Page)> {
         let context = &self.slot(page.document)?.context;
         let found = context
             .document()
@@ -147,7 +150,7 @@ impl Documents {
         Ok((context, found))
     }
 
-    pub(super) fn page_info(&self, page: PageRef) -> Result<Response> {
+    pub(super) fn page_info(&self, page: PageRef) -> ReadResult<Response> {
         let (_, page) = self.page(page)?;
         let crop = page.crop_box();
         Ok(Response::PageInfo {
@@ -160,7 +163,7 @@ impl Documents {
 
     /// The page's recorded scene, from its document's store or recorded now
     /// and stored.
-    pub(super) fn scene(&mut self, page: PageRef) -> Result<Arc<Scene>> {
+    pub(super) fn scene(&mut self, page: PageRef) -> ReadResult<Arc<Scene>> {
         let (context, found) = self.page(page)?;
         let scene = context.scene(found)?;
         if let Some(slot) = self.slots.get_mut(&page.document.get()) {
@@ -171,7 +174,7 @@ impl Documents {
     }
 
     /// Conservative painted bounds of the page, from its stored scene.
-    pub(super) fn content_bounds(&mut self, page: PageRef) -> Result<Option<Rect>> {
+    pub(super) fn content_bounds(&mut self, page: PageRef) -> ReadResult<Option<Rect>> {
         // Recording through `scene` first keeps the scene in the accounting.
         self.scene(page)?;
         let (context, found) = self.page(page)?;
@@ -179,7 +182,8 @@ impl Documents {
     }
 
     /// The page's extracted text from the cache, or extracted and retained now.
-    pub(super) fn text(&mut self, page: PageRef) -> Result<Arc<TextPage>> {
+    pub(super) fn text(&mut self, page: PageRef) -> ReadResult<Arc<TextPage>> {
+        self.document(page.document)?.check_source()?;
         let key = key(page);
         if let Some(text) = self.texts.get(key) {
             return Ok(text);

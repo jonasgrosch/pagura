@@ -3,6 +3,7 @@
 use super::{MAX_ATTACHMENTS, Response, services};
 use crate::protocol::RequestKind;
 use crate::wire::Writer;
+use pagura::ReadResult;
 use pagura::files::{CollectionValue, FilePayload, FileScope};
 use pagura::images::{ImageAsset, ImageTransferMode};
 use pagura::metadata::MetadataOwner;
@@ -72,14 +73,14 @@ pub(crate) fn service(
     document: &Document,
     request: ServiceRequest,
     cap: usize,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     let kind = request.kind().response();
     let mut out = Writer::new(cap);
     match request {
         ServiceRequest::Files(scope) => {
             let files = document.files(scope)?;
             if files.len() > MAX_ATTACHMENTS {
-                return Err(Error::limit("file listing budget exceeded"));
+                return Err(Error::limit("file listing budget exceeded").into());
             }
             out.count(files.len())?;
             for file in files {
@@ -132,7 +133,7 @@ pub(crate) fn service(
             out.text(match mode {
                 ImageTransferMode::Stored => "stored",
                 ImageTransferMode::Encoded => "encoded",
-                _ => return Err(Error::invalid_argument("unsupported image transfer mode")),
+                _ => return Err(Error::invalid_argument("unsupported image transfer mode").into()),
             })?;
             services::text(
                 &mut out,
@@ -164,13 +165,11 @@ fn codec_name(codec: pagura::ImageCodec) -> &'static str {
     }
 }
 
-fn owner_object(document: &Document, owner: MetadataOwner) -> Result<ObjectId> {
+fn owner_object(document: &Document, owner: MetadataOwner) -> ReadResult<ObjectId> {
     match owner {
         MetadataOwner::Page(page) => Ok(document.page(page)?.id()),
         MetadataOwner::Object(id) => Ok(id),
-        _ => Err(Error::invalid_argument(
-            "operation requires a page or object owner",
-        )),
+        _ => Err(Error::invalid_argument("operation requires a page or object owner").into()),
     }
 }
 
@@ -181,12 +180,12 @@ fn image(out: &mut Writer, image: ImageAsset<'_>) -> Result<()> {
     out.flag(image.is_thumbnail())
 }
 
-fn images(out: &mut Writer, document: &Document, owner: MetadataOwner) -> Result<()> {
+fn images(out: &mut Writer, document: &Document, owner: MetadataOwner) -> ReadResult<()> {
     match owner {
         MetadataOwner::Page(page) => {
             let images = document.page_image_resources(page)?;
             if images.len() > MAX_ATTACHMENTS {
-                return Err(Error::limit("image listing budget exceeded"));
+                return Err(Error::limit("image listing budget exceeded").into());
             }
             out.count(images.len())?;
             for resource in images {
@@ -201,9 +200,7 @@ fn images(out: &mut Writer, document: &Document, owner: MetadataOwner) -> Result
             image(out, asset)?;
         }
         _ => {
-            return Err(Error::invalid_argument(
-                "image listing requires a page or object",
-            ));
+            return Err(Error::invalid_argument("image listing requires a page or object").into());
         }
     }
     Ok(())
@@ -272,7 +269,7 @@ fn parameters(out: &mut Writer, file: &pagura::files::EmbeddedFile<'_>) -> Resul
     Ok(())
 }
 
-fn collection(out: &mut Writer, document: &Document) -> Result<()> {
+fn collection(out: &mut Writer, document: &Document) -> ReadResult<()> {
     let collection = document.collection()?;
     out.flag(collection.is_some())?;
     if let Some(collection) = collection {

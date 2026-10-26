@@ -2,7 +2,8 @@
 
 use super::Session;
 use crate::protocol::{Field, Pixels, Response, TileRequest, layout};
-use pagura::{Completion, Error, OverprintPreview, RenderOptions, Result, Rgba8};
+use pagura::ReadResult;
+use pagura::{Completion, Error, OverprintPreview, RenderOptions, Rgba8};
 
 impl Session {
     /// Renders a tile; with a generation, a cancelled tile is skipped
@@ -12,7 +13,7 @@ impl Session {
         &mut self,
         request: TileRequest,
         generation: Option<u32>,
-    ) -> Result<Response> {
+    ) -> ReadResult<Response> {
         let tile = request.tile.get();
         // Bound response storage before rendering or allocating straight pixels.
         let overhead = if generation.is_some() {
@@ -28,13 +29,14 @@ impl Session {
         if pixels > u64::try_from(self.config.engine.pixels).unwrap_or(u64::MAX)
             || frame.is_none_or(|bytes| bytes > max_frame)
         {
-            return Err(Error::limit("tile response budget exceeded"));
+            return Err(Error::limit("tile response budget exceeded").into());
         }
         let (_, page) = self.documents.page(request.page)?;
         let scale = request.scale.get();
         if !(scale.is_finite() && scale > 0.0) {
             return Err(Error::invalid_argument("scale must be positive and finite")
-                .at(request.scale.position()));
+                .at(request.scale.position())
+                .into());
         }
         // The session's policy, not a default: on white, overprint preview
         // where the document declares PDF/X.
@@ -55,9 +57,9 @@ impl Session {
                 .checked_add(tile.height)
                 .is_none_or(|bottom| bottom > height)
         {
-            return Err(
-                Error::invalid_argument("tile lies outside the page").at(request.tile.position())
-            );
+            return Err(Error::invalid_argument("tile lies outside the page")
+                .at(request.tile.position())
+                .into());
         }
         let cancellation = self.cancellation.clone();
         let cancelled = || generation.is_some() && cancellation.is_cancelled();
@@ -92,7 +94,7 @@ impl Session {
         &mut self,
         generation: Field<u32>,
         request: TileRequest,
-    ) -> Result<Response> {
+    ) -> ReadResult<Response> {
         let current = self.documents.generation(request.page.document)?;
         let requested = generation.get();
         if requested < current {
@@ -101,7 +103,8 @@ impl Session {
         if requested == 0 || requested != current {
             return Err(
                 Error::invalid_argument("viewport generation was not selected")
-                    .at(generation.position()),
+                    .at(generation.position())
+                    .into(),
             );
         }
         if self.cancellation.is_cancelled() {

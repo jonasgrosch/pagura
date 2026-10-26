@@ -3,19 +3,20 @@
 use super::{MAX_ATTACHMENTS, Response, services};
 use crate::protocol::{AttachmentKey, Field, ResponseKind};
 use crate::wire::Writer;
+use pagura::ReadResult;
 use pagura::files::{EmbeddedFile, FilePayload};
-use pagura::{Document, Error, Name, Result};
+use pagura::{Document, Error, Name};
 
 pub(crate) fn page_attachments(
     document: &Document,
     page: Field<u32>,
     cap: usize,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     let annotations = document
         .page(page.index()?)?
         .attachment_annotations(document)?;
     if annotations.len() > MAX_ATTACHMENTS {
-        return Err(Error::limit("page attachment listing budget exceeded"));
+        return Err(Error::limit("page attachment listing budget exceeded").into());
     }
     let mut out = Writer::new(cap);
     out.count(annotations.len())?;
@@ -37,7 +38,7 @@ pub(crate) fn page_attachment_bytes(
     index: Field<u32>,
     key: Field<AttachmentKey>,
     cap: usize,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     services::payload_bytes(
         &selected(document, page, index, key)?,
         cap,
@@ -51,7 +52,7 @@ pub(crate) fn page_attachment_check(
     index: Field<u32>,
     key: Field<AttachmentKey>,
     cap: usize,
-) -> Result<Response> {
+) -> ReadResult<Response> {
     services::payload_check(
         &selected(document, page, index, key)?,
         cap,
@@ -64,7 +65,7 @@ fn selected(
     page: Field<u32>,
     index: Field<u32>,
     key: Field<AttachmentKey>,
-) -> Result<EmbeddedFile<'_>> {
+) -> ReadResult<EmbeddedFile<'_>> {
     let annotations = document
         .page(page.index()?)?
         .attachment_annotations(document)?;

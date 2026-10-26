@@ -3,6 +3,7 @@
 use super::{MAX_PAGE_CHARACTERS, Response, Search};
 use crate::protocol::{Field, PageRef, ResponseKind};
 use crate::wire::Writer;
+use pagura::ReadResult;
 use pagura::{Error, Result, SearchOptions, TextPage};
 use std::sync::Arc;
 
@@ -63,8 +64,8 @@ pub(crate) fn search(
     search: &Search<'_>,
     options: SearchOptions,
     cap: usize,
-    mut text: impl FnMut(PageRef) -> Result<Arc<TextPage>>,
-) -> Result<Response> {
+    mut text: impl FnMut(PageRef) -> ReadResult<Arc<TextPage>>,
+) -> ReadResult<Response> {
     let (start, end, limit) = (search.start.get(), search.end.get(), search.limit.get());
     let mut out = Writer::new(cap);
     let header = out.slot::<{ Cursor::BYTES }>()?;
@@ -84,7 +85,8 @@ pub(crate) fn search(
         if skip > matches.len() {
             return Err(
                 Error::invalid_argument("search match cursor outside page results")
-                    .at(search.offset.position()),
+                    .at(search.offset.position())
+                    .into(),
             );
         }
         for (ordinal, found) in matches.iter().enumerate().skip(skip) {

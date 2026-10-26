@@ -240,11 +240,13 @@ Add a source-opening job. Source-dependent document/interpreter APIs propagate
 This is a pre-release source API migration, not a promise that existing borrowed
 slice signatures can survive unchanged.
 
-Complete-input convenience rendering continues to offer a terminal-error API,
-using a checked complete-source capability. Partial-source users use the job
-API. Protocol v1 remains a complete-input adapter, so no new wait state is
-encoded as a v1 error. Update cross-crate call sites and tests together; avoid
-maintaining a separate progressive object model or duplicate parser.
+All rendering and text entry points that consume an arbitrary `Document`
+propagate `ReadResult` through the same interpreter. Complete-input callers
+still construct that document with `Document::open`; prepared-scene execution
+and codec-only encoding retain their terminal-error APIs. Protocol v1 remains
+a complete-input adapter, so no new wait state is encoded as a v1 error. Update
+cross-crate call sites and tests together; avoid maintaining a separate
+progressive object model or duplicate parser.
 
 ### 5.4 Public API and error-flow map
 
@@ -263,7 +265,7 @@ eager whole-file hash or a process-global identity allocator.
 | Page count, lazy page lookup, complete page enumeration and page content streams | Return `ReadResult`. A requested page can become ready independently; complete enumeration retains its separate completeness contract. Page ownership checks do not perform I/O. |
 | Navigation, forms, revision and signature document views | Propagate `ReadResult` at actual source reads. A known malformed value remains terminal even if an unrelated range is absent. Pure value transforms and cryptographic primitives retain terminal `Result`. |
 | `RenderContext` scene recording, text extraction, dependency preparation and image extraction jobs | Propagate `ReadResult` to their owning job; the generic `Store` accepts that builder error without acquiring a source dependency itself. |
-| Existing complete-input render/PNG functions and protocol v1 | Admit a pinned complete-source capability before invoking the common source-dependent path. Their terminal result API stays available; calling a complete-only API before admission is an explicit argument-contract failure, never a fabricated PDF syntax/repair result. |
+| Facade rendering/text functions and protocol v1 | Functions accepting any `Document` propagate `ReadResult`; they do not silently materialize it. Protocol v1 admits complete-buffer input and retains its existing terminal PDF frames at the serial host boundary. PNG encoding consumes prepared pixels and retains terminal `Result`. |
 | Prepared paint, `RenderSession`, codec `Encoder` and `RenderEncoder` | Keep their current terminal/output-state contracts. They own completed input and never fetch document bytes. |
 
 Replace the borrowed `original_bytes()` promise with explicit document
@@ -275,8 +277,9 @@ still checks the source's terminal state, including when a complete lease or
 parsed dependency is already cached. Previously handed-out immutable leases
 remain readable according to the source lifetime contract.
 
-Complete-only conversion belongs at those named entry points, after admission
-has made unavailable byte reads impossible for that invocation. There is no
+Complete-only conversion belongs at `Document::open` and protocol v1 admission,
+after admission has made unavailable byte reads impossible for that invocation.
+There is no
 blanket `From<ReadFault> for Error`, error-like dereference, or forwarding layer
 that maps missing bytes to null, syntax, unsupported features or repairs. A v2
 job owns and returns an unavailable frontier; it does not pass through the v1
@@ -289,6 +292,14 @@ starting. Authentication and ordinary object/stream access are not allowed to
 silently materialize a sparse document to preserve a borrowed API. Any remaining
 full-source requirement is documented at its actual entry point and covered by
 a wait-before-mutation/output control.
+
+Protocol v1 continues to admit only complete-buffer documents. Its serial
+request handler carries `ReadResult` through the existing reading/rendering
+owners and emits the same terminal PDF error frames. An unexpected unavailable
+source at that complete-input boundary retains its typed cause as a transport
+failure; it is never reclassified as a PDF error. Protocol v2 jobs publish the
+corresponding explicit data-wait response. Pure wire encoding and decoding keep
+their terminal-error result type.
 
 ### 5.5 Atomic publication during the migration
 

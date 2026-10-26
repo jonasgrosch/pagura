@@ -1,8 +1,9 @@
 //! Conservative interoperability for duplicated merged widget dictionaries.
 //! Never infer identity from a field name, rectangle, or appearance alone.
+use pagura::ReadResult;
 use pagura::editing::{SaveOptions, Transaction};
 use pagura::forms::AcroForm;
-use pagura::{Document, Error, Name, Page, Result, Value};
+use pagura::{Document, Error, Name, Page, Value};
 use std::collections::BTreeMap;
 
 // Independent host-side comparison budget, charged by retained source bytes.
@@ -15,9 +16,9 @@ pub(super) struct Matcher<'a> {
     remaining: usize,
 }
 impl<'a> Matcher<'a> {
-    pub(super) fn new(document: &'a Document, form: &'a AcroForm<'a>) -> Result<Self> {
+    pub(super) fn new(document: &'a Document, form: &'a AcroForm<'a>) -> ReadResult<Self> {
         if form.widgets.len() > super::MAX_OPTIONS || form.fields.len() > super::MAX_FIELDS {
-            return Err(Error::limit("browser form widget budget exceeded"));
+            return Err(Error::limit("browser form widget budget exceeded").into());
         }
         let mut identities = BTreeMap::new();
         let mut bytes = Vec::new();
@@ -40,7 +41,11 @@ impl<'a> Matcher<'a> {
         })
     }
     /// (Annotation-array index, canonical form-widget index).
-    pub(super) fn page(&mut self, document: &Document, page: &Page) -> Result<Vec<(usize, usize)>> {
+    pub(super) fn page(
+        &mut self,
+        document: &Document,
+        page: &Page,
+    ) -> ReadResult<Vec<(usize, usize)>> {
         let mut matches = Vec::new();
         for (offset, value) in annotations(document, page)?.iter().enumerate() {
             let Some(id) = value.as_reference() else {
@@ -66,7 +71,9 @@ impl<'a> Matcher<'a> {
                     .ok_or(Error::limit("duplicate widget comparison budget exceeded"))?;
                 if dictionary == widget.dictionary {
                     if found.is_some() {
-                        return Err(Error::invalid_argument("ambiguous duplicated form widget"));
+                        return Err(
+                            Error::invalid_argument("ambiguous duplicated form widget").into()
+                        );
                     }
                     found = Some(index);
                 }
@@ -79,7 +86,7 @@ impl<'a> Matcher<'a> {
     }
 }
 
-pub(super) fn annotations<'a>(document: &'a Document, page: &'a Page) -> Result<&'a [Value]> {
+pub(super) fn annotations<'a>(document: &'a Document, page: &'a Page) -> ReadResult<&'a [Value]> {
     let Some(value) = page.dictionary().get(b"Annots") else {
         return Ok(&[]);
     };
@@ -88,14 +95,14 @@ pub(super) fn annotations<'a>(document: &'a Document, page: &'a Page) -> Result<
         .as_array()
         .ok_or(Error::syntax("Annots must be an array"))?;
     if values.len() > super::MAX_OPTIONS {
-        return Err(Error::limit("browser page annotation budget exceeded"));
+        return Err(Error::limit("browser page annotation budget exceeded").into());
     }
     Ok(values)
 }
 
 /// Repoint exact duplicate page widgets to their canonical form-tree identity.
 /// This appends a revision; original bytes and all unrelated annotations survive.
-pub(super) fn normalize(document: &Document) -> Result<Option<Vec<u8>>> {
+pub(super) fn normalize(document: &Document) -> ReadResult<Option<Vec<u8>>> {
     let Some(form) = document.acro_form()? else {
         return Ok(None);
     };
