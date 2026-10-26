@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "60219ae7c372ec504fe9c5abe34d62251051dc31",
+  "audited_revision": "0ae632a427188bf59d7e373f0163d394d78e4328",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -108,9 +108,10 @@
     "crates/pagura-document/src/source/types.rs": "9c313bf813eab52ddce696f78695a7e55741e272951b8a878d828d658e60bd6c",
     "crates/pagura-document/src/source/window.rs": "697f021fd995cce14019c2d4b0ba60eb8c1e440af34497d59b4d5021f0b70f8f",
     "crates/pagura-document/src/stream.rs": "6cba9215aaf803d8275e54402630c0b9ce15c5805401d668da4aa866605a02c6",
-    "crates/pagura-document/src/xref.rs": "f51926c2bb329633aa742e3302d3b32bdc34d89cc88ec55a4bf164f90235f48f",
+    "crates/pagura-document/src/xref.rs": "90950e09b60a00424f5871ccd23b5bc70040e1d3bf9937461b87311460fb6977",
+    "crates/pagura-document/src/xref/chain.rs": "6c6c49b8c2580a39c1f4637b44e8b271efacda432b964745062bdfe0f7d2fa4d",
     "crates/pagura-document/src/xref/stream.rs": "56794cf5920332203d2f51f65bd32c3cf78c9b6389c370fdef639cb6536896dc",
-    "crates/pagura-document/src/xref/tests.rs": "95fecbea243b101a1bd69a9a16b4dada74529ea99ae1ba15e8c9257a17bf1cf9",
+    "crates/pagura-document/src/xref/tests.rs": "01f633e516269f71e8d1de0dd59f17c9eb05e69ccd3fb9f810aa79b46262e1fc",
     "crates/pagura-document/tests/file_annotations.rs": "18a147044a9981155308d85a1db0af8359cd45fac61762ccd9462da25c1bf76d",
     "crates/pagura-document/tests/file_checks.rs": "a56894c90ab0136849074f125631eb403903526f0616b325745c8bee3b975f97",
     "crates/pagura-document/tests/files.rs": "6392ce4f2af68c9d79fb9cbf8c0c84020724ee28a10b30c73c20f398b44f59fb",
@@ -400,7 +401,8 @@
         "crates/pagura-document/src/source/window.rs",
         "crates/pagura-document/src/xref.rs",
         "crates/pagura-document/src/xref/stream.rs",
-        "crates/pagura-document/src/stream.rs"
+        "crates/pagura-document/src/stream.rs",
+        "crates/pagura-document/src/xref/chain.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
