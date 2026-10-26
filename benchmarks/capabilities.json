@@ -83,7 +83,7 @@
     "crates/pagura-image/src/dct/frame.rs": "e70d7474cf526881fc3c30fa9682521eb43a9f9796569a694b4a53a94f9725bc",
     "crates/pagura-image/src/features.rs": "82c60039d2f352e03f87d1748bd9b55d940d96c3a4442d575eb75cd647c7c0f3",
     "crates/pagura-image/src/inline.rs": "f676439dd0e10cdd24935ca327e5c2f714dfc747195b18fccfc22381793d6deb",
-    "crates/pagura-image/src/jbig2/generic.rs": "d63d81f576791ff69f9bfe6f58698222a3bbc8d8fdb5fc8ae3eaa1aa6df0aac9",
+    "crates/pagura-image/src/jbig2/generic.rs": "b905bb8315f8f987d2d846a2b2bcb348d001efceff4f50fed645f60c79a8489d",
     "crates/pagura-image/src/jbig2/huffman_symbol.rs": "fee9fe993770c51d44b63e9fdf2e4d946342c36b998401f7ccc600aa623c6067",
     "crates/pagura-image/src/jbig2/huffman_text.rs": "7325a6750f641a405f641d8588509866a2523f284ea98ecb9039be38ee37a2c5",
     "crates/pagura-image/src/jbig2/mod.rs": "0683dce08a1aac00f4fea6a9a981f00ebe79567b3437c5e7d682aa6ca768be2e",
