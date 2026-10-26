@@ -51,7 +51,7 @@ pub(super) fn kind<'a>(
             password: flags.contains(FieldFlags::PASSWORD),
             comb: flags.contains(FieldFlags::COMB),
             rich_text: flags.contains(FieldFlags::RICH_TEXT),
-            rich_value: context.present(dictionary, b"RV", source)?,
+            rich_value: dictionary.get(b"RV").filter(|value| !value.is_null()),
         },
         b"Ch" => FieldKind::Choice {
             // Edit applies only to combo boxes (Table 233); a list ignores it.

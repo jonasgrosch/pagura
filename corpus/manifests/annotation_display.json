@@ -4476,17 +4476,18 @@
     {
       "id": "annotation_display/widget-source-rich",
       "kind": "pdf",
-      "description": "Advanced layout and XFA keep the existing explicit capability boundary",
-      "expected": "unsupported",
+      "description": "Valued RichText without RV violates Table231 bit26; original bytes retained",
+      "expected": "open",
       "requirements": [
-        "content-source-widget-display"
+        "content-source-widget-display",
+        "content-rich-field-appearance"
       ],
       "path": "corpus/generated/annotation_display/widget-source-rich.pdf",
       "sha256": "91504eb8beb8ae605360d8ebdd154de75fcb8ce64fd1152d5c0a0e527d19d556",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "form.rich-text"
+      "render_error": "syntax"
     },
     {
       "id": "annotation_display/widget-source-xfa",
@@ -8954,6 +8955,1263 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/rich-field-styled-72-source",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-styled-72-source.pdf",
+      "sha256": "5451b75deb256b957ebb50d16f79dcd05e4afbd820df2a509ae3dbcc3718a9e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-styled-72-source.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-styled-72-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-styled-72-stored.pdf",
+      "sha256": "3521e271ccd16557dee2e0a969c36218dbd05be0b4e2d35a02f590f594908e61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-styled-72-stored.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-styled-72-ordinary",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-styled-72-ordinary.pdf",
+      "sha256": "3e6115656a8b44105a28ff5427ce41d91461436a2d808912283ba820c64990ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-styled-72-ordinary.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/rich-field-styled-144-source",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-styled-144-source.pdf",
+      "sha256": "5451b75deb256b957ebb50d16f79dcd05e4afbd820df2a509ae3dbcc3718a9e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-styled-144-source.ppm",
+      "oracle_sha256": "16f74b9823998477519a9c2dfa280efa4ffd79b12ae372904bf10f5de870b339",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-styled-144-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-styled-144-stored.pdf",
+      "sha256": "3521e271ccd16557dee2e0a969c36218dbd05be0b4e2d35a02f590f594908e61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-styled-144-stored.ppm",
+      "oracle_sha256": "16f74b9823998477519a9c2dfa280efa4ffd79b12ae372904bf10f5de870b339",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-styled-144-ordinary",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-styled-144-ordinary.pdf",
+      "sha256": "3e6115656a8b44105a28ff5427ce41d91461436a2d808912283ba820c64990ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-styled-144-ordinary.ppm",
+      "oracle_sha256": "16f74b9823998477519a9c2dfa280efa4ffd79b12ae372904bf10f5de870b339",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/rich-field-mixed-72-source",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-mixed-72-source.pdf",
+      "sha256": "3c30ebe87d80d0f94a04c959e121e419b623039f10ed1f5dc04cca92c93ce469",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-mixed-72-source.ppm",
+      "oracle_sha256": "12dccd7b9b2c6424e6aa8e6ebeaefb29840e6e13259cde56835ee6b0eb279059",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p>A<span style=\"font-size:20pt;color:#ff0000\">B</span></p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-mixed-72-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-mixed-72-stored.pdf",
+      "sha256": "94fca040bc6eaa0d817356ba180576923c989e94fc0cbf6648f33b2a91b6d545",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-mixed-72-stored.ppm",
+      "oracle_sha256": "12dccd7b9b2c6424e6aa8e6ebeaefb29840e6e13259cde56835ee6b0eb279059",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-mixed-72-ordinary",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-mixed-72-ordinary.pdf",
+      "sha256": "2d7c12f81d00b2c2d886ba0dea5fc76f0e206c1a14ff6184fb105416b5af06b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-mixed-72-ordinary.ppm",
+      "oracle_sha256": "12dccd7b9b2c6424e6aa8e6ebeaefb29840e6e13259cde56835ee6b0eb279059",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/rich-field-mixed-144-source",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-mixed-144-source.pdf",
+      "sha256": "3c30ebe87d80d0f94a04c959e121e419b623039f10ed1f5dc04cca92c93ce469",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-mixed-144-source.ppm",
+      "oracle_sha256": "b1d34e60aaf7fb434b4d4b7b47431d513636270a517e0617b70867310789657b",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p>A<span style=\"font-size:20pt;color:#ff0000\">B</span></p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-mixed-144-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-mixed-144-stored.pdf",
+      "sha256": "94fca040bc6eaa0d817356ba180576923c989e94fc0cbf6648f33b2a91b6d545",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-mixed-144-stored.ppm",
+      "oracle_sha256": "b1d34e60aaf7fb434b4d4b7b47431d513636270a517e0617b70867310789657b",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-mixed-144-ordinary",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-mixed-144-ordinary.pdf",
+      "sha256": "2d7c12f81d00b2c2d886ba0dea5fc76f0e206c1a14ff6184fb105416b5af06b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-mixed-144-ordinary.ppm",
+      "oracle_sha256": "b1d34e60aaf7fb434b4d4b7b47431d513636270a517e0617b70867310789657b",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/rich-field-paragraphs-72-source",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-paragraphs-72-source.pdf",
+      "sha256": "12ae78e52a83e9b3a5803de6e20a919e41e5cf890f2589dc7c82975b96a8b293",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-paragraphs-72-source.ppm",
+      "oracle_sha256": "94721fa957ccfa7ad4a8d3ca1566aa8602e07060b3dd735b58401af06a9d946e",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p>AB</p><p>CD</p></body>",
+      "rich_plain": "AB\nCD"
+    },
+    {
+      "id": "annotation_display/rich-field-paragraphs-72-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-paragraphs-72-stored.pdf",
+      "sha256": "ced8abc1fcefac88f2d5f753dfa44d90c58a81b3989aba5c0ce72b8e3e838ef4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-paragraphs-72-stored.ppm",
+      "oracle_sha256": "94721fa957ccfa7ad4a8d3ca1566aa8602e07060b3dd735b58401af06a9d946e",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-paragraphs-72-ordinary",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-paragraphs-72-ordinary.pdf",
+      "sha256": "96328a615efdfcbe59b41a611c32124035a39207cb514c171d6a2a7db0e17bd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-paragraphs-72-ordinary.ppm",
+      "oracle_sha256": "94721fa957ccfa7ad4a8d3ca1566aa8602e07060b3dd735b58401af06a9d946e",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/rich-field-paragraphs-144-source",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-paragraphs-144-source.pdf",
+      "sha256": "12ae78e52a83e9b3a5803de6e20a919e41e5cf890f2589dc7c82975b96a8b293",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-paragraphs-144-source.ppm",
+      "oracle_sha256": "1c7b78dca21a0170bb8b7afefd8155d7bd100ff01cea9a0625c49123adb0fd96",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p>AB</p><p>CD</p></body>",
+      "rich_plain": "AB\nCD"
+    },
+    {
+      "id": "annotation_display/rich-field-paragraphs-144-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-paragraphs-144-stored.pdf",
+      "sha256": "ced8abc1fcefac88f2d5f753dfa44d90c58a81b3989aba5c0ce72b8e3e838ef4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-paragraphs-144-stored.ppm",
+      "oracle_sha256": "1c7b78dca21a0170bb8b7afefd8155d7bd100ff01cea9a0625c49123adb0fd96",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-paragraphs-144-ordinary",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-paragraphs-144-ordinary.pdf",
+      "sha256": "96328a615efdfcbe59b41a611c32124035a39207cb514c171d6a2a7db0e17bd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-paragraphs-144-ordinary.ppm",
+      "oracle_sha256": "1c7b78dca21a0170bb8b7afefd8155d7bd100ff01cea9a0625c49123adb0fd96",
+      "dpi": 144,
+      "width": 128,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/rich-field-center",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-center.pdf",
+      "sha256": "6fc1bd10f4310117534c13c68529ca5cc809a75ed1da3956ff86721a73c39668",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-center.ppm",
+      "oracle_sha256": "cb947308402a6552316e8ea46c8d542a57fbd9492e84d5e723737b589604ad64",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-right",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-right.pdf",
+      "sha256": "ce19bac246f8b8f5dbe9439f17640f966992507bc1c5b1c55737d9d45ccc675d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-right.ppm",
+      "oracle_sha256": "aad1e45a7bf8760cde21758ff0c48eba43f257348842aa8bb5286984b0f08008",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-ds-quadding",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-ds-quadding.pdf",
+      "sha256": "956feacb1d5bbde4ec293b669a6a61cd8c9a472aa25f781e05fcc52f124a04ae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-ds-quadding.ppm",
+      "oracle_sha256": "cb947308402a6552316e8ea46c8d542a57fbd9492e84d5e723737b589604ad64",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-comb",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-comb.pdf",
+      "sha256": "ac84d944ebe8540cdb7aa4d2e29a333272665364d4ce4c087942ca3a6d038aee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-comb.ppm",
+      "oracle_sha256": "86e07fadeb29f3fb2468a3bbeb2ba5aec18d9113bd5843622d4170dbd2bc2881",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-wrap",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-wrap.pdf",
+      "sha256": "83ce5a3c80121b28d5bb2fa8b952c0a931530eb885a3ab44939fb3ae42f63ee5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-wrap.ppm",
+      "oracle_sha256": "a35c3efd139d9edaee195e6fbd8198d51e427214ee63bbd37ed89268fbea8099",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p>AB CD EF</p></body>",
+      "rich_plain": "AB CD EF"
+    },
+    {
+      "id": "annotation_display/rich-field-maxlen",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-maxlen.pdf",
+      "sha256": "0e9a46e2462bbd1c8818b04a6c4983c11d200db5483ba7511c68f4a63739dc17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-maxlen.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-no-scroll-fit",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-no-scroll-fit.pdf",
+      "sha256": "95d9c8b5ac445e1384ff31f82f525712c57ec0c3c2b91d7afead4fca52fefee8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-no-scroll-fit.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-password",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-password.pdf",
+      "sha256": "6b9d8145f7e1ac275bae2dbd63f5354494096a71318e7b6d56a7d97da514a0b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-password.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": null,
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-empty",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-empty.pdf",
+      "sha256": "cc02a3a553c3be51a25bb85473be5d04ce158d717511ff2464a0d0b5c265099c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-empty.ppm",
+      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-empty-null",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-empty-null.pdf",
+      "sha256": "09a69f7362b56a29f043a0b18af3d94742b4da1ce9f5d67ef0494973bf463c21",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-empty-null.ppm",
+      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": null
+    },
+    {
+      "id": "annotation_display/rich-field-empty-rich",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-empty-rich.pdf",
+      "sha256": "6f542281dfd60f8f19e86f4a2a04c8240fb24cab3527e86e5bcf2a320e23c892",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-empty-rich.ppm",
+      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body/>",
+      "rich_plain": ""
+    },
+    {
+      "id": "annotation_display/rich-field-no-style",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-no-style.pdf",
+      "sha256": "348e6f5ea68f98080357e2bf088e1b103bae8ca88605bfcf0792552d1befd6f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-no-style.ppm",
+      "oracle_sha256": "badcb32d2c88515c8e3b0265f9cf428f8e01a0019e568a8f455c270614e0eef0",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-null-style",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-null-style.pdf",
+      "sha256": "ddd3b41778c96c47e10b7b07c2ac86a62f75e0f969d3e78067e6671ca5a0653f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-null-style.ppm",
+      "oracle_sha256": "badcb32d2c88515c8e3b0265f9cf428f8e01a0019e568a8f455c270614e0eef0",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-ds-font-size",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-ds-font-size.pdf",
+      "sha256": "125cd1280225ef8b334f8e3c479341c75a3a189bb50d5e7c44501c72a279f7b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-ds-font-size.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-inline-font",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-inline-font.pdf",
+      "sha256": "f1a41e4da026f4e3183885a00b19367fb642ec1b7a5dc39f9fa765dae27611c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-inline-font.ppm",
+      "oracle_sha256": "a35201c702e31238bc8a266c85f0bcfb08de37fe916416742f758e5c89989e00",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"font-family:F2;color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-stream",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-stream.pdf",
+      "sha256": "86fe03e98b5d9357fe1461eeffb1db8030f26926201cf1db0ef054fb91fe1ad6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-stream.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>"
+    },
+    {
+      "id": "annotation_display/rich-field-stream-need",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-stream-need.pdf",
+      "sha256": "1d9e8e75cdbc76402ce07b273c761c0194415ae3f357b413390ff8e21f0de392",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-stream-need.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>"
+    },
+    {
+      "id": "annotation_display/rich-field-utf16-stream",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-utf16-stream.pdf",
+      "sha256": "a2be61b1bbec089de865b4246ae956ca21bbe64bea9dd5a884495547a57966b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-utf16-stream.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>"
+    },
+    {
+      "id": "annotation_display/rich-field-v-independent",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-v-independent.pdf",
+      "sha256": "ea78eb3054e71ce6652452972dfccd91eed0b5561b6e2bbfe86766dcf3f1184d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-v-independent.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-plain-ignores-rich",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-plain-ignores-rich.pdf",
+      "sha256": "9f06a425a5f3e22c2863d583a6de5899216fde7cbcbfcd89da950bb634a6ce8b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-plain-ignores-rich.ppm",
+      "oracle_sha256": "3e54f987751ce84cfd30e5528a11d6cad40482835d01ff26af0815d4cd443a67",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": null
+    },
+    {
+      "id": "annotation_display/rich-field-rotation-90",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-rotation-90.pdf",
+      "sha256": "2408ca6a62d5888606050ae4269108aa319852e06ae8361d208f76f48d4f5087",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-rotation-90.ppm",
+      "oracle_sha256": "adcf1bbfa4ec9e9b703bd681ffd71377cf89a11cf59cc9541284a58ba63673fe",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-rotation-180",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-rotation-180.pdf",
+      "sha256": "b7ddca3f87a2071ed0b50cdc462d10b5eb28176d825f39a744b85d3b77e8b134",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-rotation-180.ppm",
+      "oracle_sha256": "7346ecff2ef88e9756382099f61c5f5cc3d00455a91d6a4ed8bdf2be71ea8e9e",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-rotation-270",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-rotation-270.pdf",
+      "sha256": "4f8f36a01ff77d4320fee41c73019f44393ef022a0ef5601cdf18c4654342f21",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-rotation-270.ppm",
+      "oracle_sha256": "dce4dbd49bf3f7f03636ade4bf92818f15cfa1c22b4fc444825715e98bbab88a",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-separate",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-separate.pdf",
+      "sha256": "481948fe0291b152dff43353c615763855108a5b87d9ed7ce3e39544728ae229",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-separate.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-inherited-da",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-inherited-da.pdf",
+      "sha256": "6244641d26b4ed9f6722c6936d82798141c9b0a6d9aab70accb5e8a87a98bc42",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-inherited-da.ppm",
+      "oracle_sha256": "aad1e45a7bf8760cde21758ff0c48eba43f257348842aa8bb5286984b0f08008",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-parent-style-ignored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-parent-style-ignored.pdf",
+      "sha256": "91ee17594adcd69d1c97958de570846c31dfaf4475e7a42d7e3678aa5c2a1cda",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-parent-style-ignored.ppm",
+      "oracle_sha256": "7f514aeb51c333313e2ee80773e197f895acb1f8f4ea394a1d19f2d0f35dc4cd",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB"
+    },
+    {
+      "id": "annotation_display/rich-field-need-regenerate",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-need-regenerate.pdf",
+      "sha256": "bfdf49de6e95ff374c98cea237f312f03249a23fe21bdacd4366a1dd8e0d08e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-need-regenerate.ppm",
+      "oracle_sha256": "b8f52c083af93aa11f5172fda18fa92d6b4b2b784c276a1844cf4b7e3186d093",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "regenerate",
+      "rich_input": "<body><p><span style=\"color:#ff0000\">A</span>B</p></body>",
+      "rich_plain": "AB",
+      "widget_preview": "rich-field-styled-72-source"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-missing",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-missing.pdf",
+      "sha256": "5d82457536d1430c93bd1679657d8823651cc1b1497789994235bad179e6ba45",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-null-valued",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-null-valued.pdf",
+      "sha256": "44233a1c568aa8a362029a48b3a46c19793f6c1fa335e8bb049c1a5e40d613bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-type",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-type.pdf",
+      "sha256": "ea6161c022843a437ea3f09eae0c599993377330d741b7851863ec9a5c836596",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-xml",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-xml.pdf",
+      "sha256": "8669a74a98aca952faf9c40af6319125dd2a5c0dd2e03716ada3df6b6117b996",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-style",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-style.pdf",
+      "sha256": "58aeb460f9354db24d4c5505af11f9f4d4cf4c527fc9631a28d0544c019bce05",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-single-line",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-single-line.pdf",
+      "sha256": "188b53d44028e195de41ad2ea72b2982eef5cec14217e14b789719a60cfcfb2a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-comb-flags",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-comb-flags.pdf",
+      "sha256": "9c8cbc490412c6f37a44c264919d53aa678ab453ce24dbff18cfb6297dde36a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-no-scroll",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-no-scroll.pdf",
+      "sha256": "531da621e5551f7bbe1cd0831a428ad94d859f39a8a6b5851006707b5fded508",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "invalid-argument"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-reference",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-reference.pdf",
+      "sha256": "9d598264f525543fbea158f8475927c68a872b3bbc03f3018963f8491e027c17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/rich-field-invalid-style-reference",
+      "kind": "pdf",
+      "description": "Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy",
+      "expected": "open",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-invalid-style-reference.pdf",
+      "sha256": "8bf79a65633a85bf5084e453f6ff9290522e99b4006abc102a3c8cf7e076e79e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/rich-field-unsupported-auto-size",
+      "kind": "pdf",
+      "description": "Existing shared rich-layout boundary, without external requests or fallback to stale V",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-unsupported-auto-size.pdf",
+      "sha256": "d064850c575c968159883ce938de14f26d34594100b7a8a566772c34bb99c727",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "form.rich-text"
+    },
+    {
+      "id": "annotation_display/rich-field-unsupported-paragraph-units",
+      "kind": "pdf",
+      "description": "Existing shared rich-layout boundary, without external requests or fallback to stale V",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-unsupported-paragraph-units.pdf",
+      "sha256": "71863f9a8d682712d062344556e3e98324fe0bd351ed93738c8eac01c30350c1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "form.rich-text"
+    },
+    {
+      "id": "annotation_display/rich-field-unsupported-external",
+      "kind": "pdf",
+      "description": "Existing shared rich-layout boundary, without external requests or fallback to stale V",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-unsupported-external.pdf",
+      "sha256": "f50161f0d33eb3471bd6d2a3142f438a87ad5982e0abfb6b0770bfc6f1d259d8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "form.rich-text"
+    },
+    {
+      "id": "annotation_display/rich-field-lazy-hidden",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-lazy-hidden.pdf",
+      "sha256": "cb9014a1a5f76c8e365e37f9714ef26ee2051ad116de800d06ea5b3129db339e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-lazy-hidden.ppm",
+      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-lazy-no-view",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-lazy-no-view.pdf",
+      "sha256": "3da14fb7c22a9c556cc9da3522af73451a2af81c17b0fe91379635ad19080594",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-lazy-no-view.ppm",
+      "oracle_sha256": "db22d8ce0fa51bb5d20566f1e0d5aee217c634b9e0423a4516e386d350f4f4de",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
+    },
+    {
+      "id": "annotation_display/rich-field-lazy-stored",
+      "kind": "pdf",
+      "description": "Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths",
+      "expected": "render",
+      "requirements": [
+        "content-rich-field-appearance"
+      ],
+      "path": "corpus/generated/annotation_display/rich-field-lazy-stored.pdf",
+      "sha256": "f6e21f6c39cb7f05993ee8e06f26ed91aee8534fd7da068ff650fd9aa9b175c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/rich-field-lazy-stored.ppm",
+      "oracle_sha256": "ad986fd8c97cfc36260a33b74d2ffaa5e271ed5204305a5fab9537f31e8ddb03",
+      "dpi": 72,
+      "width": 64,
+      "height": 48,
+      "tolerance": 1,
+      "widget_display": "same"
     }
   ]
 }

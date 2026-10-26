@@ -14,6 +14,8 @@ use pagura_core::text_string;
 /// NeedAppearances is cleared only after all requested appearances are prepared.
 /// No calculation, validation or other action is executed. Password changes are
 /// refused, never silently omitted. An empty unchanged form saves byte-for-byte.
+/// Rich replacements save RV, parser-derived plain V and an explicitly replaced
+/// DS together; their entire normal appearance is regenerated (12.7.4.3).
 ///
 /// # Errors
 /// Returns transaction/source-policy errors and appearance-generation errors.
@@ -32,9 +34,22 @@ pub fn save_filled_form(filler: &FormFiller<'_>, options: &SaveOptions) -> Resul
             .ok_or(Error::invalid_argument("filled field index is absent"))?;
         refuse_password(field)?;
         let id = identity(filler.document(), field.object, field.dictionary)?;
-        let value = field_value(change.value(), filler.document())?;
+        let value = if matches!(change.value(), FilledValue::RichText { .. }) {
+            text_value(
+                &form_appearance::rich_text_value(filler, change.field())?,
+                filler.document(),
+            )?
+        } else {
+            field_value(change.value(), filler.document())?
+        };
         transaction.edit_dictionary(id, |dictionary| {
             dictionary.insert(Name::new(b"V"), value);
+            if let FilledValue::RichText { xml, default_style } = change.value() {
+                dictionary.insert(Name::new(b"RV"), text_value(xml, filler.document())?);
+                if let Some(style) = default_style {
+                    dictionary.insert(Name::new(b"DS"), text_value(style, filler.document())?);
+                }
+            }
             if let FilledValue::Choice(choice) = change.value() {
                 if field.flags.contains(FieldFlags::MULTI_SELECT) {
                     let indices = choice

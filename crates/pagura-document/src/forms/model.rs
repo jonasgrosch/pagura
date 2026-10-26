@@ -155,9 +155,10 @@ pub enum FieldKind<'a> {
         password: bool,
         /// Fixed character cells.
         comb: bool,
-        /// RichText flag; rich text is never evaluated.
+        /// RichText flag; the document view keeps XML inert.
         rich_text: bool,
-        /// Original RV data, a string or stream reference, without XML parsing.
+        /// Original RV data, without resolving references or parsing XML.
+        /// Indirect null is treated as absent when generation selects the value.
         rich_value: Option<&'a Value>,
     },
     /// Choice configuration (12.7.5.4).

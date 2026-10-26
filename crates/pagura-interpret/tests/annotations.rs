@@ -255,6 +255,7 @@ fn source_annotation_artwork_is_lazy_and_cannot_become_extracted_page_text() {
             || case.name().starts_with("button-normal-")
             || case.name().starts_with("button-invalid-")
             || case.name().starts_with("static-")
+            || case.name().starts_with("rich-field-")
     }) {
         let document = open(case.name(), Limits::default()).unwrap();
         let page = document.page(0).unwrap();
@@ -287,6 +288,7 @@ fn missing_appearance_generation_uses_the_existing_content_byte_budget() {
         ("button-normal-push-caption-72", 96),
         ("button-normal-push-position-6-72", 96),
         ("static-movie-poster-0-72", 24),
+        ("rich-field-styled-72-source", 96),
     ] {
         let document = open(
             name,

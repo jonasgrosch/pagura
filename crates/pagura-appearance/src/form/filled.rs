@@ -96,7 +96,20 @@ impl<'f, 'd> FilledWidgets<'f, 'd> {
             return Ok(None);
         }
         let document = self.filler.document();
-        if let Some(Appearance::Existing(id)) = original.as_ref() {
+        // Rich edits replace the entire appearance, including its geometry and
+        // optional-content entries (12.7.4.3). Only the annotation's visibility
+        // applies; an obsolete normal program cannot cull its replacement.
+        let rich_regeneration = regenerate
+            && matches!(
+                field.kind,
+                FieldKind::Text {
+                    rich_text: true,
+                    ..
+                }
+            );
+        if let Some(Appearance::Existing(id)) = original.as_ref()
+            && !rich_regeneration
+        {
             let stream = document
                 .object(*id)?
                 .dictionary()

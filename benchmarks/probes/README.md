@@ -723,3 +723,41 @@ Tx updates on group 07; media decoding/activation, XFA and host interactions on
 group 08; physical print on group 10; sanitizing redaction on group 16. Remaining
 common-rich-text layout and difficult geometric accuracy cases stay explicit V01
 gates, without promoting this finite static boundary to full V01 acceptance.
+
+The rich Tx RV/DS batch extends the same parser and layout used by RC annotations
+through source display, explicit library filling, preview and incremental saves
+(ISO 32000-2 12.7.4.3/Table 228 and 12.7.5.3/Table 231). `FillValue::RichText`
+retains inert bounded XML and an optional replacement DS in the document layer;
+the appearance layer validates the selected XML/formatting/field constraints.
+Saving obtains plain V from that same parser and writes V/RV/optional DS plus
+the completely regenerated normal appearance in one transaction. Unchanged
+stored AP, no-op saves, DV, R/D and unrelated source entries are preserved.
+DA/Q inherit; RV/DS remain local to the terminal field. DS overrides the DA
+base style; nested run styles override DS. No script, XFA form program or
+external resource is evaluated.
+
+Independent controls use the existing authored Type3 font: 0.6 em advances,
+0.8/-0.2 em metrics and 0.5 by 0.7 em ink. With Rect [8,8,56,40] and two units of
+padding, the single 10 pt baseline is 21. A 20 pt run moves the common baseline to 18;
+two 10 pt paragraphs have baselines 30 and 18. The secondary F2 font has a distinct
+0.9 em advance and 0.7 em ink width, proving that run font selection affects both
+ink and following placement. Ordinary and stored controls paint literal colored
+rectangles; none interprets generated output. The 90/180/270-degree controls use
+independent literal rectangles, and Comb uses rational cell centers. Existing
+one-level glyph coverage bounds remain unchanged.
+
+The original `widget-source-rich` PDF remains byte-identical: its V=AB/no-RV
+combination now reports Syntax, following Table 231 bit 26's required RV for a
+valued RichText field. Empty/no-value absence remains valid. Malformed or
+unsupported selected XML/DS, DoNotScroll, single-line, MaxLen, password masking,
+reference/work/storage limits, ignored source RV/DS under stored AP, full old
+BBox/Matrix/resource replacement and atomic save failures have focused controls.
+Plain Text replacement is explicitly refused; browser rich editing input,
+complex-script/CID/font coverage, advanced rich measurements and automatic sizing
+without a positive DA/DS/run size retain their existing host/font/layout boundaries.
+This batch is source-verified only until the existing PR's hosted gates run;
+paired baseline outcomes remain scoped to each configured render adapter.
+
+The sealed rich-field set contains 61 cases: 48 pixel controls and 13 explicit
+selected failures, bringing G01 to 644. All 596 earlier pixel definitions remain
+unchanged; only the non-pixel valued/no-RV classification is corrected above.

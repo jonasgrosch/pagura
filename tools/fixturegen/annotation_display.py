@@ -47,6 +47,7 @@ REDACT_REQUIREMENT = 'content-redact-preview'
 WIDGET_REQUIREMENT = 'content-source-widget-display'
 BUTTON_REQUIREMENT = 'content-normal-button-display'
 SUBTYPE_REQUIREMENT = 'content-static-subtype-display'
+RICH_FIELD_REQUIREMENT = 'content-rich-field-appearance'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
 # Original rectangular ink regions in a 32-unit grid. These are the geometric
 # union of one-unit orthogonal strokes with miter corners and butt endpoints,
@@ -424,6 +425,7 @@ def cases():
     yield from button_observation_cases()
     yield from normal_button_cases()
     yield from static_subtype_cases()
+    yield from rich_field_cases()
 
 
 def widget_objects(variant='text', stored=False):
@@ -718,13 +720,16 @@ def widget_source_cases():
         yield Case('widget-source-'+label,widget_pdf(objects),OPEN,(WIDGET_REQUIREMENT,),
                    'Requested ancestry must agree with forward membership and remain acyclic',
                    extra={'render_error':'cycle' if label=='parent-cycle' else 'syntax'})
-    for label,change,feature in [
-        ('rich',lambda o:o[11].update(Ff=1<<25),'form.rich-text'),
-        ('xfa',lambda o:o[10].update(XFA=b'inert'),'form.xfa'),
-    ]:
-        objects=widget_objects();change(objects)
-        yield Case('widget-source-'+label,widget_pdf(objects),UNSUPPORTED,(WIDGET_REQUIREMENT,),
-                   'Advanced layout and XFA keep the existing explicit capability boundary',feature=feature)
+    # Table 231 bit26 requires RV when a RichText field has a value. Preserve
+    # this original V=AB/no-RV diagnostic PDF; its former generic refusal was
+    # imprecise. Empty/no-value rich fields are covered separately below.
+    objects=widget_objects();objects[11]['Ff']=1<<25
+    yield Case('widget-source-rich',widget_pdf(objects),OPEN,(WIDGET_REQUIREMENT,RICH_FIELD_REQUIREMENT),
+               'Valued RichText without RV violates Table231 bit26; original bytes retained',
+               extra={'render_error':'syntax'})
+    objects=widget_objects();objects[10]['XFA']=b'inert'
+    yield Case('widget-source-xfa',widget_pdf(objects),UNSUPPORTED,(WIDGET_REQUIREMENT,),
+               'XFA form execution keeps its existing explicit capability boundary',feature='form.xfa')
 
 
 def normal_button_cases():
@@ -1000,3 +1005,144 @@ def static_subtype_cases():
     yield Case('static-movie-reference-limit',source(subtype=b'Movie',stored=False,
                entries=b'/Movie << /Poster 8 0 R >>',objects=(b'8 0 R',)),OPEN,(SUBTYPE_REQUIREMENT,),
                'The selected Poster uses the existing reference-depth budget',extra={'render_error':'limit'})
+
+
+def rich_field_cases():
+    """Literal Type3 regions for the shared RV/DS/source/edit/save contract.
+
+    Rect=[8,8,56,40], inner=[10,10,54,38]. At 10pt the font advances6,
+    has 8/-2 metrics and paints5x7. Single-line baseline21 is centered in
+    the28-unit inner height. A20pt run changes the common baseline to18;
+    two10pt paragraphs have baselines30 and18. No rich parser/layout is run
+    to derive these coordinates, and stored controls contain only rectangles.
+    """
+    red,blue,green=(1,0,0),(0,0,1),(0,1,0)
+    xml='<body><p><span style="color:#ff0000">A</span>B</p></body>'
+    style='font-size:10pt;color:#0000ff'
+    base_marks=[((10,21,5,7),red),((16,21,5,7),blue)]
+    def objects(markup=xml, ds=style):
+        result=widget_objects()
+        result[11]|={'Ff':1<<25,'RV':markup,'DS':ds,'V':'AB','DV':'DEFAULT'}
+        result[10]['DA']=b'/F1 10 Tf 0 1 0 rg'
+        return result
+    def art(marks):
+        return ' '.join(f'{r} {g} {b} rg {x} {y} {w} {h} re f'
+                        for (x,y,w,h),(r,g,b) in marks).encode()
+    def case(label, data, marks=base_marks, *, dpi=72, paired='source', extra=None, transform=(1,0,0,1,0,0), size=(64,48)):
+        metadata:dict={'tolerance':1}
+        if paired!='ordinary':metadata['widget_display']='same'
+        if paired=='source' and isinstance(data[11].get('RV'),str):
+            metadata|={'rich_input':data[11]['RV'],'rich_plain':data[11].get('V','')}
+        if extra:metadata.update(extra)
+        return Case('rich-field-'+label,widget_pdf(data),RENDER,(RICH_FIELD_REQUIREMENT,),
+                    'Independent constant-width Type3 rectangles and selected rich field data; stored/ordinary controls contain literal paths',
+                    oracle=widget_area_pixels(marks,transform=transform,size=size,scale=dpi//72),dpi=dpi,extra=metadata)
+    # Paired controls isolate source synthesis from the established Form/page path.
+    for label,markup,flags,marks,plain in [
+        ('styled',xml,1<<25,base_marks,'AB'),
+        ('mixed','<body><p>A<span style="font-size:20pt;color:#ff0000">B</span></p></body>',1<<25,
+         [((10,18,5,7),blue),((16,18,10,14),red)],'AB'),
+        ('paragraphs','<body><p>AB</p><p>CD</p></body>',(1<<25)|(1<<12),
+         widget_glyphs('AB',x=10,y=30,color=blue)+widget_glyphs('CD',x=10,y=18,color=blue),'AB\nCD'),
+    ]:
+        for dpi in (72,144):
+            for mode in ('source','stored','ordinary'):
+                data=objects(markup);data[11]|={'Ff':flags,'V':plain}
+                if mode=='stored':
+                    data[11]['AP']={'N':ref(80)}
+                    data[80]=stream(art(marks),b'/Type /XObject /Subtype /Form /BBox [8 8 56 40] /Resources << >>')
+                elif mode=='ordinary':
+                    data[3].pop('Annots');data[3]['Contents']=ref(50);data[50]=stream(art(marks))
+                    data[1].pop('AcroForm')
+                yield case(f'{label}-{dpi}-{mode}',data,marks,dpi=dpi,paired=mode)
+    variants=[
+        ('center',lambda o:o[11].update(Q=1),[((26,21,5,7),red),((32,21,5,7),blue)]),
+        ('right',lambda o:o[11].update(Q=2),[((42,21,5,7),red),((48,21,5,7),blue)]),
+        ('ds-quadding',lambda o:o[11].update(DS=style+';text-align:center',Q=2),[((26,21,5,7),red),((32,21,5,7),blue)]),
+        ('comb',lambda o:o[11].update(Ff=(1<<25)|(1<<24),MaxLen=4,Q=1),[((F(47,2),21,5,7),red),((F(69,2),21,5,7),blue)]),
+        ('wrap',lambda o:o[11].update(Ff=(1<<25)|(1<<12),RV='<body><p>AB CD EF</p></body>',V='AB CD EF'),
+         widget_glyphs('AB CD',x=10,y=30,color=blue)+widget_glyphs('EF',x=10,y=18,color=blue)),
+        ('maxlen',lambda o:o[11].update(MaxLen=2),base_marks),
+        ('no-scroll-fit',lambda o:o[11].update(Ff=(1<<25)|(1<<23)),base_marks),
+        ('password',lambda o:o[11].update(Ff=(1<<25)|(1<<13)),base_marks),
+        ('empty',lambda o:[o[11].pop('V'),o[11].pop('RV')],[]),
+        ('empty-null',lambda o:o[11].update(V=None,RV=None),[]),
+        ('empty-rich',lambda o:o[11].update(V='',RV='<body/>'),[]),
+        ('no-style',lambda o:o[11].pop('DS'),[((10,21,5,7),red),((16,21,5,7),green)]),
+        ('null-style',lambda o:o[11].update(DS=None),[((10,21,5,7),red),((16,21,5,7),green)]),
+        ('ds-font-size',lambda o:o[10].update(DA=b'/F1 0 Tf 0 g'),base_marks),
+        ('inline-font',lambda o:o[11].update(RV='<body><p><span style="font-family:F2;color:#ff0000">A</span>B</p></body>'),
+         [((10,21,7,7),red),((19,21,5,7),blue)]),
+        ('stream',lambda o:[o[11].update(RV=ref(90)),o.update({90:stream(xml.encode())})],base_marks),
+        ('stream-need',lambda o:[o[11].update(RV=ref(90)),o[10].update(NeedAppearances=True),o.update({90:stream(xml.encode())})],base_marks),
+        ('utf16-stream',lambda o:[o[11].update(RV=ref(90)),o.update({90:stream(b'\xff\xfe'+xml.encode('utf-16-le'))})],base_marks),
+        ('v-independent',lambda o:o[11].update(V='OLD'),base_marks),
+        ('plain-ignores-rich',lambda o:o[11].update(Ff=0,RV=ref(91),DS=ref(91)),widget_glyphs('AB',x=10,y=21,color=green)),
+    ]
+    for label,change,marks in variants:
+        data=objects();data[10]['DR']['Font']['F2']=ref(74)
+        data[74]=dict(data[70],FontBBox=[0,-200,900,800],Widths=[900]*59,
+                      CharProcs={key:ref(76 if key=='space' else 75) for key in data[70]['CharProcs']})
+        data[75]=stream(b'900 0 d0 0 0 700 700 re f');data[76]=stream(b'900 0 d0')
+        data[91]=b'91 0 R';change(data)
+        extra={}
+        if label in ('stream','stream-need','utf16-stream'):extra['rich_input']=xml
+        if label=='v-independent':extra['rich_plain']='AB'
+        if label in ('password','empty-null','plain-ignores-rich'):extra['rich_input']=None
+        yield case(label,data,marks,extra=extra)
+    for rotation,marks in [
+        (90,[((28,10,7,5),red),((28,16,7,5),blue)]),
+        (180,[((49,20,5,7),red),((43,20,5,7),blue)]),
+        (270,[((29,33,7,5),red),((29,27,7,5),blue)]),
+    ]:
+        data=objects();data[11]['MK']={'R':rotation}
+        yield case(f'rotation-{rotation}',data,marks)
+    # The field owns local RV/DS. Separate widget and parent entries do not inherit.
+    data=objects();field=data[11]
+    data[11]={key:value for key,value in field.items() if key not in ('Subtype','Rect','F')}
+    data[11]['Kids']=[ref(20)];data[3]['Annots']=[ref(20)]
+    data[20]={'Subtype':pdf_name('Widget'),'Parent':ref(11),'Rect':[8,8,56,40],'RV':ref(91),'DS':ref(91)}
+    data[91]=b'91 0 R'
+    yield case('separate',data)
+    data=objects();data[12]={'T':'parent','Kids':[ref(11)],'FT':pdf_name('Tx'),'Ff':1<<25,
+                           'DA':b'/F1 10 Tf 0 g','Q':2,'DS':'color:#00ff00','RV':ref(91)}
+    data[10]['Fields']=[ref(12)];data[11]['Parent']=ref(12)
+    data[11].pop('FT');data[11].pop('Ff');data[91]=b'91 0 R'
+    yield case('inherited-da',data,[((42,21,5,7),red),((48,21,5,7),blue)])
+    data[11].pop('DS')
+    yield case('parent-style-ignored',data,[((42,21,5,7),red),((48,21,5,7),(0,0,0))])
+    # Regeneration must discard old non-Tx decoration, BBox/Matrix and font resources.
+    data=objects();data[10]['NeedAppearances']=True;data[11]['AP']={'N':ref(80),'R':ref(81),'D':ref(81)}
+    data[80]=stream(b'0 0 1 rg 0 0 24 16 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 24 16] /Matrix [2 0 0 2 0 0] /Resources << /Font << /F1 91 0 R >> >>')
+    data[91]=b'91 0 R'
+    yield case('need-regenerate',data,[((8,8,48,32),blue)],
+               extra={'widget_display':'regenerate','widget_preview':'rich-field-styled-72-source'})
+    for label,change,error in [
+        ('missing',lambda o:o[11].pop('RV'),'syntax'),
+        ('null-valued',lambda o:o[11].update(RV=None),'syntax'),
+        ('type',lambda o:o[11].update(RV=12),'syntax'),
+        ('xml',lambda o:o[11].update(RV='<body><p>AB</body>'),'syntax'),
+        ('style',lambda o:o[11].update(DS=12),'syntax'),
+        ('single-line',lambda o:o[11].update(RV='<body><p>A</p><p>B</p></body>'),'syntax'),
+        ('comb-flags',lambda o:o[11].update(Ff=(1<<25)|(1<<24)|(1<<12),MaxLen=4),'syntax'),
+        ('no-scroll',lambda o:o[11].update(Ff=(1<<25)|(1<<23),RV='<body><p>ABCDEFGHI</p></body>'),'invalid-argument'),
+        ('reference',lambda o:o[11].update(RV=ref(91)),'limit'),
+        ('style-reference',lambda o:o[11].update(DS=ref(91)),'limit'),
+    ]:
+        data=objects();data[91]=b'91 0 R';change(data)
+        yield Case('rich-field-invalid-'+label,widget_pdf(data),OPEN,(RICH_FIELD_REQUIREMENT,),
+                   'Selected RV/DS/field constraint fails explicitly; text-only extraction remains lazy',extra={'render_error':error})
+    for label,change in [
+        ('auto-size',lambda o:[o[10].update(DA=b'/F1 0 Tf'),o[11].pop('DS')]),
+        ('paragraph-units',lambda o:o[11].update(DS=style+';margin-left:2em')),
+        ('external',lambda o:o[11].update(RV='<!DOCTYPE body SYSTEM "https://invalid.example"><body/>')),
+    ]:
+        data=objects();change(data)
+        yield Case('rich-field-unsupported-'+label,widget_pdf(data),UNSUPPORTED,(RICH_FIELD_REQUIREMENT,),
+                   'Existing shared rich-layout boundary, without external requests or fallback to stale V',feature='form.rich-text')
+    for label,flags,stored,marks in [('hidden',2,False,[]),('no-view',32,False,[]),('stored',4,True,base_marks)]:
+        data=objects();data[11]|={'RV':ref(91),'DS':ref(91),'F':flags};data[91]=b'91 0 R'
+        if stored:
+            data[11]['AP']={'N':ref(80)}
+            data[80]=stream(art(marks),b'/Type /XObject /Subtype /Form /BBox [8 8 56 40] /Resources << >>')
+        yield case('lazy-'+label,data,marks,paired='stored')

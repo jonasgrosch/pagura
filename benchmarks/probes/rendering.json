@@ -7749,6 +7749,630 @@
         "rgb_sha256": "2c4777163fe7958430b181e31f072aa0d45e54a736247e4192ed869693fb992e",
         "tolerance": 0
       }
+    },
+    {
+      "id": "annotations.display.rich-field-styled-72-source",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-styled-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-styled-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-styled-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-styled-72-ordinary",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-styled-72-ordinary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-styled-144-source",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-styled-144-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "62e45121f7820cd54114b97e5e152be61dc6f5acbf16d62a05be88f0ffd4c56a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-styled-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-styled-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "62e45121f7820cd54114b97e5e152be61dc6f5acbf16d62a05be88f0ffd4c56a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-styled-144-ordinary",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-styled-144-ordinary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "62e45121f7820cd54114b97e5e152be61dc6f5acbf16d62a05be88f0ffd4c56a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-mixed-72-source",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-mixed-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "b0c3c308646620e51bd7c9018cdb48784a0ce81e855d77149f4bd8bc03b319bd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-mixed-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-mixed-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "b0c3c308646620e51bd7c9018cdb48784a0ce81e855d77149f4bd8bc03b319bd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-mixed-72-ordinary",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-mixed-72-ordinary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "b0c3c308646620e51bd7c9018cdb48784a0ce81e855d77149f4bd8bc03b319bd",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-mixed-144-source",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-mixed-144-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "1fb1eb41621c086817841f811df845542aa4d52e159f7cb802abaa9b3e4e6b06",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-mixed-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-mixed-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "1fb1eb41621c086817841f811df845542aa4d52e159f7cb802abaa9b3e4e6b06",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-mixed-144-ordinary",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-mixed-144-ordinary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "1fb1eb41621c086817841f811df845542aa4d52e159f7cb802abaa9b3e4e6b06",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-paragraphs-72-source",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-paragraphs-72-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "6dcd3ac9d374aece33699c4d44b280d0bcd99e4f742110a842e3399a97f118c5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-paragraphs-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-paragraphs-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "6dcd3ac9d374aece33699c4d44b280d0bcd99e4f742110a842e3399a97f118c5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-paragraphs-72-ordinary",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-paragraphs-72-ordinary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "6dcd3ac9d374aece33699c4d44b280d0bcd99e4f742110a842e3399a97f118c5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-paragraphs-144-source",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-paragraphs-144-source",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "7498de4b1f6c0502e16c227d4081d91271adc32dec48e102521b930a97fbe1f4",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-paragraphs-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-paragraphs-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "7498de4b1f6c0502e16c227d4081d91271adc32dec48e102521b930a97fbe1f4",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-paragraphs-144-ordinary",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-paragraphs-144-ordinary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 128,
+        "height": 96,
+        "rgb_sha256": "7498de4b1f6c0502e16c227d4081d91271adc32dec48e102521b930a97fbe1f4",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-center",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-center",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "8e0e25609bdb030d71b087e989371abf8abf0ab772a1bf09f21ef971045e4ed1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-right",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-right",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "9d96458f589d188dba873978c0a52908d9cb5091a4c9c3aedd291fcef6a5d779",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-ds-quadding",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-ds-quadding",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "8e0e25609bdb030d71b087e989371abf8abf0ab772a1bf09f21ef971045e4ed1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-comb",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-comb",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "ca905b78390ece3c17c5c8f884642e1b3d7169b78296fc660d8e8eab50447836",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-wrap",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-wrap",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "6b161758d0a22c9b9cbe495cff9cce7854334144baf991c2f55feebfe77c72c1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-maxlen",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-maxlen",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-no-scroll-fit",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-no-scroll-fit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-password",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-password",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-empty",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-empty",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-empty-null",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-empty-null",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-empty-rich",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-empty-rich",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-no-style",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-no-style",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34c4ac66609484320ca85be3d581a31e0abea32602fed4e5ea706f231344e476",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-null-style",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-null-style",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34c4ac66609484320ca85be3d581a31e0abea32602fed4e5ea706f231344e476",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-ds-font-size",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-ds-font-size",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-inline-font",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-inline-font",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a255beb1dc573617d31e969f76ff7b6fb684769a3fc918e70d8723fcf767ef25",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-stream",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-stream",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-stream-need",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-stream-need",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-utf16-stream",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-utf16-stream",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-v-independent",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-v-independent",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-plain-ignores-rich",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-plain-ignores-rich",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "5087cd2dc543674d14b590370ba5d29e7d215c60d53e12db2848685fc88f060d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-rotation-90",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-rotation-90",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "ba4843a79e1c023210b89bad76a56fd408a37935fe4ad1f24210fdd967fa61c1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-rotation-180",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-rotation-180",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "1831bb25cecf3606a2ba258abdfe54ce51b77e723044f69bd21ce80d4b41609a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-rotation-270",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-rotation-270",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "e2c336af6c248a4b4b6bb4568ed85330db571a256325968ef993bae5d400b9bc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-separate",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-separate",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-inherited-da",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-inherited-da",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "9d96458f589d188dba873978c0a52908d9cb5091a4c9c3aedd291fcef6a5d779",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-parent-style-ignored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-parent-style-ignored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "73f2427fed28589d34cf70bc4b82e2a465eb5d141946b2b429907b87f5f6a1ec",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-need-regenerate",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-need-regenerate",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "2801ef7c8195e5778a1d75b1973e696b52b4a630e2e8d553a6654c61f407972f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-lazy-hidden",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-lazy-hidden",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-lazy-no-view",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-lazy-no-view",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "a27a50c72e45c4f5a44249d2913d9c56b43815d800757303c49dd643c5f40818",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.rich-field-lazy-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/rich-field-lazy-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 48,
+        "rgb_sha256": "34aba975272313f69b37c37d9538c300a6aba256289bbc843792d8db2700ed11",
+        "tolerance": 1
+      }
     }
   ]
 }

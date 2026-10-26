@@ -15,7 +15,7 @@ pub(super) struct Paragraph {
     pub(super) style: usize,
 }
 
-pub(super) struct Text {
+pub(crate) struct Text {
     pub(super) styles: Vec<Style>,
     pub(super) characters: Vec<Character>,
     pub(super) paragraphs: Vec<Paragraph>,
@@ -41,6 +41,51 @@ struct Reader<'a, 'm> {
 }
 
 impl Text {
+    /// Plain V uses the parsed characters, with LF between rich paragraphs.
+    /// Formatting whitespace and entities follow the same reader as the glyphs.
+    pub(crate) fn value(
+        &self,
+        limits: &Limits,
+        storage: &mut Meter,
+        work: &mut Meter,
+    ) -> Result<String> {
+        work.charge(self.characters.len().saturating_add(self.paragraphs.len()))?;
+        let bytes = self
+            .characters
+            .iter()
+            .fold(0usize, |bytes, character| {
+                bytes.saturating_add(character.value.len_utf8())
+            })
+            .saturating_add(self.paragraphs.len().saturating_sub(1));
+        if bytes > limits.string_bytes {
+            return Err(Error::limit("rich field plain value exceeds string budget"));
+        }
+        storage.charge(bytes)?;
+        let mut value = String::with_capacity(bytes);
+        for (index, paragraph) in self.paragraphs.iter().enumerate() {
+            if index != 0 {
+                value.push('\n');
+            }
+            value.extend(
+                self.characters[paragraph.characters.clone()]
+                    .iter()
+                    .map(|c| c.value),
+            );
+        }
+        Ok(value)
+    }
+
+    /// Password previews never emit the original characters, including spaces.
+    pub(crate) fn mask(&mut self, work: &mut Meter) -> Result<()> {
+        work.charge(self.characters.len())?;
+        for character in &mut self.characters {
+            if character.value != '\n' {
+                character.value = '*';
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn parse(
         source: &str,
         base: Style,
