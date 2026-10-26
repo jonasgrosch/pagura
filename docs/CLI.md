@@ -9,6 +9,9 @@ pagura attachments input.pdf
 pagura extract-metadata input.pdf packet.xmp
 pagura extract-attachment input.pdf 0 UF payload.bin
 pagura check-attachment input.pdf 0 UF
+pagura attachments --page 0 input.pdf
+pagura extract-attachment --page 0 input.pdf 2 UF payload.bin
+pagura check-attachment --page 0 input.pdf 2 UF
 ```
 
 All five accept `--strict` and `--password TEXT`. Reported repairs are enabled by
@@ -71,16 +74,43 @@ never followed or used to name output files. Authorization and bounded stream
 decoding complete before the destination is created; an existing file is never
 overwritten. Output IO failures are reported and may leave a partial new file.
 
-These commands currently cover catalog metadata and EmbeddedFiles only. The
-library's object-local metadata, AF arrays and RF related files are not CLI
-selection targets yet. Annotation attachment discovery, streaming extraction,
-editing and host AF/RF selection remain in D02. Protocol 1.8 and the viewer
-already support catalog listing and extraction.
+Without `--page`, attachment commands cover catalog EmbeddedFiles. The library's
+object-local metadata, AF arrays and RF related files are not CLI selection
+targets yet. Streaming extraction, editing and host AF/RF selection remain in
+D02. Protocol 1.8 and the viewer support catalog listing and extraction.
+
+## Page attachment JSON (schema 1)
+
+`attachments --page PAGE INPUT` reports FileAttachment annotations on a zero-based
+page. Its separate JSON shape is `schema`, `page`, `annotations`, `repairs` and
+`information`. Each annotation contains:
+
+| Field | Meaning |
+|---|---|
+| `index`, `object` | Original Annots array slot, including non-file annotations, and resolved annotation identity. |
+| `rectangle` | Normalized `[x0,y0,x1,y1]` in default user space, before page rotation. |
+| `contents` | Decoded annotation Contents, or null; file-specification Desc is never substituted. |
+| `icon_hex`, `declared_icon_hex` | Effective icon name bytes, including the PushPin default, and the original optional declaration. |
+| `file` | File-specification `object` plus the names, description, file-system, relationship, volatile and payload fields of a catalog record. |
+
+This view is separate from the catalog: page-only attachments are included,
+duplicates keep their original indexes, and no payload is decoded by listing.
+Malformed annotation views fail before any JSON is written. External files
+remain inert records with no embedded payload.
+
+The same `--page PAGE` option on `extract-attachment` and `check-attachment`
+selects the original Annots `INDEX` and exact EF `KEY`. For example, if slot 0 is
+a link and slot 2 is a file attachment, use INDEX 2. A non-file slot, missing key
+or out-of-range page/index fails; there is no fallback to catalog index 2 or to
+another EF key. Extraction retains authorization and new-file-only output rules.
+Page checks add `page` to the check report below. Run listing and selection on
+the same input bytes. Other commands reject `--page`.
 
 ## Attachment parameter checks (schema 1)
 
-`check-attachment INPUT INDEX KEY` uses the same catalog index and exact EF key
-as extraction. It completely decodes and authorizes the payload before writing
+`check-attachment INPUT INDEX KEY` uses the same catalog index (or original Annots
+index with `--page PAGE`) and exact EF key as extraction. It completely decodes
+and authorizes the payload before writing
 JSON, even when Size and CheckSum are absent. The report contains `schema: 1`,
 `index`, `key`, the payload `object`, actual `decoded_size`, `size`, `checksum`,
 `repairs` and `information`. Both check fields are `match`, `mismatch` or

@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "78b168f25a0420655e14922ed849c55a4e589333",
+  "audited_revision": "dbb30000d5f69b1550339d28816d53e01c3bb049",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -32,15 +32,16 @@
     "crates/pagura-appearance/src/form/style.rs": "20e35fa393dede64c02a299c88984a93d35de65292e1b75f3eb518d3ab333db1",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
-    "crates/pagura-cli/src/args.rs": "b912d43a903622080956b18284ae165a2db57551c23b567c703abfa98aa25961",
-    "crates/pagura-cli/src/args/tests.rs": "517935613c29da10c89159efa698f4048d4529421675cb50e3c8f5fd91311f17",
-    "crates/pagura-cli/src/commands.rs": "06c72f39b6c08e17f12468649e1dae2da7b1b8a95af33ff43f112b46fe87957f",
-    "crates/pagura-cli/src/document_services.rs": "3328bb64d0c8f02963b0df2b0a13fdc343437ecd5ddec05b9f8f348993095aa8",
+    "crates/pagura-cli/src/args.rs": "cbc4f984036b2b89bee4afe2026db49d1dcdb8199946673bcc3bd2f524ddad0e",
+    "crates/pagura-cli/src/args/tests.rs": "6b4e0a28f3c6b4ac1ecc800fb81e895068660aeea32c4308130e25218e96c5dd",
+    "crates/pagura-cli/src/commands.rs": "7f65ddbdfbd49593e3db97177fcb279c27eec86a10313c1abfc900245eac4f3b",
+    "crates/pagura-cli/src/document_services.rs": "0b01b7494a49f39591f9dc0a0553b6ddb0d81d51b6d5fcba61473efc081aa7e5",
+    "crates/pagura-cli/src/document_services/annotations.rs": "5b94a90d4171b158109e8cb08f68ac13a857b5117cfdcf8af86a60d3eec22c91",
     "crates/pagura-cli/src/json.rs": "737c87970f69f2a8515b707758e3e88a4359d915c90da0d158b6e19fe00d0183",
     "crates/pagura-cli/src/main.rs": "03cebde00b13b62ed2199d776cc475e38da6d3d3d8d8732b549b57015de6398a",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
     "crates/pagura-cli/tests/attachment_checks.rs": "0720ab09a624b0d39f1759625ad9ace9093a3dcf5d889f98f1aad0501938c498",
-    "crates/pagura-cli/tests/cli.rs": "0cc3322c55ce885efac2dcc098b9b1c557cc5f51f745469d71163d80fdc68b09",
+    "crates/pagura-cli/tests/cli.rs": "6151628c346fbdc4ff918bdc3651edf126f19954c7de55728956691e279c3aa0",
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
     "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
@@ -198,7 +199,7 @@
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
-    "references/requirements/files.json": "3264c1ce5376e31f04eeb4074b1d2209f116442bf6348c57b71da1f763393f6d",
+    "references/requirements/files.json": "2dd2c2162d9992ffa6516a4c603d7c798f74723171230edc95c974a736cd8d3f",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
@@ -1760,8 +1761,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. The CLI lists catalog EmbeddedFiles with separate Unicode/hexadecimal byte names and EF choices, and extracts an explicitly selected payload to a caller-chosen new path. Protocol 1.8 lists up to 1024 catalog attachments, preserves exact u64 size declarations, and requires an explicit index/EF key for bytes. The viewer displays inert names and uses fixed octet-stream download names; document changes or dialog closure cancel stale downloads. Library/facade check_parameters and CLI check-attachment compare decoded size and MD5 with declarations, distinguishing absent, matching and mismatching values; authorization and bounded complete decoding precede every result. Protocol 1.10 and viewer Check controls expose exact decoded size and independent size/checksum outcomes without downloading payloads. Checks are explicit, bounded and authorized; immutable dialog snapshots prevent stale callbacks and results. Page::attachment_annotations discovers FileAttachment annotations separately from catalog/AF views, preserving Annots indexes, annotation/FS identities, normalized rectangles, Contents text, declared/default icon names and lazy EF/RF handles. External files remain inert and malformed annotation views fail without partial results.",
-      "remaining": "collection/encrypted-payload models, MIME/date/associated-file validation, streaming extraction, CLI/host/viewer annotation selection and CLI/host AF/RF selection, writes and viewer attachment-only password reauthentication.",
+      "implemented": "Typed file specifications preserve path bytes, Unicode UF names, descriptions, identities, volatility, relationships and source dictionaries. EmbeddedFiles name trees, catalog/page/object AF arrays, EF and related RF payload handles share bounded traversal. Lazy payload reads apply filters and attachment authorization even when the stream Type is absent. The CLI lists catalog EmbeddedFiles with separate Unicode/hexadecimal byte names and EF choices, and extracts an explicitly selected payload to a caller-chosen new path. Protocol 1.8 lists up to 1024 catalog attachments, preserves exact u64 size declarations, and requires an explicit index/EF key for bytes. The viewer displays inert names and uses fixed octet-stream download names; document changes or dialog closure cancel stale downloads. Library/facade check_parameters and CLI check-attachment compare decoded size and MD5 with declarations, distinguishing absent, matching and mismatching values; authorization and bounded complete decoding precede every result. Protocol 1.10 and viewer Check controls expose exact decoded size and independent size/checksum outcomes without downloading payloads. Checks are explicit, bounded and authorized; immutable dialog snapshots prevent stale callbacks and results. Page::attachment_annotations discovers FileAttachment annotations separately from catalog/AF views, preserving Annots indexes, annotation/FS identities, normalized rectangles, Contents text, declared/default icon names and lazy EF/RF handles. External files remain inert and malformed annotation views fail without partial results. CLI attachment commands accept explicit --page selection: annotation JSON retains original Annots indexes, geometry, Contents and icon/file records; extraction and checks use that exact slot and EF key without catalog fallback.",
+      "remaining": "collection/encrypted-payload models, MIME/date/associated-file validation, streaming extraction, host/viewer annotation selection and CLI/host AF/RF selection, writes and viewer attachment-only password reauthentication.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/navigation.rs",
@@ -1788,7 +1789,8 @@
         "web/index.html",
         "crates/pagura-document/src/files/checks.rs",
         "crates/pagura-crypto/src/hash/md5.rs",
-        "crates/pagura-document/src/files/annotations.rs"
+        "crates/pagura-document/src/files/annotations.rs",
+        "crates/pagura-cli/src/document_services/annotations.rs"
       ],
       "tests": [
         "crates/pagura-document/tests/files.rs",
@@ -1811,7 +1813,8 @@
         "host-document-services",
         "document-file-parameter-checks",
         "host-attachment-checks",
-        "document-file-annotations"
+        "document-file-annotations",
+        "cli-annotation-attachments"
       ],
       "fixtures": [
         "files/populated",

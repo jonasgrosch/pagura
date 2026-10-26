@@ -429,7 +429,7 @@ attachment authorization. EF/RF context selects attachment crypt filters even
 when the stream omits its optional Type; an explicit Identity filter retains
 its meaning. Hosted library checks passed in
 [run 40263961382](https://github.com/jonasgrosch/pagura/actions/runs/40263961382).
-CLI/host/viewer annotation selection, collection/encrypted-payload models, semantic validation,
+Host/viewer annotation selection, collection/encrypted-payload models, semantic validation,
 streaming, writes and CLI/host AF/RF selection remain open; this does not complete D02.
 
 **Metadata implementation started:** `8b328025a502cd9b7a3c5c61f2bac94aea12f5a9` adds typed Info strings and
@@ -485,8 +485,12 @@ annotation Contents. Thirty-six independent fixtures cover page-only attachments
 reference/geometry indirection, external files, duplicates, malformed/late failures,
 reported Unicode repair, budgets, compressed and encrypted payloads. Discovery
 keeps payload decoding and authorization lazy; no file is activated. Library/facade
-source checks pass, while hosted runtime checks are pending. CLI/host/viewer
-annotation selection and icon appearance/activation remain separate work.
+source checks pass, while hosted runtime checks are pending. CLI attachment
+commands now accept `--page PAGE` with distinct annotation JSON and exact original
+Annots index/EF selection for extraction and checks. Tests cover selection without
+catalog fallback, caller-chosen new files, password failures and no partial JSON.
+These CLI checks await hosted validation. Host/viewer annotation selection and
+icon appearance/activation remain separate work.
 
 **PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
 existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are
