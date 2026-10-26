@@ -27,6 +27,7 @@ on:
       - 'corpus/manifests/paint.json'
       - 'corpus/manifests/paint_jpx.json'
       - 'corpus/manifests/paint_jpx_native.json'
+      - 'corpus/manifests/paint_jpx_rgb.json'
       - 'tools/fixturegen/paint_jpx*.py'
       - 'tools/benchkit/images.py'
       - 'uv.lock'
