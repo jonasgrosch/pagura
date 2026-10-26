@@ -386,7 +386,7 @@ impl<'a> Executor<'a> {
         let compositing = &mark.compositing;
         let constant = paint.constant();
         if constant.is_none()
-            && (paint_words(ws, (mark, paint), frame, (x, y), cover)
+            && (paint_narrow(ws, (mark, paint), frame, (x, y), cover)
                 || !fill_colors(ws, (mark, paint), frame, (x, y), len))
         {
             return;
@@ -429,7 +429,7 @@ impl<'a> Executor<'a> {
             && compositing.blend == pagura_interpret::BlendMode::Normal
             && preserve == 0
             && let Colors::Strided { values, stride: 3 } = colors
-            && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
+            && overwrite_words(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
                 kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
                 true
             })
@@ -534,8 +534,9 @@ fn filled(colors: &SpanColors, len: usize) -> Option<(Colors<'_>, Option<&[f64]>
 }
 
 /// Lets an opaque paint over a whole span at full opacity, without a soft
-/// mask, write a narrow page's words itself; false where it does not.
-fn paint_words(
+/// mask, write a narrow buffer's N16 words or F32 levels itself; false
+/// where it does not.
+fn paint_narrow(
     ws: &mut Workspace,
     (mark, paint): (&Mark, &Source),
     frame: Frame,
@@ -554,43 +555,73 @@ fn paint_words(
         && compositing.mask.is_none()
         && compositing.blend == pagura_interpret::BlendMode::Normal
         && compositing.overprint == 0
-        && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
-            paint.words(Pixels::new(x, y, len), scratch, pixels)
-        });
+        && overwrite(
+            (&mut ws.page, &mut ws.levels),
+            frame,
+            Pixels::new(x, y, len),
+            (
+                |pixels: &mut [[u16; 4]]| paint.words(Pixels::new(x, y, len), scratch, pixels),
+                |pixels: &mut [[f32; 4]]| paint.levels(Pixels::new(x, y, len), pixels),
+            ),
+        );
     if written {
         ws.usage.work = ws.usage.work.saturating_add(len);
     }
     written
 }
 
-/// Overwrites `len` pixels of `frame`'s narrow page from pixel (`x`, `y`)
-/// on with the words `write` gives, as a store at full opacity does; false,
-/// with nothing stored, where the frame is not a narrow page or `write`
-/// gives none.
+/// Overwrites `len` pixels of `frame`'s narrow buffer, the page or a group's
+/// F32 levels, from pixel (`x`, `y`) on with the N16 words or F32 levels
+/// `write` gives, as a store at full opacity does; false, with nothing
+/// stored, where the buffer is wide or `write` gives none.
 fn overwrite(
+    (band, levels): (&mut PageBand, &mut [[f32; 4]]),
+    frame: Frame,
+    pixels: Pixels<'_>,
+    (words, write_levels): (
+        impl FnOnce(&mut [[u16; 4]]) -> bool,
+        impl FnOnce(&mut [[f32; 4]]) -> bool,
+    ),
+) -> bool {
+    let Pixels { x, y, len, .. } = pixels;
+    let Some(start) = frame.index(x, y) else {
+        return false;
+    };
+    match frame.buffer {
+        Buffer::Levels(offset) => levels
+            .get_mut(offset + start..offset + start + len)
+            .is_some_and(write_levels),
+        Buffer::Page => {
+            let (page, extents) = band.parts_mut();
+            let stored = match page {
+                PageBuffer::N16(page) => page.get_mut(start..start + len).is_some_and(words),
+                PageBuffer::F32(page) => page.get_mut(start..start + len).is_some_and(write_levels),
+                PageBuffer::F64(_) => false,
+            };
+            if stored {
+                let column = x - frame.rect.x0;
+                let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+                extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
+            }
+            stored
+        }
+        Buffer::Wide(_) => false,
+    }
+}
+
+/// [`overwrite`] of a narrow page with the N16 words `write` gives.
+fn overwrite_words(
     band: &mut PageBand,
     frame: Frame,
     pixels: Pixels<'_>,
     write: impl FnOnce(&mut [[u16; 4]]) -> bool,
 ) -> bool {
-    let Pixels { x, y, len, .. } = pixels;
-    let Some(start) = frame.index(x, y).filter(|_| frame.buffer == Buffer::Page) else {
-        return false;
-    };
-    let (page, extents) = band.parts_mut();
-    let stored = match page {
-        PageBuffer::N16(page) => page
-            .get_mut(start..start + len)
-            .is_some_and(write)
-            .then_some(()),
-        PageBuffer::F64(_) | PageBuffer::F32(_) => None,
-    };
-    if stored.is_some() {
-        let column = x - frame.rect.x0;
-        let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
-        extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
-    }
-    stored.is_some()
+    overwrite(
+        (band, &mut []),
+        frame,
+        pixels,
+        (write, |_: &mut [[f32; 4]]| false),
+    )
 }
 
 /// A constant colour stored into narrow page pixels at coverage bytes.
