@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "a3f915854dcf8e503b66f305092d6d3592625513",
+  "audited_revision": "1dacbe75639b7c7524fae8f7d40fc0306e747e3b",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -326,11 +326,11 @@
     "crates/pagura-appearance/src/rich/layout.rs": "df4b237865ff210929186b42dba17c6d45506f92bfb1df7d696906ebdf5d9ba1",
     "crates/pagura-appearance/src/annotation/tests/cloud.rs": "d10e839e5ff845b7a45922625fb0fcb95afb515a9a782d879ddd9bff8852bbb5",
     "crates/pagura-appearance/src/rich/tests.rs": "85172eb48e1a652a1d23dad7f3bab0b864b4743f2a96cf57fa33b98798ae3069",
-    "tools/fixturegen/cloud_annotations.py": "d07b92ac4785084f5c3ac0c99054ab7f3a414e2c315cb6e7d5f347ea7acfbe82",
+    "tools/fixturegen/cloud_annotations.py": "7d2dd3abd80e0a0c0342d9baa099076d95a78def4a424feeef75df75a94dc605",
     "tools/fixturegen/rich_annotations.py": "ed742bf66d88f774d0d30092800e68dc685ba37490f30711f5ee2a302f4ba975",
-    "corpus/manifests/cloud_annotations.json": "b55a057bfc16da4a1b936333f6e7a0b3c26cd772170d18c9ad68e785c01dc27f",
+    "corpus/manifests/cloud_annotations.json": "2b436fdd0ad7eb808ca957d393cd2d74ed95ce67a7bd960e8b402534893833f1",
     "corpus/manifests/rich_annotations.json": "9728208c1b761d04aa07a494ee4295805441c85b351dee82d9d3e5099d61ab10",
-    "tools/test_cloud_pixels.py": "53905725ff47b3fd6fa425c0c7327bf906f6053ca520a09e2e4a6dde4037e2a7"
+    "tools/test_cloud_pixels.py": "5d9693491cfe0a57c24eefa27e3e5e0c921c296799a9e00ac44c4f2b46ab238d"
   },
   "capabilities": [
     {
