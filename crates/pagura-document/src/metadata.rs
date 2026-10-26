@@ -8,9 +8,8 @@
 //! metadata stream uses the ordinary stream/decryption limits and performs no IO.
 
 use crate::view::{Context, Source};
-use crate::{Document, IndirectObject};
+use crate::{Document, IndirectObject, StreamData};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
-use std::borrow::Cow;
 
 /// The Info dictionary's trapping declaration (14.3.3, Table 349).
 /// This records what the producer declared, not an inspection of page marks.
@@ -81,7 +80,7 @@ impl<'a> MetadataStream<'a> {
     /// # Errors
     /// As [`Document::stream_data`], including stream budgets, unsupported
     /// filters, external-data refusal and required authorization.
-    pub fn data(&self) -> Result<Cow<'a, [u8]>> {
+    pub fn data(&self) -> Result<StreamData> {
         self.document.stream_data(self.object)
     }
 }

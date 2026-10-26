@@ -41,13 +41,12 @@ pub use options::OpenOptions;
 pub use pages::Page;
 pub use pagura_codec::{ImageCodec, Prefix};
 pub use pagura_core::Rotation;
-pub use stream::ImageStream;
+pub use stream::{ImageStream, StreamData};
 pub use xref::{Revision, RevisionKind};
 
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Recovery, Result, Value,
 };
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
@@ -291,7 +290,7 @@ impl Document {
     /// # Errors
     ///
     /// Returns a syntax error if `object` is not a stream.
-    pub fn raw_stream_data<'a>(&'a self, object: &IndirectObject) -> Result<&'a [u8]> {
+    pub fn raw_stream_data(&self, object: &IndirectObject) -> Result<source::ByteLease> {
         stream::raw(self, object)
     }
 
@@ -303,7 +302,7 @@ impl Document {
     /// filters, a limit error if decoding would exceed
     /// [`Limits::decoded_bytes`], syntax errors for corrupt data, and `Password`
     /// for embedded encrypted data awaiting EFOpen authorization (7.6.6).
-    pub fn stream_data<'a>(&'a self, object: &IndirectObject) -> Result<Cow<'a, [u8]>> {
+    pub fn stream_data(&self, object: &IndirectObject) -> Result<StreamData> {
         stream::decoded(self, object, 0)
     }
 
@@ -313,11 +312,7 @@ impl Document {
     /// # Errors
     ///
     /// As [`Document::stream_data`].
-    pub fn stream_data_sized<'a>(
-        &'a self,
-        object: &IndirectObject,
-        size: usize,
-    ) -> Result<Cow<'a, [u8]>> {
+    pub fn stream_data_sized(&self, object: &IndirectObject, size: usize) -> Result<StreamData> {
         stream::decoded(self, object, size)
     }
 
@@ -353,7 +348,7 @@ impl Document {
     ///
     /// As [`Document::stream_data`]; an image codec that is not the last
     /// filter fails with its `Unsupported` tag.
-    pub fn image_stream<'a>(&'a self, object: &IndirectObject) -> Result<ImageStream<'a>> {
+    pub fn image_stream(&self, object: &IndirectObject) -> Result<ImageStream> {
         self.image_stream_with_parameters(
             object,
             object
@@ -376,11 +371,11 @@ impl Document {
     ///
     /// As [`Document::image_stream`], including errors resolving parameters or
     /// validating their Crypt selection.
-    pub fn image_stream_with_parameters<'a>(
-        &'a self,
+    pub fn image_stream_with_parameters(
+        &self,
         object: &IndirectObject,
         parameters: Option<&Value>,
-    ) -> Result<ImageStream<'a>> {
+    ) -> Result<ImageStream> {
         stream::image(self, object, parameters, 0)
     }
 
@@ -391,12 +386,12 @@ impl Document {
     /// # Errors
     ///
     /// As [`Document::image_stream_with_parameters`].
-    pub fn image_stream_sized<'a>(
-        &'a self,
+    pub fn image_stream_sized(
+        &self,
         object: &IndirectObject,
         parameters: Option<&Value>,
         size: usize,
-    ) -> Result<ImageStream<'a>> {
+    ) -> Result<ImageStream> {
         stream::image(self, object, parameters, size)
     }
 

@@ -1,7 +1,12 @@
 //! Encoded stream access, decryption and bounded filter application (7.3.8, 7.4, 7.6).
 
+mod data;
+pub use data::StreamData;
+
+use crate::source::{ByteLease, ByteRange};
 use crate::{Document, IndirectObject, features, repairs};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
+use pagura_core::convert::usize_to_u64;
 use pagura_core::{Diagnostics, Dictionary, Error, ObjectId, Result, Value};
 use pagura_crypto::standard::CryptMethod;
 use std::borrow::Cow;
@@ -22,31 +27,31 @@ pub(crate) enum Usage {
     EmbeddedFile,
 }
 
-pub(crate) fn raw<'a>(document: &'a Document, object: &IndirectObject) -> Result<&'a [u8]> {
+pub(crate) fn raw(document: &Document, object: &IndirectObject) -> Result<ByteLease> {
     document.bytes.check()?;
     let range = object
         .stream_range()
         .ok_or_else(|| Error::syntax("object is not a stream").in_object(object.id()))?;
-    document
-        .bytes
-        .get(range)
-        .ok_or_else(|| Error::syntax("stream lies outside the file").in_object(object.id()))
+    if range.end > document.bytes.len() {
+        return Err(Error::syntax("stream lies outside the file").in_object(object.id()));
+    }
+    document.bytes.lease(ByteRange::new(
+        usize_to_u64(range.start),
+        usize_to_u64(range.end),
+    )?)
 }
 
 /// `size` is the expected decoded length, an allocation hint only.
-pub(crate) fn decoded<'a>(
-    document: &'a Document,
+pub(crate) fn decoded(
+    document: &Document,
     object: &IndirectObject,
     size: usize,
-) -> Result<Cow<'a, [u8]>> {
+) -> Result<StreamData> {
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
     decode(document, object.id(), data, &chain, size)
 }
 
-pub(crate) fn embedded_decoded<'a>(
-    document: &'a Document,
-    object: &IndirectObject,
-) -> Result<Cow<'a, [u8]>> {
+pub(crate) fn embedded_decoded(document: &Document, object: &IndirectObject) -> Result<StreamData> {
     let parameters = object
         .dictionary()
         .and_then(|dictionary| dictionary.get(b"DecodeParms"));
@@ -60,15 +65,15 @@ pub(crate) fn embedded_decoded<'a>(
 }
 
 /// Applies `chain` to the data of stream `id`, reporting its repairs for
-/// that object. Data that no filter changed keeps its original borrow.
+/// that object. Data that no filter changed keeps its original source lease.
 /// `size` is the expected decoded length, an allocation hint only.
-pub(crate) fn decode<'a>(
+pub(crate) fn decode(
     document: &Document,
     id: ObjectId,
-    data: Cow<'a, [u8]>,
+    data: StreamData,
     chain: &FilterChain,
     size: usize,
-) -> Result<Cow<'a, [u8]>> {
+) -> Result<StreamData> {
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
         .decode_sized(
@@ -85,7 +90,7 @@ pub(crate) fn decode<'a>(
             .map(|diagnostic| diagnostic.in_object(id)),
     );
     Ok(match decoded {
-        Cow::Owned(bytes) => Cow::Owned(bytes),
+        Cow::Owned(bytes) => bytes.into(),
         Cow::Borrowed(_) => data,
     })
 }
@@ -94,21 +99,21 @@ pub(crate) fn decode<'a>(
 /// applied (clauses 7.4 and 8.9.5).
 #[derive(Debug)]
 #[non_exhaustive]
-pub struct ImageStream<'a> {
+pub struct ImageStream {
     /// The data after decryption and all non-image filters.
-    pub data: Cow<'a, [u8]>,
+    pub data: StreamData,
     /// The trailing image codec and its `/DecodeParms`, if the stream has one.
     pub codec: Option<(ImageCodec, Option<Dictionary>)>,
 }
 
 /// `size` is the expected length after the non-image filters, an
 /// allocation hint only.
-pub(crate) fn image<'a>(
-    document: &'a Document,
+pub(crate) fn image(
+    document: &Document,
     object: &IndirectObject,
     parameters: Option<&Value>,
     size: usize,
-) -> Result<ImageStream<'a>> {
+) -> Result<ImageStream> {
     let (data, mut chain) = document.prepare_stream_with_parameters(
         object,
         parameters,
@@ -122,11 +127,11 @@ pub(crate) fn image<'a>(
 }
 
 impl Document {
-    pub(crate) fn prepare_stream<'a>(
-        &'a self,
+    pub(crate) fn prepare_stream(
+        &self,
         object: &IndirectObject,
         path: &mut Vec<ObjectId>,
-    ) -> Result<(Cow<'a, [u8]>, FilterChain)> {
+    ) -> Result<(StreamData, FilterChain)> {
         self.prepare_stream_with_parameters(
             object,
             object
@@ -137,13 +142,13 @@ impl Document {
         )
     }
 
-    fn prepare_stream_with_parameters<'a>(
-        &'a self,
+    fn prepare_stream_with_parameters(
+        &self,
         object: &IndirectObject,
         parameters: Option<&Value>,
         path: &mut Vec<ObjectId>,
         usage: Usage,
-    ) -> Result<(Cow<'a, [u8]>, FilterChain)> {
+    ) -> Result<(StreamData, FilterChain)> {
         let id = object.id();
         let raw = self.raw_stream_data(object)?;
         let dictionary = object
@@ -171,13 +176,13 @@ impl Document {
     }
 }
 
-fn decrypt<'a>(
+fn decrypt(
     document: &Document,
     object: &IndirectObject,
-    raw: &'a [u8],
+    raw: ByteLease,
     chain: &mut FilterChain,
     usage: Usage,
-) -> Result<Cow<'a, [u8]>> {
+) -> Result<StreamData> {
     let explicit = chain.take_crypt();
     if chain
         .filters()
@@ -198,7 +203,7 @@ fn decrypt<'a>(
                     .in_object(object.id()),
             );
         }
-        return Ok(Cow::Borrowed(raw));
+        return Ok(raw.into());
     };
     let dictionary = object
         .dictionary()
@@ -207,7 +212,7 @@ fn decrypt<'a>(
         if explicit.is_some() {
             return Err(Error::syntax("xref streams cannot be encrypted").in_object(object.id()));
         }
-        return Ok(Cow::Borrowed(raw));
+        return Ok(raw.into());
     }
     let selection = match explicit {
         None => CryptSelection::Default,
@@ -218,11 +223,11 @@ fn decrypt<'a>(
         .stream_method(document, object, selection, usage)
         .map_err(|error| error.in_object(object.id()))?;
     if method == CryptMethod::Identity {
-        return Ok(Cow::Borrowed(raw));
+        return Ok(raw.into());
     }
     security
-        .decrypt_stream(method, object.id(), raw)
-        .map(Cow::Owned)
+        .decrypt_stream(method, object.id(), raw.bytes())
+        .map(StreamData::from)
         .map_err(|error| error.in_object(object.id()))
 }
 
@@ -357,7 +362,7 @@ mod tests {
                 let stream = document
                     .image_stream_with_parameters(object, Some(&parameters))
                     .unwrap();
-                assert_eq!(stream.data, baseline.data);
+                assert_eq!(stream.data.as_ref(), baseline.data.as_ref());
                 assert_eq!(stream.codec, baseline.codec);
                 assert_eq!(document.retained.used(), retained);
             }
@@ -381,7 +386,10 @@ mod tests {
         let object = document.object(ObjectId::new(3, 0)).unwrap();
         assert!(document.image_stream(object).is_err());
         let absent = document.image_stream_with_parameters(object, None).unwrap();
-        assert_eq!(absent.data, document.raw_stream_data(object).unwrap());
+        assert_eq!(
+            absent.data.as_ref(),
+            document.raw_stream_data(object).unwrap().bytes()
+        );
         let mut external = object.clone();
         let Value::Dictionary(dictionary) = &mut external.value else {
             panic!("fixture requires a dictionary");

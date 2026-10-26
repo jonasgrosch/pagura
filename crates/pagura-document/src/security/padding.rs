@@ -84,9 +84,9 @@ fn detect(document: &Document, key: &FileKey) -> Result<Option<ObjectId>> {
         .min(document.limits().document_bytes);
     let valid = |padded| -> Result<bool> {
         let decoded = if padded {
-            key.decrypt_legacy_zero_padded(id, raw)?
+            key.decrypt_legacy_zero_padded(id, raw.bytes())?
         } else {
-            key.decrypt(CryptMethod::Rc4, id, raw)?
+            key.decrypt(CryptMethod::Rc4, id, raw.bytes())?
         };
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let result = chain

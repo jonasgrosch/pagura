@@ -5,9 +5,8 @@
 //! dependencies. Normalized image/page rendering belongs to the interpreter.
 
 use crate::view::Context;
-use crate::{Document, ImageCodec, ImageStream, IndirectObject};
+use crate::{Document, ImageCodec, ImageStream, IndirectObject, StreamData};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
-use std::borrow::Cow;
 
 /// A declared source image or thumbnail, whose payload is decoded only on request.
 #[derive(Debug, Clone, Copy)]
@@ -33,11 +32,11 @@ pub enum ImageTransferMode {
 /// Transferred bytes and their codec. Neither mode promises a standalone image.
 #[derive(Debug)]
 #[non_exhaustive]
-pub struct ImageTransfer<'a> {
+pub struct ImageTransfer {
     /// Exact mode requested by the caller.
     pub mode: ImageTransferMode,
     /// Stream bytes. A codec of None in Encoded mode means packed PDF samples.
-    pub data: Cow<'a, [u8]>,
+    pub data: StreamData,
     /// Retained image codec and its parameters; None for Stored mode.
     pub codec: Option<(ImageCodec, Option<Dictionary>)>,
 }
@@ -69,12 +68,9 @@ impl<'a> ImageAsset<'a> {
     /// # Errors
     /// Stream bounds, authorization, filter and decoded-byte budgets. Stored mode
     /// preserves ciphertext and does not imply successful authentication.
-    pub fn transfer(&self, mode: ImageTransferMode) -> Result<ImageTransfer<'a>> {
+    pub fn transfer(&self, mode: ImageTransferMode) -> Result<ImageTransfer> {
         let (data, codec) = match mode {
-            ImageTransferMode::Stored => (
-                Cow::Borrowed(self.document.raw_stream_data(self.object)?),
-                None,
-            ),
+            ImageTransferMode::Stored => (self.document.raw_stream_data(self.object)?.into(), None),
             ImageTransferMode::Encoded => {
                 let ImageStream { data, codec, .. } = self.document.image_stream(self.object)?;
                 (data, codec)

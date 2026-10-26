@@ -57,11 +57,21 @@ impl View {
     }
 
     pub(crate) fn materialize(&self) -> ReadResult<ByteLease> {
+        Ok(self.lease(ByteRange::whole(usize_to_u64(self.end)))?)
+    }
+
+    /// Borrows no storage from the document: the returned lease owns the range.
+    pub(crate) fn lease(&self, range: ByteRange) -> Result<ByteLease> {
         self.check()?;
+        if range.end() > usize_to_u64(self.end) {
+            return Err(Error::invalid_argument(
+                "source range outside document prefix",
+            ));
+        }
         let lease = match &self.backing {
             Backing::Local(lease) | Backing::Registered { lease, .. } => lease,
         };
-        Ok(lease.slice(ByteRange::whole(usize_to_u64(self.end)))?)
+        lease.slice(range)
     }
 
     pub(crate) fn prefix(&self, end: usize) -> Result<Self> {

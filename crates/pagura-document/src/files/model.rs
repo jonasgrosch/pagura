@@ -1,6 +1,5 @@
-use crate::{Document, IndirectObject};
+use crate::{Document, IndirectObject, StreamData};
 use pagura_core::{Dictionary, Name, ObjectId, Result, Value};
-use std::borrow::Cow;
 
 /// A filename as declared, without operating-system path interpretation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -181,7 +180,7 @@ impl<'a> EmbeddedFile<'a> {
     /// # Errors
     /// Stream/filter/decoded-budget errors, missing password authorization,
     /// or explicit refusal of external stream data. No partial payload is returned.
-    pub fn data(&self) -> Result<Cow<'a, [u8]>> {
+    pub fn data(&self) -> Result<StreamData> {
         crate::stream::embedded_decoded(self.document, self.object)
     }
 }

@@ -110,7 +110,10 @@ fn complete_admission_waits_once_per_generation_then_delivers_the_same_document_
     assert_eq!(document.page_count().unwrap(), 1);
     assert_eq!(document.page(0).unwrap().id(), ObjectId::new(3, 0));
     let stream = document.object(ObjectId::new(4, 0)).unwrap();
-    assert_eq!(document.raw_stream_data(stream).unwrap(), b"hello\n");
+    assert_eq!(
+        document.raw_stream_data(stream).unwrap().bytes(),
+        b"hello\n"
+    );
     assert_eq!(document.diagnostics(), []);
     assert!(matches!(job.advance().unwrap(), Opening::Complete));
     assert!(!job.cancel());
@@ -133,7 +136,10 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
             lease.bytes().as_ptr()
         );
         let authenticated_page = authenticated.page(0).unwrap();
-        assert_eq!(document.raw_stream_data(stream).unwrap(), b"hello\n");
+        assert_eq!(
+            document.raw_stream_data(stream).unwrap().bytes(),
+            b"hello\n"
+        );
         if conflict {
             assert!(source.supply(ID, 100, b"2").is_err());
         } else {
@@ -169,6 +175,47 @@ fn source_terminal_state_precedes_cached_objects_pages_streams_and_reauthenticat
         drop(authenticated);
         assert!(source.retained_bytes() >= LENGTH);
         drop(lease);
+        assert_eq!(source.retained_bytes(), 0);
+    }
+}
+
+#[test]
+fn stream_values_keep_source_or_decoded_storage_after_document_and_source_close() {
+    for encoded in [false, true] {
+        let mut bytes = literal();
+        if encoded {
+            bytes[400..500].fill(b' ');
+            let object = b"4 0 obj << /Length 13 /Filter /ASCIIHexDecode >> stream\n68656C6C6F0A>\nendstream\nendobj\n";
+            bytes[400..400 + object.len()].copy_from_slice(object);
+        }
+        let source = source().unwrap();
+        source.supply(ID, 0, &bytes).unwrap();
+        let document = ready(&mut job(source.clone()).unwrap()).unwrap();
+        let object = document.object(ObjectId::new(4, 0)).unwrap();
+        let raw = document.raw_stream_data(object).unwrap();
+        let data = document.stream_data(object).unwrap();
+        assert_eq!(data.as_ref(), b"hello\n");
+        if encoded {
+            assert_eq!(raw.bytes(), b"68656C6C6F0A>");
+        } else {
+            assert_eq!(raw.range(), ByteRange::new(431, 437).unwrap());
+            assert_eq!(raw.bytes().as_ptr(), data.as_ptr());
+        }
+        source.close();
+        assert_eq!(
+            document.stream_data(object).unwrap_err(),
+            source.check().unwrap_err()
+        );
+        drop(document);
+        assert!(source.retained_bytes() >= LENGTH);
+        assert_eq!(data.as_ref(), b"hello\n");
+        drop(raw);
+        if encoded {
+            assert_eq!(source.retained_bytes(), 0);
+        } else {
+            assert!(source.retained_bytes() >= LENGTH);
+        }
+        drop(data);
         assert_eq!(source.retained_bytes(), 0);
     }
 }

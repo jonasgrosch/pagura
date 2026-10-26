@@ -12,7 +12,7 @@ use header::{Codec, Header};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Recovery, Result, Value,
 };
-use pagura_document::{Document, IndirectObject};
+use pagura_document::{Document, IndirectObject, StreamData};
 use std::sync::Arc;
 
 /// The identity of an image source within one document: never an address
@@ -77,7 +77,7 @@ pub struct ImageSource {
     /// `None` for an inline image, whose positions stay relative to its data.
     origin: Option<Position>,
     header: Arc<Header>,
-    data: Arc<[u8]>,
+    data: Arc<StreamData>,
     recovery: Recovery,
 }
 
@@ -257,7 +257,7 @@ impl ImageSource {
             id,
             origin: None,
             header: Arc::new(header),
-            data: data.into(),
+            data: Arc::new(data.into_owned().into()),
             recovery: document.recovery(),
         })
     }
@@ -345,7 +345,8 @@ impl ImageSource {
         &self.header.mask
     }
 
-    /// Bytes this source retains.
+    /// Image metadata and decoded storage retained in a rendering store.
+    /// Unchanged input leases keep their separate source allocation charge.
     pub fn retained_bytes(&self) -> usize {
         let header = &self.header;
         let space = match &header.kind {
@@ -372,7 +373,8 @@ impl ImageSource {
         [
             size_of::<Self>(),
             size_of::<Header>(),
-            self.data.len(),
+            self.data.retained_bytes(),
+            4 * size_of::<usize>(), // Reference counts for the header and data Arcs.
             space,
             mask,
             codec,

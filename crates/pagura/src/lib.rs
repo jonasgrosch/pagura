@@ -98,7 +98,7 @@ pub use pagura_document::metadata;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
-/// Immutable complete/sparse source bytes, explicit availability and owned leases (ADR 0035).
+/// Immutable complete/sparse source bytes, explicit availability and owned leases (ADR 0036).
 pub use pagura_document::source;
 pub mod editing;
 pub mod signatures;
@@ -108,7 +108,7 @@ pub mod signatures;
 pub use pagura_appearance as form_appearance;
 pub use pagura_document::{
     Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenJob, OpenOptions, Opening,
-    Page, Rotation,
+    Page, Rotation, StreamData,
 };
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{

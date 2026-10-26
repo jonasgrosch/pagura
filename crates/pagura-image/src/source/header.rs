@@ -7,7 +7,7 @@ use crate::jpx_image::Jpx;
 use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameters as p, stream};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
-use pagura_document::{Document, IndirectObject};
+use pagura_document::{Document, IndirectObject, StreamData};
 use std::borrow::Cow;
 use std::sync::Arc;
 
@@ -75,12 +75,12 @@ impl Header {
 
 /// Reads an image XObject's dictionary and data before decoding, returning
 /// the header and the data after decryption and the general-purpose
-/// filters, borrowed from the document where nothing changed them.
-pub(crate) fn xobject<'a>(
-    document: &'a Document,
+/// filters, retaining a source lease where nothing changed them.
+pub(crate) fn xobject(
+    document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<(Header, Cow<'a, [u8]>)> {
+) -> Result<(Header, StreamData)> {
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image is not a dictionary"))?;

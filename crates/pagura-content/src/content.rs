@@ -25,13 +25,14 @@ impl Content<'static> {
     ///
     /// Returns a `Limit` error when the concatenation exceeds
     /// `limits.decoded_bytes` or cannot be allocated.
-    pub fn from_streams<'s>(
-        streams: impl IntoIterator<Item = (ObjectId, Cow<'s, [u8]>)>,
+    pub fn from_streams<B: AsRef<[u8]>>(
+        streams: impl IntoIterator<Item = (ObjectId, B)>,
         limits: &Limits,
     ) -> Result<Self> {
         let mut bytes = Vec::new();
         let mut origins = Vec::new();
         for (object, data) in streams {
+            let data = data.as_ref();
             let end = bytes
                 .len()
                 .checked_add(data.len())
@@ -45,7 +46,7 @@ impl Content<'static> {
                 .try_reserve(1)
                 .map_err(|_| Error::limit("content sequence allocation failed"))?;
             origins.push((bytes.len(), object));
-            bytes.extend_from_slice(&data);
+            bytes.extend_from_slice(data);
             bytes.push(b'\n');
         }
         Ok(Self {

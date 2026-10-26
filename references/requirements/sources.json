@@ -52,13 +52,15 @@
       "id": "source-opening-admission",
       "reference": "project-policy",
       "clauses": [],
-      "status": "owned bootstrap and complete-document admission validated; explicit document materialization controls pending",
+      "status": "owned bootstrap and complete-document admission validated; document materialization and independent stream storage controls implemented",
       "tests": [
         "pagura-document/tests/opening.rs",
-        "pagura/tests/api/source.rs"
+        "pagura/tests/api/source.rs",
+        "pagura-document/src/source/view.rs",
+        "pagura-image/src/source/tests.rs"
       ],
       "gaps": "Requested-operation opening, partial-document ReadFault propagation and lazy dependency jobs remain pending in the same group.",
-      "rule": "An owned opener advances the shared header/tail/xref grammar and revision chain, yielding between completed units and retaining completed sections across exact missing-range waits. It does no work on unchanged waits and charges all window work cumulatively, including failed offset probes. Only explicit complete-source admission and final validation publish one ordinary Document. Structural repair discards the failed primary and invokes the existing full-source reconstruction once, retaining header diagnostics only. Document materialization explicitly returns a shared immutable lease over its source prefix and checks source lifecycle on every call; previously issued leases remain readable after closure. The document retains the admitted immutable lease without copying it; reauthentication and historical prefixes share that allocation and consistency provider. Closure or conflicting supply is checked before cached object, page, stream, historical and render-scene access. Cancellation and terminal failure never publish success; retained lease charges survive producer/source closure until the last owner releases them."
+      "rule": "An owned opener advances the shared header/tail/xref grammar and revision chain, yielding between completed units and retaining completed sections across exact missing-range waits. It does no work on unchanged waits and charges all window work cumulatively, including failed offset probes. Only explicit complete-source admission and final validation publish one ordinary Document. Structural repair discards the failed primary and invokes the existing full-source reconstruction once, retaining header diagnostics only. Document materialization explicitly returns a shared immutable lease over its source prefix and checks source lifecycle on every call; previously issued leases remain readable after closure. The document retains the admitted immutable lease without copying it; reauthentication and historical prefixes share that allocation and consistency provider. Closure or conflicting supply is checked before cached object, page, stream, historical and render-scene access. Raw stream payloads return source leases; decoded and image payloads retain either the same lease or owned decoded bytes, with no document lifetime or implicit full-source copy. Rendering images retain those leases through scene ownership. Cancellation and terminal failure never publish success; retained lease charges survive producer/source closure until the last owner releases them."
     }
   ]
 }

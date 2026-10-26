@@ -2,11 +2,11 @@
 use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Position, Result, Value};
 use pagura_document::{Document, ImageStream, IndirectObject};
 
-pub(crate) fn read<'a>(
-    document: &'a Document,
+pub(crate) fn read(
+    document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<ImageStream<'a>> {
+) -> Result<ImageStream> {
     let result = read_inner(document, image, diagnostics);
     if result
         .as_ref()
@@ -17,11 +17,11 @@ pub(crate) fn read<'a>(
     result
 }
 
-fn read_inner<'a>(
-    document: &'a Document,
+fn read_inner(
+    document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Result<ImageStream<'a>> {
+) -> Result<ImageStream> {
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image has no dictionary"))?;
@@ -122,11 +122,11 @@ fn repaired_params(document: &Document, names: &[Value], params: &Value) -> Resu
 /// A syntax failure plus valid, conflicting predictor precision gives one
 /// bounded retry. Successful unusual layouts keep their original interpretation;
 /// failed retries preserve the original error and do not report a repair.
-fn predictor_precision<'a>(
-    document: &'a Document,
+fn predictor_precision(
+    document: &Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
-) -> Option<Result<ImageStream<'a>>> {
+) -> Option<Result<ImageStream>> {
     let dictionary = image.dictionary()?;
     let bits = dictionary.get(b"BitsPerComponent")?.as_integer()?;
     if !matches!(bits, 1 | 2 | 4 | 8 | 16) {

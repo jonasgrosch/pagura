@@ -1,7 +1,7 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
 use crate::{DecodedImage, Samples, dct, jbig2, parameters as p};
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
-use pagura_document::Document;
+use pagura_document::{Document, StreamData};
 
 /// Samples of unfiltered image data. Whole bytes of exactly the declared
 /// extent are the samples themselves when the data is owned.
@@ -25,11 +25,11 @@ pub(crate) fn unfiltered(
 
 /// The data of the `JBIG2Globals` stream of an image whose JBIG2 filter has
 /// `params` (7.4.7).
-pub(crate) fn jbig2_globals<'a>(
-    document: &'a Document,
+pub(crate) fn jbig2_globals(
+    document: &Document,
     dict: &Dictionary,
     params: Option<&Dictionary>,
-) -> Result<Option<std::borrow::Cow<'a, [u8]>>> {
+) -> Result<Option<StreamData>> {
     // Preserve identity for stream-valued parameters using the original
     // dictionary; resolved filter parameters hold only object values.
     let original = dict

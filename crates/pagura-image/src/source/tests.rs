@@ -88,6 +88,63 @@ fn sources_outlive_their_document_and_expose_masks_without_decoding() {
 }
 
 #[test]
+fn an_image_keeps_its_source_lease_without_copying_after_provider_close() {
+    use pagura_document::source::{
+        ByteSource, LoadingLimits, SourceIdentity, SourceLimits, SparseBytes,
+    };
+    use pagura_document::{OpenJob, Opening};
+    use std::sync::Arc;
+
+    let samples = [17, 83, 149, 251];
+    let bytes = pdf(&[(
+        "/Type /XObject /Subtype /Image /Width 2 /Height 2 /BitsPerComponent 8 /ColorSpace /DeviceGray",
+        &samples,
+    )]);
+    let limits = pagura_core::Limits::default();
+    let id = SourceIdentity::new(930, [31; 32]);
+    let source = Arc::new(
+        SparseBytes::new(
+            id,
+            u64::try_from(bytes.len()).unwrap(),
+            &limits,
+            &SourceLimits::default(),
+        )
+        .unwrap(),
+    );
+    source.supply(id, 0, &bytes).unwrap();
+    let mut opener = OpenJob::new(
+        source.clone(),
+        &OpenOptions::default(),
+        LoadingLimits::default(),
+    )
+    .unwrap();
+    let document = loop {
+        match opener.advance().unwrap() {
+            Opening::Yielded => {}
+            Opening::Ready(document) => break document,
+            state => panic!("unexpected state: {state:?}"),
+        }
+    };
+    let object = document.object(ObjectId::new(3, 0)).unwrap();
+    let raw = document.raw_stream_data(object).unwrap();
+    let image = ImageSource::from_xobject(&document, object).unwrap();
+    assert_eq!(image.data.as_ptr(), raw.bytes().as_ptr());
+    let clone = image.clone();
+    source.close();
+    drop(raw);
+    drop(document);
+    assert!(source.retained_bytes() >= bytes.len());
+    let decoded = image
+        .decode(&DecodeRequest::FULL, &limits, Recovery::Strict)
+        .unwrap();
+    assert_eq!(decoded.image.samples, Samples::Bytes(samples.to_vec()));
+    drop(image);
+    assert!(source.retained_bytes() >= bytes.len());
+    drop(clone);
+    assert_eq!(source.retained_bytes(), 0);
+}
+
+#[test]
 fn stencils_report_their_polarity_and_pack_their_samples_on_request() {
     let rows = [0b1010_0000u8, 0b0101_0000];
     let stencil = "/Type /XObject /Subtype /Image /Width 4 /Height 2 /ImageMask true /Decode [1 0]";

@@ -221,10 +221,11 @@ fn historical_generations_frees_and_stream_dependencies_use_the_old_xref() {
     assert!(doc.object_at_revision(1, ObjectId::new(10, 0)).is_ok());
     let doc = open("historical-stream-length");
     let old = doc.object_at_revision(1, ObjectId::new(12, 0)).unwrap();
-    assert_eq!(doc.raw_stream_data(old).unwrap(), b"old");
+    assert_eq!(doc.raw_stream_data(old).unwrap().bytes(), b"old");
     assert_eq!(
         doc.raw_stream_data(doc.object(ObjectId::new(12, 0)).unwrap())
-            .unwrap(),
+            .unwrap()
+            .bytes(),
         b"newtext"
     );
     assert_eq!(

@@ -31,13 +31,13 @@ pub(super) fn equal(
         let b = after.raw_stream_data(b)?;
         // Charge byte comparison work using fixed-size blocks; equal large
         // streams do not evade the operation's node budget.
-        for (a, b) in a.chunks(64).zip(b.chunks(64)) {
+        for (a, b) in a.bytes().chunks(64).zip(b.bytes().chunks(64)) {
             ctx.step(0, Source::default())?;
             if a != b {
                 return Ok(false);
             }
         }
-        return Ok(a.len() == b.len());
+        return Ok(a.bytes().len() == b.bytes().len());
     }
     Ok(true)
 }

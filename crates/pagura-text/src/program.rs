@@ -51,7 +51,7 @@ fn load_stream(
     };
     let whole = prefix.is_none();
     let data = match prefix {
-        Some(data) => std::borrow::Cow::Owned(data),
+        Some(data) => pagura_document::StreamData::from(data),
         None => document.stream_data_sized(object, declared_length(document, dictionary))?,
     };
     let report = Report::new(document);
@@ -70,7 +70,7 @@ fn load_stream(
     let mut diagnostics = Diagnostics::new(document.recovery());
     // Shared storage made straight from the stream data: one copy at most.
     let result = FontProgram::parse_with_diagnostics(
-        std::sync::Arc::<[u8]>::from(data),
+        std::sync::Arc::<[u8]>::from(data.as_ref()),
         format,
         &document.limits(),
         &mut diagnostics,
