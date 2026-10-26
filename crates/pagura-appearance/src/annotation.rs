@@ -26,10 +26,11 @@ use pagura_document::Document;
 /// Generates the normal appearance of `annotation`, which has no `AP`, in
 /// its rectangle `rect` (the normalized `Rect` entry).
 ///
-/// Except for variable-text widgets, the Form XObject's BBox is `rect`, with no
-/// Matrix, so fitting it into the rectangle (12.5.5) is the identity and its
-/// content is in default user space; the BBox clips every mark to the
-/// rectangle. Strokes use the annotation's `CA` and fills its `ca` (else
+/// Most generated appearances use `rect` as their BBox with no Matrix, keeping
+/// their content in default user space. Widget content and rotated Movie posters
+/// may use a local BBox and the shared quarter-turn Matrix. All use the same
+/// appearance fitting (12.5.5), and the BBox clips every mark. Strokes use the
+/// annotation's `CA` and fills its `ca` (else
 /// `CA`), clamped to [0, 1], through the appearance's own ExtGState
 /// resources. Generated text uses private font resources; page resources such as
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
