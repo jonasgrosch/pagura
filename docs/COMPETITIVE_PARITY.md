@@ -204,6 +204,15 @@ The combined report artifact is `12641214395`, SHA-256
 Font/layout and API-layer differences still require adjudication before capability
 conclusions. These source-revision measurements do not validate later changes.
 
+A further 27 text-markup/Caret controls expand the current render manifest to
+117 oracles / 819 cells. They include Multiply over black/cyan page content,
+overlapping and empty quads, skew, all four markup styles, alternate-order recovery,
+both Caret symbols, stored artwork, RD, opacity and indirection. Existing oracle
+bytes and tolerances are unchanged. Alternate-order cases measure recovery rather
+than strict rendering; their fixture metadata describes strict opening only.
+Hosted execution for this increment is pending; the 90-case measurement above
+remains tied to its recorded revision.
+
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
 Use browser integration tests for browser-only behaviour, and capable optional

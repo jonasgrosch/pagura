@@ -5,9 +5,9 @@ catalog and first-page annotation attachment bytes, and text** using independent
 controls and a non-PDF rejection control. Pagura joins all six baseline columns,
 yielding 147 document-service cells. Its observations use the public CLI only.
 G01 remains open: these twenty-one cases do not establish family or product parity.
-The companion [render manifest](rendering.json) contains 90 independent pixel
-oracles: the original six graphics/JPX controls and 84 annotation controls. Its
-630 cells use the public Pagura CLI and all six existing public render adapters.
+The companion [render manifest](rendering.json) contains 117 independent pixel
+oracles: the original six graphics/JPX controls and 111 annotation controls. Its
+819 cells use the public Pagura CLI and all six existing public render adapters.
 Fixtures select 72 or 144 dpi explicitly; dimensions, pixel hashes and tolerances
 remain tied to their authored manifests. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
@@ -99,7 +99,7 @@ an asserted lock pin. Workspace/cache paths become placeholders. Native
 diagnostics retain byte counts and hashes rather than raw logs.
 
 `capability-rendering-<os>` and `capability-rendering` retain the pixel observations
-separately. Joining requires all six baselines plus Pagura across all 630 current cells. The CLI version and
+separately. Joining requires all six baselines plus Pagura across all 819 current cells. The CLI version and
 actual Pagura binary hash are recorded; the hosted workflow builds default
 features from its checkout using the pinned toolchain. Outside that workflow,
 a pre-existing binary has no asserted source revision. The exact PDF/oracle bytes and normalized RGB identities are hashed.
@@ -340,6 +340,23 @@ channel errors of 0, 1 and 1 respectively. The full report has 124 passes and
 of these settings and artwork, not feature verdicts. These cases retain actual/oracle images through the
 same report pipeline. The historical
 315-cell result above does not cover this increment.
+
+The Polygon/Line increment added 42 controls, including every standard ending,
+leaders and plain captions. [Run 40303222645](https://github.com/jonasgrosch/pagura/actions/runs/40303222645)
+at measured merge `a89009ce9dcc1e18f499860dc76f9743875e38eb` records all 90
+Pagura controls passing, with 183 passes and 447 pixel disagreements across the
+630 cells. Generated artwork and font/layout policies remain different; no
+observation promotes an unprobed capability family.
+
+The current manifest adds 27 further controls for text-markup quads and Caret
+symbols, for 117 cases / 819 cells. Highlights include underlying black/cyan
+content, Multiply/opacity, overlap, skew and zero-area geometry. Underline,
+StrikeOut and Squiggly retain their literal polygon expectations. Alternate
+TL/TR/BL/BR ordering measures recovery policy: it is reported by Pagura and
+rejected by Strict rendering; fixture `strict_valid` describes opening only.
+Caret controls cover both symbols, direct stored artwork, RD, opacity and
+indirect entries. Existing oracle bytes and tolerances are unchanged. Hosted
+results for this expanded matrix are pending.
 
 ## Next G01 increments
 
