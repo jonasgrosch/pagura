@@ -197,7 +197,14 @@
         "font/review-cff-width-cntrmask",
         "font/review-cff-width-seac",
         "font/review-cff-flex1-equal",
-        "font/review-cff-cid-count"
+        "font/review-cff-cid-count",
+        "font_formats/cff2-fd-none-simple",
+        "font_formats/cff2-fd-matrix-simple",
+        "font_formats/cff2-fd-none-cid",
+        "font_formats/cff2-fd-matrix-cid",
+        "font_formats/cff1-fd-matrix-cid-control",
+        "font_formats/cff-matrix-rectangle-1",
+        "font_formats/cff-matrix-rectangle-2"
       ],
       "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Nondefault variations, CFF2 Font DICT matrices, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
       "tables": [
@@ -974,7 +981,16 @@
             "font/review-cff-bias-global-33900"
           ]
         }
-      ]
+      ],
+      "cff2_matrix_probe": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/otspec180/cff2#11-font-dict-index-font-dicts-and-fdselect",
+          "https://learn.microsoft.com/en-us/typography/opentype/otspec182/cff2",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2"
+        ],
+        "scope": "OpenType1.8 Table13 lists Font DICT FontMatrix; 1.8.2 section10 deprecates it; current FontDICT has only Private and general decoding ignores unknown operators while clearing their stack. These do not prove that every legacy font intended the current interpretation. Existing product refusal and native vector are unchanged pending paired baseline observations.",
+        "expectations": "Two same-program simple/CID PDF routes compare the original matrix2 font bytes with the existing no-matrix variant. At 50pt the raw200x400 glyph is10x20 pixels; applying the legacy matrix would produce20x40. Both ordinary rectangles have independent pixel oracles. A CFF1 CID17 control preserves required per-FD matrix application. The retained matrix native font bytes and historical Unsupported expectation are unchanged."
+      }
     },
     {
       "id": "font-type1",

@@ -264,3 +264,21 @@ and report SHA-256
 `8c98d6aa0ab8c81f872c0f5c52f0ea7ff42a95b9f899b55213c98084667c02ec`.
 This result does not attest the subsequent cmap change. Its acceptance remains
 pending; all prior controls and tolerances are preserved.
+
+
+## CFF2 Font DICT matrix diagnostic
+
+This private diagnostic manifest contains nine observations, with no product
+change. OpenType 1.8 listed a Font DICT FontMatrix; 1.8.2 deprecated it. Current
+CFF2 permits only Private in that dictionary and ignores unrecognized operators
+with stack clearing. The historical matrix font is therefore not relabelled
+malformed, and its native bytes/Unsupported expectation remain untouched.
+
+Simple and CID PDF embeddings compare that same matrix2 font with its matching
+no-matrix program. The declared hypothesis is current ignore-unknown behaviour:
+a 200×400 glyph at 50pt occupies 10×20 pixels. A separate 20×40 ordinary
+rectangle distinguishes application of the legacy matrix. A CFF1 CID control
+requires its per-FD matrix, so any later correction must not generalize ignoring
+matrices to CFF1. These are scoped compatibility observations; rendering a font
+is not certification of all OpenType tables or embedding variants. Hosted
+measurements are pending.

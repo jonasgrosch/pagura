@@ -4,7 +4,7 @@ OpenType post versions 2.0/2.5 and PDF 9.6.5.4. Version 2.5 uses the
 historical 0x00025000 tag and signed offsets into standard Macintosh names.
 These original fonts share outlines, metrics and cmap bytes within each pair.
 """
-from .font import truetype, u16, u32
+from .font import cff_font, truetype, u16, u32
 from .paint import BLACK, FONT, case
 from .pdf import stream
 from .text import text_cmap_records
@@ -85,6 +85,47 @@ def cmap_cases():
                            requirement=REQUIREMENT)
 
 
+def cff_objects(program, cid):
+    descriptor_at, stream_at = (7, 8) if cid else (6, 7)
+    if cid:
+        fonts = [b'<< /Type /Font /Subtype /Type0 /BaseFont /LegacyCFF /Encoding /Identity-H /DescendantFonts [6 0 R] >>',
+                 b'<< /Type /Font /Subtype /CIDFontType0 /BaseFont /LegacyCFF /CIDSystemInfo '
+                 b'<< /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 600 /FontDescriptor 7 0 R >>']
+    else:
+        fonts = [b'<< /Type /Font /Subtype /Type1 /BaseFont /LegacyCFF /FirstChar 65 /LastChar 65 '
+                 b'/Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>']
+    descriptor = (b'<< /Type /FontDescriptor /FontName /LegacyCFF /Flags %d /FontBBox [0 0 400 800] '
+                  b'/ItalicAngle 0 /Ascent 800 /Descent 0 /CapHeight 400 /StemV 50 /FontFile3 %d 0 R >>'
+                  % (4 if cid else 32, stream_at))
+    assert len(fonts) + 5 == descriptor_at
+    return [*fonts, descriptor, stream(program, b'/Subtype /OpenType')]
+
+
+def cff_matrix_cases():
+    # OpenType 1.8 listed Font DICT FontMatrix; 1.8.2 deprecated it and
+    # current CFF2 has only Private in Font DICT. Keep this legacy case as a
+    # diagnostic, using current ignore-unknown interpretation as one explicit
+    # hypothesis. The second ordinary rectangle isolates matrix application.
+    for cid in (False, True):
+        for variant, label in (('fd4', 'none'), ('fd-matrix', 'matrix')):
+            program = truetype(cff=cff_font(conforming=True, cff2=True, variant=variant), cff2=True)
+            text = b'<0001>' if cid else b'(A)'
+            route = 'cid' if cid else 'simple'
+            yield case(f'cff2-fd-{label}-{route}', b'BT /F 50 Tf 1 0 0 1 4 4 Tm ' + text + b' Tj ET',
+                       cff_objects(program, cid), FONT, [((4, 4, 10, 20), BLACK)],
+                       requirement='font-cff', size=64)
+    # CFF1 retains its Font DICT matrix. CID17 selects GID1: the underlying
+    # 100x200 subroutine, scaled by 2 then by 50/1000, is also 10x20 pixels.
+    program = truetype(cff=cff_font(conforming=True, cid=True, variant='fd-array'))
+    yield case('cff1-fd-matrix-cid-control', b'BT /F 50 Tf 1 0 0 1 4 4 Tm <0011> Tj ET',
+               cff_objects(program, True), FONT, [((4, 4, 10, 20), BLACK)],
+               requirement='font-cff', size=64)
+    for scale in (1, 2):
+        width, height = 10*scale, 20*scale
+        yield case(f'cff-matrix-rectangle-{scale}', b'0 g 4 4 %d %d re f' % (width, height),
+                   rectangles=[((4, 4, width, height), BLACK)], requirement='font-cff', size=64)
+
+
 def cases():
     # GID 1 is the existing independent 100 x 200 unit rectangle. At 100 pt,
     # its visible area is 10 x 20 pixels, independently of the 600-unit advance.
@@ -101,3 +142,4 @@ def cases():
                        font_objects(mode, version), FONT, [((4, 4, 10, 20), BLACK)],
                        requirement=REQUIREMENT)
     yield from cmap_cases()
+    yield from cff_matrix_cases()
