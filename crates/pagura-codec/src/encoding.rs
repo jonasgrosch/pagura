@@ -1,15 +1,16 @@
 //! Shared bounded byte storage for output encoders.
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Error, Meter, Position, Result};
 
 pub(crate) fn limit(offset: usize) -> Error {
     Error::limit("encoding budget exceeded").at(Position::Buffer(offset))
 }
 
-pub(crate) fn filled<T: Clone>(len: usize, value: T) -> Result<Vec<T>> {
-    let mut bytes = Vec::new();
-    bytes.try_reserve_exact(len).map_err(|_| limit(0))?;
-    bytes.resize(len, value);
-    Ok(bytes)
+/// Reserves bounded encoder storage during admission, before output begins.
+pub(crate) fn reserved<T: Clone>(len: usize, value: T, meter: &mut Meter) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    meter.reserve_capacity(&mut values, len)?;
+    values.resize(len, value);
+    Ok(values)
 }
 
 pub(crate) struct Bytes {
@@ -23,6 +24,16 @@ impl Bytes {
             data: Vec::new(),
             cap,
         }
+    }
+
+    pub(crate) const fn from_reserved(data: Vec<u8>, cap: usize) -> Self {
+        Self { data, cap }
+    }
+
+    pub(crate) fn reserved(cap: usize, meter: &mut Meter) -> Result<Self> {
+        let mut data = Vec::new();
+        meter.reserve_capacity(&mut data, cap)?;
+        Ok(Self { data, cap })
     }
 
     pub(crate) fn extend(&mut self, bytes: &[u8]) -> Result<()> {

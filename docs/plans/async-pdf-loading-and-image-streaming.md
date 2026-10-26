@@ -577,11 +577,16 @@ row, so streaming content tokens directly to final pixels is outside this plan.
 
 ## 12. Incremental PNG and DEFLATE
 
-Extend `pagura-codec::png` and `flate` instead of adding an encoder crate.
+The private group implementation extends `pagura-codec::png` and `flate`
+through one incremental encoder; the complete-buffer functions collect it.
+Hosted validation of the incremental implementation is pending.
 The initial profile remains deterministic, non-interlaced, eight-bit Gray/RGB/
 straight RGBA. Reuse filter scoring, Paeth, CRC, Huffman construction and block
-selection. The existing whole-buffer APIs collect the incremental implementation
-once parity is established; they do not maintain a second encoder algorithm.
+selection. The whole-buffer APIs preserve their exact final-output quotas. Streaming
+admission separately checks conservative output and work bounds through
+`EncodingLimits`, before any PNG header can be emitted. `Encoder::write` accepts
+a bounded pixel prefix, and `advance` yields a leased chunk, input/output demand,
+progress or a terminal state. No second encoder algorithm is retained.
 
 PNG filtering retains the preceding unfiltered row plus bounded candidate/best
 row buffers. DEFLATE retains bounded history, lookahead, a block input buffer,

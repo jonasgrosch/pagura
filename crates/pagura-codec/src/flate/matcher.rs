@@ -1,10 +1,29 @@
 //! Bounded hash-chain LZ77 matching (RFC 1951 3.2.3/3.2.5 and section 4).
 use super::Level;
-use crate::encoding::filled;
-use pagura_core::Result;
+use crate::encoding::reserved;
+use pagura_core::{Meter, Result};
 
-const WINDOW: usize = 32768;
+pub(super) const WINDOW: usize = 32768;
 const NONE: usize = usize::MAX;
+
+/// The retained history plus one canonical block and two hash-lookahead bytes.
+#[derive(Clone, Copy)]
+pub(super) struct Window<'a> {
+    pub(super) bytes: &'a [u8],
+    pub(super) origin: usize,
+}
+
+impl<'a> Window<'a> {
+    fn tail(self, position: usize) -> Option<&'a [u8]> {
+        self.bytes.get(position.checked_sub(self.origin)?..)
+    }
+    fn range(self, position: usize, length: usize) -> Option<&'a [u8]> {
+        self.tail(position)?.get(..length)
+    }
+    fn byte(self, position: usize) -> u8 {
+        self.bytes[position - self.origin]
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Token {
@@ -21,23 +40,23 @@ pub(super) struct Matcher {
 }
 
 impl Matcher {
-    pub(super) fn new(size: usize, level: Level) -> Result<Self> {
+    pub(super) fn new(size: usize, level: Level, bytes: &mut Meter) -> Result<Self> {
         Ok(Self {
-            heads: filled(size.clamp(4, WINDOW).next_power_of_two(), NONE)?,
-            previous: filled(size.min(WINDOW), NONE)?,
+            heads: reserved(size.clamp(4, WINDOW).next_power_of_two(), NONE, bytes)?,
+            previous: reserved(size.min(WINDOW), NONE, bytes)?,
             depth: if level == Level::Fast { 32 } else { 128 },
             lazy: level == Level::Default,
         })
     }
 
-    fn hash(&self, input: &[u8], pos: usize) -> Option<usize> {
-        let bytes = input.get(pos..)?.get(..3)?;
+    fn hash(&self, input: Window<'_>, pos: usize) -> Option<usize> {
+        let bytes = input.range(pos, 3)?;
         let value =
             (usize::from(bytes[0]) * 251 + usize::from(bytes[1])) * 251 + usize::from(bytes[2]);
         Some(value & (self.heads.len() - 1))
     }
 
-    fn insert(&mut self, input: &[u8], pos: usize) -> usize {
+    fn insert(&mut self, input: Window<'_>, pos: usize) -> usize {
         let Some(hash) = self.hash(input, pos) else {
             return NONE;
         };
@@ -47,13 +66,19 @@ impl Matcher {
         old
     }
 
-    fn find(&self, input: &[u8], pos: usize, mut candidate: usize, end: usize) -> (usize, usize) {
+    fn find(
+        &self,
+        input: Window<'_>,
+        pos: usize,
+        mut candidate: usize,
+        end: usize,
+    ) -> (usize, usize) {
         let maximum = (end - pos).min(258);
         let mut best = (2, 0);
         if maximum < 3 {
             return best;
         }
-        let Some(target) = input.get(pos..pos + maximum) else {
+        let Some(target) = input.range(pos, maximum) else {
             return best;
         };
         for _ in 0..self.depth {
@@ -63,7 +88,7 @@ impl Matcher {
             // Only strict improvements matter. The byte just after the best
             // prefix rejects ties without rescanning that prefix. A maximum
             // length match exits below, so best.0 is smaller than maximum.
-            if let Some(source) = input.get(candidate..candidate + maximum)
+            if let Some(source) = input.range(candidate, maximum)
                 && source[best.0 - 1] == target[best.0 - 1]
                 && source[best.0] == target[best.0]
             {
@@ -87,7 +112,7 @@ impl Matcher {
 
     pub(super) fn tokenize(
         &mut self,
-        input: &[u8],
+        input: Window<'_>,
         start: usize,
         end: usize,
         tokens: &mut Vec<Token>,
@@ -106,7 +131,7 @@ impl Matcher {
                         .map_or(NONE, |hash| self.heads[hash]);
                     if self.find(input, pos + 1, next, end).0 > best.0 {
                         tokens.push(Token {
-                            value: u16::from(input[pos]),
+                            value: u16::from(input.byte(pos)),
                             distance: 0,
                         });
                         pos += 1;
@@ -120,7 +145,7 @@ impl Matcher {
                 pos += best.0;
             } else {
                 tokens.push(Token {
-                    value: u16::from(input[pos]),
+                    value: u16::from(input.byte(pos)),
                     distance: 0,
                 });
                 pos += 1;

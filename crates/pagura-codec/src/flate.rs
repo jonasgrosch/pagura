@@ -25,6 +25,7 @@ mod tests;
 
 use adler::Adler32;
 use bits::Bits;
+pub(crate) use encode::{Compressor, Encoded};
 use table::{
     CODE_284, DistanceTable, END_OF_BLOCK, EXCEPTIONAL, LINK, LITERAL, LitlenTable, PrecodeTable,
     base_plus_extra, code_length, total, value,

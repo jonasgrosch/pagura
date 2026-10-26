@@ -3,14 +3,41 @@
 //! Binary package-merge selects the cheapest 2*n-2 items at the last level.
 //! Each selected occurrence of a leaf contributes one bit to its code length.
 //! Stable weight/creation-order ties make the construction deterministic.
-use crate::encoding::{filled, limit};
-use pagura_core::Result;
+use crate::encoding::limit;
+use pagura_core::{Meter, Result};
 
 #[derive(Clone, Copy)]
 struct Node {
     weight: u64,
     symbol: usize,
     children: Option<[usize; 2]>,
+}
+
+/// One preallocated package-merge workspace, reused for all three alphabets.
+pub(super) struct Workspace {
+    nodes: Vec<Node>,
+    leaves: Vec<usize>,
+    current: Vec<usize>,
+    next: Vec<usize>,
+    packages: Vec<usize>,
+}
+
+impl Workspace {
+    pub(super) fn new(bytes: &mut Meter) -> Result<Self> {
+        let mut workspace = Self {
+            nodes: Vec::new(),
+            leaves: Vec::new(),
+            current: Vec::new(),
+            next: Vec::new(),
+            packages: Vec::new(),
+        };
+        bytes.reserve_capacity(&mut workspace.nodes, 286 * 15)?;
+        bytes.reserve_capacity(&mut workspace.leaves, 286)?;
+        bytes.reserve_capacity(&mut workspace.current, 2 * 286 + 15)?;
+        bytes.reserve_capacity(&mut workspace.next, 2 * 286 + 15)?;
+        bytes.reserve_capacity(&mut workspace.packages, 286)?;
+        Ok(workspace)
+    }
 }
 
 pub(super) struct Book<const N: usize> {
@@ -41,18 +68,26 @@ impl<const N: usize> Book<N> {
         Self { lengths, codes }
     }
 
-    pub(super) fn build(frequencies: &[u32; N], max_bits: u8) -> Result<Self> {
-        if N < 2 || !(1..=15).contains(&max_bits) {
+    pub(super) fn build(
+        frequencies: &[u32; N],
+        max_bits: u8,
+        workspace: &mut Workspace,
+    ) -> Result<Self> {
+        if !(2..=286).contains(&N) || !(1..=15).contains(&max_bits) {
             return Err(limit(0));
         }
         let count = frequencies.iter().filter(|&&f| f != 0).count().max(2);
         if count > (1 << max_bits) {
             return Err(limit(0));
         }
-        let mut nodes = Vec::new();
-        nodes
-            .try_reserve_exact(count * usize::from(max_bits))
-            .map_err(|_| limit(0))?;
+        let Workspace {
+            nodes,
+            leaves,
+            current,
+            next,
+            packages,
+        } = workspace;
+        nodes.clear();
         for (symbol, &weight) in frequencies.iter().enumerate() {
             if weight != 0 {
                 nodes.push(Node {
@@ -76,16 +111,11 @@ impl<const N: usize> Book<N> {
                 });
             }
         }
-        let mut leaves = filled(count, 0)?;
-        for (id, leaf) in leaves.iter_mut().enumerate() {
-            *leaf = id;
-        }
+        leaves.clear();
+        leaves.extend(0..count);
         leaves.sort_unstable_by_key(|&id| (nodes[id].weight, id));
-        let mut current = filled(2 * count, 0)?;
         current.clear();
-        current.extend_from_slice(&leaves);
-        let mut next = filled(2 * count, 0)?;
-        let mut packages = filled(count, 0)?;
+        current.extend_from_slice(leaves);
         for _ in 1..max_bits {
             packages.clear();
             for pair in current.as_chunks::<2>().0 {
@@ -112,13 +142,11 @@ impl<const N: usize> Book<N> {
                     package += 1;
                 }
             }
-            std::mem::swap(&mut current, &mut next);
+            std::mem::swap(current, next);
         }
         let selected = current.get(..2 * count - 2).ok_or_else(|| limit(0))?;
         let mut lengths = [0; N];
         // The stack has at most max_bits pending siblings plus selected roots.
-        next.try_reserve_exact(2 * count + usize::from(max_bits) - next.len())
-            .map_err(|_| limit(0))?;
         next.clear();
         next.extend_from_slice(selected);
         while let Some(id) = next.pop() {
@@ -135,14 +163,20 @@ impl<const N: usize> Book<N> {
 
 #[cfg(test)]
 mod tests {
-    use super::Book;
+    use super::{Book, Workspace};
+    use pagura_core::Meter;
+
+    fn build<const N: usize>(frequencies: &[u32; N], max: u8) -> pagura_core::Result<Book<N>> {
+        let mut bytes = Meter::new(usize::MAX, "test workspace");
+        Book::build(frequencies, max, &mut Workspace::new(&mut bytes)?)
+    }
 
     #[test]
     fn package_merge_matches_exhaustive_small_oracle() {
         // Independently enumerate every complete tree length assignment.
         for frequencies in [[1, 1, 1, 1], [1, 2, 4, 8], [1, 1, 1, 99], [10, 2, 3, 4]] {
             for max in 2..=4 {
-                let book = Book::build(&frequencies, max).unwrap();
+                let book = build(&frequencies, max).unwrap();
                 let actual: u32 = frequencies
                     .iter()
                     .zip(book.lengths)
@@ -182,7 +216,7 @@ mod tests {
             frequencies[i] = frequencies[i - 1] + frequencies[i - 2];
         }
         for max in [7, 15] {
-            let book = Book::build(&frequencies, max).unwrap();
+            let book = build(&frequencies, max).unwrap();
             assert!(book.lengths.iter().all(|&l| l <= max));
             assert!(book.lengths[..30].iter().all(|&l| l > 0));
             assert_eq!(
@@ -196,7 +230,7 @@ mod tests {
             assert!(book.lengths[30..].iter().all(|&l| l == 0));
         }
         assert_eq!(
-            Book::build(&[0_u32; 19], 7)
+            build(&[0_u32; 19], 7)
                 .unwrap()
                 .lengths
                 .iter()
@@ -206,7 +240,7 @@ mod tests {
         );
         let mut single = [0; 286];
         single[256] = 1;
-        let book = Book::build(&single, 15).unwrap();
+        let book = build(&single, 15).unwrap();
         assert_eq!(book.lengths[256], 1);
         assert_eq!(book.lengths.iter().filter(|&&l| l > 0).count(), 2);
     }

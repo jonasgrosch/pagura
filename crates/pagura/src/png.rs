@@ -2,11 +2,15 @@
 //!
 //! The existing codec handles Gray, RGB and straight RGBA buffers. Rendered
 //! surfaces are premultiplied; [`encode_pixmap`] consumes and converts their
-//! allocation in place before using the same encoder. Output is complete-buffer
-//! PNG with no ancillary colour/profile metadata, not incremental output.
+//! allocation in place before using the same encoder. [`Encoder`] accepts bounded
+//! pixel prefixes and yields immutable chunks under backpressure; [`encode`] and
+//! [`encode_pixmap`] collect that implementation. PNG output has no ancillary
+//! colour/profile metadata.
 
 pub use pagura_codec::flate::Level;
-pub use pagura_codec::png::{ColorType, Options, encode};
+pub use pagura_codec::png::{
+    ChunkLease, ColorType, Encoder, EncodingLimits, EncodingOutput, Options, encode,
+};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::Pixmap;
 

@@ -29,6 +29,19 @@
       ],
       "gaps": "Protocol, browser/native async adapters and worker scheduling remain group 11 obligations.",
       "rule": "Prepared sessions own scratch, a persistent global-band cursor and preallocated output slots. Pausing never repeats a band. A held immutable lease prevents slot reuse; no free slot means no execution. Cancellation is terminal and leaves existing leases valid and charged. Existing collectors, callbacks and owned sessions share the same executor and exact pixels."
+    },
+    {
+      "id": "incremental-encoding-lifecycle",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "implemented; hosted validation pending",
+      "tests": [
+        "pagura-codec/tests/streaming.rs",
+        "pagura-codec/src/flate/encode/tests.rs",
+        "pagura-codec/src/encoding_tests.rs"
+      ],
+      "gaps": "Rendered-band bridge, protocol and native/browser transport integration remain group 11 obligations.",
+      "rule": "PNG emits one canonical zlib stream using fixed DEFLATE and IDAT boundaries independent of input splits or output demand. Admission reserves bounded row/history/token/code/output storage and checks conservative work and output quotas. Pixel rows and output chunks stay bounded; held chunks retain their allocation charge. Only explicit completion after one checksum and IEND signifies success. Cancellation preserves existing leases without producing completion."
     }
   ]
 }

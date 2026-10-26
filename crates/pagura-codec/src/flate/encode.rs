@@ -1,11 +1,14 @@
 //! Deterministic block selection and RFC 1950/1951 serialization.
 use super::{
     DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA, Level,
-    huffman::Book,
-    matcher::{Matcher, Token},
+    huffman::{Book, Workspace},
+    matcher::{Matcher, Token, WINDOW, Window},
 };
 use crate::encoding::{Bytes, limit};
-use pagura_core::{Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
+
+#[cfg(test)]
+mod tests;
 
 const BLOCK: usize = 65535;
 const ORDER: [usize; 19] = [
@@ -55,7 +58,6 @@ struct Dynamic {
     literal: Book<286>,
     distance: Book<30>,
     lengths: Book<19>,
-    runs: Vec<Run>,
     literals: usize,
     distances: usize,
     count: usize,
@@ -108,12 +110,15 @@ fn payload_cost<const N: usize>(tokens: &[Token], literal: &Book<N>, distance: &
     size
 }
 
-fn length_runs(lengths: impl Iterator<Item = u8>) -> Result<Vec<Run>> {
-    let mut values = Vec::new();
-    values.try_reserve_exact(316).map_err(|_| limit(0))?;
-    values.extend(lengths);
-    let mut runs = Vec::new();
-    runs.try_reserve_exact(values.len()).map_err(|_| limit(0))?;
+fn length_runs(lengths: impl Iterator<Item = u8>, runs: &mut Vec<Run>) -> Result<()> {
+    let mut values = [0; 316];
+    let mut length = 0;
+    for (index, value) in lengths.enumerate() {
+        *values.get_mut(index).ok_or_else(|| limit(0))? = value;
+        length = index + 1;
+    }
+    let values = &values[..length];
+    runs.clear();
     let mut pos = 0;
     while pos < values.len() {
         let value = values[pos];
@@ -152,7 +157,7 @@ fn length_runs(lengths: impl Iterator<Item = u8>) -> Result<Vec<Run>> {
         }
         pos = end;
     }
-    Ok(runs)
+    Ok(())
 }
 
 #[expect(
@@ -168,10 +173,10 @@ fn repeat_run(symbol: u8, value: usize, bits: u8) -> Run {
 }
 
 impl Dynamic {
-    fn new(tokens: &[Token]) -> Result<Self> {
+    fn new(tokens: &[Token], workspace: &mut Workspace, runs: &mut Vec<Run>) -> Result<Self> {
         let (lit_freq, dist_freq) = frequencies(tokens);
-        let literal = Book::build(&lit_freq, 15)?;
-        let distance = Book::build(&dist_freq, 15)?;
+        let literal = Book::build(&lit_freq, 15, workspace)?;
+        let distance = Book::build(&dist_freq, 15, workspace)?;
         let literals = literal
             .lengths
             .iter()
@@ -180,17 +185,18 @@ impl Dynamic {
             .max(256)
             + 1;
         let distances = distance.lengths.iter().rposition(|&l| l != 0).unwrap_or(0) + 1;
-        let runs = length_runs(
+        length_runs(
             literal.lengths[..literals]
                 .iter()
                 .copied()
                 .chain(distance.lengths[..distances].iter().copied()),
+            runs,
         )?;
         let mut frequencies = [0; 19];
-        for run in &runs {
+        for run in runs.iter() {
             frequencies[usize::from(run.symbol)] += 1;
         }
-        let lengths = Book::build(&frequencies, 7)?;
+        let lengths = Book::build(&frequencies, 7, workspace)?;
         let count = ORDER
             .iter()
             .rposition(|&symbol| lengths.lengths[symbol] != 0)
@@ -209,7 +215,6 @@ impl Dynamic {
             literal,
             distance,
             lengths,
-            runs,
             literals,
             distances,
             count,
@@ -217,14 +222,14 @@ impl Dynamic {
         })
     }
 
-    fn header(&self, output: &mut Bits) -> Result<()> {
+    fn header(&self, output: &mut Bits, runs: &[Run]) -> Result<()> {
         output.put(small(self.literals - 257), 5)?;
         output.put(small(self.distances - 1), 5)?;
         output.put(small(self.count - 4), 4)?;
         for &symbol in ORDER.iter().take(self.count) {
             output.put(u32::from(self.lengths.lengths[symbol]), 3)?;
         }
-        for run in &self.runs {
+        for run in runs {
             output.symbol(&self.lengths, usize::from(run.symbol))?;
             output.put(u32::from(run.value), run.bits)?;
         }
@@ -276,11 +281,18 @@ fn fixed() -> (Book<288>, Book<30>) {
     (Book::from_lengths(lengths), Book::from_lengths([5; 30]))
 }
 
-fn block(output: &mut Bits, bytes: &[u8], tokens: &[Token], final_block: bool) -> Result<()> {
+fn block(
+    output: &mut Bits,
+    bytes: &[u8],
+    tokens: &[Token],
+    final_block: bool,
+    workspace: &mut Workspace,
+    runs: &mut Vec<Run>,
+) -> Result<()> {
     let (literal, distance) = fixed();
     let fixed_cost = 3 + payload_cost(tokens, &literal, &distance);
     let dynamic = if fixed_cost > 29 {
-        Some(Dynamic::new(tokens)?)
+        Some(Dynamic::new(tokens, workspace, runs)?)
     } else {
         None
     };
@@ -302,7 +314,7 @@ fn block(output: &mut Bits, bytes: &[u8], tokens: &[Token], final_block: bool) -
         output.bytes.extend(bytes)?;
     } else if let Some(dynamic) = dynamic.filter(|_| dynamic_cost < cost(fixed_cost)) {
         output.put(4 + u32::from(final_block), 3)?;
-        dynamic.header(output)?;
+        dynamic.header(output, runs)?;
         payload(output, tokens, &dynamic.literal, &dynamic.distance)?;
     } else {
         output.put(2 + u32::from(final_block), 3)?;
@@ -311,52 +323,159 @@ fn block(output: &mut Bits, bytes: &[u8], tokens: &[Token], final_block: bool) -
     Ok(())
 }
 
+/// One canonical block result; output is borrowed until the next mutation.
+pub(crate) enum Encoded<'a> {
+    NeedInput,
+    Bytes(&'a [u8]),
+    Complete,
+}
+
+/// Bounded input history and output, shared by full-buffer and PNG collectors.
+pub(crate) struct Compressor {
+    total: usize,
+    received: usize,
+    processed: usize,
+    origin: usize,
+    input: Vec<u8>,
+    matcher: Matcher,
+    tokens: Vec<Token>,
+    workspace: Workspace,
+    runs: Vec<Run>,
+    output: Bits,
+    adler: super::Adler32,
+    done: bool,
+}
+
+impl Compressor {
+    pub(crate) fn new(total: usize, level: Level, bytes: &mut Meter) -> Result<Self> {
+        let mut input = Vec::new();
+        bytes.reserve_capacity(&mut input, total.min(WINDOW + BLOCK + 2))?;
+        let mut tokens = Vec::new();
+        bytes.reserve_capacity(&mut tokens, total.min(BLOCK))?;
+        let mut runs = Vec::new();
+        bytes.reserve_capacity(&mut runs, 316)?;
+        let mut output = Bits {
+            bytes: Bytes::reserved(total.min(BLOCK) + 16, bytes)?,
+            pending: 0,
+            count: 0,
+        };
+        output.bytes.extend(if level == Level::Fast {
+            &[0x78, 0x01]
+        } else {
+            &[0x78, 0x9c]
+        })?;
+        Ok(Self {
+            total,
+            received: 0,
+            processed: 0,
+            origin: 0,
+            input,
+            matcher: Matcher::new(total, level, bytes)?,
+            tokens,
+            workspace: Workspace::new(bytes)?,
+            runs,
+            output,
+            adler: super::Adler32::new(),
+            done: false,
+        })
+    }
+
+    pub(crate) fn output(&self) -> &[u8] {
+        &self.output.bytes.data
+    }
+
+    pub(crate) fn finished(&self) -> bool {
+        self.done
+    }
+
+    fn block_end(&self) -> usize {
+        self.processed.saturating_add(BLOCK).min(self.total)
+    }
+
+    fn wanted(&self) -> usize {
+        self.block_end().saturating_add(2).min(self.total)
+    }
+
+    /// Accepts only what the next canonical block needs, including hash lookahead.
+    pub(crate) fn push(&mut self, bytes: &[u8]) -> Result<usize> {
+        if bytes.len() > self.total.saturating_sub(self.received) {
+            return Err(Error::invalid_argument(
+                "compression input exceeds declared length",
+            ));
+        }
+        let count = bytes.len().min(self.wanted().saturating_sub(self.received));
+        self.input.extend_from_slice(&bytes[..count]);
+        self.adler.update(&bytes[..count]);
+        self.received += count;
+        Ok(count)
+    }
+
+    /// One synchronous canonical-block step, with no allocation after admission.
+    pub(crate) fn advance(&mut self) -> Result<Encoded<'_>> {
+        if self.done {
+            return Ok(Encoded::Complete);
+        }
+        if self.received < self.wanted() {
+            return Ok(Encoded::NeedInput);
+        }
+        // The first block retains its zlib header; later blocks reuse storage.
+        if self.processed != 0 {
+            self.output.bytes.data.clear();
+        }
+        let end = self.block_end();
+        self.matcher.tokenize(
+            Window {
+                bytes: &self.input,
+                origin: self.origin,
+            },
+            self.processed,
+            end,
+            &mut self.tokens,
+        );
+        let final_block = end == self.total;
+        block(
+            &mut self.output,
+            &self.input[self.processed - self.origin..end - self.origin],
+            &self.tokens,
+            final_block,
+            &mut self.workspace,
+            &mut self.runs,
+        )?;
+        if final_block {
+            self.output.align()?;
+            self.output
+                .bytes
+                .extend(&self.adler.value().to_be_bytes())?;
+            self.done = true;
+        }
+        let origin = end.saturating_sub(WINDOW);
+        let discarded = origin - self.origin;
+        self.input.copy_within(discarded.., 0);
+        self.input.truncate(self.input.len() - discarded);
+        self.origin = origin;
+        self.processed = end;
+        Ok(Encoded::Bytes(&self.output.bytes.data))
+    }
+}
+
 pub(super) fn compress(data: &[u8], level: Level, limits: &Limits) -> Result<Vec<u8>> {
     if data.len() > limits.decoded_bytes || limits.stream_bytes < 8 {
         return Err(limit(data.len()));
     }
-    let mut output = Bits {
-        bytes: Bytes::new(limits.stream_bytes),
-        pending: 0,
-        count: 0,
-    };
-    output.bytes.extend(if level == Level::Fast {
-        &[0x78, 0x01]
-    } else {
-        &[0x78, 0x9c]
-    })?;
-    let mut matcher = Matcher::new(data.len(), level)?;
-    let mut tokens = Vec::new();
-    tokens
-        .try_reserve_exact(data.len().min(BLOCK))
-        .map_err(|_| limit(0))?;
-    if data.is_empty() {
-        block(&mut output, &[], &[], true)?;
-    }
-    for (index, bytes) in data.chunks(BLOCK).enumerate() {
-        let start = index * BLOCK;
-        matcher.tokenize(data, start, start + bytes.len(), &mut tokens);
-        block(
-            &mut output,
-            bytes,
-            &tokens,
-            start + bytes.len() == data.len(),
-        )?;
-    }
-    output.align()?;
-    output.bytes.extend(&adler32(data).to_be_bytes())?;
-    Ok(output.bytes.data)
-}
-
-fn adler32(input: &[u8]) -> u32 {
-    let (mut a, mut b) = (1_u32, 0_u32);
-    for chunk in input.chunks(5552) {
-        for &byte in chunk {
-            a += u32::from(byte);
-            b += a;
+    // The compatibility collector retains its exact final-output quota. The
+    // streaming PNG admission separately checks a conservative output bound.
+    let mut memory = Meter::new(2 * 1024 * 1024, "compression scratch budget exceeded");
+    let mut encoder = Compressor::new(data.len(), level, &mut memory)?;
+    let mut output = Bytes::new(limits.stream_bytes);
+    let mut received = 0;
+    loop {
+        received += encoder.push(&data[received..])?;
+        match encoder.advance()? {
+            Encoded::Bytes(bytes) => output.extend(bytes)?,
+            Encoded::Complete => return Ok(output.data),
+            Encoded::NeedInput => {
+                return Err(Error::invalid_argument("incomplete compression input"));
+            }
         }
-        a %= 65521;
-        b %= 65521;
     }
-    (b << 16) | a
 }

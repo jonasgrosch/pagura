@@ -3,10 +3,13 @@
 //! Rows are tightly packed, top to bottom, without premultiplication. Output
 //! contains only IHDR, contiguous IDAT chunks and IEND, with no colour profile.
 use crate::{
-    encoding::{Bytes, filled, limit},
+    encoding::{Bytes, limit},
     flate,
 };
 use pagura_core::{Error, Limits, Position, Result};
+
+mod stream;
+pub use stream::{ChunkLease, Encoder, EncodingLimits, EncodingOutput};
 
 /// The eight-bit sample layout of tightly packed input pixels.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -57,9 +60,9 @@ pub struct Options {
 /// Dimensions must be nonzero and at most 2^31-1 (11.2.2).
 ///
 /// Input is bounded by `limits.decoded_bytes` and `limits.pixels`, final PNG
-/// bytes by `limits.stream_bytes`. Scratch comprises a filtered image (one
-/// extra tag per row), two row buffers and bounded Flate scratch. The input is
-/// borrowed. Output is deterministic, non-interlaced, and uses no ancillary
+/// bytes by `limits.stream_bytes`. The same incremental encoder underlies this
+/// collector: scratch comprises bounded rows, history, tokens and chunks; no
+/// filtered image is allocated. The input is borrowed. Output is deterministic, non-interlaced, and uses no ancillary
 /// chunks; callers choose any external colour-management policy.
 ///
 /// # Errors
@@ -77,100 +80,73 @@ pub struct Options {
 /// # Ok::<(), pagura_core::Error>(())
 /// ```
 pub fn encode(pixels: &[u8], width: u32, height: u32, options: &Options) -> Result<Vec<u8>> {
-    if width == 0 || height == 0 || width > 0x7fff_ffff || height > 0x7fff_ffff {
-        return Err(Error::invalid_argument("invalid PNG dimensions").at(Position::Buffer(0)));
+    let geometry = stream::Geometry::new(width, height, options.color_type, options.limits.pixels)?;
+    if geometry.input_bytes() > options.limits.decoded_bytes {
+        return Err(limit(0));
     }
-    let width = usize::try_from(width).map_err(|_| limit(0))?;
-    let height = usize::try_from(height).map_err(|_| limit(0))?;
-    let count = width
-        .checked_mul(height)
-        .filter(|&n| n <= options.limits.pixels)
-        .ok_or_else(|| limit(0))?;
-    let channels = options.color_type.channels();
-    let size = count
-        .checked_mul(channels)
-        .filter(|&n| n <= options.limits.decoded_bytes)
-        .ok_or_else(|| limit(0))?;
-    if pixels.len() != size {
+    if pixels.len() != geometry.input_bytes() {
         return Err(Error::invalid_argument("PNG pixel byte count mismatch")
             .at(Position::Buffer(pixels.len())));
     }
-    // Signature/chunks need 57 bytes, plus at least eight bytes of zlib.
-    if options.limits.stream_bytes < 65 {
-        return Err(limit(0));
-    }
-    let row_bytes = width.checked_mul(channels).ok_or_else(|| limit(0))?;
-    // At most 128 per byte in the signed-difference score, without overflow.
-    u64::try_from(row_bytes)
-        .ok()
-        .and_then(|n| n.checked_mul(128))
-        .ok_or_else(|| limit(0))?;
-    let filtered_size = size.checked_add(height).ok_or_else(|| limit(0))?;
-    let filtered = filter(pixels, row_bytes, channels, filtered_size)?;
-    let mut limits = options.limits;
-    limits.decoded_bytes = filtered_size; // tags are framing, not pixel bytes
-    limits.stream_bytes -= 57; // reserve the minimum PNG framing before compression
-    let compressed = flate::compress(&filtered, options.level, &limits)?;
-    // Release the working image before allocating the final chunked output.
-    drop(filtered);
+    let mut encoder = Encoder::collecting(geometry, options)?;
     let mut output = Bytes::new(options.limits.stream_bytes);
-    output.extend(b"\x89PNG\r\n\x1a\n")?;
-    let mut ihdr = [0; 13];
-    ihdr[..4].copy_from_slice(&dimension(width)?.to_be_bytes());
-    ihdr[4..8].copy_from_slice(&dimension(height)?.to_be_bytes());
-    ihdr[8] = 8;
-    ihdr[9] = options.color_type.code();
-    chunk(&mut output, *b"IHDR", &ihdr)?;
-    for bytes in compressed.chunks(65536) {
-        chunk(&mut output, *b"IDAT", bytes)?;
+    let mut supplied = 0;
+    loop {
+        match encoder.advance()? {
+            EncodingOutput::Chunk(chunk) => output.extend(chunk.bytes())?,
+            EncodingOutput::NeedInput => {
+                supplied += encoder.write(&pixels[supplied..])?;
+            }
+            EncodingOutput::Yielded => {}
+            EncodingOutput::Complete => return Ok(output.data),
+            EncodingOutput::Backpressured | EncodingOutput::Cancelled => {
+                return Err(Error::invalid_argument("PNG collector cannot advance"));
+            }
+        }
     }
-    chunk(&mut output, *b"IEND", &[])?;
-    Ok(output.data)
 }
 
 fn dimension(value: usize) -> Result<u32> {
     u32::try_from(value).map_err(|_| limit(0))
 }
 
-fn filter(pixels: &[u8], row_bytes: usize, channels: usize, cap: usize) -> Result<Vec<u8>> {
-    let mut output = Bytes::new(cap);
-    let mut candidate = filled(row_bytes, 0)?;
-    let mut best = filled(row_bytes, 0)?;
-    let mut previous: &[u8] = &[];
-    for row in pixels.chunks_exact(row_bytes) {
-        let (mut best_score, mut best_tag) = (u64::MAX, 0);
-        for tag in 0..5 {
-            let mut score = 0;
-            for (i, (&byte, target)) in row.iter().zip(&mut candidate).enumerate() {
-                let left = i.checked_sub(channels).map_or(0, |p| row[p]);
-                let above = previous.get(i).copied().unwrap_or(0);
-                let corner = i
-                    .checked_sub(channels)
-                    .and_then(|p| previous.get(p))
-                    .copied()
-                    .unwrap_or(0);
-                let prediction = match tag {
-                    1 => left,
-                    2 => above,
-                    3 => mean(left, above),
-                    4 => crate::output::paeth(left, above, corner),
-                    _ => 0,
-                };
-                *target = byte.wrapping_sub(prediction);
-                let value = u16::from(*target);
-                score += u64::from(value.min(256 - value));
-            }
-            if score < best_score {
-                best_score = score;
-                best_tag = tag;
-                std::mem::swap(&mut candidate, &mut best);
-            }
+/// The same adaptive filter heuristic, retaining only the preceding row.
+fn filter_row(
+    row: &[u8],
+    previous: &[u8],
+    channels: usize,
+    candidate: &mut Vec<u8>,
+    best: &mut Vec<u8>,
+) -> u8 {
+    let (mut best_score, mut best_tag) = (u64::MAX, 0);
+    for tag in 0..5 {
+        let mut score = 0;
+        for (i, (&byte, target)) in row.iter().zip(&mut *candidate).enumerate() {
+            let left = i.checked_sub(channels).map_or(0, |p| row[p]);
+            let above = previous.get(i).copied().unwrap_or(0);
+            let corner = i
+                .checked_sub(channels)
+                .and_then(|p| previous.get(p))
+                .copied()
+                .unwrap_or(0);
+            let prediction = match tag {
+                1 => left,
+                2 => above,
+                3 => mean(left, above),
+                4 => crate::output::paeth(left, above, corner),
+                _ => 0,
+            };
+            *target = byte.wrapping_sub(prediction);
+            let value = u16::from(*target);
+            score += u64::from(value.min(256 - value));
         }
-        output.extend(&[best_tag])?;
-        output.extend(&best)?;
-        previous = row;
+        if score < best_score {
+            best_score = score;
+            best_tag = tag;
+            std::mem::swap(candidate, best);
+        }
     }
-    Ok(output.data)
+    best_tag
 }
 
 fn mean(a: u8, b: u8) -> u8 {
