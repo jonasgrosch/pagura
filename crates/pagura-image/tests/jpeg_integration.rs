@@ -44,10 +44,11 @@ fn lossless_jpeg_samples_reach_the_pdf_image_api() {
 fn lossless_sample_storage_and_work_have_exact_boundaries() {
     let data = fixture("image", "jpeg-lossless-vector-predictor-1-8.in");
     // Twenty u16 native samples coexist with twenty interleaved u16
-    // samples and twenty output bytes. Each sample is one entropy data unit.
+    // samples and twenty output bytes. Each sample is one entropy data unit;
+    // the shared scan terminator additionally inspects FF and D9 (two units).
     let limits = Limits {
         decoded_bytes: 100,
-        operations: 20,
+        operations: 22,
         pixels: 20,
         ..Limits::default()
     };
@@ -61,7 +62,7 @@ fn lossless_sample_storage_and_work_have_exact_boundaries() {
             ..limits
         },
         Limits {
-            operations: 19,
+            operations: 21,
             ..limits
         },
         Limits {
