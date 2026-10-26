@@ -17,7 +17,7 @@ fn owned(edges: &GlyphEdges, origin: Point, prep: &Prep<'_>, bytes: &mut Meter) 
     let Kind::Polygon {
         polygon,
         points,
-        certified,
+        state,
         ..
     } = &edges.kind
     else {
@@ -26,11 +26,7 @@ fn owned(edges: &GlyphEdges, origin: Point, prep: &Prep<'_>, bytes: &mut Meter) 
     translated(
         (polygon, points),
         origin,
-        if *certified {
-            Winding::Certified
-        } else {
-            Winding::Check(0.0)
-        },
+        state.winding(),
         prep,
         bytes,
         None,
@@ -198,7 +194,7 @@ fn sharing_refunds_only_dropped_edges_and_never_pins_on_refusal() {
     let Kind::Polygon {
         polygon,
         points,
-        certified,
+        state,
         ..
     } = &edges.kind
     else {
@@ -208,11 +204,7 @@ fn sharing_refunds_only_dropped_edges_and_never_pins_on_refusal() {
     let shared = translated(
         (polygon, points),
         Point::default(),
-        if *certified {
-            Winding::Certified
-        } else {
-            Winding::Check(0.0)
-        },
+        state.winding(),
         &prep,
         &mut shared_bytes,
         None,

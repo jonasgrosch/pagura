@@ -5,7 +5,7 @@
 
 use super::{Active, Tops};
 use crate::format::Format;
-use crate::plan::{Boundary, ItemKind, Layout, Plan};
+use crate::plan::{Boundary, ItemKind, Layout, Output, Plan};
 use crate::source::{PaintScratch, Source, SpanColors};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
@@ -69,6 +69,52 @@ pub(crate) enum PageBuffer {
     N16(Vec<[u16; 4]>),
     /// Premultiplied RGBA levels with the background embedded.
     F32(Vec<[f32; 4]>),
+}
+
+/// Page pixels and the dirty rows that output must drain and restore
+/// before another band can elide stores of the background.
+#[derive(Debug)]
+pub(crate) struct PageBand {
+    pixels: PageBuffer,
+    extents: Extents,
+}
+
+impl PageBand {
+    pub(super) fn pixels(&self) -> &PageBuffer {
+        &self.pixels
+    }
+
+    pub(super) fn parts_mut(&mut self) -> (&mut PageBuffer, &mut Extents) {
+        (&mut self.pixels, &mut self.extents)
+    }
+
+    pub(super) fn reset(&mut self, count: usize, background: [u8; 4], layout: Layout) {
+        debug_assert!(self.extents.rows.iter().all(|&extent| extent == EMPTY));
+        self.pixels.reset(count, background, layout);
+    }
+
+    /// Reads one dirty row and restores it immediately, retaining separate
+    /// conversion and fill loops so both can vectorize.
+    pub(super) fn drain_row(
+        &mut self,
+        row: usize,
+        width: usize,
+        output: &Output,
+        write: impl FnOnce(&PageBuffer, (usize, usize)),
+    ) {
+        let (lo, hi) = self
+            .extents
+            .take(row)
+            .map_or((0, 0), |(lo, hi)| (lo.min(width), hi.min(width)));
+        write(&self.pixels, (lo, hi));
+        let first = row * width;
+        self.pixels
+            .restore(first + lo..first + hi, output.background, output.layout);
+    }
+
+    fn bytes(&self) -> usize {
+        self.pixels.bytes() + self.extents.rows.capacity() * size_of::<[u32; 2]>()
+    }
 }
 
 impl PageBuffer {
@@ -230,9 +276,7 @@ pub(crate) struct Usage {
 #[derive(Debug)]
 pub(crate) struct Workspace {
     /// The page's band buffer.
-    pub(crate) page: PageBuffer,
-    /// The columns of the page's band that stores reached.
-    pub(crate) extents: Extents,
+    pub(crate) page: PageBand,
     /// F64 group buffers alive at once.
     pub(crate) wide: Vec<f64>,
     /// F32 group buffers alive at once.
@@ -464,8 +508,10 @@ impl Workspace {
             BandCoverage::default()
         };
         Ok(Self {
-            page: PageBuffer::new((format, layout), pixels, page, bytes)?,
-            extents: Extents::new(sizes.rows, bytes)?,
+            page: PageBand {
+                pixels: PageBuffer::new((format, layout), pixels, page, bytes)?,
+                extents: Extents::new(sizes.rows, bytes)?,
+            },
             wide,
             levels,
             starts,
@@ -509,7 +555,6 @@ impl Workspace {
             + self.starts.capacity() * size_of::<[u32; 2]>()
             + self.page.bytes()
             + self.selection.capacity() * 2
-            + self.extents.rows.capacity() * size_of::<[u32; 2]>()
             + self.boundary.1.capacity()
             + self.run_shapes.capacity() * size_of::<u32>()
             + self.active.iter().map(Active::bytes).sum::<usize>()
@@ -561,7 +606,7 @@ impl Kept {
         } = previous;
         coverage.clear();
         Self {
-            page: page.keep(page_layout(plan), pixels),
+            page: page.pixels.keep(page_layout(plan), pixels),
             coverage: (capacity == (plan.sizes.rows, pixels)).then_some(coverage),
             paints: keep_paints(&plan.paints, paint_scratch),
         }

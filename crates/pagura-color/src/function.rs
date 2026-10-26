@@ -437,14 +437,15 @@ impl Function {
             return;
         }
         let count = stride.min(self.outputs);
-        let points = outputs.chunks_exact_mut(stride).zip(inputs);
+        let batch = crate::batch::Batch::new((inputs, 1), (outputs, stride));
         match &self.kind {
             Kind::Exponential {
                 c0,
                 delta,
                 exponent,
             } => {
-                for (output, &x) in points {
+                for (input, output) in batch.points() {
+                    let x = input[0];
                     let (values, rest) = output.split_at_mut(count);
                     zero(rest);
                     exponential(self.input(&[x], 0), (c0, delta, *exponent), values);
@@ -452,7 +453,8 @@ impl Function {
                 }
             }
             Kind::Sampled(sampled) if self.inputs() == 1 => {
-                for (output, &x) in points {
+                for (input, output) in batch.points() {
+                    let x = input[0];
                     let (values, rest) = output.split_at_mut(count);
                     zero(rest);
                     let x = self.input(&[x], 0);
@@ -460,10 +462,10 @@ impl Function {
                     self.clip(values);
                 }
             }
-            Kind::Stitching(stitching) => self.stitch_line(stitching, inputs, outputs, stride),
+            Kind::Stitching(stitching) => self.stitch_line(stitching, batch),
             Kind::Sampled(_) | Kind::Calculator(_) => {
-                for (output, x) in points {
-                    self.evaluate(std::slice::from_ref(x), output);
+                for (input, output) in batch.points() {
+                    self.evaluate(input, output);
                 }
             }
         }
@@ -472,24 +474,14 @@ impl Function {
     /// [`Self::evaluate_line`] of a stitching function: the points are
     /// located and encoded a chunk at a time, and each run of points in one
     /// subdomain is evaluated by its subfunction's line.
-    fn stitch_line(
-        &self,
-        stitching: &Stitching,
-        inputs: &[f64],
-        outputs: &mut [f64],
-        stride: usize,
-    ) {
+    fn stitch_line(&self, stitching: &Stitching, batch: crate::batch::Batch<'_>) {
         const CHUNK: usize = 64;
+        let stride = batch.output_stride();
         let count = stride.min(self.outputs);
-        let points = inputs.len().min(outputs.len() / stride);
-        let inputs = &inputs[..points];
-        let outputs = &mut outputs[..points * stride];
         let mut located = [(0_usize, 0.0); CHUNK];
         let mut encoded = [0.0; CHUNK];
-        for (inputs, outputs) in inputs
-            .chunks(CHUNK)
-            .zip(outputs.chunks_mut(CHUNK.saturating_mul(stride)))
-        {
+        for chunk in batch.chunks(CHUNK) {
+            let (inputs, outputs) = chunk.parts();
             let located = &mut located[..inputs.len()];
             for (slot, &x) in located.iter_mut().zip(inputs) {
                 *slot = self.locate(stitching, self.input(&[x], 0));

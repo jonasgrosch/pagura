@@ -182,6 +182,76 @@ fn peek(stream: &Stream, count: u8) -> u32 {
     ((word << (stream.bit % 8)) >> (64 - count)) as u32
 }
 
+/// One packed AC prefix: either a code or one/two fused coefficients.
+/// Storage stays one u32; only this type knows its bit layout.
+#[derive(Clone, Copy)]
+struct Ac(u32);
+
+impl Ac {
+    const LENGTH: u32 = 15;
+    const RUN: u32 = 15;
+    const RUN_SHIFT: u32 = 4;
+    const LAST: u32 = 31;
+    const LAST_SHIFT: u32 = 8;
+    const VALUE_BITS: u32 = 11;
+    const VALUE: u32 = (1 << Self::VALUE_BITS) - 1;
+    const VALUE_SHIFT: u32 = 13;
+    const SECOND_SHIFT: u32 = 24;
+    const CODE_SHIFT: u32 = 16;
+
+    fn code(symbol: u32, bits: u32) -> Self {
+        Self(symbol << Self::LAST_SHIFT | bits << Self::CODE_SHIFT)
+    }
+
+    fn coefficient(bits: u32, run: u32, value: u32) -> Self {
+        Self(
+            bits | run << Self::RUN_SHIFT
+                | run << Self::LAST_SHIFT
+                | (value & Self::VALUE) << Self::VALUE_SHIFT,
+        )
+    }
+
+    fn length(self) -> u32 {
+        self.0 & Self::LENGTH
+    }
+    fn run(self) -> u32 {
+        self.0 >> Self::RUN_SHIFT & Self::RUN
+    }
+    fn last(self) -> u32 {
+        self.0 >> Self::LAST_SHIFT & Self::LAST
+    }
+    fn value(self) -> i32 {
+        let align = u32::BITS - Self::VALUE_BITS;
+        (self.0 << (align - Self::VALUE_SHIFT)).cast_signed() >> align
+    }
+    fn second(self) -> i32 {
+        self.0.cast_signed() >> Self::SECOND_SHIFT
+    }
+
+    fn following(self, next: Self) -> Self {
+        match i8::try_from(next.value()) {
+            Ok(value)
+                if self.length() != 0
+                    && next.length() != 0
+                    && self.length() + next.length() <= 12 =>
+            {
+                Self(
+                    self.0
+                        + next.length()
+                        + ((1 + next.run()) << Self::LAST_SHIFT)
+                        + (u32::from(value.cast_unsigned()) << Self::SECOND_SHIFT),
+                )
+            }
+            _ => self,
+        }
+    }
+
+    fn fallback(self) -> Option<(u8, u32)> {
+        let [_, symbol, length, _] = self.0.to_le_bytes();
+        (self.0 != 0 && self.length() == 0).then_some((symbol, u32::from(length)))
+    }
+}
+
 /// Twelve-bit prefix lookups. A DC entry holds the code's symbol, its
 /// length and, when its magnitude fits the prefix (flag 0x8000), the
 /// magnitude's value (bits 16–31) and the length with it.
@@ -233,11 +303,12 @@ pub(super) fn wide_table(
                 }
                 (true, true) if size > 0 => {
                     // An AC value has at most eleven bits.
-                    let entry = (bits + used) | run << 4 | run << 8;
-                    slots.for_each(|(suffix, slot)| *slot = entry | (value(suffix) & 0x7ff) << 13);
+                    slots.for_each(|(suffix, slot)| {
+                        *slot = Ac::coefficient(bits + used, run, value(suffix)).0;
+                    });
                 }
                 (false, false) => entries.fill(symbol | bits << 8),
-                (true, _) => entries.fill(symbol << 8 | bits << 16),
+                (true, _) => entries.fill(Ac::code(symbol, bits).0),
             }
         }
     }
@@ -251,17 +322,10 @@ pub(super) fn wide_table(
 /// The AC entry of `prefix` joined with the coefficient that follows, when
 /// both fit the prefix and the second value fits a byte.
 fn pair(table: &[u32; 4096], prefix: usize) -> u32 {
-    let entry = table[prefix];
-    let length = entry & 15;
-    let next = table[(prefix << length) & 4095];
-    let value = (next << 8).cast_signed() >> 21;
-    match i8::try_from(value) {
-        Ok(value) if length != 0 && next & 15 != 0 && length + (next & 15) <= 12 => {
-            let advance = 1 + (next >> 4 & 15);
-            entry + (next & 15) + (advance << 8) + (u32::from(value.cast_unsigned()) << 24)
-        }
-        _ => entry,
-    }
+    let entry = Ac(table[prefix]);
+    entry
+        .following(Ac(table[(prefix << entry.length()) & 4095]))
+        .0
 }
 
 /// Joins a DC magnitude and its following EOB into one twelve-bit prefix.
@@ -278,9 +342,11 @@ pub(super) fn shortcut(dc: &Huffman, ac: &Huffman, bits: &mut Bits<'_>) -> Resul
         if entry & 0x8000 == 0 || used >= 12 {
             return 0;
         }
-        let following = ac.wide[(prefix << used) & 4095];
-        let length = ((following >> 16) & 31) as usize;
-        if following & 0xff0f != 0 || length == 0 || length + used > 12 {
+        let Some((0, length)) = Ac(ac.wide[(prefix << used) & 4095]).fallback() else {
+            return 0;
+        };
+        let length = length as usize;
+        if length == 0 || length + used > 12 {
             return 0;
         }
         (entry & 0xffff_0000) | u32::try_from(used + length).unwrap_or(0)
@@ -465,25 +531,19 @@ fn block(
         if window.valid < 12 {
             window.refill();
         }
-        let entry = ac_prefixes[window.peek(12) as usize];
+        let entry = Ac(ac_prefixes[window.peek(12) as usize]);
         // One or two coefficients, unless the block ends before the last.
         // A single one stores a zero second value at its own position first.
-        let last = k + (entry >> 8 & 31) as usize;
-        if entry & 15 != 0 && last < 64 {
-            window.consume(entry & 15);
-            store(last, entry.cast_signed() >> 24);
-            store(
-                k + (entry >> 4 & 15) as usize,
-                (entry << 8).cast_signed() >> 21,
-            );
+        let last = k + entry.last() as usize;
+        if entry.length() != 0 && last < 64 {
+            window.consume(entry.length());
+            store(last, entry.second());
+            store(k + entry.run() as usize, entry.value());
             k = last + 1;
             continue;
         }
         // Any other code, or coefficients decoded one at a time.
-        let [_, symbol, length, _] = entry.to_le_bytes();
-        let code =
-            (entry != 0 && entry.trailing_zeros() >= 4).then_some((symbol, u32::from(length)));
-        let (symbol, value) = window.token(ac, code, true)?;
+        let (symbol, value) = window.token(ac, entry.fallback(), true)?;
         if symbol == 0 {
             break;
         }
