@@ -235,13 +235,13 @@ pub(super) fn centreline(run: &Run, bytes: &mut Meter) -> Result<Vec<Point>> {
 /// How a run's joints border its segments: segment `i` runs from point `i`
 /// to point `i + 1`, wrapping around in a closed run.
 #[derive(Clone, Copy)]
-struct Joints {
-    closed: bool,
-    segments: usize,
+pub(super) struct Joints {
+    pub(super) closed: bool,
+    pub(super) segments: usize,
 }
 
 impl Joints {
-    fn after(self, segment: usize) -> usize {
+    pub(super) fn after(self, segment: usize) -> usize {
         if self.closed {
             (segment + 1) % self.segments
         } else {
@@ -250,7 +250,7 @@ impl Joints {
     }
 
     /// The segments before and after point `j`; open ends have none.
-    fn around(self, j: usize) -> Option<(usize, usize)> {
+    pub(super) fn around(self, j: usize) -> Option<(usize, usize)> {
         if self.closed {
             Some(((j + self.segments - 1) % self.segments, j))
         } else {
@@ -260,7 +260,11 @@ impl Joints {
 }
 
 /// Each segment's unit direction and length.
-fn segments(points: &[Point], joints: Joints, bytes: &mut Meter) -> Result<Vec<(Point, f64)>> {
+pub(super) fn segments(
+    points: &[Point],
+    joints: Joints,
+    bytes: &mut Meter,
+) -> Result<Vec<(Point, f64)>> {
     let mut segments = Vec::new();
     bytes.reserve(&mut segments, joints.segments)?;
     for i in 0..joints.segments {

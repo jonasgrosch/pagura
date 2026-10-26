@@ -24,6 +24,14 @@
 //! rather than every crossing and end of the row times every piece across
 //! it. Coverage continuing across a cut needs no side there.
 //!
+//! A stroke whose own geometry proves cells covered (its spine) names the
+//! column ranges of a row where every cell is. The row is cut at their
+//! bounds and those chunks are passed over rather than swept: they have no
+//! sides, since a side on a bound is a vertical piece there, which the chunk
+//! beside them owns; and the windings they carry on are those carried into
+//! them plus their pieces' directions, which do not depend on the pieces'
+//! order.
+//!
 //! Most crossings of overlapping marks lie inside their union: a stroke
 //! whose segments are shorter than its pen fans out into pieces that cross
 //! each other many times over within the covered set. Where all that
@@ -111,6 +119,17 @@ fn sort_work(count: usize) -> usize {
     count.saturating_mul(count.max(1).ilog2() as usize + 2)
 }
 
+/// The fewest pieces of a row worth proving its cells for: fewer sweep in
+/// about what the proof costs.
+pub(crate) const PROVEN_PIECES: usize = PLAIN_PIECES;
+
+/// The most proven column ranges a row of `pieces` pieces passes over:
+/// each adds a cut on either side, which the reuse of repeated strokes
+/// bounds.
+pub(crate) fn proven_runs(pieces: usize) -> usize {
+    1 + pieces / 8
+}
+
 /// Reusable storage of the resolver.
 #[derive(Debug, Default)]
 pub(crate) struct Resolver {
@@ -150,6 +169,13 @@ pub(crate) struct Resolver {
     row_ends: Vec<(f64, f64)>,
     lasts: Vec<f64>,
     cuts: Vec<f64>,
+    /// The left columns of the chunks passed over, and the cuts merged with
+    /// their bounds.
+    skips: Vec<f64>,
+    merged: Vec<f64>,
+    /// In a chunk passed over, by height and group, the directions of the
+    /// pieces spanning the sub-slab below.
+    spanning: Vec<i64>,
     /// Sort keys of heights and spans, and spans in their sorted order.
     height_keys: Vec<u64>,
     span_keys: Vec<u128>,
@@ -228,6 +254,24 @@ impl Resolver {
         top: f64,
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
+        self.row_proven(pieces, rules, top, &[], (out, meters))
+    }
+
+    /// [`Self::row`], where under one group `proven` lists column ranges,
+    /// ascending and apart, in which every cell of the row is known covered:
+    /// their chunks are passed over, at the sorts of their pieces' ends.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::row`].
+    pub(crate) fn row_proven(
+        &mut self,
+        pieces: &[Piece],
+        rules: &[FillRule],
+        top: f64,
+        proven: &[(f64, f64)],
+        (out, meters): (&mut Vec<Line>, Meters<'_>),
+    ) -> Result<()> {
         let Meters { work, bytes } = meters;
         u32::try_from(pieces.len()).map_err(|_| Error::limit("row resolver pieces exceed u32"))?;
         self.carry.clear();
@@ -236,10 +280,12 @@ impl Resolver {
         room(&mut self.carried, rules.len(), bytes)?;
         self.carry.push(top);
         self.carried.resize(rules.len(), 0);
-        if pieces.len() <= CHUNK {
+        let proven = if rules.len() == 1 { proven } else { &[] };
+        if pieces.len() <= CHUNK && proven.is_empty() {
             return self.sweep(pieces, (rules, top), (out, work, bytes), false);
         }
         self.cut(pieces, (work, bytes))?;
+        self.prove(proven, (work, bytes))?;
         let mut live = std::mem::take(&mut self.live);
         let mut local = std::mem::take(&mut self.local);
         let result = self.chunks(
@@ -297,8 +343,38 @@ impl Resolver {
         Ok(())
     }
 
+    /// Cuts the row on either side of each `proven` range, with none of
+    /// [`Self::cut`]'s cuts within: those chunks are passed over.
+    fn prove(
+        &mut self,
+        proven: &[(f64, f64)],
+        (work, bytes): (&mut Meter, &mut Meter),
+    ) -> Result<()> {
+        self.skips.clear();
+        if proven.is_empty() {
+            return Ok(());
+        }
+        work.charge(self.cuts.len().saturating_add(proven.len()))?;
+        room(&mut self.skips, proven.len(), bytes)?;
+        room(&mut self.merged, self.cuts.len() + 2 * proven.len(), bytes)?;
+        self.merged.clear();
+        let mut cuts = self.cuts.iter().copied().peekable();
+        for &(left, right) in proven {
+            while let Some(c) = cuts.next_if(|&c| c < left) {
+                self.merged.push(c);
+            }
+            while cuts.next_if(|&c| c <= right).is_some() {}
+            self.merged.extend([left, right]);
+            self.skips.push(left);
+        }
+        self.merged.extend(cuts);
+        std::mem::swap(&mut self.cuts, &mut self.merged);
+        Ok(())
+    }
+
     /// Sweeps the chunks between the cuts left to right, each with the
-    /// pieces reaching it clipped to its columns.
+    /// pieces reaching it clipped to its columns, or passes over those
+    /// known covered.
     fn chunks(
         &mut self,
         pieces: &[Piece],
@@ -307,15 +383,19 @@ impl Resolver {
         (out, work, bytes): (&mut Vec<Line>, &mut Meter, &mut Meter),
     ) -> Result<()> {
         live.clear();
-        let mut entered = 0;
+        let (mut entered, mut skip) = (0, 0);
         let chunks = self.cuts.len() + 1;
         for k in 0..chunks {
             let left = k.checked_sub(1).map_or(f64::NEG_INFINITY, |c| self.cuts[c]);
             let right = self.cuts.get(k).copied().unwrap_or(f64::INFINITY);
+            // A chunk before one passed over owns the vertical pieces on the
+            // cut between them, which may be sides; one passed over has none.
+            let skipped = self.skips.get(skip) == Some(&left);
+            let owns_right = self.skips.get(skip + usize::from(skipped)) == Some(&right);
             work.charge(live.len().saturating_add(1))?;
             live.retain(|&i| self.spans[i as usize].1 >= left);
             while let Some(&(first, _, _)) = self.spans.get(entered)
-                && first < right
+                && (first < right || (owns_right && first == right))
             {
                 room(live, 1, bytes)?;
                 live.push(u32::try_from(entered).unwrap_or(u32::MAX));
@@ -326,10 +406,130 @@ impl Resolver {
             room(local, live.len(), bytes)?;
             for &n in live.iter() {
                 let i = self.spans[n as usize].2 as usize;
-                local.extend(clip(pieces[i], self.row_ends[i], (left, right)));
+                let owned = (!skipped, owns_right);
+                local.extend(clip(pieces[i], self.row_ends[i], (left, right), owned));
             }
-            self.sweep(local, (rules, top), (out, work, bytes), k + 1 < chunks)?;
+            // A chunk passed over always has one after it.
+            if skipped {
+                skip += 1;
+                #[cfg(debug_assertions)]
+                let carried = (self.carry.clone(), self.carried.clone());
+                self.pass(local, (rules, top), (work, bytes))?;
+                #[cfg(debug_assertions)]
+                self.check_pass(local, (rules, top), carried);
+            } else {
+                self.sweep(local, (rules, top), (out, work, bytes), k + 1 < chunks)?;
+            }
         }
+        Ok(())
+    }
+
+    /// Checks a chunk passed over against its sweep from the windings
+    /// `carried` into it: the sweep finds no side there and carries on what
+    /// the pass did. Debug builds only, on unmetered scratch.
+    #[cfg(debug_assertions)]
+    fn check_pass(
+        &mut self,
+        pieces: &[Piece],
+        (rules, top): (&[FillRule], f64),
+        carried: (Vec<f64>, Vec<i64>),
+    ) {
+        let passed = (
+            std::mem::replace(&mut self.carry, carried.0),
+            std::mem::replace(&mut self.carried, carried.1),
+        );
+        let (mut sides, mut work, mut bytes) = (
+            Vec::new(),
+            Meter::new(usize::MAX, "check"),
+            Meter::new(usize::MAX, "check"),
+        );
+        let swept = self.sweep(
+            pieces,
+            (rules, top),
+            (&mut sides, &mut work, &mut bytes),
+            true,
+        );
+        debug_assert!(
+            swept.is_ok() && sides.is_empty(),
+            "a proven chunk has sides: {sides:?}"
+        );
+        debug_assert_eq!(
+            (&self.carry, &self.carried),
+            (&passed.0, &passed.1),
+            "a proven chunk carries other windings than its sweep"
+        );
+        (self.carry, self.carried) = passed;
+    }
+
+    /// Carries the windings over `pieces`, which lie in a chunk known
+    /// covered throughout: it has no sides, and the windings right of it
+    /// are those left of it plus the directions of the pieces spanning each
+    /// height, in whatever order they lie. They change at the heights the
+    /// chunk's sweep would record them at: its pieces' ends and the breaks
+    /// carried in, not its crossings.
+    fn pass(
+        &mut self,
+        pieces: &[Piece],
+        (rules, top): (&[FillRule], f64),
+        (work, bytes): (&mut Meter, &mut Meter),
+    ) -> Result<()> {
+        let count = pieces.len();
+        let heights = 2 * count + 2 + self.carry.len().saturating_sub(1);
+        let groups = rules.len();
+        // The heights' sort, two searches per piece among them, and a pass
+        // over their directions.
+        work.charge(sort_work(heights))?;
+        work.charge_product(count, 2 * (heights.max(1).ilog2() as usize + 1))?;
+        work.charge(heights.saturating_mul(groups))?;
+        room(&mut self.heights, heights, bytes)?;
+        room(&mut self.height_keys, heights, bytes)?;
+        room(&mut self.spanning, heights.saturating_mul(groups), bytes)?;
+        room(&mut self.windings, groups, bytes)?;
+        self.heights.clear();
+        self.heights.extend([top, top + 1.0]);
+        self.heights.extend_from_slice(&self.carry[1..]);
+        for p in pieces {
+            self.heights.extend([p.lo, p.hi]);
+        }
+        sort_values(&mut self.heights, &mut self.height_keys);
+        self.heights.dedup();
+        // Each piece's direction from the height it starts at, less from
+        // the height it ends at, summed down the heights.
+        self.spanning.clear();
+        self.spanning.resize(self.heights.len() * groups, 0);
+        for p in pieces {
+            let g = usize::from(p.group);
+            let start = self.heights.partition_point(|&h| h < p.lo);
+            let end = self.heights.partition_point(|&h| h < p.hi);
+            if let (Some(s), true) = (self.spanning.get_mut(start * groups + g), g < groups) {
+                *s += i64::from(p.direction);
+            }
+            if let (Some(s), true) = (self.spanning.get_mut(end * groups + g), g < groups) {
+                *s -= i64::from(p.direction);
+            }
+        }
+        for i in groups..self.spanning.len() {
+            self.spanning[i] += self.spanning[i - groups];
+        }
+        self.windings.clear();
+        self.windings.resize(groups, 0);
+        self.after.clear();
+        self.carried_after.clear();
+        let mut segment = 0;
+        for k in 0..self.heights.len().saturating_sub(1) {
+            let a = self.heights[k];
+            while self.carry.get(segment + 1).is_some_and(|&y| y <= a) {
+                segment += 1;
+            }
+            let from = segment.saturating_mul(groups);
+            let carried = self.carried.get(from..from.saturating_add(groups));
+            for (g, w) in self.windings.iter_mut().enumerate() {
+                *w = carried.map_or(0, |c| c[g]) + self.spanning[k * groups + g];
+            }
+            self.carry_on(a, bytes)?;
+        }
+        std::mem::swap(&mut self.carry, &mut self.after);
+        std::mem::swap(&mut self.carried, &mut self.carried_after);
         Ok(())
     }
 
@@ -1083,11 +1283,28 @@ fn doubtful(
 /// `piece`, whose x at its ends is `(start, end)`, within columns
 /// `left..right`: its heights where its x is there, cut where it crosses
 /// `left` or `right`, at the same heights for the chunks on either side.
-fn clip(piece: Piece, (start, end): (f64, f64), (left, right): (f64, f64)) -> Option<Piece> {
+/// A vertical piece on `left` or `right` is the chunk's where it `owns` that
+/// side.
+fn clip(
+    piece: Piece,
+    (start, end): (f64, f64),
+    (left, right): (f64, f64),
+    owns: (bool, bool),
+) -> Option<Piece> {
     // A vertical edge has no inverse crossing. Chunks own their left side
-    // and exclude their right, independently of the contour's direction.
+    // and exclude their right, independently of the contour's direction,
+    // unless the chunk on one side is passed over.
     if piece.line.a.x == piece.line.b.x {
-        return (left <= piece.line.a.x && piece.line.a.x < right).then_some(piece);
+        let x = piece.line.a.x;
+        let after = if owns.0 { left <= x } else { left < x };
+        let before = if owns.1 { x <= right } else { x < right };
+        return (after && before).then_some(piece);
+    }
+    // A piece all on or right of `right` is the next chunk's, whatever the
+    // rounding of its crossing there: one that owns that side takes in the
+    // pieces starting on it, for their vertical ones.
+    if start.min(end) >= right {
+        return None;
     }
     let rising = end > start;
     let (mut lo, mut hi) = (piece.lo, piece.hi);
