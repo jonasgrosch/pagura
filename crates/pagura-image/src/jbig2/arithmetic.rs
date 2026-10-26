@@ -65,7 +65,7 @@ pub(super) struct Decoder<'a> {
     base: usize,
     interval: u32,
     code: u32,
-    bits: u8,
+    bits: u32,
 }
 
 impl<'a> Decoder<'a> {
@@ -118,6 +118,12 @@ impl<'a> Decoder<'a> {
         Ok(())
     }
 
+    /// The next decision in `context` (E.3.2).
+    #[expect(
+        clippy::inline_always,
+        reason = "every pixel of a region takes this path; it shares the region loop's registers"
+    )]
+    #[inline(always)]
     pub(super) fn bit(&mut self, context: &mut Context) -> Result<u8> {
         let (qe, nmps, nlps, exchange) = STATES[usize::from(context.state)];
         self.interval -= qe;
@@ -150,13 +156,16 @@ impl<'a> Decoder<'a> {
                 context.state = nmps;
             }
         }
+        // E.3.3, shifting as many bits at once as the interval needs and
+        // the current byte holds; the interval is at least one.
         while self.interval < 0x8000 {
             if self.bits == 0 {
                 self.byte_in()?;
             }
-            self.interval <<= 1;
-            self.code <<= 1;
-            self.bits -= 1;
+            let shift = (self.interval.leading_zeros() - 16).min(self.bits);
+            self.interval <<= shift;
+            self.code <<= shift;
+            self.bits -= shift;
         }
         Ok(bit)
     }
