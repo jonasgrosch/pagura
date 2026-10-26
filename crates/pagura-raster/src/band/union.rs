@@ -167,9 +167,11 @@ pub(crate) struct Resolver {
     /// The heights where pairs may cross further than [`SURE`] from a
     /// crossing found, or that a pair found not to cross may cross near an
     /// end, with the pair; the heights whose sub-slabs each reaches, by the
-    /// first; those reaching the heights swapped at, and the next to reach.
+    /// first; per height how many reach it; those reaching the heights last
+    /// swapped at, and the next to reach.
     doubtful: Vec<(f64, f64, u32, u32)>,
     bands: Vec<(usize, usize, u32, u32)>,
+    reached: Vec<i32>,
     reaching: Vec<(usize, u32, u32)>,
     band: usize,
     /// Turns the swaps off, for comparison with the full sweep, and counts
@@ -380,7 +382,7 @@ impl Resolver {
         self.heights.dedup();
         self.keep = swaps;
         if swaps {
-            self.prepare_swaps(count, bytes)?;
+            self.prepare_swaps(count, work, bytes)?;
         }
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
@@ -728,11 +730,12 @@ impl Resolver {
     }
 
     /// Orders the crossings found by height, makes room for the windings and
-    /// places of `pieces` pieces, and finds for each doubtful pair the
-    /// heights whose sub-slabs above or below reach into its heights: two
-    /// searches per pair, and their sort, which the sorts of the heights and
-    /// the pairs' tests are charged for.
-    fn prepare_swaps(&mut self, pieces: usize, bytes: &mut Meter) -> Result<()> {
+    /// places of `pieces` pieces, finds for each doubtful pair the heights
+    /// whose sub-slabs above or below reach into its heights, and counts per
+    /// height the pairs reaching it. The crossings are among the heights the
+    /// sweep's charge sorts; the pairs' two searches each, their sort and the
+    /// count over the heights are charged here.
+    fn prepare_swaps(&mut self, pieces: usize, work: &mut Meter, bytes: &mut Meter) -> Result<()> {
         self.crosses.sort_unstable();
         // Every entry is written before it is read, so earlier sweeps' stay.
         if self.lefts.len() < pieces {
@@ -744,9 +747,25 @@ impl Resolver {
         self.lowest = f64::NEG_INFINITY;
         let count = self.heights.len();
         self.bands.clear();
+        self.reached.clear();
         self.reaching.clear();
         self.band = 0;
+        if self.doubtful.is_empty() {
+            return Ok(());
+        }
+        let searches = self
+            .doubtful
+            .len()
+            .saturating_mul(2 * (count.ilog2() as usize + 1));
+        work.charge(
+            sort_work(self.doubtful.len())
+                .saturating_add(searches)
+                .saturating_add(count),
+        )?;
         room(&mut self.bands, self.doubtful.len(), bytes)?;
+        room(&mut self.reached, count + 1, bytes)?;
+        room(&mut self.reaching, self.doubtful.len(), bytes)?;
+        self.reached.resize(count + 1, 0);
         let heights = &self.heights;
         let middle = |t: usize| heights[t - 1].midpoint(heights[t]);
         for &(lo, hi, i, j) in &self.doubtful {
@@ -764,9 +783,16 @@ impl Resolver {
                 n => n - 1,
             };
             self.bands.push((first, last, i, j));
+            self.reached[first] += 1;
+            self.reached[last + 1] -= 1;
         }
         self.bands.sort_unstable_by_key(|band| band.0);
-        room(&mut self.reaching, self.bands.len(), bytes)
+        let mut reaching = 0;
+        for reached in &mut self.reached {
+            reaching += *reached;
+            *reached = reaching;
+        }
+        Ok(())
     }
 
     /// Takes the sub-slabs from `heights[k]` on, through the heights closer
@@ -797,6 +823,8 @@ impl Resolver {
         {
             last += 1;
         }
+        // A cluster starts after a gap, so each height is passed once.
+        work.charge(last - k + 1)?;
         // Nothing ends, starts or comes in from the left there.
         let (below, Some(&after)) = (self.heights[last], self.heights.get(last + 1)) else {
             return Ok(None);
@@ -808,32 +836,62 @@ impl Resolver {
             return Ok(None);
         }
         // The doubtful pairs that may change places between the middles
-        // around them: they are taken as crossing.
-        while let Some(&(first, end, i, j)) = self.bands.get(self.band)
-            && first <= last
-        {
-            self.reaching.push((end, i, j));
-            self.band += 1;
-        }
-        self.reaching.retain(|&(end, _, _)| end >= k);
+        // around them, at most a few: they are taken as crossing. Each pair
+        // joins and leaves the list once, and the list is passed only where
+        // few reach.
         let mut doubtful = [(0, 0); 8];
-        let Some(doubtful) = doubtful.get_mut(..self.reaching.len()) else {
-            return Ok(None);
+        let reach = self
+            .reached
+            .get(k..=last)
+            .and_then(|reached| reached.iter().copied().max())
+            .map_or(0, |most| usize::try_from(most).unwrap_or(0));
+        let doubtful = if reach == 0 {
+            &mut doubtful[..0]
+        } else {
+            if reach > doubtful.len() {
+                return Ok(None);
+            }
+            while let Some(&(first, end, i, j)) = self.bands.get(self.band)
+                && first <= last
+            {
+                self.reaching.push((end, i, j));
+                self.band += 1;
+            }
+            work.charge(self.reaching.len())?;
+            self.reaching.retain(|&(end, _, _)| end >= k);
+            let Some(doubtful) = doubtful.get_mut(..self.reaching.len()) else {
+                return Ok(None);
+            };
+            for (pair, &(_, i, j)) in doubtful.iter_mut().zip(&self.reaching) {
+                *pair = (i, j);
+            }
+            doubtful
         };
-        for (pair, &(_, i, j)) in doubtful.iter_mut().zip(&self.reaching) {
-            *pair = (i, j);
-        }
         let until = u128::from(total_key(below.to_bits()));
         let taken = self.crosses[cross..]
             .iter()
             .take_while(|&&c| c >> 64 <= until)
             .count();
+        // Per sub-slab a unit per piece placed and joined, one to join, and
+        // one move per crossing, charged before the swaps are made.
+        let after_index = last + 1;
+        let each = self
+            .order
+            .len()
+            .saturating_mul(2)
+            .saturating_add(self.open.len())
+            .saturating_add(1);
+        let charge = each.saturating_mul(after_index - k).saturating_add(taken);
+        if taken == 0 {
+            return Ok(None);
+        }
+        work.charge(charge)?;
         let mid = below.midpoint(after);
-        if taken == 0
-            || self
-                .swap_inside(pieces, (cross..cross + taken, doubtful), mid)
-                .is_none()
+        if self
+            .swap_inside(pieces, (cross..cross + taken, doubtful), mid)
+            .is_none()
         {
+            work.refund(charge);
             return Ok(None);
         }
         // The order is the exact order below them.
@@ -842,22 +900,11 @@ impl Resolver {
             let x = |i: u32| pieces[i as usize].line.x(mid);
             debug_assert!(x(pair[0].1) <= x(pair[1].1));
         }
-        // Per sub-slab a unit per piece placed and joined, one to join, and
-        // one move per crossing.
-        let after = last + 1;
-        let each = self
-            .order
-            .len()
-            .saturating_mul(2)
-            .saturating_add(self.open.len())
-            .saturating_add(1);
-        work.charge_product(each, after - k)?;
-        work.charge(taken)?;
         #[cfg(test)]
         {
-            self.swapped += after - k;
+            self.swapped += after_index - k;
         }
-        Ok(Some((after, taken)))
+        Ok(Some((after_index, taken)))
     }
 
     /// Makes the swaps of `crosses[crossings]`, which are the only ones
