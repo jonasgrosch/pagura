@@ -411,6 +411,25 @@
         "locator": "Version 2.5; Header",
         "rule": "The 0x00025000 version stores one signed byte offset per glyph into standard Macintosh names. This is a deprecated, documented layout, not post 3.0 absence of names.",
         "scope": "Paired original post 2.5/2.0 programs share cmap, outlines and metrics; PDF 9.6.5.4 determines direct Unicode and glyph-name fallback. Hosted measurements pending. No product change."
+      },
+      "legacy_post4_review": {
+        "sources": [
+          {
+            "url": "https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html",
+            "locators": [
+              "post Format 4",
+              "Dependencies"
+            ]
+          },
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/post",
+            "locators": [
+              "Header"
+            ]
+          }
+        ],
+        "rule": "The legacy Apple TrueType post4 header is followed directly by one uint16 code per maxp glyph; FFFF marks an unassigned code. Microsoft OpenType does not support this version. These FontFile2 probes exercise unchanged cmap selection, with no glyph-name spelling inferred.",
+        "scope": "Compatibility admission only; no product implementation or measured support is asserted before hosted paired observations."
       }
     },
     {

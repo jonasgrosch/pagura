@@ -204,3 +204,20 @@ The preceding vertical-substitution checkpoint `a0533c2d6` passed
 That validates its native synthetic maps, PDF metrics/extraction and bundled
 collection controls at that revision; it does not establish competitor-family
 parity or validate the later base and post-name combination.
+
+## Private post 4 admission probe
+
+This diagnostic ref uses seven selected cases: two Apple TrueType post 4
+subjects with assigned/unassigned codes, matched post 3 controls, one ordinary
+glyph-sized rectangle and unchanged classic blank/rectangle controls. It reuses
+the original font writer and exact cmap/outline/metric inputs. Post 4 has no
+count field; five uint16 entries follow its header, with FFFF for no code.
+All seven expectations are independent rectangles or blank pages at tolerance 0.
+The earlier 13-case integrated manifest is retained on the font feature branch;
+this reduced diagnostic manifest must not replace it.
+
+The selected route uses FontFile2 TrueType and an ordinary Unicode cmap. This
+does not assert OpenType post 4, glyph-name fallback, name spelling, extraction,
+font collection support, or competitive-family parity. The baseline run may
+fail because Pagura currently rejects unknown post versions; the old harness
+retains nonzero exits as unclassified failures, not named unsupported evidence.

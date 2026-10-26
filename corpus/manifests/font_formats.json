@@ -143,6 +143,86 @@
       "width": 32,
       "height": 32,
       "tolerance": 0
+    },
+    {
+      "id": "font_formats/post4-direct",
+      "kind": "pdf",
+      "description": "post4 direct",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post4-direct.pdf",
+      "sha256": "20fd4bb69c4b7830854cc787ccb56c30e92f284e0cffac862a7da09c3efc8d02",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post4-direct.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post3-control-direct",
+      "kind": "pdf",
+      "description": "post3 control direct",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post3-control-direct.pdf",
+      "sha256": "c4029d87d35a33d1f14e448182d589cfe5ea5f114c1c3bbb0325408a4aa7be81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post3-control-direct.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post4-direct-unnamed",
+      "kind": "pdf",
+      "description": "post4 direct unnamed",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post4-direct-unnamed.pdf",
+      "sha256": "504ad9e730e51c37df2aff5af71ab38d5da4a985fba5304f0df02f7b18e9bb5d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post4-direct-unnamed.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post3-control-direct-unnamed",
+      "kind": "pdf",
+      "description": "post3 control direct unnamed",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post3-control-direct-unnamed.pdf",
+      "sha256": "c4029d87d35a33d1f14e448182d589cfe5ea5f114c1c3bbb0325408a4aa7be81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post3-control-direct-unnamed.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     }
   ]
 }
