@@ -472,6 +472,19 @@ fn aligned_reservations_cover_every_evaluated_pixel() {
             else {
                 continue;
             };
+            // A sparse mark on a huge region must not scan its unused
+            // columns. The full pixel reservation remains conservative.
+            let huge = DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: u32::MAX,
+                y1: 1,
+            };
+            for pixels in [0, 1, 31, 1024] {
+                assert_eq!(aligned.evaluated(&source, axial, huge, pixels), pixels);
+                let empty = DeviceRect { y1: 0, ..huge };
+                assert_eq!(aligned.evaluated(&source, axial, empty, pixels), 0);
+            }
             for _ in 0..8 {
                 let (x0, y0) = (rng.below(48) as u32, rng.below(48) as u32);
                 let region = DeviceRect {
@@ -480,7 +493,8 @@ fn aligned_reservations_cover_every_evaluated_pixel() {
                     x1: x0 + 1 + rng.below(40) as u32,
                     y1: y0 + 1 + rng.below(40) as u32,
                 };
-                let reserved = aligned.evaluated(&source, axial, region);
+                let area = (region.width() * region.height()) as usize;
+                let reserved = aligned.evaluated(&source, axial, region, area);
                 let evaluated = (region.y0..region.y1)
                     .flat_map(|y| (region.x0..region.x1).map(move |x| (x, y)))
                     .filter(|&pixel| aligned.evaluates(&source, axial, pixel))
@@ -489,7 +503,6 @@ fn aligned_reservations_cover_every_evaluated_pixel() {
                     evaluated <= reserved,
                     "{evaluated} > {reserved} in {region:?}"
                 );
-                let area = (region.width() * region.height()) as usize;
                 columns += usize::from(aligned.pixels() > 2);
                 smaller += usize::from(reserved < area);
             }
