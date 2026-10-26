@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "ba43a61f89b7eb5c25f0c8e17554717d3b5ce4b6",
+  "audited_revision": "7d93cfc3617e2e724308d8ead33be633b259bf3f",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -13,7 +13,7 @@
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
-    "corpus/manifests/font_formats.json": "e211d8c49416f1cc23a304241c7c0e9990e0746b960b442a654c286f6ac480df",
+    "corpus/manifests/font_formats.json": "3a339dbc4ab444cb770f025ceb3fc67150a4af17183f0abf9a6ed71154d198ce",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
@@ -187,7 +187,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/text.json": "c8a7f4d580eb9064cd86f246b0178cf23b09f7e1639e185009976a68ef8da9cf",
+    "references/requirements/text.json": "b6488d2ecaa55c2cd1ab98d238c8554e4c795d35fffd22a25b535c135510a74e",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
