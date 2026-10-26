@@ -95,6 +95,10 @@ def stroke_contours(shape,width,dash):
         dx=2*(u*(c[0]-a[0])+t*(b[0]-c[0]));dy=2*(u*(c[1]-a[1])+t*(b[1]-c[1]));length=math.hypot(dx,dy)
         return (x,y),(dy/length,-dx/length)
     def join(vertex,one,two,side):
+        # Cross(normal_before, normal_after) has the tangent turn's sign.
+        # Only the exterior offset receives a miter. The inner side returns
+        # through the vertex; its overlap is removed by the nonzero union.
+        if side*(one[0]*two[1]-one[1]*two[0])<=0:return vertex
         divisor=1+one[0]*two[0]+one[1]*two[1]
         assert divisor>0 and math.sqrt(2/divisor)<=10
         return vertex[0]+side*half*(one[0]+two[0])/divisor,vertex[1]+side*half*(one[1]+two[1])/divisor
