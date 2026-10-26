@@ -102,8 +102,9 @@ integration. Milestone numbers are outcomes, not completion claims.
   restore the retired Competitive mode or weaken exact rendering's contract.
 - **More devices** on the interpreter's `Device` trait: SVG output, PDF
   re-emission through the operator layer, hit testing.
-- **Concurrency:** native band threads (`std::thread::scope`) and WebAssembly
-  threads under cross-origin isolation, on `PreparedScene` bands.
+- **Concurrency:** native band threads (`std::thread::scope`, proposed in
+  ADR 0035) and WebAssembly threads under cross-origin isolation, on
+  `PreparedScene` bands.
 - **Editing additions to M7:** sessions on snapshots with undo and redo;
   semantic operations with XFDF; content filters on `pagura-content`;
   redaction with a residual scan (E01–E03); connect the existing DocMDP/FieldMDP

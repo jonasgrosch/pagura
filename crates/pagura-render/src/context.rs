@@ -228,7 +228,7 @@ impl RenderContext {
         scene: &Scene,
         options: &RenderOptions,
         tile: Option<Tile>,
-        stop: impl FnMut(u32) -> bool,
+        stop: impl FnMut(u32) -> bool + Send,
     ) -> Result<(Pixmap, Completion)> {
         self.with_scratch(|scratch| {
             self.renderer()

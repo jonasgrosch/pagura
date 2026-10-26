@@ -11,6 +11,7 @@ mod mixed;
 mod patterns;
 mod runs;
 mod streaming;
+mod threads;
 
 use crate::execute::Rendering;
 use crate::plan::{Conversion, Curve, Glyph, GroupPlan, Item, ItemKind, MaskPlan, Plan, SpotPlan};

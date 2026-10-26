@@ -4,7 +4,7 @@
 //! transfer functions, black generation, and narrow stores of group
 //! results. Expected values are clause-11 formulas evaluated here.
 
-use super::{Extents, Rendering, Sizes, StoreOut, Tops, Workspace, each_span};
+use super::{Extents, Rendering, Sizes, StoreOut, Tops, Worker, Workspace, each_span};
 use crate::format::Format;
 use crate::plan::{
     Compositing, Conversion, Cover, Curve, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout,
@@ -381,17 +381,22 @@ impl Fixture {
                 selections,
             },
             scratch: 0,
+            helpers: 0,
         };
-        let mut bytes = Meter::new(usize::MAX, "test workspace");
-        let mut workspace = Workspace::new(&plan, plan.sizes, None, &mut bytes).unwrap();
-        let mut free = Meter::new(usize::MAX, "test rasterizer");
-        let mut rasterizer = pagura_raster::BandRasterizer::new(area, &mut free).unwrap();
+        let storage = || {
+            let mut bytes = Meter::new(usize::MAX, "test workspace");
+            let workspace = Workspace::new(&plan, plan.sizes, None, &mut bytes).unwrap();
+            let rasterizer = pagura_raster::BandRasterizer::new(area, &mut bytes).unwrap();
+            (workspace, rasterizer)
+        };
         let shapes: Shapes = crate::testing::path_shapes(area, &self.paths);
+        let (mut workspace, mut rasterizer) = storage();
         let mut rendering = Rendering {
             plan: &plan,
             shapes: &shapes,
             workspace: &mut workspace,
             rasterizer: &mut rasterizer,
+            helpers: Vec::new(),
         };
         let mut rows = Vec::new();
         rendering.render(&mut rows);
@@ -399,6 +404,18 @@ impl Fixture {
         let mut again = Vec::new();
         rendering.render(&mut again);
         assert_eq!(rows, again);
+        // So do helper threads, whichever bands each takes.
+        let mut helpers: Vec<_> = (0..3).map(|_| storage()).collect();
+        rendering.helpers = helpers
+            .iter_mut()
+            .map(|(workspace, rasterizer)| Worker {
+                workspace,
+                rasterizer,
+            })
+            .collect();
+        let mut shared = Vec::new();
+        rendering.render(&mut shared);
+        assert_eq!(rows, shared);
         rows
     }
 }

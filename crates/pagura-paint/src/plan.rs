@@ -80,6 +80,9 @@ pub(crate) struct Plan {
     /// Bytes reserved for a render's scratch storage, the workspace and the
     /// band rasterizer, which it allocates within them.
     pub(crate) scratch: usize,
+    /// How many more scratches `render_bytes` has room for after
+    /// preparation: the most helper threads a render admits (ADR 0035).
+    pub(crate) helpers: usize,
 }
 
 /// The two name lists every conversion target of one preparation shares.
