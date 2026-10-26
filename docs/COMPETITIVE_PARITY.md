@@ -1,7 +1,7 @@
 # Plan to close competitive PDF feature gaps
 
 Status: implementation in progress against `render/one-pass` at
-`73e1ab018d9c23f24c374de1f3a4441b119a5365` (PR #118), reconciled 2026-10-26.
+`9f9801a754203009a314644ba22afbfdc4f3e58b` (PR #118), reconciled 2026-10-26.
 G00's reviewed source inventory is complete. G01 and the feature packages below
 remain open until their acceptance gates pass. The checked
 [capability inventory](CAPABILITIES.md) identifies support on this branch;

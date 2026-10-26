@@ -28,6 +28,7 @@ mod calculator;
 mod retained;
 mod sampled;
 
+use crate::affine::{Affine, Undecided};
 use crate::space::MAX_COMPONENTS;
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
@@ -506,6 +507,89 @@ impl Function {
         }
     }
 
+    /// Encloses what [`Self::evaluate`] computes for a one-input function at
+    /// every input of `input` (see [`crate::affine`]), as many outputs as
+    /// `output` holds. Sampled functions of order 1 (or with fewer than four
+    /// samples), exponential functions with `N` 1 and stitching functions
+    /// of them have enclosures.
+    pub(crate) fn enclose(&self, input: Affine, output: &mut [Affine]) -> Result<(), Undecided> {
+        let &[[low, high]] = &*self.domain else {
+            return Err(Undecided::Unsupported);
+        };
+        let count = output.len().min(self.outputs);
+        let (values, rest) = output.split_at_mut(count);
+        rest.fill(Affine::point(0.0));
+        let x = input.clamp(low, high)?;
+        match &self.kind {
+            Kind::Exponential {
+                c0,
+                delta,
+                exponent,
+            } => {
+                if *exponent != 1.0 {
+                    return Err(Undecided::Unsupported);
+                }
+                for ((out, &low), &delta) in values.iter_mut().zip(c0).zip(delta) {
+                    *out = Affine::point(low).add(x.scale(delta));
+                }
+            }
+            Kind::Stitching(stitching) => {
+                let (index, x) = self.locate_enclosed(stitching, x)?;
+                stitching
+                    .functions
+                    .get(index)
+                    .ok_or(Undecided::Unsupported)?
+                    .enclose(x, values)?;
+            }
+            Kind::Sampled(sampled) => sampled.enclose(x, values)?,
+            Kind::Calculator(_) => return Err(Undecided::Unsupported),
+        }
+        let range = self.range.as_deref().unwrap_or_default();
+        for (value, &[low, high]) in values.iter_mut().zip(range) {
+            *value = value.clamp(low, high)?;
+        }
+        Ok(())
+    }
+
+    /// [`Self::locate`] for every value of `x`, which must all lie in one
+    /// subdomain.
+    fn locate_enclosed(
+        &self,
+        stitching: &Stitching,
+        x: Affine,
+    ) -> Result<(usize, Affine), Undecided> {
+        let Stitching { bounds, encode, .. } = stitching;
+        let [min, max] = self.domain.first().copied().unwrap_or([0.0; 2]);
+        let index = if bounds.first() == Some(&min) && x.low() <= min {
+            // The first degenerate interval owns its endpoint (7.10.4).
+            if x.value() != Some(min) {
+                return Err(Undecided::Split {
+                    form: x,
+                    at: min,
+                    count: 1,
+                });
+            }
+            0
+        } else {
+            let mut index = 0_usize;
+            for &bound in bounds {
+                if !x.at_least(bound)? {
+                    break;
+                }
+                index += 1;
+            }
+            index
+        };
+        let low = index
+            .checked_sub(1)
+            .and_then(|i| bounds.get(i))
+            .copied()
+            .unwrap_or(min);
+        let high = bounds.get(index).copied().unwrap_or(max);
+        let encode = encode.get(index).copied().unwrap_or([0.0; 2]);
+        Ok((index, interpolate_enclosed(x, [low, high], encode)))
+    }
+
     /// Input `i` made finite and clipped to its domain interval.
     fn input(&self, input: &[f64], i: usize) -> f64 {
         let [low, high] = self.domain.get(i).copied().unwrap_or([0.0; 2]);
@@ -620,6 +704,19 @@ pub(crate) fn interpolate(value: f64, from: [f64; 2], to: [f64; 2]) -> f64 {
         return to[0];
     }
     to[0] + ((value - from[0]) / (from[1] - from[0])) * (to[1] - to[0])
+}
+
+/// Encloses [`interpolate`].
+pub(crate) fn interpolate_enclosed(value: Affine, from: [f64; 2], to: [f64; 2]) -> Affine {
+    if from[0] == from[1] {
+        return Affine::point(to[0]);
+    }
+    Affine::point(to[0]).add(
+        value
+            .sub(Affine::point(from[0]))
+            .divide(from[1] - from[0])
+            .scale(to[1] - to[0]),
+    )
 }
 
 /// NaN becomes 0 and ±∞ become ±[`f64::MAX`]; finite values are unchanged.

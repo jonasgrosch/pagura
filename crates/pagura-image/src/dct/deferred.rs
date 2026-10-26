@@ -116,8 +116,8 @@ pub(super) fn prepare(
             "JPEG frame does not qualify for native planes",
         ));
     }
-    // The frame's admission budgets five bytes per coefficient; native
-    // planes need one per sample, a block flag and a prefix table.
+    // The frame's admission budgets one byte per sample of a sequential
+    // plane; native planes also need a block flag and a prefix table.
     let tables = SHORTCUT_BYTES * frame.components.len() as u64;
     let planes: u64 = frame
         .components
