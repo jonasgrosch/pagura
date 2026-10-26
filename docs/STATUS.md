@@ -5,7 +5,7 @@ support. It is **not a complete PDF implementation**, and feature parity with
 PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
 Work spans M1–M7; none of those milestones is declared complete by this page.
 
-This inventory was reconciled against `render/one-pass` at
+The rendering inventory was reconciled against `render/one-pass` at
 `847fb26f0616e8b70bec76883880c78cbc47915d`, the embedded-colour follow-up to the fetched
 one-pass head `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a` (PR #118).
 It describes that branch, including refactoring not yet merged into `main`.
@@ -14,11 +14,14 @@ limits. It does not mean those tests or all corpora were rerun for this audit.
 Library support, PDF integration and viewer support are listed separately where
 they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
+The document-service and complete PNG output rows include the subsequent public
+library, CLI, host and viewer implementation recorded in the checked inventory.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
 43 capability families, all 90 literal tags reviewed, and all 335 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
-All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
+The [service and rendering probes](../benchmarks/probes/README.md) record bounded
+cross-engine observations; these do not close whole-family competitor cells.
 The source check detects stale evidence and missing ownership, not runtime parity.
 
 ## Capability matrix
@@ -28,7 +31,7 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Rendering architecture | One interpreter with negotiated device needs; separate text device; appearance generation in `pagura-appearance`; cached resolution-independent scenes; source-order preparation, per-buffer N16/F32/F64 storage and one band executor; exact rendering only | Additional output/hit-testing devices, persistent resumable jobs and broader scheduling. `Accuracy::Competitive` and the former rendering pipelines have been removed. Architecture alone does not establish complete PDF feature coverage. |
 | Core and document structure | Bounded syntax, generation-aware objects, classic/xref streams, object streams, hybrid files, incremental revisions, lazy object caches, page trees and reported reconstruction/repair | Broader malformed-file compatibility needs current corpus evidence. Opening requires complete bytes; linearization hints and range loading are not implemented. External-file streams remain unsupported. |
 | Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate, PNG/TIFF predictors and bounded decoding; explicit raw-DEFLATE entry point and reported compatibility repairs | Image filters dispatch to `pagura-image`; their tags in the generic filter crate do not mean the engine lacks those codecs. |
-| Password encryption | Standard handler R2–R6, RC4/AES, crypt filters, permissions consistency checks and Unicode 3.2 SASLprep for R6; CLI legacy PDFDocEncoding password conversion | Adobe public-key security handlers; encrypted historical-revision access; encryption on write. The browser password path does not provide the CLI's legacy text conversion. |
+| Password encryption | Standard handler R2–R6, RC4/AES, crypt filters, permissions consistency checks and Unicode 3.2 SASLprep for R6; CLI legacy PDFDocEncoding password conversion; immutable attachment-only reauthentication and viewer password retries | Adobe public-key security handlers; encrypted historical-revision access; encryption on write. The browser password path does not provide the CLI's legacy text conversion. |
 | Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/10/12/13 and post 1/2/3; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends; static Type 1/PFA/PFB programs | Nondefault variations, CFF2 Font DICT matrices, cmap 8, other post formats, collections, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs and nonhorizontal Type 1 `sbw`. Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
 | PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources | Vertical substituted CID fonts, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Substitution coverage depends on the provider and build features. |
 | Image codecs | JPEG baseline/extended/progressive, Huffman and arithmetic, 8/12-bit, CMYK/YCCK; CCITT G3/G4; JBIG2 generic/refinement/symbol/text/halftone/Huffman regions; JPEG 2000 Part 1 with progression, precincts, ROI and partial-quality reconstruction | JPEG lossless/hierarchical modes, CCITT extension mode, JBIG2 extended templates/necessary extensions, and JPX profiles/layouts outside the implemented subset. Codec success does not establish complete PDF image rendering. |
@@ -44,9 +47,10 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | CMS integrity | Detached CMS/CAdES and RFC3161 integrity, SHA-1 (reported weak), SHA-2, RSA v1.5/PSS and ECDSA P-256/P-384/P-521; signed attributes, ESS binding and timestamp imprints | PDF-facing signer trust, validation time and revocation still report `NotCheckedYet`; complete PAdES policy/LTV and legacy encodings remain incomplete. Issuer matching currently requires identical DER names. |
 | PKI library | Host-anchored certificate path construction/validation, policy/name constraints, offline complete/indirect/delta CRL checking and bounded path search | OCSP, remaining name-normalization cases and application-specific timestamp/CMS policy; connecting these APIs to PDF signatures and the viewer. CRL/path support exists and must not be described as wholly absent. See [PKI scope](../crates/pagura-pki/README.md). |
 | Writing and editing | Deterministic new PDF 1.7 files; immutable transactions; classic/xref-stream append revisions; saved forms; no-op byte preservation and rollback | Full rewrite, freed objects, object-stream output, PDF 2.0 new-file header/ID generation, encryption-on-write, sanitizing redaction, undo/redo and general page-content/page-tree editing APIs. Modified saves require strict, unencrypted input; signed input defaults to refusal. |
-| Image output and cancellation | Public `RenderContext::render_bands` lends final premultiplied RGBA bands with a fallible consumer and between-band stop callback after preflight; the CLI streams PPM with bounded output storage. Library zlib compression and whole-buffer PNG encoding for eight-bit Gray/RGB/straight RGBA exist | Calls restart from the region's first row; persistent pause/resume, incremental PNG/DEFLATE, facade/CLI PNG export, async backpressure and public embedded-image extraction remain. Existing streamed PPM does not imply streamed PNG or progressive input. |
+| Image output and cancellation | Public `RenderContext::render_bands` lends final premultiplied RGBA bands with a fallible consumer and between-band stop callback after preflight; the CLI streams PPM with bounded output storage. Whole-buffer PNG export reaches the facade, CLI, host and viewer, including transparent RGBA; the encoder also accepts eight-bit Gray/RGB. Typed source-image resources and stored thumbnails support exact stored or unwrapped encoded-byte extraction | Calls restart from the region's first row; persistent pause/resume, incremental PNG/DEFLATE and async backpressure remain. Image resource lists do not enumerate interpreted inline/form/pattern/annotation occurrences; normalized isolated-image output and standalone-format eligibility remain open. Existing streamed PPM does not imply streamed PNG or progressive input. |
 | Browser and WASM host | Native/WASI session protocol, viewport generations, bounded render `Store` for scenes/images/fonts/glyph setups, continuous scrolling/zoom, password prompt, text/navigation and form editing | Range input and resumable host jobs, active-request cancellation, parallel scheduling, layer/overprint/print controls and broader browser/device/accessibility validation. Library band-stop support is not wired into active host requests; generation cancellation discards stale queued work. |
-| Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; typed attachment/associated-file, portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
+| Document services | Bounded Info and catalog/page/object XMP views; EmbeddedFiles, catalog/page/object AF and page Annots discovery; exact EF/RF selection and explicit size/MD5 declaration checks; collection schema/sort/item and encrypted-payload metadata. The facade, CLI and protocol 1.12 viewer share the immutable source model; filenames, URLs and packet contents stay inert | MIME/date/associated-file profile validation; XML/XMP schema semantics and Info/XMP reconciliation; collection folders/layouts and navigator behavior; streaming extraction and D02b metadata/file/collection writes. Declaration checks do not establish authenticity or safety. See [CLI services](CLI.md) and [viewer services](../web/README.md). |
+| PDF profiles | PDF 1.x/2.x headers and many shared features; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance. Rendering a profile-labelled file is separate from validating or authoring that profile. |
 | Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
 ## Evidence and accuracy
@@ -72,7 +76,14 @@ Source entry points and existing tests supporting this reconciliation include:
   [alpha sampling](../crates/pagura-paint/src/source/image/texels.rs) and
   [paint fixtures](../corpus/manifests/paint.json), including `image-jpx-alpha-1/2`, plus the new [embedded colour fixtures](../corpus/manifests/paint_jpx.json).
 - [PNG encoder](../crates/pagura-codec/src/png.rs) and
-  [zlib compressor](../crates/pagura-codec/src/flate/encode.rs).
+  [zlib compressor](../crates/pagura-codec/src/flate/encode.rs),
+  [facade PNG export](../crates/pagura/src/png.rs) and
+  [host export tests](../crates/pagura-host/tests/png.rs).
+- [Document source services](../crates/pagura-document/src/files/selection.rs),
+  [public service tests](../crates/pagura/tests/document_services.rs),
+  [CLI service tests](../crates/pagura-cli/tests/document_services_extended.rs),
+  [host service tests](../crates/pagura-host/tests/document_services_extended.rs)
+  and [viewer service tests](../tools/document_services_extended_view_test.mjs).
 - [Public band/stop API](../crates/pagura-render/src/context.rs),
   [shared executor](../crates/pagura-paint/src/execute.rs),
   [streaming tests](../crates/pagura-paint/src/prepare/tests/streaming.rs) and

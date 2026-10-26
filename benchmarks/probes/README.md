@@ -71,3 +71,17 @@ The service fixtures and decoder/viewer tests additionally cover AF/RF selection
 immutable attachment authentication, collections, exact metadata packet identity,
 source image bytes and stored thumbnails. Those product controls are separate from
 the still-open cross-engine comparisons for the expanded APIs.
+
+[Hosted run 40331344005](https://github.com/jonasgrosch/pagura/actions/runs/40331344005)
+passed at `5def96197e4e8ae3118f5a8f3aacc0e845e2fd3e`: 143 service observations
+passed and four text controls were explicitly adapter-unavailable (two each for
+hayro and CoreGraphics). Pagura passed all 21 selected independent expectations.
+The run also passed the source checks on all three platforms and the unchanged
+six rendering controls. These are revision-specific observations, not a parity claim.
+
+[Hosted interoperability run 40333905010](https://github.com/jonasgrosch/pagura/actions/runs/40333905010)
+passed at `9eb83d924bb3d5f81e2d82831a5f4b7fadc13969`: Rust linting, public
+library/CLI/host service tests, native/WASI byte parity, viewer source selection
+and attachment-password retries, independent saved-file readers and browser
+thumbnail pixels. Full functional and comparative reports identify their own
+source revisions and remain separate evidence.
