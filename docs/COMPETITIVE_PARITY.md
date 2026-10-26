@@ -469,7 +469,9 @@ authorized bytes. Absent declarations, matches and mismatches are separate
 observations; the checksum follows Table 45 and is not an authenticity result.
 Seven independently generated compressed fixtures cover each combination.
 Tests also cover empty files, encrypted attachment-only payloads, explicit
-Identity, external-stream refusal and decode limits. Hosted checks are pending.
+Identity, external-stream refusal and decode limits. Hosted Linux/macOS/Windows
+checks pass at `e4e0e7471` in
+[run 40272672956](https://github.com/jonasgrosch/pagura/actions/runs/40272672956).
 The operation does not modify the source or create a payload file. Protocol 1.10
 and explicit viewer Check controls now expose the same observations with exact
 BigInt sizes. Tests cover old versions, canonical messages, response/decode caps,
