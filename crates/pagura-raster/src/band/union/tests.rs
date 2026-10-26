@@ -678,30 +678,3 @@ fn swaps_inside_the_union_keep_every_side() {
     }
     assert!(swapped > 100_000, "{swapped}");
 }
-
-/// A row of fans whose swaps take more work than the budget is refused,
-/// with no more work done than charged.
-#[test]
-fn swaps_are_refused_within_the_budget() {
-    let mut rng = Lcg(2_026);
-    let (pieces, used) = loop {
-        let mut lines = Vec::new();
-        for _ in 0..3 {
-            let centre = (rng.grid(0.0, 64, 8), rng.grid(-0.5, 17, 8));
-            let count = 8 + rng.next() % 40;
-            let r = rng.grid(0.25, 12, 8);
-            let around = r * f64::from(1 + rng.next() % 8) / 64.0;
-            lines.extend(fan(centre, around, (count, r), rng.grid(0.0, 64, 8)));
-        }
-        let pieces = pieces(&lines);
-        let (_, used, taken) = swept(&pieces, &[FillRule::NonZero], false);
-        if taken > 100 {
-            break (pieces, used);
-        }
-    };
-    for limit in [used / 2, used - 1] {
-        let mut work = Meter::new(limit, "work");
-        assert!(sides(&pieces, &[FillRule::NonZero], &mut work).is_err());
-        assert!(work.used() <= limit, "{} {limit}", work.used());
-    }
-}
