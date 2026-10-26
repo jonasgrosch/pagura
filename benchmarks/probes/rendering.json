@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls and MediaBox-relative FixedPrint screen placement. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 render controls: independent synthetic RGB8 oracles for graphics, JPX alpha, stored/generated icons, Ink/Polygon/Line paths, all standard endings, leaders, plain captions, text-markup quads, Caret symbols, all standard stamps, plain FreeText and callouts, common RC/DS rich text, cloudy borders and stored appearance selection, original static Sound icons and stored AP controls, MediaBox-relative FixedPrint screen placement and non-destructive Redact region-outline previews. Pagura and six baseline engines at each fixture's declared 72/144 DPI, first page, white backdrop. Generated artwork and font selection use each reader's default policy; Pagura text expectations use pinned regular/bold AFM/Arimo data and independent original-curve areas; source fixtures provide authored wrapping/sizing controls. Alternate text-markup quad ordering is a reported Pagura repair, rejected by the full strict audit. Pixel disagreement needs artwork/font/sampling/API-layer adjudication; no timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -5017,6 +5017,396 @@
         "width": 48,
         "height": 48,
         "rgb_sha256": "d1bbe915cce33c7e505f002bb102cd529b74b62d44455b7b29c4dc6d3855b92f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rect-72-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rect-72-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rect-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rect-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rect-144-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rect-144-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "60e1479090dffa824114f201c77f43b0dc17f9702d9995e6312ebb5098dd39c1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rect-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rect-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "60e1479090dffa824114f201c77f43b0dc17f9702d9995e6312ebb5098dd39c1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-quad-72-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-quad-72-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "e1db0a484d95b77d31962d04fb9c051c13f1471e9a7f8c3680e704982484cd3d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-quad-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-quad-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "e1db0a484d95b77d31962d04fb9c051c13f1471e9a7f8c3680e704982484cd3d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-quad-144-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-quad-144-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "03ae94327ffe07533e4787dc10e35491f4173b1800d87218c1116bf127a56f11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-quad-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-quad-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "03ae94327ffe07533e4787dc10e35491f4173b1800d87218c1116bf127a56f11",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-skew-72-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-skew-72-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c0761ad9795df56ff3fe49e21375ef68432e085a6b8997ac8408e9f7d1742b84",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-skew-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-skew-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "c0761ad9795df56ff3fe49e21375ef68432e085a6b8997ac8408e9f7d1742b84",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-skew-144-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-skew-144-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "90c362e439f4be2d8bbee5d0a2655a44650d98b1bb488cc2f95c55f8ef88b7b2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-skew-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-skew-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "90c362e439f4be2d8bbee5d0a2655a44650d98b1bb488cc2f95c55f8ef88b7b2",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rotated-72-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rotated-72-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "a4dd527938af2267014d6b048a741d442f25a4f0d5a8940c993102ecd2a27489",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rotated-72-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rotated-72-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "a4dd527938af2267014d6b048a741d442f25a4f0d5a8940c993102ecd2a27489",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-overlap-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-overlap-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "97b439ea44f71fbe79dbccc001301699ed1a4edc80b69ad834a3ce1768a5aa2d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-clipped-72",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-clipped-72",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "a42fce4664d150df605e0e8c0f3d9cc03f6323c3bbc433cb381a6a201ddb7088",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rotated-144-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rotated-144-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "37a8c329974f0e2d31e27250086ea5657cff11444162fa8d3d582ae99b6446da",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-rotated-144-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-rotated-144-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "37a8c329974f0e2d31e27250086ea5657cff11444162fa8d3d582ae99b6446da",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-overlap-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-overlap-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b9bce901ec6a6e0b6965c2215e521fa7ad78a95c615364d3133d2d097e711f7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-clipped-144",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-clipped-144",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "503e279851b780ef3f6e14406d8b59e526d8a13a76e38136a8224c75fc0988d3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-null-quads",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-null-quads",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-indirect-null-quads",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-indirect-null-quads",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-indirect-quad",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-indirect-quad",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-zero-area",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-zero-area",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d80707d9d4a71780ce6846bc304ac7d1e239f0c2ee9fe7e3336c40f5c4fd79aa",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-hidden-malformed",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-hidden-malformed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d80707d9d4a71780ce6846bc304ac7d1e239f0c2ee9fe7e3336c40f5c4fd79aa",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-no-view-malformed",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-no-view-malformed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d80707d9d4a71780ce6846bc304ac7d1e239f0c2ee9fe7e3336c40f5c4fd79aa",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-ignored-replacement",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-ignored-replacement",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-stored-ignores-invalid",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-stored-ignores-invalid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-text-generated",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-text-generated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "annotations.display.redact-text-stored",
+      "capability": "annotations.appearances",
+      "operation": "render",
+      "fixture": "annotation_display/redact-text-stored",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b9dbb9d00b55cdf6c1152d3772142e9d6f1ff31bda5e6ef76d73ad4b000ba10",
         "tolerance": 1
       }
     }

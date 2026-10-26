@@ -99,6 +99,13 @@ fn malformed_placement_is_read_only_when_a_device_needs_appearances() {
         "sound-wrong-name",
         "sound-wrong-color",
         "sound-wrong-alpha",
+        "redact-invalid-type",
+        "redact-invalid-empty",
+        "redact-invalid-short",
+        "redact-invalid-number",
+        "redact-invalid-clockwise",
+        "redact-invalid-concave",
+        "redact-invalid-alpha",
     ] {
         let document = open(name, Limits::default()).unwrap();
         let page = document.page(0).unwrap();
@@ -112,7 +119,11 @@ fn malformed_placement_is_read_only_when_a_device_needs_appearances() {
 
 #[test]
 fn static_appearances_use_existing_reference_and_scene_budgets() {
-    for name in ["fixed-reference-limit", "sound-name-reference-limit"] {
+    for name in [
+        "fixed-reference-limit",
+        "sound-name-reference-limit",
+        "redact-limit-reference",
+    ] {
         let document = open(
             name,
             Limits {
@@ -133,6 +144,7 @@ fn static_appearances_use_existing_reference_and_scene_budgets() {
         "fixed-user-unit-144",
         "sound-speaker-72-0-generated",
         "sound-mic-72-0-generated",
+        "redact-quad-72-generated",
     ] {
         let document = open(name, Limits::default()).unwrap();
         let page = document.page(0).unwrap();
@@ -158,6 +170,38 @@ fn static_appearances_use_existing_reference_and_scene_budgets() {
         assert_eq!(error.kind, ErrorKind::Limit, "{name}");
         assert_eq!(error.message, "scene byte budget exceeded", "{name}");
         assert_eq!(record(&Store::new(0), tight).unwrap_err(), error, "{name}");
+    }
+}
+
+#[test]
+fn redact_preview_preserves_source_marks_and_extracted_content() {
+    for name in ["redact-text-generated", "redact-text-stored"] {
+        let document = open(name, Limits::default()).unwrap();
+        let original = document.original_bytes().to_vec();
+        let page = document.page(0).unwrap();
+        let interpreter = Interpreter::new(&document);
+        let before = interpreter.text(page).unwrap();
+        assert_eq!(before.glyphs.len(), 1, "{name}");
+        assert_eq!(before.glyphs[0].unicode.as_deref(), Some("R"), "{name}");
+        let scene = interpreter.scene(page).unwrap();
+        assert!(scene.marks() >= 3, "{name}");
+        let after = interpreter.text(page).unwrap();
+        assert_eq!(after.glyphs.len(), 1, "{name}");
+        assert_eq!(after.glyphs[0].unicode, before.glyphs[0].unicode, "{name}");
+        assert_eq!(after.glyphs[0].quad, before.glyphs[0].quad, "{name}");
+        assert_eq!(document.original_bytes(), original, "{name}");
+        assert_eq!(document.diagnostics(), [], "{name}");
+    }
+    for name in [
+        "redact-ignored-replacement",
+        "redact-stored-ignores-invalid",
+    ] {
+        let document = open(name, Limits::default()).unwrap();
+        let scene = Interpreter::new(&document)
+            .scene(document.page(0).unwrap())
+            .unwrap();
+        assert_eq!(scene.marks(), 3, "{name}");
+        assert_eq!(document.diagnostics(), [], "{name}");
     }
 }
 

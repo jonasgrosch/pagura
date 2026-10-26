@@ -2,7 +2,7 @@
 
 use crate::repairs;
 use crate::values::{number, optional};
-use pagura_core::{Diagnostic, Dictionary, Error, Meter, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Meter, Rect, Result, Value};
 use pagura_document::Document;
 
 pub(super) type Point = (f64, f64);
@@ -48,10 +48,28 @@ pub(super) fn read(
     document: &Document,
     annotation: &Dictionary,
     storage: &mut Meter,
+    default: Option<Rect>,
 ) -> Result<Vec<Quad>> {
-    let values = optional(document, annotation, b"QuadPoints")?
-        .and_then(Value::as_array)
-        .ok_or(Error::syntax("markup QuadPoints must be an array"))?;
+    // Redact uses Rect when QuadPoints is absent (Table 195). The small
+    // stack array enters the same validation and budgets as authored quads.
+    let default = default.map(|r| {
+        [
+            r.x0(),
+            r.y0(),
+            r.x1(),
+            r.y0(),
+            r.x1(),
+            r.y1(),
+            r.x0(),
+            r.y1(),
+        ]
+        .map(Value::Real)
+    });
+    let values = match optional(document, annotation, b"QuadPoints")? {
+        Some(value) => value.as_array(),
+        None => default.as_ref().map(AsRef::as_ref),
+    }
+    .ok_or(Error::syntax("markup QuadPoints must be an array"))?;
     let (groups, tail) = values.as_chunks::<8>();
     if groups.is_empty() || !tail.is_empty() {
         return Err(Error::syntax(

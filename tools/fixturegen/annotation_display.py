@@ -29,12 +29,16 @@ https://pdfium.googlesource.com/pdfium/+/refs/heads/main/public/fpdfview.h
 https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html
 https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_pixmap
 """
+from functools import lru_cache
+
 from .file_attachment_icons import FRAME, pixels as icon_pixels
+from .markup_annotations import oracle as markup_pixels
 from .model import Case, OPEN, RENDER
 from .pdf import document, opaque_rectangles, stream
 
 AREA = 'annotation_display'
 REQUIREMENT = 'content-static-annotation-placement'
+REDACT_REQUIREMENT = 'content-redact-preview'
 ARTWORK = b'0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f'
 # Original rectangular ink regions in a 32-unit grid. These are the geometric
 # union of one-unit orthogonal strokes with miter corners and butt endpoints,
@@ -51,7 +55,7 @@ SOUND_INK = {
 def source(*, subtype=b'Watermark', entries=b'', fixed=None, stored=True,
            page=b'', flags=4, body=False, media=b'0 0 32 24', rect=b'12 8 20 12',
            appearance_entries=b'', artwork=ARTWORK, appearance_box=b'0 0 8 4',
-           sound_reference=b'7 0 R', objects=()):
+           sound_reference=b'7 0 R', objects=(), content=None, catalog=b'', resources=b'<< >>'):
     """One inert annotation and a four-sample unsigned PCM sound object."""
     appearance = b'/AP << /N 6 0 R >>' if stored else b''
     sound = b'/Sound ' + sound_reference if subtype == b'Sound' else b''
@@ -60,11 +64,12 @@ def source(*, subtype=b'Watermark', entries=b'', fixed=None, stored=True,
                   + b' /Rect [' + rect + b'] /F %d ' % flags
                   + appearance + b' ' + sound + b' ' + fixed_entry + b' ' + entries + b' >>')
     return document([
-        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'<< /Type /Catalog /Pages 2 0 R'+(b' '+catalog if catalog else b'')+b' >>',
         b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        b'<< /Type /Page /Parent 2 0 R /MediaBox [' + media + b'] /Resources << >> /Contents 4 0 R '
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [' + media + b'] /Resources '+resources+b' /Contents 4 0 R '
         + (b'' if body else b'/Annots [5 0 R] ') + page + b' >>',
-        stream(b'0 g 12 8 4 4 re f 1 0 0 rg 16 8 4 4 re f' if body else b''),
+        stream(content if content is not None else
+               b'0 g 12 8 4 4 re f 1 0 0 rg 16 8 4 4 re f' if body else b''),
         annotation,
         stream(artwork, b'/Type /XObject /Subtype /Form /BBox [' + appearance_box
                + b'] /Resources << >> ' + appearance_entries),
@@ -85,6 +90,23 @@ def oracle(rect=(12, 8, 8, 4), *, dpi=72, size=(32, 24), vertical=False, reverse
     scale=dpi//72
     return opaque_rectangles(width*scale,height*scale,
                              [((x*scale,y*scale,w*scale,h*scale),color) for (x,y,w,h),color in rectangles])
+
+
+@lru_cache(maxsize=32)
+def redact_pixels(polygons, *, dpi=72, rotate=0, alpha=1., rect=(8,8,24,24)):
+    """Exact rational region coverage over preserved, pixel-aligned page marks."""
+    coverage=markup_pixels(polygons,dpi=dpi,rotate=rotate,color=(0.,0.,0.),rect=rect).split(b'\n',3)[3]
+    scale=dpi//72
+    rectangles=[]
+    for (x,y,w,h),color in [((0,0,32,32),(0,255,255)),((12,12,4,8),(0,0,0))]:
+        if rotate:x,y,w,h=y,32-x-w,h,w
+        rectangles.append(((x*scale,y*scale,w*scale,h*scale),color))
+    base=opaque_rectangles(32*scale,32*scale,rectangles)
+    header=base.split(b'\n',3)[:3];background=base.split(b'\n',3)[3];pixels=bytearray()
+    for i in range(0,len(background),3):
+        opacity=(255-coverage[i])/255*alpha
+        pixels.extend(int(bg*(1-opacity)+fg*opacity+.5) for bg,fg in zip(background[i:i+3],(255,0,0)))
+    return b'\n'.join(header)+b'\n'+pixels
 
 
 def cases():
@@ -276,3 +298,116 @@ def cases():
     yield Case('sound-name-reference-limit',source(subtype=b'Sound',stored=False,
                entries=b'/Name 8 0 R',objects=(b'8 0 R',)),OPEN,(REQUIREMENT,),
                'Sound icon names retain the existing indirect-reference depth limit',extra={'render_error':'limit'})
+
+    # Redact annotations identify content before application. Table 195 assigns
+    # IC, RO and overlay text to the later removal/replacement phase. Probe their
+    # effect on previews without applying redactions or treating them as AP.
+    content=b'0 1 1 rg 12 12 32 20 re f 0 g 12 20 32 4 re f'
+    quads=b'/QuadPoints [14 14 24 14 24 20 14 20 30 24 40 24 40 30 30 30]'
+    overlay=b'/OverlayText (R) /DA (/F0 8 Tf 0 g) /Q 1'
+    fonts={
+        'catalog':b'/AcroForm << /Fields [] /DR << /Font << /F0 8 0 R >> >> >>',
+        'objects':(
+            b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 600 800] /FontMatrix [.001 0 0 .001 0 0] '
+            b'/CharProcs << /R 9 0 R >> /Encoding << /Type /Encoding /Differences [82 /R] >> '
+            b'/FirstChar 82 /LastChar 82 /Widths [600] /Resources << >> >>',
+            stream(b'600 0 d0 0 0 400 800 re f'),
+        ),
+    }
+    yield Case('redact-observe-ordinary-content',source(body=True,content=content,media=b'0 0 64 48'),
+               OPEN,(REDACT_REQUIREMENT,),'Ordinary cyan/black page marks identify content that a non-destructive preview must preserve')
+    for variant,entries,options in [
+        ('rect',b'',{}),('quads',quads,{}),('border-color',b'/C [0 0 1]',{}),
+        ('interior',b'/IC [0 1 0]',{}),('quad-interior',quads+b' /IC [0 1 0]',{}),
+        ('overlay',overlay,fonts),('repeat',overlay+b' /Repeat true',fonts),
+        ('replacement-form',b'/RO 8 0 R /IC [0 1 0] '+overlay,{'objects':(
+            stream(b'0 1 0 rg 0 0 16 20 re f 0 0 1 rg 16 0 16 20 re f',
+                   b'/Type /XObject /Subtype /Form /BBox [0 0 32 20] /Resources << >>'),)}),
+    ]:
+        for stored in (False,True):
+            yield Case('redact-observe-'+variant+'-'+('stored' if stored else 'missing'),
+                       source(subtype=b'Redact',stored=stored,entries=entries,content=content,
+                              media=b'0 0 64 48',rect=b'12 12 44 32',**options),
+                       OPEN,(REDACT_REQUIREMENT,),
+                       'Matched Redact preview observation: normal AP is separate from post-application fill, text and RO')
+
+    def outline(x0,y0,x1,y1):
+        # Supporting lines at distance 1/2 give the exact rectangular stroke;
+        # the clockwise inner contour subtracts its hole from the outer box.
+        return [[(x0-.5,y0-.5),(x1+.5,y0-.5),(x1+.5,y1+.5),(x0-.5,y1+.5)],
+                [(x0+.5,y0+.5),(x0+.5,y1-.5),(x1-.5,y1-.5),(x1-.5,y0+.5)]]
+    rectangle=outline(8,8,24,24)
+    def redact_case(label, *, regions=rectangle, entries=b'', rect=(8,8,24,24), dpi=72,
+                    rotate=0, alpha=1., stored=False, flags=4, text=False, **options):
+        box=' '.join(map(str,rect)).encode()
+        # Stored equivalence controls use independent filled contours, not a stroke.
+        artwork=b'1 0 0 rg '+b' '.join(
+            (f'{polygon[0][0]} {polygon[0][1]} m '+' '.join(f'{x} {y} l' for x,y in polygon[1:])+' h').encode()
+            for polygon in regions)+b' f'
+        page_content=b'0 1 1 rg 0 0 32 32 re f 0 g '
+        if text:
+            page_content+=b'BT /F0 10 Tf 1 0 0 1 12 12 Tm (R) Tj ET'
+            options.update(objects=fonts['objects'],resources=b'<< /Font << /F0 8 0 R >> >>')
+        else:page_content+=b'12 12 4 8 re f'
+        return Case(label,source(subtype=b'Redact',stored=stored,rect=box,media=b'0 0 32 32',flags=flags,
+                    page=b'/Rotate %d' % rotate,entries=f'/CA {alpha} '.encode()+entries,
+                    content=page_content,artwork=artwork,appearance_box=box,**options),RENDER,(REDACT_REQUIREMENT,),
+                    'Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content',
+                    oracle=redact_pixels(tuple(tuple(p) for p in regions),dpi=dpi,rotate=rotate,
+                                         alpha=1. if stored else alpha,rect=rect),dpi=dpi,extra={'tolerance':1})
+
+    # The sloped sides have direction (3,4), length5 and unit normal (4,-3)/5.
+    # Their half-unit offsets intersect y=7.5/16.5 and y=8.5/15.5 at these
+    # literal coordinates. No generated path or stroker supplies these corners.
+    skewed=[[(7,7.5),(20.25,7.5),(27,16.5),(13.75,16.5)],
+            [(9,8.5),(14.25,15.5),(25,15.5),(19.75,8.5)]]
+    for label,entries,regions,rect in [
+        ('rect',b'',rectangle,(8,8,24,24)),
+        ('quad',b'/QuadPoints [6 10 26 10 26 20 6 20]',outline(6,10,26,20),(4,4,28,28)),
+        ('skew',b'/QuadPoints [8 8 20 8 26 16 14 16]',skewed,(4,4,28,28)),
+    ]:
+        for dpi in (72,144):
+            for stored in (False,True):
+                yield redact_case(f'redact-{label}-{dpi}-'+('stored' if stored else 'generated'),
+                                  entries=entries,regions=regions,rect=rect,dpi=dpi,stored=stored)
+    for dpi in (72,144):
+        for stored in (False,True):
+            yield redact_case(f'redact-rotated-{dpi}-'+('stored' if stored else 'generated'),
+                              dpi=dpi,rotate=90,stored=stored)
+        yield redact_case(f'redact-overlap-{dpi}',rect=(4,4,28,28),dpi=dpi,alpha=.5,
+                          entries=b'/ca 0 /QuadPoints [6 8 18 8 18 16 6 16 14 12 26 12 26 20 14 20]',
+                          regions=outline(6,8,18,16)+outline(14,12,26,20))
+        yield redact_case(f'redact-clipped-{dpi}',rect=(10,8,22,18),dpi=dpi,
+                          entries=b'/QuadPoints [8 8 20 8 26 16 14 16]',regions=skewed)
+    for label,entries,options in [
+        ('redact-null-quads',b'/QuadPoints null',{}),
+        ('redact-indirect-null-quads',b'/QuadPoints 8 0 R',{'objects':(b'null',)}),
+        ('redact-indirect-quad',b'/QuadPoints 8 0 R',{'objects':(b'[9 0 R 8 24 8 24 24 8 24]',b'8')}),
+        ('redact-zero-area',b'/QuadPoints [8 8 24 8 24 8 8 8]',{'regions':[]}),
+        ('redact-hidden-malformed',b'/QuadPoints (invalid)',{'flags':2,'regions':[]}),
+        ('redact-no-view-malformed',b'/QuadPoints (invalid)',{'flags':32,'regions':[]}),
+        ('redact-ignored-replacement',b'/IC 8 0 R /RO 8 0 R /OverlayText 8 0 R /Repeat 8 0 R '
+         b'/DA 8 0 R /Q 8 0 R /C 8 0 R',{'objects':(b'8 0 R',)}),
+        ('redact-stored-ignores-invalid',b'/QuadPoints (invalid) /RO 8 0 R /DA 8 0 R /ca /Bad',
+         {'stored':True,'objects':(b'8 0 R',),'alpha':.25}),
+        ('redact-text-generated',b'/OverlayText (replacement) /DA (invalid)',{'text':True}),
+        ('redact-text-stored',b'/OverlayText (replacement) /DA (invalid)',{'text':True,'stored':True}),
+    ]:
+        yield redact_case(label,entries=entries,**options)
+    for label,entry in [
+        ('type',b'/QuadPoints 42'),('empty',b'/QuadPoints []'),
+        ('short',b'/QuadPoints [4 8 28 8 28 20 4]'),
+        ('number',b'/QuadPoints [4 /Bad 28 8 28 20 4 20]'),
+        ('clockwise',b'/QuadPoints [4 8 4 20 28 20 28 8]'),
+        ('concave',b'/QuadPoints [4 8 28 8 12 10 4 20]'),('alpha',b'/CA /Bad'),
+    ]:
+        yield Case('redact-invalid-'+label,source(subtype=b'Redact',stored=False,entries=entry),
+                   OPEN,(REDACT_REQUIREMENT,),'Malformed preview geometry/opacity fails without reading replacement artwork',
+                   extra={'render_error':'syntax'})
+    for label,entry,objects in [
+        ('reference',b'/QuadPoints 8 0 R',(b'8 0 R',)),
+        ('numeric',b'/QuadPoints ['+b'1'+b'0'*308+b'.0 8 28 8 28 20 4 20]',()),
+    ]:
+        yield Case('redact-limit-'+label,source(subtype=b'Redact',stored=False,entries=entry,objects=objects),
+                   OPEN,(REDACT_REQUIREMENT,),'Existing reference and finite-geometry limits bound preview data',
+                   extra={'render_error':'limit'})

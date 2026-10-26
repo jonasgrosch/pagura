@@ -1,4 +1,4 @@
-//! Text-markup appearances (12.5.6.10, Table 182).
+//! Text-markup appearances and Redact previews (Tables 182 and 195).
 //!
 //! Artwork policy fills the quads for Highlight with Multiply blending;
 //! Underline is the bottom 1/12 of each quad and StrikeOut a centred 1/12
@@ -6,10 +6,13 @@
 //! and horizontal steps no longer than 1/6 of the quad height. All regions
 //! share one nonzero fill, so overlapping quads do not apply opacity twice.
 //! Validated zero-area quads emit no marks instead of device hairlines.
+//! Redact previews use a one-unit red outline of QuadPoints (else Rect), clipped
+//! to the annotation rectangle. Replacement IC/RO/text and popup colour are not
+//! preview artwork; content remains unchanged and no redaction is applied.
 
 mod quads;
 
-use super::marks::{Color, Marks, PathOperator, Subpath, color};
+use super::marks::{Color, Marks, PathOperator, Pen, Subpath, color};
 use crate::stream::AppearanceStream;
 use pagura_core::{Dictionary, Error, Meter, Rect, Result};
 use pagura_document::Document;
@@ -21,6 +24,7 @@ pub(super) enum Style {
     Underline,
     StrikeOut,
     Squiggly,
+    Redact,
 }
 
 pub(super) fn generate(
@@ -31,7 +35,12 @@ pub(super) fn generate(
 ) -> Result<Option<AppearanceStream>> {
     let limits = document.limits();
     let mut storage = Meter::new(limits.render_bytes, "markup geometry storage exceeded");
-    let quads = quads::read(document, annotation, &mut storage)?;
+    let quads = quads::read(
+        document,
+        annotation,
+        &mut storage,
+        (style == Style::Redact).then_some(rect),
+    )?;
     let mut segments = Meter::new(limits.path_segments, "markup path segment budget exceeded");
     let mut work = Meter::new(limits.operations, "markup path work budget exceeded");
     let mut commands = Vec::new();
@@ -53,32 +62,46 @@ pub(super) fn generate(
         storage.reserve(&mut commands, needed)?;
         append(&mut commands, quad, style, count)?;
     }
-    let default = if style == Style::Highlight {
-        Color::yellow()
+    let color = if style == Style::Redact {
+        Some(Color::red())
     } else {
-        Color::black()
+        let default = if style == Style::Highlight {
+            Color::yellow()
+        } else {
+            Color::black()
+        };
+        color(document, annotation, b"C", Some(default))?
     };
     let mut marks = Marks::new(document, annotation);
-    if let Some(color) = color(document, annotation, b"C", Some(default))?
+    if let Some(color) = color
         && !commands.is_empty()
     {
         if style == Style::Highlight {
             marks.multiply()?;
         }
-        marks.fill(
-            &[Subpath::Operators {
-                commands: &commands,
-                closed: true,
-            }],
-            &color,
-        )?;
+        let path = [Subpath::Operators {
+            commands: &commands,
+            closed: true,
+        }];
+        if style == Style::Redact {
+            marks.stroke(
+                &path,
+                &color,
+                Pen {
+                    width: 1.0,
+                    dash: &[],
+                },
+            )?;
+        } else {
+            marks.fill(&path, &color)?;
+        }
     }
     marks.finish(rect)
 }
 
 fn append(commands: &mut Vec<PathOperator>, quad: &Quad, style: Style, count: usize) -> Result<()> {
     let (bottom, top) = match style {
-        Style::Highlight => (0.0, 1.0),
+        Style::Highlight | Style::Redact => (0.0, 1.0),
         Style::Underline => (0.0, 1.0 / 12.0),
         Style::StrikeOut => (11.0 / 24.0, 13.0 / 24.0),
         Style::Squiggly => return wave(commands, quad, count),

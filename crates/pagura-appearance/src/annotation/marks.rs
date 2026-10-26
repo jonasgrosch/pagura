@@ -110,7 +110,7 @@ pub(super) enum Subpath<'a> {
     Polyline(&'a [(f64, f64)]),
     /// A polygon (`m`, `l`, then `h`).
     Polygon(&'a [(f64, f64)]),
-    /// PDF 2.0 annotation path operators, optionally closed for a polygon.
+    /// PDF 2.0 annotation path operators, optionally closing every subpath.
     Operators {
         commands: &'a [PathOperator],
         closed: bool,
@@ -338,7 +338,10 @@ impl<'a> Marks<'a> {
                     )?;
                 }
                 Subpath::Operators { commands, closed } => {
-                    for command in commands {
+                    for (index, command) in commands.iter().enumerate() {
+                        if closed && index != 0 && matches!(command, PathOperator::Move(_)) {
+                            self.content.text("h\n")?;
+                        }
                         let (values, operator): (&[f64], &str) = match command {
                             PathOperator::Move(values) => (values, "m\n"),
                             PathOperator::Line(values) => (values, "l\n"),

@@ -2218,6 +2218,979 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/redact-observe-ordinary-content",
+      "kind": "pdf",
+      "description": "Ordinary cyan/black page marks identify content that a non-destructive preview must preserve",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-ordinary-content.pdf",
+      "sha256": "5fd51eddb0cdf38237e167115d55edd2c88bdd42872db095a6d68d70d587645f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-rect-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-rect-missing.pdf",
+      "sha256": "9eccb62196ff04c0bc7fd2c583be1f6722a0efb84715bf2c6c773cdd93d08570",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-rect-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-rect-stored.pdf",
+      "sha256": "63d35db456c5493a809adcd7cf13a742611cc4b73831f78d99c0746e11252e65",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-quads-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quads-missing.pdf",
+      "sha256": "32351b29ddb996890507562ba63f0089604385dbe3c493dc2fb54b8be902272a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-quads-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quads-stored.pdf",
+      "sha256": "0c9f489cfef504f951c42b1fdefa12ad29ea0329aa026641fe5bf10318fdaf17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-border-color-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-border-color-missing.pdf",
+      "sha256": "bd40ce785a955beb2863c8d38b99bd78876ba9d273062d8e0683b13713624f30",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-border-color-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-border-color-stored.pdf",
+      "sha256": "37d716d522dd1a2346145613004c48c727b32809e2be88919f0377f325de4689",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-interior-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-interior-missing.pdf",
+      "sha256": "1b8760f9000edd5d056d2d99c3dd82d6cc4bd939eecfc9f574040694171f0fe1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-interior-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-interior-stored.pdf",
+      "sha256": "11d1690ea8910c639d786ab78109348fbc802783074aeb03564290f947e00803",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-quad-interior-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quad-interior-missing.pdf",
+      "sha256": "13d50d89913f7f5640d88022d3ad4143fc779107027274f35e7db4494721dc40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-quad-interior-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-quad-interior-stored.pdf",
+      "sha256": "eb7cdf8f15dffa8d6b94331b2fd6f021d161111cbd98ed9a8c45517e00786119",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-overlay-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-overlay-missing.pdf",
+      "sha256": "90d5649ca8d508a391172a78ca186492d6c6c78436e1813efccad08bdd7429c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-overlay-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-overlay-stored.pdf",
+      "sha256": "5d367b45e1f7ecd38fff36b073abba809341ca1c30a42feb8d2d183faba855d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-repeat-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-repeat-missing.pdf",
+      "sha256": "1855500fd047058081f1ab018699a16b6b964ba88fced78b382ed8340d9f570f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-repeat-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-repeat-stored.pdf",
+      "sha256": "323debb96c29a269d022262695826f794c06024d89186431857cf888b4ef8819",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-replacement-form-missing",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-replacement-form-missing.pdf",
+      "sha256": "4b7152b8eda1339f93c381644efd7e0204dbbb5cfba7f7bdb999a7f8a4515569",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-observe-replacement-form-stored",
+      "kind": "pdf",
+      "description": "Matched Redact preview observation: normal AP is separate from post-application fill, text and RO",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-observe-replacement-form-stored.pdf",
+      "sha256": "52f30b5c59419d14bb7af7b037eeab1961176748ec00983c178e44e222d353c8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "annotation_display/redact-rect-72-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rect-72-generated.pdf",
+      "sha256": "8c9ac00b53105c5d4316e5166fc29638114ead7b074f9237796348b7278151fb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rect-72-generated.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rect-72-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rect-72-stored.pdf",
+      "sha256": "d4ef7198d40c23090a006c8b5f9b87761379c3c55d05b74c5e1c44a538ef3335",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rect-72-stored.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rect-144-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rect-144-generated.pdf",
+      "sha256": "8c9ac00b53105c5d4316e5166fc29638114ead7b074f9237796348b7278151fb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rect-144-generated.ppm",
+      "oracle_sha256": "b7ef1688b94a4575423eab1da52b66d4bca90cce0cc85edbc0ccb7e6ca489b95",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rect-144-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rect-144-stored.pdf",
+      "sha256": "d4ef7198d40c23090a006c8b5f9b87761379c3c55d05b74c5e1c44a538ef3335",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rect-144-stored.ppm",
+      "oracle_sha256": "b7ef1688b94a4575423eab1da52b66d4bca90cce0cc85edbc0ccb7e6ca489b95",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-quad-72-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-quad-72-generated.pdf",
+      "sha256": "fe88f897a43d037edb83c50e079e2e020074f771fddf27ef8d6c9d84076c6baf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-quad-72-generated.ppm",
+      "oracle_sha256": "7913519ad406afd665ba94c83ff8753d8a018243492cdf3f3793112c73228a80",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-quad-72-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-quad-72-stored.pdf",
+      "sha256": "e0414defbe4ab5a34fac103a5184cce77c2d99a96d895884895cc40d4c1b60e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-quad-72-stored.ppm",
+      "oracle_sha256": "7913519ad406afd665ba94c83ff8753d8a018243492cdf3f3793112c73228a80",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-quad-144-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-quad-144-generated.pdf",
+      "sha256": "fe88f897a43d037edb83c50e079e2e020074f771fddf27ef8d6c9d84076c6baf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-quad-144-generated.ppm",
+      "oracle_sha256": "1c8b148c307cd32e072f2fc627f05b13c42c6a8e9243e33434a5da9fe42a1541",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-quad-144-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-quad-144-stored.pdf",
+      "sha256": "e0414defbe4ab5a34fac103a5184cce77c2d99a96d895884895cc40d4c1b60e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-quad-144-stored.ppm",
+      "oracle_sha256": "1c8b148c307cd32e072f2fc627f05b13c42c6a8e9243e33434a5da9fe42a1541",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-skew-72-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-skew-72-generated.pdf",
+      "sha256": "c95422947b29f1f5a862dcf706dba8068ad8f83ae383f86b1eccee3ab4ccd213",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-skew-72-generated.ppm",
+      "oracle_sha256": "5932c7148e9e57813860492f7efdfef6eae072cf988277c82368b59dabc9d57a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-skew-72-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-skew-72-stored.pdf",
+      "sha256": "7554596b61b2e734392114e952fd5ce7b5f7481d698ea1062a0330f9a1cbf83d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-skew-72-stored.ppm",
+      "oracle_sha256": "5932c7148e9e57813860492f7efdfef6eae072cf988277c82368b59dabc9d57a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-skew-144-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-skew-144-generated.pdf",
+      "sha256": "c95422947b29f1f5a862dcf706dba8068ad8f83ae383f86b1eccee3ab4ccd213",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-skew-144-generated.ppm",
+      "oracle_sha256": "e91bc7bf6981861244189e9893750ae13131034aaa8759b6be6e21f2211341fb",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-skew-144-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-skew-144-stored.pdf",
+      "sha256": "7554596b61b2e734392114e952fd5ce7b5f7481d698ea1062a0330f9a1cbf83d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-skew-144-stored.ppm",
+      "oracle_sha256": "e91bc7bf6981861244189e9893750ae13131034aaa8759b6be6e21f2211341fb",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rotated-72-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rotated-72-generated.pdf",
+      "sha256": "c87fcd5064b2125e70bf399b4e2dad249a1c2a2880001f42e9ed61e9a837d01b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rotated-72-generated.ppm",
+      "oracle_sha256": "dd42f28c729df7d55bf578e5e057f6126ea36d12957b195b6e127a630d843d36",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rotated-72-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rotated-72-stored.pdf",
+      "sha256": "03ae0f9d0998682d231a6d538240d875d31dd39b53c9d96d24a48a3d14719138",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rotated-72-stored.ppm",
+      "oracle_sha256": "dd42f28c729df7d55bf578e5e057f6126ea36d12957b195b6e127a630d843d36",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-overlap-72",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-overlap-72.pdf",
+      "sha256": "f80989463e843d73f4a8d9a40df91d13f755e408be7b60dc0593b6c449f96427",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-overlap-72.ppm",
+      "oracle_sha256": "c22d968e53a10d6c22092c392c81197d5664e9804943f39f1eb6017edbb8c343",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-clipped-72",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-clipped-72.pdf",
+      "sha256": "c32407958a9cf9a187993f40ebac8f9ce05f5379d04d676829ddf40e8508a312",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-clipped-72.ppm",
+      "oracle_sha256": "d4a6535406ed4b3acd55a622798c24ace525b0ef33b587ad887ef36b18ace917",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rotated-144-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rotated-144-generated.pdf",
+      "sha256": "c87fcd5064b2125e70bf399b4e2dad249a1c2a2880001f42e9ed61e9a837d01b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rotated-144-generated.ppm",
+      "oracle_sha256": "892e42310abe8c8eec89f97d7bac6d4b07c4709121f3e21948a0886015d52512",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-rotated-144-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-rotated-144-stored.pdf",
+      "sha256": "03ae0f9d0998682d231a6d538240d875d31dd39b53c9d96d24a48a3d14719138",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-rotated-144-stored.ppm",
+      "oracle_sha256": "892e42310abe8c8eec89f97d7bac6d4b07c4709121f3e21948a0886015d52512",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-overlap-144",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-overlap-144.pdf",
+      "sha256": "f80989463e843d73f4a8d9a40df91d13f755e408be7b60dc0593b6c449f96427",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-overlap-144.ppm",
+      "oracle_sha256": "431830f187e1ba872d6c409dde87e6af9db74ac106b4d91cd1903ca992737290",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-clipped-144",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-clipped-144.pdf",
+      "sha256": "c32407958a9cf9a187993f40ebac8f9ce05f5379d04d676829ddf40e8508a312",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-clipped-144.ppm",
+      "oracle_sha256": "a785e81fa7ae94333101332a623d7f405d43c55fefe64c227860655278522645",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-null-quads",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-null-quads.pdf",
+      "sha256": "37bd5f6c769a78f754d9d6a9402bcd1932f34391ef2d695496011df61d33c5e1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-null-quads.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-indirect-null-quads",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-indirect-null-quads.pdf",
+      "sha256": "42b9c3b34dce62d4cae9abd920ae28571d9466f89fcfa5d2761292e116b01ae7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-indirect-null-quads.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-indirect-quad",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-indirect-quad.pdf",
+      "sha256": "c381e37cb7997a783ba0b276540b6819bd9064680c4916b85613365c872f40e5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-indirect-quad.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-zero-area",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-zero-area.pdf",
+      "sha256": "214438dd3b156deac439fbb941827137631839109a9200591210bb5d3df75dd8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-zero-area.ppm",
+      "oracle_sha256": "6d8adfb8173cc0f04f3a690bb3362cdeb8c8db222241e1fbbebbe8be41b7c72e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-hidden-malformed",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-hidden-malformed.pdf",
+      "sha256": "b3c46977cb26c957cd37753522690aa0fe9dba69ddee58e8a535661883c2f010",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-hidden-malformed.ppm",
+      "oracle_sha256": "6d8adfb8173cc0f04f3a690bb3362cdeb8c8db222241e1fbbebbe8be41b7c72e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-no-view-malformed",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-no-view-malformed.pdf",
+      "sha256": "77b83463000cdf8295973cb5afa7824a45be7bc36dc607dfab949473aac5fffc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-no-view-malformed.ppm",
+      "oracle_sha256": "6d8adfb8173cc0f04f3a690bb3362cdeb8c8db222241e1fbbebbe8be41b7c72e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-ignored-replacement",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-ignored-replacement.pdf",
+      "sha256": "f7863b62ea2115b9beaf995277ec0ef0c763a0759a7806650c0e939a6a124175",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-ignored-replacement.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-stored-ignores-invalid",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-stored-ignores-invalid.pdf",
+      "sha256": "00777b3fc254bf77102828119c6b4d7d4f18b343b1a4c56d257485b44b709da9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-stored-ignores-invalid.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-text-generated",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-text-generated.pdf",
+      "sha256": "32ac6de2aa8e0b2e31c0d3741daa2b0401599c051892bdeb4ff70a13462b3ead",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-text-generated.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-text-stored",
+      "kind": "pdf",
+      "description": "Literal offset contours, rational winding coverage and source-over preserve underlying cyan/black content",
+      "expected": "render",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-text-stored.pdf",
+      "sha256": "09cf4c8a402831082ea641385d341cfac06f169c2b13293a2c855a88c772eff2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_display/redact-text-stored.ppm",
+      "oracle_sha256": "6b750c0a822d3e12c7b9e23123a2f9cb488ca998e5d100dc391bacc5eb4cb9f8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "annotation_display/redact-invalid-type",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-type.pdf",
+      "sha256": "7457643b9770918f45d38e86af7c088c1e978a2e9b0aed093264237fef0d3867",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-invalid-empty",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-empty.pdf",
+      "sha256": "eb6867f7d943dcf978e7ef01c13ed234f57e0c9181b6efded69212084465089e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-invalid-short",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-short.pdf",
+      "sha256": "ad1b6c883c4f15e42d55ee9defc5cfda7c9547eb661dcc07731ae420bb62c81a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-invalid-number",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-number.pdf",
+      "sha256": "2ae4d3a4fa1e7c1a73a71fb45fbbb5b1ad8abaf9e7ce548742c8e8c454e8bc15",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-invalid-clockwise",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-clockwise.pdf",
+      "sha256": "edfcae5638eef05049cf0076e8d75feef4c37701483a1f2bbef7e2fb31d0766e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-invalid-concave",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-concave.pdf",
+      "sha256": "4d7cec6aebaed6be9c47168f5e5b9cd6bcd9ae93f6c379330e40697680b3a259",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-invalid-alpha",
+      "kind": "pdf",
+      "description": "Malformed preview geometry/opacity fails without reading replacement artwork",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-invalid-alpha.pdf",
+      "sha256": "6ac4636d4d76304d792e436499f1b65499906dff4c743fe95f699753cfaa71e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_display/redact-limit-reference",
+      "kind": "pdf",
+      "description": "Existing reference and finite-geometry limits bound preview data",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-limit-reference.pdf",
+      "sha256": "d90c6d0e9c2c5ded99131215ebfe551d43c0acb959ecae5ed40bf621d9e18f95",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "annotation_display/redact-limit-numeric",
+      "kind": "pdf",
+      "description": "Existing reference and finite-geometry limits bound preview data",
+      "expected": "open",
+      "requirements": [
+        "content-redact-preview"
+      ],
+      "path": "corpus/generated/annotation_display/redact-limit-numeric.pdf",
+      "sha256": "b5bbd3b619e23f28e734ae84ee6fa87809afed0e4be9a81fbde4b1cc7c2fe570",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
     }
   ]
 }

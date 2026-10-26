@@ -280,9 +280,11 @@ observations, with diagnostic hashes. Blank output is an observation, never a
 feature verdict. The raw reports have kind `raw-render-observations` and are not
 added to oracle pass/fail totals or accepted by the oracle-report combiner.
 Hosted actual images remain artifacts and never become product icon oracles.
-The capability workflow's manual `sound_observations` input runs just this
-diagnostic batch on explicit Ubuntu/macOS runners, without repeating the full
-platform, service or pixel-oracle suites.
+The capability workflow's manual `annotation_observations` choice selects
+`sound`, `redact` or `none`. Either annotation set runs only its diagnostic batch
+on explicit Ubuntu/macOS runners; `none` runs the ordinary inventory, service
+and pixel-oracle suites. The CLI's `observe` command keeps Sound as its default;
+`--annotation-set redact` selects Redact preview inputs.
 
 Oracle runs use the same named-refusal parser. A verified Pagura CLI tag or
 structured backend refusal is recorded as `unsupported`; other failures keep
@@ -351,6 +353,92 @@ fixtures and expectations remain byte-identical. The controls cover both icons,
 72/144 DPI, rotation, explicit view flags, color, opacity, null/default/unknown
 and indirect names, hidden/NoView, stored precedence and ignored cyclic payloads.
 Malformed visual values and reference/content/scene budgets have separate checks.
-The new G01 set has 386 oracles; this Sound increment still awaits hosted runtime
-validation. Custom artwork variants, interaction and playback remain outside
-these static drawing claims, and the V01 family remains partial.
+The 386-control set passed [hosted run 40371829262](https://github.com/jonasgrosch/pagura/actions/runs/40371829262)
+at retained head `8dd6279e93e02ed969fed2576f964448428d5d2f`, measured merge
+`6bdb9f119fe57e9deb28ac9d6dcb6e828aa07607`, with 2,702 recorded cells. Combined
+artifact `12673292246` has SHA-256
+`266c11f89d18ad24fe8526047b0e4e6d6f1e625f5e56af39d81c54a31fc0fbf9`;
+report file SHA-256 is
+`a7b6a3900c9f74fd22133fb114c0000a334cf57569fcff924b9af72c2c73d31c`.
+[Native/WASI/client and save/reopen checks](https://github.com/jonasgrosch/pagura/actions/runs/40371829227)
+also passed, as did [full Ubuntu, macOS and Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40371829208). All twelve gates passed that retained head; the subsequent Redact batch awaits its own hosted validation.
+Custom artwork variants, interaction and playback remain outside these static
+drawing claims, and the V01 family remains partial.
+
+## Redact preview observations
+
+ISO 32000-2 12.5.6.23/Table 195 separates non-destructive identification from
+applying redactions. QuadPoints identifies the intended region; absent quads
+use Rect. IC, RO, OverlayText, Repeat, DA and Q describe replacement artwork
+after content removal, and RO is distinct from normal annotation AP. These
+entries do not require a static display renderer to remove content or draw
+post-application replacements. Sanitizing removal remains group 16.
+
+The first bounded diagnostic has 18 raw cases: blank and cyan/black ordinary
+page content, plus missing/stored normal AP pairs for Rect, two quads, border
+colour, interior colour, quad/interior combination, overlay text, repetition
+and a replacement RO form. Overlay inputs carry an original embedded Type3
+glyph and explicit resources; the RO form has distinct green/blue artwork.
+Every stored normal AP has black/red artwork, so its precedence can be observed
+separately from replacement entries. The underlying page content remains in
+every annotated PDF. No redaction is applied and no audio, actions or external
+resources are used. The source fixture coordinates and PDF identities are
+retained with each raw report; no expected preview pixels are copied from a
+reader.
+
+[Run 40373036796](https://github.com/jonasgrosch/pagura/actions/runs/40373036796),
+source `10445c5367162afb1aea989596d63e0d4d5dd886`, completed both platforms.
+MuPDF 1.28.5 draws a red missing-AP preview; changing C, IC, overlay text,
+repetition or RO preserves the corresponding Rect/quads preview hash. All five
+Linux baselines and Pagura paint the same stored normal AP. PDFium, pdf.js Node
+canvas, Poppler and hayro leave missing-AP inputs identical to ordinary page
+content. CoreGraphics leaves both missing and stored annotation inputs identical
+to ordinary content, establishing its adapter boundary. Every invoked baseline
+case returned observed pixels, including the RO case; no renderer error is
+interpreted as preview absence. The raw report retains all engine versions,
+adapter settings and binary identities and never supplies expected artwork.
+
+Linux report artifact `12674435567` has SHA-256
+`fb30292c02264445aa13f2d4b6dcba7b874112784b096d91175543c5da6cc972`;
+report file SHA-256 is
+`e2032ad43835d681e2d6842b27d382a3d59eb6fe9011d7c311ed307534beaa08`.
+macOS report artifact `12672309093` has SHA-256
+`3f3d708c97af94db76d814b9486842198d4ba6427b44d3d72bd60b7b6a0bdc6e`;
+report file SHA-256 is
+`85e89932b90468dea449f8907e9d067b553596847cf84bb9d74933dee19819af`.
+The 18 raw cases stay outside oracle pass/fail totals. All original diagnostic
+PDFs, Sound subjects and previous pixel oracles are unchanged.
+
+Pagura's explicit preview policy uses one-unit red outlines of QuadPoints, or
+Rect when quads are absent/null, clipped to Rect. It shares the text-markup quad
+reader, operation/storage/segment limits and Marks writer; it adds no renderer,
+font, replacement-form or content-removal path. The quad reader follows Table
+182's counterclockwise order; MuPDF's crossed outline for the authored quads is
+an observed ordering difference, not a geometry oracle to copy. Existing
+alternate-order repair reporting and strict rejection remain intact. All quads
+are one stroke, so overlapping outline regions receive opacity once. The shared
+closed-path writer closes each subpath at the next moveto, using its existing
+stream-byte budget; open paths retain their original output. C concerns
+popup/icon colour here and is ignored by this red-outline policy; CA controls
+the stroke. IC, RO, OverlayText, Repeat, DA, Q and nonstroking ca are not read for
+the outline, including malformed or cyclic values. Stored normal AP wins even
+when substitute-preview geometry or replacement entries are malformed.
+
+Thirty new pixel controls use literal offset contours, rational winding/clip
+areas and source-over equations over cyan/black page content. A sloped quad has
+edge direction (3,4), so its outward half-unit offset is (2/5,-3/10). Intersecting
+these supporting lines with y=7.5/16.5 yields outer vertices
+`(7,7.5),(20.25,7.5),(27,16.5),(13.75,16.5)`; the inner vertices are
+`(9,8.5),(19.75,8.5),(25,15.5),(14.25,15.5)`. Stored equivalents fill those
+independent contours instead of stroking the product path. The controls cover
+72/144 DPI, rotation, clipping, overlapping quads/CA, null and indirect defaults,
+hidden/NoView and stored precedence. An original Type3 glyph remains visible and
+extractable; integration checks retain its Unicode/position and all original
+file bytes before and after preview rendering. The preview never removes data.
+
+Separate error controls reject non-array, empty, short, nonnumeric, clockwise
+and concave QuadPoints; malformed CA; cyclic quad references; and overflowing
+orientation arithmetic. Existing shared limits also bound Rect fallback and
+explicit quads, including repeated scene recording under a tight byte budget.
+The resulting G01 set has 416 oracles. This Redact increment awaits hosted
+runtime validation; it does not implement applied redaction or promote V01.

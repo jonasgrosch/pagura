@@ -35,7 +35,7 @@ use pagura_document::Document;
 /// default colour spaces do not apply. Reader policy draws Link, Square and Circle
 /// borders, Line/Ink/Polygon/PolyLine paths, plain and common RC/DS styled Line
 /// captions and FreeText with an explicit font provider, standard rubber stamps,
-/// four text-markup styles, Caret symbols,
+/// four text-markup styles, Redact region outlines, Caret symbols,
 /// seven Text icons, four FileAttachment icons, two static Sound icons,
 /// and the MK background and border of empty text and signature widgets.
 /// Icon artwork never resolves file or sound payloads and cannot activate media.
@@ -100,6 +100,7 @@ pub fn annotation_appearance_with_fonts(
         b"Underline" => markup::generate(document, annotation, rect, markup::Style::Underline)?,
         b"StrikeOut" => markup::generate(document, annotation, rect, markup::Style::StrikeOut)?,
         b"Squiggly" => markup::generate(document, annotation, rect, markup::Style::Squiggly)?,
+        b"Redact" => markup::generate(document, annotation, rect, markup::Style::Redact)?,
         b"Caret" => caret::generate(document, annotation, rect)?,
         b"Stamp" => stamp::generate(document, annotation, rect, fonts)?,
         b"FreeText" => free_text::generate(document, annotation, rect, fonts)?,
