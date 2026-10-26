@@ -70,7 +70,7 @@ fn cloud_geometry_work_storage_and_output_are_bounded() {
             ..Limits::default()
         },
         Limits {
-            document_bytes: 1_600,
+            document_bytes: 32_768,
             ..Limits::default()
         },
         Limits {
@@ -87,7 +87,9 @@ fn cloud_geometry_work_storage_and_output_are_bounded() {
         )
         .unwrap();
         assert_eq!(
-            annotation_appearance(&document, &annotation, rect(0.0, 0.0, 100.0, 100.0))
+            // The document fits; the large cloudy perimeter exceeds each
+            // appearance budget independently, including retained path storage.
+            annotation_appearance(&document, &annotation, rect(0.0, 0.0, 10_000.0, 10_000.0))
                 .unwrap_err()
                 .kind,
             ErrorKind::Limit
