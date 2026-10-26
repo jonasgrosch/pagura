@@ -187,8 +187,48 @@ results for this source revision are pending hosted execution.
 
 The existing PR182 precision fixtures and PR187 matched controls retain their
 original pixels and tolerances. New integration expectations use the primary
-formulae recorded in [the lane notes](../../docs/plans/jpx-parity-progress.md).
+formulae recorded in the [image painting requirements](../../references/requirements/paint.json)
+and [JPEG 2000 requirements](../../references/requirements/jpx.json).
 Profile-selection controls distinguish malformed metadata from unavailable
 profiles/transforms. Future signatures test fallback policy rather than claiming
 that an unknown extension is valid current ICC conformance. The repository
 contains no third-party implementation or licensed standard text.
+
+The consolidated image source starts directly from `render/one-pass`
+`73e1ab018d9c23f24c374de1f3a4441b119a5365`. Reviewed PR182 source
+`e16f5227f1290b51a7447ffd273f7dbf27e9c001` supplies the original unsigned
+sYCC precision controls; PR187 source `80e9aed8f8c7cbb1b23da7b536649582bc0607af`
+supplies their matched ordinary RGB/soft-mask controls. Original refs are preserved.
+
+The signed restricted-TRC diagnostic at
+`cb444312450e900a5b23b7b344286ee510d63cd6`, [run 40341090579](https://github.com/jonasgrosch/pagura/actions/runs/40341090579),
+retained the pre-fix implementation: Pagura passed 212 controls and returned
+Unsupported on the four `signed-trc-{gray,rgb}-{8,16}` cases. The workflow failed
+for those expected subject errors; it is diagnostic evidence, not acceptance.
+Linux render-report artifact `12660430830` has SHA-256
+`74d52c3d16f0c01406c8708db9c73c18befa5762e5b171a246bc29386af8a743`; macOS
+artifact `12660000540` has SHA-256
+`213de85810c8ed9aa9befe7d7dccf415291d8aacf590fbdcb065f87c29ecefaa`.
+
+| Baseline configuration | Signed-control observation | Control limitation |
+| --- | --- | --- |
+| PDF.js 6.4.299 | Each signed result is byte-identical to its clipped unsigned JPX pair. | Both differ from the ICC-managed oracle; ordinary RGB controls pass. |
+| MuPDF 1.28.5; Quartz on macOS 26.6.2 | Signed results differ from clipped unsigned pairs. | Unsigned ICC and ordinary RGB controls pass. |
+| PDFium 156.0.8076.0; hayro 0.8.0 | Eight-bit signed gray output retains the storage-offset sequence. | Both signed and unsigned ICC results differ from their oracles. |
+| Poppler 24.02.0 | Signed observations remain unadjudicated. | Ordinary RGB controls also fail. |
+
+For PDF.js, eight-bit signed and unsigned gray controls both produce
+`[0, 0, 0, 0, 64, 127]`; the primary ICC oracle and ordinary RGB control produce
+`[0, 0, 0, 0, 137, 187]`. This isolates sample clipping from colour interpretation
+without making an ICC family-parity claim. Measured output never supplies an oracle.
+
+Source commit `8a27bb8a3` implements the T.800 Table I.9 clipping policy only for
+selected XYZ Gray/RGB matrix/TRC input/display profiles. General signed Lab/LUT
+profiles remain Unsupported unless a later restricted candidate applies.
+Mixed signed/unsigned palette channels, opacity modes and candidate fallback
+have independent controls and public raw-sample tests. The reference renderer
+separately unassociates stored samples before Decode/range mapping; the fixed
+`lab-alpha-2` and `premultiplied-inverted-decode` oracles expose ordering mistakes.
+No tolerance was relaxed. Precision above sixteen bits, broader Part 2 models
+and layering remain R03. Native/WASI/browser and current implementation acceptance
+remain tied to hosted results for the published source revision (ADR 0031).
