@@ -113,8 +113,76 @@ fn lossless_sample(
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+struct Selection {
+    component: usize,
+    dc: usize,
+    ac: usize,
+}
+
+/// Entropy state reset at scan/restart boundaries. Both DCT coding methods
+/// share the same component predictors and progressive end-of-block state.
+struct ScanEntropy<'a> {
+    arithmetic: Option<super::arithmetic::Arithmetic<'a>>,
+    predictors: [i32; 4],
+    eob: u32,
+}
+
+impl<'a> ScanEntropy<'a> {
+    fn new(process: Process, data: &'a [u8], offset: usize, work: usize) -> Result<Self> {
+        let arithmetic = process
+            .is_arithmetic()
+            .then(|| super::arithmetic::Arithmetic::new(data, offset, work))
+            .transpose()?;
+        Ok(Self {
+            arithmetic,
+            predictors: [0; 4],
+            eob: 0,
+        })
+    }
+
+    /// The positions of nonzero Huffman coefficients, when known; arithmetic
+    /// decoding leaves their discovery to reconstruction as before.
+    fn block(
+        &mut self,
+        block: &mut [i32; 64],
+        scan: &Scan,
+        (process, precision): (Process, u8),
+        (huffman, conditioning): (&[Option<Huffman>; 8], &super::arithmetic::Conditioning),
+        selection: Selection,
+        bits: &mut Bits<'_>,
+    ) -> Result<Option<u64>> {
+        let Selection { component, dc, ac } = selection;
+        if let Some(coder) = &mut self.arithmetic {
+            coder.block(
+                block,
+                scan,
+                process.is_progressive(),
+                conditioning,
+                component,
+                (dc, ac),
+                &mut self.predictors[component],
+                precision,
+            )?;
+            Ok(None)
+        } else {
+            huffman_block(
+                block,
+                scan,
+                (process.is_progressive(), precision),
+                (
+                    huffman.get(dc).and_then(Option::as_ref),
+                    huffman.get(ac).and_then(Option::as_ref),
+                ),
+                (&mut self.predictors[component], &mut self.eob),
+                bits,
+            )
+        }
+    }
+}
+
 pub(super) struct Scan {
-    selected: Vec<(usize, usize, usize)>,
+    selected: Vec<Selection>,
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) high: u8,
@@ -124,12 +192,12 @@ pub(super) struct Scan {
     background: Option<((u64, u32), usize)>,
 }
 impl Scan {
-    fn geometry(&self, frame: &super::Frame) -> Result<(usize, usize)> {
+    fn geometry(&self, frame: &super::Frame, restart: usize) -> Result<(usize, usize)> {
         let interleaved = self.selected.len() > 1;
         let geometry = if interleaved {
             (frame.mcu_cols, frame.mcu_rows)
         } else {
-            let c = &frame.components[self.selected[0].0];
+            let c = &frame.components[self.selected[0].component];
             (
                 (frame.width as usize * c.h).div_ceil(frame.process.unit() * frame.max_h),
                 (frame.height as usize * c.v).div_ceil(frame.process.unit() * frame.max_v),
@@ -139,11 +207,19 @@ impl Scan {
             && self
                 .selected
                 .iter()
-                .map(|&(i, _, _)| frame.components[i].h * frame.components[i].v)
+                .map(|selection| {
+                    let c = &frame.components[selection.component];
+                    c.h * c.v
+                })
                 .sum::<usize>()
                 > 10
         {
             return Err(Error::syntax("too many JPEG data units in MCU"));
+        }
+        if self.predictor.is_some() && !restart.is_multiple_of(geometry.0) {
+            return Err(Error::syntax(
+                "lossless JPEG restart interval is not whole MCU rows",
+            ));
         }
         Ok(geometry)
     }
@@ -153,7 +229,7 @@ impl Scan {
         if n == 0 || n > frame.components.len() || data.len() != 1 + 2 * n + 3 {
             return Err(Error::syntax("invalid JPEG scan component count"));
         }
-        let mut selected = Vec::with_capacity(n);
+        let mut selected: Vec<Selection> = Vec::with_capacity(n);
         for pair in data[1..=2 * n].as_chunks::<2>().0 {
             let index = frame
                 .components
@@ -161,17 +237,19 @@ impl Scan {
                 .position(|c| c.id == pair[0])
                 .ok_or(Error::syntax("unknown JPEG scan component"))?;
             let max_table = if frame.process.is_baseline() { 1 } else { 3 };
-            if selected.iter().any(|&(i, _, _)| i == index)
+            if selected
+                .iter()
+                .any(|selection| selection.component == index)
                 || pair[1] >> 4 > max_table
                 || pair[1] & 15 > max_table
             {
                 return Err(Error::syntax("invalid JPEG scan selector"));
             }
-            selected.push((
-                index,
-                usize::from(pair[1] >> 4),
-                4 + usize::from(pair[1] & 15),
-            ));
+            selected.push(Selection {
+                component: index,
+                dc: usize::from(pair[1] >> 4),
+                ac: 4 + usize::from(pair[1] & 15),
+            });
         }
         let (start, end, high, low) = (
             usize::from(data[1 + 2 * n]),
@@ -183,7 +261,7 @@ impl Scan {
             if end != 0
                 || high != 0
                 || low >= frame.precision
-                || selected.iter().any(|&(_, _, ac)| ac != 4)
+                || selected.iter().any(|selection| selection.ac != 4)
             {
                 return Err(Error::syntax("invalid lossless JPEG scan structure"));
             }
@@ -205,7 +283,7 @@ impl Scan {
         } else if predictor.is_none() && (start != 0 || end != 63 || high != 0 || low != 0) {
             return Err(Error::syntax("invalid sequential JPEG scan structure"));
         }
-        for &(i, _, _) in &selected {
+        for &Selection { component: i, .. } in &selected {
             if predictor.is_some() {
                 if frame.components[i].approximation[0] != -1 {
                     return Err(Error::syntax("duplicate lossless JPEG component scan"));
@@ -258,25 +336,15 @@ impl Decoder {
             .ok_or(Error::syntax("JPEG scan before frame"))?;
         let scan = Scan::parse(payload, frame, &self.huffman)?;
         let interleaved = scan.selected.len() > 1;
-        let (cols, rows) = scan.geometry(frame)?;
-        if scan.predictor.is_some() && !self.restart.is_multiple_of(cols) {
-            return Err(Error::syntax(
-                "lossless JPEG restart interval is not whole MCU rows",
-            ));
-        }
+        let (cols, rows) = scan.geometry(frame, self.restart)?;
         let mut bits = entropy_bits(frame, data, offset, limits, self.work);
-        let mut arithmetic = frame
-            .process
-            .is_arithmetic()
-            .then(|| {
-                super::arithmetic::Arithmetic::new(
-                    data,
-                    offset,
-                    limits.operations.saturating_sub(self.work),
-                )
-            })
-            .transpose()?;
-        let (mut predictors, mut eob, mut sequence) = ([0i32; 4], 0u32, 0u8);
+        let mut entropy = ScanEntropy::new(
+            frame.process,
+            data,
+            offset,
+            limits.operations.saturating_sub(self.work),
+        )?;
+        let mut sequence = 0;
         let idct = (!frame.process.is_progressive() && scan.predictor.is_none()).then(Idct::new);
         let mut restart_row = 0;
         // Sequential blocks share one buffer, cleared after each block.
@@ -284,24 +352,26 @@ impl Decoder {
         for mcu in 0..cols * rows {
             let (row, column) = (mcu / cols, mcu % cols);
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
-                let (entropy, reported) =
-                    ((&mut bits, arithmetic.as_mut()), &mut self.padding_reported);
-                restart(entropy, (eob, &mut sequence), (diagnostics, reported))?;
-                predictors.fill(0);
+                let readers = (&mut bits, entropy.arithmetic.as_mut());
+                restart(
+                    readers,
+                    (entropy.eob, &mut sequence),
+                    (diagnostics, &mut self.padding_reported),
+                )?;
+                entropy.predictors.fill(0);
                 restart_row = row;
             }
-            if let Some(blocks) = skip(&scan, (mcu, frame), &predictors, &mut bits)? {
+            if let Some(blocks) = skip(&scan, (mcu, frame), &entropy.predictors, &mut bits)? {
                 self.work = unit_work(self.work, blocks, frame.process, limits)?;
                 continue;
             }
-            for &(i, dc, ac) in &scan.selected {
+            for &selection in &scan.selected {
+                let i = selection.component;
                 let c = &mut frame.components[i];
                 // The tables cannot change within a scan (B.2.4.1). Validate
                 // and latch in component order at its first MCU only.
-                if mcu == 0 && scan.predictor.is_none() {
-                    latch_quant(c, &self.quant, frame.process.is_baseline())
-                        .map_err(|error| error.at(Position::Buffer(offset)))?;
-                }
+                latch_quant(c, &self.quant, frame.process, (mcu, &scan))
+                    .map_err(|error| error.at(Position::Buffer(offset)))?;
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {
@@ -322,14 +392,14 @@ impl Decoder {
                                     first_row: restart_row * vertical,
                                     precision: frame.precision,
                                 },
-                                self.huffman.get(dc).and_then(Option::as_ref),
+                                self.huffman.get(selection.dc).and_then(Option::as_ref),
                                 &mut bits,
                             )?;
                             continue;
                         }
                         if let Storage::Native(plane) = &mut c.storage {
-                            let tables = (&self.huffman, dc, ac);
-                            let block = ((block_row, block_column), &mut predictors[i]);
+                            let tables = (&self.huffman, selection);
+                            let block = ((block_row, block_column), &mut entropy.predictors[i]);
                             native(plane, c.quant.as_ref(), tables, block, &mut bits)?;
                             continue;
                         }
@@ -342,31 +412,14 @@ impl Decoder {
                         };
                         // The positions of the block's nonzero coefficients,
                         // when known.
-                        let nonzero = if let Some(coder) = &mut arithmetic {
-                            coder.block(
-                                block,
-                                &scan,
-                                frame.process.is_progressive(),
-                                &self.conditioning,
-                                i,
-                                (dc, ac),
-                                &mut predictors[i],
-                                frame.precision,
-                            )?;
-                            None
-                        } else {
-                            huffman_block(
-                                block,
-                                &scan,
-                                (frame.process.is_progressive(), frame.precision),
-                                (
-                                    self.huffman.get(dc).and_then(Option::as_ref),
-                                    self.huffman.get(ac).and_then(Option::as_ref),
-                                ),
-                                (&mut predictors[i], &mut eob),
-                                &mut bits,
-                            )?
-                        };
+                        let nonzero = entropy.block(
+                            block,
+                            &scan,
+                            (frame.process, frame.precision),
+                            (&self.huffman, &self.conditioning),
+                            selection,
+                            &mut bits,
+                        )?;
                         if let Some(idct) = &idct {
                             let coefficients = Sparse::with(&sequential, nonzero);
                             store(c, idct, coefficients, index)
@@ -377,10 +430,10 @@ impl Decoder {
                 }
             }
         }
-        if eob != 0 {
+        if entropy.eob != 0 {
             return Err(bits.error("JPEG EOB run exceeds scan"));
         }
-        self.finish(bits, arithmetic, data, limits, diagnostics)
+        self.finish(bits, entropy.arithmetic, data, limits, diagnostics)
     }
 
     /// Charges the scan's remaining entropy work and locates its end.
@@ -471,11 +524,16 @@ fn entropy_bits<'a>(
 /// they fit one 57-bit window.
 fn background_mcu(
     frame: &super::Frame,
-    selected: &[(usize, usize, usize)],
+    selected: &[Selection],
     tables: &[Option<Huffman>; 8],
 ) -> Option<((u64, u32), usize)> {
     let (mut pattern, mut length, mut blocks) = (0u64, 0u32, 0usize);
-    for &(i, dc, ac) in selected {
+    for &Selection {
+        component: i,
+        dc,
+        ac,
+    } in selected
+    {
         let c = &frame.components[i];
         if !matches!(c.storage, Storage::Native(_)) {
             return None;
@@ -507,7 +565,8 @@ fn skip(
     let Some((pattern, blocks)) = scan.background.filter(|_| mcu > 0) else {
         return Ok(None);
     };
-    let ready = scan.selected.iter().all(|&(i, _, _)| {
+    let ready = scan.selected.iter().all(|selection| {
+        let i = selection.component;
         let c = &frame.components[i];
         matches!((&c.storage, &c.quant), (Storage::Native(plane), Some(quant))
             if plane.at_background(predictors[i], quant))
@@ -519,13 +578,13 @@ fn skip(
 fn native(
     plane: &mut super::deferred::Plane,
     quant: Option<&[u16; 64]>,
-    (tables, dc, ac): (&[Option<Huffman>; 8], usize, usize),
+    (tables, selection): (&[Option<Huffman>; 8], Selection),
     (block, predictor): ((usize, usize), &mut i32),
     bits: &mut Bits<'_>,
 ) -> Result<()> {
     let (Some(dc), Some(ac)) = (
-        tables.get(dc).and_then(Option::as_ref),
-        tables.get(ac).and_then(Option::as_ref),
+        tables.get(selection.dc).and_then(Option::as_ref),
+        tables.get(selection.ac).and_then(Option::as_ref),
     ) else {
         return Err(bits.error("missing JPEG Huffman table"));
     };
@@ -534,12 +593,7 @@ fn native(
 }
 
 /// Reconstructs a completed sequential block into its component's samples.
-fn store(
-    component: &mut super::frame::Component,
-    idct: &Idct,
-    block: Sparse<'_>,
-    index: usize,
-) -> Option<()> {
+fn store(component: &mut Component, idct: &Idct, block: Sparse<'_>, index: usize) -> Option<()> {
     let quant = component.quant.as_ref()?;
     let stride = component.stride;
     match &mut component.storage {
@@ -551,12 +605,16 @@ fn store(
 
 /// Quantizers are latched at a component's first scan (B.2.4.1).
 fn latch_quant(
-    component: &mut super::frame::Component,
+    component: &mut Component,
     tables: &[Option<[u16; 64]>; 4],
-    baseline: bool,
+    process: Process,
+    (mcu, scan): (usize, &Scan),
 ) -> Result<()> {
+    if mcu != 0 || scan.predictor.is_some() {
+        return Ok(());
+    }
     let quant = tables[component.table].ok_or(Error::syntax("missing JPEG quantization table"))?;
-    if baseline && quant.iter().any(|&q| q > 255) {
+    if process.is_baseline() && quant.iter().any(|&q| q > 255) {
         return Err(Error::syntax("baseline JPEG quantizer exceeds eight bits"));
     }
     if component.quant.is_some_and(|q| q != quant) {
@@ -1025,7 +1083,12 @@ mod tests {
                 continue;
             };
             let scan = Scan {
-                selected: vec![(0, 0, 4)],
+                selected: vec![super::Selection {
+                    component: 0,
+                    dc: 0,
+                    ac: 4,
+                }],
+                predictor: None,
                 start: 0,
                 end: 63,
                 high: 0,

@@ -53,6 +53,23 @@ impl Process {
     pub(super) fn unit(self) -> usize {
         if self.is_lossless() { 1 } else { 8 }
     }
+
+    fn validate_precision(self, precision: u8) -> Result<()> {
+        if self.is_lossless() && !(2..=16).contains(&precision) {
+            return Err(Error::syntax(
+                "lossless JPEG precision must be from two to sixteen bits",
+            ));
+        }
+        if !self.is_lossless()
+            && (!matches!(precision, 8 | 12) || (self.is_baseline() && precision != 8))
+        {
+            return Err(Error::unsupported(
+                crate::features::JPEG_PRECISION,
+                "JPEG process requires eight or twelve bit precision",
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// A component's data units. A sequential scan completes each block before
@@ -129,19 +146,7 @@ impl Frame {
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
-        if process.is_lossless() && !(2..=16).contains(&data[0]) {
-            return Err(Error::syntax(
-                "lossless JPEG precision must be from two to sixteen bits",
-            ));
-        }
-        if !process.is_lossless()
-            && (!matches!(data[0], 8 | 12) || (process.is_baseline() && data[0] != 8))
-        {
-            return Err(Error::unsupported(
-                crate::features::JPEG_PRECISION,
-                "JPEG process requires eight or twelve bit precision",
-            ));
-        }
+        process.validate_precision(data[0])?;
         let height = u32::from(u16::from_be_bytes([data[1], data[2]]));
         let width = u32::from(u16::from_be_bytes([data[3], data[4]]));
         let n = data[5];
