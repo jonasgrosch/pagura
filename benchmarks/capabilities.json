@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "adce6f57ab5e01337aaa14dfc27112506eadea19",
+  "audited_revision": "dd0d9f4b07774ddbf1fe658eae95e9ac00acc356",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -30,7 +30,8 @@
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
     "corpus/manifests/polygon_annotations.json": "097bc2f1205a5c0042b58ce5cae54a00e5a2d32d5f0a712ebc0446fef37a2b6e",
-    "crates/pagura-appearance/src/annotation.rs": "55b6316cb490ef2635de66ace577ea150aff059aa77800c1e135e6c5c3a709e0",
+    "corpus/manifests/stamp_annotations.json": "59c496471d04fd472217f9e48efc44301b6fbafae362235070780db8776a5980",
+    "crates/pagura-appearance/src/annotation.rs": "b3eba2ba87c852a8e93fdea1dea2dc843d5c5605bd1d96814e61d73a28ec014b",
     "crates/pagura-appearance/src/annotation/border.rs": "d208b0ce52207ee29f7e922d392a52bdcca67ea16b521b4bf1af59f4dcd03e25",
     "crates/pagura-appearance/src/annotation/caret.rs": "30535fd1cf06a846914bd1f644e5e1ecea107aa0fe316c141dad1268e6cc87e5",
     "crates/pagura-appearance/src/annotation/ending.rs": "10c7603b8e338957d6e2a8c9b17fcc1c618366e5c5f8d98a8b1985fb6d9b9c2a",
@@ -40,14 +41,16 @@
     "crates/pagura-appearance/src/annotation/line/caption.rs": "98c5a844d3329bd48b5fcbc50e1da03ddc643f98f0c612696e69b0a2128c9070",
     "crates/pagura-appearance/src/annotation/line/caption/text.rs": "4eaff6d2f8198135c416ad18be2ab1cdfa708ac6e8488e9f6cb6b40f0ad0f1af",
     "crates/pagura-appearance/src/annotation/line/leader.rs": "37bd1455e49b5854e62a501482fc6400ceae625ea5df1d63af25beb7f9ef707c",
-    "crates/pagura-appearance/src/annotation/marks.rs": "51a2745b6c71bd1970c217262dc2968809b778647e07e56b14ee44d75bb1505b",
+    "crates/pagura-appearance/src/annotation/marks.rs": "9acfaa207d87882ac23caf92c312ad8c77895ff81e450e6cc29b0b06f1847d28",
     "crates/pagura-appearance/src/annotation/markup.rs": "8af86c6d9edf6b04d359c6c31e3a4fcc7cb239852a517adbe3bb67acd04fbd8e",
     "crates/pagura-appearance/src/annotation/markup/quads.rs": "37ee6d20858c547e8160e5e4db1e5a617770509a89003cf420367c7046e7afb1",
     "crates/pagura-appearance/src/annotation/path.rs": "bd5267bff3ff5d79be5d5e35496ac440a09430f1c1e42df444950312ecb4941d",
     "crates/pagura-appearance/src/annotation/polygon.rs": "0c6693efbf77c314fd8a2b45d0a57cccae8c510af811743c4c365aacd7a9fd18",
-    "crates/pagura-appearance/src/annotation/tests.rs": "12db82a565f55f4bb5d08c8b5cbcb4702deaca66ef9300bf83e31329bee8ec84",
+    "crates/pagura-appearance/src/annotation/stamp.rs": "7d97568af8ebf78d8a6c349169e6e627a330dc0eae3db8ddca02d8f243783f6b",
+    "crates/pagura-appearance/src/annotation/tests.rs": "64d58c304dae4b9556bfbf87c96cec0e5a0301a71aeff8e9e99fc142c70e7da4",
     "crates/pagura-appearance/src/annotation/tests/caret.rs": "daf0c712376cda0aa8bc717923ce7d4461ada7782df3e532959c4c58082a0244",
     "crates/pagura-appearance/src/annotation/tests/markup.rs": "43ad1070753e36860b9d044166e89d40b5ffb0e93da3996cb3c64782537a2bab",
+    "crates/pagura-appearance/src/annotation/tests/stamp.rs": "f19940bfcbc2bb7bd173fdfbd3cf2afd370f21cbd0b4148ec470ff250f091267",
     "crates/pagura-appearance/src/annotation/widget.rs": "c966238e9e4a0d05794f25e15708b344280aeda8150af97f09d4e5cb763b22ea",
     "crates/pagura-appearance/src/features.rs": "e69099b97513026a3af42bbee4cd2ca01fce929404a7d7e92ba7ea3a4ca8a5ae",
     "crates/pagura-appearance/src/fonts.rs": "5e685f76721a5500d7996cc8f7d27ebfc3a3accfbfb76686170a234f6bb818fa",
@@ -231,7 +234,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "6d5c321eb31bab48fae9bcbc6eaefc0593d4b4618d88cb7956a73204997b5c5e",
+    "references/requirements/content.json": "6a2c8ed3796aa5c2bebe15de7526675bc8e9c1ad513772714cd50e1bc4aa7d72",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -266,6 +269,7 @@
     "tools/fixturegen/file_annotations.py": "a8acf4b00f0f73aea843c5b542fec7244631520c6988ca7f0489505034f91a87",
     "tools/fixturegen/file_attachment_icons.py": "02ad77458e0487e4a240034f9047e50ddf4f166768bcec7b6d53fbce2e74f31f",
     "tools/fixturegen/files.py": "eb590a18a172631ce232d38ba5365749bf2b5a4f21362b93e04f1dc2f0d87d36",
+    "tools/fixturegen/font_pixels.py": "22a0503c131e6c12cb34bda5cff1f3fa67f651c07e16383a807af8b957e080ba",
     "tools/fixturegen/ink_annotations.py": "6f3f1795c854f785d2298b6f5ef690ba44f14f3e004fc8447becb57d09bb0eae",
     "tools/fixturegen/leader_annotations.py": "42f472ca738ee3050e77f21f479e3da0a7649227bc0f15dd436dace51532dc0a",
     "tools/fixturegen/line_annotations.py": "60757e5c32c2be659248818fab0f14871464a2604e52f5c436626e7f96d7de56",
@@ -273,10 +277,12 @@
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
     "tools/fixturegen/polygon_annotations.py": "996ac0819a0d735aacbc54f179d3310a8acf90851b0fdaa74a0fc1bded2b41a9",
-    "tools/host_test.mjs": "03b615e3c4fc1bd057ef9f44d912d8ee7aa1a2d2f74a659f476b4ad927c8559f",
+    "tools/fixturegen/stamp_annotations.py": "40b8faeca934da33da2eb5f0e6f16f92c043feb4ad9a3c6817a8e30b2b5251cf",
+    "tools/host_test.mjs": "42d91e78c208a2e85e88df4c269ece33d03cc50e234a2736fa44bba5f41bd554",
     "tools/page_attachments_test.mjs": "253795e1c4e96ba4c49ad44acc2217889dce1b8af5e09658ad06d36a55f61fcb",
     "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
     "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
+    "tools/test_font_pixels.py": "e113d871e3c2dd557079fafddeaf5770baf27e83d154f973071d2053ee258a3c",
     "tools/test_png_export.py": "40aa9fed27e607ebae9ee7b4c4fb9016ab53fb8ce9ca864aa8e796d2ffee78cb",
     "web/client.mjs": "ea78b0bf556c12346a1b9769a078e7835d6915637c7a653967786c9b1e40f3f2",
     "web/document_protocol.mjs": "d171564def850a9f43c23735282df6b9f869f7eb100df2adf6c16340d10f05b4",
@@ -994,7 +1000,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored appearances, Link/Square/Circle borders, Text icons, four standard FileAttachment icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement. Generated file icons use original geometry, explicit annotation visibility/view flags, bounded content, declared colors and independent CA/ca. Stored appearances retain precedence. Null/absent icon names choose PushPin; unknown-name fallback is reader policy. Painting does not resolve or decode a payload. Circle/ellipse paths use bounded tangent cubics; Square/Circle RD insets preserve the original appearance BBox and accept null/plain border effects. Independent conic-area expectations cover fill, circle strokes, unequal axes, rotation, opacity and indirect geometry. InkList generation resolves all coordinate arrays before painting, joins samples with straight segments under the annotation clip, honors width/dash/C/CA and bounds aggregate segments, temporary storage and content. All disjoint paths share one stroke operation; zero width or empty color suppress marks after geometry validation. Polygon/PolyLine generation supports finite Vertices and PDF 2.0 Path (moveto/lineto/cubic) with indirect operands and explicit Path precedence. Polygon closes and nonzero-fills IC; PolyLine stays open. Geometry, temporary storage and output are bounded; plain/null polygon effects and absent/null/None polyline endings work. Ink PDF 2.0 Path uses the same bounded moveto/lineto/cubic reader. Current Tables 181/185 errata requires ignoring legacy Vertices/InkList when Path is present, so unused values are not resolved or allocated; null Path falls back to the legacy reader. Appearance generation does not establish required-key conformance. Independent disk-area controls cover non-linear ink paths at two resolutions and opacity. Straight Line L coordinates resolve indirectly and validate before empty output; width/dash/C/CA, clipping and stored precedence are covered by authored controls. Hosted Line validation is pending. All ten standard Line/PolyLine endings resolve indirect LE names and orient to source endpoint derivatives. Closed endings use IC/ca, C/CA solid outlines, fixed stack geometry and bounded content. Artwork dimensions and body/interior/outline paint order are reader policy; hosted validation is pending. Signed Line leaders, extensions and offsets now use finite fixed stack geometry, share the body stroke/dash/opacity and anchor endings to the translated line proper. With LL absent, L remains the line proper. Twenty-seven controls include 21 literal rectangle-union pixel expectations; hosted validation is pending. Plain Line captions read Contents through the shared PDF text decoder and use explicit font-provider metrics through annotation_appearance_with_fonts. Reversible encoding is shared with form appearances. Cap/CP/CO, multiline text, inline gaps, top placement and leader integration use documented 12-point Helvetica/WinAnsi layout with private font resources and bounded text/work/content. Thirty controls include 22 independent pixel expectations from AFM metrics and pinned straight glyph contours. Empty/inactive captions need no fonts; builds without a font provider refuse nonempty captions. Hosted caption validation is pending. Highlight/Underline/StrikeOut/Squiggly generation resolves finite convex QuadPoints, uses first-edge text direction and bounded compound fills under the original clip. Highlight uses Multiply; other band/ribbon dimensions are documented reader artwork. Overlapping quads share opacity. Alternate TL/TR/BL/BR order is an explicit annotation.quad-order repair refused by Strict rendering. Forty-one controls include 33 independent pixel expectations; hosted validation is pending. Caret Sy None/P generates original font-free chevron/pilcrow artwork with RD insets, C/ca, bounded compound fill and original BBox. Shared Square/Circle/Caret insets use fixed stack operands after exact cardinality validation and reject numeric overflow. Thirty-one controls include 21 independent pixel expectations; hosted validation is pending.",
+      "implemented": "Stored appearances, Link/Square/Circle borders, Text icons, four standard FileAttachment icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement. Generated file icons use original geometry, explicit annotation visibility/view flags, bounded content, declared colors and independent CA/ca. Stored appearances retain precedence. Null/absent icon names choose PushPin; unknown-name fallback is reader policy. Painting does not resolve or decode a payload. Circle/ellipse paths use bounded tangent cubics; Square/Circle RD insets preserve the original appearance BBox and accept null/plain border effects. Independent conic-area expectations cover fill, circle strokes, unequal axes, rotation, opacity and indirect geometry. InkList generation resolves all coordinate arrays before painting, joins samples with straight segments under the annotation clip, honors width/dash/C/CA and bounds aggregate segments, temporary storage and content. All disjoint paths share one stroke operation; zero width or empty color suppress marks after geometry validation. Polygon/PolyLine generation supports finite Vertices and PDF 2.0 Path (moveto/lineto/cubic) with indirect operands and explicit Path precedence. Polygon closes and nonzero-fills IC; PolyLine stays open. Geometry, temporary storage and output are bounded; plain/null polygon effects and absent/null/None polyline endings work. Ink PDF 2.0 Path uses the same bounded moveto/lineto/cubic reader. Current Tables 181/185 errata requires ignoring legacy Vertices/InkList when Path is present, so unused values are not resolved or allocated; null Path falls back to the legacy reader. Appearance generation does not establish required-key conformance. Independent disk-area controls cover non-linear ink paths at two resolutions and opacity. Straight Line L coordinates resolve indirectly and validate before empty output; width/dash/C/CA, clipping and stored precedence are covered by authored controls. Hosted Line validation is pending. All ten standard Line/PolyLine endings resolve indirect LE names and orient to source endpoint derivatives. Closed endings use IC/ca, C/CA solid outlines, fixed stack geometry and bounded content. Artwork dimensions and body/interior/outline paint order are reader policy; hosted validation is pending. Signed Line leaders, extensions and offsets now use finite fixed stack geometry, share the body stroke/dash/opacity and anchor endings to the translated line proper. With LL absent, L remains the line proper. Twenty-seven controls include 21 literal rectangle-union pixel expectations; hosted validation is pending. Plain Line captions read Contents through the shared PDF text decoder and use explicit font-provider metrics through annotation_appearance_with_fonts. Reversible encoding is shared with form appearances. Cap/CP/CO, multiline text, inline gaps, top placement and leader integration use documented 12-point Helvetica/WinAnsi layout with private font resources and bounded text/work/content. Thirty controls include 22 independent pixel expectations from AFM metrics and pinned straight glyph contours. Empty/inactive captions need no fonts; builds without a font provider refuse nonempty captions. Hosted caption validation is pending. Highlight/Underline/StrikeOut/Squiggly generation resolves finite convex QuadPoints, uses first-edge text direction and bounded compound fills under the original clip. Highlight uses Multiply; other band/ribbon dimensions are documented reader artwork. Overlapping quads share opacity. Alternate TL/TR/BL/BR order is an explicit annotation.quad-order repair refused by Strict rendering. Forty-one controls include 33 independent pixel expectations; hosted validation is pending. Caret Sy None/P generates original font-free chevron/pilcrow artwork with RD insets, C/ca, bounded compound fill and original BBox. Shared Square/Circle/Caret insets use fixed stack operands after exact cardinality validation and reject numeric overflow. Thirty-one controls include 21 independent pixel expectations; hosted validation is pending. All fourteen standard rubber-stamp names use framed uppercase Helvetica-Bold/WinAnsi through the configured font provider. Default/null/custom names select Draft by reader policy; image/snapshot intents require stored artwork. Frame/fit geometry, private resources, label storage, work and output are bounded. Thirty-eight controls include 33 independent pixel expectations from original quadratic glyph integrals and AFM metrics; hosted validation is pending.",
       "remaining": "Other subtype appearances, rich/complex-script line captions and broader font selection, cloudy/rounded/relief borders, independent unequal-axis stroke/dash controls, nonempty/rotated widgets and interaction states.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
@@ -1019,7 +1025,8 @@
         "crates/pagura-appearance/src/annotation/markup.rs",
         "crates/pagura-appearance/src/annotation/markup/quads.rs",
         "crates/pagura-appearance/src/repairs.rs",
-        "crates/pagura-appearance/src/annotation/caret.rs"
+        "crates/pagura-appearance/src/annotation/caret.rs",
+        "crates/pagura-appearance/src/annotation/stamp.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
@@ -1036,7 +1043,11 @@
         "crates/pagura-appearance/src/annotation/tests/markup.rs",
         "tools/fixturegen/markup_annotations.py",
         "crates/pagura-appearance/src/annotation/tests/caret.rs",
-        "tools/fixturegen/caret_annotations.py"
+        "tools/fixturegen/caret_annotations.py",
+        "crates/pagura-appearance/src/annotation/tests/stamp.rs",
+        "tools/fixturegen/stamp_annotations.py",
+        "tools/fixturegen/font_pixels.py",
+        "tools/test_font_pixels.py"
       ],
       "requirements": [
         "content-annotation-generation",
@@ -1051,7 +1062,8 @@
         "content-line-leaders",
         "content-line-captions",
         "content-text-markup",
-        "content-caret-appearances"
+        "content-caret-appearances",
+        "content-stamp-appearances"
       ],
       "fixtures": [
         "file_annotations/render-null",
@@ -1449,7 +1461,45 @@
         "caret_annotations/rd-wide",
         "caret_annotations/rd-tall",
         "caret_annotations/symbol-type",
-        "caret_annotations/symbol-unknown"
+        "caret_annotations/symbol-unknown",
+        "stamp_annotations/Approved",
+        "stamp_annotations/Experimental",
+        "stamp_annotations/NotApproved",
+        "stamp_annotations/AsIs",
+        "stamp_annotations/Expired",
+        "stamp_annotations/NotForPublicRelease",
+        "stamp_annotations/Confidential",
+        "stamp_annotations/Final",
+        "stamp_annotations/Sold",
+        "stamp_annotations/Departmental",
+        "stamp_annotations/ForComment",
+        "stamp_annotations/TopSecret",
+        "stamp_annotations/Draft",
+        "stamp_annotations/ForPublicRelease",
+        "stamp_annotations/Final-144",
+        "stamp_annotations/Draft-144",
+        "stamp_annotations/NotForPublicRelease-144",
+        "stamp_annotations/final-stored-72",
+        "stamp_annotations/final-stored-144",
+        "stamp_annotations/default",
+        "stamp_annotations/null-name",
+        "stamp_annotations/unknown-name",
+        "stamp_annotations/null-intent",
+        "stamp_annotations/indirect",
+        "stamp_annotations/color",
+        "stamp_annotations/opacity",
+        "stamp_annotations/separate-opacity",
+        "stamp_annotations/rotated",
+        "stamp_annotations/tall",
+        "stamp_annotations/hidden",
+        "stamp_annotations/no-view",
+        "stamp_annotations/no-color",
+        "stamp_annotations/stored-ignores-fields",
+        "stamp_annotations/name-type",
+        "stamp_annotations/intent-type",
+        "stamp_annotations/intent-StampImage",
+        "stamp_annotations/intent-StampSnapshot",
+        "stamp_annotations/intent-Unknown"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -3009,7 +3059,7 @@
       ],
       "review": "gap",
       "capability": "annotations.appearances",
-      "rationale": "Synthesis covers Link/Square/Circle borders, straight Line, InkList and PDF 2.0 Path strokes, Polygon/PolyLine vertices or PDF 2.0 paths, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, rich line captions, nonempty/rotated widgets and cloudy/relief/rounded borders still refuse. All ten standard Line/PolyLine endings are implemented with documented reader artwork. Existing appearance streams remain supported. Signed leaders, extensions and offsets are implemented. Plain captions use explicit font data and documented bounded layout. Four standard text-markup appearances now use bounded compound geometry and reported alternate-quad recovery. Caret None/P symbols use original bounded geometry; unknown symbol names remain explicit refusals.",
+      "rationale": "Synthesis covers Link/Square/Circle borders, straight Line, InkList and PDF 2.0 Path strokes, Polygon/PolyLine vertices or PDF 2.0 paths, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, rich line captions, nonempty/rotated widgets and cloudy/relief/rounded borders still refuse. All ten standard Line/PolyLine endings are implemented with documented reader artwork. Existing appearance streams remain supported. Signed leaders, extensions and offsets are implemented. Plain captions use explicit font data and documented bounded layout. Four standard text-markup appearances now use bounded compound geometry and reported alternate-quad recovery. Caret None/P symbols use original bounded geometry; unknown symbol names remain explicit refusals. Standard rubber-stamp names are implemented through explicit font data; non-rubber intents without stored artwork still refuse.",
       "evidence": [
         {
           "path": "crates/pagura-appearance/src/annotation.rs",
@@ -3037,6 +3087,10 @@
         },
         {
           "path": "crates/pagura-appearance/src/annotation/caret.rs",
+          "needle": "features::ANNOTATION_APPEARANCE,"
+        },
+        {
+          "path": "crates/pagura-appearance/src/annotation/stamp.rs",
           "needle": "features::ANNOTATION_APPEARANCE,"
         }
       ]
