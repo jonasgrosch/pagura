@@ -75,7 +75,7 @@ fn cielab_metadata_preserves_post_palette_precision_and_raw_samples() {
             panic!("missing Lab metadata")
         };
         assert!(matches!(color, JpxColor::Enumerated(14) | JpxColor::Lab(_)));
-        assert!(sample_bias.is_empty());
+        assert_eq!(sample_bias.as_slice(), []);
         for layout in [
             pagura_image::Layout::Interleaved,
             pagura_image::Layout::Native,
