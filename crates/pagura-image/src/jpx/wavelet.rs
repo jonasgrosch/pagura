@@ -76,15 +76,34 @@ fn inverse_line(line: &mut [f64], origin: u32, reversible: bool) -> Result<()> {
     Ok(())
 }
 
+/// One lifting step over the samples of `parity` in a line of at least two
+/// samples: each gains `update` of its neighbours' sum, mirrored at the
+/// ends (F.3.7). The ends are lifted apart, so that the samples between
+/// read their neighbours as pairs, without a test per sample.
 fn lift(line: &mut [f64], parity: usize, update: impl Fn(f64) -> f64) {
-    for index in (parity..line.len()).step_by(2) {
-        let left = if index == 0 { 1 } else { index - 1 };
-        let right = if index + 1 == line.len() {
-            index - 1
-        } else {
-            index + 1
-        };
-        line[index] += update(line[left] + line[right]);
+    let len = line.len();
+    debug_assert!(len >= 2);
+    // The first sample of `parity` with neighbours on both sides.
+    let first = if parity == 0 {
+        line[0] += update(line[1] + line[1]);
+        2
+    } else {
+        1
+    };
+    if first >= len {
+        return;
+    }
+    // The last such sample, and one past it.
+    let last = len - 1 - (len - 1 - first) % 2;
+    let end = if last + 1 == len { last } else { last + 2 };
+    let mut left = line[first - 1];
+    for pair in line[first..end].as_chunks_mut::<2>().0 {
+        let right = pair[1];
+        pair[0] += update(left + right);
+        left = right;
+    }
+    if last + 1 == len {
+        line[last] += update(line[last - 1] + line[last - 1]);
     }
 }
 
@@ -240,8 +259,35 @@ fn lift_rows(
 
 #[cfg(test)]
 mod tests {
-    use super::{Budget, Plane, synthesize};
+    use super::{Budget, Plane, lift, synthesize};
     use pagura_core::Limits;
+
+    #[test]
+    fn paired_lifting_matches_mirrored_neighbours() {
+        for len in 2..12 {
+            for parity in 0..2 {
+                let line: Vec<f64> = (0_u32..12)
+                    .take(len)
+                    .map(|i| f64::from(i * i % 7) - 2.5)
+                    .collect();
+                // F.3.7: each sample of `parity` reads its two neighbours,
+                // mirrored at the ends.
+                let mut expected = line.clone();
+                for index in (parity..len).step_by(2) {
+                    let left = if index == 0 { 1 } else { index - 1 };
+                    let right = if index + 1 == len {
+                        index - 1
+                    } else {
+                        index + 1
+                    };
+                    expected[index] += 0.375 * (line[left] + line[right]);
+                }
+                let mut actual = line;
+                lift(&mut actual, parity, |sum| 0.375 * sum);
+                assert_eq!(actual, expected, "length {len}, parity {parity}");
+            }
+        }
+    }
 
     #[test]
     fn sparse_rows_match_full_lifting_at_boundaries_and_singletons()
