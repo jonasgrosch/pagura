@@ -16,7 +16,7 @@ use style::Style;
 
 pub(crate) use layout::Layout;
 
-/// `None` means that the caller should use its existing plain-text path.
+/// Prepares plain or rich annotation text using the common bounded layout.
 pub(crate) fn prepare(
     document: &Document,
     annotation: &Dictionary,
@@ -25,12 +25,9 @@ pub(crate) fn prepare(
     alignment: Justification,
     width: f64,
     fonts: &dyn FontSource,
-) -> Result<Option<Layout>> {
+) -> Result<Layout> {
     let rc = optional(document, annotation, b"RC")?;
     let ds = optional(document, annotation, b"DS")?;
-    if rc.is_none() && ds.is_none() {
-        return Ok(None);
-    }
     let limits = document.limits();
     // Source, parsed styles, encoded layout and font/resource state coexist.
     // Each phase gets one quarter of the caller's storage allowance.
@@ -57,15 +54,34 @@ pub(crate) fn prepare(
     let parsed = if rc.is_some() {
         let source = rich_content(document, annotation, &limits)?;
         work.charge_product(source.len(), 4)?;
-        xml::Text::parse(&source, base, &limits)?
+        xml::Text::parse(&source, base, &limits, &mut work)?
     } else {
         work.charge(text.len())?;
-        xml::Text::plain(text, base, &limits)?
+        xml::Text::plain(text, base, &limits, &mut work)?
     };
     layout::prepare(
         document, parsed, appearance, width, fonts, &limits, &mut work,
     )
-    .map(Some)
+}
+
+/// Shared PDF Contents decoding; unused Contents is never read when RC wins.
+pub(crate) fn contents(
+    document: &Document,
+    annotation: &Dictionary,
+    storage: &mut Meter,
+) -> Result<String> {
+    let Some(value) = optional(document, annotation, b"Contents")? else {
+        return Ok(String::new());
+    };
+    let bytes = value
+        .as_string()
+        .ok_or(Error::syntax("annotation Contents must be a text string"))?;
+    let limits = document.limits();
+    storage.charge(bytes.len().saturating_mul(3).min(limits.string_bytes))?;
+    let mut diagnostics = Diagnostics::new(document.recovery());
+    let result = text_string::decode(bytes, &limits, &mut diagnostics)?;
+    document.report(diagnostics.take());
+    Ok(result)
 }
 
 fn rich_content(document: &Document, annotation: &Dictionary, limits: &Limits) -> Result<String> {

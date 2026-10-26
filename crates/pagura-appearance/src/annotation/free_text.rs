@@ -16,7 +16,7 @@ use crate::program::Program;
 use crate::rich;
 use crate::stream::AppearanceStream;
 use crate::values::{optional, optional_dictionary};
-use pagura_core::{Diagnostics, Dictionary, Error, Meter, Name, Rect, Result, Value, text_string};
+use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result, Value};
 use pagura_document::{Document, forms::Justification};
 
 pub(super) fn generate(
@@ -33,10 +33,43 @@ pub(super) fn generate(
         .map(|effect| effect.rectangle(document, inset(bounds, border.width / 2.0)?, border.width))
         .transpose()?;
     let background = color(document, annotation, b"C", None)?;
+    let limits = document.limits();
+    let mut work = Meter::new(limits.operations, "free text work budget exceeded");
+    let mut geometry = Meter::new(limits.path_segments, "free text geometry budget exceeded");
+    geometry.charge(8 + border.outline_segments())?; // Background, border and text clip.
+    if callout.is_some() {
+        geometry.charge(48)?; // At most two body edges and one fixed ending.
+        work.charge(48)?;
+    }
+    let mut marks = Marks::new(document, annotation);
+    if bounds.width() > 0.0 && bounds.height() > 0.0 {
+        if let Some(callout) = callout {
+            callout.draw(&mut marks, &border, background.as_ref())?;
+        }
+        paint_box(
+            &mut marks,
+            bounds,
+            &border,
+            background.as_ref(),
+            cloud.as_ref(),
+        )?;
+    }
+    let area = inset(bounds, border.width + 2.0)?;
+    paint_text(document, annotation, area, fonts, &mut marks, &mut work)?;
+    marks.finish(rect)
+}
+
+fn paint_text(
+    document: &Document,
+    annotation: &Dictionary,
+    area: Rect,
+    fonts: &dyn FontSource,
+    marks: &mut Marks<'_>,
+    work: &mut Meter,
+) -> Result<()> {
     let quadding = quadding(document, annotation)?;
     let limits = document.limits();
     let mut storage = Meter::new(limits.document_bytes, "free text storage budget exceeded");
-    let mut work = Meter::new(limits.operations, "free text work budget exceeded");
     let da_bytes = optional(document, annotation, b"DA")?
         .and_then(Value::as_string)
         .ok_or(Error::syntax("free text DA must be a byte string"))?;
@@ -46,38 +79,23 @@ pub(super) fn generate(
     let text = if optional(document, annotation, b"RC")?.is_some() {
         String::new()
     } else {
-        contents(document, annotation, &mut storage)?
+        rich::contents(document, annotation, &mut storage)?
     };
-    let mut geometry = Meter::new(limits.path_segments, "free text geometry budget exceeded");
-    geometry.charge(8 + border.outline_segments())?; // Background, border and text clip.
-    if callout.is_some() {
-        geometry.charge(48)?; // At most two body edges and one fixed ending.
-        work.charge(48)?;
-    }
-    let mut marks = Marks::new(document, annotation);
-    if bounds.width() == 0.0 || bounds.height() == 0.0 {
-        return Ok(None);
-    }
-    if let Some(callout) = callout {
-        callout.draw(&mut marks, &border, background.as_ref())?;
-    }
-    paint_box(
-        &mut marks,
-        bounds,
-        &border,
-        background.as_ref(),
-        cloud.as_ref(),
-    )?;
-    let area = inset(bounds, border.width + 2.0)?;
-    let rich = rich::prepare(
-        document,
-        annotation,
-        &text,
-        &da,
-        quadding,
-        area.width(),
-        fonts,
-    )?;
+    let rich = if optional(document, annotation, b"RC")?.is_some()
+        || optional(document, annotation, b"DS")?.is_some()
+    {
+        Some(rich::prepare(
+            document,
+            annotation,
+            &text,
+            &da,
+            quadding,
+            area.width(),
+            fonts,
+        )?)
+    } else {
+        None
+    };
     if area.width() > 0.0
         && area.height() > 0.0
         && (!text.is_empty() || rich.as_ref().is_some_and(|rich| !rich.fonts.is_empty()))
@@ -127,22 +145,7 @@ pub(super) fn generate(
         out.text("Q\n")?;
         marks.text(&out.finish(), entries, &Color::black())?;
     }
-    marks.finish(rect)
-}
-
-fn contents(document: &Document, annotation: &Dictionary, storage: &mut Meter) -> Result<String> {
-    let Some(value) = optional(document, annotation, b"Contents")? else {
-        return Ok(String::new());
-    };
-    let bytes = value
-        .as_string()
-        .ok_or(Error::syntax("free text Contents must be a text string"))?;
-    let limits = document.limits();
-    storage.charge(bytes.len().saturating_mul(3).min(limits.string_bytes))?;
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    let text = text_string::decode(bytes, &limits, &mut diagnostics)?;
-    document.report(diagnostics.take());
-    Ok(text)
+    Ok(())
 }
 
 fn resources(document: &Document, name: &[u8], storage: &mut Meter) -> Result<Dictionary> {

@@ -25,7 +25,7 @@ impl Style {
     pub(super) fn new(family: String, size: f64, alignment: Justification) -> Self {
         Self {
             family,
-            size: if size == 0.0 { 12.0 } else { size },
+            size,
             bold: false,
             italic: false,
             color: None,

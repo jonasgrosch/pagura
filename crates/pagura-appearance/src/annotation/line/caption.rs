@@ -4,21 +4,16 @@
 //! clearance. Lines follow L's direction. Inline text interrupts the body
 //! only where its box overlaps it; text wider than the line goes above it.
 
-mod text;
-
 use crate::features;
 use crate::fonts::FontSource;
 use crate::form::da::DefaultAppearance;
 use crate::program::Program;
 use crate::rich;
 use crate::values::{number, optional};
-use pagura_core::{Dictionary, Error, Result};
+use pagura_core::{Dictionary, Error, Meter, Result};
 use pagura_document::{Document, forms::Justification};
-use text::Text;
 
 type Point = (f64, f64);
-const SIZE: f64 = 12.0;
-const LEADING: f64 = SIZE * 1.2;
 const CLEARANCE: f64 = 2.0;
 
 pub(super) struct Caption {
@@ -49,53 +44,35 @@ impl Caption {
         }
         let position = position(document, annotation)?;
         let offset = offset(document, annotation)?;
-        if optional(document, annotation, b"RC")?.is_some() {
-            let appearance = DefaultAppearance::parse(b"/Helvetica 12 Tf", &document.limits())?;
-            let rich = rich::prepare(
-                document,
-                annotation,
-                "",
-                &appearance,
-                Justification::Left,
-                f64::INFINITY,
-                fonts,
-            )?
-            .ok_or(Error::syntax("missing rich caption content"))?;
-            if rich.fonts.is_empty() {
-                return Ok(None);
-            }
-            let layout = Layout::with_extent(
-                line,
-                position,
-                offset,
-                Extent {
-                    width: rich.width,
-                    height: rich.height,
-                    ascent: 0.0,
-                },
-            )?;
-            let origin = shifted(
-                layout.center,
-                layout.axis,
-                -rich.width / 2.0,
-                layout.baseline,
-            )?;
-            let mut out = Program::new(&document.limits());
-            rich.write(&mut out, origin, layout.axis)?;
-            return Ok(Some(Self {
-                body: layout.body,
-                content: out.finish(),
-                fonts: rich.fonts,
-            }));
-        }
-        let Some(text) = Text::read(document, annotation, fonts)? else {
-            return Ok(None);
+        let appearance = DefaultAppearance::parse(b"/Helvetica 12 Tf", &document.limits())?;
+        let mut storage = Meter::new(
+            document.limits().document_bytes,
+            "caption storage budget exceeded",
+        );
+        let text = if optional(document, annotation, b"RC")?.is_some() {
+            String::new()
+        } else {
+            rich::contents(document, annotation, &mut storage)?
         };
-        let layout = Layout::new(line, position, offset, &text)?;
-        let content = layout.write(document, &text)?;
+        let text = rich::prepare(
+            document,
+            annotation,
+            &text,
+            &appearance,
+            Justification::Center,
+            f64::INFINITY,
+            fonts,
+        )?;
+        if text.fonts.is_empty() {
+            return Ok(None);
+        }
+        let layout = Layout::new(line, position, offset, (text.width, text.height))?;
+        let origin = shifted(layout.center, layout.axis, -text.width / 2.0, layout.top)?;
+        let mut out = Program::new(&document.limits());
+        text.write(&mut out, origin, layout.axis)?;
         Ok(Some(Self {
             body: layout.body,
-            content,
+            content: out.finish(),
             fonts: text.fonts,
         }))
     }
@@ -105,42 +82,15 @@ struct Layout {
     body: [[Point; 2]; 2],
     axis: Point,
     center: Point,
-    baseline: f64,
-}
-
-#[derive(Clone, Copy)]
-struct Extent {
-    width: f64,
-    height: f64,
-    ascent: f64,
+    top: f64,
 }
 
 impl Layout {
-    fn new(line: [Point; 2], position: Position, offset: Point, text: &Text) -> Result<Self> {
-        let width = text
-            .rows
-            .iter()
-            .map(|row| row.width * SIZE)
-            .fold(0.0, f64::max);
-        let height = (text.ascent - text.descent) * SIZE
-            + text.rows.len().saturating_sub(1) as f64 * LEADING;
-        Self::with_extent(
-            line,
-            position,
-            offset,
-            Extent {
-                width,
-                height,
-                ascent: text.ascent * SIZE,
-            },
-        )
-    }
-
-    fn with_extent(
+    fn new(
         line: [Point; 2],
         position: Position,
         offset: Point,
-        extent: Extent,
+        extent: (f64, f64),
     ) -> Result<Self> {
         let dx = line[1].0 - line[0].0;
         let dy = line[1].1 - line[0].1;
@@ -153,17 +103,13 @@ impl Layout {
         } else {
             (dx / length, dy / length)
         };
-        let Extent {
-            width,
-            height,
-            ascent,
-        } = extent;
+        let (width, height) = extent;
         let top = position == Position::Top || width + 2.0 * CLEARANCE > length;
-        let baseline = if top {
+        let text_top = if top {
             height + CLEARANCE
         } else {
             height / 2.0
-        } - ascent;
+        };
         let midpoint = (
             line[0].0 / 2.0 + line[1].0 / 2.0,
             line[0].1 / 2.0 + line[1].1 / 2.0,
@@ -182,40 +128,15 @@ impl Layout {
                 [shifted(line[0], axis, after, 0.0)?, line[1]],
             ];
         }
-        if !width.is_finite() || !height.is_finite() || !baseline.is_finite() {
+        if !width.is_finite() || !height.is_finite() || !text_top.is_finite() {
             return Err(Error::limit("caption size exceeds numeric range"));
         }
         Ok(Self {
             body,
             axis,
             center,
-            baseline,
+            top: text_top,
         })
-    }
-
-    fn write(&self, document: &Document, text: &Text) -> Result<Vec<u8>> {
-        let mut out = Program::new(&document.limits());
-        out.text("BT\n0 Tc\n0 Tw\n100 Tz\n0 TL\n0 Tr\n0 Ts\n/Caption 12 Tf\n")?;
-        let (x, y) = self.axis;
-        for (index, row) in text.rows.iter().enumerate() {
-            let (tx, ty) = shifted(
-                self.center,
-                self.axis,
-                -row.width * SIZE / 2.0,
-                self.baseline - index as f64 * LEADING,
-            )?;
-            out.text(&format!("{x} {y} {} {x} {tx} {ty} Tm\n<", -y))?;
-            for code in text
-                .codes
-                .get(row.codes.clone())
-                .ok_or(Error::syntax("invalid caption row"))?
-            {
-                out.text(&format!("{code:02X}"))?;
-            }
-            out.text("> Tj\n")?;
-        }
-        out.text("ET\n")?;
-        Ok(out.finish())
     }
 }
 

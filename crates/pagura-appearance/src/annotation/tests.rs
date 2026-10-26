@@ -768,14 +768,14 @@ fn line_caption_fonts_are_explicit_and_use_private_resources() {
     let font = resources
         .get(b"Font")
         .and_then(Value::as_dictionary)
-        .and_then(|fonts| fonts.get(b"Caption"))
+        .and_then(|fonts| fonts.get(b"Rich0"))
         .and_then(Value::as_dictionary)
         .unwrap();
     assert!(font.is_name(b"BaseFont", b"Helvetica"));
     assert!(font.is_name(b"Encoding", b"WinAnsiEncoding"));
     let content = String::from_utf8_lossy(appearance.content());
-    assert!(content.contains("/Caption 12 Tf\n"));
-    assert!(content.ends_with("<49> Tj\nET\n"));
+    assert!(content.contains("/Rich0 12 Tf\n"));
+    assert!(content.contains("<49> Tj\nET\n"));
 }
 
 #[test]

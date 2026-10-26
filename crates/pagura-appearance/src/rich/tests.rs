@@ -7,13 +7,22 @@ use pagura_core::{
 use pagura_document::OpenOptions;
 use pagura_testkit::fixture;
 
+fn parse(source: &str, base: Style, limits: &Limits) -> Result<xml::Text> {
+    xml::Text::parse(
+        source,
+        base,
+        limits,
+        &mut Meter::new(limits.operations, "test work"),
+    )
+}
+
 fn base() -> Style {
     Style::new("Helvetica".into(), 12.0, Justification::Left)
 }
 
 #[test]
 fn nested_styles_restore_inheritance_and_preserve_entity_text() {
-    let text = xml::Text::parse("<body><p>A <b>B<span style='color:#0000ff;font-size:18pt'>C&#32;</span>D</b> E&amp;F</p></body>",base(),&Limits::default()).unwrap();
+    let text = parse("<body><p>A <b>B<span style='color:#0000ff;font-size:18pt'>C&#32;</span>D</b> E&amp;F</p></body>",base(),&Limits::default()).unwrap();
     assert_eq!(
         text.characters.iter().map(|c| c.value).collect::<String>(),
         "A BC D E&F"
@@ -41,20 +50,14 @@ fn xml_nesting_entities_and_external_objects_fail_explicitly() {
         "<p/><p/>",
     ] {
         assert_eq!(
-            xml::Text::parse(xml, base(), &Limits::default())
-                .err()
-                .unwrap()
-                .kind,
+            parse(xml, base(), &Limits::default()).err().unwrap().kind,
             ErrorKind::Syntax,
             "{xml}"
         );
     }
     for xml in ["<!DOCTYPE p><p/>", "<p><span xfa:embed='anything'/></p>"] {
         assert_eq!(
-            xml::Text::parse(xml, base(), &Limits::default())
-                .err()
-                .unwrap()
-                .kind,
+            parse(xml, base(), &Limits::default()).err().unwrap().kind,
             ErrorKind::Unsupported(features::ANNOTATION_APPEARANCE)
         );
     }
@@ -77,7 +80,7 @@ fn syntax_depth_nodes_and_storage_have_independent_budgets() {
         },
     ] {
         assert_eq!(
-            xml::Text::parse("<body><p>AB</p></body>", base(), &limits)
+            parse("<body><p>AB</p></body>", base(), &limits)
                 .err()
                 .unwrap()
                 .kind,

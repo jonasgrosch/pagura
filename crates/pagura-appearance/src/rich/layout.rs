@@ -53,7 +53,13 @@ pub(super) fn prepare(
     for character in &text.characters {
         work.charge(1)?;
         let style = &text.styles[character.style];
-        let family = font_name(style);
+        if style.size <= 0.0 {
+            return Err(super::unsupported(
+                "rich text automatic sizing is unavailable",
+            ));
+        }
+        work.charge(style.family.len())?;
+        let family = font_name(style)?;
         work.charge(fonts.len())?;
         let index = if let Some(index) = fonts
             .iter()
@@ -63,7 +69,8 @@ pub(super) fn prepare(
         } else {
             font_storage.charge(256 * 64)?;
             work.charge(256)?;
-            let (entry, resources) = font_resources(document, family.as_bytes())?;
+            let (entry, resources) =
+                font_resources(document, family.as_bytes(), &mut font_storage)?;
             font_storage.charge(entry.retained_bytes())?;
             font_storage.charge(resources.retained_bytes())?;
             let encoding = Encoding::load(document, &resources, family.as_bytes(), source)?;
@@ -83,7 +90,12 @@ pub(super) fn prepare(
             character.value
         };
         let code = encoding.encode(character_value)?;
-        let advance = (code.advance * style.size + style.spacing)
+        let word_space = if code.code == 32 {
+            appearance.word_space
+        } else {
+            0.0
+        };
+        let advance = (code.advance * style.size + style.spacing + word_space)
             * style.scale[0]
             * appearance.scale
             * appearance.matrix[0];
@@ -213,6 +225,48 @@ impl Layout {
         if !self.width.is_finite() || !self.height.is_finite() || !top.is_finite() {
             return Err(Error::limit("rich text layout exceeds numeric range"));
         }
+        if width.is_infinite() {
+            self.align_unbounded(work)?;
+        }
+        Ok(())
+    }
+
+    fn align_unbounded(&mut self, work: &mut Meter) -> Result<()> {
+        for paragraph in &self.text.paragraphs {
+            let style = &self.text.styles[paragraph.style];
+            let mut row = paragraph.characters.start;
+            while row < paragraph.characters.end {
+                work.charge(1)?;
+                if !self.glyphs[row].drawn {
+                    row += 1;
+                    continue;
+                }
+                let y = self.glyphs[row].y;
+                let mut end = row + 1;
+                while end < paragraph.characters.end {
+                    work.charge(1)?;
+                    if self.glyphs[end].drawn && self.glyphs[end].y != y {
+                        break;
+                    }
+                    end += 1;
+                }
+                let extent = self.glyphs[row..end]
+                    .iter()
+                    .filter(|g| g.drawn)
+                    .map(|g| g.x + g.advance)
+                    .fold(0.0, f64::max);
+                let remaining = self.width - extent - style.margin[1];
+                let shift = match style.alignment {
+                    Justification::Left => 0.0,
+                    Justification::Center => remaining / 2.0,
+                    Justification::Right => remaining,
+                };
+                for glyph in &mut self.glyphs[row..end] {
+                    glyph.x += shift;
+                }
+                row = end;
+            }
+        }
         Ok(())
     }
 
@@ -225,8 +279,9 @@ impl Layout {
     ) -> Result<()> {
         for glyph in self.glyphs.iter().filter(|glyph| glyph.drawn) {
             let style = &self.text.styles[glyph.style];
-            let x = origin.0 + axis.0 * glyph.x - axis.1 * glyph.y;
-            let y = origin.1 + axis.1 * glyph.x + axis.0 * glyph.y;
+            let raised = glyph.y + style.rise;
+            let x = origin.0 + axis.0 * glyph.x - axis.1 * raised;
+            let y = origin.1 + axis.1 * glyph.x + axis.0 * raised;
             let sx = style.scale[0] * self.matrix[0];
             let sy = style.scale[1] * self.matrix[3];
             let values = [axis.0 * sx, axis.1 * sx, -axis.1 * sy, axis.0 * sy, x, y];
@@ -239,10 +294,9 @@ impl Layout {
                 out.text(&format!("{r} {g} {b} rg\n"))?;
             }
             out.text(&format!(
-                "/Rich{} {} Tf\n{} Ts\n{} {} {} {} {} {} Tm\n<{:02X}> Tj\nET\n",
+                "/Rich{} {} Tf\n0 Ts\n{} {} {} {} {} {} Tm\n<{:02X}> Tj\nET\n",
                 glyph.font,
                 style.size,
-                style.rise,
                 values[0],
                 values[1],
                 values[2],
@@ -273,13 +327,18 @@ impl Layout {
     }
 }
 
-fn font_resources(document: &Document, name: &[u8]) -> Result<(Value, Dictionary)> {
+fn font_resources(
+    document: &Document,
+    name: &[u8],
+    storage: &mut Meter,
+) -> Result<(Value, Dictionary)> {
     let mut resources = Dictionary::new();
     if let Some(form) = optional_dictionary(document, document.catalog()?, b"AcroForm")?
         && let Some(defaults) = optional_dictionary(document, form, b"DR")?
         && let Some(fonts) = optional_dictionary(document, defaults, b"Font")?
         && let Some(font) = fonts.get(name)
     {
+        storage.charge_product(font.retained_bytes(), 2)?;
         let mut entries = Dictionary::new();
         entries.insert(Name::new(name), font.clone());
         resources.insert(Name::new(b"Font"), Value::Dictionary(entries));
@@ -294,14 +353,21 @@ fn font_resources(document: &Document, name: &[u8]) -> Result<(Value, Dictionary
     Ok((entry, resources))
 }
 
-fn font_name(style: &Style) -> String {
+fn font_name(style: &Style) -> Result<String> {
     let (base, bold, italic) = match style.family.as_str() {
         "sans-serif" | "Arial" | "Helvetica" => ("Helvetica", "Bold", "Oblique"),
         "serif" | "Times" | "Times New Roman" | "Times-Roman" => ("Times", "Bold", "Italic"),
         "monospace" | "Courier New" | "Courier" => ("Courier", "Bold", "Oblique"),
-        _ => return style.family.clone(),
+        _ => {
+            if style.bold || style.italic {
+                return Err(super::unsupported(
+                    "rich text styled custom font selection is unavailable",
+                ));
+            }
+            return Ok(style.family.clone());
+        }
     };
-    match (style.bold, style.italic) {
+    Ok(match (style.bold, style.italic) {
         (true, true) => format!("{base}-{bold}{italic}"),
         (true, false) => format!("{base}-{bold}"),
         (false, true) => format!("{base}-{italic}"),
@@ -312,5 +378,5 @@ fn font_name(style: &Style) -> String {
                 base.into()
             }
         }
-    }
+    })
 }

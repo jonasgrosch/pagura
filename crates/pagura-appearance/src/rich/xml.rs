@@ -27,7 +27,8 @@ struct Frame<'a> {
     ignored: bool,
 }
 
-struct Reader<'a> {
+struct Reader<'a, 'm> {
+    work: &'m mut Meter,
     text: Text,
     stack: Vec<Frame<'a>>,
     storage: Meter,
@@ -40,8 +41,13 @@ struct Reader<'a> {
 }
 
 impl Text {
-    pub(super) fn parse(source: &str, base: Style, limits: &Limits) -> Result<Self> {
-        let mut reader = Reader::new(base, limits)?;
+    pub(super) fn parse(
+        source: &str,
+        base: Style,
+        limits: &Limits,
+        work: &mut Meter,
+    ) -> Result<Self> {
+        let mut reader = Reader::new(base, limits, work)?;
         let mut rest = source.trim_start_matches('\u{feff}');
         while !rest.is_empty() {
             if let Some(tail) = rest.strip_prefix("<!--") {
@@ -105,8 +111,14 @@ impl Text {
         Ok(reader.text)
     }
 
-    pub(super) fn plain(source: &str, base: Style, limits: &Limits) -> Result<Self> {
-        let mut reader = Reader::new(base, limits)?;
+    pub(super) fn plain(
+        source: &str,
+        base: Style,
+        limits: &Limits,
+        work: &mut Meter,
+    ) -> Result<Self> {
+        let mut reader = Reader::new(base, limits, work)?;
+        reader.storage.reserve_capacity(&mut reader.stack, 1)?;
         reader.stack.push(Frame {
             name: "body",
             style: 0,
@@ -133,14 +145,15 @@ enum Content {
     Escaped,
 }
 
-impl<'a> Reader<'a> {
-    fn new(base: Style, limits: &Limits) -> Result<Self> {
+impl<'a, 'm> Reader<'a, 'm> {
+    fn new(base: Style, limits: &Limits, work: &'m mut Meter) -> Result<Self> {
         let mut storage = Meter::new(limits.document_bytes, "rich text syntax storage exceeded");
         storage.charge(base.family.len())?;
         let mut styles = Vec::new();
         storage.reserve_capacity(&mut styles, 1)?;
         styles.push(base);
         Ok(Self {
+            work,
             text: Text {
                 styles,
                 characters: Vec::new(),
@@ -158,6 +171,7 @@ impl<'a> Reader<'a> {
     }
 
     fn open(&mut self, source: &'a str) -> Result<&'a str> {
+        self.work.charge(1)?;
         self.nodes.charge(1)?;
         if self.stack.len() >= self.depth {
             return Err(Error::limit("rich text nesting budget exceeded"));
@@ -175,6 +189,7 @@ impl<'a> Reader<'a> {
         if matches!(tag, "ol" | "ul" | "li") {
             return Err(super::unsupported("rich text lists are unavailable"));
         }
+        self.work.charge(self.text.styles[parent].family.len())?;
         self.storage.charge(self.text.styles[parent].family.len())?;
         self.storage.reserve_capacity(&mut self.text.styles, 1)?;
         let mut style = self.text.styles[parent].clone();
@@ -197,6 +212,7 @@ impl<'a> Reader<'a> {
         self.text.styles.push(style);
         if !ignored {
             if tag == "p" {
+                self.work.charge(self.stack.len())?;
                 if self.stack.iter().any(|frame| frame.name == "p") {
                     return Err(Error::syntax("nested rich text paragraphs"));
                 }
@@ -260,7 +276,9 @@ impl<'a> Reader<'a> {
             let (value, tail) = tail[1..]
                 .split_once(quote)
                 .ok_or(Error::syntax("unterminated rich text attribute"))?;
+            self.work.charge(1)?;
             self.nodes.charge(1)?;
+            self.work.charge(attributes.len())?;
             if attributes.contains(&attribute) {
                 return Err(Error::syntax("duplicate rich text attribute"));
             }
@@ -334,6 +352,7 @@ impl<'a> Reader<'a> {
     }
 
     fn push(&mut self, value: char, style: usize) -> Result<()> {
+        self.work.charge(1)?;
         self.nodes.charge(1)?;
         self.storage
             .reserve_capacity(&mut self.text.characters, 1)?;
