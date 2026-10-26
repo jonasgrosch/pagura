@@ -372,7 +372,9 @@ impl Resolver {
         self.crosses.clear();
         self.crossings(pieces, total, swaps, (work, bytes))?;
         // They pay where crossings outnumber the pieces.
-        let swaps = swaps && self.crosses.len() >= count;
+        // A doubtful pair can change order without a recorded crossing.
+        // Such rows keep the full sweep and its existing work bound.
+        let swaps = swaps && self.crosses.len() >= count && self.doubtful.is_empty();
         // The crossings are among the heights the charge sorts.
         work.charge(sort_work(self.heights.len()))?;
         room(&mut self.height_keys, self.heights.len(), bytes)?;
