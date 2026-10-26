@@ -31,11 +31,15 @@ ADAPTER_FILES = [Path("benchmarks/adapters/capability_pagura.py"), ADAPTER, Path
 # visible and cannot be used to close a capability or release gate.
 UNIMPLEMENTED = {
     ("hayro", "attachments"): "no attachment extractor implemented over hayro's public object API",
+    ("hayro", "annotation-attachments"): "no page attachment extractor implemented over hayro's public object API",
     ("hayro", "text"): "no text reconstruction implemented over hayro's public interpreter API",
     ("quartz", "text"): "no text reconstruction implemented over CoreGraphics PDF operators",
 }
 OPERATIONS = {"pages": "document.structure", "metadata": "document.metadata",
-              "attachments": "document.attachments", "text": "text.accessibility"}
+              "attachments": "document.attachments", "annotation-attachments": "document.attachments",
+              "text": "text.accessibility"}
+ANNOTATION_FIXTURES = {"annotation-only", "annotation-both", "annotation-mixed", "annotation-second-page"}
+FIXTURES = {"services", "complete-ef", "empty", "invalid"} | ANNOTATION_FIXTURES
 OUTCOMES = {"pass", "incorrect", "rejected", "unsupported", "timeout", "adapter-error",
             "adapter-unavailable", "engine-unavailable", "not-run", "limit"}
 PAYLOAD = b"Synthetic attachment.\n"
@@ -49,27 +53,38 @@ def fixture(variant: str) -> bytes:
     """Hand-authored PDF objects, independent of Pagura and all probed engines.
 
     ISO 32000-2: 7.5 (xref), 7.7.4 (EmbeddedFiles), 7.11.3 (file spec),
-    9.4 (text objects), 14.3.3 (Info). No fonts or private-corpus assets needed.
+    9.4 (text objects), 12.5.6.15 (FileAttachment), 14.3.3 (Info).
+    No fonts or private-corpus assets needed.
     """
     if variant == "invalid":
         return b"This is intentionally not a PDF.\n"
-    if variant not in ("services", "complete-ef", "empty"):
+    if variant not in FIXTURES:
         raise ValueError("unknown synthetic variant")
     full = variant != "empty"
+    catalog_files = variant in {"services", "complete-ef", "annotation-both"}
+    annotations = (b" /Annots [10 0 R 9 0 R 9 0 R]" if variant == "annotation-mixed" else
+                   b" /Annots [9 0 R]" if variant in {"annotation-only", "annotation-both"} else b"")
     content = b"BT /F1 12 Tf 20 50 Td (Parity probe) Tj ET\n" if full else b""
     def stream(value: bytes, extra: bytes = b"") -> bytes:
         return b"<< /Length " + str(len(value)).encode() + extra + b" >>\nstream\n" + value + b"\nendstream"
     objects = [
-        b"<< /Type /Catalog /Pages 2 0 R" + (b" /Names << /EmbeddedFiles << /Names [(probe.txt) 7 0 R] >> >>" if full else b"") + b" >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R" + (b" /Names << /EmbeddedFiles << /Names [(probe.txt) 7 0 R] >> >>" if catalog_files else b"") + b" >>",
+        (b"<< /Type /Pages /Kids [3 0 R 10 0 R] /Count 2 >>" if variant == "annotation-second-page" else
+         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R" + annotations + b" >>",
         stream(content), b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     ]
     if full:
         objects += [b"<< /Title (Capability probe) /Author (Pagura fixtures) >>",
                     b"<< /Type /Filespec /F (probe.txt) /UF (probe.txt) /EF << /F 8 0 R" +
-                    (b" /UF 8 0 R" if variant == "complete-ef" else b"") + b" >> >>",
+                    (b" /UF 8 0 R" if variant == "complete-ef" or variant in ANNOTATION_FIXTURES else b"") + b" >> >>",
                     stream(PAYLOAD, b" /Type /EmbeddedFile /Subtype /text#2Fplain")]
+    if variant in ANNOTATION_FIXTURES:
+        objects.append(b"<< /Type /Annot /Subtype /FileAttachment /Rect [10 20 30 40] /FS 7 0 R /Contents (Probe attachment) /Name /Paperclip >>")
+    if variant == "annotation-mixed":
+        objects.append(b"<< /Type /Annot /Subtype /Link /Rect [0 0 1 1] /Dest [3 0 R /Fit] >>")
+    if variant == "annotation-second-page":
+        objects.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Annots [9 0 R] >>")
     output = bytearray(b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
     offsets = [0]
     for index, body in enumerate(objects, 1):
@@ -98,14 +113,15 @@ def validate_manifest(data, inventory):
         require(isinstance(row["id"], str) and row["id"] not in seen, "duplicate probe case")
         seen.add(row["id"])
         require(row["capability"] in identities and OPERATIONS.get(row["operation"]) == row["capability"], "unassigned probe operation")
-        require(row["fixture"] in {"services", "complete-ef", "empty", "invalid"}, "unknown probe fixture")
+        require(row["fixture"] in FIXTURES, "unknown probe fixture")
         require(row["oracle"] in {"exact-json", "reject-invalid"}, "unknown probe oracle")
         require((row["oracle"] == "reject-invalid") == (row["fixture"] == "invalid"), "invalid rejection control")
         require(row["oracle"] != "reject-invalid" or row["expected"] is None, "rejection control must have no value")
     require(any(row["oracle"] == "reject-invalid" for row in cases), "missing invalid-input control")
     for operation in OPERATIONS:
         variants = {row["fixture"] for row in cases if row["operation"] == operation}
-        require({"services", "empty"} <= variants, f"missing populated/empty controls for {operation}")
+        positive = "annotation-only" if operation == "annotation-attachments" else "services"
+        require({positive, "empty"} <= variants, f"missing populated/empty controls for {operation}")
 
 
 def same_value(left, right):
@@ -226,7 +242,8 @@ def service_identity(name, command):
         result = subject_identity([command[-1]])
         result["service_configuration"] = ("Default repair mode and empty password; Info Title/Author only; "
                                             "crop/rotation/UserUnit page dimensions; first-page text; "
-                                            "catalog attachments prefer EF/UF when present, else EF/F. "
+                                            "catalog and first-page annotation attachments are separate; "
+                                            "both prefer EF/UF when present, else EF/F. "
                                             "No raw legacy filename encoding is guessed beyond ASCII.")
         return result
     identity = identify(name, command)

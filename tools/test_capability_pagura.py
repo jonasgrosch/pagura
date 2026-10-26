@@ -98,6 +98,31 @@ class PaguraAdapterTests(unittest.TestCase):
             with patch.object(subject, "execute", return_value=json.dumps(value).encode()):
                 self.assertEqual(subject.probe("stub", "metadata", "input.pdf")["status"], "adapter-error")
 
+    def test_page_attachments_preserve_original_slots_and_never_use_catalog_selection(self):
+        file = {"names": {"UF": "probe.txt"}, "payloads": [{"key": "UF"}]}
+        response = {"schema": 1, "page": 0, "annotations": [{"index": 1, "file": file}, {"index": 3, "file": file}]}
+        requests = []
+        def execute(binary, args, directory, deadline):
+            requests.append(args[:6])
+            if args[0] == "attachments":
+                self.assertEqual(args, ["attachments", "--page", "0", "input.pdf"])
+                return json.dumps(response).encode()
+            self.assertEqual(args[0:4], ["extract-attachment", "--page", "0", "input.pdf"])
+            self.assertFalse(Path(args[6]).exists())
+            Path(args[6]).write_bytes(b"Synthetic attachment.\n")
+            return b""
+        with patch.object(subject, "execute", side_effect=execute):
+            result = subject.probe("stub", "annotation-attachments", "input.pdf")
+        self.assertEqual(result, {"schema": 1, "status": "ok", "value": [
+            {"name": "probe.txt", "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"}] * 2})
+        self.assertEqual([args[4] for args in requests[1:]], ["1", "3"])
+        for bad in ({"page": True, "annotations": []}, {"page": 1, "annotations": []},
+                    {"page": 0, "files": []}, {"page": 0, "annotations": [{"index": -1, "file": file}]},
+                    {"page": 0, "annotations": [{"index": True, "file": file}]}):
+            with patch.object(subject, "execute", return_value=json.dumps({"schema": 1, **bad}).encode()) as call:
+                self.assertEqual(subject.probe("stub", "annotation-attachments", "input.pdf")["status"], "adapter-error")
+                self.assertEqual(call.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

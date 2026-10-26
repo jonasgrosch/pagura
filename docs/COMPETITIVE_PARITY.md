@@ -156,15 +156,19 @@ been exercised. Later discoveries reopen the inventory and relevant package.
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
 **Started:** the [document-service probe slice](../benchmarks/probes/README.md)
-adds ten independent populated/empty/rejection controls, 70 explicit case/engine
+adds eighteen independent populated/empty/rejection controls, 126 explicit case/engine
 cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
-six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstruction
+six baselines across hosted Ubuntu and macOS; hayro catalog/page attachment and text reconstruction
 and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
 operation/configuration matrix remains open. `f948c64f289f2ec80112f92b0f06f7c88b0f882b`
 adds Pagura through the public metadata/attachment/text CLI and additive inspect
 geometry, preserving all six baseline columns. Current-head hosted observations
 are pending; every Pagura cell must meet its independent expectation. These
 fixture results do not promote any G00 family cell or establish Pagura parity.
+The annotation increment adds first-page FileAttachment byte/name probes,
+separate from catalog attachments, with mixed slots, duplicate occurrences,
+shared/page-only specifications and second-page scope controls. Hosted
+observations for these new cases are pending.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
 The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
@@ -512,8 +516,9 @@ of reading-response limits. More → Export page PNG includes copied current for
 values through a temporary saved handle, released on success/failure/staleness.
 It does not adopt the snapshot or erase drafts. Native/WASI/client byte checks,
 independent Python pixel decoding, wire/version/budget tests and viewer
-option/snapshot/race/cleanup tests are authored; hosted and real-browser
-verification remain pending. Export uses PDF page orientation. Streaming, active
+option/snapshot/race/cleanup tests pass in hosted Linux/macOS/Windows checks at
+`f4ee9bcef` in [run 40272959779](https://github.com/jonasgrosch/pagura/actions/runs/40272959779).
+Real-browser interaction verification remains pending. Export uses PDF page orientation. Streaming, active
 cancellation, backpressure and ancillary color metadata remain open.
 
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,

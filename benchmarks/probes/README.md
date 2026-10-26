@@ -1,10 +1,10 @@
 # G01 capability probes
 
 The first executable slice probes **page counts/dimensions, Info metadata,
-embedded-file bytes and text** using independently authored populated/empty
+catalog and first-page annotation attachment bytes, and text** using independently authored populated/empty
 controls and a non-PDF rejection control. Pagura joins all six baseline columns,
-yielding 70 document-service cells. Its observations use the public CLI only.
-G01 remains open: these ten cases do not establish family or product parity.
+yielding 126 document-service cells. Its observations use the public CLI only.
+G01 remains open: these eighteen cases do not establish family or product parity.
 The companion [render manifest](rendering.json) adds six independent pixel
 oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
 premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
@@ -14,12 +14,12 @@ Pagura is an additional measured subject, never a replacement baseline.
 | Engine | Public adapter paths | Explicit adapter gaps | Hosted execution |
 |---|---|---|---|
 | Pagura (subject) | CLI inspect, metadata, attachments, extract-attachment and text | Object-local metadata/AF/RF and broader operation configurations remain open | Ubuntu, pinned Rust, default features |
-| PDFium | Pages, metadata, attachments, text | Optional V8/XFA builds not covered | Ubuntu, locked pypdfium2 wheel |
-| MuPDF | Pages, metadata, attachments, text | Optional providers not covered | Ubuntu, locked PyMuPDF wheel |
-| pdf.js | Pages, metadata, attachments, text | Browser configuration not covered | Ubuntu, locked Node legacy build; eval disabled |
-| Poppler | Pages, metadata, attachments, text | Other bindings/configurations not covered | Ubuntu, OS GLib/GI packages |
+| PDFium | Pages, metadata, catalog/page attachments, text | Optional V8/XFA builds not covered | Ubuntu, locked pypdfium2 wheel |
+| MuPDF | Pages, metadata, catalog/page attachments, text | Optional providers not covered | Ubuntu, locked PyMuPDF wheel |
+| pdf.js | Pages, metadata, catalog/page attachments, text | Browser configuration not covered | Ubuntu, locked Node legacy build; eval disabled |
+| Poppler | Pages, metadata, catalog/page attachments, text | Other bindings/configurations not covered | Ubuntu, OS GLib/GI packages |
 | hayro | Pages, ASCII Info metadata | Attachment and text reconstruction not implemented in this adapter | Ubuntu, locked standalone Rust workspace |
-| CoreGraphics | Pages, Info metadata, EmbeddedFiles via public object/stream APIs | Text reconstruction not implemented in this adapter | macOS system framework; no PDFKit |
+| CoreGraphics | Pages, Info metadata, catalog/page attachments via public object/stream APIs | Text reconstruction not implemented in this adapter | macOS system framework; no PDFKit |
 
 A missing adapter path is `adapter-unavailable`, not a claim that an engine
 cannot perform the work. Each platform report also retains the other platform's
@@ -45,7 +45,13 @@ The adapters use documented public APIs:
 [hayro 0.8.0 page](https://docs.rs/hayro-syntax/0.8.0/hayro_syntax/page/struct.Page.html) and
 [metadata](https://docs.rs/hayro-syntax/0.8.0/hayro_syntax/metadata/struct.Metadata.html),
 and [CoreGraphics CGPDFDocument](https://developer.apple.com/documentation/coregraphics/cgpdfdocument).
-No competitor implementation source was consulted for these adapters.
+The annotation increment also uses the [PDFium annotation API](https://pdfium.googlesource.com/pdfium/+/refs/heads/main/public/fpdf_annot.h),
+[PyMuPDF annotation API](https://pymupdf.readthedocs.io/en/latest/annot.html),
+[Poppler annotation API](https://poppler.freedesktop.org/api/glib/poppler-Poppler-Annotation.html)
+and [CoreGraphics page dictionary](https://developer.apple.com/documentation/coregraphics/cgpdfpage/dictionary).
+Published bindings and pinned pdf.js 6.4 descriptor fields were inspected to confirm
+public API shapes. The adapter logic and fixtures were authored independently; no
+competitor implementation was copied or translated.
 
 ## Execution and evidence
 
@@ -164,6 +170,35 @@ incorrectly discard attachments; the controls prevent that adapter regression.
 The initial expanded reports predate this fix and do not establish a pdf.js
 defect. Only reports with the corrected adapter/source hashes are usable for
 this comparison. Raw reports remain in CI artifacts, outside Git.
+
+## First-page annotation attachment controls
+
+`annotation-attachments` enumerates only FileAttachment annotations on page zero,
+returns sorted filename/SHA-256 records, and preserves duplicate occurrences. It
+is separate from catalog `attachments`. Eight additional cases cover page-only
+and shared catalog/page specifications, a link before duplicate file annotations,
+a file appearing only on page two, catalog-only and empty pages, invalid input,
+and catalog enumeration of a page-only file. Each positive case uses the same
+authored payload with complete EF/F and EF/UF entries (Table 43); annotation
+placement follows 12.5.6.15 Table 187. Names are ASCII in this probe slice.
+
+Pagura uses `attachments --page 0` and extracts each original Annots index through
+`extract-attachment --page 0`. PDFium borrows public annotation/attachment handles
+while the page is open; PyMuPDF filters the first page's annotation iterator;
+pdf.js uses `getAnnotations({intent: "any"})` then `getAttachmentContent(fileId)`;
+Poppler uses annotation mappings and file attachment objects; CoreGraphics walks
+the first page dictionary and decodes the selected EF stream. No adapter activates
+an attachment or treats its filename as an output path. Hayro remains an explicit
+adapter gap for both catalog and annotation attachment operations.
+
+Offline contract tests cover index/scope preservation, duplicate results, handle
+cleanup on failure, lazy descriptor/byte retrieval, wrong API shapes and adapter
+bounds. New annotation enumeration is capped at 1,024 entries (128 for CoreGraphics),
+with decoded payload checks of 64 MiB (64 KiB for CoreGraphics). These post-decode
+checks do not promise bounded allocation inside competitor APIs; the harness has
+a separate process deadline. Resource refusals never establish feature support.
+Hosted execution of the new cases is pending; broader attachment encodings,
+password/configuration combinations and performance remain separate work.
 
 ## Initial rendering observations
 

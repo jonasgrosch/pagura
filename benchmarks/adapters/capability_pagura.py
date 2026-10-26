@@ -66,8 +66,8 @@ def execute(binary, arguments, directory, deadline):
     return stdout.read_bytes()
 
 
-def report(binary, command, source, directory, deadline, schema=1):
-    value = json.loads(execute(binary, [command, source], directory, deadline))
+def report(binary, command, source, directory, deadline, schema=1, *, options=()):
+    value = json.loads(execute(binary, [command, *options, source], directory, deadline))
     require(isinstance(value, dict) and type(value.get("schema")) is int
             and value["schema"] == schema, "unexpected CLI report schema")
     return value
@@ -103,13 +103,23 @@ def metadata(value):
     return result
 
 
-def attachments(binary, value, source, directory, deadline):
-    files = value.get("files")
+def attachments(binary, value, source, directory, deadline, *, page=None):
+    files = value.get("files" if page is None else "annotations")
     require(isinstance(files, list) and len(files) <= 1024, "invalid attachment list")
+    if page is not None:
+        require(type(value.get("page")) is int and value["page"] == page, "invalid annotation page")
+    options = [] if page is None else ["--page", str(page)]
     result = []
-    for index, file in enumerate(files):
+    previous = -1
+    for position, file in enumerate(files):
         require(isinstance(file, dict) and type(file.get("index")) is int
-                and file["index"] == index, "invalid attachment index")
+                and (file["index"] == position if page is None else file["index"] > previous), "invalid attachment index")
+        index = file["index"]
+        previous = index
+        if page is not None:
+            file = file.get("file")
+            if not isinstance(file, dict):
+                raise ValueError("invalid annotation file")
         names, payloads = file.get("names"), file.get("payloads")
         if not isinstance(names, dict) or not isinstance(payloads, list):
             raise ValueError("invalid attachment fields")
@@ -128,7 +138,7 @@ def attachments(binary, value, source, directory, deadline):
         require(key in keys, "no supported EF key in attachment descriptor")
         output = directory / "attachment.bin"
         output.unlink(missing_ok=True)
-        execute(binary, ["extract-attachment", source, str(index), key, str(output)], directory, deadline)
+        execute(binary, ["extract-attachment", *options, source, str(index), key, str(output)], directory, deadline)
         require(output.is_file(), "CLI did not create an extracted payload")
         if output.stat().st_size > MAX_PAYLOAD:
             raise ProbeFailure("limit", "attachment exceeds 64 MiB adapter bound")
@@ -148,6 +158,9 @@ def probe(binary, operation, source):
             elif operation == "attachments":
                 value = attachments(binary, report(binary, "attachments", source, directory, deadline),
                                     source, directory, deadline)
+            elif operation == "annotation-attachments":
+                value = attachments(binary, report(binary, "attachments", source, directory, deadline,
+                                                    options=("--page", "0")), source, directory, deadline, page=0)
             elif operation == "text":
                 value = execute(binary, ["text", source, "0"], directory, deadline).decode("utf-8").replace("\r\n", "\n").strip("\n")
             else:

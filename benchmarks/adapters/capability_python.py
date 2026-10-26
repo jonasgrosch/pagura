@@ -7,6 +7,63 @@ import hashlib
 import json
 import sys
 
+MAX_ATTACHMENTS = 1024
+MAX_PAYLOAD = 64 * 1024 * 1024
+
+
+class ProbeLimit(Exception):
+    """Adapter bounds are observations, never a claim of engine support."""
+
+
+def attachment_value(name, payload):
+    if not isinstance(name, str):
+        raise ValueError("invalid attachment filename")
+    if len(payload) > MAX_PAYLOAD:
+        raise ProbeLimit("attachment exceeds 64 MiB adapter bound")
+    return {"name": name, "sha256": hashlib.sha256(payload).hexdigest()}
+
+
+def pdfium_annotations(document, backend):
+    """Borrow public PDFium handles only while their owning page is open."""
+    page = document[0]
+    result = []
+    raw = backend.raw
+    try:
+        count = raw.FPDFPage_GetAnnotCount(page)
+        if count < 0:
+            raise ValueError("annotation count failed")
+        if count > MAX_ATTACHMENTS:
+            raise ProbeLimit("annotation count exceeds adapter bound")
+        for index in range(count):
+            annotation = raw.FPDFPage_GetAnnot(page, index)
+            if not annotation:
+                raise ValueError("annotation handle missing")
+            try:
+                if raw.FPDFAnnot_GetSubtype(annotation) != raw.FPDF_ANNOT_FILEATTACHMENT:
+                    continue
+                handle = raw.FPDFAnnot_GetFileAttachment(annotation)
+                if not handle:
+                    raise ValueError("file attachment handle missing")
+                attachment = backend.PdfAttachment(handle, document)
+                result.append(attachment_value(attachment.get_name(), bytes(attachment.get_data())))
+            finally:
+                raw.FPDFPage_CloseAnnot(annotation)
+    finally:
+        page.close()
+    return sorted(result, key=lambda row: row["name"])
+
+
+def mupdf_annotations(document, backend):
+    # The page must stay alive for every annotation read, including get_file.
+    page = document[0]
+    result = []
+    for annotation in page.annots(types=[backend.PDF_ANNOT_FILE_ATTACHMENT]) or []:
+        if len(result) >= MAX_ATTACHMENTS:
+            raise ProbeLimit("attachment count exceeds adapter bound")
+        info = annotation.file_info
+        result.append(attachment_value(info.get("ufilename") or info["filename"], annotation.get_file()))
+    return sorted(result, key=lambda row: row["name"])
+
 
 def pdfium(document, operation):
     if operation == "pages":
@@ -29,6 +86,9 @@ def pdfium(document, operation):
                 text.close()
         finally:
             page.close()
+    if operation == "annotation-attachments":
+        import pypdfium2 as backend  # pyright: ignore[reportMissingImports]
+        return pdfium_annotations(document, backend)
     raise ValueError("unknown operation")
 
 
@@ -42,6 +102,9 @@ def mupdf(document, operation):
                        for name in document.embfile_names()], key=lambda row: row["name"])
     if operation == "text":
         return document[0].get_text().replace("\r\n", "\n").strip("\n")
+    if operation == "annotation-attachments":
+        import pymupdf as backend  # pyright: ignore[reportMissingImports]
+        return mupdf_annotations(document, backend)
     raise ValueError("unknown operation")
 
 
@@ -66,6 +129,8 @@ def probe(engine, operation, source):
         return {"status": "ok", "value": reader(document, operation)}
     except AttributeError:
         return {"status": "adapter-unavailable", "reason": "binding does not expose the expected API"}
+    except ProbeLimit as error:
+        return {"status": "limit", "reason": str(error)}
     except Exception as error:
         return {"status": "adapter-error", "reason": type(error).__name__}
     finally:
