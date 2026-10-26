@@ -137,6 +137,14 @@ const RGB: Counts = Counts {
     preserve: 0,
 };
 
+/// Gray without spot channels or kept components, as soft masks' groups
+/// often blend.
+const GRAY: Counts = Counts {
+    process: 1,
+    channels: 1,
+    preserve: 0,
+};
+
 fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
     run: Run<'_, '_>,
     colors: impl Iterator<Item = &'c [f64]>,
@@ -147,11 +155,11 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
         channels: layout.channels(),
         preserve: run.mode.preserve,
     };
-    // Normal onto CMYK and separable modes onto RGB with constant counts:
-    // the compiler unrolls the channel loops and drops the tests of kept
-    // components, while the operations and their order stay `paint`'s.
+    // Separable modes onto CMYK, RGB and Normal onto Gray with constant
+    // counts: the compiler unrolls the channel loops and drops the tests of
+    // kept components, while the operations and their order stay `paint`'s.
     // Overprinted CMYK keeps its counts and tests its kept components.
-    if B::NORMAL && counts == CMYK {
+    if B::SEPARABLE && counts == CMYK {
         each::<B, KNOCKOUT>(run, colors, (CMYK, CMYK.channels + 3));
     } else if B::NORMAL && (counts.process, counts.channels) == (CMYK.process, CMYK.channels) {
         let kept = Counts {
@@ -161,6 +169,8 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
         each::<B, KNOCKOUT>(run, colors, (kept, CMYK.channels + 3));
     } else if B::SEPARABLE && counts == RGB {
         each::<B, KNOCKOUT>(run, colors, (RGB, RGB.channels + 3));
+    } else if B::NORMAL && counts == GRAY {
+        each::<B, KNOCKOUT>(run, colors, (GRAY, GRAY.channels + 3));
     } else {
         each::<B, KNOCKOUT>(run, colors, (counts, layout.stride()));
     }
@@ -232,6 +242,8 @@ fn covered(
         cover_each(pixels, color, (CMYK, CMYK.channels + 3), coverage);
     } else if counts == RGB {
         cover_each(pixels, color, (RGB, RGB.channels + 3), coverage);
+    } else if counts == GRAY {
+        cover_each(pixels, color, (GRAY, GRAY.channels + 3), coverage);
     } else {
         cover_each(pixels, color, (counts, stride), coverage);
     }
