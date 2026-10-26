@@ -26,7 +26,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 "image component count exceeds painter capacity",
             ));
         }
-        let intent = if !matches!(source.kind(), ImageKind::Stencil { .. }) {
+        let intent = if matches!(source.kind(), ImageKind::Stencil { .. }) {
+            None
+        } else {
             source
                 .intent()
                 .filter(|value| !value.is_null())
@@ -37,8 +39,6 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                         .ok_or(Error::syntax("image Intent must be a name"))
                 })
                 .transpose()?
-        } else {
-            None
         };
         let effective_intent = intent.unwrap_or(inherited_intent);
         let space = self.image_space(&source, resources, effective_intent)?;

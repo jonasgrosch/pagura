@@ -13,7 +13,7 @@ use pagura_color::{
     ColorSpace, Colorant, DeviceN, ExponentialFunction, Function, Indexed, Separation,
     cie::Calibrated,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Result, Store, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Name, Result, Store, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 
