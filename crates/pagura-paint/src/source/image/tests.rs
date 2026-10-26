@@ -1244,3 +1244,95 @@ fn words_store_as_opaque_spans_do() {
     }
     assert!(written > 0 && averaged > 0);
 }
+
+/// A large source of few colours, indexed at preparation, samples bit for
+/// bit as its memo does, and writes the same words: opaque and
+/// colour-keyed, retained and replacing.
+#[test]
+fn indexed_sources_sample_as_their_memo_does() {
+    let palette = [
+        [0u8, 0, 0],
+        [255, 255, 255],
+        [200, 30, 90],
+        [17, 140, 230],
+        [90, 90, 91],
+    ];
+    let (width, height) = (64, 48);
+    // Runs of one to four samples of one colour.
+    let mut samples = Vec::new();
+    for code in codes(width * height, 8, 9).into_iter().map(usize::from) {
+        for _ in 0..=code % 4 {
+            samples.extend(palette[code % 5]);
+        }
+    }
+    samples.truncate(width * height * 3);
+    let rgb = image(
+        (
+            u32::try_from(width).unwrap(),
+            u32::try_from(height).unwrap(),
+        ),
+        3,
+        8,
+        Samples::Bytes(samples),
+    );
+    let mut keyed = case(rgb.clone());
+    keyed.key = Some(vec![[150, 255], [0, 40], [0, 255]]);
+    let lab = pagura_color::cie::Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0; 4]);
+    let lab = Case {
+        space: Some(ColorSpace::Calibrated(Arc::new(lab.unwrap()))),
+        decode: vec![[0.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]],
+        ..case(rgb.clone())
+    };
+    let (mut indexed, mut written) = (0, 0);
+    for (case, target) in [(&case(rgb), 4), (&keyed, 3), (&lab, 3)] {
+        for unit_to_device in placements(case.image.width, case.image.height) {
+            let fast = sampler(case, unit_to_device, target);
+            let mut memo = sampler(case, unit_to_device, target);
+            // The same source through its memo, before capacity discovery.
+            let prepared = memo.prepared.as_deref_mut().unwrap();
+            if let super::Plan::Texels {
+                paint: Paint::Colors(paint),
+                ..
+            } = &mut prepared.plan
+            {
+                assert!(matches!(paint.1, super::texels::Strategy::Indexed(..)));
+                indexed += 1;
+                let image = &prepared.image.image;
+                paint.1 = super::texels::Strategy::new(
+                    image,
+                    &paint.0,
+                    false,
+                    None,
+                    &mut meter(),
+                    &mut meter(),
+                )
+                .unwrap();
+                assert!(matches!(paint.1, super::texels::Strategy::Memo(_)));
+            }
+            let (mut fast_storage, mut memo_storage) = (scratch(&fast), scratch(&memo));
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut a, mut b) = (SpanColors::default(), SpanColors::default());
+            let (mut a_shape, mut b_shape) = (Vec::new(), Vec::new());
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                fast.span_with_shape(pixels, &mut fast_storage, &mut a, &mut a_shape);
+                memo.span_with_shape(pixels, &mut memo_storage, &mut b, &mut b_shape);
+                let context = || format!("{unit_to_device:?} target {target} row {y}");
+                assert_eq!(bits(&a.colors), bits(&b.colors), "{}", context());
+                assert_eq!(bits(&a.alpha), bits(&b.alpha), "{}", context());
+                assert_eq!(bits(&a_shape), bits(&b_shape), "{}", context());
+                let short = (x0..x1).step_by(5).map(|x| (x, 3));
+                for (x, len) in std::iter::once((x0, len)).chain(short) {
+                    let pixels = Pixels::new(x, y, len);
+                    let (mut a, mut b) = (vec![[0u16; 4]; len], vec![[0u16; 4]; len]);
+                    let wrote = fast.words(pixels, &mut fast_storage, &mut a);
+                    assert_eq!(wrote, memo.words(pixels, &mut memo_storage, &mut b));
+                    assert_eq!(a, b, "words of {}", context());
+                    written += usize::from(wrote);
+                }
+            }
+        }
+    }
+    assert!(indexed > 0 && written > 0);
+}
