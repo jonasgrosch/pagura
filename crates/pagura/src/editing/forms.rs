@@ -1,6 +1,7 @@
 //! Persist validated form values and normal appearance programs together.
 
 use super::{SaveOptions, Transaction, features};
+use crate::ReadResult;
 use crate::form_appearance::{self, Appearance};
 use crate::forms::{Field, FieldFlags, FieldKind, FilledValue, FormFiller};
 use crate::{Dictionary, Document, Error, Name, NewObject, ObjectId, Result, Value};
@@ -19,7 +20,8 @@ use pagura_core::text_string;
 /// Returns transaction/source-policy errors and appearance-generation errors.
 /// Nested direct fields/widgets, password changes and buttons without reusable
 /// appearance states currently return explicit `Unsupported` errors.
-pub fn save_filled_form(filler: &FormFiller<'_>, options: &SaveOptions) -> Result<Vec<u8>> {
+pub fn save_filled_form(filler: &FormFiller<'_>, options: &SaveOptions) -> ReadResult<Vec<u8>> {
+    let _source = filler.document().materialize()?;
     let mut transaction = Transaction::new(filler.document());
     if filler.changes().next().is_none() && !filler.form().need_appearances {
         return transaction.commit(options);
@@ -77,7 +79,7 @@ fn prepare_appearances(
     filler: &FormFiller<'_>,
     transaction: &mut Transaction<'_>,
     policy: form_appearance::UpdatePolicy,
-) -> Result<()> {
+) -> ReadResult<()> {
     #[cfg(feature = "bundled-data")]
     let provider = pagura_data::Bundled::new(filler.document().limits());
     #[cfg(feature = "bundled-data")]
@@ -103,7 +105,8 @@ fn prepare_appearances(
                 return Err(Error::unsupported(
                     features::BUTTON_APPEARANCE,
                     "saving buttons requires existing normal appearance states",
-                ));
+                )
+                .into());
             }
             let id = identity(filler.document(), widget.object, widget.dictionary)?;
             let appearance_id = transaction.add(NewObject::Stream {
@@ -114,7 +117,7 @@ fn prepare_appearances(
                 Some(value) => match filler.document().resolve(value)? {
                     Value::Null => Dictionary::new(),
                     Value::Dictionary(dictionary) => dictionary.clone(),
-                    _ => return Err(Error::syntax("widget AP must be a dictionary")),
+                    _ => return Err(Error::syntax("widget AP must be a dictionary").into()),
                 },
                 None => Dictionary::new(),
             };
@@ -179,7 +182,7 @@ fn identity(
     document: &Document,
     id: Option<ObjectId>,
     dictionary: &Dictionary,
-) -> Result<ObjectId> {
+) -> ReadResult<ObjectId> {
     let id = id.ok_or(Error::unsupported(
         features::DIRECT_FIELD,
         "saving requires an indirect field or widget",
@@ -194,7 +197,8 @@ fn identity(
             features::DIRECT_FIELD,
             "nested direct field or widget cannot be replaced by its containing object",
         )
-        .in_object(id));
+        .in_object(id)
+        .into());
     }
     Ok(id)
 }
@@ -202,7 +206,7 @@ fn identity(
 fn clear_need_appearances(
     filler: &FormFiller<'_>,
     transaction: &mut Transaction<'_>,
-) -> Result<()> {
+) -> ReadResult<()> {
     let document = filler.document();
     let root = document
         .trailer()

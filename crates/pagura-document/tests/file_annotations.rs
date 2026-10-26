@@ -235,7 +235,7 @@ fn malformed_annotations_and_reference_cycles_never_return_partial_views() {
 }
 
 #[test]
-fn discovery_and_decoding_have_independent_budgets_and_authorization() {
+fn discovery_and_decoding_have_independent_budgets() {
     for (limits, message) in [
         (
             Limits {
@@ -311,6 +311,10 @@ fn discovery_and_decoding_have_independent_budgets_and_authorization() {
             .kind,
         ErrorKind::Limit
     );
+}
+
+#[test]
+fn annotation_payloads_require_their_own_authorization() {
     for name in ["encrypted-no-type", "encrypted-identity"] {
         for password in [b"".as_slice(), b"wrong", b"attachment", b"owner"] {
             let document = open(

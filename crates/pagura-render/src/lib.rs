@@ -39,6 +39,7 @@ pub use pagura_raster::Pixmap;
 pub use pagura_text::Provider;
 
 use pagura_core::{ObjectId, Rect, Result, Store};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 use pagura_interpret::PageSpace;
 use pagura_paint::{RenderRequest, Scratch};
@@ -71,7 +72,7 @@ pub fn record_page(
     document: &Document,
     page: &Page,
     provider: Option<&dyn Provider>,
-) -> Result<Scene> {
+) -> ReadResult<Scene> {
     with_renderer(document, provider, |renderer| renderer.record(page))
 }
 
@@ -85,7 +86,7 @@ pub fn render_page(
     page: &Page,
     options: &RenderOptions,
     provider: Option<&dyn Provider>,
-) -> Result<Pixmap> {
+) -> ReadResult<Pixmap> {
     with_renderer(document, provider, |renderer| {
         let scene = renderer.record(page)?;
         renderer
@@ -106,7 +107,7 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
     provider: Option<&dyn Provider>,
-) -> Result<Pixmap> {
+) -> ReadResult<Pixmap> {
     with_renderer(document, provider, |renderer| {
         let scene = renderer.record(page)?;
         renderer
@@ -129,7 +130,7 @@ pub fn text_page(
     document: &Document,
     page: &Page,
     provider: Option<&dyn Provider>,
-) -> Result<TextPage> {
+) -> ReadResult<TextPage> {
     with_renderer(document, provider, |renderer| renderer.text_page(page))
 }
 
@@ -145,7 +146,7 @@ pub fn appearance_text(
     appearance: ObjectId,
     rect: Rect,
     provider: Option<&dyn Provider>,
-) -> Result<PositionedText> {
+) -> ReadResult<PositionedText> {
     with_renderer(document, provider, |renderer| {
         renderer.appearance_text(page, appearance, rect)
     })
@@ -155,8 +156,8 @@ pub fn appearance_text(
 fn with_renderer<T>(
     document: &Document,
     provider: Option<&dyn Provider>,
-    work: impl FnOnce(Renderer<'_>) -> Result<T>,
-) -> Result<T> {
+    work: impl FnOnce(Renderer<'_>) -> ReadResult<T>,
+) -> ReadResult<T> {
     let store = Store::new(RenderContext::DEFAULT_STORE_BYTES);
     work(Renderer {
         document,

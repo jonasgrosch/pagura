@@ -4,6 +4,7 @@
 use crate::options::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Meter, ObjectId, Rect, Result, Store};
 use pagura_document::forms::FormFiller;
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 use pagura_extract::{LayoutOptions, PositionedText, TextPage};
 use pagura_interpret::{Interpreter, Scene};
@@ -29,23 +30,23 @@ impl<'a> Renderer<'a> {
     }
 
     /// Records `page` with stored appearances.
-    pub(crate) fn record(self, page: &Page) -> Result<Scene> {
+    pub(crate) fn record(self, page: &Page) -> ReadResult<Scene> {
         self.interpreter().scene(page)
     }
 
     /// Records `page` with the in-memory form values of `filler`.
-    pub(crate) fn record_filled(self, filler: &FormFiller<'_>, page: &Page) -> Result<Scene> {
+    pub(crate) fn record_filled(self, filler: &FormFiller<'_>, page: &Page) -> ReadResult<Scene> {
         if !std::ptr::eq(filler.document(), self.document) {
-            return Err(Error::invalid_argument(
-                "form does not belong to the rendering document",
-            ));
+            return Err(
+                Error::invalid_argument("form does not belong to the rendering document").into(),
+            );
         }
         self.interpreter().with_filler(filler).scene(page)
     }
 
     /// The positioned text of `page` through the text device, laid out in
     /// reading order with its logical structure (ADR 0014).
-    pub(crate) fn text_page(self, page: &Page) -> Result<TextPage> {
+    pub(crate) fn text_page(self, page: &Page) -> ReadResult<TextPage> {
         let text = self.interpreter().text(page)?;
         TextPage::from_positioned(text, LayoutOptions::default(), self.document.limits())?
             .with_structure(self.document, page)
@@ -58,7 +59,7 @@ impl<'a> Renderer<'a> {
         page: &Page,
         appearance: ObjectId,
         rect: Rect,
-    ) -> Result<PositionedText> {
+    ) -> ReadResult<PositionedText> {
         self.interpreter().appearance_text(page, appearance, rect)
     }
 
@@ -133,6 +134,7 @@ impl<'a> Renderer<'a> {
         scene: &Scene,
         (options, tile): (&RenderOptions, Option<Tile>),
     ) -> Result<PreparedScene> {
+        self.document.check_source()?;
         let mut request = RenderRequest::page(&scene.page, options.scale)?;
         if let Some(tile) = tile {
             request.region = tile.region((request.page.width(), request.page.height()))?;

@@ -27,6 +27,7 @@ use crate::Document;
 use pagura_core::{Diagnostics, Error, ErrorKind, Limits, Meter, Result};
 use pagura_crypto::{HashAlgorithm, Verification};
 pub use pagura_document::signatures::*;
+use pagura_document::source::ReadResult;
 use pagura_pki::cms::{CertificateChoice, ID_DATA, SignedData, SignerIdentifier, SignerInfo};
 use pagura_pki::timestamp::{ID_TST_INFO, TstInfo};
 use pagura_pki::x509::{Certificate, extensions};
@@ -66,7 +67,8 @@ impl Budget {
     }
 }
 
-pub(crate) fn verify(document: &Document) -> Result<Signatures<'_>> {
+pub(crate) fn verify(document: &Document) -> ReadResult<Signatures<'_>> {
+    let _source = document.materialize()?;
     let mut signatures = document.signatures()?;
     let limits = document.limits();
     let mut budget = Budget::new(&limits);

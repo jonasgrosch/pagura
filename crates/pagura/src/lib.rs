@@ -34,7 +34,7 @@
 //! ```
 //! use pagura::{Builder, Dictionary, Document, Name, NewObject, ObjectId, OpenOptions, Value};
 //!
-//! # fn main() -> pagura::Result<()> {
+//! # fn main() -> pagura::ReadResult<()> {
 //! // Write a one-page document that fills a square, then read it back.
 //! let id = |number| ObjectId::new(number, 0);
 //! let dictionary = |entries: &[(&[u8], Value)]| -> Value {
@@ -100,6 +100,7 @@ pub use pagura_document::metadata;
 pub use pagura_document::navigation;
 /// Immutable complete/sparse source bytes, explicit availability and owned leases (ADR 0036).
 pub use pagura_document::source;
+pub use pagura_document::source::{ReadFault, ReadResult};
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,
@@ -145,7 +146,7 @@ use std::sync::Arc;
 /// collection-specific substitutes.
 ///
 /// ```
-/// # fn example(document: pagura::Document) -> pagura::Result<()> {
+/// # fn example(document: pagura::Document) -> pagura::ReadResult<()> {
 /// let context = pagura::render_context(std::sync::Arc::new(document));
 /// let options = pagura::RenderOptions::from_dpi(144.0);
 /// for page in context.document().pages()? {
@@ -183,7 +184,7 @@ pub fn render_context_with_provider(
 ///
 /// # Errors
 /// As [`RenderContext::scene`].
-pub fn record_page(document: &Document, page: &Page) -> Result<Scene> {
+pub fn record_page(document: &Document, page: &Page) -> ReadResult<Scene> {
     let provider = default_provider(document.limits());
     pagura_render::record_page(document, page, provider.as_deref())
 }
@@ -198,7 +199,7 @@ pub fn appearance_text(
     page: &Page,
     appearance: ObjectId,
     rect: Rect,
-) -> Result<text::PositionedText> {
+) -> ReadResult<text::PositionedText> {
     let provider = default_provider(document.limits());
     pagura_render::appearance_text(document, page, appearance, rect, provider.as_deref())
 }
@@ -208,7 +209,7 @@ pub fn appearance_text(
 /// [`RenderContext::text_page`].
 ///
 /// ```
-/// # fn example(document: &pagura::Document) -> pagura::Result<()> {
+/// # fn example(document: &pagura::Document) -> pagura::ReadResult<()> {
 /// let text = pagura::text_page(document, document.page(0)?)?;
 /// println!("{}", text.text());
 /// for found in text.find("invoice", pagura::SearchOptions::default())? {
@@ -220,7 +221,7 @@ pub fn appearance_text(
 ///
 /// # Errors
 /// As [`RenderContext::text_page`].
-pub fn text_page(document: &Document, page: &Page) -> Result<TextPage> {
+pub fn text_page(document: &Document, page: &Page) -> ReadResult<TextPage> {
     let provider = default_provider(document.limits());
     pagura_render::text_page(document, page, provider.as_deref())
 }
@@ -229,7 +230,11 @@ pub fn text_page(document: &Document, page: &Page) -> Result<TextPage> {
 ///
 /// # Errors
 /// As [`RenderContext::render_page`].
-pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
+pub fn render_page(
+    document: &Document,
+    page: &Page,
+    options: &RenderOptions,
+) -> ReadResult<Pixmap> {
     let provider = default_provider(document.limits());
     pagura_render::render_page(document, page, options, provider.as_deref())
 }
@@ -244,7 +249,7 @@ pub fn render_tile(
     page: &Page,
     options: &RenderOptions,
     tile: Tile,
-) -> Result<Pixmap> {
+) -> ReadResult<Pixmap> {
     let provider = default_provider(document.limits());
     pagura_render::render_tile(document, page, options, tile, provider.as_deref())
 }
@@ -257,7 +262,7 @@ pub fn render_tile(
 /// As [`form_appearance::prepare`], including explicit unsupported capabilities.
 pub fn prepare_form(
     filler: &forms::FormFiller<'_>,
-) -> Result<Vec<form_appearance::WidgetAppearance>> {
+) -> ReadResult<Vec<form_appearance::WidgetAppearance>> {
     let provider = default_provider(filler.document().limits());
     form_appearance::prepare(filler, provider.as_deref())
 }
@@ -283,7 +288,7 @@ pub fn notices() -> impl Iterator<Item = (&'static str, &'static str)> {
 /// validation time and revocation remain unchecked.
 ///
 /// ```
-/// # fn main() -> pagura::Result<()> {
+/// # fn main() -> pagura::ReadResult<()> {
 /// # let document = pagura::Document::open(
 /// #     include_bytes!("../../../corpus/generated/signatures/structure.pdf").as_slice(),
 /// #     &pagura::OpenOptions::default(),
@@ -298,6 +303,6 @@ pub fn notices() -> impl Iterator<Item = (&'static str, &'static str)> {
 ///
 /// # Errors
 /// As [`Document::signatures`].
-pub fn signatures(document: &Document) -> Result<signatures::Signatures<'_>> {
+pub fn signatures(document: &Document) -> ReadResult<signatures::Signatures<'_>> {
     signatures::verify(document)
 }

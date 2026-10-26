@@ -2,8 +2,9 @@
 
 use crate::options::{RenderOptions, Tile};
 use crate::renderer::Renderer;
-use pagura_core::{Built, Error, ObjectId, Rect, Result, Store, StoreKey};
+use pagura_core::{Built, ObjectId, Rect, Result, Store, StoreKey};
 use pagura_document::forms::FormFiller;
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 use pagura_extract::{PositionedText, TextPage};
 use pagura_interpret::Scene;
@@ -126,8 +127,8 @@ impl RenderContext {
     /// Returns `InvalidArgument` for a page of another document, and the
     /// interpreter's errors: positioned `Syntax` errors, `Limit` errors and
     /// stable `Unsupported` tags. A failed recording stores nothing.
-    pub fn scene(&self, page: &Page) -> Result<Arc<Scene>> {
-        self.check_owned(page)?;
+    pub fn scene(&self, page: &Page) -> ReadResult<Arc<Scene>> {
+        self.document.check_page(page)?;
         let key = SceneKey {
             page: page.id(),
             index: page.index(),
@@ -150,8 +151,8 @@ impl RenderContext {
     /// # Errors
     ///
     /// As [`Self::scene`].
-    pub fn record(&self, page: &Page) -> Result<Scene> {
-        self.check_owned(page)?;
+    pub fn record(&self, page: &Page) -> ReadResult<Scene> {
+        self.document.check_page(page)?;
         self.renderer().record(page)
     }
 
@@ -163,8 +164,8 @@ impl RenderContext {
     ///
     /// As [`Self::scene`], and `InvalidArgument` when `filler` belongs to
     /// another document.
-    pub fn filled_scene(&self, filler: &FormFiller<'_>, page: &Page) -> Result<Scene> {
-        self.check_owned(page)?;
+    pub fn filled_scene(&self, filler: &FormFiller<'_>, page: &Page) -> ReadResult<Scene> {
+        self.document.check_page(page)?;
         self.renderer().record_filled(filler, page)
     }
 
@@ -174,7 +175,7 @@ impl RenderContext {
     ///
     /// As [`Self::scene`] and [`Self::render_scene`]. No partial page is ever
     /// returned.
-    pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
+    pub fn render_page(&self, page: &Page, options: &RenderOptions) -> ReadResult<Pixmap> {
         self.render_scene(&*self.scene(page)?, options, None)
     }
 
@@ -185,7 +186,12 @@ impl RenderContext {
     ///
     /// As [`Self::render_page`], and `InvalidArgument` for a tile that is
     /// empty or outside the page.
-    pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+    pub fn render_tile(
+        &self,
+        page: &Page,
+        options: &RenderOptions,
+        tile: Tile,
+    ) -> ReadResult<Pixmap> {
         self.render_scene(&*self.scene(page)?, options, Some(tile))
     }
 
@@ -318,8 +324,8 @@ impl RenderContext {
     /// # Errors
     ///
     /// As [`Self::scene`], plus `text_items` limits and the layout's errors.
-    pub fn text_page(&self, page: &Page) -> Result<TextPage> {
-        self.check_owned(page)?;
+    pub fn text_page(&self, page: &Page) -> ReadResult<TextPage> {
+        self.document.check_page(page)?;
         self.renderer().text_page(page)
     }
 
@@ -335,8 +341,8 @@ impl RenderContext {
         page: &Page,
         appearance: ObjectId,
         rect: Rect,
-    ) -> Result<PositionedText> {
-        self.check_owned(page)?;
+    ) -> ReadResult<PositionedText> {
+        self.document.check_page(page)?;
         self.renderer().appearance_text(page, appearance, rect)
     }
 
@@ -349,21 +355,9 @@ impl RenderContext {
     ///
     /// As [`Self::scene`], and `Limit` when groups nest deeper than
     /// `Limits::depth`.
-    pub fn content_bounds(&self, page: &Page) -> Result<Option<Rect>> {
+    pub fn content_bounds(&self, page: &Page) -> ReadResult<Option<Rect>> {
         let scene = self.scene(page)?;
         crate::bounds::content_bounds(&scene, self.document.limits().depth)
-    }
-
-    /// Rejects a page that is not this document's page at its index: store
-    /// keys name this document's objects.
-    fn check_owned(&self, page: &Page) -> Result<()> {
-        let owned = self.document.page(page.index())?;
-        if owned != page {
-            return Err(Error::invalid_argument(
-                "page does not belong to the rendering context",
-            ));
-        }
-        Ok(())
     }
 }
 

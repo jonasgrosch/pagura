@@ -1,6 +1,7 @@
 //! Generation-aware, caller-owned object overlays.
 
 use super::{SaveOptions, SignaturePolicy, features};
+use crate::ReadResult;
 use crate::{Dictionary, Document, Error, Name, NewObject, ObjectId, Recovery, Result, Value};
 use pagura_core::{INDEX_ENTRY_OVERHEAD, ResultExt};
 use pagura_write::{XrefFormat, validate_object};
@@ -81,6 +82,7 @@ impl<'a> Transaction<'a> {
     /// failures leave every staged object unchanged. Reference targets are
     /// validated at commit, not here.
     pub fn replace(&mut self, id: ObjectId, object: NewObject) -> Result<()> {
+        self.document.check_source()?;
         if !self.document.contains_object(id) && !self.objects.contains_key(&id) {
             return Err(Error::missing_object("replacement identity is absent").in_object(id));
         }
@@ -93,6 +95,7 @@ impl<'a> Transaction<'a> {
     /// # Errors
     /// Returns syntax or budget errors, including exhaustion of object numbers.
     pub fn add(&mut self, object: NewObject) -> Result<ObjectId> {
+        self.document.check_source()?;
         let number = self.next.map_or_else(|| source_size(self.document), Ok)?;
         let next = number
             .checked_add(1)
@@ -112,7 +115,7 @@ impl<'a> Transaction<'a> {
         &mut self,
         id: ObjectId,
         edit: impl FnOnce(&mut Dictionary) -> Result<()>,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let mut dictionary = self.dictionary(id)?;
         edit(&mut dictionary)?;
         self.replace(id, NewObject::Value(Value::Dictionary(dictionary)))
@@ -126,11 +129,12 @@ impl<'a> Transaction<'a> {
     /// Returns `Unsupported` for encrypted/repair-mode/signed sources outside
     /// the selected policy; syntax, dangling-reference and budget errors
     /// produce no partial result. Does not validate arbitrary PDF schemas.
-    pub fn commit(&self, options: &SaveOptions) -> Result<Vec<u8>> {
+    pub fn commit(&self, options: &SaveOptions) -> ReadResult<Vec<u8>> {
+        let source = self.document.materialize()?;
         let limits = self.document.limits();
         if self.is_empty() {
             return pagura_write::write_incremental(
-                self.document.original_bytes(),
+                &source,
                 0,
                 self.document.trailer(),
                 &self.objects,
@@ -138,7 +142,7 @@ impl<'a> Transaction<'a> {
                 &limits,
             );
         }
-        source_policy(self.document, options.signatures)?;
+        source_policy(self.document, &source, options.signatures)?;
         let revision = self
             .document
             .revisions()
@@ -147,7 +151,7 @@ impl<'a> Transaction<'a> {
                 "incremental source has no revision",
             ))?;
         if self.document.revisions().len() >= limits.revisions {
-            return Err(Error::limit("incremental revision budget exceeded"));
+            return Err(Error::limit("incremental revision budget exceeded").into());
         }
         let format = if self
             .document
@@ -165,9 +169,7 @@ impl<'a> Transaction<'a> {
             |total, revision| total.checked_add(revision.entry_count()),
         );
         if count.is_none_or(|count| count > limits.objects) {
-            return Err(Error::limit(
-                "incremental cross-reference entry budget exceeded",
-            ));
+            return Err(Error::limit("incremental cross-reference entry budget exceeded").into());
         }
         for (&id, object) in &self.objects {
             validate_object(object, &limits, &|target| {
@@ -183,9 +185,9 @@ impl<'a> Transaction<'a> {
             .ok_or(Error::invalid_argument("source Root must be indirect"))?;
         let catalog = self.dictionary(root)?;
         if !catalog.is_name(b"Type", b"Catalog") {
-            return Err(
-                Error::invalid_argument("root object must remain a catalog").in_object(root)
-            );
+            return Err(Error::invalid_argument("root object must remain a catalog")
+                .in_object(root)
+                .into());
         }
         let mut trailer = self.document.trailer().clone();
         trailer.insert(
@@ -193,7 +195,7 @@ impl<'a> Transaction<'a> {
             Value::Integer(i64::from(source_size(self.document)?)),
         );
         pagura_write::write_incremental(
-            self.document.original_bytes(),
+            &source,
             revision.offset(),
             &trailer,
             &self.objects,
@@ -220,20 +222,21 @@ impl<'a> Transaction<'a> {
         Ok(())
     }
 
-    pub(super) fn dictionary(&self, id: ObjectId) -> Result<Dictionary> {
+    pub(super) fn dictionary(&self, id: ObjectId) -> ReadResult<Dictionary> {
+        self.document.check_source()?;
         let value = match self.objects.get(&id) {
             Some(NewObject::Value(value)) => value,
             Some(NewObject::Stream { .. }) => {
-                return Err(
-                    Error::invalid_argument("expected a non-stream dictionary").in_object(id)
-                );
+                return Err(Error::invalid_argument("expected a non-stream dictionary")
+                    .in_object(id)
+                    .into());
             }
             None => {
                 let object = self.document.object(id)?;
                 if object.is_stream() {
-                    return Err(
-                        Error::invalid_argument("expected a non-stream dictionary").in_object(id)
-                    );
+                    return Err(Error::invalid_argument("expected a non-stream dictionary")
+                        .in_object(id)
+                        .into());
                 }
                 object.value()
             }
@@ -243,7 +246,9 @@ impl<'a> Transaction<'a> {
             .ok_or(Error::invalid_argument("expected a dictionary").in_object(id))?;
         if dictionary.retained_bytes() > self.document.limits().document_bytes {
             return Err(
-                Error::limit("transaction dictionary storage budget exceeded").in_object(id),
+                Error::limit("transaction dictionary storage budget exceeded")
+                    .in_object(id)
+                    .into(),
             );
         }
         Ok(dictionary.clone())
@@ -283,12 +288,17 @@ fn source_size(document: &Document) -> Result<u32> {
     Ok(size)
 }
 
-fn source_policy(document: &Document, signatures: SignaturePolicy) -> Result<()> {
+fn source_policy(
+    document: &Document,
+    original: &[u8],
+    signatures: SignaturePolicy,
+) -> ReadResult<()> {
     if document.recovery() != Recovery::Strict {
         return Err(Error::unsupported(
             features::REPAIRED,
             "modified save requires a strictly opened source",
-        ));
+        )
+        .into());
     }
     if document
         .trailer()
@@ -298,14 +308,14 @@ fn source_policy(document: &Document, signatures: SignaturePolicy) -> Result<()>
         return Err(Error::unsupported(
             features::ENCRYPTED,
             "encrypted incremental writing is unavailable",
-        ));
+        )
+        .into());
     }
     if signatures == SignaturePolicy::Reject {
         // Until document PR #67 lands, history_complete also depends on the
         // document's diagnostic log. Inspect a fresh strict snapshot so earlier
         // rendering/information reports cannot alter this security decision.
         // This temporary copy/cache is separately bounded by the source limits.
-        let original = document.original_bytes();
         let mut bytes = Vec::new();
         bytes
             .try_reserve_exact(original.len())
@@ -334,7 +344,8 @@ fn source_policy(document: &Document, signatures: SignaturePolicy) -> Result<()>
             return Err(Error::unsupported(
                 features::SIGNED,
                 "signed or uncertain source requires explicit preservation policy",
-            ));
+            )
+            .into());
         }
     }
     Ok(())
