@@ -230,7 +230,7 @@ async function main() {
     await testDocumentServices(client, root, native, wasiRun);
     await testDocumentServicesView();
     await testAttachmentChecks(client, root, native, wasiRun);
-    await testPageAttachments(client, root, native, wasiRun);
+    await testPageAttachments(client, root, native, wasiRun, () => new SessionClient(new TestWorker()));
     await testAttachmentCheckView();
     await testPngExport(client, root, native, wasiRun);
     await testPngExportView();

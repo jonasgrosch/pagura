@@ -4,12 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { decodeResponse, encodeRequest, FrameDecoder, VERSION_1_11 } from '../web/protocol.mjs';
+import { HostFailure } from '../web/failure.mjs';
 
 const utf8 = value => new TextEncoder().encode(value);
 const payload = Uint8Array.from([...utf8('attachment\0bytes'), 255, 10]);
 function parse(bytes) { const frames = [], decoder = new FrameDecoder(frame => frames.push(frame)); decoder.feed(bytes); decoder.finish(); return frames; }
 
-export async function testPageAttachments(client, root, native, wasiRun) {
+export async function testPageAttachments(client, root, native, wasiRun, makeClient) {
   const fixture = async name => new Uint8Array(await readFile(join(root, 'corpus/generated/file_annotations', `${name}.pdf`)));
   const file = { object: { number: 5, generation: 0 }, names: { UF: 'Grüße Ω.txt', F: utf8('legacy.txt'), DOS: null, Mac: null, Unix: null },
     description: 'Attachment €', fileSystem: null, relationship: utf8('Data'), volatile: true,
@@ -46,9 +47,9 @@ export async function testPageAttachments(client, root, native, wasiRun) {
     await assert.rejects(client.pageAttachmentBytes(opened.document, 0, slots[0], 4), /no payload/);
     await client.close(opened.document);
   }
-  for (const name of ['absent', 'empty', 'missing', 'external', 'late-failure', 'listing-limit', 'flate']) {
+  for (const name of ['absent', 'empty', 'missing', 'external', 'late-failure', 'flate']) {
     const opened = await client.open(await fixture(name), 0);
-    if (['late-failure', 'listing-limit'].includes(name)) await assert.rejects(client.pageAttachments(opened.document, 0));
+    if (name === 'late-failure') await assert.rejects(client.pageAttachments(opened.document, 0));
     else if (name === 'external') {
       const records = await client.pageAttachments(opened.document, 0);
       assert.deepEqual(records[0].file.payloads, []);
@@ -76,6 +77,25 @@ export async function testPageAttachments(client, root, native, wasiRun) {
       await client.pageInfo(opened.document, 0); await client.close(opened.document);
     }
   }
+  const limited = await fixture('listing-limit');
+  const input = Buffer.concat([encodeRequest(1, 1, { version: VERSION_1_11 }),
+    encodeRequest(2, 2, { bytes: limited, recovery: 0, password: new Uint8Array() }),
+    encodeRequest(28, 3, { document: 1, page: 0 }), encodeRequest(3, 4, { document: 1, page: 0 })]);
+  const result = spawnSync(native, [], { input, timeout: 30000 }); assert.ifError(result.error); assert.equal(result.status, 0);
+  const wasi = await wasiRun(input, 'page-attachments-listing-limit'); assert.equal(wasi.code, 0);
+  assert.deepEqual(wasi.bytes, result.stdout, 'listing refusal native/WASI wire identity');
+  const frames = parse(wasi.bytes); assert.equal(frames[2].value.category, 2);
+  assert.match(frames[2].value.message, /page attachment listing budget exceeded/);
+  assert.equal(frames[3].kind, 131, 'the native/WASI protocol retains the document after this refusal');
+  // Browser resource-failure policy is deliberately stronger than wire-level
+  // continuation: isolate this client, assert termination, then discard it.
+  const bounded = makeClient();
+  try {
+    await bounded.hello(); const opened = await bounded.open(limited, 0);
+    await assert.rejects(bounded.pageAttachments(opened.document, 0), error => error instanceof HostFailure && error.reason === 'budget exceeded');
+    assert.ok(bounded.failure instanceof HostFailure);
+    await assert.rejects(bounded.pageInfo(opened.document, 0), error => error === bounded.failure);
+  } finally { bounded.destroy(); }
   checkCodec();
   console.log('Page attachments: exact values, scope, budgets/authentication, canonical codec and native/WASI/client parity passed.');
 }
