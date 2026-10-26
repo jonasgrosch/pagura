@@ -102,3 +102,66 @@ fn unknown_families_are_unsupported_and_devicen_names_are_checked() {
     let error = colors.resolve(&Dictionary::new(), &all).unwrap_err();
     assert_eq!(error.message, "All is forbidden in DeviceN");
 }
+
+#[test]
+fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
+    use pagura_core::{ErrorKind, Limits, ObjectId};
+
+    let document = document();
+    let data = pagura_testkit::fixture("color", "sampled-rgb.icc");
+    let id = ObjectId::new(4, 0);
+    let store = Store::new(1 << 20);
+    let mut colors = Colors::new(&document, Some(&store));
+    let space = colors.embedded_icc(id, &data, 3).unwrap();
+    let other = Colors::new(&document, Some(&store))
+        .embedded_icc(id, &data, 3)
+        .unwrap();
+    let (ColorSpace::Icc(first), ColorSpace::Icc(second)) = (space.as_ref(), other.as_ref()) else {
+        panic!("embedded ICC did not produce an ICC space");
+    };
+    assert!(Arc::ptr_eq(
+        first.profile.as_ref().unwrap(),
+        second.profile.as_ref().unwrap()
+    ));
+    assert_eq!(first.object, Some(id));
+    assert_eq!(first.range, [[0.0, 1.0]; 4]);
+    assert!(matches!(
+        colors.embedded_icc(id, &data, 1).unwrap_err().kind,
+        ErrorKind::Syntax
+    ));
+    assert!(matches!(
+        colors
+            .embedded_icc(ObjectId::new(5, 0), b"broken", 3)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Syntax
+    ));
+
+    for limits in [
+        Limits {
+            decode_work: 0,
+            ..Limits::default()
+        },
+        Limits {
+            decode_bytes: 0,
+            ..Limits::default()
+        },
+        Limits {
+            render_bytes: 0,
+            ..Limits::default()
+        },
+    ] {
+        let bounded = Document::open(
+            pagura_testkit::fixture("classic", "rectangle.pdf"),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let error = Colors::new(&bounded, None)
+            .embedded_icc(id, &data, 3)
+            .unwrap_err();
+        assert!(matches!(error.kind, ErrorKind::Limit), "{error}");
+    }
+}

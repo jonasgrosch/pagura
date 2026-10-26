@@ -8,9 +8,17 @@ use pagura_document::Document;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-/// The store key of a parsed profile: its stream and component count.
+/// A profile stream and an embedded image profile are different namespaces,
+/// even if malformed PDF objects try to use one object for both roles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Source {
+    Stream(ObjectId),
+    Image(ObjectId),
+}
+
+/// The store key of a parsed profile: its source and component count.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct ProfileKey(ObjectId, usize);
+struct ProfileKey(Source, usize);
 
 /// A parsed profile, or `None` for a profile the colour management does not
 /// support, whose alternate space is used instead.
@@ -25,7 +33,7 @@ impl StoreKey for ProfileKey {
 #[derive(Debug)]
 pub(crate) struct Profiles<'a> {
     store: Option<&'a Store>,
-    entries: BTreeMap<ObjectId, (usize, Option<Arc<Profile>>)>,
+    entries: BTreeMap<Source, (usize, Option<Arc<Profile>>)>,
     bytes: usize,
     document: &'a Document,
 }
@@ -42,7 +50,32 @@ impl<'a> Profiles<'a> {
 
     /// The profile of stream `id` read for `components` components.
     fn get(&mut self, id: ObjectId, components: usize) -> Result<Option<Arc<Profile>>> {
-        if let Some((count, profile)) = self.entries.get(&id) {
+        self.get_source(id, components, None)
+    }
+
+    /// An ICC profile carried by image XObject `id` (7.4.9), charged and
+    /// shared under the same budgets as ordinary ICCBased profile streams.
+    pub(super) fn embedded(
+        &mut self,
+        id: ObjectId,
+        components: usize,
+        data: &[u8],
+    ) -> Result<Option<Arc<Profile>>> {
+        self.get_source(id, components, Some(data))
+    }
+
+    fn get_source(
+        &mut self,
+        id: ObjectId,
+        components: usize,
+        embedded: Option<&[u8]>,
+    ) -> Result<Option<Arc<Profile>>> {
+        let source = if embedded.is_some() {
+            Source::Image(id)
+        } else {
+            Source::Stream(id)
+        };
+        if let Some((count, profile)) = self.entries.get(&source) {
             if *count != components {
                 return Err(
                     Error::syntax("ICC component count differs from cached profile").in_object(id),
@@ -53,11 +86,15 @@ impl<'a> Profiles<'a> {
         let document = self.document;
         let limits = document.limits();
         let parse = || -> Result<Built<StoredProfile>> {
-            let object = document.object(id)?;
-            let bytes = document.stream_data(object)?;
-            let profile = Profile::parse(&bytes, components, &limits)
-                .map_err(|e| e.in_object(id))?
-                .map(Arc::new);
+            let parsed = match embedded {
+                Some(bytes) => Profile::parse(bytes, components, &limits),
+                None => Profile::parse(
+                    &document.stream_data(document.object(id)?)?,
+                    components,
+                    &limits,
+                ),
+            };
+            let profile = parsed.map_err(|e| e.in_object(id))?.map(Arc::new);
             let bytes = profile.as_ref().map_or(0, |p| p.retained_bytes());
             Ok(Built {
                 value: StoredProfile(profile),
@@ -66,7 +103,7 @@ impl<'a> Profiles<'a> {
         };
         let profile = match self.store {
             Some(store) => store
-                .get_or_build(ProfileKey(id, components), parse)?
+                .get_or_build(ProfileKey(source, components), parse)?
                 .0
                 .clone(),
             None => parse()?.value.0,
@@ -84,7 +121,7 @@ impl<'a> Profiles<'a> {
         if self.entries.len() >= limits.value_nodes {
             return Err(Error::limit("ICC cache entry budget exceeded"));
         }
-        self.entries.insert(id, (components, profile.clone()));
+        self.entries.insert(source, (components, profile.clone()));
         self.bytes = total;
         Ok(profile)
     }
@@ -265,4 +302,31 @@ pub(super) fn alternate_components(
         }
         _ => return Err(Error::syntax("invalid ICC alternate family")),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_document::OpenOptions;
+
+    #[test]
+    fn embedded_and_stream_profiles_do_not_alias_in_the_store() {
+        let document = Document::open(
+            pagura_testkit::fixture("classic", "rectangle.pdf"),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let store = Store::new(1 << 20);
+        let id = ObjectId::new(4, 0);
+        let data = pagura_testkit::fixture("color", "sampled-rgb.icc");
+        assert!(
+            Profiles::new(&document, Some(&store))
+                .embedded(id, 3, &data)
+                .unwrap()
+                .is_some()
+        );
+        // Object 4 is the page's content stream, not an ICC profile. Its
+        // bytes must be parsed even though an embedded-image key exists.
+        assert!(Profiles::new(&document, Some(&store)).get(id, 3).is_err());
+    }
 }
