@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "0616478c60e81e3de9c449fba15336bed63087d7",
+  "audited_revision": "d6f22a1a8251558291a983304c404c01708b6583",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -68,7 +68,7 @@
     "crates/pagura-extract/src/structure/content.rs": "fcedc48f6f79294eccc2fa5b9dc90cde53f9527ffece4d1ce9d11205bbefef81",
     "crates/pagura-extract/src/structure/copy.rs": "fdf63c725b37978c64bc67b56d3a06649f1b9befa0eeba64a5f73e52b8d87065",
     "crates/pagura-extract/src/structure/roles.rs": "395727aad59dfe61ec5eee945f91df84a4a0e3189abd8104ca5eff7a993f2de3",
-    "crates/pagura-font/README.md": "512b06545d0c339f5dee33d3ed85571a820590ada86f2adac7208a8b7bb35835",
+    "crates/pagura-font/README.md": "e99dbd1c5a2f34c310109a549425fc3de2d45888e99decb5889420d693ec6b14",
     "crates/pagura-font/src/cff.rs": "d679afdd4e5afa8d0ff7a2d00244ad84689d65854355afaca410b0516575c1c0",
     "crates/pagura-font/src/lib.rs": "eb5b254373adcb1600c8967a9619541e1de483d7715bedb2df72dc19c54e7d31",
     "crates/pagura-font/src/sfnt/cmap.rs": "f5102915652641c02cd1e697c8b716491b6b65f27fe54c7d6ee3fcd3dd9dd383",
@@ -175,7 +175,7 @@
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
-    "references/requirements/font.json": "4384559385125f4f3110b680a1682a4ee49f801ba4f9370e4bcbcae7b506a938",
+    "references/requirements/font.json": "365547c8d9114137bc50cab2b84dde17840cdd108cc3a133bfdb4acbc025e9eb",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
