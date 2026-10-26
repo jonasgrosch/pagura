@@ -38,7 +38,7 @@ pub enum WindowRead<T> {
     },
 }
 
-impl<'a> Parser<'a> {
+impl Parser<'_> {
     /// Runs one operation with an explicit input boundary, consuming the parser.
     ///
     /// The callback uses the same parser methods as complete-input callers. It
