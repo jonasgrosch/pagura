@@ -34,18 +34,7 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
             request: reader.service(kind)?,
         }),
         RequestKind::Hello => Request::Hello(reader.field(Reader::u32)?),
-        RequestKind::Open => {
-            let flags = reader.field(Reader::u8)?;
-            let flags = OpenFlags::from_bits(flags.get())
-                .ok_or_else(|| Error::syntax("unknown recovery mode").at(flags.position()))?;
-            let password = reader.blob(limits.string_bytes)?.get();
-            let bytes = reader.blob(limits.file_bytes)?.get();
-            Request::Open {
-                bytes,
-                recovery: flags.recovery(),
-                password,
-            }
-        }
+        RequestKind::Open => reader.open(limits)?,
         RequestKind::PageInfo => Request::PageInfo(reader.page()?),
         RequestKind::RenderTile => Request::RenderTile(reader.tile()?),
         RequestKind::Diagnostics => Request::Diagnostics(reader.field(Reader::u32)?),
@@ -282,6 +271,19 @@ impl<'a> Reader<'a> {
                 },
             },
             _ => return Err(self.error("not an extended service request")),
+        })
+    }
+
+    fn open(&mut self, limits: &Limits) -> Result<Request<'a>> {
+        let flags = self.field(Self::u8)?;
+        let flags = OpenFlags::from_bits(flags.get())
+            .ok_or_else(|| Error::syntax("unknown recovery mode").at(flags.position()))?;
+        let password = self.blob(limits.string_bytes)?.get();
+        let bytes = self.blob(limits.file_bytes)?.get();
+        Ok(Request::Open {
+            bytes,
+            recovery: flags.recovery(),
+            password,
         })
     }
 

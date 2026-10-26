@@ -34,10 +34,10 @@ fn payload(scope: &[u8], related: Option<u32>) -> Vec<u8> {
     }
     out
 }
-fn blob(bytes: &[u8]) -> Vec<u8> {
-    let mut out = u32::try_from(bytes.len()).unwrap().to_le_bytes().to_vec();
+fn blob(bytes: &[u8]) -> Result<Vec<u8>> {
+    let mut out = u32::try_from(bytes.len())?.to_le_bytes().to_vec();
     out.extend(bytes);
-    out
+    Ok(out)
 }
 
 #[test]
@@ -70,16 +70,16 @@ fn scoped_files_metadata_and_images_preserve_independent_payloads() -> Result<()
     let bodies = serve(Session::default(), &input)?;
     for (index, data) in expected.iter().enumerate() {
         assert_eq!(bodies[index + 2][0], 160);
-        assert_eq!(&bodies[index + 2][5..], blob(data));
+        assert_eq!(&bodies[index + 2][5..], blob(data)?);
     }
     let packet = b"<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">object packet</x:xmpmeta>";
     assert_eq!(bodies[14][0], 163);
-    assert_eq!(&bodies[14][5..], [vec![1], blob(packet)].concat());
+    assert_eq!(&bodies[14][5..], [vec![1], blob(packet)?].concat());
     for (index, data) in [(15, vec![255, 0, 0, 0, 255, 0]), (16, vec![127])] {
         assert_eq!(bodies[index][0], 166);
         assert_eq!(
             &bodies[index][5..],
-            [blob(b"encoded"), vec![0], blob(&data)].concat()
+            [blob(b"encoded")?, vec![0], blob(&data)?].concat()
         );
     }
     Ok(())
@@ -149,12 +149,12 @@ fn reauthentication_does_not_mutate_original_or_consume_failed_handles() -> Resu
     input.extend(frame(
         39,
         4,
-        &[1_u32.to_le_bytes().to_vec(), blob(b"wrong")].concat(),
+        &[1_u32.to_le_bytes().to_vec(), blob(b"wrong")?].concat(),
     ));
     input.extend(frame(
         39,
         5,
-        &[1_u32.to_le_bytes().to_vec(), blob(b"attachment")].concat(),
+        &[1_u32.to_le_bytes().to_vec(), blob(b"attachment")?].concat(),
     ));
     let mut authorized = payload(&[0], None);
     authorized[0] = 2;
@@ -168,7 +168,7 @@ fn reauthentication_does_not_mutate_original_or_consume_failed_handles() -> Resu
     }
     assert_eq!(bodies[4][0], 167);
     assert_eq!(&bodies[4][5..], [2, 0, 0, 0, 1, 0, 0, 0]);
-    assert_eq!(&bodies[5][5..], blob(b"attached file bytes"));
+    assert_eq!(&bodies[5][5..], blob(b"attached file bytes")?);
     assert_eq!(bodies[8][21], 1, "only original handle remains");
     Ok(())
 }
@@ -187,7 +187,7 @@ fn response_and_snapshot_limits_refuse_work_without_partial_success() -> Result<
     input.extend(frame(
         39,
         3,
-        &[1_u32.to_le_bytes().to_vec(), blob(b"attachment")].concat(),
+        &[1_u32.to_le_bytes().to_vec(), blob(b"attachment")?].concat(),
     ));
     let session = Session::new(SessionConfig::default().with_session(SessionLimits {
         max_documents: 1,

@@ -267,7 +267,7 @@ fn parameters(out: &mut Writer, file: &pagura::files::EmbeddedFile<'_>) -> Resul
         }
         services::text(out, parameters.creation_date.as_deref())?;
         services::text(out, parameters.modification_date.as_deref())?;
-        services::bytes(out, parameters.checksum.map(|value| value.as_slice()))?;
+        services::bytes(out, parameters.checksum.map(<[u8; 16]>::as_slice))?;
     }
     Ok(())
 }

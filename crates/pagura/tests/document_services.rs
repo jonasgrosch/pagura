@@ -6,12 +6,11 @@ use pagura::metadata::MetadataOwner;
 use pagura::{Document, ErrorKind, Limits, ObjectId, OpenOptions, Recovery};
 use pagura_testkit::fixture;
 
-fn open(name: &str) -> Document {
+fn open(name: &str) -> pagura::Result<Document> {
     Document::open(
         fixture("document_services", &format!("{name}.pdf")),
         &OpenOptions::default(),
     )
-    .unwrap()
 }
 fn id(number: u32) -> ObjectId {
     ObjectId::new(number, 0)
@@ -19,7 +18,7 @@ fn id(number: u32) -> ObjectId {
 
 #[test]
 fn exact_scopes_and_duplicate_related_names_select_independent_bytes() {
-    let document = open("complete");
+    let document = open("complete").unwrap();
     for (scope, count) in [
         (FileScope::Catalog, 1),
         (FileScope::Associated, 1),
@@ -99,11 +98,12 @@ fn exact_scopes_and_duplicate_related_names_select_independent_bytes() {
 
 #[test]
 fn collection_schema_sort_values_and_encryption_declarations_remain_inert() {
-    let document = open("complete");
+    let document = open("complete").unwrap();
     let collection = document.collection().unwrap().unwrap();
     assert_eq!(collection.object, Some(id(14)));
     assert_eq!(
         open("direct-collection")
+            .unwrap()
             .collection()
             .unwrap()
             .unwrap()
@@ -157,15 +157,23 @@ fn collection_schema_sort_values_and_encryption_declarations_remain_inert() {
     );
     assert!(
         open("empty-collection")
+            .unwrap()
             .collection()
             .unwrap()
             .unwrap()
             .fields
             .is_empty()
     );
-    assert!(open("null-collection").collection().unwrap().is_none());
+    assert!(
+        open("null-collection")
+            .unwrap()
+            .collection()
+            .unwrap()
+            .is_none()
+    );
     assert!(
         open("nonstring-initial")
+            .unwrap()
             .collection()
             .unwrap()
             .unwrap()
@@ -173,7 +181,12 @@ fn collection_schema_sort_values_and_encryption_declarations_remain_inert() {
             .is_none()
     );
     assert_eq!(
-        open("navigator-inert").collection().unwrap().unwrap().view,
+        open("navigator-inert")
+            .unwrap()
+            .collection()
+            .unwrap()
+            .unwrap()
+            .view,
         CollectionView::Navigator
     );
     for name in [
@@ -183,16 +196,19 @@ fn collection_schema_sort_values_and_encryption_declarations_remain_inert() {
         "invalid-sort",
         "cyclic-collection",
     ] {
-        assert!(open(name).collection().is_err(), "{name}");
+        assert!(open(name).unwrap().collection().is_err(), "{name}");
     }
     for name in ["invalid-item", "invalid-encrypted-payload"] {
-        assert!(open(name).files(FileScope::Catalog).is_err(), "{name}");
+        assert!(
+            open(name).unwrap().files(FileScope::Catalog).is_err(),
+            "{name}"
+        );
     }
 }
 
 #[test]
 fn metadata_and_source_images_do_not_conflate_source_and_rendered_appearance() {
-    let document = open("complete");
+    let document = open("complete").unwrap();
     for owner in [MetadataOwner::Page(0), MetadataOwner::Object(id(10))] {
         let packet = document.metadata_for(owner).unwrap().unwrap();
         assert_eq!(packet.object(), id(8));
@@ -211,7 +227,7 @@ fn metadata_and_source_images_do_not_conflate_source_and_rendered_appearance() {
             .as_ref(),
         b"<catalog/>"
     );
-    let chained = open("chained-assets");
+    let chained = open("chained-assets").unwrap();
     assert_eq!(chained.thumbnail(id(3)).unwrap().unwrap().object(), id(12));
     assert!(
         chained
@@ -259,19 +275,21 @@ fn metadata_and_source_images_do_not_conflate_source_and_rendered_appearance() {
         );
     }
     for name in ["invalid-image-width", "invalid-image-type"] {
-        assert!(open(name).image_asset(id(9)).is_err());
+        assert!(open(name).unwrap().image_asset(id(9)).is_err());
     }
     for name in ["invalid-thumbnail", "invalid-thumbnail-subtype"] {
-        assert!(open(name).thumbnail(id(3)).is_err());
+        assert!(open(name).unwrap().thumbnail(id(3)).is_err());
     }
     assert!(
         open("empty-owner")
+            .unwrap()
             .metadata_for(MetadataOwner::Object(id(10)))
             .unwrap()
             .is_none()
     );
     assert!(
         open("null-owner")
+            .unwrap()
             .metadata_for(MetadataOwner::Object(id(10)))
             .is_err()
     );
