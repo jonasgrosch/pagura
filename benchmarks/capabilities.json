@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "6a9c21007dab2ac1ccb79c22e34bbb93e058aee8",
+  "audited_revision": "d1360d3c253f7ccdc29e38bb45353c187b4964b4",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -174,9 +174,16 @@
     "crates/pagura-pki/src/lib.rs": "3fc547ec48da351d10c3aeea685041a6d66acac0c5d22a9b2ed6249ef36692df",
     "crates/pagura-pki/src/types.rs": "9745b4b8a8a2ae3010a5f59ba657a6906294230c3960e9d6897e9d531c5b6053",
     "crates/pagura-pki/src/validation/revocation/mod.rs": "56cd5b248aea2586f0da10540f165e2dc3393aa32ade55f52bc7f0ddba2d789e",
+    "crates/pagura-raster/src/adjust.rs": "6078b0ed25491d224123717039505c215a988b2e365cf9baeb0cf3b9be3f3181",
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
+    "crates/pagura-raster/src/flatten.rs": "a5c035e7618b2a326d1fefe5e9f9acd423e5b741e7683daaac0fcb9f436812c1",
     "crates/pagura-raster/src/pixmap.rs": "271183e63b7b4504e8f46b24c73061c3ccec03fa24cf15f941bd912c46ee8d65",
+    "crates/pagura-raster/src/stroke.rs": "9193359eda36ae015c831e2489b9d04393bc2ca1f66f9de25903dc334f53aa78",
+    "crates/pagura-raster/src/stroke/tests.rs": "b36a90a540c0ee0ead883c79d172f4eec55cf5d504b1a0ceb6bb9156d67e398d",
+    "crates/pagura-raster/src/stroke/tiling.rs": "162907701dac8845928bdcb9f6bd19d0b76426c6b3b70241b5ab8db2537f512c",
+    "crates/pagura-raster/src/tests.rs": "cf66b5994f4b3b47131719da374621b71c03283353d3cce44764c08de26f708d",
+    "crates/pagura-raster/tests/exact/strokes.rs": "8b186ec3c171e49b288a2eff29e97a4236ca1a4d01798bc07f42ce862a18ec7e",
     "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
@@ -866,18 +873,25 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns.",
+      "implemented": "One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns. Open curve caps retain source endpoint tangents through dashing and pen transforms; hosted validation of the cap repair is pending.",
       "remaining": "Singular-transform/pattern compatibility cases and independent accuracy evidence for difficult geometry.",
       "sources": [
+        "crates/pagura-cli/src/args.rs",
+        "crates/pagura-host/src/protocol.rs",
         "crates/pagura-interpret/src/resources/pattern.rs",
         "crates/pagura-paint/src/prepare/planner/patterns.rs",
         "crates/pagura-paint/src/prepare/storage.rs",
-        "crates/pagura-cli/src/args.rs",
-        "crates/pagura-host/src/protocol.rs",
+        "crates/pagura-raster/src/adjust.rs",
+        "crates/pagura-raster/src/flatten.rs",
+        "crates/pagura-raster/src/stroke.rs",
+        "crates/pagura-raster/src/stroke/tiling.rs",
         "web/viewer.mjs"
       ],
       "tests": [
-        "crates/pagura-paint/src/prepare/tests/formats.rs"
+        "crates/pagura-paint/src/prepare/tests/formats.rs",
+        "crates/pagura-raster/src/stroke/tests.rs",
+        "crates/pagura-raster/src/tests.rs",
+        "crates/pagura-raster/tests/exact/strokes.rs"
       ],
       "requirements": [
         "content-bounds",
