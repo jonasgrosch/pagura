@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "Private post 2.5 diagnostic: three subjects, identical-outline post 2.0 controls, ordinary rectangle and blank. Hosted public APIs at 72 DPI. No performance, family or release claim; unsupported subject results remain failures.",
   "cases": [
     {
       "id": "control.blank",
@@ -16,67 +16,93 @@
       }
     },
     {
-      "id": "control.rectangle",
-      "capability": "render.graphics",
+      "id": "fonts.post25-direct",
+      "capability": "fonts.programs",
       "operation": "render",
-      "fixture": "classic/rectangle",
-      "oracle": "rgb8",
-      "expected": {
-        "width": 64,
-        "height": 64,
-        "rgb_sha256": "9c1f47734a0f9c886b3819056c69774b65fb5d61fbb43ca5f849add25dd4f35c",
-        "tolerance": 0
-      }
-    },
-    {
-      "id": "graphics.fractional",
-      "capability": "render.graphics",
-      "operation": "render",
-      "fixture": "classic/fractional-rectangle",
-      "oracle": "rgb8",
-      "expected": {
-        "width": 64,
-        "height": 64,
-        "rgb_sha256": "8cc43e71ada4b386f559040c1dcc042c81e935e8519127587e9f187a9d7658d1",
-        "tolerance": 1
-      }
-    },
-    {
-      "id": "jpx.gray",
-      "capability": "images.jpx-colour",
-      "operation": "render",
-      "fixture": "paint/image-jpx",
+      "fixture": "font_formats/post25-direct",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
         "height": 32,
-        "rgb_sha256": "b5cd30d0f4c249640527971a5f014c5a9fbb733ac02250f85bd623e15a5c892c",
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
         "tolerance": 0
       }
     },
     {
-      "id": "jpx.alpha-straight",
-      "capability": "images.jpx-alpha",
+      "id": "fonts.post2-control-direct",
+      "capability": "fonts.programs",
       "operation": "render",
-      "fixture": "paint/image-jpx-alpha-1",
+      "fixture": "font_formats/post2-control-direct",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
         "height": 32,
-        "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
         "tolerance": 0
       }
     },
     {
-      "id": "jpx.alpha-premultiplied",
-      "capability": "images.jpx-alpha",
+      "id": "fonts.post25-name-fallback",
+      "capability": "fonts.programs",
       "operation": "render",
-      "fixture": "paint/image-jpx-alpha-2",
+      "fixture": "font_formats/post25-name-fallback",
       "oracle": "rgb8",
       "expected": {
         "width": 32,
         "height": 32,
-        "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-name-fallback",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-name-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-differences",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-differences",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-differences",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-differences",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.ordinary-rectangle",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/ordinary-rectangle",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
         "tolerance": 0
       }
     }

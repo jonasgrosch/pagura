@@ -389,7 +389,14 @@
         "text/tt-policy-raw-unmapped",
         "text/tt-policy-multiscalar-unmapped",
         "text/tt-policy-name-nonbmp",
-        "text/tt-post-notdef-before-policy"
+        "text/tt-post-notdef-before-policy",
+        "font_formats/post25-direct",
+        "font_formats/post2-control-direct",
+        "font_formats/post25-name-fallback",
+        "font_formats/post2-control-name-fallback",
+        "font_formats/post25-differences",
+        "font_formats/post2-control-differences",
+        "font_formats/ordinary-rectangle"
       ],
       "gaps": "Full AGL algorithm primary-text review remains pending; the exact cmap API distinction is now implemented upstream and covered here.",
       "verification": {
@@ -405,6 +412,12 @@
           "For direct codes, try symbol high-byte variants, then Mac Roman. Only after failure try (3,1), (3,10), then platform 0; within each Unicode table try the literal byte before F000/F100/F200 offsets. Missing all routes selects glyph 0. Multi-scalar names never select a scalar cmap entry.",
           "A successful post lookup is binding even for glyph 0; reader fallback applies only when lookup fails."
         ]
+      },
+      "legacy_post_review": {
+        "source": "https://learn.microsoft.com/en-us/typography/opentype/spec/post",
+        "locator": "Version 2.5; Header",
+        "rule": "The 0x00025000 version stores one signed byte offset per glyph into standard Macintosh names. This is a deprecated, documented layout, not post 3.0 absence of names.",
+        "scope": "Paired original post 2.5/2.0 programs share cmap, outlines and metrics; PDF 9.6.5.4 determines direct Unicode and glyph-name fallback. Hosted measurements pending. No product change."
       }
     },
     {

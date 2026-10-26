@@ -171,3 +171,19 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
   bind current results to each scoped capability subvariant. A successful basic
   fixture never closes an entire [capability family](../../docs/CAPABILITIES.md)
   or a release gate.
+
+## Private legacy glyph-name diagnostic
+
+`font_formats` pairs original post 2.5 programs with post 2.0 programs that have
+identical glyph names, outlines, metrics and cmap tables. It covers direct cmap
+selection and PDF glyph-name fallback, plus ordinary rectangle and blank
+controls. All eight cases have literal rectangle expectations at zero tolerance.
+The historical version value and signed offsets follow Microsoft's primary
+[post specification](https://learn.microsoft.com/en-us/typography/opentype/spec/post).
+
+This branch has no product change beyond its recorded vertical-font base. The
+reduced render manifest is diagnostic only and must not replace the integrated
+feature manifest. Hosted execution is pending. An engine's subject result is
+interpreted only alongside its post 2.0 and ordinary controls; failed controls
+leave that cell unadjudicated. The existing harness reports arbitrary backend
+failures as adapter errors, which are not proof of an unsupported feature.
