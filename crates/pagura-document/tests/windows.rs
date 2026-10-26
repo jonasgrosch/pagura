@@ -54,7 +54,7 @@ fn complete_and_sparse_windows_finish_before_unrelated_missing_bytes() {
     );
     assert_eq!(parsed.offset, literal.len());
     assert_eq!(window.offset(), 311 + u64::try_from(literal.len()).unwrap());
-    assert!(parsed.diagnostics.is_empty());
+    assert_eq!(parsed.diagnostics, []);
     assert!(matches!(
         source.materialize(),
         Err(ReadFault::Unavailable(_))
