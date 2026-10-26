@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `289a8b5855cbc1f07d2fe9a5dfaa2aa4d4815d56`. G00 source inventory is complete for this revision.
+Source audit: `ca36cd6e9077c3efa9750b89c1616a75cbb7da3f`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
