@@ -28,7 +28,7 @@ use pagura_color::ColorSpace;
 use pagura_content::{Content, Op, Operation, Reader};
 use pagura_core::hash::FastMap;
 use pagura_core::{
-    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
+    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store, Value,
 };
 use pagura_document::{Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};
@@ -489,6 +489,31 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             diagnostic = diagnostic.in_object(object);
         }
         self.document().repair(diagnostic)
+    }
+
+    /// The resource the current operator names, or `None` once an undefined
+    /// one is reported: the caller then ignores the operator (repair mode).
+    ///
+    /// # Errors
+    ///
+    /// The lookup's errors, and in strict mode the repair as an error.
+    pub(crate) fn named_resource<'r>(
+        &self,
+        resources: &'r Dictionary,
+        kind: &[u8],
+        name: &[u8],
+    ) -> Result<Option<&'r Value>>
+    where
+        'a: 'r,
+    {
+        let value = form::defined_resource(self.document(), resources, kind, name)?;
+        if value.is_none() {
+            self.repair(
+                repairs::UNDEFINED_RESOURCE,
+                "operator naming an undefined resource ignored",
+            )?;
+        }
+        Ok(value)
     }
 
     /// The decoded content of the stream `object`, read once per

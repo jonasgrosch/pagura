@@ -1,7 +1,6 @@
 //! `sh` (8.7.4.3): a shading painted over the clip, leaving the current
 //! path and colour unchanged. Devices without paint parse no shading.
 
-use super::form::resource;
 use super::{Machine, Scope};
 use crate::device::{Device, MarkState, ShadingMark};
 use crate::model::Shading;
@@ -19,8 +18,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if !self.needs().paint {
             return Ok(());
         }
-        let document = self.document();
-        let value = resource(document, resources, b"Shading", name.as_bytes())?;
+        let Some(value) = self.named_resource(resources, b"Shading", name.as_bytes())? else {
+            return Ok(());
+        };
         let shading = self.read_shading(value, resources)?;
         let Some(emission) = self.admit(scope)? else {
             return Ok(());

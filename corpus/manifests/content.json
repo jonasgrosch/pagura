@@ -1232,22 +1232,6 @@
       "render_error": "Syntax"
     },
     {
-      "id": "content/text-state",
-      "kind": "pdf",
-      "description": "Malformed text or image context",
-      "expected": "open",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/text-state.pdf",
-      "sha256": "afc16d3a767b140cf10ef1e9a02554dc1f1602bc0cca4edd547e6620348e658d",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "api": "compile_page",
-      "render_error": "Syntax"
-    },
-    {
       "id": "content/type3",
       "kind": "pdf",
       "description": "Malformed text or image context",
@@ -1278,6 +1262,111 @@
       "repairs": [],
       "api": "compile_page",
       "render_error": "Syntax"
+    },
+    {
+      "id": "content/text-state",
+      "kind": "pdf",
+      "description": "Undefined font resource: Tf ignored as a reported repair",
+      "expected": "render",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/text-state.pdf",
+      "sha256": "e7064335343f94c48dc0a3a93e64608d43a227ad969656de25de8965341df646",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.undefined-resource"
+      ],
+      "oracle": "corpus/generated/content/text-state.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "content/undefined-extgstate",
+      "kind": "pdf",
+      "description": "Operator naming an undefined resource ignored as a reported repair",
+      "expected": "render",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/undefined-extgstate.pdf",
+      "sha256": "21d5ca0354e4def07519322f293defe70007a87af392d160aa6320a9c7c4db9e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.undefined-resource"
+      ],
+      "oracle": "corpus/generated/content/undefined-extgstate.ppm",
+      "oracle_sha256": "e63d8e53faad71c6b272d33d2617352f7192550e7cc8649988d6ce6651709936",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "content/undefined-xobject",
+      "kind": "pdf",
+      "description": "Operator naming an undefined resource ignored as a reported repair",
+      "expected": "render",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/undefined-xobject.pdf",
+      "sha256": "e66a806193bb67d8975d9aa7de99c5bf25a863c60bc34deb9fd6698bc663e29d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.undefined-resource"
+      ],
+      "oracle": "corpus/generated/content/undefined-xobject.ppm",
+      "oracle_sha256": "e63d8e53faad71c6b272d33d2617352f7192550e7cc8649988d6ce6651709936",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "content/undefined-shading",
+      "kind": "pdf",
+      "description": "Operator naming an undefined resource ignored as a reported repair",
+      "expected": "render",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/undefined-shading.pdf",
+      "sha256": "71d5cca1dd329d0c9d9d900fc61ef8254e9ce1f168bc0e3172ccea077801e9b0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.undefined-resource"
+      ],
+      "oracle": "corpus/generated/content/undefined-shading.ppm",
+      "oracle_sha256": "e63d8e53faad71c6b272d33d2617352f7192550e7cc8649988d6ce6651709936",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "content/undefined-optional-group",
+      "kind": "pdf",
+      "description": "Operator naming an undefined resource ignored as a reported repair",
+      "expected": "render",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/undefined-optional-group.pdf",
+      "sha256": "a39b90cbfbd933a48213ff31aa1df3d1732c5cb51ee1bdf3535a81339e12c9d8",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.undefined-resource"
+      ],
+      "oracle": "corpus/generated/content/undefined-optional-group.ppm",
+      "oracle_sha256": "e63d8e53faad71c6b272d33d2617352f7192550e7cc8649988d6ce6651709936",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "content/space-Separation",

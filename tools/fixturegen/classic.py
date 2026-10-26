@@ -86,9 +86,11 @@ def cases():
     ])
     yield Case("pattern-unsupported", tiling, UNSUPPORTED, BASE + ("unsupported-is-explicit",),
                "Table 74 constant-spacing fitting collapses this oblique device lattice; unsupported explicitly", feature="pattern.tiling", oracle=None)
-    yield Case("text-undefined-font", single_page([b"BT /F1 12 Tf (hello) Tj ET\n"]), OPEN, BASE,
-               "a font name that is not a page resource is malformed content (7.8.3)",
-               extra={"render_error": "Syntax"})
+    yield Case("text-undefined-font", single_page([b"BT /F1 12 Tf (hello) Tj ET 0 g 0 0 8 8 re f\n"]), RENDER, BASE,
+               "A font name that is not a page resource is malformed content (7.8.3): strict mode fails; "
+               "repair mode ignores Tf, the string paints nothing, and later content still renders",
+               oracle=opaque_rectangles(64, 64, [((0, 0, 8, 8), BLACK)]),
+               strict_valid=False, repairs=("content.undefined-resource",))
     yield render("alpha-unsupported", "Constant half opacity over white (11.3.3)",
                       [b"/GS1 gs 0 0 64 64 re f\n"], [((0,0,64,64),(128,128,128))], resources=b"<< /ExtGState << /GS1 << /ca 0.5 >> >> >>")
     from .content import cie_rgb

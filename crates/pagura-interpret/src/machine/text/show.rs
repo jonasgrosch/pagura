@@ -34,6 +34,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         scope: &mut Scope,
     ) -> Result<()> {
         text_object(scope)?;
+        // After a `Tf` whose resource was undefined (a reported repair) the
+        // widths are unknown: the string paints nothing and does not move.
+        if font.is_none() && scope.state.text.font.is_none() && scope.state.text.font_undefined {
+            return Ok(());
+        }
         let font = match font {
             Some(font) => font,
             None => font.insert(

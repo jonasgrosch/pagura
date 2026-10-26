@@ -49,9 +49,14 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             Op::Leading(value) => text.leading = value,
             Op::Rise(value) => text.rise = value,
             Op::Font { name, size } => {
-                let value =
-                    super::form::resource(self.document(), resources, b"Font", name.as_bytes())?;
-                self.select_font(value, size, scope)?;
+                if let Some(value) = self.named_resource(resources, b"Font", name.as_bytes())? {
+                    self.select_font(value, size, scope)?;
+                } else {
+                    let text = &mut scope.state.text;
+                    text.font = None;
+                    text.font_undefined = true;
+                    text.size = size;
+                }
             }
             Op::RenderMode(mode) => {
                 let mode = u8::try_from(mode)
@@ -146,6 +151,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             self.device.select_font(&font.info)?;
         }
         scope.state.text.font = Some(font);
+        scope.state.text.font_undefined = false;
         scope.state.text.size = size;
         Ok(())
     }
@@ -233,6 +239,9 @@ fn text_translate(scope: &mut Scope, x: f64, y: f64) -> Result<()> {
 /// A `TJ` adjustment in thousandths of text space units (9.4.3).
 fn text_adjust(scope: &mut Scope, amount: f64) -> Result<()> {
     let text = &scope.state.text;
+    if text.font.is_none() && text.font_undefined {
+        return Ok(());
+    }
     let font = text
         .font
         .as_ref()

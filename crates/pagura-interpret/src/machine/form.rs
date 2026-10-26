@@ -75,12 +75,34 @@ pub(crate) fn resource<'a>(
     kind: &[u8],
     name: &[u8],
 ) -> Result<&'a Value> {
-    resources
-        .get(kind)
-        .map(|v| document.resolve_dictionary(v))
-        .transpose()?
-        .and_then(|d| d.get(name))
+    defined_resource(document, resources, kind, name)?
         .ok_or(Error::syntax("undefined content resource"))
+}
+
+/// The entry `name` of the `kind` resource category, or `None` when it is
+/// undefined: absent, null, or a reference to an undefined object (7.3.9,
+/// 7.3.10).
+///
+/// # Errors
+///
+/// Errors from resolving the category and the entry, and `Syntax` for a
+/// category that is not a dictionary.
+pub(crate) fn defined_resource<'a>(
+    document: &'a Document,
+    resources: &'a Dictionary,
+    kind: &[u8],
+    name: &[u8],
+) -> Result<Option<&'a Value>> {
+    let Some(category) = resources.get(kind) else {
+        return Ok(None);
+    };
+    if document.resolve(category)?.is_null() {
+        return Ok(None);
+    }
+    let Some(value) = document.resolve_dictionary(category)?.get(name) else {
+        return Ok(None);
+    };
+    Ok((!document.resolve(value)?.is_null()).then_some(value))
 }
 
 /// A form's `BBox` and `Matrix` (Table 93).
@@ -128,7 +150,9 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         scope: &mut Scope,
     ) -> Result<()> {
         let document = self.document();
-        let value = resource(document, resources, b"XObject", name.as_bytes())?;
+        let Some(value) = self.named_resource(resources, b"XObject", name.as_bytes())? else {
+            return Ok(());
+        };
         let id = value
             .as_reference()
             .ok_or(Error::syntax("XObject must be a stream reference"))?;

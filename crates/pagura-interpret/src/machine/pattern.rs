@@ -210,8 +210,16 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             | Op::Shading(_) => true,
             Op::XObject(name) => {
                 let document = self.document();
-                let value =
-                    super::form::resource(document, resources, b"XObject", name.as_bytes())?;
+                // An undefined XObject is left to `Do`, which reports and ignores it.
+                let Some(value) = super::form::defined_resource(
+                    document,
+                    resources,
+                    b"XObject",
+                    name.as_bytes(),
+                )?
+                else {
+                    return Ok(false);
+                };
                 let d = document.resolve_dictionary(value)?;
                 d.is_name(b"Subtype", b"Image")
                     && d.get(b"ImageMask")

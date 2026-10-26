@@ -2,7 +2,6 @@
 //! the entries that operators also set apply for every device; devices
 //! without paint read no other entry.
 
-use super::form::resource;
 use super::{Machine, Scope, params};
 use crate::device::Device;
 use crate::features;
@@ -21,7 +20,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         scope: &mut Scope,
     ) -> Result<()> {
         let document = self.document();
-        let value = resource(document, resources, b"ExtGState", name.as_bytes())?;
+        let Some(value) = self.named_resource(resources, b"ExtGState", name.as_bytes())? else {
+            return Ok(());
+        };
         let dictionary = document.resolve_dictionary(value)?;
         let uncolored = scope.uncolored_glyph();
         if let Some(font) = dictionary.get(b"Font") {

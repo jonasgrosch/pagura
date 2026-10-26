@@ -80,6 +80,9 @@ impl SolidPaints {
 #[derive(Debug, Clone)]
 pub(crate) struct TextParams {
     pub(crate) font: Option<Arc<LoadedFont>>,
+    /// The last `Tf` named an undefined font resource (a reported repair):
+    /// strings shown without a font paint nothing and do not move.
+    pub(crate) font_undefined: bool,
     pub(crate) size: f64,
     pub(crate) character: f64,
     pub(crate) word: f64,
@@ -95,6 +98,7 @@ impl Default for TextParams {
     fn default() -> Self {
         Self {
             font: None,
+            font_undefined: false,
             size: 0.0,
             character: 0.0,
             word: 0.0,
