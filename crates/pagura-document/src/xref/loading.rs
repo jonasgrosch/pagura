@@ -192,7 +192,7 @@ impl Loader {
     }
 
     fn probe(&mut self, start: usize, mode: Probe) -> ReadResult<Next> {
-        let read = self.window.read(|parser| section_header(parser));
+        let read = self.window.read(section_header);
         let (matches, restart) = match read {
             Ok(parsed) => (parsed.value, false),
             Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Syntax => (false, true),
@@ -228,7 +228,7 @@ impl Loader {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Probe {
     Physical,
     Shifted,
