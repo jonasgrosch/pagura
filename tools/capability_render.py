@@ -88,6 +88,12 @@ def paired_observations(data, family):
                     'Covers inherited/null values and DA, NeedAppearances, multiline/comb, choice names versus export values, '
                     'list selection/top index, widget rotation and 72/144 DPI. Original embedded Type3 glyphs isolate '
                     'font availability; values are never edited. Raw output is not an oracle verdict or full-viewer claim.'),
+        'buttons': ('button', 'Button',
+                    'Raw normal checkbox/radio/push-button display with paired missing/stored AP and ordinary/blank controls. '
+                    'Covers AS/V precedence, normal captions, transformed icon XObjects, TP caption/icon order, all icon scaling '
+                    'policies, alignment, border fitting, MK/page rotation and 72/144 DPI. Original Type3 glyphs and rectangles '
+                    'isolate font/artwork availability. No values are edited, no actions or rollover/down events run, and '
+                    'push buttons have no synthetic value. Reader layout observations are not oracle verdicts or full-viewer claims.'),
     }[family]
     prefix = 'annotation_display/' + prefix + '-observe-'
     cases = [case for case in data['cases'] if case['id'] == 'control.blank']
@@ -334,7 +340,7 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--engines', default='pdfium,mupdf,pdfjs,poppler,hayro,pagura')
     parser.add_argument('--images', type=Path, help='retain synthetic actual/oracle PPMs outside Git for adjudication')
-    parser.add_argument('--annotation-set', choices=['sound', 'redact', 'widgets'], default='sound',
+    parser.add_argument('--annotation-set', choices=['sound', 'redact', 'widgets', 'buttons'], default='sound',
                         help='raw annotation observation set; Sound remains the observe default')
     args = parser.parse_args()
     data, inventory = read_json(ROOT / MANIFEST), render_inventory(read_json(ROOT / LEDGER))

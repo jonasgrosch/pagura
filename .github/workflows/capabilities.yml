@@ -33,7 +33,7 @@ on:
       annotation_observations:
         description: 'Capture one raw annotation set only; none runs the ordinary suites'
         type: choice
-        options: [none, sound, redact, widgets]
+        options: [none, sound, redact, widgets, buttons]
         default: none
 permissions:
   contents: read
