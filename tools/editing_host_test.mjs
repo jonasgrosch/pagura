@@ -8,6 +8,7 @@ import { formDocument } from '../web/form_document.mjs';
 import { testButtonArtwork } from './form_buttons_test.mjs';
 import { testFormPreview } from './form_preview_test.mjs';
 import { testFormEditor } from './form_editor_test.mjs';
+import { testFormBorders } from './form_border_test.mjs';
 import { encodeChanges } from '../web/editing_protocol.mjs';
 if (!isMainThread) {
   try { await runHost(workerData.module, workerData.shared, (message, transfer = []) => parentPort.postMessage(message, transfer)); }
@@ -31,6 +32,7 @@ if (!isMainThread) {
   const client = new SessionClient(new BrowserWorker());
   try {
     await client.hello();
+    await testFormBorders(client);
     const original = formDocument(), opened = await client.open(original, 0);
     const tile = { x: 0, y: 0, width: 600, height: 440 };
     const beforePixels = await client.renderTile(opened.document, 0, 1, tile);

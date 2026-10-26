@@ -105,9 +105,29 @@ pub(crate) struct Polyline {
     pub(crate) points: Vec<Point>,
     pub(crate) closed: bool,
     pub(crate) degenerate: bool,
+    /// Forward source tangents where an endpoint's segment is a curve.
+    /// Lines keep their chord construction, including interpolated dashes.
+    pub(crate) tangents: [Option<Point>; 2],
 }
 
 impl Polyline {
+    fn record_tangents(&mut self, from: Point, [c1, c2, end]: [Point; 3], curve: bool) {
+        let direction = |origin: Point, candidates: [Point; 3]| {
+            candidates
+                .into_iter()
+                .find(|&point| point != origin)
+                .map(|point| (point - origin) / (point - origin).length())
+        };
+        if let Some(start) = direction(from, [c1, c2, end]) {
+            if self.degenerate {
+                self.tangents[0] = curve.then_some(start);
+            }
+            if let Some(back) = direction(end, [c2, c1, from]) {
+                self.tangents[1] = curve.then_some(-back);
+            }
+        }
+    }
+
     pub(crate) fn strokeable(&self, cap: crate::LineCap) -> bool {
         if self.points.len() < 2 && !self.closed {
             return false;
@@ -297,6 +317,7 @@ fn flatten_using(
             Segment::LineTo(point) => {
                 bounded(point)?;
                 bounded(point * transform)?;
+                current.record_tangents(position, [point; 3], false);
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
                 append(&mut current.points, point, &mut count, limits, bytes)?;
                 position = point;
@@ -324,6 +345,7 @@ fn flatten_using(
             }
         };
         if let Some((controls @ [_, c1, c2, end], elevation)) = piece {
+            current.record_tangents(position, [c1, c2, end], true);
             current.degenerate &= [c1, c2, end].iter().all(|p| *p == position);
             curve(
                 (controls, elevation),
@@ -362,12 +384,14 @@ fn prepare<'a>(
             points: Vec::new(),
             closed: false,
             degenerate: true,
+            tangents: [None; 2],
         });
     }
     let current = &mut result[index];
     current.points.clear();
     current.closed = false;
     current.degenerate = true;
+    current.tangents = [None; 2];
     Ok(current)
 }
 

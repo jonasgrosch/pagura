@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Independently authored input syntax and saved revision/form contracts.
 
+mod form_borders;
+
 use pagura::editing::{SaveOptions, SignaturePolicy, Transaction, features, save_filled_form};
 use pagura::forms::{ButtonValue, ChoiceSelection, FieldValue, FillValue};
 use pagura::{

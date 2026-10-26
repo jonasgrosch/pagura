@@ -36,8 +36,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(values) = page.dictionary().get(b"Annots") else {
             return Ok(());
         };
-        let values = document
-            .resolve(values)?
+        let values = document.resolve(values)?;
+        // A null dictionary entry is equivalent to absence (7.3.9), including
+        // an indirect null. Do not turn a page with no annotations into an error.
+        if matches!(values, Value::Null) {
+            return Ok(());
+        }
+        let values = values
             .as_array()
             .ok_or(Error::syntax("Annots must be an array"))?;
         if values.len() > self.session.limits.traversal_work {
@@ -112,7 +117,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             };
             Drawn::Stored(id)
         } else {
-            match pagura_appearance::annotation_appearance(document, d, rect)? {
+            let fonts = SessionFonts(&self.session.fonts);
+            match pagura_appearance::annotation_appearance_with_fonts(document, d, rect, &fonts)? {
                 Some(stream) => Drawn::Generated(stream),
                 None => return Ok(()),
             }
@@ -337,12 +343,27 @@ fn normal_appearance(document: &Document, d: &Dictionary, ap: &Value) -> Result<
 
 /// A rectangle entry.
 fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> Result<Rect> {
-    d.get(key)
+    let values = d
+        .get(key)
         .map(|v| document.resolve(v))
         .transpose()?
         .and_then(Value::as_array)
-        .and_then(Rect::from_array)
-        .ok_or(Error::syntax("invalid annotation or appearance rectangle"))
+        .ok_or(Error::syntax("invalid annotation rectangle"))?;
+    let [x0, y0, x1, y1] = values else {
+        return Err(Error::syntax("annotation rectangle requires four numbers"));
+    };
+    let coordinate = |value| {
+        document.resolve(value)?.as_number().ok_or(Error::syntax(
+            "annotation rectangle coordinate must be numeric",
+        ))
+    };
+    Rect::from_corners(
+        coordinate(x0)?,
+        coordinate(y0)?,
+        coordinate(x1)?,
+        coordinate(y1)?,
+    )
+    .ok_or(Error::syntax("invalid annotation rectangle"))
 }
 
 /// The transform that fits the upright envelope of the transformed `BBox`

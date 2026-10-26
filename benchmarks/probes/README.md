@@ -4,10 +4,9 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) adds six independent pixel
-oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
-premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
-existing public render adapters. The ledger retains six competitor columns;
+The companion [render manifest](rendering.json) contains 180 independent pixel
+oracles for basic graphics, JPX and stored/generated annotation appearances. Its
+1,260 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -171,3 +170,18 @@ reports' exact source, native-artifact and fixture hashes, not the current branc
   bind current results to each scoped capability subvariant. A successful basic
   fixture never closes an entire [capability family](../../docs/CAPABILITIES.md)
   or a release gate.
+
+## Consolidated appearance probes
+
+The appearance feature PR owns all subtype, border and text render controls.
+Stored/generated counterparts, 72/144 DPI, clipping, opacity, view flags and font
+identity remain explicit. Independent geometry/colour/glyph calculations supply
+expectations; reader artwork differences are observations awaiting adjudication.
+
+[Hosted run 40323485296](https://github.com/jonasgrosch/pagura/actions/runs/40323485296)
+measured merge `1e63dd9abc19a938e09dac17727afbe34321fa4f` from head
+`424839e7a1e25d8b7de7f92cc98460542b9ff3b0`: 296 passing cells and
+964 pixel disagreements. Pagura passed all 180 controls. This does not
+validate generated-button persistence, every annotation variant or the newly
+rebuilt review branch. Native/WASI/client and save/reopen checks remain separate.
+No source-family comparison is promoted by these fixture results.

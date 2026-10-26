@@ -23,6 +23,15 @@ from benchkit.images import normalize, verify_pixels
 MANIFEST = Path('benchmarks/probes/rendering.json')
 RENDER_ADAPTERS = [Path('benchmarks/adapters') / name for name in
                    ('python_engine.py', 'pdfjs.mjs', 'quartz.swift', 'hayro/src/main.rs')]
+RENDER_CONFIGURATIONS = {
+    'pagura': 'Public render CLI; display annotation flags and stored/generated appearances.',
+    'pdfium': 'pypdfium2 PdfPage.render(draw_annots=True); default colour settings.',
+    'mupdf': 'PyMuPDF Page.get_pixmap(annots=True, colorspace=csRGB, alpha=False).',
+    'pdfjs': 'PDFPageProxy.render(intent=display, annotationMode=ENABLE); Node canvas only, no HTML annotation layer; eval disabled.',
+    'poppler': 'pdftoppm default annotation rendering; no -hide-annotations option; default colour settings.',
+    'hayro': 'InterpreterSettings.render_annotations=true; default RenderSettings/PixmapSettings except requested scale.',
+    'quartz': 'CoreGraphics CGContext.drawPDFPage only; no PDFKit annotation layer or substitute appearance generator.',
+}
 
 
 def render_inventory(inventory):
@@ -54,7 +63,8 @@ def fixtures(data):
         row = rows.get(case['fixture'])
         if row is None or row['kind'] != 'pdf' or row['expected'] != 'render':
             raise ValueError('fixture has no independent pixel oracle')
-        require(row['dpi'] == 72 and row.get('page', 0) == 0, 'render scope requires page zero at 72 DPI')
+        require(type(row['dpi']) is int and row['dpi'] in {72, 144} and row.get('page', 0) == 0,
+                'render scope requires page zero at declared 72 or 144 DPI')
         for field, digest in [('path', 'sha256'), ('oracle', 'oracle_sha256')]:
             path = local_file(ROOT, row[field])
             require(path.is_relative_to(ROOT / 'corpus/generated') and path.stat().st_size <= 64 * 1024 * 1024, 'invalid render fixture path or size')
@@ -144,7 +154,10 @@ def run(data, inventory, output, selected, images=None):
                 identity['render_command'] = [locator(value) for value in commands[name]]
                 identity['artifacts'].update({locator(value): sha(Path(value).read_bytes())
                                               for value in commands[name] if Path(value).is_file()})
-                identity['render_configuration'] = 'Existing public render adapter, 72 DPI, page 0, white backdrop, default colour/annotation settings; source and actual binary hashes retained.'
+                identity['render_configuration'] = ('Page 0 at each fixture\'s declared 72/144 DPI; white backdrop; '
+                                                    + RENDER_CONFIGURATIONS[name]
+                                                    + ' Generated annotation artwork/fonts use reader defaults; no font normalization. '
+                                                    + ' Source and actual binary hashes retained.')
         identities[name] = identity
     source_files = [MANIFEST, LEDGER, *ADAPTER_FILES, *RENDER_ADAPTERS,
                     *[Path('tools') / name for name in ('capability_render.py', 'capability_probes.py', 'capabilities.py', 'competitors.py',
@@ -152,7 +165,10 @@ def run(data, inventory, output, selected, images=None):
                     Path('uv.lock'), Path('pyproject.toml'), Path('.python-version'), Path('.github/workflows/capabilities.yml'),
                     Path('benchmarks/node-package-lock.json'), Path('benchmarks/adapters/hayro/Cargo.lock'),
                     Path('benchmarks/adapters/hayro/Cargo.toml'), Path('rust-toolchain.toml'), Path('.cargo/config.toml'),
-                    Path('Cargo.toml'), Path('Cargo.lock'), Path('crates/pagura-cli/Cargo.toml')]
+                    Path('Cargo.toml'), Path('Cargo.lock'), Path('crates/pagura-cli/Cargo.toml'),
+                    Path('crates/pagura-data/Cargo.toml'), Path('data/lock.json'),
+                    Path('data/afm/Helvetica.afm'), Path('data/fonts/Arimo-Regular.ttf'),
+                    Path('data/afm/Helvetica-Bold.afm'), Path('data/fonts/Arimo-Bold.ttf')]
     source_files.extend(Path('corpus/manifests') / (row['fixture'].split('/')[0] + '.json') for row in data['cases'])
     report = {'schema': 1, 'scope': data['scope'], 'generated_at': datetime.now(timezone.utc).isoformat(),
               'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),

@@ -52,11 +52,12 @@ function ppmPixels(bytes, width, height) {
   return bytes.subarray(header.length);
 }
 // `tolerance` is the manifest's per-channel allowance (0 for exact oracles).
-function checkPixels(tile, rgb, tolerance = 0) {
+function checkPixels(tile, rgb, tolerance = 0, label = '') {
   assert.equal(tile.rgba.length, rgb.length / 3 * 4);
   for (let pixel = 0; pixel < rgb.length / 3; pixel++) {
     for (let channel = 0; channel < 3; channel++) {
-      if (Math.abs(tile.rgba[pixel * 4 + channel] - rgb[pixel * 3 + channel]) > tolerance) assert.fail(`Oracle mismatch at pixel ${pixel}, channel ${channel}`);
+      const actual = tile.rgba[pixel * 4 + channel], expected = rgb[pixel * 3 + channel];
+      if (Math.abs(actual - expected) > tolerance) assert.fail(`${label}: Oracle mismatch at pixel ${pixel}, channel ${channel}: ${actual} != ${expected} (tolerance ${tolerance})`);
     }
     assert.equal(tile.rgba[pixel * 4 + 3], 255);
   }
@@ -140,6 +141,28 @@ async function main() {
   const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/classic.json'), 'utf8'));
   const recovery = JSON.parse(await readFile(join(root, 'corpus/manifests/recovery.json'), 'utf8'));
   manifest.cases.push(...recovery.cases.filter((entry) => entry.id.startsWith('recovery/type3-empty-bounds-')));
+  const attachmentIcons = JSON.parse(await readFile(join(root, 'corpus/manifests/file_attachment_icons.json'), 'utf8'));
+  manifest.cases.push(...attachmentIcons.cases);
+  const circleAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/circle_annotations.json'), 'utf8'));
+  manifest.cases.push(...circleAnnotations.cases);
+  const inkAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/ink_annotations.json'), 'utf8'));
+  manifest.cases.push(...inkAnnotations.cases);
+  const polygonAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/polygon_annotations.json'), 'utf8'));
+  manifest.cases.push(...polygonAnnotations.cases);
+  const lineAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/line_annotations.json'), 'utf8'));
+  manifest.cases.push(...lineAnnotations.cases);
+  const endingAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/ending_annotations.json'), 'utf8'));
+  manifest.cases.push(...endingAnnotations.cases);
+  const leaderAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/leader_annotations.json'), 'utf8'));
+  manifest.cases.push(...leaderAnnotations.cases);
+  const markupAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/markup_annotations.json'), 'utf8'));
+  manifest.cases.push(...markupAnnotations.cases);
+  const caretAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/caret_annotations.json'), 'utf8'));
+  const roundedAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/rounded_annotations.json'), 'utf8'));
+  manifest.cases.push(...roundedAnnotations.cases);
+  const reliefAnnotations = JSON.parse(await readFile(join(root, 'corpus/manifests/relief_annotations.json'), 'utf8'));
+  manifest.cases.push(...reliefAnnotations.cases);
+  manifest.cases.push(...caretAnnotations.cases);
   const scratch = await mkdtemp(join(tmpdir(), 'pagura-host-'));
   const files = [];
   const wasiRun = async (input, name) => {
@@ -174,52 +197,19 @@ async function main() {
       terminate() { void this.worker?.terminate(); }
     }
     client = new SessionClient(new TestWorker()); await client.hello();
-    let tested = 0;
-    for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
-      const pdf = new Uint8Array(await readFile(join(root, entry.path)));
-      const tile = { x: 0, y: 0, width: entry.width, height: entry.height };
-      const input = Buffer.concat([
-        encodeRequest(1, 1), encodeRequest(2, 2, { bytes: pdf, password: new Uint8Array(), recovery: 1 }),
-        encodeRequest(3, 3, { document: 1, page: 0 }),
-        encodeRequest(4, 4, { document: 1, page: 0, scale: 1, ...tile }),
-        encodeRequest(5, 5, { document: 1 }), encodeRequest(6, 6, { document: 1 }),
-      ]);
-      const nativeRun = spawnSync(native, [], { input, maxBuffer: 128 * 1024 * 1024, timeout: 30000 });
-      assert.ifError(nativeRun.error); assert.equal(nativeRun.status, 0, nativeRun.stderr?.toString());
-      const wasi = await wasiRun(input, `case-${tested}`);
-      assert.equal(wasi.code, 0, wasi.stderr.toString()); bytesEqual(wasi.bytes, nativeRun.stdout, `${entry.id}: native/WASI response identity`);
-      const frames = parse(wasi.bytes);
-      assert.deepEqual(frames.map((frame) => frame.kind), [129, 130, 131, 132, 133, 134]);
-      assert.deepEqual(frames.map((frame) => frame.id), [1, 2, 3, 4, 5, 6]);
-      const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
-      checkPixels(frames[3].value, rgb, entry.tolerance ?? 0);
-      const opened = await client.open(pdf);
-      const info = await client.pageInfo(opened.document, 0);
-      assert.equal(info.width, entry.width); assert.equal(info.height, entry.height);
-      const browserTile = await client.renderTile(opened.document, 0, 1, tile);
-      bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
-      const diagnostics = await client.diagnostics(opened.document);
-      assert.deepEqual(diagnostics, frames[4].value);
-      assert.deepEqual(diagnostics.map((item) => item.tag), entry.repairs);
-      if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
-        assert.equal((await client.pageText(opened.document, 0)).text, 'AAB');
-        assert.deepEqual(await client.diagnostics(opened.document), diagnostics);
-      }
-      // Partial device rectangles exercise the tile offset and edge dimensions.
-      for (const partial of [
-        { x: 0, y: 0, width: Math.min(31, entry.width), height: entry.height },
-        { x: entry.width - 1, y: entry.height - 1, width: 1, height: 1 },
-      ]) {
-        const rendered = await client.renderTile(opened.document, 0, 1, partial);
-        for (let y = 0; y < partial.height; y++) {
-          const expectedStart = ((partial.y + y) * entry.width + partial.x) * 4;
-          bytesEqual(rendered.rgba.subarray(y * partial.width * 4, (y + 1) * partial.width * 4),
-            browserTile.rgba.subarray(expectedStart, expectedStart + partial.width * 4), `${entry.id}: partial tile row`);
-        }
-      }
-      await client.close(opened.document);
-      await assert.rejects(client.pageInfo(opened.document, 0), (error) => error instanceof HostError && error.category === 7);
-      tested++;
+    let tested = await testRenderCases({ client, root, native, wasiRun, cases: manifest.cases });
+    const captions = JSON.parse(await readFile(join(root, 'corpus/manifests/caption_annotations.json'), 'utf8'));
+    const stamps = JSON.parse(await readFile(join(root, 'corpus/manifests/stamp_annotations.json'), 'utf8'));
+    const freeText = JSON.parse(await readFile(join(root, 'corpus/manifests/free_text_annotations.json'), 'utf8'));
+    const callouts = JSON.parse(await readFile(join(root, 'corpus/manifests/free_text_callouts.json'), 'utf8'));
+    const fontAppearances = { cases: [...captions.cases, ...stamps.cases, ...freeText.cases, ...callouts.cases] };
+    for (const id of ['caption_annotations/inline-72', 'stamp_annotations/Draft', 'free_text_annotations/quadding-0-72']) {
+      const needsFont = fontAppearances.cases.find((entry) => entry.id === id);
+      const missingFont = await client.open(new Uint8Array(await readFile(join(root, needsFont.path))));
+      await assert.rejects(client.renderTile(missingFont.document, 0, 1,
+        { x: 0, y: 0, width: needsFont.width, height: needsFont.height }),
+        (error) => error instanceof HostError && error.category === 3 && error.tag === 'font.non-embedded');
+      await client.close(missingFont.document);
     }
     await testReading(client, root, native, wasiRun);
     await testTwoPages(client, root, native, wasiRun);
@@ -308,13 +298,69 @@ async function main() {
     try {
       await bundled.hello();
       await testDiagnosticKinds(bundled, root, join(root, 'target/host-bundled/release/pagura-host'), wasiRun);
+      tested += await testRenderCases({ client: bundled, root, native: join(root, 'target/host-bundled/release/pagura-host'),
+        wasiRun, cases: fontAppearances.cases });
     } finally { bundled.destroy(); }
     await testViewer(TestWorker, root, manifest, null, true);
-    console.log(`Host checks passed: ${tested} classic render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles; v1.4 diagnostic kinds and separate viewer counts.`);
+    await testViewer(TestWorker, root, fontAppearances, null, false, true);
+    console.log(`Host checks passed: ${tested} independent render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles; v1.4 diagnostic kinds and separate viewer counts.`);
   } finally {
     client?.destroy();
     await Promise.all(files.map((file) => file.close())); await rm(scratch, { recursive: true, force: true });
   }
+}
+
+async function testRenderCases({ client, root, native, wasiRun, cases }) {
+  let tested = 0;
+  for (const entry of cases.filter((entry) => entry.expected === 'render')) {
+    const pdf = new Uint8Array(await readFile(join(root, entry.path)));
+    const scale = (entry.dpi ?? 72) / 72;
+    const tile = { x: 0, y: 0, width: entry.width, height: entry.height };
+    const input = Buffer.concat([
+      encodeRequest(1, 1, { version: VERSION_1_4 }), encodeRequest(2, 2, { bytes: pdf, password: new Uint8Array(), recovery: 1 }),
+      encodeRequest(3, 3, { document: 1, page: 0 }),
+      encodeRequest(4, 4, { document: 1, page: 0, scale, ...tile }),
+      encodeRequest(17, 5, { document: 1 }), encodeRequest(6, 6, { document: 1 }),
+    ]);
+    const nativeRun = spawnSync(native, [], { input, maxBuffer: 128 * 1024 * 1024, timeout: 30000 });
+    assert.ifError(nativeRun.error); assert.equal(nativeRun.status, 0, nativeRun.stderr?.toString());
+    const wasi = await wasiRun(input, `case-${entry.id.replaceAll('/', '-')}`);
+    assert.equal(wasi.code, 0, wasi.stderr.toString()); bytesEqual(wasi.bytes, nativeRun.stdout, `${entry.id}: native/WASI response identity`);
+    const frames = parse(wasi.bytes);
+    assert.deepEqual(frames.map((frame) => frame.kind), [129, 130, 131, 132, 145, 134]);
+    assert.deepEqual(frames.map((frame) => frame.id), [1, 2, 3, 4, 5, 6]);
+    const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
+    checkPixels(frames[3].value, rgb, entry.tolerance ?? 0, entry.id);
+    const opened = await client.open(pdf);
+    const info = await client.pageInfo(opened.document, 0);
+    assert.equal(info.width * scale, entry.width); assert.equal(info.height * scale, entry.height);
+    const browserTile = await client.renderTile(opened.document, 0, scale, tile);
+    bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
+    const diagnostics = await client.diagnostics(opened.document);
+    assert.deepEqual(diagnostics, frames[4].value, `${entry.id}: full diagnostic parity`);
+    assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair').map((item) => item.tag), entry.repairs);
+    assert.deepEqual(diagnostics.filter((item) => item.kind === 'information').map((item) => item.tag), entry.information ?? []);
+    if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
+      assert.equal((await client.pageText(opened.document, 0)).text, 'AAB');
+      assert.deepEqual(await client.diagnostics(opened.document), diagnostics);
+    }
+    // Partial device rectangles exercise the tile offset and edge dimensions.
+    for (const partial of [
+      { x: 0, y: 0, width: Math.min(31, entry.width), height: entry.height },
+      { x: entry.width - 1, y: entry.height - 1, width: 1, height: 1 },
+    ]) {
+      const rendered = await client.renderTile(opened.document, 0, scale, partial);
+      for (let y = 0; y < partial.height; y++) {
+        const expectedStart = ((partial.y + y) * entry.width + partial.x) * 4;
+        bytesEqual(rendered.rgba.subarray(y * partial.width * 4, (y + 1) * partial.width * 4),
+          browserTile.rgba.subarray(expectedStart, expectedStart + partial.width * 4), `${entry.id}: partial tile row`);
+      }
+    }
+    await client.close(opened.document);
+    await assert.rejects(client.pageInfo(opened.document, 0), (error) => error instanceof HostError && error.category === 7);
+    tested++;
+  }
+  return tested;
 }
 
 async function testClientFailures() {
@@ -406,7 +452,7 @@ function testCodecAndCapabilities() {
  * Minimal DOM/Canvas stand-ins expose event and state errors, while all PDF
  * pixels still come from the real WASM command in a worker and the actual shim.
  */
-async function testViewer(TestWorker, root, manifest, startup = null, diagnosticKinds = false) {
+async function testViewer(TestWorker, root, manifest, startup = null, diagnosticKinds = false, renderOnly = false) {
   class Element {
     constructor(id) {
       this.id = id; this.tagName = id.toUpperCase(); this.children = []; this.listeners = new Map(); this.style = {}; this.attributes = new Map();
@@ -505,7 +551,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     return { rgba, width, height };
   };
   try {
-    await import(`../web/viewer.mjs?test=${diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
+    await import(`../web/viewer.mjs?test=${renderOnly ? 'font-appearance-pixels' : diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
     if (startup) {
       assert.equal(fakeWindow.paguraDebug, undefined);
       if (startup.error) {
@@ -529,6 +575,13 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       return;
     }
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
+      const deviceOracle = ['file_attachment_icons/', 'circle_annotations/', 'ink_annotations/', 'polygon_annotations/', 'line_annotations/', 'ending_annotations/', 'leader_annotations/', 'caption_annotations/', 'markup_annotations/', 'caret_annotations/', 'stamp_annotations/', 'free_text_annotations/', 'free_text_callouts/', 'rounded_annotations/', 'relief_annotations/'].some((area) => entry.id.startsWith(area));
+      // The viewer supersamples reduced pages. At 25% it uses 4 device pixels
+      // per CSS pixel (72 dpi overall); at 100% it uses 2 (144 dpi overall).
+      // Compare icon oracles on that exact device grid: CSS box averaging is
+      // not an equivalent oracle for fixed-size marks or layered alpha masks.
+      const oracleZoom = deviceOracle && entry.dpi === 72 ? 0.25 : 1;
+      elements.get('zoom').value = String(oracleZoom);
       await pick(entry); await waitFor(ready);
       assert.equal(elements.get('error').hidden, true);
       assert.equal(elements.get('diagnostic-count').textContent, `Repairs: ${entry.repairs.length} · Information: ${(entry.information ?? []).length}`);
@@ -536,7 +589,12 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
       assert.ok(canvases().length > 0);
       for (const canvas of canvases()) {
-        const x = parseFloat(canvas.style.left), y = parseFloat(canvas.style.top), { rgba, width, height } = cssPixels(canvas);
+        const density = canvas.width / parseFloat(canvas.style.width);
+        if (deviceOracle) assert.equal(density * oracleZoom, entry.dpi / 72, `${entry.id}: declared oracle resolution`);
+        const x = parseFloat(canvas.style.left) * (deviceOracle ? density : 1);
+        const y = parseFloat(canvas.style.top) * (deviceOracle ? density : 1);
+        const { rgba, width, height } = deviceOracle
+          ? { rgba: canvas.image.data, width: canvas.width, height: canvas.height } : cssPixels(canvas);
         assert.ok(x >= 0 && y >= 0 && x + width <= entry.width && y + height <= entry.height);
         for (let row = 0; row < height; row++) for (let column = 0; column < width; column++) {
           const pixel = (row * width + column) * 4, oracle = ((y + row) * entry.width + x + column) * 3;
@@ -554,6 +612,8 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
         assert.ok(retained.every(canvas => canvases().includes(canvas)), 'scrolling back reuses the same full-resolution canvases');
       }
     }
+    if (renderOnly) return;
+    elements.get('zoom').value = '1';
     const twoPages = manifest.cases.find((entry) => entry.id === 'classic/two-pages');
     elements.get('viewport').clientHeight = 40;
     await pick(twoPages); await waitFor(ready);

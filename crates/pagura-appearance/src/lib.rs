@@ -25,10 +25,11 @@ mod fonts;
 mod form;
 pub mod information;
 mod program;
+pub mod repairs;
 mod stream;
 mod values;
 
-pub use annotation::annotation_appearance;
+pub use annotation::{annotation_appearance, annotation_appearance_with_fonts};
 pub use fonts::{FontSource, ProviderFonts};
 pub use form::{
     FilledWidgets, TextStyle, UpdatePolicy, WidgetAppearance, default_text_style, prepare,

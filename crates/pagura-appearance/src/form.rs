@@ -13,10 +13,9 @@
 mod buttons;
 mod choice;
 mod compatibility;
-mod da;
+pub(crate) mod da;
 mod filled;
-mod font;
-mod layout;
+pub(crate) mod layout;
 mod style;
 mod update;
 mod variable;
@@ -24,12 +23,14 @@ mod variable;
 pub use da::{TextStyle, default_text_style};
 pub use filled::FilledWidgets;
 
+pub(crate) use compatibility::supply_font;
+
+use crate::fonts::Encoding as Font;
 use crate::fonts::{FontSource, ProviderFonts};
 use crate::program::Program;
 use crate::stream::{Appearance, AppearanceStream, form_dictionary};
 use crate::values::optional_dictionary;
 use da::DefaultAppearance;
-use font::Font;
 use pagura_core::{Error, Name, Rect, Result, Value};
 use pagura_document::{
     Document,
@@ -85,7 +86,7 @@ impl WidgetAppearance {
 /// Returns positioned syntax, font, limit and unsupported-capability errors.
 /// Horizontal simple fonts with reversible single-character Unicode mappings
 /// are supported. Oblique text matrices, rotated widgets, rich text, XFA,
-/// beveled/inset borders, negative font sizes and appearance updates crossing
+/// negative font sizes and appearance updates crossing
 /// text/graphics scopes or containing inline images remain explicit
 /// unsupported capabilities. DoNotScroll rejects text that will not visibly fit.
 pub fn prepare(
@@ -272,7 +273,7 @@ impl Context<'_, '_> {
             &limits,
         )?;
         if self.policy == UpdatePolicy::PreserveExisting {
-            compatibility::supply_font(document, &mut resources, da.font.as_bytes())?;
+            supply_font(document, &mut resources, da.font.as_bytes())?;
         }
         let font = Font::load(document, &resources, da.font.as_bytes(), self.fonts)?;
         let style = Style::read(document, self.widget.dictionary)?;

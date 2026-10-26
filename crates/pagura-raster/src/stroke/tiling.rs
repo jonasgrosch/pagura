@@ -71,6 +71,13 @@ pub(super) fn append(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<bool> {
+    // The tiling certificate uses chord-normal end lines. A source curve's
+    // tangent may cut the first/last piece differently; retain its component
+    // union until a certificate covers that geometry too.
+    if run.caps.iter().any(Option::is_some) {
+        super::draw(out, run, pen, stroke, limits, bytes)?;
+        return Ok(false);
+    }
     let before = bytes.used().saturating_sub(out.heap_bytes());
     let result = (|| {
         let Pen { radius, .. } = pen;
@@ -787,7 +794,16 @@ mod tests {
                 assert_eq!(pen, tiled_pen);
                 let round_caps = stroke.cap == LineCap::Round
                     && !matches!(path.segments().last(), Some(crate::Segment::Close));
-                if round_caps && tiling == Tiling::Components {
+                let source_caps = path
+                    .segments()
+                    .iter()
+                    .any(|segment| matches!(segment, crate::Segment::CubicTo { .. }));
+                if source_caps {
+                    // This open arch's source tangent differs from its first
+                    // chord: the chord-normal certificate must not certify it.
+                    assert_eq!(tiling, Tiling::Components, "{stroke:?}");
+                    assert_eq!(tiles.segments(), components.segments());
+                } else if round_caps && tiling == Tiling::Components {
                     assert_eq!(tiles.segments(), components.segments());
                 } else {
                     assert_eq!(tiling, Tiling::Proven, "{stroke:?}");

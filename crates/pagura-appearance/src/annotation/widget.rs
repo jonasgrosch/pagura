@@ -77,7 +77,7 @@ fn characteristics(
     let Some(color) = color(document, mk, b"BC", None)? else {
         return Ok(());
     };
-    let border = Border::read(document, annotation)?;
+    let border = Border::read_rectangular(document, annotation)?;
     if border.width == 0.0 {
         return Ok(());
     }
@@ -86,6 +86,9 @@ fn characteristics(
             features::ANNOTATION_APPEARANCE,
             "rotated widget borders require an explicit appearance",
         ));
+    }
+    if border.paint_relief(marks, rect, &color)? {
+        return Ok(());
     }
     let inset = (border.width * 0.5)
         .min(rect.width() * 0.5)
@@ -97,12 +100,14 @@ fn characteristics(
     let path = if border.underline {
         Subpath::Polyline(&underline)
     } else {
-        Subpath::Rect {
-            x: rect.x0() + inset,
-            y: rect.y0() + inset,
-            width: (rect.width() - 2.0 * inset).max(0.0),
-            height: (rect.height() - 2.0 * inset).max(0.0),
-        }
+        let bounds = Rect::from_corners(
+            rect.x0() + inset,
+            rect.y0() + inset,
+            rect.x1() - inset,
+            rect.y1() - inset,
+        )
+        .ok_or(Error::limit("widget border bounds exceed numeric range"))?;
+        border.outline(bounds)
     };
     let pen = Pen {
         width: border.width,

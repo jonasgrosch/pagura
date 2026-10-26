@@ -1,8 +1,8 @@
 //! Choice-field display values, rows and selection highlights (12.7.5.4).
 
 use super::{
+    Font,
     da::DefaultAppearance,
-    font::Font,
     layout::{self, TextLayout},
 };
 use crate::program::Program;

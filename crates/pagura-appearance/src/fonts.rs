@@ -1,5 +1,9 @@
 //! Fonts that generated variable text is laid out with (9.6, 9.7).
 
+mod encoding;
+
+pub(crate) use encoding::Encoding;
+
 use pagura_core::{Dictionary, Limits, ObjectId, Result};
 use pagura_document::Document;
 use pagura_text::{PdfFont, Provider};
