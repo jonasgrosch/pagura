@@ -6,7 +6,7 @@ use crate::{
     view::{Context, Source},
 };
 use pagura_core::{Error, ErrorKind, ObjectId, Position, Result};
-use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 #[derive(Debug, Default)]
 pub(crate) struct Cache {

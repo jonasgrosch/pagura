@@ -69,8 +69,8 @@ impl Document {
         value: &'a Value,
         path: &mut Vec<ObjectId>,
     ) -> Result<(&'a Value, Option<ObjectId>)> {
-        self.bytes.check()?;
         static NULL: Value = Value::Null;
+        self.bytes.check()?;
         let mut current = value;
         let mut origin = None;
         for _ in 0..=self.limits.depth {
