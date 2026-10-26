@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "547100b3ac9356b8b3119d728f140b84981fcc72",
+  "audited_revision": "dd51de9aea0546c171cae85a13b712914782ed78",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -193,8 +193,8 @@
     "crates/pagura-raster/src/band/shape.rs": "3491971d126cead473913adb1d3ac414038682820fac840351ac37c638fc8153",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
     "crates/pagura-raster/src/flatten.rs": "158f8a7ff4f508444c6c70d4432d6d76199f2106a0fd85b9ee576c1327f840df",
-    "crates/pagura-raster/src/stroke.rs": "712f559f5f117cb2f6411482726d463380a7971ab425684de99c4f2c845380ee",
-    "crates/pagura-raster/src/stroke/tests.rs": "d8d0291a1dc2f4e2ce3b06caca7753316d5aad262a7934c0b2a9509b1cc2ba38",
+    "crates/pagura-raster/src/stroke.rs": "1b6f91e4448bbf4b0d62a2d9e971e20207c050f125a3f91d54be2124d8a2993d",
+    "crates/pagura-raster/src/stroke/tests.rs": "e9e0b38a05c642df4576c77ac95f75c5303ac17b2e1bb752afd58853aad41517",
     "crates/pagura-raster/src/stroke/tiling.rs": "000223c7f258e99e6f92ab28ebe144d80242367a3f24f3e6912be16bc294b784",
     "crates/pagura-raster/src/tests.rs": "fc04bac4f08a3e57009abd6a5bb3abb33f51815ee0533fa9491ffff9c3862da9",
     "crates/pagura-raster/tests/exact/strokes.rs": "8b186ec3c171e49b288a2eff29e97a4236ca1a4d01798bc07f42ce862a18ec7e",
@@ -274,7 +274,7 @@
     "tools/host_test.mjs": "a7740c479dfb3a6a751078ae578bb15f41a89006baece5cfb59f0b7707a25db0",
     "tools/test_cloud_pixels.py": "0c30cbaba6a71c797953214f25f3cc04e2de2976a496f3b43c23c24a4ae7d878",
     "tools/test_font_pixels.py": "e113d871e3c2dd557079fafddeaf5770baf27e83d154f973071d2053ee258a3c",
-    "tools/test_rounded_pixels.py": "51beb80e467928273fa6364fc619ab094457e1c00d9ee82f8da27dd38c42a80f",
+    "tools/test_rounded_pixels.py": "0540f5c35e28aeb8166bb9fd0c7c206ae80170fbc64328109be0e7b873a8f2e1",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
