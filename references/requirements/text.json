@@ -419,7 +419,8 @@
           "Format 12: Segmented coverage"
         ],
         "rule": "Format 8 contains an 8192-byte bitmap, sorted nonoverlapping sequential map groups and a reserved zero word. Its introductory UTF-16 description conflicts with the later U+0000..U+0010 high-word illustration. Both supplementary encodings remain diagnostic candidates until adjudicated; BMP coverage is unaffected by that ambiguity.",
-        "scope": "Six original subjects with matched format-12 controls, unchanged outlines/metrics and independent rectangle expectations. Post 3 removes name fallback. FontFile2 PDF Differences selects A or u1F600 through the existing binding. No product change or support claim."
+        "scope": "Six original subjects with matched format-12 controls, unchanged outlines/metrics and independent rectangle expectations. Post 3 removes name fallback. FontFile2 PDF Differences selects A or u1F600 through the existing binding. No product change or support claim.",
+        "observation_caution": "The first supplementary subjects map the literal byte and supplementary scalar to the same glyph, so their MuPDF passes establish admission but cannot distinguish selection routes. Follow-up isolated rows map the literal byte to a different curved glyph. No earlier bytes/oracles are changed."
       }
     },
     {

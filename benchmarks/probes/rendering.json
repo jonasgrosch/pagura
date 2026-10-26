@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Private R04 format-8 compatibility observations: BMP subjects plus separately named UTF-16 and UCS-4 supplementary candidates, each with matched format-12 controls on Windows/Unicode platform records. Supplemental encoding validity is unadjudicated because the primary prose conflicts. Rectangle comparisons diagnose mappings; they do not establish format or family conformance. No timing.",
+  "scope": "Private R04 format-8 compatibility observations: BMP subjects plus separately named UTF-16 and UCS-4 supplementary candidates, each with matched format-12 controls on Windows/Unicode platform records. Supplemental encoding validity is unadjudicated because the primary prose conflicts. Rectangle comparisons diagnose mappings; they do not establish format or family conformance. No timing. Six additional selection controls map literal byte A to a distinct curved glyph while keeping the supplementary mapping to the rectangle; four format-8 subjects share two platform-matched format-12 controls. Earlier supplementary rows cannot distinguish literal-byte fallback and are retained only as admission observations.",
   "cases": [
     {
       "id": "control.blank",
@@ -189,6 +189,84 @@
       "capability": "fonts.programs",
       "operation": "render",
       "fixture": "font_formats/cmap12-unicode-ucs4",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-windows-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-windows-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-windows-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-windows-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-windows-ucs4-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-windows-ucs4-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-unicode-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-unicode-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-unicode-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-unicode-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-unicode-ucs4-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-unicode-ucs4-isolated",
       "oracle": "rgb8",
       "expected": {
         "width": 32,

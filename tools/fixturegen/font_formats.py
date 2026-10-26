@@ -57,22 +57,28 @@ def cmap_cases():
     for platform, encoding, label in ((3, 10, 'windows'), (0, 4, 'unicode')):
         for mode, code, name in (('bmp', 65, b'A'), ('utf16', 0xd83dde00, b'u1F600'),
                                  ('ucs4', 0x1f600, b'u1F600')):
-            for fmt in (8, 12):
-                mapping = {code if fmt == 8 else (65 if mode == 'bmp' else 0x1f600): 1}
-                if mode != 'bmp':
-                    mapping[65] = 1
-                if fmt == 8:
-                    cmap = mixed_cmap(mapping, platform, encoding)
-                else:
-                    # Reuse the existing format-12 writer, changing only its
-                    # encoding-record identity for the Unicode-platform pair.
-                    cmap = text_cmap_records([(3, 10, mapping)])
-                    cmap = cmap[:4] + u16(platform) + u16(encoding) + cmap[8:]
-                program = truetype(table_overrides={b'cmap': cmap, b'post': u32(0x30000) + bytes(28)})
-                font_encoding = b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /' + name + b'] >>'
-                yield case(f'cmap{fmt}-{label}-{mode}', b'BT /F 100 Tf 1 0 0 1 4 4 Tm (A) Tj ET',
-                           source_objects(program, font_encoding), FONT, [((4, 4, 10, 20), BLACK)],
-                           requirement=REQUIREMENT)
+            for isolated in ([False] if mode == 'bmp' else [False, True]):
+                for fmt in (8, 12):
+                    # Both supplementary encodings share the same format-12
+                    # control; keep only one extra copy for each platform.
+                    if isolated and fmt == 12 and mode == 'ucs4':
+                        continue
+                    mapping = {code if fmt == 8 else (65 if mode == 'bmp' else 0x1f600): 1}
+                    if mode != 'bmp':
+                        # GID2 is a different curved glyph. Literal-byte fallback
+                        # must no longer pass the supplementary selection oracle.
+                        mapping[65] = 2 if isolated else 1
+                    if fmt == 8:
+                        cmap = mixed_cmap(mapping, platform, encoding)
+                    else:
+                        cmap = text_cmap_records([(3, 10, mapping)])
+                        cmap = cmap[:4] + u16(platform) + u16(encoding) + cmap[8:]
+                    program = truetype(table_overrides={b'cmap': cmap, b'post': u32(0x30000) + bytes(28)})
+                    font_encoding = b'<< /BaseEncoding /WinAnsiEncoding /Differences [65 /' + name + b'] >>'
+                    suffix = '-isolated' if isolated else ''
+                    yield case(f'cmap{fmt}-{label}-{mode}{suffix}', b'BT /F 100 Tf 1 0 0 1 4 4 Tm (A) Tj ET',
+                               source_objects(program, font_encoding), FONT, [((4, 4, 10, 20), BLACK)],
+                               requirement=REQUIREMENT)
 
 
 def cases():

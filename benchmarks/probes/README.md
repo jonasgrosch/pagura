@@ -223,3 +223,17 @@ high-word example. UTF-16 and UCS-4 candidates remain explicitly unadjudicated.
 Their measurements describe reader behavior and cannot alone establish validity
 or a feature gap. The integrated 13-case font manifest remains on its feature
 branch; this private selection must not replace it. No new product path is added.
+
+The first [format-8 run](https://github.com/jonasgrosch/pagura/actions/runs/40389135721)
+at `236bc69d7` shows MuPDF passing all15 cases; Pagura and Poppler miss all six
+format-8 subjects while passing every format-12 control. Other tested baselines
+miss paired font controls and do not isolate a format gap. Linux report SHA-256:
+`c8b83689377383626013727973e9e9f75f09ffcb9c3b09042ef7411e542f300c`;
+macOS report SHA-256 `e00e8aabef3fc94e551420d92b9925f36512bd80218110381c797a17256ee49c`.
+
+The BMP result is independent. The supplementary subjects map literal byte A
+and the intended scalar to the same glyph, so those passes do not identify the
+reader selection route. Six additional controls isolate that route by mapping
+A to a distinct curved glyph while the supplementary entry retains the rectangle.
+Four format-8 subjects share two platform-matched format-12 controls. All earlier
+bytes and expectations remain unchanged; the21-case follow-up remains diagnostic.
