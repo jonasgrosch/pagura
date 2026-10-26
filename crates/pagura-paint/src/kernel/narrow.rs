@@ -429,7 +429,7 @@ pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f
 /// The levels of opaque colours, three values a pixel, over `pixels`: a
 /// store at full opacity, [`levels`] of each colour. Eight pixels at a time,
 /// their 24 values convert as one run, which vectorizes.
-fn overwrite_f32(pixels: &mut [[f32; 4]], values: &[f64]) {
+pub(crate) fn overwrite_f32(pixels: &mut [[f32; 4]], values: &[f64]) {
     let (blocks, last) = pixels.as_chunks_mut::<8>();
     let (colors, rest) = values.as_chunks::<24>();
     for (block, color) in blocks.iter_mut().zip(colors) {
