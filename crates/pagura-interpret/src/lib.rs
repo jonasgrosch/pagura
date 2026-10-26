@@ -54,7 +54,8 @@ pub use scene::{
 pub use text_device::TextDevice;
 
 use machine::{Inputs, Machine};
-use pagura_core::{Error, ObjectId, Rect, Result, Store};
+use pagura_core::{Error, ObjectId, Rect, Store};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 
 /// The shared inputs of interpreting pages of one document.
@@ -128,15 +129,14 @@ impl<'a> Interpreter<'a> {
     /// strict recovery. A failed interpretation leaves the device with a
     /// partial page, which devices discard. `InvalidArgument` when a form
     /// filler belongs to another document.
-    pub fn run<D: Device + ?Sized>(&self, page: &Page, device: &mut D) -> Result<()> {
+    pub fn run<D: Device + ?Sized>(&self, page: &Page, device: &mut D) -> ReadResult<()> {
         if self
             .filler
             .is_some_and(|filler| !std::ptr::eq(filler.document(), self.document))
         {
-            return Err(Error::invalid_argument(
-                "page does not belong to form document",
-            ));
+            return Err(Error::invalid_argument("page does not belong to form document").into());
         }
+        self.document.check_page(page)?;
         let inputs = self.inputs(Some(page.resources()));
         let mut machine = Machine::new(&inputs, device)?;
         machine.page(page).map_err(|e| e.in_object(page.id()))
@@ -161,7 +161,7 @@ impl<'a> Interpreter<'a> {
     ///
     /// As [`Self::run`], plus `Limit` errors for the scene's marks
     /// (`display_commands`) and bytes (`render_bytes`).
-    pub fn scene(&self, page: &Page) -> Result<Scene> {
+    pub fn scene(&self, page: &Page) -> ReadResult<Scene> {
         let mut recorder = SceneRecorder::new(self.document.limits());
         self.run(page, &mut recorder)?;
         recorder.finish()
@@ -178,7 +178,7 @@ impl<'a> Interpreter<'a> {
     ///
     /// As [`Self::run`], plus `Limit` errors for `text_items` and the text's
     /// bytes (`document_bytes`).
-    pub fn text(&self, page: &Page) -> Result<pagura_extract::PositionedText> {
+    pub fn text(&self, page: &Page) -> ReadResult<pagura_extract::PositionedText> {
         let mut device = TextDevice::new(self.document.limits());
         self.run(page, &mut device)?;
         device.finish()
@@ -197,7 +197,8 @@ impl<'a> Interpreter<'a> {
         page: &Page,
         appearance: ObjectId,
         rect: Rect,
-    ) -> Result<pagura_extract::PositionedText> {
+    ) -> ReadResult<pagura_extract::PositionedText> {
+        self.document.check_page(page)?;
         let mut device = TextDevice::new(self.document.limits());
         let inputs = self.inputs(None);
         let mut machine = Machine::new(&inputs, &mut device)?;

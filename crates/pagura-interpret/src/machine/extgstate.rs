@@ -9,8 +9,9 @@ use crate::features;
 use crate::model::BlendMode;
 use crate::resources::function;
 use pagura_content::{Dash, Op};
-use pagura_core::{Dictionary, Error, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// `gs`.
@@ -19,7 +20,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         name: &Name,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         let value = resource(document, resources, b"ExtGState", name.as_bytes())?;
         let dictionary = document.resolve_dictionary(value)?;
@@ -74,7 +75,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         value: &Value,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         if scope.stencil
             && matches!(
@@ -104,7 +105,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     .is_some_and(|n| n == b"Default")
                 {
                     if !matches!(key, b"BG2" | b"UCR2") {
-                        return Err(Error::syntax("Default requires BG2 or UCR2"));
+                        return Err(Error::syntax("Default requires BG2 or UCR2").into());
                     }
                     None
                 } else {
@@ -123,7 +124,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                         .as_name()
                         .is_some_and(|n| n == b"Default")
                 {
-                    return Err(Error::syntax("Default transfer is only valid for TR2"));
+                    return Err(Error::syntax("Default transfer is only valid for TR2").into());
                 }
                 scope.state.transfer = function::transfer(document, value)?;
             }
@@ -153,12 +154,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 
 /// The entries Table 58 defines that need no function, colour space or
 /// soft mask.
-fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) -> Result<()> {
+fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) -> ReadResult<()> {
     let state = &mut scope.state;
     match key {
         b"Type" => {
             if value.as_name().is_none_or(|n| n != b"ExtGState") {
-                return Err(Error::syntax("invalid ExtGState Type"));
+                return Err(Error::syntax("invalid ExtGState Type").into());
             }
         }
         b"D" => {
@@ -206,7 +207,7 @@ fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) 
         }
         b"OPM" => {
             if !matches!(value.as_integer(), Some(0 | 1)) {
-                return Err(Error::syntax("invalid overprint mode"));
+                return Err(Error::syntax("invalid overprint mode").into());
             }
             state.nonzero_overprint = value.as_integer() == Some(1);
         }
@@ -221,7 +222,7 @@ fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) 
             if !matches!(value, Value::Dictionary(_))
                 && value.as_name().is_none_or(|n| n != b"Default")
             {
-                return Err(Error::syntax("HT must be a halftone or Default"));
+                return Err(Error::syntax("HT must be a halftone or Default").into());
             }
         }
         // Smoothness is a device-dependent approximation hint (8.4.5).
@@ -242,10 +243,11 @@ fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) 
                 return Err(Error::unsupported(
                     features::EXTGSTATE_BLACK_POINT_COMPENSATION,
                     "rendering feature is not implemented",
-                ));
+                )
+                .into());
             }
             if name != b"OFF" && name != b"Default" {
-                return Err(Error::syntax("invalid UseBlackPtComp"));
+                return Err(Error::syntax("invalid UseBlackPtComp").into());
             }
         }
         // Continuous-tone output has no halftone grid (10.6.1, Table 58).
@@ -254,7 +256,7 @@ fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) 
                 .as_array()
                 .is_none_or(|v| v.len() != 2 || v.iter().any(|v| v.as_number().is_none())) =>
         {
-            return Err(Error::syntax("HTO requires two numbers"));
+            return Err(Error::syntax("HTO requires two numbers").into());
         }
         _ => {}
     }
@@ -263,7 +265,7 @@ fn parameter(document: &Document, key: &[u8], value: &Value, scope: &mut Scope) 
 }
 
 /// `BM`: a name or an array whose first known name applies (11.3.5).
-fn blend_mode(document: &Document, value: &Value) -> Result<BlendMode> {
+fn blend_mode(document: &Document, value: &Value) -> ReadResult<BlendMode> {
     if let Some(names) = value.as_array() {
         let mut selected = None;
         for value in names {

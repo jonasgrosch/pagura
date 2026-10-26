@@ -144,6 +144,8 @@ fn discovery_routes_absence_defaults_and_external_files_stay_distinct() {
             .unwrap()
             .attachment_annotations(&other)
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::InvalidArgument
     );
@@ -177,13 +179,13 @@ fn malformed_annotations_and_reference_cycles_never_return_partial_views() {
             .unwrap()
             .attachment_annotations(&document)
             .unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Syntax, "{name}");
         assert!(
-            error.object.is_some(),
+            error.as_error().unwrap().object.is_some(),
             "{name}: error retains source identity"
         );
         if name == "late-failure" {
-            assert_eq!(error.object, Some(ObjectId::new(9, 0)));
+            assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(9, 0)));
         }
     }
     let document = open("reference-cycle", &OpenOptions::default()).unwrap();
@@ -193,6 +195,8 @@ fn malformed_annotations_and_reference_cycles_never_return_partial_views() {
             .unwrap()
             .attachment_annotations(&document)
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Cycle
     );
@@ -210,6 +214,8 @@ fn malformed_annotations_and_reference_cycles_never_return_partial_views() {
             .unwrap()
             .attachment_annotations(&strict)
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .repair,
         Some(pagura_core::repairs::INVALID_TEXT)
     );
@@ -256,9 +262,10 @@ fn discovery_and_decoding_have_independent_budgets_and_authorization() {
         .unwrap();
         let page = document.page(0).unwrap();
         let error = page.attachment_annotations(&document).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
         assert_eq!(
-            error.message, message,
+            error.as_error().unwrap().message,
+            message,
             "the requested view budget, not page-cache preparation, must refuse this fixture"
         );
     }
@@ -299,6 +306,8 @@ fn discovery_and_decoding_have_independent_budgets_and_authorization() {
             .file
             .data()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -323,7 +332,10 @@ fn discovery_and_decoding_have_independent_budgets_and_authorization() {
             } else if password == b"attachment" || password == b"owner" {
                 assert_eq!(payload.unwrap().as_ref(), b"attached file bytes");
             } else {
-                assert_eq!(payload.unwrap_err().kind, ErrorKind::Password);
+                assert_eq!(
+                    payload.unwrap_err().as_error().unwrap().kind,
+                    ErrorKind::Password
+                );
             }
         }
     }

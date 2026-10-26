@@ -30,6 +30,7 @@ use pagura_core::hash::FastMap;
 use pagura_core::{
     Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
 };
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};
 use state::Graphics;
@@ -193,7 +194,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// # Errors
     ///
     /// Errors of the document's optional-content configuration.
-    pub(crate) fn new(inputs: &Inputs<'a>, device: &'d mut D) -> Result<Self> {
+    pub(crate) fn new(inputs: &Inputs<'a>, device: &'d mut D) -> ReadResult<Self> {
         let document = inputs.document;
         let limits = document.limits();
         let needs = device.needs();
@@ -241,7 +242,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// # Errors
     ///
     /// As [`crate::Interpreter::run`].
-    pub(crate) fn page(&mut self, page: &'a Page) -> Result<()> {
+    pub(crate) fn page(&mut self, page: &'a Page) -> ReadResult<()> {
         let document = self.document();
         let paint = self.needs().paint;
         let group = if paint {
@@ -287,7 +288,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         content: &Content<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let outer = self.position;
         let result = self.sequence(content, resources, scope);
         self.position = outer;
@@ -299,7 +300,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         content: &Content<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         self.session.serial += 1;
         scope.initial = Some((Arc::new(scope.state.clone()), self.session.serial));
         let mut reader = Reader::new(content, &self.session.limits);
@@ -311,7 +312,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 }
                 op => self.operation(op, resources, scope),
             };
-            result.map_err(|error| content.locate(error, offset))?;
+            result.map_err(|fault| fault.map_error(|error| content.locate(error, offset)))?;
         }
         if !reader.is_balanced()
             || !scope.marked.is_empty()
@@ -319,10 +320,12 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             || scope.pending_clip.is_some()
             || scope.text.is_some()
         {
-            return Err(content.locate(
-                Error::syntax("content sequence ends with unfinished state"),
-                content.end(),
-            ));
+            return Err(content
+                .locate(
+                    Error::syntax("content sequence ends with unfinished state"),
+                    content.end(),
+                )
+                .into());
         }
         if !scope.saved.is_empty() {
             let located = content.locate(
@@ -330,7 +333,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 content.end(),
             );
             let Position::Stream { object, .. } = located.position else {
-                return Err(located);
+                return Err(located.into());
             };
             self.document().repair(
                 Diagnostic::new(
@@ -347,13 +350,18 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
 
     /// Executes one operation, applying the restrictions of Type 3 glyph
     /// procedures and uncoloured tiling cells first.
-    fn operation(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
+    fn operation(
+        &mut self,
+        op: Op<'_>,
+        resources: &Dictionary,
+        scope: &mut Scope,
+    ) -> ReadResult<()> {
         if self.ignores(&op, resources, scope)? {
             return Ok(());
         }
         let result = self.execute(op, resources, scope);
         if scope.path.len() > self.session.limits.path_segments {
-            return Err(Error::limit("path segment budget exceeded"));
+            return Err(Error::limit("path segment budget exceeded").into());
         }
         result
     }
@@ -366,7 +374,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         reader: &mut Reader<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let op = Op::InlineImage(dictionary);
         let ignored = self.ignores(&op, resources, scope)?;
         let Op::InlineImage(dictionary) = &op else {
@@ -383,21 +391,21 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
 
     /// Whether the glyph procedure or uncoloured tiling cell `scope` runs
     /// ignores `op`.
-    fn ignores(&self, op: &Op<'_>, resources: &Dictionary, scope: &Scope) -> Result<bool> {
+    fn ignores(&self, op: &Op<'_>, resources: &Dictionary, scope: &Scope) -> ReadResult<bool> {
         if scope.procedure.is_none() && !scope.stencil {
             return Ok(false);
         }
         Ok(scope.glyph_restriction(op)? || self.stencil_ignores(op, resources, scope)?)
     }
 
-    fn execute(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
+    fn execute(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> ReadResult<()> {
         match op {
-            Op::Save => scope.save(&self.session.limits),
-            Op::Restore => self.restore(scope),
+            Op::Save => Ok(scope.save(&self.session.limits)?),
+            Op::Restore => Ok(self.restore(scope)?),
             Op::Concatenate(m) => {
                 let matrix = matrix(m).then(scope.state.ctm);
                 if !matrix.is_finite() {
-                    return Err(Error::syntax("CTM arithmetic overflow"));
+                    return Err(Error::syntax("CTM arithmetic overflow").into());
                 }
                 scope.state.set_ctm(matrix);
                 Ok(())
@@ -408,16 +416,16 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             | Op::MiterLimit(_)
             | Op::Dash(_)
             | Op::Flatness(_)
-            | Op::RenderingIntent(_) => params::apply(&op, &mut scope.state),
+            | Op::RenderingIntent(_) => Ok(params::apply(&op, &mut scope.state)?),
             Op::MoveTo(_)
             | Op::LineTo(_)
             | Op::CurveTo(_)
             | Op::CurveToInitial(_)
             | Op::CurveToFinal(_)
             | Op::ClosePath
-            | Op::Rectangle(_) => self.construct(&op, scope),
-            Op::Paint(painting) => self.paint_operator(painting, scope),
-            Op::Clip(rule) => path::clip_operator(rule, scope),
+            | Op::Rectangle(_) => Ok(self.construct(&op, scope)?),
+            Op::Paint(painting) => Ok(self.paint_operator(painting, scope)?),
+            Op::Clip(rule) => Ok(path::clip_operator(rule, scope)?),
             Op::StrokeColorSpace(_)
             | Op::FillColorSpace(_)
             | Op::StrokeColor(_)
@@ -436,7 +444,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             Op::BeginMarkedContent(_) | Op::BeginMarkedContentProperties { .. } => {
                 self.begin_marked(op, resources, scope)
             }
-            Op::EndMarkedContent => self.end_marked(scope),
+            Op::EndMarkedContent => Ok(self.end_marked(scope)?),
             Op::MarkedPoint(_)
             | Op::MarkedPointProperties { .. }
             | Op::BeginCompatibility
@@ -456,7 +464,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         appearance: ObjectId,
         rect: pagura_core::Rect,
         resources: &Dictionary,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let object = self.document().object(appearance)?;
         self.appearance(form::FormBody::Stored(object), rect, resources, Text::Page)
     }
@@ -479,14 +487,15 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     pub(crate) fn stream_content(
         &mut self,
         object: &pagura_document::IndirectObject,
-    ) -> Result<Arc<Content<'static>>> {
+    ) -> ReadResult<Arc<Content<'static>>> {
+        self.document().check_source()?;
         let id = object.id();
         if let Some(content) = self.session.contents.get(&id) {
             return Ok(Arc::clone(content));
         }
         let document = self.document();
         let limits = self.session.limits;
-        let build = || -> Result<pagura_core::Built<Content<'static>>> {
+        let build = || -> ReadResult<pagura_core::Built<Content<'static>>> {
             let content = Content::from_streams([(id, document.stream_data(object)?)], &limits)?;
             Ok(pagura_core::Built {
                 bytes: content
@@ -517,10 +526,10 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     ///
     /// The errors of reading and decoding the streams and the content
     /// budget.
-    fn page_content(&self, page: &Page) -> Result<Arc<Content<'static>>> {
+    fn page_content(&self, page: &Page) -> ReadResult<Arc<Content<'static>>> {
         let document = self.document();
         let limits = self.session.limits;
-        let build = || -> Result<pagura_core::Built<Content<'static>>> {
+        let build = || -> ReadResult<pagura_core::Built<Content<'static>>> {
             let streams = document.content_streams(page)?;
             let mut data = Vec::with_capacity(streams.len());
             for stream in &streams {

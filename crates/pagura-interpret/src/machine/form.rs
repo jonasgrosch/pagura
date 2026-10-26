@@ -11,6 +11,7 @@ use crate::resources::group;
 use pagura_content::Content;
 use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_raster::{FillRule, Path, Transform};
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -74,7 +75,7 @@ pub(crate) fn resource<'a>(
     resources: &'a Dictionary,
     kind: &[u8],
     name: &[u8],
-) -> Result<&'a Value> {
+) -> ReadResult<&'a Value> {
     resources
         .get(kind)
         .map(|v| document.resolve_dictionary(v))
@@ -88,7 +89,10 @@ pub(crate) fn resource<'a>(
 /// # Errors
 ///
 /// `Syntax` for a missing or malformed `BBox` or `Matrix`.
-pub(crate) fn geometry(document: &Document, dictionary: &Dictionary) -> Result<(Rect, Transform)> {
+pub(crate) fn geometry(
+    document: &Document,
+    dictionary: &Dictionary,
+) -> ReadResult<(Rect, Transform)> {
     let bbox = dictionary
         .get(b"BBox")
         .map(|v| document.resolve(v))
@@ -104,7 +108,7 @@ pub(crate) fn geometry(document: &Document, dictionary: &Dictionary) -> Result<(
                 .as_array()
                 .ok_or(Error::syntax("form Matrix must be an array"))?;
             if values.len() != 6 {
-                return Err(Error::syntax("matrix must have six numbers"));
+                return Err(Error::syntax("matrix must have six numbers").into());
             }
             let mut m = [0.0; 6];
             for (out, value) in m.iter_mut().zip(values) {
@@ -126,7 +130,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         name: &pagura_core::Name,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         let value = resource(document, resources, b"XObject", name.as_bytes())?;
         let id = value
@@ -144,7 +148,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     }
 
     /// Whether optional content hides the form (Table 93).
-    pub(crate) fn form_hidden(&self, dictionary: &Dictionary) -> Result<bool> {
+    pub(crate) fn form_hidden(&self, dictionary: &Dictionary) -> ReadResult<bool> {
         Ok(dictionary
             .get(b"OC")
             .map(|oc| self.session.visibility.visible(self.document(), oc))
@@ -160,7 +164,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         body: FormBody<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         // Devices that need structure receive hidden marks, flagged.
         let hidden = if self.needs().structure {
             HiddenForm::Interpret
@@ -224,16 +228,16 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         resources: &'f Dictionary,
         scope: &Scope,
         hidden: HiddenForm,
-    ) -> Result<Option<PreparedForm<'f>>>
+    ) -> ReadResult<Option<PreparedForm<'f>>>
     where
         'a: 'f,
     {
         let document = self.document();
         if body.id().is_some_and(|id| scope.forms.contains(&id)) {
-            return Err(Error::cycle("recursive form XObject"));
+            return Err(Error::cycle("recursive form XObject").into());
         }
         if scope.forms.len() >= self.session.limits.depth {
-            return Err(Error::limit("form nesting budget exceeded"));
+            return Err(Error::limit("form nesting budget exceeded").into());
         }
         let dictionary = body.dictionary()?;
         match dictionary
@@ -241,12 +245,13 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             .map(pagura_core::Name::as_bytes)
         {
             Some(b"Form") => {}
-            Some(b"Image") => return Err(Error::syntax("XObject is not a form")),
+            Some(b"Image") => return Err(Error::syntax("XObject is not a form").into()),
             _ => {
                 return Err(Error::unsupported(
                     features::XOBJECT_SUBTYPE,
                     "rendering feature is not implemented",
-                ));
+                )
+                .into());
             }
         }
         // Table 93 (8.10.2): skip an invisible form in its entirety.
@@ -257,7 +262,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         if let Some(kind) = dictionary.get(b"FormType")
             && document.resolve(kind)?.as_integer() != Some(1)
         {
-            return Err(Error::syntax("invalid FormType"));
+            return Err(Error::syntax("invalid FormType").into());
         }
         let (bbox, matrix) = geometry(document, dictionary)?;
         let mut child = scope.child(scope.role);
@@ -266,7 +271,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         }
         let ctm = matrix.then(child.state.ctm);
         if !ctm.is_finite() {
-            return Err(Error::syntax("form matrix arithmetic overflow"));
+            return Err(Error::syntax("form matrix arithmetic overflow").into());
         }
         child.state.set_ctm(ctm);
         child.initial_ctm = ctm;

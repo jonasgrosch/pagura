@@ -12,6 +12,7 @@ use crate::model::{GroupAttributes, GroupCause};
 use crate::repairs;
 use pagura_content::{Op, TextItem};
 use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_raster::{FillRule, PathBuilder, Transform};
 use std::sync::Arc;
 
@@ -38,7 +39,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         op: Op<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let text = &mut scope.state.text;
         match op {
             Op::BeginText => self.begin_text(scope)?,
@@ -109,7 +110,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 self.show(&bytes, resources, scope)?;
             }
             Op::GlyphWidth(_) | Op::GlyphWidthBounds(_) => self.glyph_metrics(&op, scope)?,
-            _ => return Err(Error::syntax("invalid text operator")),
+            _ => return Err(Error::syntax("invalid text operator").into()),
         }
         Ok(())
     }
@@ -140,7 +141,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         value: &Value,
         size: f64,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let font = self.session.fonts.select(value, self.position)?;
         if self.needs().text && scope.role == super::Text::Page {
             self.device.select_font(&font.info)?;

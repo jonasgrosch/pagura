@@ -9,6 +9,7 @@ use crate::model::{GroupAttributes, GroupCause};
 use crate::repairs;
 use pagura_content::Op;
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result};
+use pagura_document::source::ReadResult;
 use pagura_raster::Transform;
 
 /// The state of a glyph procedure: whether its metrics were set, whether
@@ -123,12 +124,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         resources: &Dictionary,
         expected: (f64, f64),
         scope: &Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if scope.forms.contains(&id) {
-            return Err(Error::cycle("recursive Type3 glyph"));
+            return Err(Error::cycle("recursive Type3 glyph").into());
         }
         if scope.forms.len() >= self.session.limits.depth {
-            return Err(Error::limit("Type3 nesting budget exceeded"));
+            return Err(Error::limit("Type3 nesting budget exceeded").into());
         }
         let document = self.document();
         let mut child = scope.child(Text::Paint);
@@ -158,13 +159,16 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let painted = opened?;
         let procedure = child.procedure.as_ref();
         if procedure.is_none_or(|p| p.phase == Phase::AwaitMetrics) {
-            return Err(Error::syntax("Type3 glyph has no metrics").in_object(id));
+            return Err(Error::syntax("Type3 glyph has no metrics")
+                .in_object(id)
+                .into());
         }
         if let Some(position) = procedure.and_then(|p| p.reversed_bounds) {
             if painted {
                 return Err(Error::syntax("invalid Type3 glyph bounding box")
                     .at(position)
-                    .in_object(id));
+                    .in_object(id)
+                    .into());
             }
             document.repair(
                 Diagnostic::new(

@@ -8,6 +8,7 @@ use crate::fonts::LoadedFont;
 use crate::machine::Text;
 use crate::machine::path::finite;
 use pagura_core::{Dictionary, Error, Result};
+use pagura_document::source::ReadResult;
 use pagura_raster::{Path, PathBuilder, Segment, Transform};
 use pagura_text::GlyphShape;
 use std::sync::Arc;
@@ -19,7 +20,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         bytes: &[u8],
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let mut font = None;
         self.show_with(&mut font, bytes, resources, scope)
     }
@@ -32,7 +33,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         bytes: &[u8],
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         text_object(scope)?;
         let font = match font {
             Some(font) => font,
@@ -66,7 +67,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         strings: &mut Strings,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let unicode = if text { font.unicode.as_deref() } else { None };
         font.font
             .decode_into(bytes, unicode, &mut strings.decoded)
@@ -107,7 +108,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         run: &Run,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<Glyph> {
+    ) -> ReadResult<Glyph> {
         let matrix = scope
             .text
             .as_ref()

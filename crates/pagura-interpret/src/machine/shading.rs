@@ -6,7 +6,8 @@ use super::{Machine, Scope};
 use crate::device::{Device, MarkState, ShadingMark};
 use crate::model::Shading;
 use crate::resources::shading;
-use pagura_core::{Dictionary, Name, Result, Value};
+use pagura_core::{Dictionary, Name, Value};
+use pagura_document::source::ReadResult;
 use std::sync::Arc;
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
@@ -15,7 +16,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         name: &Name,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if !self.needs().paint {
             return Ok(());
         }
@@ -43,7 +44,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         &mut self,
         value: &Value,
         resources: &Dictionary,
-    ) -> Result<Arc<Shading>> {
+    ) -> ReadResult<Arc<Shading>> {
         shading::read(&mut self.session.colors, resources, value).map(Arc::new)
     }
 }

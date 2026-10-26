@@ -12,7 +12,8 @@ use crate::repairs;
 use crate::resources::pattern::{self, Kind, Tiling};
 use pagura_color::ColorSpace;
 use pagura_content::{ColorOperands, Op};
-use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Value};
+use pagura_document::source::ReadResult;
 use pagura_raster::{FillRule, Path, Transform};
 use std::sync::Arc;
 
@@ -33,13 +34,14 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         operands: &ColorOperands<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<Arc<Paint>> {
+    ) -> ReadResult<Arc<Paint>> {
         let Some(name) = operands.pattern.as_ref() else {
             return Err(if operands.components.is_empty() {
                 Error::syntax("missing pattern name")
             } else {
                 Error::syntax("pattern name expected")
-            });
+            }
+            .into());
         };
         let document = self.document();
         let pattern = pattern::read(document, resources, name.as_bytes(), scope.initial_ctm)?;
@@ -60,7 +62,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             }
             _ if !operands.components.is_empty() => {
                 if base.is_none_or(|s| s.components() != operands.components.len()) {
-                    return Err(Error::syntax("invalid unused pattern colour operands"));
+                    return Err(Error::syntax("invalid unused pattern colour operands").into());
                 }
                 self.repair(
                     repairs::PATTERN_UNDERLYING,
@@ -97,12 +99,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         matrix: Transform,
         uncolored: Option<&Ink>,
         scope: &Scope,
-    ) -> Result<PatternId> {
+    ) -> ReadResult<PatternId> {
         if scope.forms.contains(&tiling.id) {
-            return Err(Error::cycle("recursive tiling pattern"));
+            return Err(Error::cycle("recursive tiling pattern").into());
         }
         if scope.forms.len() >= self.session.limits.depth {
-            return Err(Error::limit("pattern nesting exceeded"));
+            return Err(Error::limit("pattern nesting exceeded").into());
         }
         let serial = scope.initial.as_ref().map_or(0, |(_, serial)| *serial);
         let key = TilingKey {
@@ -136,7 +138,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         uncolored: Option<&Ink>,
         scope: &Scope,
         id: PatternId,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         let object = document.object(tiling.id)?;
         let mut cell = scope.child(Text::Paint);
@@ -189,7 +191,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         op: &Op<'_>,
         resources: &Dictionary,
         scope: &Scope,
-    ) -> Result<bool> {
+    ) -> ReadResult<bool> {
         if !scope.stencil {
             return Ok(false);
         }

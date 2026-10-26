@@ -75,8 +75,8 @@ fn parameter_checks_require_complete_authorized_bounded_payloads() {
                 assert_eq!(checked.checksum, ParameterCheck::NotDeclared);
             } else {
                 let error = result.unwrap_err();
-                assert_eq!(error.kind, ErrorKind::Password);
-                assert_eq!(error.object, Some(ObjectId::new(6, 0)));
+                assert_eq!(error.as_error().unwrap().kind, ErrorKind::Password);
+                assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(6, 0)));
             }
         }
     }
@@ -97,6 +97,8 @@ fn parameter_checks_require_complete_authorized_bounded_payloads() {
             .file
             .check_parameters()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -107,6 +109,8 @@ fn parameter_checks_require_complete_authorized_bounded_payloads() {
             .file
             .check_parameters()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .feature(),
         Some(pagura_document::features::EXTERNAL_STREAM)
     );

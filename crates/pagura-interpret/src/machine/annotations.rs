@@ -12,6 +12,7 @@ use crate::model::{GroupAttributes, GroupCause, ViewFit};
 use crate::repairs;
 use pagura_appearance::{Appearance, AppearanceStream, FilledWidgets, FontSource};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Rect, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_document::{Document, Page};
 use pagura_raster::{Path, Point, Transform};
 use pagura_text::{PdfFont, Provider};
@@ -31,7 +32,7 @@ enum Drawn {
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// The annotations of `page`, in order.
-    pub(super) fn annotations(&mut self, page: &Page) -> Result<()> {
+    pub(super) fn annotations(&mut self, page: &Page) -> ReadResult<()> {
         let document = self.document();
         let Some(values) = page.dictionary().get(b"Annots") else {
             return Ok(());
@@ -41,7 +42,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .as_array()
             .ok_or(Error::syntax("Annots must be an array"))?;
         if values.len() > self.session.limits.traversal_work {
-            return Err(Error::limit("annotation count exceeded"));
+            return Err(Error::limit("annotation count exceeded").into());
         }
         let filled = match self.session.filler {
             Some(filler) if draws(self.needs()) => Some(FilledWidgets::new(filler)?),
@@ -59,7 +60,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         value: &Value,
         resources: &Dictionary,
         filled: Option<&FilledWidgets<'_, '_>>,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         let d = document.resolve_dictionary(value)?;
         let flags = d
@@ -73,7 +74,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .transpose()?
             .unwrap_or(0);
         if flags < 0 || flags & !1023 != 0 {
-            return Err(Error::syntax("invalid annotation flags"));
+            return Err(Error::syntax("invalid annotation flags").into());
         }
         // Hidden and NoView (Table 167).
         if flags & (2 | 32) != 0 {
@@ -150,7 +151,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         filled: Option<&FilledWidgets<'_, '_>>,
         d: &Dictionary,
         rect: Rect,
-    ) -> Result<Option<Appearance>> {
+    ) -> ReadResult<Option<Appearance>> {
         let Some(filled) = filled else {
             return Ok(None);
         };
@@ -191,8 +192,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         &mut self,
         rect: Rect,
         flags: i64,
-        draw: impl FnOnce(&mut Self) -> Result<()>,
-    ) -> Result<()> {
+        draw: impl FnOnce(&mut Self) -> ReadResult<()>,
+    ) -> ReadResult<()> {
         if flags & (NO_ZOOM | NO_ROTATE) == 0 {
             return draw(self);
         }
@@ -226,7 +227,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         rect: Rect,
         resources: &Dictionary,
         role: Text,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         let form = body.dictionary()?;
         let (bbox, matrix) = geometry(document, form)?;
@@ -292,7 +293,7 @@ impl FontSource for SessionFonts<'_, '_> {
         _: &Document,
         id: Option<ObjectId>,
         dictionary: &Dictionary,
-    ) -> Result<Arc<PdfFont>> {
+    ) -> ReadResult<Arc<PdfFont>> {
         self.0.load(id, dictionary, Position::Unknown)
     }
 
@@ -303,7 +304,11 @@ impl FontSource for SessionFonts<'_, '_> {
 
 /// The normal appearance stream of an annotation (12.5.5): `N` itself, or
 /// its entry for the appearance state `AS`; `None` for an undefined state.
-fn normal_appearance(document: &Document, d: &Dictionary, ap: &Value) -> Result<Option<ObjectId>> {
+fn normal_appearance(
+    document: &Document,
+    d: &Dictionary,
+    ap: &Value,
+) -> ReadResult<Option<ObjectId>> {
     let ap = document.resolve_dictionary(ap)?;
     let normal = ap
         .get(b"N")
@@ -336,7 +341,7 @@ fn normal_appearance(document: &Document, d: &Dictionary, ap: &Value) -> Result<
 }
 
 /// A rectangle entry.
-fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> Result<Rect> {
+fn rectangle(document: &Document, d: &Dictionary, key: &[u8]) -> ReadResult<Rect> {
     d.get(key)
         .map(|v| document.resolve(v))
         .transpose()?

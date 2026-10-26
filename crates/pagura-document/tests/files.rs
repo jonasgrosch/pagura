@@ -163,7 +163,11 @@ fn missing_null_duplicate_and_associated_entries_preserve_declared_order() {
     );
     let another = open("populated", &OpenOptions::default()).unwrap();
     assert_eq!(
-        page.associated_files(&another).unwrap_err().kind,
+        page.associated_files(&another)
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::InvalidArgument
     );
 }
@@ -199,19 +203,34 @@ fn malformed_views_and_reference_cycles_never_become_empty_successes() {
     ] {
         let document = open(name, &OpenOptions::default()).unwrap();
         assert_eq!(
-            document.embedded_files().unwrap_err().kind,
+            document
+                .embedded_files()
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::Syntax,
             "{name}"
         );
     }
     let document = open("embedded-nonstream", &OpenOptions::default()).unwrap();
     assert_eq!(
-        document.embedded_files().unwrap_err().object,
+        document
+            .embedded_files()
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .object,
         Some(ObjectId::new(8, 0))
     );
     let document = open("spec-cycle", &OpenOptions::default()).unwrap();
     assert_eq!(
-        document.embedded_files().unwrap_err().kind,
+        document
+            .embedded_files()
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Cycle
     );
     for name in [
@@ -221,7 +240,12 @@ fn malformed_views_and_reference_cycles_never_become_empty_successes() {
     ] {
         let document = open(name, &OpenOptions::default()).unwrap();
         assert_eq!(
-            document.associated_files().unwrap_err().kind,
+            document
+                .associated_files()
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::Syntax
         );
     }
@@ -238,7 +262,15 @@ fn text_and_tree_repairs_remain_visible_and_strictly_rejectable() {
         ("tree-order", pagura_document::repairs::TREE_ORDER),
     ] {
         let document = open(name, &strict).unwrap();
-        assert_eq!(document.embedded_files().unwrap_err().repair, Some(repair));
+        assert_eq!(
+            document
+                .embedded_files()
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .repair,
+            Some(repair)
+        );
         let document = open(name, &OpenOptions::default()).unwrap();
         let files = document.embedded_files().unwrap();
         assert!(!files.is_empty());
@@ -268,6 +300,8 @@ fn bounded_extraction_does_not_follow_external_streams() {
             .file
             .data()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .feature(),
         Some(pagura_document::features::EXTERNAL_STREAM)
     );
@@ -288,6 +322,8 @@ fn bounded_extraction_does_not_follow_external_streams() {
             .file
             .data()
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -303,7 +339,12 @@ fn bounded_extraction_does_not_follow_external_streams() {
     )
     .unwrap();
     assert_eq!(
-        document.embedded_files().unwrap_err().kind,
+        document
+            .embedded_files()
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Limit
     );
 }
@@ -341,8 +382,8 @@ fn embedded_authorization_applies_without_a_type_and_with_explicit_crypt() {
                 assert_eq!(file.data().unwrap().as_ref(), b"attached file bytes");
             } else {
                 let error = file.data().unwrap_err();
-                assert_eq!(error.kind, ErrorKind::Password);
-                assert_eq!(error.object, Some(ObjectId::new(6, 0)));
+                assert_eq!(error.as_error().unwrap().kind, ErrorKind::Password);
+                assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(6, 0)));
                 assert_eq!(file.data().unwrap_err(), error);
             }
         }

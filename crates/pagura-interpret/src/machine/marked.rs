@@ -10,6 +10,7 @@ use pagura_content::{Op, Properties};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Position, Recovery, Result, Value,
 };
+use pagura_document::source::{ReadFault, ReadResult};
 
 impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     /// `BMC` and `BDC`.
@@ -18,15 +19,15 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         op: Op<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         if scope.marked.len() >= self.session.limits.depth {
-            return Err(Error::limit("marked content nesting exceeded"));
+            return Err(Error::limit("marked content nesting exceeded").into());
         }
         let (tag, properties) = match op {
             Op::BeginMarkedContent(tag) => (tag, None),
             Op::BeginMarkedContentProperties { tag, properties } => (tag, Some(properties)),
-            _ => return Err(Error::syntax("invalid marked content operator")),
+            _ => return Err(Error::syntax("invalid marked content operator").into()),
         };
         let mut visible = true;
         if tag.as_bytes() == b"OC"
@@ -88,7 +89,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         &self,
         properties: &'r Properties,
         resources: &'r Dictionary,
-    ) -> Result<Option<&'r Dictionary>>
+    ) -> ReadResult<Option<&'r Dictionary>>
     where
         'a: 'r,
     {
@@ -100,16 +101,17 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         };
         match result {
             Ok(dictionary) => Ok(Some(dictionary)),
-            Err(error) => {
+            Err(ReadFault::Invalid(error)) => {
                 self.ignore_metadata_fault(error)?;
                 Ok(None)
             }
+            Err(fault) => Err(fault),
         }
     }
 
     /// `MCID`, `ActualText` and `Alt` (14.7.5.2, 14.9.3–14.9.4); `E` is
     /// checked but not kept.
-    fn marked_text(&self, dictionary: Option<&Dictionary>) -> Result<MarkedText> {
+    fn marked_text(&self, dictionary: Option<&Dictionary>) -> ReadResult<MarkedText> {
         let actual_text = self.property(dictionary, b"ActualText")?;
         let alt = self.property(dictionary, b"Alt")?;
         // Expansion text is speech metadata, not replacement text.
@@ -121,12 +123,12 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         })
     }
 
-    fn property(&self, dictionary: Option<&Dictionary>, name: &[u8]) -> Result<Option<String>> {
+    fn property(&self, dictionary: Option<&Dictionary>, name: &[u8]) -> ReadResult<Option<String>> {
         let Some(value) = dictionary.and_then(|d| d.get(name)) else {
             return Ok(None);
         };
         let document = self.document();
-        let result = (|| {
+        let result = (|| -> ReadResult<Option<String>> {
             let value = document.resolve(value)?;
             if value.is_null() {
                 return Ok(None);
@@ -141,24 +143,29 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
                 return Ok(None);
             }
             let mut strict = Diagnostics::new(Recovery::Strict);
-            pagura_core::text_string::decode(bytes, &document.limits(), &mut strict).map(Some)
+            Ok(Some(pagura_core::text_string::decode(
+                bytes,
+                &document.limits(),
+                &mut strict,
+            )?))
         })();
         match result {
-            Err(error) => {
+            Err(ReadFault::Invalid(error)) => {
                 self.ignore_metadata_fault(error)?;
                 Ok(None)
             }
+            Err(fault) => Err(fault),
             result => result,
         }
     }
 
-    fn marked_id(&self, dictionary: Option<&Dictionary>) -> Result<Option<i64>> {
+    fn marked_id(&self, dictionary: Option<&Dictionary>) -> ReadResult<Option<i64>> {
         let Some(value) = dictionary.and_then(|d| d.get(b"MCID")) else {
             return Ok(None);
         };
         match self.document().resolve(value) {
             Ok(value) => Ok(value.as_integer().filter(|n| *n >= 0)),
-            Err(error) if metadata_fault(&error) => Ok(None),
+            Err(ReadFault::Invalid(error)) if metadata_fault(&error) => Ok(None),
             Err(error) => Err(error),
         }
     }

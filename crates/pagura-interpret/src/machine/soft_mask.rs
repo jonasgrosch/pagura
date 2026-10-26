@@ -7,7 +7,8 @@ use crate::device::{Device, SoftMaskInfo};
 use crate::model::{MaskId, MaskKind};
 use crate::resources::{function, group, numbers};
 use pagura_color::Components;
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
+use pagura_document::source::ReadResult;
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// An `SMask` entry: `None`, or a mask dictionary whose group is
@@ -17,7 +18,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         value: &Value,
         resources: &Dictionary,
         scope: &Scope,
-    ) -> Result<Option<MaskId>> {
+    ) -> ReadResult<Option<MaskId>> {
         let document = self.document();
         let value = document.resolve(value)?;
         if value.as_name().is_some_and(|n| n == b"None") {
@@ -30,12 +31,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 .as_name()
                 .is_none_or(|n| n != b"Mask")
         {
-            return Err(Error::syntax("invalid soft-mask Type"));
+            return Err(Error::syntax("invalid soft-mask Type").into());
         }
         let kind = match d.get_name(b"S").map(pagura_core::Name::as_bytes) {
             Some(b"Alpha") => MaskKind::Alpha,
             Some(b"Luminosity") => MaskKind::Luminosity,
-            _ => return Err(Error::syntax("invalid soft-mask subtype")),
+            _ => return Err(Error::syntax("invalid soft-mask subtype").into()),
         };
         let id = d
             .get(b"G")
@@ -51,7 +52,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         d: &Dictionary,
         resources: &Dictionary,
         scope: &Scope,
-    ) -> Result<MaskId> {
+    ) -> ReadResult<MaskId> {
         let document = self.document();
         let mut parent = scope.child(Text::Paint);
         parent.state.clip = None;
@@ -73,14 +74,16 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 .ok_or_else(not_group)?;
         if kind == MaskKind::Luminosity && attributes.space.is_none() {
             return Err(
-                Error::syntax("luminosity mask requires a group colour space").in_object(id),
+                Error::syntax("luminosity mask requires a group colour space")
+                    .in_object(id)
+                    .into(),
             );
         }
         let backdrop = match (kind, attributes.space, d.get(b"BC")) {
             (MaskKind::Luminosity, Some(space), Some(value)) => {
                 let values = numbers::list(document, value, f64::MAX)?;
                 if values.len() != space.components() {
-                    return Err(Error::syntax("wrong group backdrop component count"));
+                    return Err(Error::syntax("wrong group backdrop component count").into());
                 }
                 Some(Components::from_slice(&values))
             }

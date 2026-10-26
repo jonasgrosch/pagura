@@ -9,6 +9,7 @@ use pagura_core::{
     StoreKey, Value,
 };
 use pagura_document::Document;
+use pagura_document::source::ReadResult;
 use pagura_raster::{Path, Segment};
 use pagura_text::{FontKind, FontUnicode, PdfFont, Provider, WritingMode};
 use std::collections::BTreeMap;
@@ -117,7 +118,11 @@ impl<'a> Fonts<'a> {
     ///
     /// The errors of loading the font, and `Limit` errors for the font count
     /// and retained bytes.
-    pub(crate) fn select(&mut self, value: &Value, position: Position) -> Result<Arc<LoadedFont>> {
+    pub(crate) fn select(
+        &mut self,
+        value: &Value,
+        position: Position,
+    ) -> ReadResult<Arc<LoadedFont>> {
         let document = self.document;
         let dictionary = document.resolve_dictionary(value)?;
         let id = value.as_reference();
@@ -133,7 +138,7 @@ impl<'a> Fonts<'a> {
             return Ok(font);
         }
         if self.indirect.len() + self.direct.len() >= MAX_FONTS {
-            return Err(Error::limit("font cache budget exceeded"));
+            return Err(Error::limit("font cache budget exceeded").into());
         }
         let font = self.load(id, dictionary, position)?;
         let unicode = if self.text {
@@ -151,16 +156,15 @@ impl<'a> Fonts<'a> {
             info: FontInfo {
                 key: font_key(id, dictionary),
                 object: id,
-                base_name: dictionary
-                    .get(b"BaseFont")
-                    .and_then(|v| document.resolve(v).ok())
+                base_name: crate::resources::advisory(document.optional(dictionary, b"BaseFont"))?
+                    .flatten()
                     .and_then(Value::as_name)
                     .cloned(),
                 vertical: font.writing_mode() == WritingMode::Vertical,
                 kind: font.kind(),
             },
             bbox: if self.text {
-                font_box(document, dictionary, font.kind())
+                font_box(document, dictionary, font.kind())?
             } else {
                 None
             },
@@ -182,10 +186,11 @@ impl<'a> Fonts<'a> {
         id: Option<ObjectId>,
         dictionary: &Dictionary,
         position: Position,
-    ) -> Result<Arc<PdfFont>> {
-        let load = || -> Result<Built<PdfFont>> {
+    ) -> ReadResult<Arc<PdfFont>> {
+        self.document.check_source()?;
+        let load = || -> ReadResult<Built<PdfFont>> {
             let font = PdfFont::load_at(self.document, dictionary, self.provider, position)
-                .map_err(|error| placed(error, id, position))?;
+                .map_err(|fault| fault.map_error(|error| placed(error, id, position)))?;
             let bytes = font.retained_bytes();
             Ok(Built { value: font, bytes })
         };
@@ -202,11 +207,12 @@ impl<'a> Fonts<'a> {
         id: Option<ObjectId>,
         dictionary: &Dictionary,
         position: Position,
-    ) -> Result<Arc<FontUnicode>> {
-        let load = || -> Result<Built<FontUnicode>> {
+    ) -> ReadResult<Arc<FontUnicode>> {
+        self.document.check_source()?;
+        let load = || -> ReadResult<Built<FontUnicode>> {
             let unicode = font
                 .unicode(self.document, dictionary, self.provider)
-                .map_err(|error| placed(error, id, position))?;
+                .map_err(|fault| fault.map_error(|error| placed(error, id, position)))?;
             let bytes = unicode.retained_bytes();
             Ok(Built {
                 value: unicode,
@@ -331,27 +337,40 @@ fn hash_value(value: &Value, hasher: &mut DefaultHasher) {
 
 /// `FontBBox` of the font descriptor (of the descendant of a Type 0 font,
 /// of the font itself for Type 3), when it can be read.
-fn font_box(document: &Document, dictionary: &Dictionary, kind: FontKind) -> Option<Rect> {
+fn font_box(
+    document: &Document,
+    dictionary: &Dictionary,
+    kind: FontKind,
+) -> ReadResult<Option<Rect>> {
+    use crate::resources::advisory;
     let dictionary = if kind == FontKind::Type0 {
-        let first = document
-            .resolve(dictionary.get(b"DescendantFonts")?)
-            .ok()?
-            .as_array()?
-            .first()?;
-        document.resolve_dictionary(first).ok()?
+        let Some(first) = advisory(document.optional(dictionary, b"DescendantFonts"))?
+            .flatten()
+            .and_then(Value::as_array)
+            .and_then(|values| values.first())
+        else {
+            return Ok(None);
+        };
+        let Some(dictionary) = advisory(document.resolve_dictionary(first))? else {
+            return Ok(None);
+        };
+        dictionary
     } else {
         dictionary
     };
     let dictionary = if kind == FontKind::Type3 {
         dictionary
     } else {
-        document
-            .resolve_dictionary(dictionary.get(b"FontDescriptor")?)
-            .ok()?
+        let Some(value) = dictionary.get(b"FontDescriptor") else {
+            return Ok(None);
+        };
+        let Some(dictionary) = advisory(document.resolve_dictionary(value))? else {
+            return Ok(None);
+        };
+        dictionary
     };
-    document
-        .resolve(dictionary.get(b"FontBBox")?)
-        .ok()?
-        .as_array()
-        .and_then(Rect::from_array)
+    Ok(advisory(document.optional(dictionary, b"FontBBox"))?
+        .flatten()
+        .and_then(Value::as_array)
+        .and_then(Rect::from_array))
 }

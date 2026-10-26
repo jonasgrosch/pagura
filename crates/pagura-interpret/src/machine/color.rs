@@ -8,6 +8,7 @@ use crate::repairs;
 use pagura_color::ColorSpace;
 use pagura_content::{ColorOperands, Op};
 use pagura_core::{Dictionary, Error, Result};
+use pagura_document::source::ReadResult;
 use std::sync::Arc;
 
 /// Which colour an operator sets.
@@ -41,7 +42,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         op: Op<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         if !self.needs().paint {
             return Ok(());
         }
@@ -81,7 +82,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     set(&space, &operands, &mut self.session.solids)?
                 }
             }
-            _ => return Err(Error::syntax("invalid colour operator")),
+            _ => return Err(Error::syntax("invalid colour operator").into()),
         };
         match target {
             Target::Fill => scope.state.fill = Some(ink),
@@ -99,7 +100,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         family: Family,
         values: &[f64],
         scope: &Scope,
-    ) -> Result<Ink> {
+    ) -> ReadResult<Ink> {
         let serial = scope.initial.as_ref().map(|(_, serial)| *serial);
         let slot = family as usize;
         let cached = self
@@ -120,7 +121,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             space
         };
         if values.len() != space.components() {
-            return Err(Error::syntax("wrong colour component count"));
+            return Err(Error::syntax("wrong colour component count").into());
         }
         Ok(self.session.solids.ink(&space, values))
     }

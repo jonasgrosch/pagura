@@ -7,6 +7,7 @@ use super::{Machine, Scope};
 use crate::device::{Device, ImageMark, MarkState, Marked};
 use crate::model::Image;
 use pagura_core::{Dictionary, Error, Name, ObjectId, Position, Result, Value};
+use pagura_document::source::ReadResult;
 use pagura_image::{ImageId, ImageSource};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -45,7 +46,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         dictionary: &Dictionary,
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let document = self.document();
         let stencil = dictionary
             .get(b"ImageMask")
@@ -84,12 +85,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         id: ObjectId,
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
-    ) -> Result<Arc<Image>> {
+    ) -> ReadResult<Arc<Image>> {
         if stack.contains(&id) {
-            return Err(Error::cycle("recursive image mask").in_object(id));
+            return Err(Error::cycle("recursive image mask").in_object(id).into());
         }
         if stack.len() >= self.session.limits.depth {
-            return Err(Error::limit("image mask nesting exceeded"));
+            return Err(Error::limit("image mask nesting exceeded").into());
         }
         let key = (id, self.session.images.spaces(resources)?);
         if let Some(image) = self.session.images.entries.get(&key) {
@@ -155,7 +156,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         data: &[u8],
         resources: &Dictionary,
         scope: &mut Scope,
-    ) -> Result<()> {
+    ) -> ReadResult<()> {
         let stencil = dictionary
             .get(b"ImageMask")
             .or_else(|| dictionary.get(b"IM"))
@@ -189,7 +190,7 @@ pub(super) fn framing(
     document: &pagura_document::Document,
     dictionary: &Dictionary,
     resources: &Dictionary,
-) -> Result<Dictionary> {
+) -> ReadResult<Dictionary> {
     let mut framing = dictionary.clone();
     let Some(name) = named_space(dictionary) else {
         return Ok(framing);

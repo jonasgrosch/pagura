@@ -8,6 +8,7 @@ use crate::features;
 use crate::model::{Image, ImageMask};
 use pagura_color::{ColorSpace, Components, Intent, MAX_COMPONENTS};
 use pagura_core::{Dictionary, Error, ObjectId, Result};
+use pagura_document::source::ReadResult;
 use pagura_image::jpx::JpxColor;
 use pagura_image::{ImageId, ImageKind, ImageSource, SourceMask};
 use std::sync::Arc;
@@ -20,19 +21,17 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         source: ImageSource,
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
-    ) -> Result<Arc<Image>> {
+    ) -> ReadResult<Arc<Image>> {
         let components = usize::from(source.components());
         if components == 0 || components > MAX_COMPONENTS {
-            return Err(Error::limit(
-                "image component count exceeds painter capacity",
-            ));
+            return Err(Error::limit("image component count exceeds painter capacity").into());
         }
         let space = self.image_space(&source, resources)?;
         if let Some(space) = &space
             && (matches!(space.as_ref(), ColorSpace::Pattern(_))
                 || space.components() != components)
         {
-            return Err(Error::syntax("image colour space component mismatch"));
+            return Err(Error::syntax("image colour space component mismatch").into());
         }
         let mask = match source.mask() {
             SourceMask::Soft { object, matte } => {
@@ -82,7 +81,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         &mut self,
         source: &ImageSource,
         resources: &Dictionary,
-    ) -> Result<Option<Arc<ColorSpace>>> {
+    ) -> ReadResult<Option<Arc<ColorSpace>>> {
         match source.kind() {
             ImageKind::Color {
                 color_space: Some(value),
@@ -91,7 +90,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 color: JpxColor::Icc(data),
             } => {
                 let ImageId::Object(id) = source.id() else {
-                    return Err(Error::syntax("JPXDecode is forbidden in inline images"));
+                    return Err(Error::syntax("JPXDecode is forbidden in inline images").into());
                 };
                 self.session
                     .colors
@@ -111,14 +110,15 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                         return Err(Error::unsupported(
                             features::XOBJECT_JPX_COLOR,
                             "embedded JPX colour interpretation is not implemented",
-                        ));
+                        )
+                        .into());
                     }
                 };
                 self.session.colors.named(resources, name).map(Some)
             }
             ImageKind::Stencil { .. } => Ok(None),
             ImageKind::Color { color_space: None } => {
-                Err(Error::syntax("image has no colour space"))
+                Err(Error::syntax("image has no colour space").into())
             }
         }
     }
