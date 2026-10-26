@@ -348,7 +348,7 @@ Pagura controls passing, with 183 passes and 447 pixel disagreements across the
 630 cells. Generated artwork and font/layout policies remain different; no
 observation promotes an unprobed capability family.
 
-The current manifest adds 27 further controls for text-markup quads and Caret
+The markup/Caret increment adds 27 further controls for text-markup quads and Caret
 symbols, for 117 cases / 819 cells. Highlights include underlying black/cyan
 content, Multiply/opacity, overlap, skew and zero-area geometry. Underline,
 StrikeOut and Squiggly retain their literal polygon expectations. Alternate
@@ -358,6 +358,19 @@ audit includes opening, page enumeration and rendering.
 Caret controls cover both symbols, direct stored artwork, RD, opacity and
 indirect entries. Existing oracle bytes and tolerances are unchanged. Hosted
 results for this expanded matrix are pending.
+
+The current text-appearance increment adds 63 controls for **180 cases / 1,260
+cells**. It covers all fourteen stamp names, regular/bold text, short/long labels,
+stored/generated artwork, two resolutions, rotation and separate opacity. Plain
+FreeText controls exercise Q alignment, authored line breaks, wrapping, clipping,
+auto sizing, RD, selected DR fonts and stored precedence. Callouts cover every
+ending, straight/elbow/vertical bodies, separate opacity, zero-width filled
+endings and empty text. The reported source hashes now include both regular and
+bold AFM/Arimo assets. Existing expected pixels and tolerances are unchanged.
+Hosted results for this increment are pending; prior measurements remain bound
+to their recorded source revisions. Different generated artwork, fallback fonts
+and browser annotation-layer settings require adjudication before any feature
+verdict. Every Pagura control must still meet its independent expectation.
 
 ## Next G01 increments
 

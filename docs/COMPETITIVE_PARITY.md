@@ -214,6 +214,15 @@ strict audit includes opening, page enumeration and rendering.
 Hosted execution for this increment is pending; the 90-case measurement above
 remains tied to its recorded revision.
 
+The next text-appearance increment adds 63 independent controls for a current
+manifest of **180 oracles / 1,260 cells**. All fourteen standard stamps, regular/bold
+fonts, plain FreeText alignment/wrapping/auto sizing/DR selection and all standard
+callout endings join stored/generated pairs, two resolutions, opacity, rotation,
+clipping and empty controls. Reports pin both regular and bold AFM/Arimo assets.
+Oracle bytes and tolerances are unchanged. Hosted measurement is pending; no
+family cell is promoted and reader artwork/font/API differences still need
+adjudication.
+
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
 Use browser integration tests for browser-only behaviour, and capable optional

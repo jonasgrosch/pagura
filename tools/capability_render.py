@@ -150,7 +150,8 @@ def run(data, inventory, output, selected, images=None):
                     Path('benchmarks/adapters/hayro/Cargo.toml'), Path('rust-toolchain.toml'), Path('.cargo/config.toml'),
                     Path('Cargo.toml'), Path('Cargo.lock'), Path('crates/pagura-cli/Cargo.toml'),
                     Path('crates/pagura-data/Cargo.toml'), Path('data/lock.json'),
-                    Path('data/afm/Helvetica.afm'), Path('data/fonts/Arimo-Regular.ttf')]
+                    Path('data/afm/Helvetica.afm'), Path('data/fonts/Arimo-Regular.ttf'),
+                    Path('data/afm/Helvetica-Bold.afm'), Path('data/fonts/Arimo-Bold.ttf')]
     source_files.extend(Path('corpus/manifests') / (row['fixture'].split('/')[0] + '.json') for row in data['cases'])
     report = {'schema': 1, 'scope': data['scope'], 'generated_at': datetime.now(timezone.utc).isoformat(),
               'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
