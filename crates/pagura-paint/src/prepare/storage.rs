@@ -3,8 +3,9 @@
 //! buffer (the page, each transparency group, soft mask and tiling cell) by
 //! its stores, then formats are chosen from the innermost buffer outwards
 //! and widened from the outermost inwards. The same pass decides which
-//! groups composite as their members (flattening), which run from a
-//! transparent start, and whether the page selects transfer functions.
+//! groups composite as their members (flattening), which paint nothing,
+//! which run from a transparent start, and whether the page selects
+//! transfer functions.
 
 mod formats;
 mod hulls;
@@ -17,6 +18,7 @@ use crate::plan::Layout;
 use crate::prepare::bounds;
 use crate::prepare::index;
 use crate::prepare::overprint::{Keeping, Place};
+use crate::prepare::planner::view_transform;
 use pagura_color::Process;
 use pagura_core::hash::FastMap;
 use pagura_core::{Error, Meter, Result};
@@ -26,11 +28,23 @@ use pagura_interpret::{
 };
 use pagura_raster::{DeviceRect, Transform};
 
+/// How a transparency group reaches its parent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Route {
+    /// Through its own buffer.
+    Buffer,
+    /// Its members composite into the parent directly.
+    Flatten,
+    /// Not at all: its result's alpha is 0 everywhere, which leaves the
+    /// parent's colour and alpha as they are, and no buffer it reaches
+    /// knocks out by its shape.
+    Skip,
+}
+
 /// What preparation needs to know about one transparency group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Decision {
-    /// Its members composite into the parent directly.
-    pub(crate) flatten: bool,
+    pub(crate) route: Route,
     /// Its buffer's format.
     pub(crate) format: Format,
     /// It starts transparent: isolated, or non-isolated with Normal content,
@@ -108,6 +122,9 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs, bytes: &mut Meter) -> Result
     let survey = Survey {
         scene,
         inputs,
+        // A mark records the transfer selection of the pixels it covers
+        // whatever its alpha (11.7.5.2).
+        skips: scene.states.iter().all(|state| state.transfer.is_none()),
         buffers: Vec::new(),
         groups: FastMap::default(),
         masks: FastMap::default(),
@@ -164,7 +181,7 @@ impl Survey<'_> {
         bytes.reserve_map_capacity(&mut groups, self.groups.len())?;
         for (&key, entry) in &self.groups {
             let decision = Decision {
-                flatten: entry.flatten,
+                route: entry.route,
                 format: format(entry.buffer),
                 transparent: entry.transparent,
                 knockout: entry.knockout,
@@ -200,6 +217,9 @@ struct Context {
     selects: bool,
     /// Soft-mask content.
     masked: bool,
+    /// A buffer enclosing the parent knocks out, or the content is a tiling
+    /// cell's, whose shape reaches wherever the pattern paints.
+    knockout: bool,
     /// Content space to device pixels.
     transform: Transform,
 }
@@ -209,14 +229,17 @@ impl Context {
         Self {
             selects: true,
             masked: false,
+            knockout: false,
             transform,
         }
     }
 
+    /// A soft mask's values are its group's colour and alpha, never shape.
     fn mask(self) -> Self {
         Self {
             selects: false,
             masked: true,
+            knockout: false,
             ..self
         }
     }
@@ -255,6 +278,8 @@ struct Buffer {
     later_opaque: bool,
     /// Every store blends Normal.
     normal: bool,
+    /// Some store's alpha can be positive.
+    visible: bool,
     /// It provides the backdrop of a non-isolated child whose content is not
     /// all Normal.
     reads: bool,
@@ -303,6 +328,7 @@ impl Buffer {
         // Merged stores follow its own.
         self.later_opaque &= other.opaque_members;
         self.normal &= other.normal;
+        self.visible |= other.visible;
         self.reads |= other.reads;
         self.stores = self.stores.saturating_add(other.stores);
         self.dynamic = self.dynamic.saturating_add(other.dynamic);
@@ -323,7 +349,7 @@ impl Buffer {
 #[derive(Debug, Clone, Copy)]
 struct GroupEntry {
     buffer: usize,
-    flatten: bool,
+    route: Route,
     transparent: bool,
     knockout: bool,
 }
@@ -331,6 +357,8 @@ struct GroupEntry {
 struct Survey<'s> {
     scene: &'s Scene,
     inputs: Inputs,
+    /// Groups that paint nothing can be left out.
+    skips: bool,
     buffers: Vec<Buffer>,
     groups: FastMap<(GroupId, Process), GroupEntry>,
     masks: FastMap<(MaskId, Process), usize>,
@@ -360,6 +388,7 @@ impl Survey<'_> {
             opaque_members: true,
             later_opaque: true,
             normal: true,
+            visible: false,
             reads: false,
             stores: 0,
             dynamic: 0,
@@ -460,7 +489,7 @@ impl Survey<'_> {
                 target.children.retain(|&(c, _)| c != child);
                 self.merge(buffer, child, bytes)?;
                 if let Some(entry) = self.groups.get_mut(&key) {
-                    entry.flatten = true;
+                    entry.route = Route::Flatten;
                 }
             }
         }
@@ -538,6 +567,7 @@ impl Survey<'_> {
         let first = target.stores == 0 && count == 1;
         target.stores = target.stores.saturating_add(count);
         target.transfer |= transfer;
+        target.visible |= state.alpha != 0.0;
         // A store that keeps channels reads its backdrop.
         target.normal &= state.blend == BlendMode::Normal && !keeps;
         // A store with a transfer function is outside the narrow bounds
@@ -615,16 +645,14 @@ impl Survey<'_> {
         let parent_layout = self.buffers[parent].layout;
         let layout = group_layout(group.attributes, parent_layout);
         let child = self.buffer(layout, group.attributes.knockout, bytes)?;
-        let inner = match group.view {
-            Some(view) => Context {
-                transform: crate::prepare::planner::view_transform(
-                    context.transform,
-                    view,
-                    self.inputs.user_unit,
-                )?,
-                ..context
-            },
-            None => context,
+        let parent_knockout = self.buffers[parent].knockout_attribute;
+        let transform = group.view.map_or(Ok(context.transform), |view| {
+            view_transform(context.transform, view, self.inputs.user_unit)
+        })?;
+        let inner = Context {
+            transform,
+            knockout: context.knockout || parent_knockout,
+            ..context
         };
         self.children(child, &group.children, inner, depth + 1, bytes)?;
         let facts = &self.buffers[child];
@@ -634,8 +662,15 @@ impl Survey<'_> {
             && !facts.knockout()
             && layout == parent_layout
             && (!group.attributes.isolated || facts.normal_content());
-        let parent_knockout = self.buffers[parent].knockout_attribute;
-        let flatten = fits && !parent_knockout;
+        // A result of alpha 0 changes the parent's shape alone, which only
+        // a knockout reads (11.4.6), above it or in a pattern's instances.
+        let route = if self.skips && !inner.knockout && (!facts.visible || state.alpha == 0.0) {
+            Route::Skip
+        } else if fits && !parent_knockout {
+            Route::Flatten
+        } else {
+            Route::Buffer
+        };
         // In a knockout group, a plain group of opaque members is one opaque
         // member: the implicit groups of text objects and of fill-and-stroke
         // operators around Type 3 glyphs or fill-and-stroke text.
@@ -644,6 +679,7 @@ impl Survey<'_> {
         let knockout = facts.knockout();
         let extent = facts.extent;
         let transfer = facts.transfer;
+        let visible = facts.visible && state.alpha != 0.0;
         let key = (id, parent_layout.process);
         if !self.groups.contains_key(&key) {
             bytes.reserve_map_capacity(&mut self.groups, 1)?;
@@ -652,14 +688,15 @@ impl Survey<'_> {
             key,
             GroupEntry {
                 buffer: child,
-                flatten,
+                route,
                 transparent,
                 knockout,
             },
         );
-        if flatten {
-            self.merge(parent, child, bytes)?;
-            return Ok(());
+        match route {
+            Route::Skip => return Ok(()),
+            Route::Flatten => return self.merge(parent, child, bytes),
+            Route::Buffer => {}
         }
         let mask = state
             .soft_mask
@@ -682,6 +719,7 @@ impl Survey<'_> {
         target.normal &= state.blend == BlendMode::Normal;
         target.forced |= state.blend != BlendMode::Normal;
         target.transfer |= transfer;
+        target.visible |= visible;
         target.opaque_members &= pending;
         target.later_opaque &= pending;
         if pending {
@@ -766,6 +804,7 @@ impl Survey<'_> {
         self.cells.insert((pattern, layout.process), buffer);
         let inner = Context {
             selects: false,
+            knockout: true,
             transform: tiling.matrix.then(context.transform),
             ..context
         };

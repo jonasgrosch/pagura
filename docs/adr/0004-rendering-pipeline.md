@@ -82,7 +82,11 @@ exact result.
   f64 evaluation. Feeding is transitive: a group or soft mask whose result
   enters such a buffer feeds the operation too. The renderer's
   classification of each operation, with its amplification bound, decides
-  the side (`BlendMode::amplifies` for blend modes).
+  the side (`BlendMode::amplifies` for blend modes). A group whose result
+  has alpha 0 at every pixel (alpha 0, or no member of positive alpha)
+  leaves its parent's colour and alpha as they are and feeds nothing; it is
+  left out unless a knockout above it reads its shape or a transfer function
+  is selected (11.7.5.2).
 - **Sources** enter composition as f64 values from prepared converters,
   functions and samplers. The storage bounds of sections 5 and 6 include
   encoding them and reserve a margin for their f64 evaluation.

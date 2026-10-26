@@ -6,7 +6,7 @@ use super::{Planner, Scope};
 use crate::plan::{
     Compositing, Conversion, Curve, GroupPlan, Item, ItemKind, Layout, Start, area, intersect,
 };
-use crate::prepare::storage;
+use crate::prepare::storage::{self, Route};
 use crate::prepare::{Budget, bounds, index};
 use pagura_color::{Encoder, Process};
 use pagura_core::{Error, Position, Result};
@@ -68,8 +68,12 @@ impl Planner<'_> {
             paint: scope.paint.clone(),
             depth: scope.depth + 1,
         };
-        if decision.flatten {
-            return self.children(&inner(scope.group, scope.layout), &group.children, budget);
+        match decision.route {
+            Route::Skip => return Ok(()),
+            Route::Flatten => {
+                return self.children(&inner(scope.group, scope.layout), &group.children, budget);
+            }
+            Route::Buffer => {}
         }
         self.serial += 1;
         let serial = self.serial;
