@@ -73,7 +73,16 @@ impl Loader {
     /// One completed grammar unit per advance. Every window charges the same
     /// owner before reading/parsing, including incomplete and failed probes.
     pub(crate) fn advance(&mut self) -> ReadResult<()> {
-        match self.step()? {
+        let next = self.step()?;
+        if let Next::Seek(offset) | Next::Restart(offset) = next
+            && offset > self.length
+        {
+            // This offset came from PDF structure, not a source API caller.
+            return Err(Error::syntax("offset outside input")
+                .at(Position::File(offset))
+                .into());
+        }
+        match next {
             Next::Stay => {}
             Next::Seek(offset) => self.window.seek(usize_to_u64(offset))?,
             Next::Restart(offset) => {

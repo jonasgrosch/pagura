@@ -311,3 +311,26 @@ fn public_security_dependencies_resume_without_materializing_the_pdf() {
         Err(ReadFault::Unavailable(_))
     ));
 }
+
+#[test]
+fn out_of_file_prev_is_pdf_syntax_without_a_source_range_request() {
+    let mut bytes = literal();
+    let index = b"xref\n0 2\n0 65535 f\n100 0 n\ntrailer << /Size 2 /Root 1 0 R /Prev 9000 >>\n";
+    bytes[6500..6700].fill(b' ');
+    bytes[6500..6500 + index.len()].copy_from_slice(index);
+    for validation in [Validation::CompleteDocument, Validation::RequestedOperation] {
+        let source = source(&bytes).unwrap();
+        let mut job = opening(source.clone(), validation, Recovery::Strict).unwrap();
+        let error = ready(&mut job).unwrap_err();
+        let invalid = error.as_error().unwrap();
+        assert_eq!(invalid.kind, ErrorKind::Syntax);
+        assert_eq!(invalid.position, pagura_core::Position::File(9000));
+        assert_eq!(invalid.message, "offset outside input");
+        let work = job.work();
+        source.supply(ID, 0, &bytes).unwrap();
+        for _ in 0..3 {
+            assert_eq!(job.advance().unwrap_err(), error);
+            assert_eq!(job.work(), work);
+        }
+    }
+}
