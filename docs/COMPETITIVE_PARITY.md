@@ -158,7 +158,7 @@ Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G
 **Started:** the [document-service probe slice](../benchmarks/probes/README.md)
 adds twenty-one independent populated/empty/rejection controls, 147 explicit case/engine
 cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
-six baselines across hosted Ubuntu and macOS. Hayro catalog/page attachment probes now use public object/stream APIs with a bounded byte-hash bridge; their new hosted run is pending. Hayro and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
+six baselines across hosted Ubuntu and macOS. Hayro catalog/page attachment probes now use public object/stream APIs with a bounded byte-hash bridge; the 21-case hosted matrix is measured below. Hayro and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
 operation/configuration matrix remains open. `f948c64f289f2ec80112f92b0f06f7c88b0f882b`
 adds Pagura through the public metadata/attachment/text CLI and additive inspect
 geometry, preserving all six baseline columns. Every Pagura cell must meet its independent expectation in hosted execution. These
@@ -166,11 +166,14 @@ fixture results do not promote any G00 family cell or establish Pagura parity.
 The annotation increment adds first-page FileAttachment byte/name probes,
 separate from catalog attachments, with mixed slots, duplicate occurrences,
 shared/page-only specifications and second-page scope controls.
-[Run 40277284285](https://github.com/jonasgrosch/pagura/actions/runs/40277284285)
-measured merge revision `f383d2b061035c7a1542b2d58b805f1b27e66b98`: all eighteen
-Pagura, PDFium, MuPDF, pdf.js and Poppler cases pass. CoreGraphics passes sixteen
-covered operations; hayro passes five. Fifteen explicit adapter gaps remain
-(thirteen hayro attachment/text cells and two CoreGraphics text cells). The run includes the annotation-render fixes; later source changes still need their own validation.
+[Run 40280807877](https://github.com/jonasgrosch/pagura/actions/runs/40280807877)
+measured merge revision `c17d3b41a0ed0816b151a0a9380355ce75484be4`: 142 passing
+cells, four explicit text adapter gaps and one incorrect observation. Pagura,
+PDFium, pdf.js and Poppler pass all 21 cases. Hayro and CoreGraphics each pass
+19, with two text gaps apiece. MuPDF passes 20; its binding returns no catalog
+attachments for the nested name-tree control. This remains a binding/API
+adjudication item, not a claim that the engine lacks that feature. All compressed
+catalog/page payload controls pass. Later source changes need their own validation.
 The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
 The initial six-baseline run recorded 20 passes and 16 pixel disagreements;

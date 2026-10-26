@@ -212,14 +212,17 @@ bounds. New annotation enumeration is capped at 1,024 entries (128 for CoreGraph
 with decoded payload checks of 64 MiB (64 KiB for CoreGraphics and hayro). These post-decode
 checks do not promise bounded allocation inside competitor APIs; the harness has
 a separate process deadline. Resource refusals never establish feature support.
-[Hosted run 40276014297](https://github.com/jonasgrosch/pagura/actions/runs/40276014297)
-at merge revision `29236241a454a6749340638a14095a363128ccad` records 111 passes
-and 15 explicit adapter gaps across 126 cells: Pagura, PDFium, MuPDF, pdf.js and
-Poppler each pass all 18 cases, CoreGraphics 16 and hayro five. The missing paths
-in that report are thirteen hayro attachment/text cells and two CoreGraphics text cells. The new hayro adapter and 21-case matrix await their own hosted run. There
-are no incorrect observations in this run. Later renderer changes require new
-current-head evidence; broader attachment encodings,
-password/configuration combinations and performance remain separate work.
+[Hosted run 40280807877](https://github.com/jonasgrosch/pagura/actions/runs/40280807877)
+at merge revision `c17d3b41a0ed0816b151a0a9380355ce75484be4` measures the expanded
+21-case matrix: 142 passes, four explicit text adapter gaps and one incorrect
+observation across 147 cells. Pagura, PDFium, pdf.js and Poppler each pass all
+21 cases. Hayro and CoreGraphics each pass 19, with two text gaps apiece. MuPDF
+passes 20; its `Document.embfile_names()` adapter returns an empty list for the
+nested name-tree control. That disagreement requires binding/API adjudication;
+it does not establish that the MuPDF engine lacks nested attachment support.
+Compressed catalog and page payload controls pass for every engine. Broader
+attachment encodings, password/configuration combinations, current-head reruns
+and performance remain separate work.
 
 ## Initial rendering observations
 
