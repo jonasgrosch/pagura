@@ -7,6 +7,7 @@ use super::border::Border;
 use super::marks::{Marks, Pen, Subpath, color};
 use crate::features;
 use crate::stream::AppearanceStream;
+use crate::widget_rotation;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_document::Document;
 
@@ -53,18 +54,12 @@ fn characteristics(
     mk: &Dictionary,
     rect: Rect,
 ) -> Result<()> {
-    let rotation = mk
-        .get(b"R")
-        .map(|value| {
-            document
-                .resolve(value)?
-                .as_integer()
-                .filter(|n| n % 90 == 0)
-                .ok_or(Error::syntax("widget rotation must be a multiple of 90"))
-        })
-        .transpose()?
-        .unwrap_or(0)
-        .rem_euclid(360);
+    let rotation = widget_rotation::read(document, Some(mk))?;
+    let frame = widget_rotation::frame(rotation, rect)?;
+    if let Some(matrix) = frame.matrix {
+        marks.transform(matrix)?;
+    }
+    let rect = frame.bounds;
     if let Some(background) = color(document, mk, b"BG", None)? {
         let area = Subpath::Rect {
             x: rect.x0(),
@@ -80,12 +75,6 @@ fn characteristics(
     let border = Border::read_rectangular(document, annotation)?;
     if border.width == 0.0 {
         return Ok(());
-    }
-    if rotation != 0 {
-        return Err(Error::unsupported(
-            features::ANNOTATION_APPEARANCE,
-            "rotated widget borders require an explicit appearance",
-        ));
     }
     if border.paint_relief(marks, rect, &color)? {
         return Ok(());

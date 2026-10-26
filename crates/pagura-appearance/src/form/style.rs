@@ -1,15 +1,15 @@
 //! Widget background and border data (12.5.6.19, Tables 168 and 192).
 
 use crate::annotation::border::Border;
-use crate::features;
 use crate::program::Program;
 use crate::values::{numbers, optional, optional_dictionary};
-use pagura_core::{Dictionary, Error, Rect, Result};
+use pagura_core::{Dictionary, Error, Rect, Result, Rotation};
 use pagura_document::Document;
 
 /// A widget's MK colours and border, and the text padding they imply.
 pub(super) struct Style {
     pub(super) inset: f64,
+    pub(super) rotation: Rotation,
     background: Option<Vec<f64>>,
     border: Option<Vec<f64>>,
     outline: Border,
@@ -18,25 +18,7 @@ pub(super) struct Style {
 impl Style {
     pub(super) fn read(document: &Document, widget: &Dictionary) -> Result<Self> {
         let mk = optional_dictionary(document, widget, b"MK")?;
-        if let Some(rotation) = mk
-            .map(|mk| optional(document, mk, b"R"))
-            .transpose()?
-            .flatten()
-        {
-            let rotation = document
-                .resolve(rotation)?
-                .as_integer()
-                .ok_or(Error::syntax("MK R must be an integer"))?;
-            if rotation % 90 != 0 {
-                return Err(Error::syntax("MK R must be a multiple of 90"));
-            }
-            if rotation.rem_euclid(360) != 0 {
-                return Err(Error::unsupported(
-                    features::APPEARANCE_WIDGET_ROTATION,
-                    "rotated widget appearance generation is unavailable",
-                ));
-            }
-        }
+        let rotation = crate::widget_rotation::read(document, mk)?;
         let background = mk
             .map(|mk| color(document, mk, b"BG"))
             .transpose()?
@@ -47,6 +29,7 @@ impl Style {
             .flatten();
         let style = Border::read_rectangular(document, widget)?;
         Ok(Self {
+            rotation,
             inset: if border.is_some() {
                 style.width + 2.0
             } else {

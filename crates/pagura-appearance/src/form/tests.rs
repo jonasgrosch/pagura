@@ -33,13 +33,17 @@ fn shared_border_budgets_protect_filled_appearances() {
 }
 
 #[test]
-fn shared_border_reader_rejects_malformed_styles_and_dashes() {
+fn style_reader_rejects_malformed_borders_and_rotations() {
     let document = document_for_style();
     for source in [
         b"<< /BS << /S 42 >> >>".as_slice(),
         b"<< /BS << /S /D /D [-1 2] >> >>",
         b"<< /BS << /S /D /D [0 0] >> >>",
         b"<< /Border [-1 2 1] >>",
+        b"<< /MK << /R 45 >> >>",
+        b"<< /MK << /R 90.0 >> >>",
+        b"<< /MK << /R (90) >> >>",
+        b"<< /MK << /R true >> >>",
     ] {
         let parsed = pagura_core::syntax::Parser::new(
             source,

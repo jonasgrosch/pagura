@@ -2,7 +2,7 @@
 
 use super::{bounds, inset, style::Style};
 use crate::program::Program;
-use crate::stream::{AppearanceStream, form_dictionary};
+use crate::stream::AppearanceStream;
 use pagura_core::{Dictionary, Name, Result, Value};
 use pagura_document::{
     Document,
@@ -18,8 +18,9 @@ pub(super) fn check_mark(
     field: &Field<'_>,
 ) -> Result<AppearanceStream> {
     let limits = document.limits();
-    let bbox = bounds(widget)?;
     let style = Style::read(document, widget.dictionary)?;
+    let frame = crate::widget_rotation::frame(style.rotation, bounds(widget)?)?;
+    let bbox = frame.bounds;
     let mut content = Program::new(&limits);
     style.paint(&mut content, bbox)?;
     let state = state.or(match &field.value {
@@ -44,7 +45,7 @@ pub(super) fn check_mark(
             area.y0()
         ))?;
     }
-    let mut dictionary = form_dictionary(bbox);
+    let mut dictionary = frame.dictionary();
     dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
     AppearanceStream::new(document, dictionary, content.finish())
 }

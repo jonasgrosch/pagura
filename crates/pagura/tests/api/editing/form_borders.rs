@@ -5,7 +5,7 @@ use std::sync::Arc;
 #[test]
 fn filled_border_pixels_survive_save_and_strict_reopen() {
     let manifest = Manifest::load("form_borders");
-    assert_eq!(manifest.cases().len(), 35);
+    assert_eq!(manifest.cases().len(), 64);
     for case in manifest.cases() {
         let name = case.name();
         let original = fixture("form_borders", &format!("{name}.pdf"));

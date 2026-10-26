@@ -28,6 +28,7 @@ mod program;
 pub mod repairs;
 mod stream;
 mod values;
+mod widget_rotation;
 
 pub use annotation::{annotation_appearance, annotation_appearance_with_fonts};
 pub use fonts::{FontSource, ProviderFonts};

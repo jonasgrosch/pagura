@@ -207,7 +207,7 @@ def cases():
     o=base();o[10]['DA']=b'/F1 10 Tf 0 1 -1 0 30 40 Tm'
     yield vector('text-oblique-matrix',o,appearance='error:unsupported:appearance.text-matrix')
     o=base();o[11]['MK']={'R':90}
-    yield vector('text-rotated-widget',o,appearance='error:unsupported:appearance.widget-rotation')
+    yield vector('text-rotated-widget',o,appearance='generated',content=b'q\nQ\n'+tx(width=20,height=100))
     o=base('Btn',1<<15,widgets=2);o[11]['Opt']=['shared','shared']
     for i in range(2):o[20+i]['AP']={'N':{'Off':ref(81),str(i):ref(80)}}
     yield vector('radio-duplicate-exports',o,mode='button-export',value='shared',error='invalid-argument',requirement='forms-fill-button')

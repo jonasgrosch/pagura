@@ -808,6 +808,673 @@
       "field_kind": "Tx",
       "text": "AB",
       "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-0-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-72.pdf",
+          "sha256": "a23cc33556703181797dfaf9805ce507a66e32e0aaea2331a95bd9ccc65d6c7b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-72.ppm",
+          "sha256": "fe648b30ec14f5b7a3531f7c61f4b937c8d241fea5eff283654bf0522aaafe11"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-0-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-0-72.pdf",
+          "sha256": "bc8bedc6dc743f7d896896afed66d68b9e9479377bb5c22edb8667b2a152f054"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-0-72.ppm",
+          "sha256": "fe648b30ec14f5b7a3531f7c61f4b937c8d241fea5eff283654bf0522aaafe11"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-0-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-0-72.pdf",
+          "sha256": "81b0323537bd14906957d7154a1db9cddec8097442e184dbbbb6acaef982ec80"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-0-72.ppm",
+          "sha256": "176566abe65f603ab327d80f7c0d8dcbb2b4b52dff0de63d2dbb79913d290dbe"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-0-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-144.pdf",
+          "sha256": "a23cc33556703181797dfaf9805ce507a66e32e0aaea2331a95bd9ccc65d6c7b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-144.ppm",
+          "sha256": "698743421a2f014779a7676a00c2fc85875661285de9c08ced8633f38c4a1108"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-72.pdf",
+          "sha256": "7f694bc537ff3ed6e16ac9a2c88c57d469e79b908b6821c6365d3131dbec305b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-72.ppm",
+          "sha256": "1d5a5111c3325235fafd8a61d49a864aa6ff91accd48edcf49407b3aca438d52"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-90-72.pdf",
+          "sha256": "5482690a892f85cc92ab1d5edeca304f93f388c404881a89d82817d1c6d19751"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-90-72.ppm",
+          "sha256": "1d5a5111c3325235fafd8a61d49a864aa6ff91accd48edcf49407b3aca438d52"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-90-72.pdf",
+          "sha256": "88d1d477c77b433cdc9533a432d2fda99c0913b7f3f95bca562e18642e62d2db"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-90-72.ppm",
+          "sha256": "4ccfb3a5c1e537b0146c3232a60d72777bdd7a875c877356eb67d00069cc1bbb"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-90-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-144.pdf",
+          "sha256": "7f694bc537ff3ed6e16ac9a2c88c57d469e79b908b6821c6365d3131dbec305b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-144.ppm",
+          "sha256": "284fe1a256c6b3b06139d46882e9d334576e90ed31891d9c5498627029234068"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-180-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-72.pdf",
+          "sha256": "3976daafab71ce87484caa74e95d1321bc2224b7c26ee1c39da2d0a97b1e1b63"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-72.ppm",
+          "sha256": "9a98496ef3d5dcc5547490356fce7aa414680d5ddecf77be05da2653865da89a"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-180-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-180-72.pdf",
+          "sha256": "f219d3418b3428a751429ceef2f423c0334604f4389e0154ab6363b16c59f359"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-180-72.ppm",
+          "sha256": "9a98496ef3d5dcc5547490356fce7aa414680d5ddecf77be05da2653865da89a"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-180-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-180-72.pdf",
+          "sha256": "df754794ccf0fcafbd0493477f8eb8c64f51624692221cea2573ce95ae587b09"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-180-72.ppm",
+          "sha256": "78debcfb53cba110ccb54806627e0824afd625999415c2773d19ba9444886d09"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-180-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-144.pdf",
+          "sha256": "3976daafab71ce87484caa74e95d1321bc2224b7c26ee1c39da2d0a97b1e1b63"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-144.ppm",
+          "sha256": "6fe49959d083e3599cbc65ffa35c9bd68b15a0353800d5f470c1c3b200639d80"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-270-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-72.pdf",
+          "sha256": "6f6b8cee5179e7b978fac15f65fd0f8f61d9af8a49689348654013ee1f693046"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-270-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-270-72.pdf",
+          "sha256": "1504ef49b2bc4f9c23719e65f081dd1d7899c5c28b23e268619d99353f9a071c"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-270-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-270-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-270-72.pdf",
+          "sha256": "a7fe4f685ad4fa8c4b7be034fd506a884eac04a1141d71cbe80f8afe830c0f52"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-270-72.ppm",
+          "sha256": "e30e97debe71184453ffba857271990009d1c5ef456c2453457e0f649c0d0530"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-270-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-144.pdf",
+          "sha256": "6f6b8cee5179e7b978fac15f65fd0f8f61d9af8a49689348654013ee1f693046"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-144.ppm",
+          "sha256": "d8bdec22e17424db94ea1b770d885fb34739e42657183f8a6684255ec2ba8721"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx--90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-72.pdf",
+          "sha256": "9ea6346d15f3e2780784a3c87c050667f6ef8a129190d28e321324b2f5600dc1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch--90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch--90-72.pdf",
+          "sha256": "823afc79757896cb561d3b2b1ade0abf0e45c3f4ed8fadd4d1d0680900c7eca9"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch--90-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn--90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn--90-72.pdf",
+          "sha256": "06ad1aecabe0bf9bfb6b3ffc99ca5a5026d27a5ac53456c0855dec49aabdc666"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn--90-72.ppm",
+          "sha256": "e30e97debe71184453ffba857271990009d1c5ef456c2453457e0f649c0d0530"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx--90-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-144.pdf",
+          "sha256": "9ea6346d15f3e2780784a3c87c050667f6ef8a129190d28e321324b2f5600dc1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-144.ppm",
+          "sha256": "d8bdec22e17424db94ea1b770d885fb34739e42657183f8a6684255ec2ba8721"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-450-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-72.pdf",
+          "sha256": "5364de4736c4fb68f5baad842ab34d60b9b96af83c17e53a7397f04b7569531d"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-72.ppm",
+          "sha256": "1a32210345036a1586b251684bbefeaa99297354b403f9f51fd0b505548653bf"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-450-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-450-72.pdf",
+          "sha256": "e81a0201026494dc86d954e9c3b32d36da0f1158b9a62097bb741da2facf3e0e"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-450-72.ppm",
+          "sha256": "1a32210345036a1586b251684bbefeaa99297354b403f9f51fd0b505548653bf"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-450-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-450-72.pdf",
+          "sha256": "7a654870bc35b8ed68aa1b609ec1d1cc39a0f0caa56efdbfa897010d41754368"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-450-72.ppm",
+          "sha256": "8a01ddbbedd8bfda61a87671b4d196cafe7a9993019fb4081b41ba6d6675bb2d"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-450-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-144.pdf",
+          "sha256": "5364de4736c4fb68f5baad842ab34d60b9b96af83c17e53a7397f04b7569531d"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-144.ppm",
+          "sha256": "eff490d977474c4c881db8b16fe1248649c9a0754c87d662c6cd80f05d2bc88b"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-stored-90",
+      "kind": "vector",
+      "description": "Existing appearance coordinates survive Tx replacement without applying MK R again",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-stored-90.pdf",
+          "sha256": "2b07dc73f21a9a18a10ecb13c0905da374a5278bb3a9e47efed93c9e06f2b21b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-stored-90.ppm",
+          "sha256": "8723f61bfc9aa9efb6800423175bcb4c389a50880c313e5ddf392be07fd6bcc9"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-stored-180",
+      "kind": "vector",
+      "description": "Existing appearance coordinates survive Tx replacement without applying MK R again",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-stored-180.pdf",
+          "sha256": "953062f54fe39ba92b825aeef010e44520c07596ff720e408edd84772a4a73c1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-stored-180.ppm",
+          "sha256": "8723f61bfc9aa9efb6800423175bcb4c389a50880c313e5ddf392be07fd6bcc9"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-stored-270",
+      "kind": "vector",
+      "description": "Existing appearance coordinates survive Tx replacement without applying MK R again",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-stored-270.pdf",
+          "sha256": "293cefeb12354d124cbfc49f2d144427f4a3918e2bbf10de6018dbefef48938b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-stored-270.ppm",
+          "sha256": "8723f61bfc9aa9efb6800423175bcb4c389a50880c313e5ddf392be07fd6bcc9"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-null",
+      "kind": "vector",
+      "description": "Null and indirect widget rotations follow the same declared physical geometry",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-null.pdf",
+          "sha256": "d36e3563aef614cb51a663bef93d6fea200b648b0bbbd1a7496d5845f63505fe"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-null.ppm",
+          "sha256": "fe648b30ec14f5b7a3531f7c61f4b937c8d241fea5eff283654bf0522aaafe11"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-indirect",
+      "kind": "vector",
+      "description": "Null and indirect widget rotations follow the same declared physical geometry",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-indirect.pdf",
+          "sha256": "a1483b8494be7dc86b1d11fe74b647c85acf581766bf9c1745c7d5bc4ee1066f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-indirect.ppm",
+          "sha256": "1d5a5111c3325235fafd8a61d49a864aa6ff91accd48edcf49407b3aca438d52"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
     }
   ]
 }

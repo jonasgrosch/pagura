@@ -85,7 +85,7 @@ impl WidgetAppearance {
 /// # Errors
 /// Returns positioned syntax, font, limit and unsupported-capability errors.
 /// Horizontal simple fonts with reversible single-character Unicode mappings
-/// are supported. Oblique text matrices, rotated widgets, rich text, XFA,
+/// are supported. Oblique text matrices, rich text, XFA,
 /// negative font sizes and appearance updates crossing
 /// text/graphics scopes or containing inline images remain explicit
 /// unsupported capabilities. DoNotScroll rejects text that will not visibly fit.
@@ -323,6 +323,14 @@ impl Context<'_, '_> {
         }
         let font = Font::load(document, &resources, da.font.as_bytes(), self.fonts)?;
         let style = Style::read(document, self.widget.dictionary)?;
+        let frame = if old.is_none() {
+            Some(crate::widget_rotation::frame(style.rotation, bbox)?)
+        } else {
+            None
+        };
+        if let Some(frame) = &frame {
+            bbox = frame.bounds;
+        }
         let mut text = Program::new(&limits);
         let area = inset(bbox, style.inset)?;
         text.text("/Tx BMC\nq\n")?;
@@ -351,7 +359,10 @@ impl Context<'_, '_> {
                     "appearance dictionary storage budget exceeded",
                 ));
             }
-            None => form_dictionary(bbox),
+            None => frame.as_ref().map_or_else(
+                || form_dictionary(bbox),
+                crate::widget_rotation::Frame::dictionary,
+            ),
         };
         for key in [b"Length".as_slice(), b"Filter", b"DecodeParms"] {
             dictionary.remove(key);

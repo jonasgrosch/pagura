@@ -73,6 +73,10 @@ Sources requiring structural repairs still cannot be edited. Content-only repair
 such as a numeric sc used in an ICC colour space can display compatibly while
 unrelated form changes append without rewriting the original content stream.
 
+Fresh text, choice and toggle-button appearances honor quarter-turn MK R in the
+library and saved PDF. Updating a stored appearance retains its own Matrix and
+BBox, avoiding a second rotation.
+
 The overlay follows CropBox, page Rotate, UserUnit and zoom; drafts survive page
 virtualization. Optional-content, NoZoom/NoRotate, ToggleNoView and rotated-MK
 widgets are omitted pending their dedicated interaction semantics. General PDF

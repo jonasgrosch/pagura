@@ -243,7 +243,6 @@ fn unsupported_annotations_are_tagged() {
         b"<< /Subtype /Ink /InkList [[1 1 2 2]] /BS << /S /I >> >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",
         b"<< /Subtype /Widget /FT /Ch >>",
-        b"<< /Subtype /Widget /FT /Tx /MK << /BC [0] /R 90 >> >>",
     ] {
         let error = generate(text, area).unwrap_err();
         assert_eq!(

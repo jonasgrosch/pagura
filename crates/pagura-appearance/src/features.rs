@@ -22,7 +22,7 @@ pub const APPEARANCE_FONT_ENCODING: Feature = Feature::new("appearance.font-enco
 /// Reserved compatibility tag: standard rectangular widget border styles now generate.
 pub const APPEARANCE_BORDER_STYLE: Feature = Feature::new("appearance.border-style");
 
-/// Appearance generation for a rotated widget.
+/// Reserved compatibility tag; right-angle widget appearances now generate.
 pub const APPEARANCE_WIDGET_ROTATION: Feature = Feature::new("appearance.widget-rotation");
 
 /// Inline images, multiple variable text sections or crossed content scopes

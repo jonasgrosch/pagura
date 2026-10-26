@@ -132,11 +132,16 @@ def widget_cases():
         ('widget-null-inherits-value', b'/FT /Tx /V null /Parent 6 0 R', b'<< /V (visible) >>','unsupported'),
         ('widget-signed', b'/FT /Sig /V << /Type /Sig >>', b'','unsupported'),
         ('widget-parent-cycle', b'/Parent 6 0 R', b'<< /Parent 5 0 R >>','cycle'),
-        ('widget-rotated-border', b'/FT /Tx /MK << /R 90 /BC [0] >>', b'','unsupported'),
+        ('widget-rotated-border', b'/FT /Tx /MK << /R 90 /BC [0] >>', b'','render'),
         ('widget-invalid-rotation', b'/FT /Tx /MK << /R 45 /BG [1 0 0] >>', b'','syntax'),
     ]:
         objects=[b'<< /Subtype /Widget /Rect [1 1 7 7] '+field+b' >>']
         if parent: objects.append(parent)
+        if error == 'render':
+            yield Case(name,page(b'',objects,extra=b'/Annots [5 0 R]'),RENDER,('recovery-widgets',),
+                       'Right-angle widget borders preserve their original rectangle',
+                       oracle=opaque_rectangles(16,16,[((1,1,6,6),BLACK),((2,2,4,4),WHITE)]))
+            continue
         yield Case(name,page(b'',objects,extra=b'/Annots [5 0 R]'),UNSUPPORTED if error=='unsupported' else OPEN,
                    ('recovery-widgets',),name,feature='annotation.appearance' if error=='unsupported' else None,
                    extra={} if error=='unsupported' else {'render_error':error})

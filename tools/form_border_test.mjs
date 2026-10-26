@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 export async function testFormBorders(client) {
   const manifest = JSON.parse(await readFile('corpus/manifests/form_borders.json', 'utf8'));
-  assert.equal(manifest.cases.length, 35);
+  assert.equal(manifest.cases.length, 64);
   for (const entry of manifest.cases) {
     const original = new Uint8Array(await readFile(entry.files['.pdf'].path));
     const opened = await client.open(original, 0);
@@ -30,5 +30,5 @@ export async function testFormBorders(client) {
     await client.close(reopened.document);
     await client.close(opened.document);
   }
-  console.log('Filled borders: 35 independent pixel controls passed through WASI save, strict reopen and rendering.');
+  console.log('Filled borders: 64 independent pixel controls passed through WASI save, strict reopen and rendering.');
 }
