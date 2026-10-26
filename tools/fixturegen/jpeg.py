@@ -1,4 +1,4 @@
-"""Independent T.81 Annex D/F/G JPEG encoder and coefficient decode model.
+"""Independent T.81 Annex D/F/G/H JPEG encoder and coefficient decode model.
 
 The encoder keeps an unbounded integer code base and postpones Annex D's
 carry propagation until termination. Interval subdivision, conditional exchange
@@ -576,6 +576,220 @@ def verify_qm():
     model = Decoder(encoder.finish())
     assert [model.bit(0) for _ in decisions] == decisions
 
+def lossless_jpeg(*, precision=8, predictor=1, point=0, components=1, restart_rows=0,
+                  arithmetic=False, sampling=None, separate=False, tables=False, transform=0, adobe=None):
+    """Independent T.81 H encoder; the original sample grid is the oracle.
+
+    Differences use modulo 2**16; neither overflow predictions nor negative
+    half-differences are clipped. High-precision display reduction is the same
+    explicitly declared full-range policy as the twelve-bit DCT fixtures.
+    """
+    from .image import Wire, segment
+    width, height = 5, 4
+    maximum = (1 << precision) - 1
+    seeds = [0, 255, 128, 63, 192, 255, 0, 129, 65, 191,
+             17, 240, 3, 252, 127, 221, 34, 189, 66, 128]
+    sampling = sampling or [(1, 1)] * components
+    max_h, max_v = max(h for h, _ in sampling), max(v for _, v in sampling)
+    columns, rows = math.ceil(width / max_h), math.ceil(height / max_v)
+    geometry, planes = [], []
+    for c, (h, v) in enumerate(sampling):
+        cw, ch = math.ceil(width * h / max_h), math.ceil(height * v / max_v)
+        stride, lines = columns * h, rows * v
+        geometry.append((cw, ch, stride, lines))
+        planes.append([[((seeds[(min(y, ch - 1) * cw + min(x, cw - 1) + c * 7) % len(seeds)]
+                         * maximum + 127) // 255) >> point for x in range(stride)] for y in range(lines)])
+    data = b'\xff\xd8'
+    if adobe is not None:
+        data += segment(0xee, b'Adobe' + struct.pack('>HHHB', 100, 0, 0, adobe))
+    selectors = [c if tables else 0 for c in range(components)]
+    symbols = [[(size + table) % 17 for size in range(17)] for table in range(4)]
+    for table in sorted(set(selectors)):
+        if arithmetic:
+            data += segment(0xcc, bytes([table, 16]))  # H.1.2.3.3: L=0, U=1.
+        else:
+            data += segment(0xc4, bytes([table]) + bytes([0] * 4 + [17] + [0] * 11) + bytes(symbols[table]))
+    data += segment(0xcb if arithmetic else 0xc3, bytes([precision]) + struct.pack('>HHB', height, width, components)
+                    + b''.join(bytes([c + 1, h * 16 + v, 0]) for c, (h, v) in enumerate(sampling)))
+    for group in ([[c] for c in range(components)] if separate else [list(range(components))]):
+        interleaved = len(group) > 1
+        scan_cols, scan_rows = (columns, rows) if interleaved else geometry[group[0]][:2]
+        interval = restart_rows * scan_cols
+        if interval:
+            data += segment(0xdd, struct.pack('>H', interval))
+        data += segment(0xda, bytes([len(group)]) + b''.join(bytes([c + 1, selectors[c] << 4]) for c in group)
+                        + bytes([predictor, 0, point]))
+        wire, coder = Wire(), Encoder()
+        differences = [[[0] * stride for _ in range(lines)] for _, _, stride, lines in geometry]
+        start, sequence = 0, 0
+        for mcu in range(scan_cols * scan_rows):
+            if interval and mcu and mcu % interval == 0:
+                data += coder.finish() if arithmetic else wire.bytes(jpeg=True)
+                data += bytes([255, 208 + sequence % 8])
+                sequence += 1
+                start, wire, coder = mcu, Wire(), Encoder()
+            my, mx = divmod(mcu, scan_cols)
+            for c in group:
+                h, v = sampling[c] if interleaved else (1, 1)
+                plane, history = planes[c], differences[c]
+                first_row = start // scan_cols * v
+                for y in range(my * v, (my + 1) * v):
+                    for x in range(mx * h, (mx + 1) * h):
+                        if x == 0 and y == first_row:
+                            predicted = 1 << (precision - point - 1)
+                        elif y == first_row:
+                            predicted = plane[y][x - 1]
+                        elif x == 0:
+                            predicted = plane[y - 1][x]
+                        else:
+                            a, b, corner = plane[y][x - 1], plane[y - 1][x], plane[y - 1][x - 1]
+                            predicted = [a, b, corner, a + b - corner, a + ((b - corner) // 2),
+                                         b + ((a - corner) // 2), (a + b) // 2][predictor - 1]
+                        difference = (plane[y][x] - predicted + 32768) % 65536 - 32768
+                        if arithmetic:
+                            left = history[y][x - 1] if x else 0
+                            above = history[y - 1][x] if y > first_row else 0
+                            context = 5 * dc_context(left, 0, 1) + dc_context(above, 0, 1)
+                            key = lambda index: ('lossless', selectors[c], index)
+                            coder.bit(key(context), int(difference != 0))
+                            if difference:
+                                negative = int(difference < 0)
+                                coder.bit(key(context + 1), negative)
+                                first = 129 if dc_context(above, 0, 1) >= 12 else 100
+                                write_magnitude(coder, key, difference, context + 2 + negative, first, first + 1)
+                        else:
+                            size = abs(difference).bit_length()
+                            wire.put(symbols[selectors[c]].index(size), 5)
+                            if size != 16:
+                                wire.put(difference if difference >= 0 else difference + (1 << size) - 1, size)
+                        history[y][x] = difference
+        data += coder.finish() if arithmetic else wire.bytes(jpeg=True)
+    expected = bytearray()
+    convert = adobe in (1, 2) if adobe is not None else transform == 1
+    for y in range(height):
+        for x in range(width):
+            pixel = [planes[c][y * v // max_v][x * h // max_h] << point for c, (h, v) in enumerate(sampling)]
+            if convert and components >= 3:
+                luminance, cb, cr = pixel[0], pixel[1] - (1 << (precision - 1)), pixel[2] - (1 << (precision - 1))
+                rgb = [luminance + 1.402 * cr, luminance - 0.344136 * cb - 0.714136 * cr, luminance + 1.772 * cb]
+                rgb = [min(maximum, max(0, value)) for value in rgb]
+                pixel = [maximum - value if components == 4 else value for value in rgb] + pixel[3:]
+            expected.extend(math.floor(value * 255 / maximum + 0.5) for value in pixel)
+    return data + b'\xff\xd9', bytes(expected), width, height
+
+
+def lossless_vectors():
+    """T.81 H values, layout boundaries and malformed control fields."""
+    from .image import Wire, segment, vector
+    settings: list[tuple[str, dict[str, Any]]] = [(f'precision-{precision}', {'precision': precision, 'predictor': precision % 7 + 1})
+                for precision in range(2, 17)]
+    settings += [(f'predictor-{predictor}-{precision}', {'precision': precision, 'predictor': predictor})
+                 for precision in (8, 16) for predictor in range(1, 8)]
+    settings += [(f'point-{precision}', {'precision': precision, 'point': precision - 1, 'predictor': 5})
+                 for precision in (2, 8, 16)]
+    settings += [
+        ('restart', {'predictor': 7, 'restart_rows': 1}),
+        ('rgb-planar', {'components': 3, 'separate': True, 'tables': True, 'predictor': 6, 'restart_rows': 2}),
+        ('cmyk-planar', {'components': 4, 'separate': True, 'tables': True, 'predictor': 4}),
+        ('subsampled', {'components': 3, 'sampling': [(2, 2), (1, 1), (1, 1)], 'predictor': 5, 'restart_rows': 1}),
+        ('fractional', {'components': 3, 'sampling': [(3, 1), (2, 1), (1, 1)], 'predictor': 6}),
+        ('subsampled-planar', {'components': 3, 'sampling': [(2, 2), (1, 1), (1, 1)], 'predictor': 3, 'separate': True}),
+        ('ycbcr', {'components': 3, 'transform': 1}),
+        ('ycck', {'components': 4, 'transform': 1}),
+        ('adobe-rgb', {'components': 3, 'transform': 1, 'adobe': 0}),
+        ('adobe-ycbcr', {'components': 3, 'adobe': 1}),
+        ('16bit-ycck', {'components': 4, 'precision': 16, 'adobe': 2}),
+    ]
+    for suffix, options in settings:
+        encoded, expected, _, _ = lossless_jpeg(**options)
+        yield vector('jpeg-lossless-vector-' + suffix, 'dct', encoded, expected,
+                     requirement='image-jpeg-lossless', tolerance=0, transform=options.get('transform', 0))
+    # Literal codewords independently pin H.1.2.1/H.1.2.2; none is obtained
+    # from lossless_jpeg's predictor/difference encoder.
+    for suffix, precision, predictor, dimensions, words, expected in [
+        ('category16', 16, 1, (1, 1), ['10000'], bytes([0])),
+        # Native 2x2 grid [3,0;1,2]: predictor 5 gives 1+((-3)>>1)=-1.
+        ('negative-half', 2, 5, (2, 2), ['00001'+'1', '00010'+'00', '00010'+'01', '00010'+'11'], bytes([255, 0, 85, 170])),
+        # Native grid [65535,0;0,65535]: last prediction is -65535;
+        # modulo difference 131070 becomes -2, never clamped to zero.
+        ('overflow', 16, 4, (2, 2), ['01111'+'1'*15, '00001'+'1', '00001'+'1', '00010'+'01'], bytes([255, 0, 0, 255])),
+    ]:
+        wire = Wire()
+        for word in words:
+            wire.code(word)
+        width, height = dimensions
+        encoded = (b'\xff\xd8' + segment(0xc4, bytes([0]) + bytes([0] * 4 + [17] + [0] * 11) + bytes(range(17)))
+                   + segment(0xc3, bytes([precision]) + struct.pack('>HHB', height, width, 1) + bytes([1, 17, 0]))
+                   + segment(0xda, bytes([1, 1, 0, predictor, 0, 0])) + wire.bytes(jpeg=True) + b'\xff\xd9')
+        yield vector('jpeg-lossless-known-' + suffix, 'dct', encoded, expected,
+                     requirement='image-jpeg-lossless', tolerance=0, transform=0)
+    plain, _, _, _ = lossless_jpeg()
+    frame, scan, table = (plain.index(marker) for marker in (b'\xff\xc3', b'\xff\xda', b'\xff\xc4'))
+    malformed = [
+        ('precision-low', frame + 4, 1), ('precision-high', frame + 4, 17),
+        ('quantizer', frame + 12, 1), ('predictor-zero', scan + 7, 0),
+        ('predictor-eight', scan + 7, 8), ('spectral-end', scan + 8, 1),
+        ('approximation-high', scan + 9, 16), ('point-range', scan + 9, 8),
+        ('ac-selector', scan + 6, 1), ('missing-table', scan + 6, 0x30),
+        ('category', table + 4 + 1 + 16 + 8, 17), ('sample-range', frame + 4, 7),
+    ]
+    for suffix, offset, value in malformed:
+        damaged = plain[:offset] + bytes([value]) + plain[offset + 1:]
+        yield vector('jpeg-lossless-bad-' + suffix, 'dct', damaged,
+                     requirement='image-jpeg-lossless', outcome='syntax')
+    for suffix, damaged in [
+        ('missing-scan', plain[:scan] + plain[-2:]),
+        ('missing-huffman', plain[:table] + plain[table + 2 + int.from_bytes(plain[table + 2:table + 4], 'big'):]),
+        ('duplicate-scan', plain[:-2] + plain[scan:]),
+        ('truncated-entropy', plain[:scan + 11] + plain[-2:]),
+    ]:
+        yield vector('jpeg-lossless-bad-' + suffix, 'dct', damaged,
+                     requirement='image-jpeg-lossless', outcome='syntax')
+    restarted, _, _, _ = lossless_jpeg(restart_rows=1)
+    interval, restart = restarted.index(b'\xff\xdd'), restarted.index(b'\xff\xd0')
+    for suffix, offset, value in [('restart-row', interval + 5, 4), ('restart-sequence', restart + 1, 0xd7)]:
+        yield vector('jpeg-lossless-bad-' + suffix, 'dct', restarted[:offset] + bytes([value]) + restarted[offset + 1:],
+                     requirement='image-jpeg-lossless', outcome='syntax')
+    arithmetic, _, _, _ = lossless_jpeg(arithmetic=True)
+    yield vector('jpeg-lossless-arithmetic-boundary', 'dct', arithmetic,
+                 requirement='image-jpeg-lossless', outcome='unsupported', feature='jpeg.arithmetic')
+    yield vector('jpeg-lossless-hierarchical-boundary', 'dct', plain[:frame + 1] + b'\xc7' + plain[frame + 2:],
+                 requirement='image-jpeg-lossless', outcome='unsupported', feature='jpeg.process')
+
+
+def lossless_cases():
+    """Compatibility controls: T.81 H is beyond PDF 7.4.8's required processes."""
+    from dataclasses import replace
+    from .paint import image_case
+    for suffix, options in [
+        ('gray', {}),
+        ('restart', {'predictor': 7, 'restart_rows': 1}),
+        ('rgb', {'predictor': 4, 'components': 3}),
+        ('16bit', {'precision': 16}),
+        ('16bit-point', {'precision': 16, 'predictor': 5, 'point': 3}),
+        ('half-predictor', {'predictor': 6}),
+        ('rgb-planar', {'components': 3, 'separate': True, 'tables': True, 'predictor': 6}),
+        ('rgb-subsampled', {'components': 3, 'sampling': [(2, 2), (1, 1), (1, 1)], 'predictor': 5, 'restart_rows': 1}),
+        ('rgb-fractional', {'components': 3, 'sampling': [(3, 1), (2, 1), (1, 1)], 'predictor': 6}),
+        ('2bit-point', {'precision': 2, 'point': 1, 'predictor': 7}),
+        ('12bit', {'precision': 12, 'predictor': 3}),
+        ('ycbcr', {'components': 3, 'transform': 1}),
+    ]:
+        encoded, expected, width, height = lossless_jpeg(**options)
+        components = options.get('components', 1)
+        colors = [tuple(expected[i:i + 3]) if components == 3 else (expected[i],) * 3
+                  for i in range(0, len(expected), components)]
+        name = f'jpeg-lossless-huffman-{suffix}'
+        settings = {'matrix': (width, 0, 0, height, 2, 2), 'colors': colors, 'requirement': 'image-jpeg-lossless'}
+        space = b'/DeviceRGB' if components == 3 else b'/DeviceGray'
+        dictionary = (b'/BitsPerComponent 8 /ColorSpace ' + space + b'/Filter /DCTDecode /DecodeParms << /ColorTransform '
+                      + str(options.get('transform', 0)).encode() + b' >>')
+        yield image_case(name, encoded, dictionary, [], width, height, **settings)
+        control = image_case(name + '-rgb-control', bytes(v for color in colors for v in color),
+                             b'/BitsPerComponent 8 /ColorSpace /DeviceRGB', [], width, height, **settings)
+        yield replace(control, extra={**control.extra, 'control_of': 'image/' + name})
+
+
 def cases():
     verify_qm()
     from .image import vector, image_pdf_vector
@@ -732,3 +946,5 @@ def cases():
                    ('image-jpeg-arithmetic' if options.get('arithmetic',True) else 'image-jpeg-12bit',),
                    'JPEG native-precision reconstruction painted on a pixel-aligned grid',
                    oracle=oracle,extra={'tolerance':1})
+    yield from lossless_vectors()
+    yield from lossless_cases()

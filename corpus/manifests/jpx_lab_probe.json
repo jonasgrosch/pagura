@@ -1,0 +1,1881 @@
+{
+  "schema": 2,
+  "area": "jpx_lab_probe",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "jpx_lab_probe/lab-default-8",
+      "kind": "pdf",
+      "description": "lab default 8",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-8.pdf",
+      "sha256": "51a1828d316fa191d76effa4d0f72f13340f559cca6bb3bd76284a30736f5751",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-8.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-8",
+      "role": "subject",
+      "codestream_sha256": "b67f25ac0b2b007fce9af7c86f8a14d6e37594419c22ddc0fdc1211b2f3441ed",
+      "component_bits": [
+        8,
+        8,
+        8
+      ],
+      "encoded_samples": [
+        [
+          127,
+          128,
+          96
+        ],
+        [
+          191,
+          159,
+          65
+        ],
+        [
+          63,
+          97,
+          127
+        ],
+        [
+          255,
+          128,
+          96
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        128,
+        200,
+        96,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "2540/51",
+          "0",
+          "0"
+        ],
+        [
+          "3820/51",
+          "62/3",
+          "-1240/51"
+        ],
+        [
+          "420/17",
+          "-62/3",
+          "1240/51"
+        ],
+        [
+          "100",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-8-codec-control",
+      "kind": "pdf",
+      "description": "lab default 8 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-8-codec-control.pdf",
+      "sha256": "14e7eb311f71dabd603bd88e83e936e5da60c81592ff2b86bdc52c1ad13ce341",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-8-codec-control.ppm",
+      "oracle_sha256": "407ecd480e1a26dcdd0e26040917a0aae67c647e0911fefa50e1c1cde0bdd104",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-8",
+      "role": "codec-control",
+      "codestream_sha256": "b67f25ac0b2b007fce9af7c86f8a14d6e37594419c22ddc0fdc1211b2f3441ed"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-8-rgb-control",
+      "kind": "pdf",
+      "description": "lab default 8 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-8-rgb-control.pdf",
+      "sha256": "488012b85aacd2ceae2b94cb93d9cd51a6bb73381efdb4f7658facc70198f2a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-8-rgb-control.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-default-8",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-8-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab default 8 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-8-pdf-lab-control.pdf",
+      "sha256": "53dcc41273cf37b1b15571c3f526d229cb5f46b61f624811c3017c2b2eb8755a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-8-pdf-lab-control.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-8",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-default-8",
+      "kind": "pdf",
+      "description": "lab explicit default 8",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-default-8.pdf",
+      "sha256": "356aa075e3adadb2306ef37ff8a53e38e36c7df0ad1519e3e125f1f6fa7027c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-default-8.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-default-8",
+      "role": "subject",
+      "codestream_sha256": "b67f25ac0b2b007fce9af7c86f8a14d6e37594419c22ddc0fdc1211b2f3441ed",
+      "component_bits": [
+        8,
+        8,
+        8
+      ],
+      "encoded_samples": [
+        [
+          127,
+          128,
+          96
+        ],
+        [
+          191,
+          159,
+          65
+        ],
+        [
+          63,
+          97,
+          127
+        ],
+        [
+          255,
+          128,
+          96
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        128,
+        200,
+        96,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "2540/51",
+          "0",
+          "0"
+        ],
+        [
+          "3820/51",
+          "62/3",
+          "-1240/51"
+        ],
+        [
+          "420/17",
+          "-62/3",
+          "1240/51"
+        ],
+        [
+          "100",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-default-8-codec-control",
+      "kind": "pdf",
+      "description": "lab explicit default 8 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-default-8-codec-control.pdf",
+      "sha256": "14e7eb311f71dabd603bd88e83e936e5da60c81592ff2b86bdc52c1ad13ce341",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-default-8-codec-control.ppm",
+      "oracle_sha256": "407ecd480e1a26dcdd0e26040917a0aae67c647e0911fefa50e1c1cde0bdd104",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-default-8",
+      "role": "codec-control",
+      "codestream_sha256": "b67f25ac0b2b007fce9af7c86f8a14d6e37594419c22ddc0fdc1211b2f3441ed"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-default-8-rgb-control",
+      "kind": "pdf",
+      "description": "lab explicit default 8 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-default-8-rgb-control.pdf",
+      "sha256": "488012b85aacd2ceae2b94cb93d9cd51a6bb73381efdb4f7658facc70198f2a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-default-8-rgb-control.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-explicit-default-8",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-default-8-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab explicit default 8 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-default-8-pdf-lab-control.pdf",
+      "sha256": "53dcc41273cf37b1b15571c3f526d229cb5f46b61f624811c3017c2b2eb8755a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-default-8-pdf-lab-control.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-default-8",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-16",
+      "kind": "pdf",
+      "description": "lab default 16",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-16.pdf",
+      "sha256": "acd7740a33692bb22592bcbe8d9695d8757bfa45ff3a3799e02d489d49bd2eae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-16.ppm",
+      "oracle_sha256": "13cfb86d6d9bcfd65822aae2f6cc0b8e19cb8e9abf0704dfc84bc8ff195ad1b8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-16",
+      "role": "subject",
+      "codestream_sha256": "119b8144d99ff7a629dea6e7c8dd3c825dda0a079dccfbbb72c08398ae774c10",
+      "component_bits": [
+        16,
+        16,
+        16
+      ],
+      "encoded_samples": [
+        [
+          32767,
+          32768,
+          24576
+        ],
+        [
+          49151,
+          40959,
+          16385
+        ],
+        [
+          16383,
+          24577,
+          32767
+        ],
+        [
+          65535,
+          32768,
+          24576
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        32768,
+        200,
+        24576,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "655340/13107",
+          "0",
+          "0"
+        ],
+        [
+          "983020/13107",
+          "16382/771",
+          "-327640/13107"
+        ],
+        [
+          "109220/4369",
+          "-16382/771",
+          "327640/13107"
+        ],
+        [
+          "100",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-16-codec-control",
+      "kind": "pdf",
+      "description": "lab default 16 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-16-codec-control.pdf",
+      "sha256": "7b45734e724e7d5d987eb2bc57bfb28c3c70fda9ba770e947d9d84ac8e2e5725",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-16-codec-control.ppm",
+      "oracle_sha256": "0de4c4d6827c6780d0713cde699269043992eafa7f08e50ffc9497a89ca0e20f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-16",
+      "role": "codec-control",
+      "codestream_sha256": "119b8144d99ff7a629dea6e7c8dd3c825dda0a079dccfbbb72c08398ae774c10"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-16-rgb-control",
+      "kind": "pdf",
+      "description": "lab default 16 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-16-rgb-control.pdf",
+      "sha256": "bfacd46331ecb000ce2786a3651371400d20485244e28d87f36decd0c866532a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-16-rgb-control.ppm",
+      "oracle_sha256": "13cfb86d6d9bcfd65822aae2f6cc0b8e19cb8e9abf0704dfc84bc8ff195ad1b8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-default-16",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-16-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab default 16 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-16-pdf-lab-control.pdf",
+      "sha256": "e485482fea98bf3be1a00464bdb246415734aad1a5cdbcbef095afb37fc8af75",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-16-pdf-lab-control.ppm",
+      "oracle_sha256": "13cfb86d6d9bcfd65822aae2f6cc0b8e19cb8e9abf0704dfc84bc8ff195ad1b8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-16",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-8",
+      "kind": "pdf",
+      "description": "lab explicit custom 8",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8.pdf",
+      "sha256": "c94e275f3cd5f283fd34d9612ea3b039e5f149191f724f4be3605ceecf85daab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8.ppm",
+      "oracle_sha256": "aca6b2671551213b0cdb58fc7d8530a7874767956434e829012219264a447399",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-8",
+      "role": "subject",
+      "codestream_sha256": "5b5a87649be0bc94d1b86bf42ca6bb8cfea0a8a6b6ac4afecb3709bb96ca08ab",
+      "component_bits": [
+        8,
+        8,
+        8
+      ],
+      "encoded_samples": [
+        [
+          64,
+          96,
+          160
+        ],
+        [
+          96,
+          128,
+          128
+        ],
+        [
+          128,
+          64,
+          192
+        ],
+        [
+          191,
+          96,
+          160
+        ]
+      ],
+      "lab_parameters": [
+        200,
+        64,
+        120,
+        96,
+        240,
+        160,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "1280/51",
+          "256/17",
+          "-512/17"
+        ],
+        [
+          "2560/51",
+          "-256/17",
+          "512/17"
+        ],
+        [
+          "5080/51",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-8-codec-control",
+      "kind": "pdf",
+      "description": "lab explicit custom 8 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8-codec-control.pdf",
+      "sha256": "171d86ec35ac2142f7ef81eafc4f2f20d1d3039aa0b082808b2d030228f8885d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8-codec-control.ppm",
+      "oracle_sha256": "dfd087827f07e85068d9220f781666b3d4288e2ec50c5c258469c975e9af1e5f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-8",
+      "role": "codec-control",
+      "codestream_sha256": "5b5a87649be0bc94d1b86bf42ca6bb8cfea0a8a6b6ac4afecb3709bb96ca08ab"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-8-rgb-control",
+      "kind": "pdf",
+      "description": "lab explicit custom 8 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8-rgb-control.pdf",
+      "sha256": "1d5612aa05ab74b1b2a10ff9528da616110719b9f6b97765eaae28b5d0232783",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8-rgb-control.ppm",
+      "oracle_sha256": "aca6b2671551213b0cdb58fc7d8530a7874767956434e829012219264a447399",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-8",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-8-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab explicit custom 8 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8-pdf-lab-control.pdf",
+      "sha256": "7817b4d7b4038ad48de8a5a5dc2294c7680689bf9afeb21d82e7de66bd158067",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-8-pdf-lab-control.ppm",
+      "oracle_sha256": "aca6b2671551213b0cdb58fc7d8530a7874767956434e829012219264a447399",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-8",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-16",
+      "kind": "pdf",
+      "description": "lab explicit custom 16",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16.pdf",
+      "sha256": "83108039e7e79f9161c37776c11b4a1f19537946c83787ec0802d71b2856c12a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16.ppm",
+      "oracle_sha256": "5b62628a66572ca74507690854ef9a4eae161b43d14702eab04d4a220af8da82",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-16",
+      "role": "subject",
+      "codestream_sha256": "58ecb4f87d9123242c4d3e612fe149e692cd9bb76d3327622ec3db3d7da9ddbe",
+      "component_bits": [
+        16,
+        16,
+        16
+      ],
+      "encoded_samples": [
+        [
+          16384,
+          24576,
+          40960
+        ],
+        [
+          24576,
+          32768,
+          32768
+        ],
+        [
+          32768,
+          16384,
+          49152
+        ],
+        [
+          48896,
+          24576,
+          40960
+        ]
+      ],
+      "lab_parameters": [
+        200,
+        16384,
+        120,
+        24576,
+        240,
+        40960,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "327680/13107",
+          "65536/4369",
+          "-131072/4369"
+        ],
+        [
+          "655360/13107",
+          "-65536/4369",
+          "131072/4369"
+        ],
+        [
+          "1300480/13107",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-16-codec-control",
+      "kind": "pdf",
+      "description": "lab explicit custom 16 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16-codec-control.pdf",
+      "sha256": "d78592e039af662932f9ab9630c3262b0d24924e185ed142f22632178c89d7ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16-codec-control.ppm",
+      "oracle_sha256": "f3e322dfcf49ff606955c4a43cb34a74cefdc79bd3ccd823f915886fb7dcf753",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-16",
+      "role": "codec-control",
+      "codestream_sha256": "58ecb4f87d9123242c4d3e612fe149e692cd9bb76d3327622ec3db3d7da9ddbe"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-16-rgb-control",
+      "kind": "pdf",
+      "description": "lab explicit custom 16 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16-rgb-control.pdf",
+      "sha256": "6be2094f9cce0c33ae588d5ed473ce8560048735ac0af206f53108d24ec41df1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16-rgb-control.ppm",
+      "oracle_sha256": "5b62628a66572ca74507690854ef9a4eae161b43d14702eab04d4a220af8da82",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-16",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-custom-16-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab explicit custom 16 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16-pdf-lab-control.pdf",
+      "sha256": "21ff6ad8112e2307ee0848d70c3c121cf9540afd36706a11a0b92ff5ec4365b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-custom-16-pdf-lab-control.ppm",
+      "oracle_sha256": "5b62628a66572ca74507690854ef9a4eae161b43d14702eab04d4a220af8da82",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-custom-16",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-palette-8-12-16",
+      "kind": "pdf",
+      "description": "lab default palette 8 12 16",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16.pdf",
+      "sha256": "ca63b63ac71d2d2732572216f067981a1706d829a1c3f70380241af879f01c5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16.ppm",
+      "oracle_sha256": "5c7e2766b0d7ba50088f6bad04fd1abc8b8043553598423e32d26051a41f966c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-palette-8-12-16",
+      "role": "subject",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663",
+      "component_bits": [
+        8,
+        12,
+        16
+      ],
+      "encoded_samples": [
+        [
+          127,
+          2048,
+          24576
+        ],
+        [
+          191,
+          2559,
+          16385
+        ],
+        [
+          63,
+          1537,
+          32767
+        ],
+        [
+          255,
+          2048,
+          24576
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        2048,
+        200,
+        24576,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "2540/51",
+          "0",
+          "0"
+        ],
+        [
+          "3820/51",
+          "2482/117",
+          "-327640/13107"
+        ],
+        [
+          "420/17",
+          "-2482/117",
+          "327640/13107"
+        ],
+        [
+          "100",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-palette-8-12-16-codec-control",
+      "kind": "pdf",
+      "description": "lab default palette 8 12 16 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16-codec-control.pdf",
+      "sha256": "222cebccbed4059e022242a66f4ccae151eaeb186567cfcf5960ad1b4b873e8a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16-codec-control.ppm",
+      "oracle_sha256": "1c964dabad43288f2dd3d2831c15dbf1ad31c755c93868b21c7c45aa58e08c34",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-palette-8-12-16",
+      "role": "codec-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-palette-8-12-16-rgb-control",
+      "kind": "pdf",
+      "description": "lab default palette 8 12 16 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16-rgb-control.pdf",
+      "sha256": "ea2b10c39d221a1283e83d62f1d2076d6ef4ca0831b1d56f154b8f221aa9feaa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16-rgb-control.ppm",
+      "oracle_sha256": "5c7e2766b0d7ba50088f6bad04fd1abc8b8043553598423e32d26051a41f966c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-default-palette-8-12-16",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-palette-8-12-16-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab default palette 8 12 16 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16-pdf-lab-control.pdf",
+      "sha256": "7616d530e6203aa3ea403849eafc41494738568741b898972a945d2ff4b952b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-palette-8-12-16-pdf-lab-control.ppm",
+      "oracle_sha256": "5c7e2766b0d7ba50088f6bad04fd1abc8b8043553598423e32d26051a41f966c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-palette-8-12-16",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-malformed-ep-1",
+      "kind": "vector",
+      "description": "T.801 M.11.7.4.1/Table M.30: incomplete or excess EP fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-1.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-1.jpx",
+          "sha256": "2ee9b8fa1e9c41ee27c61cdc928f0eb3ce2f616f6294f7f2c6f9f5d7dd159955"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_lab_probe/lab-malformed-ep-4",
+      "kind": "vector",
+      "description": "T.801 M.11.7.4.1/Table M.30: incomplete or excess EP fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-4.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-4.jpx",
+          "sha256": "6ffddc155c7eb913975a4e1d8af46d79627f3414f2f86c0aaa3840c0f77efaee"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_lab_probe/lab-malformed-ep-24",
+      "kind": "vector",
+      "description": "T.801 M.11.7.4.1/Table M.30: incomplete or excess EP fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-24.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-24.jpx",
+          "sha256": "2645e7d2ccba7262ebd8b4f43fd4664338b56d42ce4acbd0ba75a3acc8363339"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_lab_probe/lab-malformed-ep-27",
+      "kind": "vector",
+      "description": "T.801 M.11.7.4.1/Table M.30: incomplete or excess EP fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-27.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-27.jpx",
+          "sha256": "fa9e1be8c3c944dae2f6939ac7f6ef656fb9f0536d41c2b597a2bfe54e446651"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_lab_probe/lab-malformed-ep-29",
+      "kind": "vector",
+      "description": "T.801 M.11.7.4.1/Table M.30: incomplete or excess EP fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-29.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-29.jpx",
+          "sha256": "e45aafecb79af74580688884da8ebb0f87e056c16d3749a8fefc16ee5902a6db"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_lab_probe/lab-malformed-ep-32",
+      "kind": "vector",
+      "description": "T.801 M.11.7.4.1/Table M.30: incomplete or excess EP fields",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-32.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-malformed-ep-32.jpx",
+          "sha256": "9e8fd3c78124418d922aa0b4ac7ecc42f5ae0cb518fb545d89673c723d2d3770"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx_lab_probe/lab-d65-unprobed",
+      "kind": "vector",
+      "description": "Table M.29 defines D65; no RGB oracle established here",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-d65-unprobed.jpx",
+          "sha256": "9a3adcfdc09a6c62e8118b97b189bbb33f7d8cbb66bb184207a253b597b9e28c"
+        },
+        ".note": {
+          "path": "corpus/generated/jpx_lab_probe/lab-d65-unprobed.note",
+          "sha256": "c076f01789dd19f791ff3220cb029a41a3744725c121e3e9c07db3176a56486f"
+        }
+      },
+      "observation": "unprobed-boundary"
+    },
+    {
+      "id": "jpx_lab_probe/lab-temperature-unprobed",
+      "kind": "vector",
+      "description": "Table M.29 defines CT plus 7500 K; no RGB oracle established here",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-temperature-unprobed.jpx",
+          "sha256": "cdd8fd1eede5b3db0518413d9a307ff911e3cbc1f388ce618b1038b670749caf"
+        },
+        ".note": {
+          "path": "corpus/generated/jpx_lab_probe/lab-temperature-unprobed.note",
+          "sha256": "d627e217c3a09dfa981e7133edc34b2c741e8f42ed3001a7e3768bb67b9ade2c"
+        }
+      },
+      "observation": "unprobed-boundary"
+    },
+    {
+      "id": "jpx_lab_probe/lab-unknown-illuminant",
+      "kind": "vector",
+      "description": "Unassigned illuminant has no guessed D50 replacement",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-unknown-illuminant.jpx",
+          "sha256": "9ede4ff24e44569bb3fd16e483d7c203cd8099eef205018fee5fc3498df96cfc"
+        },
+        ".note": {
+          "path": "corpus/generated/jpx_lab_probe/lab-unknown-illuminant.note",
+          "sha256": "303fc5dbcd82bab50c4bcbd603655247d29fe5d4ea1aa4272083c8aa9ef0d1c8"
+        }
+      },
+      "observation": "unprobed-boundary"
+    },
+    {
+      "id": "jpx_lab_probe/lab-zero-range-unadjudicated",
+      "kind": "vector",
+      "description": "Table M.30 lists zero but M-18 division is degenerate; no invented verdict",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-zero-range-unadjudicated.jpx",
+          "sha256": "370599dd53c6affb646417e16ebb1466e43c8ebad2cc862fcfa1da06943f3a5c"
+        },
+        ".note": {
+          "path": "corpus/generated/jpx_lab_probe/lab-zero-range-unadjudicated.note",
+          "sha256": "df76c6111970bd9e46fee00e7b822cc5b0fd15df3728907d0b516bb0433bfd17"
+        }
+      },
+      "observation": "unprobed-boundary"
+    },
+    {
+      "id": "jpx_lab_probe/lab-signed-boundary",
+      "kind": "vector",
+      "description": "M-18 defines unsigned channel values; signed CIELab has no pixel oracle in this probe",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx_lab_probe/lab-signed-boundary.jpx",
+          "sha256": "afc88c5666afa0fd74f68b807494ed68414b69533d8d36b339a02cbab6cb6128"
+        },
+        ".note": {
+          "path": "corpus/generated/jpx_lab_probe/lab-signed-boundary.note",
+          "sha256": "035664987bc19689191e35a25a4d86edc69f3baef63f422f17ffbc38a365dc2a"
+        }
+      },
+      "observation": "unprobed-boundary"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-1bit",
+      "kind": "pdf",
+      "description": "lab default 1bit",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-1bit.pdf",
+      "sha256": "7d1d6292ff8f0a6e886d000ec3b7d879e1b16db4d30a779f16fab79f9bb0a7e5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-1bit.ppm",
+      "oracle_sha256": "442180ca5556d9a229559e49565f36236e7ac792cdcd34b2ac4c4e07004eef3b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-1bit",
+      "role": "subject",
+      "codestream_sha256": "0140fd9452755340b1bf66c6c59ce7a60c64ce82abadcd8c2ec06dc4b0ab6c0c",
+      "component_bits": [
+        1,
+        1,
+        1
+      ],
+      "encoded_samples": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        1,
+        200,
+        "3/4",
+        4470064
+      ],
+      "lab_values": [
+        [
+          "0",
+          "-170",
+          "-150"
+        ],
+        [
+          "100",
+          "0",
+          "50"
+        ],
+        [
+          "100",
+          "-170",
+          "-150"
+        ],
+        [
+          "0",
+          "0",
+          "50"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-1bit-codec-control",
+      "kind": "pdf",
+      "description": "lab default 1bit codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-1bit-codec-control.pdf",
+      "sha256": "5c4c715bba7dbb038088a76ddf0b3b80deeb67d7172a22b3deef1362f44c5774",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-1bit-codec-control.ppm",
+      "oracle_sha256": "26f3569b6f7a49ed9dfa3c771506bcc29fe0ce25480e3152876556b7f02b2ac5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-1bit",
+      "role": "codec-control",
+      "codestream_sha256": "0140fd9452755340b1bf66c6c59ce7a60c64ce82abadcd8c2ec06dc4b0ab6c0c"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-1bit-rgb-control",
+      "kind": "pdf",
+      "description": "lab default 1bit rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-1bit-rgb-control.pdf",
+      "sha256": "88c3739ed598be9b6a5fc50f86dd34eecd3ae73bb642481009b88c67a61d5195",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-1bit-rgb-control.ppm",
+      "oracle_sha256": "442180ca5556d9a229559e49565f36236e7ac792cdcd34b2ac4c4e07004eef3b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-default-1bit",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-1bit-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab default 1bit pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-1bit-pdf-lab-control.pdf",
+      "sha256": "83eb1bcf13631dd119e787927353873cacfcb67ffe37550b78b865f1055bfcf9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-1bit-pdf-lab-control.ppm",
+      "oracle_sha256": "442180ca5556d9a229559e49565f36236e7ac792cdcd34b2ac4c4e07004eef3b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-1bit",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-2bit",
+      "kind": "pdf",
+      "description": "lab default 2bit",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-2bit.pdf",
+      "sha256": "dbb0762fd70473d767151d761dc05a51a5eb689c37d7a6ba8d4ca90f31af5d91",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-2bit.ppm",
+      "oracle_sha256": "0e684b5d17cd6d2f4ab76bbc4f3ac2605eb9e8aaa32dae30a11c17378756d6bb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-2bit",
+      "role": "subject",
+      "codestream_sha256": "5dab3862a58f48936be72d7f9a5e1a9024277c4ccc41eb3836f89dd87a640a2b",
+      "component_bits": [
+        2,
+        2,
+        2
+      ],
+      "encoded_samples": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          3
+        ],
+        [
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          3,
+          3
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        2,
+        200,
+        "3/2",
+        4470064
+      ],
+      "lab_values": [
+        [
+          "0",
+          "-340/3",
+          "-100"
+        ],
+        [
+          "100",
+          "170/3",
+          "100"
+        ],
+        [
+          "100",
+          "-340/3",
+          "-100"
+        ],
+        [
+          "0",
+          "170/3",
+          "100"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-2bit-codec-control",
+      "kind": "pdf",
+      "description": "lab default 2bit codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-2bit-codec-control.pdf",
+      "sha256": "f055e2fda80e6796696b793f004c1a2ea837f3691ed551ff7a17c6f58e6d8f0e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-2bit-codec-control.ppm",
+      "oracle_sha256": "26f3569b6f7a49ed9dfa3c771506bcc29fe0ce25480e3152876556b7f02b2ac5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-2bit",
+      "role": "codec-control",
+      "codestream_sha256": "5dab3862a58f48936be72d7f9a5e1a9024277c4ccc41eb3836f89dd87a640a2b"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-2bit-rgb-control",
+      "kind": "pdf",
+      "description": "lab default 2bit rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-2bit-rgb-control.pdf",
+      "sha256": "c3a1c30fabab7b85c4911cdf30b728613b1e6877fe5c08b1bbc1bf9f1bc76281",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-2bit-rgb-control.ppm",
+      "oracle_sha256": "0e684b5d17cd6d2f4ab76bbc4f3ac2605eb9e8aaa32dae30a11c17378756d6bb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-default-2bit",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-default-2bit-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab default 2bit pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-default-2bit-pdf-lab-control.pdf",
+      "sha256": "0962e584fc4e6d225c10d68e18873b85ade394b1f0a0957766247d4d54457f93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-default-2bit-pdf-lab-control.ppm",
+      "oracle_sha256": "0e684b5d17cd6d2f4ab76bbc4f3ac2605eb9e8aaa32dae30a11c17378756d6bb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-default-2bit",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-palette-1-2-16",
+      "kind": "pdf",
+      "description": "lab palette 1 2 16",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16.pdf",
+      "sha256": "30687c2d248975f7c22450703b7d360beba2e1a8a75229d866434fb39bb865d3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16.ppm",
+      "oracle_sha256": "25ce5f403b01a3cae77be30e709752fae2d4b3bc8760f5e271451b88ac705047",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-palette-1-2-16",
+      "role": "subject",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663",
+      "component_bits": [
+        1,
+        2,
+        16
+      ],
+      "encoded_samples": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          3,
+          65535
+        ],
+        [
+          1,
+          2,
+          24576
+        ],
+        [
+          0,
+          1,
+          32768
+        ]
+      ],
+      "lab_parameters": [
+        100,
+        0,
+        170,
+        2,
+        200,
+        24576,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "0",
+          "-340/3",
+          "-327680/4369"
+        ],
+        [
+          "100",
+          "170/3",
+          "546120/4369"
+        ],
+        [
+          "100",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "-170/3",
+          "327680/13107"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-palette-1-2-16-codec-control",
+      "kind": "pdf",
+      "description": "lab palette 1 2 16 codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16-codec-control.pdf",
+      "sha256": "fb15f42f90b9cacc04504531f74fdd4160102c28682e345950587d1c2fb1733d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16-codec-control.ppm",
+      "oracle_sha256": "412cb15070a6a9663ec4721f79612117ede411af4e7b18e62e8a1057be81f66d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-palette-1-2-16",
+      "role": "codec-control",
+      "codestream_sha256": "203dce16d9441bd4dba3f16db4ae001195f1bc2956fd98995620eee72bbba663"
+    },
+    {
+      "id": "jpx_lab_probe/lab-palette-1-2-16-rgb-control",
+      "kind": "pdf",
+      "description": "lab palette 1 2 16 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16-rgb-control.pdf",
+      "sha256": "221898106a58455dc789fcdc3aae72421c8d2749c07dcdbaa38b4b5f68467479",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16-rgb-control.ppm",
+      "oracle_sha256": "25ce5f403b01a3cae77be30e709752fae2d4b3bc8760f5e271451b88ac705047",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-palette-1-2-16",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-palette-1-2-16-pdf-lab-control",
+      "kind": "pdf",
+      "description": "lab palette 1 2 16 pdf lab control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16-pdf-lab-control.pdf",
+      "sha256": "c92b01910de069c29fa95e2bbfee0140f0ee91dfdc091ee2254e6e56dc939772",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-palette-1-2-16-pdf-lab-control.ppm",
+      "oracle_sha256": "25ce5f403b01a3cae77be30e709752fae2d4b3bc8760f5e271451b88ac705047",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-palette-1-2-16",
+      "role": "pdf-lab-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-extended-lightness",
+      "kind": "pdf",
+      "description": "lab explicit extended lightness",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-extended-lightness.pdf",
+      "sha256": "131a476935245bb1345809fb8e3e2f72d1fde720191397f70dce3a11d90de243",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-extended-lightness.ppm",
+      "oracle_sha256": "b13a7219cb17115b561a357d7a11bc7d32a6adb08de24a701e7b8ba911acdc0d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-extended-lightness",
+      "role": "subject",
+      "codestream_sha256": "79c4df84c246b72bd1efa43fe712a9e022bdcf9c9c2960836e4a30df74b497bd",
+      "component_bits": [
+        8,
+        8,
+        8
+      ],
+      "encoded_samples": [
+        [
+          217,
+          43,
+          181
+        ],
+        [
+          255,
+          128,
+          96
+        ],
+        [
+          0,
+          128,
+          96
+        ],
+        [
+          191,
+          128,
+          96
+        ]
+      ],
+      "lab_parameters": [
+        200,
+        64,
+        240,
+        128,
+        240,
+        96,
+        4470064
+      ],
+      "lab_values": [
+        [
+          "120",
+          "-80",
+          "80"
+        ],
+        [
+          "7640/51",
+          "0",
+          "0"
+        ],
+        [
+          "-2560/51",
+          "0",
+          "0"
+        ],
+        [
+          "5080/51",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-extended-lightness-codec-control",
+      "kind": "pdf",
+      "description": "lab explicit extended lightness codec control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-extended-lightness-codec-control.pdf",
+      "sha256": "d62132fa4a1e9196b356f7820c44b5a99808b15fc5a4a1b679f28cae15831b9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-extended-lightness-codec-control.ppm",
+      "oracle_sha256": "4eec7ac621e05fce04166594490466534494e9d192a0b18a009b4509d9cee260",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "control_group": "jpx_lab_probe/lab-explicit-extended-lightness",
+      "role": "codec-control",
+      "codestream_sha256": "79c4df84c246b72bd1efa43fe712a9e022bdcf9c9c2960836e4a30df74b497bd"
+    },
+    {
+      "id": "jpx_lab_probe/lab-explicit-extended-lightness-rgb-control",
+      "kind": "pdf",
+      "description": "lab explicit extended lightness rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-explicit-extended-lightness-rgb-control.pdf",
+      "sha256": "d840f047e11075938814dcc0568f7a707401dfb8e8d5aa81e87e8e12aee4b225",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-explicit-extended-lightness-rgb-control.ppm",
+      "oracle_sha256": "b13a7219cb17115b561a357d7a11bc7d32a6adb08de24a701e7b8ba911acdc0d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "control_group": "jpx_lab_probe/lab-explicit-extended-lightness",
+      "role": "rgb-control"
+    },
+    {
+      "id": "jpx_lab_probe/lab-fallback-illuminant",
+      "kind": "pdf",
+      "description": "lab fallback illuminant",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-fallback-illuminant.pdf",
+      "sha256": "c223711cb526c003d78d0a0ed0bca581e8670aba8b3411fddf16e949ead2dde5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-fallback-illuminant.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH1"
+    },
+    {
+      "id": "jpx_lab_probe/lab-fallback-illuminant-rgb-control",
+      "kind": "pdf",
+      "description": "lab fallback illuminant rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-fallback-illuminant-rgb-control.pdf",
+      "sha256": "488012b85aacd2ceae2b94cb93d9cd51a6bb73381efdb4f7658facc70198f2a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-fallback-illuminant-rgb-control.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "jpx_lab_probe/lab-fallback-zero-range",
+      "kind": "pdf",
+      "description": "lab fallback zero range",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-fallback-zero-range.pdf",
+      "sha256": "7907f492124214ddf84ddbe9ecdca56ca3c867f2158544e258f5b4bd4c9c04c8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-fallback-zero-range.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; T.801 M.11.7.1 forbids repeated METH1"
+    },
+    {
+      "id": "jpx_lab_probe/lab-fallback-zero-range-rgb-control",
+      "kind": "pdf",
+      "description": "lab fallback zero range rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-fallback-zero-range-rgb-control.pdf",
+      "sha256": "488012b85aacd2ceae2b94cb93d9cd51a6bb73381efdb4f7658facc70198f2a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-fallback-zero-range-rgb-control.ppm",
+      "oracle_sha256": "5f747dfb59a8da376ec4dd75df073e24c539e6754378dca5e2fddf1a386e2d5c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "jpx_lab_probe/lab-fallback-rgb",
+      "kind": "pdf",
+      "description": "lab fallback rgb",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-fallback-rgb.pdf",
+      "sha256": "97453abdd232140eb7fa4dca8202401c720af014d7b083a556426099422aa84e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-fallback-rgb.ppm",
+      "oracle_sha256": "407ecd480e1a26dcdd0e26040917a0aae67c647e0911fefa50e1c1cde0bdd104",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1,
+      "jpx_validity": "malformed-duplicate-method",
+      "evidence_scope": "historical malformed-input observation; repeated METH1 and unproved Lab/RGB equivalence"
+    },
+    {
+      "id": "jpx_lab_probe/lab-fallback-rgb-control",
+      "kind": "pdf",
+      "description": "lab fallback rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-fallback-rgb-control.pdf",
+      "sha256": "bd9fa5c692a159ab225e5f66f1c9f3eb49eafa551b4cd01a07cbf8c9659753a4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-fallback-rgb-control.ppm",
+      "oracle_sha256": "407ecd480e1a26dcdd0e26040917a0aae67c647e0911fefa50e1c1cde0bdd104",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "jpx_lab_probe/lab-alpha-1",
+      "kind": "pdf",
+      "description": "lab alpha 1",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-alpha-1.pdf",
+      "sha256": "a3d0e6465ac1ef2019a445437ab4511bfd7b0aa6ceb64a89454820711e66e901",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-alpha-1.ppm",
+      "oracle_sha256": "c70710776ed71ee664b0173573e082da5050871cdeff63554bf07cfb2f811ff7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "jpx_lab_probe/lab-alpha-1-rgb-control",
+      "kind": "pdf",
+      "description": "lab alpha 1 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-alpha-1-rgb-control.pdf",
+      "sha256": "5e7fa81617602b2b08ca57beaa308b07247300ca19b86b1e60756f38a6011df6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-alpha-1-rgb-control.ppm",
+      "oracle_sha256": "c70710776ed71ee664b0173573e082da5050871cdeff63554bf07cfb2f811ff7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "jpx_lab_probe/lab-alpha-2",
+      "kind": "pdf",
+      "description": "lab alpha 2",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-alpha-2.pdf",
+      "sha256": "94b32cfc1d411a123245cc9435b3967b2cc49c601e747c58a88ddae2203e7d8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-alpha-2.ppm",
+      "oracle_sha256": "c70710776ed71ee664b0173573e082da5050871cdeff63554bf07cfb2f811ff7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "jpx_lab_probe/lab-alpha-2-rgb-control",
+      "kind": "pdf",
+      "description": "lab alpha 2 rgb control",
+      "expected": "render",
+      "requirements": [
+        "jpx-pdf-contract"
+      ],
+      "path": "corpus/generated/jpx_lab_probe/lab-alpha-2-rgb-control.pdf",
+      "sha256": "5e7fa81617602b2b08ca57beaa308b07247300ca19b86b1e60756f38a6011df6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jpx_lab_probe/lab-alpha-2-rgb-control.ppm",
+      "oracle_sha256": "c70710776ed71ee664b0173573e082da5050871cdeff63554bf07cfb2f811ff7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    }
+  ]
+}

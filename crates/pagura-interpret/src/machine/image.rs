@@ -6,7 +6,8 @@ mod describe;
 use super::{Machine, Scope};
 use crate::device::{Device, ImageMark, MarkState, Marked};
 use crate::model::Image;
-use pagura_core::{Dictionary, Error, Name, ObjectId, Position, Result, Value};
+use pagura_color::Intent;
+use pagura_core::{Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_image::{ImageId, ImageSource};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -16,7 +17,7 @@ use std::sync::Arc;
 /// an image reads (named and `Default` spaces, 8.6.5.6).
 #[derive(Debug, Default)]
 pub(crate) struct Images {
-    entries: HashMap<(ObjectId, usize), Arc<Image>>,
+    entries: HashMap<(ObjectId, usize, Intent), Arc<Image>>,
     /// The `ColorSpace` entries of the resources met.
     spaces: Vec<Option<Value>>,
 }
@@ -71,7 +72,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if !self.needs().images {
             return Ok(());
         }
-        let image = self.xobject_image(id, resources, &mut Vec::new())?;
+        let image = self.xobject_image(id, resources, &mut Vec::new(), scope.state.intent)?;
         if visible {
             self.image_mark(&image, scope)?;
         }
@@ -84,6 +85,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         id: ObjectId,
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
+        intent: Intent,
     ) -> Result<Arc<Image>> {
         if stack.contains(&id) {
             return Err(Error::cycle("recursive image mask").in_object(id));
@@ -91,7 +93,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if stack.len() >= self.session.limits.depth {
             return Err(Error::limit("image mask nesting exceeded"));
         }
-        let key = (id, self.session.images.spaces(resources)?);
+        let key = (id, self.session.images.spaces(resources)?, intent);
         if let Some(image) = self.session.images.entries.get(&key) {
             return Ok(Arc::clone(image));
         }
@@ -100,7 +102,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let object = document.object(id)?;
         let source = ImageSource::from_xobject(document, object).map_err(|e| e.in_object(id))?;
         let image = self
-            .describe(source, resources, stack)
+            .describe(source, resources, stack, intent)
             .map_err(|e| e.in_object(id))?;
         stack.pop();
         self.session.images.entries.insert(key, Arc::clone(&image));
@@ -177,77 +179,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             ImageId::Inline { stream, offset },
         )
         .map_err(|error| error.at(Position::Buffer(0)))?;
-        let image = self.describe(source, resources, &mut Vec::new())?;
+        let image = self.describe(source, resources, &mut Vec::new(), scope.state.intent)?;
         self.image_mark(&image, scope)
     }
-}
-
-/// The dictionary that frames an inline image's data (8.9.7): a named
-/// colour space is replaced by its definition, and an ICCBased one by the
-/// device space of its stream's `N`, without resolving the space.
-pub(super) fn framing(
-    document: &pagura_document::Document,
-    dictionary: &Dictionary,
-    resources: &Dictionary,
-) -> Result<Dictionary> {
-    let mut framing = dictionary.clone();
-    let Some(name) = named_space(dictionary) else {
-        return Ok(framing);
-    };
-    let value = super::form::resource(document, resources, b"ColorSpace", name.as_bytes())?;
-    let value = document.resolve(value)?;
-    let definition = if is_icc(value) {
-        let count = value
-            .as_array()
-            .and_then(|a| a.get(1))
-            .and_then(Value::as_reference)
-            .map(|id| document.object(id))
-            .transpose()?
-            .and_then(|object| object.dictionary())
-            .and_then(|d| d.get(b"N"))
-            .map(|n| document.resolve(n))
-            .transpose()?
-            .and_then(Value::as_integer)
-            .and_then(|n| usize::try_from(n).ok())
-            .ok_or(Error::syntax("invalid ICC component count"))?;
-        device_name(count)?
-    } else {
-        value.clone()
-    };
-    framing.insert(Name::new(b"ColorSpace"), definition);
-    framing.remove(b"CS");
-    Ok(framing)
-}
-
-/// The inline image's colour space name, unless it is a device space.
-fn named_space(dictionary: &Dictionary) -> Option<&Name> {
-    dictionary
-        .get(b"CS")
-        .or_else(|| dictionary.get(b"ColorSpace"))
-        .and_then(Value::as_name)
-        .filter(|n| {
-            !matches!(
-                n.as_bytes(),
-                b"G" | b"RGB" | b"CMYK" | b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK"
-            )
-        })
-}
-
-fn is_icc(value: &Value) -> bool {
-    value.as_array().is_some_and(|a| {
-        a.first()
-            .and_then(Value::as_name)
-            .is_some_and(|n| n == b"ICCBased")
-    })
-}
-
-fn device_name(count: usize) -> Result<Value> {
-    Ok(Value::name(match count {
-        1 => b"DeviceGray",
-        3 => b"DeviceRGB",
-        4 => b"DeviceCMYK",
-        _ => return Err(Error::syntax("invalid ICC component count")),
-    }))
 }
 
 fn has_mask(image: &Image) -> bool {

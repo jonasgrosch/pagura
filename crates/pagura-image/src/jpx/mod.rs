@@ -8,11 +8,13 @@
 //! predictable termination, vertical-causal contexts and segmentation symbols,
 //! 5/3 and 9/7 synthesis, RCT/ICT, palettes and straight or premultiplied opacity.
 //! Part 1 mechanics follow ITU-T T.800 (06/2019), Annexes A–I.
-//! Part 2 extensions remain pending primary T.801 review. PDF integration
-//! follows clause 7.4.9 and Table 87.
+//! The bounded baseline JPX container follows T.801 M.8/M.11 and Cor.4;
+//! other Part 2 coding/layout extensions remain explicit boundaries. PDF
+//! integration follows clause 7.4.9 and Table 87.
 //! Unsupported JPX extensions and sample representations return
 //! `Unsupported(filter.JPXDecode)`; structural truncations remain explicit errors.
-//! ICC bytes and enumerated colour identifiers are preserved for the caller.
+//! ICC bytes, enumerated colour identifiers and CIELab encoding parameters
+//! are preserved for the caller.
 //!
 //! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid
 //! image, `decoded_bytes` conservatively caps cumulative allocations (including
@@ -20,6 +22,7 @@
 //! tag-tree and coefficient-pass work. All allocations are charged first.
 
 mod boxes;
+mod channels;
 mod codestream;
 mod coding;
 mod io;
@@ -39,14 +42,111 @@ const UNSUPPORTED: Feature = Feature::new("filter.JPXDecode");
 
 /// Colour information carried by a JP2 file.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JpxColor {
     /// No colour box (raw codestream).
     Unspecified,
     /// An enumerated colour space (`colr` method 1), e.g. 16 = sRGB, 17 =
     /// greyscale, 18 = sYCC.
     Enumerated(u32),
+    /// CIELab (`colr` enumeration 14) with explicit encoding parameters.
+    /// The default encoding remains [`Self::Enumerated`] with value 14.
+    Lab(LabParameters),
     /// A restricted or full ICC profile (`colr` methods 2 and 3).
     Icc(Vec<u8>),
+    /// A method whose colour interpretation is unavailable. Its payload
+    /// remains available to callers (T.801 M.11.7.2).
+    Other {
+        /// The `colr` specification method.
+        method: u8,
+        /// Method-specific bytes after the three-byte header.
+        data: Vec<u8>,
+    },
+    /// PDF colour choices in precedence/approximation order (7.4.9).
+    /// A standalone JP2 decode retains the first specification instead.
+    Alternatives(Vec<ColorSpecification>),
+}
+
+/// Explicit CIELab encoding fields (T.801 M.11.7.4.1, Table M.30).
+/// These are source metadata; their colour interpretation is the caller's job.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct LabParameters {
+    ranges: [u32; 3],
+    offsets: [u32; 3],
+    illuminant: u32,
+}
+
+impl LabParameters {
+    /// Preserves the three unsigned ranges, offsets and illuminant code.
+    pub const fn new(ranges: [u32; 3], offsets: [u32; 3], illuminant: u32) -> Self {
+        Self {
+            ranges,
+            offsets,
+            illuminant,
+        }
+    }
+
+    /// Ranges for L*, a* and b*, in that order.
+    pub const fn ranges(&self) -> [u32; 3] {
+        self.ranges
+    }
+
+    /// Offsets in the unsigned sample domain, for L*, a* and b*.
+    pub const fn offsets(&self) -> [u32; 3] {
+        self.offsets
+    }
+
+    /// The illuminant identifier from Table M.29.
+    pub const fn illuminant(&self) -> u32 {
+        self.illuminant
+    }
+}
+
+/// One embedded colour specification and its selection metadata
+/// (T.801 M.11.7.2). Equal priorities retain their file order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ColorSpecification {
+    /// Signed precedence; higher values are preferred.
+    pub precedence: i8,
+    /// Approximation quality; lower values are preferred. JP2 uses zero.
+    pub approximation: u8,
+    /// Colour interpretation. Parser-produced alternatives never nest.
+    pub color: JpxColor,
+}
+
+impl JpxColor {
+    /// Whether this description contains CIELab, including ranked alternatives.
+    /// Its encoded channels require a declared physical interpretation rather
+    /// than an inferred device-colour fallback.
+    pub fn has_lab(&self) -> bool {
+        match self {
+            Self::Enumerated(14) | Self::Lab(_) => true,
+            Self::Alternatives(choices) => choices.iter().any(|choice| choice.color.has_lab()),
+            _ => false,
+        }
+    }
+
+    /// Heap storage retained by the colour metadata.
+    pub fn retained_bytes(&self) -> usize {
+        match self {
+            Self::Icc(data) | Self::Other { data, .. } => data.capacity(),
+            Self::Alternatives(choices) => choices.iter().fold(
+                choices
+                    .capacity()
+                    .saturating_mul(size_of::<ColorSpecification>()),
+                |total, choice| total.saturating_add(choice.color.retained_bytes()),
+            ),
+            Self::Unspecified | Self::Enumerated(_) | Self::Lab(_) => 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ColorSelection {
+    First,
+    Pdf,
 }
 
 /// One decoded component.
@@ -174,7 +274,14 @@ pub fn decode_with_diagnostics(
     options: &Options,
     diagnostics: &mut pagura_core::Diagnostics,
 ) -> Result<Decoded> {
-    decode_pdf(data, limits, options, diagnostics, false)
+    decode_selected(
+        data,
+        limits,
+        options,
+        diagnostics,
+        false,
+        ColorSelection::First,
+    )
 }
 
 pub(crate) fn decode_pdf(
@@ -184,12 +291,30 @@ pub(crate) fn decode_pdf(
     diagnostics: &mut pagura_core::Diagnostics,
     indexed: bool,
 ) -> Result<Decoded> {
+    decode_selected(
+        data,
+        limits,
+        options,
+        diagnostics,
+        indexed,
+        ColorSelection::Pdf,
+    )
+}
+
+fn decode_selected(
+    data: &[u8],
+    limits: &Limits,
+    options: &Options,
+    diagnostics: &mut pagura_core::Diagnostics,
+    indexed: bool,
+    selection: ColorSelection,
+) -> Result<Decoded> {
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG 2000 input budget exceeded").at(Position::Buffer(0)));
     }
     let mut budget = io::Budget::new(limits);
     budget.diagnostics = pagura_core::Diagnostics::new(diagnostics.mode());
-    let result = decode_bounded(data, &mut budget, options, indexed)
+    let result = decode_bounded(data, &mut budget, options, indexed, selection)
         .map_err(|error| error.at(Position::Buffer(0)));
     diagnostics.absorb(budget.diagnostics.take())?;
     result
@@ -226,9 +351,9 @@ fn describe_bounded(
     if data.starts_with(&[255, 79]) {
         return codestream::describe(data, 0, budget);
     }
-    let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+    let (stream, base, mut header) = boxes::parse(data, budget, options, ColorSelection::Pdf)?;
     if indexed {
-        header.use_pdf_palette()?;
+        header.use_pdf_palette(budget)?;
     }
     let mut decoded = codestream::describe(stream, base, budget)?;
     header.apply(&mut decoded, budget)?;
@@ -240,13 +365,14 @@ fn decode_bounded(
     budget: &mut io::Budget<'_>,
     options: &Options,
     indexed: bool,
+    selection: ColorSelection,
 ) -> Result<Decoded> {
     if data.starts_with(&[255, 79]) {
         codestream::decode(data, 0, budget)
     } else {
-        let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+        let (stream, base, mut header) = boxes::parse(data, budget, options, selection)?;
         if indexed {
-            header.use_pdf_palette()?;
+            header.use_pdf_palette(budget)?;
         }
         let mut decoded = codestream::decode(stream, base, budget)?;
         header.apply(&mut decoded, budget)?;

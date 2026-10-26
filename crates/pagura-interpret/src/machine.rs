@@ -372,9 +372,14 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         let Op::InlineImage(dictionary) = &op else {
             return Ok(());
         };
-        let framing = image::framing(self.document(), dictionary, resources)?;
-        let data =
-            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
+        let data = reader.inline_image_data(|data| {
+            pagura_image::inline_data_length_with_resources(
+                self.document(),
+                resources,
+                dictionary,
+                data,
+            )
+        })?;
         if ignored {
             return Ok(());
         }

@@ -34,13 +34,9 @@ impl<'a> Reader<'a> {
                 .data
                 .get(start + 17)
                 .ok_or_else(|| Error::syntax("truncated JBIG2 unknown-length region"))?;
-            let arithmetic = coding & 1 == 0;
-            let header = 18
-                + if arithmetic {
-                    if coding & 6 == 0 { 8 } else { 2 }
-                } else {
-                    0
-                };
+            let flags = super::generic::Flags::parse(coding)?;
+            let arithmetic = !flags.mmr();
+            let header = 18 + flags.adaptive_bytes();
             let marker = if arithmetic { [255, 172] } else { [0, 0] };
             let tail = self
                 .data

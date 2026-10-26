@@ -1,4 +1,4 @@
-//! PPM/PPT assembly, retaining source positions across marker fragments.
+//! Indexed PLM/PPM/PPT assembly with source positions across marker fragments.
 
 use pagura_core::Result;
 
@@ -20,14 +20,14 @@ impl Fragments {
         let index = fields.u8()?;
         let Err(slot) = self.indices.binary_search(&index) else {
             return Err(syntax(
-                "duplicate JPEG 2000 packed-header index",
+                "duplicate JPEG 2000 marker-fragment index",
                 fields.position() - 1,
             ));
         };
         let source = fields.position();
         let bytes = fields.take(fields.remaining())?;
         if bytes.is_empty() {
-            return Err(syntax("empty JPEG 2000 packed-header fragment", source));
+            return Err(syntax("empty JPEG 2000 marker fragment", source));
         }
         let logical = self.spans.get(slot).map_or(self.bytes.len(), |s| s.logical);
         budget.append(&mut self.bytes, bytes)?;

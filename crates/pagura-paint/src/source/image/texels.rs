@@ -42,8 +42,8 @@ enum LookupScale {
     Unit,
     /// An ICC-based base's `Range` of each component.
     Ranges([[f64; 2]; 4]),
-    /// A Lab base: `L` in 0..100 and `a`, `b` in their ranges.
-    Lab([f64; 4]),
+    /// A Lab base's three physical component intervals.
+    Lab([[f64; 2]; 3]),
 }
 
 impl Lookup {
@@ -56,7 +56,7 @@ impl Lookup {
         let scale = match base {
             ColorSpace::Icc(icc) => LookupScale::Ranges(icc.range),
             ColorSpace::Calibrated(cie) => {
-                cie.lab_range().map_or(LookupScale::Unit, LookupScale::Lab)
+                cie.lab_ranges().map_or(LookupScale::Unit, LookupScale::Lab)
             }
             _ => LookupScale::Unit,
         };
@@ -96,11 +96,10 @@ impl Lookup {
                     let [low, high] = ranges.get(i).copied().unwrap_or([0.0, 1.0]);
                     low * (1.0 - byte(i) / 255.0) + high * (byte(i) / 255.0)
                 }
-                LookupScale::Lab(range) => match i {
-                    0 => 100.0 * n,
-                    1 => range[0] + n * (range[1] - range[0]),
-                    _ => range[2] + n * (range[3] - range[2]),
-                },
+                LookupScale::Lab(ranges) => {
+                    let [low, high] = ranges[i];
+                    low + n * (high - low)
+                }
             };
         }
         count
@@ -112,8 +111,8 @@ impl Lookup {
 pub(super) struct Colors {
     /// Decode interval of each component.
     pub(super) decode: Vec<[f64; 2]>,
-    /// The largest code of each component.
-    pub(super) maxima: Vec<f64>,
+    /// The unsigned storage bias and normalization denominator of each component.
+    pub(super) encoding: Vec<[f64; 2]>,
     pub(super) lookup: Option<Lookup>,
     /// Colour-key ranges of raw codes (8.9.6.4).
     pub(super) key: Option<Vec<[u16; 2]>>,
@@ -155,7 +154,7 @@ impl Colors {
     /// Heap storage owned by this prepared colour description.
     pub(super) fn bytes(&self) -> usize {
         self.decode.capacity() * size_of::<[f64; 2]>()
-            + self.maxima.capacity() * size_of::<f64>()
+            + self.encoding.capacity() * size_of::<[f64; 2]>()
             + self
                 .key
                 .as_ref()
@@ -175,13 +174,30 @@ impl Colors {
     /// [`Self::texel`] by `mode`.
     fn texel_with(&self, codes: &[u16], extra: Extra, mode: TexelMode, out: &mut [f64]) {
         let mut values = [0.0; MAX_COMPONENTS];
-        for (((value, &code), &[low, high]), &maximum) in values
+        let embedded = self
+            .embedded
+            .zip(extra.embedded)
+            .map(|((maximum, premultiplied), code)| (f64::from(code) / maximum, premultiplied));
+        for (((value, &code), &[low, high]), &[bias, maximum]) in values
             .iter_mut()
             .zip(codes)
             .zip(&self.decode)
-            .zip(&self.maxima)
+            .zip(&self.encoding)
         {
-            *value = low + f64::from(code) / maximum * (high - low);
+            let mut normalized = (f64::from(code) - bias) / maximum;
+            // T.800 I.5.3.6, I-5 multiplies stored samples. Undo it before
+            // range interpretation, especially the offset Lab a/b channels.
+            // Indexed images instead contain indices into preblended colours.
+            if self.lookup.is_none()
+                && let Some((opacity, true)) = embedded
+            {
+                normalized = if opacity > 0.0 {
+                    normalized / opacity
+                } else {
+                    0.0
+                };
+            }
+            *value = low + normalized * (high - low);
         }
         let count = match &self.lookup {
             Some(lookup) => lookup.expand(&mut values),
@@ -199,13 +215,12 @@ impl Colors {
             shape = 0.0;
             alpha = 0.0;
         }
-        if let (Some((maximum, premultiplied)), Some(code)) = (self.embedded, extra.embedded) {
-            let opacity = f64::from(code) / maximum;
+        if let Some((opacity, premultiplied)) = embedded {
             alpha *= opacity;
             if self.alpha_is_shape {
                 shape *= opacity;
             }
-            if premultiplied {
+            if premultiplied && self.lookup.is_some() {
                 for value in values.iter_mut().take(count) {
                     *value = if opacity > 0.0 { *value / opacity } else { 0.0 };
                 }

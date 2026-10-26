@@ -13,7 +13,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Source {
     Stream(ObjectId),
-    Image(ObjectId),
+    Image(ObjectId, usize),
 }
 
 /// The store key of a parsed profile: its source and component count.
@@ -50,7 +50,7 @@ impl<'a> Profiles<'a> {
 
     /// The profile of stream `id` read for `components` components.
     fn get(&mut self, id: ObjectId, components: usize) -> Result<Option<Arc<Profile>>> {
-        self.get_source(id, components, None)
+        self.get_source(Source::Stream(id), id, components, None)
     }
 
     /// An ICC profile carried by image XObject `id` (7.4.9), charged and
@@ -58,23 +58,20 @@ impl<'a> Profiles<'a> {
     pub(super) fn embedded(
         &mut self,
         id: ObjectId,
+        ordinal: usize,
         components: usize,
         data: &[u8],
     ) -> Result<Option<Arc<Profile>>> {
-        self.get_source(id, components, Some(data))
+        self.get_source(Source::Image(id, ordinal), id, components, Some(data))
     }
 
     fn get_source(
         &mut self,
+        source: Source,
         id: ObjectId,
         components: usize,
         embedded: Option<&[u8]>,
     ) -> Result<Option<Arc<Profile>>> {
-        let source = if embedded.is_some() {
-            Source::Image(id)
-        } else {
-            Source::Stream(id)
-        };
         if let Some((count, profile)) = self.entries.get(&source) {
             if *count != components {
                 return Err(
@@ -321,7 +318,7 @@ mod tests {
         let data = pagura_testkit::fixture("color", "sampled-rgb.icc");
         assert!(
             Profiles::new(&document, Some(&store))
-                .embedded(id, 3, &data)
+                .embedded(id, 0, 3, &data)
                 .unwrap()
                 .is_some()
         );

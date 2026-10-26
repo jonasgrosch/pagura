@@ -352,9 +352,9 @@ impl ImageSource {
             ImageKind::Color {
                 color_space: Some(value),
             } => value.retained_bytes(),
-            ImageKind::EmbeddedColor {
-                color: crate::jpx::JpxColor::Icc(profile),
-            } => profile.capacity(),
+            ImageKind::EmbeddedColor { color, sample_bias } => {
+                color.retained_bytes() + sample_bias.capacity() * size_of::<u16>()
+            }
             _ => 0,
         };
         let mask = match &header.mask {

@@ -24,9 +24,11 @@ pub enum ColorSpace {
     DeviceRgb,
     /// DeviceCMYK (8.6.4.4).
     DeviceCmyk,
-    /// Embedded JPX sYCC with eight-bit unsigned channels (7.4.9;
-    /// IEC 61966-2-1 Amendment 1, F.4). Inputs are code values divided by
-    /// 255; this is not a PDF colour-space name.
+    /// Embedded JPX sYCC with unsigned channels (7.4.9; T.800 I.5.3.3,
+    /// Table I.10; IEC 61966-2-1 Amendment 1, F.4). Each input is its
+    /// integer sample divided by that channel's maximum code value.
+    /// JP2 maps this to the 0..255 colour-value domain independently of
+    /// sample precision; this is not a PDF colour-space name.
     Sycc,
     /// CalGray, CalRGB or Lab (8.6.5.2–8.6.5.4).
     Calibrated(Arc<Calibrated>),

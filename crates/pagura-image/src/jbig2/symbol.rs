@@ -156,7 +156,7 @@ impl Config {
         }
         let template = u8::try_from((flags >> 10) & 3)
             .map_err(|_| Error::syntax("invalid JBIG2 symbol template"))?;
-        let generic = Template::read(reader, template)?;
+        let generic = Template::read(reader, template, generic::Adaptive::Standard)?;
         let refinement = if flags & 2 != 0 {
             Some(Parameters::read(reader, u8::from(flags & 0x1000 != 0))?)
         } else {

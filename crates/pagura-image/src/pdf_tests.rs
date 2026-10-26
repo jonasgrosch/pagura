@@ -55,8 +55,11 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
         }
     }
     assert_eq!(image.component_bits(usize::from(image.components)), None);
-    if matches!(image.kind, ImageKind::EmbeddedColor { .. }) {
-        assert!(image.embedded_color_fallback().is_some());
+    if let ImageKind::EmbeddedColor { sample_bias, .. } = &image.kind {
+        assert_eq!(
+            image.embedded_color_fallback().is_some(),
+            sample_bias.is_empty()
+        );
     }
     if let Some(space) = params.get("space") {
         assert_eq!(space_name(&image.kind), space, "{name}");
@@ -138,10 +141,24 @@ fn space_name(kind: &ImageKind) -> &str {
             color_space: Some(Value::Array(array)),
         } => std::str::from_utf8(array[0].as_name().unwrap().as_bytes()).unwrap(),
         ImageKind::EmbeddedColor {
+            color: jpx::JpxColor::Enumerated(16),
+            ..
+        } => "DeviceRGB",
+        ImageKind::EmbeddedColor {
+            color: jpx::JpxColor::Enumerated(17),
+            ..
+        } => "DeviceGray",
+        ImageKind::EmbeddedColor {
+            color: jpx::JpxColor::Enumerated(12),
+            ..
+        } => "DeviceCMYK",
+        ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Icc(_),
+            ..
         } => "icc",
         ImageKind::EmbeddedColor {
             color: jpx::JpxColor::Enumerated(18),
+            ..
         } => "sYCC",
         ImageKind::Stencil { .. } => "stencil",
         _ => panic!("unexpected image colour description"),
@@ -225,6 +242,68 @@ fn alpha_precision_premultiplication_and_live_storage_are_preserved() {
         },
     )
     .unwrap();
+}
+
+#[test]
+fn signed_bias_budget_counts_only_retained_color_metadata() {
+    let decoded = jpx::JpxImage {
+        width: 2,
+        height: 1,
+        components: vec![
+            jpx::JpxComponent {
+                bits: 8,
+                signed: true,
+                width: 2,
+                height: 1,
+                samples: vec![0, 255],
+            },
+            jpx::JpxComponent {
+                bits: 9,
+                signed: false,
+                width: 2,
+                height: 1,
+                samples: vec![0, 511],
+            },
+        ],
+        // The adapter preserves opaque profile bytes; colour interpretation
+        // validates the profile after this sample-storage boundary.
+        color: jpx::JpxColor::Icc(Vec::new()),
+        alpha: Some(1),
+    };
+    for (color_space, bias_bytes) in [
+        (None, size_of::<u16>()),
+        (Some(Value::name(b"DeviceGray")), 0),
+    ] {
+        let mut image = DecodedImage {
+            kind: ImageKind::Color { color_space },
+            ..empty()
+        };
+        // One signed colour channel needs one bias; opacity needs none.
+        // An explicit PDF colour space allocates no embedded-colour metadata.
+        let live = 8
+            + 2
+            + 4
+            + 2 * (size_of::<jpx::JpxComponent>()
+                + size_of::<jpx::ComponentGeometry>()
+                + 2 * size_of::<&jpx::JpxComponent>()
+                + 1)
+            + bias_bytes;
+        let mut limits = Limits {
+            decoded_bytes: live - 1,
+            ..Limits::default()
+        };
+        assert_eq!(
+            jpx_image::adapt(placed(decoded.clone()), 2, &mut image, &limits)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+        limits.decoded_bytes = live;
+        jpx_image::adapt(placed(decoded.clone()), 2, &mut image, &limits).unwrap();
+        if let ImageKind::EmbeddedColor { sample_bias, .. } = image.kind {
+            assert_eq!(sample_bias, [128]);
+        }
+    }
 }
 
 #[test]

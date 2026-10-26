@@ -256,12 +256,13 @@ fn clipped_area(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
     twice.abs() * 0.5
 }
 
-/// The decoded components of sample `index` of an image: `Decode` applied
-/// to each raw value (8.9.5.2).
-pub(crate) fn components(
+/// The decoded components of sample `index` of an image: undo stored
+/// association (T.800 I.5.3.6) before applying `Decode` (8.9.5.2).
+fn components(
     image: &Image,
     decoded: &DecodedImage,
     index: usize,
+    association: f64,
     out: &mut [f64],
 ) -> Result<usize> {
     let count = usize::from(decoded.components);
@@ -274,8 +275,19 @@ pub(crate) fn components(
             .component_bits(k)
             .unwrap_or(decoded.bits_per_component);
         let maximum = f64::from(u16::MAX >> 16_u32.saturating_sub(u32::from(bits.clamp(1, 16))));
+        let bias = match &decoded.kind {
+            pagura_image::ImageKind::EmbeddedColor { sample_bias, .. } => {
+                sample_bias.get(k).copied().unwrap_or(0)
+            }
+            _ => 0,
+        };
         let [low, high] = image.decode.get(k).copied().unwrap_or([0.0, maximum]);
-        out[k] = low + f64::from(raw) / maximum * (high - low);
+        let sample = if association > 0.0 {
+            (f64::from(raw) - f64::from(bias)) / maximum / association
+        } else {
+            0.0
+        };
+        out[k] = low + sample * (high - low);
     }
     Ok(count)
 }
@@ -297,7 +309,7 @@ fn keyed(ranges: &[[u16; 2]], decoded: &DecodedImage, index: usize) -> bool {
 /// decoded gray level (11.6.5.3).
 pub(crate) fn opacity(image: &Image, decoded: &DecodedImage, index: usize) -> Result<f64> {
     let mut value = [0.0; 1];
-    components(image, decoded, index, &mut value)?;
+    components(image, decoded, index, 1.0, &mut value)?;
     Ok(if image.space.is_none() {
         1.0 - value[0].clamp(0.0, 1.0)
     } else {
@@ -333,8 +345,29 @@ impl ColorSamples<'_> {
     ///
     /// Returns `Syntax` for missing samples.
     pub(crate) fn value(&self, index: usize, out: &mut [f64]) -> Result<()> {
+        let (embedded_opacity, premultiplied) = match &self.decoded.mask {
+            MaskKind::Embedded(plane) => {
+                let raw = plane
+                    .samples
+                    .get(index)
+                    .ok_or(Error::syntax("missing image opacity"))?;
+                let bits = u32::from(plane.bits_per_component.clamp(1, 16));
+                (
+                    f64::from(raw) / f64::from(u16::MAX >> (16 - bits)),
+                    plane.premultiplied,
+                )
+            }
+            _ => (1.0, false),
+        };
+        // Indexed codes first select their preblended base-space colours;
+        // ordinary stored component values are unassociated before Decode.
+        let association = if premultiplied && self.palette.is_none() {
+            embedded_opacity
+        } else {
+            1.0
+        };
         let mut c = [0.0; pagura_color::MAX_COMPONENTS];
-        let mut count = components(self.image, self.decoded, index, &mut c)?;
+        let mut count = components(self.image, self.decoded, index, association, &mut c)?;
         if let Some(indexed) = self.palette {
             let base = crate::color::palette(indexed, c[0]);
             count = base.len().min(c.len());
@@ -346,21 +379,17 @@ impl ColorSamples<'_> {
         {
             (alpha, shape) = (0.0, 0.0);
         }
-        if let MaskKind::Embedded(plane) = &self.decoded.mask {
-            let raw = plane
-                .samples
-                .get(index)
-                .ok_or(Error::syntax("missing image opacity"))?;
-            let bits = u32::from(plane.bits_per_component.clamp(1, 16));
-            let opacity = f64::from(raw) / f64::from(u16::MAX >> (16 - bits));
-            alpha *= opacity;
-            if self.alpha_is_shape {
-                shape *= opacity;
-            }
-            if plane.premultiplied {
-                for v in c.iter_mut().take(count) {
-                    *v = if opacity > 0.0 { *v / opacity } else { 0.0 };
-                }
+        alpha *= embedded_opacity;
+        if self.alpha_is_shape {
+            shape *= embedded_opacity;
+        }
+        if premultiplied && self.palette.is_some() {
+            for v in c.iter_mut().take(count) {
+                *v = if embedded_opacity > 0.0 {
+                    *v / embedded_opacity
+                } else {
+                    0.0
+                };
             }
         }
         if let Some((matte, mask, decoded)) = self.matte {

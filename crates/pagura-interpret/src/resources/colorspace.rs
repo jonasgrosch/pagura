@@ -4,6 +4,7 @@
 //! transforms.
 
 mod icc;
+mod jpx;
 
 use super::function;
 use super::numbers::{array, entry};
@@ -12,7 +13,7 @@ use pagura_color::{
     ColorSpace, Colorant, DeviceN, ExponentialFunction, Function, Indexed, Separation,
     cie::Calibrated,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Result, Store, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Name, Result, Store, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 
@@ -34,6 +35,13 @@ pub(crate) struct Colors<'a> {
     rgb: Arc<ColorSpace>,
     cmyk: Arc<ColorSpace>,
     complement: Option<Arc<Function>>,
+}
+
+/// The integer domain of embedded JPEG 2000 colour samples.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JpxSamples {
+    Unsigned,
+    Signed,
 }
 
 /// Whether `Default` spaces replace device names (8.6.5.6). They do at the
@@ -74,44 +82,6 @@ impl<'a> Colors<'a> {
     /// Plain DeviceCMYK, without a `DefaultCMYK` lookup.
     pub(crate) fn device_cmyk(&self) -> Arc<ColorSpace> {
         Arc::clone(&self.cmyk)
-    }
-
-    /// Embedded JPX ICC colour (7.4.9) uses the existing forward profile
-    /// transforms. A later profile version selects the ordinary-channel
-    /// device fallback. It does not resolve PDF `Default` colour resources.
-    pub(crate) fn embedded_icc(
-        &mut self,
-        id: ObjectId,
-        data: &[u8],
-        components: u8,
-    ) -> Result<Arc<ColorSpace>> {
-        let alternate = match components {
-            1 => self.device_gray(),
-            3 => self.device_rgb(),
-            4 => self.device_cmyk(),
-            _ => {
-                return Err(Error::unsupported(
-                    crate::features::XOBJECT_JPX_COLOR,
-                    "embedded JPX ICC component count is not implemented",
-                ));
-            }
-        };
-        let profile = self.profiles.embedded(id, usize::from(components), data)?;
-        if profile.as_ref().is_some_and(|profile| profile.lab_input()) {
-            return Err(Error::unsupported(
-                crate::features::XOBJECT_JPX_COLOR,
-                "embedded JPX Lab-input ICC range interpretation is not implemented",
-            ));
-        }
-        Ok(Arc::new(ColorSpace::Icc(Arc::new(
-            pagura_color::IccSpace {
-                profile,
-                alternate,
-                components,
-                range: [[0.0, 1.0]; 4],
-                object: Some(id),
-            },
-        ))))
     }
 
     /// The space a name selects in `resources`, as `cs`, `g`, `rg` and `k`

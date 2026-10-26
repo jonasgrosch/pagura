@@ -469,10 +469,12 @@ fn sample_vector(name: &str, p: &BTreeMap<String, String>, expected: &[u8]) {
 }
 
 #[test]
-fn deferred_jpeg_height_is_an_explicit_capability_gap() {
+fn zero_jpeg_height_requires_first_scan_dnl() {
     let mut encoded = fixture("image", "jpeg-baseline-gray.in");
     let frame = encoded.windows(2).position(|w| w == [255, 192]).unwrap();
     encoded[frame + 5..frame + 7].fill(0);
     let error = dct::decode(&encoded, None, &Limits::default()).unwrap_err();
-    assert_eq!(error.feature(), Some(crate::features::JPEG_PROCESS));
+    // T.81 B.2.5 makes DNL mandatory when SOF Y is zero. This otherwise
+    // unchanged stream has no DNL, so it is malformed rather than unsupported.
+    assert_eq!(error.kind, ErrorKind::Syntax);
 }

@@ -112,9 +112,13 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     let id = ObjectId::new(4, 0);
     let store = Store::new(1 << 20);
     let mut colors = Colors::new(&document, Some(&store));
-    let space = colors.embedded_icc(id, &data, 3).unwrap();
+    let color = pagura_image::jpx::JpxColor::Icc(data.clone());
+    let intent = pagura_color::Intent::Relative;
+    let space = colors
+        .embedded_jpx(id, &color, &[8; 3], intent, JpxSamples::Unsigned)
+        .unwrap();
     let other = Colors::new(&document, Some(&store))
-        .embedded_icc(id, &data, 3)
+        .embedded_jpx(id, &color, &[8; 3], intent, JpxSamples::Unsigned)
         .unwrap();
     let (ColorSpace::Icc(first), ColorSpace::Icc(second)) = (space.as_ref(), other.as_ref()) else {
         panic!("embedded ICC did not produce an ICC space");
@@ -126,12 +130,21 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
     assert_eq!(first.object, Some(id));
     assert_eq!(first.range, [[0.0, 1.0]; 4]);
     assert!(matches!(
-        colors.embedded_icc(id, &data, 1).unwrap_err().kind,
+        colors
+            .embedded_jpx(id, &color, &[8], intent, JpxSamples::Unsigned)
+            .unwrap_err()
+            .kind,
         ErrorKind::Syntax
     ));
     assert!(matches!(
         colors
-            .embedded_icc(ObjectId::new(5, 0), b"broken", 3)
+            .embedded_jpx(
+                ObjectId::new(5, 0),
+                &pagura_image::jpx::JpxColor::Icc(b"broken".to_vec()),
+                &[8; 3],
+                intent,
+                JpxSamples::Unsigned,
+            )
             .unwrap_err()
             .kind,
         ErrorKind::Syntax
@@ -160,8 +173,237 @@ fn embedded_icc_profiles_share_the_store_and_keep_errors_and_budgets() {
         )
         .unwrap();
         let error = Colors::new(&bounded, None)
-            .embedded_icc(id, &data, 3)
+            .embedded_jpx(id, &color, &[8; 3], intent, JpxSamples::Unsigned)
             .unwrap_err();
         assert!(matches!(error.kind, ErrorKind::Limit), "{error}");
     }
+}
+
+#[test]
+fn jpx_candidates_and_intents_do_not_alias_in_profile_caches() {
+    use pagura_color::Intent;
+    use pagura_core::ObjectId;
+    use pagura_image::ImageSource;
+    let document = Document::open(
+        pagura_testkit::fixture("paint_jpx_integration", "selected-transform-relative.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let id = ObjectId::new(5, 0);
+    let source = ImageSource::from_xobject(&document, document.object(id).unwrap()).unwrap();
+    let pagura_image::ImageKind::EmbeddedColor { color, .. } = source.kind() else {
+        panic!("missing colour choices")
+    };
+    let store = Store::new(1 << 20);
+    for intent in [
+        Intent::Relative,
+        Intent::Perceptual,
+        Intent::Relative,
+        Intent::Absolute,
+    ] {
+        let mut colors = Colors::new(&document, Some(&store));
+        let space = colors
+            .embedded_jpx(id, color, &[8; 3], intent, JpxSamples::Unsigned)
+            .unwrap();
+        assert_eq!(
+            matches!(space.as_ref(), ColorSpace::Icc(_)),
+            intent == Intent::Perceptual
+        );
+    }
+}
+
+#[test]
+fn enumerated_lab_uses_each_unsigned_channel_precision() {
+    use pagura_color::Intent;
+    use pagura_core::ObjectId;
+    use pagura_image::jpx::{JpxColor, LabParameters};
+    let document = document();
+    let mut colors = Colors::new(&document, None);
+    let default = JpxColor::Enumerated(14);
+    let explicit = JpxColor::Lab(LabParameters::new(
+        [200, 120, 240],
+        [64, 96, 160],
+        0x0044_3530,
+    ));
+    // M-18 endpoints, including fractional b offsets at one/two bits and
+    // the 8/12/16-bit palette's output precisions, not its index precision.
+    for (color, bits, expected) in [
+        (
+            &default,
+            [1; 3],
+            [[0.0, 100.0], [-170.0, 0.0], [-150.0, 50.0]],
+        ),
+        (
+            &default,
+            [2; 3],
+            [[0.0, 100.0], [-340.0 / 3.0, 170.0 / 3.0], [-100.0, 100.0]],
+        ),
+        (
+            &default,
+            [8, 12, 16],
+            [
+                [0.0, 100.0],
+                [-348_160.0 / 4095.0, 347_990.0 / 4095.0],
+                [-4_915_200.0 / 65_535.0, 8_191_800.0 / 65_535.0],
+            ],
+        ),
+        (
+            &explicit,
+            [8; 3],
+            [
+                [-12_800.0 / 255.0, 38_200.0 / 255.0],
+                [-11_520.0 / 255.0, 19_080.0 / 255.0],
+                [-38_400.0 / 255.0, 22_800.0 / 255.0],
+            ],
+        ),
+    ] {
+        let space = colors
+            .embedded_jpx(
+                ObjectId::new(5, 0),
+                color,
+                &bits,
+                Intent::Relative,
+                JpxSamples::Unsigned,
+            )
+            .unwrap();
+        let ColorSpace::Calibrated(lab) = space.as_ref() else {
+            panic!("expected CIELab")
+        };
+        for (actual, expected) in lab
+            .lab_ranges()
+            .unwrap()
+            .into_iter()
+            .flatten()
+            .zip(expected.into_iter().flatten())
+        {
+            assert!((actual - expected).abs() < 1e-12);
+        }
+    }
+}
+
+#[test]
+fn unavailable_lab_candidates_do_not_assume_device_rgb() {
+    use pagura_color::Intent;
+    use pagura_core::{ErrorKind, ObjectId};
+    use pagura_image::jpx::{JpxColor, LabParameters};
+    let document = document();
+    let mut colors = Colors::new(&document, None);
+    let id = ObjectId::new(5, 0);
+    for color in [
+        JpxColor::Lab(LabParameters::new(
+            [100, 170, 200],
+            [0, 128, 96],
+            0x0044_3635,
+        )),
+        JpxColor::Lab(LabParameters::new([0, 170, 200], [0, 128, 96], 0x0044_3530)),
+        JpxColor::Lab(LabParameters::new(
+            [100, 170, 200],
+            [0, 128, 96],
+            0x4354_1d4c,
+        )),
+        JpxColor::Lab(LabParameters::new(
+            [100, 170, 200],
+            [0, 128, 96],
+            0x5a5a_5a5a,
+        )),
+    ] {
+        assert!(matches!(
+            colors
+                .embedded_jpx(id, &color, &[8; 3], Intent::Relative, JpxSamples::Unsigned)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Unsupported(_)
+        ));
+    }
+    let color = JpxColor::Enumerated(14);
+    assert!(matches!(
+        colors
+            .embedded_jpx(id, &color, &[8; 3], Intent::Relative, JpxSamples::Signed)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Unsupported(_)
+    ));
+    for bits in [[0, 8, 8], [8, 17, 8]] {
+        assert!(matches!(
+            colors
+                .embedded_jpx(id, &color, &bits, Intent::Relative, JpxSamples::Unsigned)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Unsupported(_)
+        ));
+    }
+    assert_eq!(
+        colors
+            .embedded_jpx(id, &color, &[8; 2], Intent::Relative, JpxSamples::Unsigned)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Syntax
+    );
+}
+
+#[test]
+fn historical_duplicate_lab_records_keep_candidate_semantics() {
+    use pagura_color::Intent;
+    use pagura_core::ObjectId;
+    use pagura_image::{ImageKind, ImageSource, jpx::JpxColor};
+    // These preserved files repeat METH1, forbidden by T.801 M.11.7.1.
+    // They check the existing tolerant selector, not valid-file acceptance.
+    for name in ["lab-fallback-illuminant", "lab-fallback-zero-range"] {
+        let document = Document::open(
+            pagura_testkit::fixture("jpx_lab_probe", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let id = ObjectId::new(5, 0);
+        let source = ImageSource::from_xobject(&document, document.object(id).unwrap()).unwrap();
+        let ImageKind::EmbeddedColor {
+            color: color @ JpxColor::Alternatives(choices),
+            ..
+        } = source.kind()
+        else {
+            panic!("missing ranked Lab choices")
+        };
+        assert_eq!(choices.len(), 2);
+        assert!(matches!(&choices[0].color, JpxColor::Lab(_)));
+        let JpxColor::Lab(parameters) = &choices[1].color else {
+            panic!("missing explicit D50 fallback")
+        };
+        assert_eq!(parameters.illuminant(), 0x0044_3530);
+        assert_eq!(parameters.ranges(), [100, 170, 200]);
+        let space = Colors::new(&document, None)
+            .embedded_jpx(id, color, &[8; 3], Intent::Relative, JpxSamples::Unsigned)
+            .unwrap();
+        let ColorSpace::Calibrated(lab) = space.as_ref() else {
+            panic!("missing selected D50 fallback")
+        };
+        assert_eq!(lab.lab_ranges().unwrap()[0], [0.0, 100.0]);
+        // The selected default encoding makes (128,96) neutral, regardless
+        // of the unsupported higher-ranked explicit colour record.
+        let pixel = lab.convert(&[50.0, 0.0, 0.0]);
+        assert!((pixel[0] - pixel[1]).abs() < 0.001);
+        assert!((pixel[1] - pixel[2]).abs() < 0.001);
+    }
+}
+
+#[test]
+fn historical_duplicate_lab_rgb_records_keep_candidate_semantics() {
+    use pagura_color::Intent;
+    use pagura_core::ObjectId;
+    use pagura_image::{ImageKind, ImageSource};
+    // The historical bytes also lack a proof of Lab/RGB equivalence. This
+    // remains a candidate-selection observation, not a valid JPX colour group.
+    let document = Document::open(
+        pagura_testkit::fixture("jpx_lab_probe", "lab-fallback-rgb.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let id = ObjectId::new(5, 0);
+    let source = ImageSource::from_xobject(&document, document.object(id).unwrap()).unwrap();
+    let ImageKind::EmbeddedColor { color, .. } = source.kind() else {
+        panic!("missing colour choices")
+    };
+    let space = Colors::new(&document, None)
+        .embedded_jpx(id, color, &[8; 3], Intent::Relative, JpxSamples::Unsigned)
+        .unwrap();
+    assert!(matches!(space.as_ref(), ColorSpace::DeviceRgb));
 }

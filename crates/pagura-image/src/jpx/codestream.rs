@@ -881,7 +881,7 @@ fn tile_header(
         }
         if matches!(
             code,
-            0xff4f | 0xff51 | 0xff55 | 0xff60 | 0xff90 | 0xff91 | 0xff92 | 0xffd9
+            0xff4f | 0xff51 | 0xff55 | 0xff57 | 0xff60 | 0xff63 | 0xff90 | 0xff91 | 0xff92 | 0xffd9
         ) {
             return Err(syntax("misplaced JPEG 2000 tile-header marker", position));
         }
@@ -978,6 +978,8 @@ fn read_header(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<MainH
     let size = read_size(&mut segment(reader)?, budget)?;
     let mut config = Configuration::new(size.components.len(), budget)?;
     let mut ppm = Ppm::default();
+    let mut plm = Fragments::default();
+    let mut registered = false;
     let mut next = marker(reader, budget)?;
     while next.0 != 0xff90 {
         if next.0 == 0xffd9 {
@@ -989,18 +991,43 @@ fn read_header(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<MainH
         ) {
             return Err(syntax("misplaced JPEG 2000 main-header marker", next.1));
         }
-        if next.0 == 0xff60 {
-            let mut fields = segment(reader)?;
-            if fields.remaining() < 5 {
-                return Err(syntax("short JPEG 2000 PPM marker", next.1));
+        let mut fields = segment(reader)?;
+        match next.0 {
+            0xff60 => {
+                if fields.remaining() < 5 {
+                    return Err(syntax("short JPEG 2000 PPM marker", next.1));
+                }
+                ppm.fragments.push(&mut fields, budget)?;
             }
-            ppm.fragments.push(&mut fields, budget)?;
-        } else {
-            config.marker(next.0, &mut segment(reader)?, budget)?;
+            0xff57 => plm.push(&mut fields, budget)?,
+            0xff63 => {
+                if registered {
+                    return Err(syntax("repeated JPEG 2000 component registration", next.1));
+                }
+                if fields.remaining() != 4 * size.components.len() {
+                    return Err(syntax(
+                        "invalid JPEG 2000 component registration count",
+                        next.1,
+                    ));
+                }
+                registered = true;
+                for _ in &size.components {
+                    budget.work(1)?;
+                    if fields.u16()? != 0 || fields.u16()? != 0 {
+                        return Err(unsupported(
+                            "nonzero JPEG 2000 component registration",
+                            next.1,
+                        ));
+                    }
+                }
+                fields.finish()?;
+            }
+            _ => config.marker(next.0, &mut fields, budget)?,
         }
         next = marker(reader, budget)?;
     }
     config.validate()?;
+    super::coding::main_packet_lengths(&plm, budget)?;
     Ok(MainHeader {
         size,
         config,

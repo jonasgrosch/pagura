@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -88,7 +89,28 @@ def validate_manifest(data, inventory):
     return fixtures(data)
 
 
-def invoke(command, row, directory):
+def explicit_refusal(directory, engine):
+    """Only a named backend refusal; arbitrary process errors stay unclassified."""
+    feature = None
+    if engine == 'pagura':
+        # The public CLI renders ErrorKind::Unsupported as this fixed prefix.
+        match = re.match(rb'pagura: unsupported \[([A-Za-z0-9_.-]{1,96})\]: ',
+                         (directory / 'stderr').read_bytes())
+        if match:
+            feature = match[1].decode('ascii')
+    else:
+        try:
+            value = json.loads((directory / 'stdout').read_bytes())
+            if (isinstance(value, dict) and type(value.get('schema')) is int and value['schema'] == 1
+                    and value.get('status') == 'unsupported' and isinstance(value.get('feature'), str)
+                    and re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', value['feature'])):
+                feature = value['feature']
+        except (ValueError, UnicodeDecodeError):
+            pass
+    return feature
+
+
+def invoke(command, row, directory, *, engine=None):
     """No successful exit or stale output can stand in for independent pixels."""
     output = directory / 'page.ppm'
     output.unlink(missing_ok=True)
@@ -104,6 +126,9 @@ def invoke(command, row, directory):
         return {'outcome': 'adapter-error', 'reason': 'render diagnostics exceed 64 KiB'}
     diagnostic = {f'{path.name}_sha256': sha(path.read_bytes()) for path in logs}
     if result.returncode:
+        feature = explicit_refusal(directory, engine)
+        if feature:
+            return {'outcome': 'unsupported', 'feature': feature, **diagnostic}
         return {'outcome': 'adapter-error', 'reason': 'unclassified renderer failure; requires investigation',
                 'exit_code': result.returncode, **diagnostic}
     if not output.is_file() or output.stat().st_size > 64 * 1024 * 1024:
@@ -177,7 +202,7 @@ def run(data, inventory, output, selected, images=None):
                     result = {'outcome': 'engine-unavailable', 'reason': identity['reason']}
                 else:
                     row = rows[case['id']]
-                    result = invoke(command_for(name, commands[name], row, directory / 'page.ppm'), row, directory)
+                    result = invoke(command_for(name, commands[name], row, directory / 'page.ppm'), row, directory, engine=name)
                     if images is not None and result['outcome'] in {'pass', 'incorrect'}:
                         # Only the manifest's project-owned synthetic fixtures
                         # reach here. Keep visual evidence outside Git; names

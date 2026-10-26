@@ -3,6 +3,7 @@
 use pagura_core::Result;
 
 use super::io::{Budget, Reader, syntax};
+use super::packed::Fragments;
 use super::progression::{self, Change};
 use super::unsupported;
 
@@ -407,30 +408,55 @@ fn validate_packet_lengths(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> 
             fields.position(),
         ));
     }
-    let mut value = 0_u32;
-    let mut continued = false;
-    while fields.remaining() != 0 {
-        budget.work(1)?;
-        let byte = fields.u8()?;
-        value = value
-            .checked_mul(128)
-            .and_then(|v| v.checked_add(u32::from(byte & 127)))
-            .ok_or_else(|| {
-                syntax(
-                    "JPEG 2000 packet-length table overflows",
-                    fields.position() - 1,
-                )
-            })?;
-        continued = byte & 128 != 0;
-        if !continued {
-            value = 0;
+    let bytes = fields.remaining();
+    packet_lengths(fields, bytes, budget)
+}
+
+/// A.7.2 orders PLM fragments by Zplm. Nplm counts bytes, not packets; its
+/// Iplm list can span markers, but an individual packet length cannot.
+pub(super) fn main_packet_lengths(fragments: &Fragments, budget: &mut Budget<'_>) -> Result<()> {
+    if let Some(mut fields) = fragments.reader() {
+        while fields.remaining() != 0 {
+            budget.work(1)?;
+            let bytes = usize::from(fields.u8()?);
+            packet_lengths(&mut fields, bytes, budget)?;
         }
     }
-    if continued {
-        return Err(syntax(
-            "truncated JPEG 2000 packet-length table",
-            fields.position(),
-        ));
+    Ok(())
+}
+
+fn packet_lengths(
+    fields: &mut Reader<'_>,
+    mut bytes: usize,
+    budget: &mut Budget<'_>,
+) -> Result<()> {
+    while bytes != 0 {
+        let start = fields.offset;
+        let mut value = 0_u32;
+        loop {
+            if bytes == 0 {
+                return Err(syntax(
+                    "truncated JPEG 2000 packet-length table",
+                    fields.position(),
+                ));
+            }
+            budget.work(1)?;
+            let byte = fields.u8()?;
+            bytes -= 1;
+            value = value
+                .checked_mul(128)
+                .and_then(|v| v.checked_add(u32::from(byte & 127)))
+                .ok_or_else(|| {
+                    syntax(
+                        "JPEG 2000 packet-length table overflows",
+                        fields.position() - 1,
+                    )
+                })?;
+            if byte & 128 == 0 {
+                break;
+            }
+        }
+        fields.packet_boundary(start)?;
     }
     Ok(())
 }
@@ -448,4 +474,39 @@ fn component_index(reader: &mut Reader<'_>, count: usize) -> Result<usize> {
         ));
     }
     Ok(index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Budget, Reader, packet_lengths};
+    use pagura_core::{ErrorKind, Limits};
+
+    #[test]
+    fn packet_length_work_counts_each_variable_integer_byte() {
+        // T.800 Table A.36's literal encoding for length 128.
+        let limits = Limits {
+            operations: 2,
+            ..Limits::default()
+        };
+        packet_lengths(
+            &mut Reader::new(&[0x81, 0], 0),
+            2,
+            &mut Budget::new(&limits),
+        )
+        .unwrap();
+        let limited = Limits {
+            operations: 1,
+            ..limits
+        };
+        assert_eq!(
+            packet_lengths(
+                &mut Reader::new(&[0x81, 0], 0),
+                2,
+                &mut Budget::new(&limited)
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Limit
+        );
+    }
 }

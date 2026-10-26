@@ -283,7 +283,7 @@ fn describe_space(space: &ColorSpace) -> String {
         ColorSpace::DeviceGray => "DeviceGray".to_owned(),
         ColorSpace::DeviceRgb => "DeviceRGB".to_owned(),
         ColorSpace::DeviceCmyk => "DeviceCMYK".to_owned(),
-        ColorSpace::Sycc => "JPX-sYCC-8".to_owned(),
+        ColorSpace::Sycc => "JPX-sYCC".to_owned(),
         ColorSpace::Calibrated(c) => format!("Calibrated({})", c.components()),
         ColorSpace::Icc(icc) => format!(
             "ICCBased({} {} alternate {})",
