@@ -979,6 +979,9 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
       "feature": "appearance.font-encoding"
     }
   ]
