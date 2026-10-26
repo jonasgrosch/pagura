@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "6d40d6a39df17159fb5e96f01456176ee5824c15",
+  "audited_revision": "4b3fd373883ab4a4f635751993f58b7349d2a8c8",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -117,6 +117,7 @@
     "crates/pagura-image/src/parameters.rs": "c454ce06a8fb47ae4ac72db37c527b629da6c80da6ca0699abf8dafaf0a4f0a4",
     "crates/pagura-image/src/source.rs": "7f082f1e471a09f0260670d8e2a30aeecb8d5dbe5b9270c029f2ea775ca1a31d",
     "crates/pagura-image/src/source/header.rs": "53db59f9c3a5a864eb084241399d22d377bb9e083dbcc42aeacdfac0ce36c183",
+    "crates/pagura-image/src/tests.rs": "9431fb4111e2d0a4ed41d005142b23e64a29e73e7a90af8d47c1a28caab56099",
     "crates/pagura-image/tests/bitonal_integration.rs": "62d4a98b767a2aef02793af5837e4ecf078907c55ec93012853d3eea223d5d7b",
     "crates/pagura-image/tests/jpeg_integration.rs": "38de949a6ea37b7010ce7dfcf85f51975fa65b475d366befd45c3a51a9d90bd5",
     "crates/pagura-image/tests/jpx_integration.rs": "bf65c25224b0d6d89ddd7377580b86874b4d843bbd6dc0b28f454d4e377f2097",
@@ -560,7 +561,8 @@
         "tools/fixturegen/jpx.py",
         "crates/pagura-image/src/dct/tests.rs",
         "crates/pagura-image/src/jpx/tests.rs",
-        "crates/pagura-image/tests/jpx_integration.rs"
+        "crates/pagura-image/tests/jpx_integration.rs",
+        "crates/pagura-image/src/tests.rs"
       ],
       "requirements": [
         "decoder-output-cap",
