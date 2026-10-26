@@ -126,6 +126,18 @@ pub(super) struct Colors {
     pub(super) convert: Converter,
 }
 
+/// How texels convert their colours.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) enum TexelMode {
+    /// Exactly ([`Converter::convert`]).
+    #[default]
+    Exact,
+    /// To values whose F32 levels ([`crate::kernel::level`]) are those of
+    /// the exact ones ([`Converter::convert_rounded`]), for texels each
+    /// pixel copies as its colour.
+    Rounded,
+}
+
 /// Per-sample inputs other than the codes: embedded opacity and the soft
 /// mask's opacity at the same sample, for Matte removal.
 #[derive(Debug, Clone, Copy, Default)]
@@ -157,6 +169,11 @@ impl Colors {
 
     /// The texel of one sample's `codes`.
     fn texel(&self, codes: &[u16], extra: Extra, out: &mut [f64]) {
+        self.texel_with(codes, extra, TexelMode::Exact, out);
+    }
+
+    /// [`Self::texel`] by `mode`.
+    fn texel_with(&self, codes: &[u16], extra: Extra, mode: TexelMode, out: &mut [f64]) {
         let mut values = [0.0; MAX_COMPONENTS];
         for (((value, &code), &[low, high]), &maximum) in values
             .iter_mut()
@@ -205,7 +222,12 @@ impl Colors {
         }
         let channels = self.convert.target().channels();
         let (color, rest) = out.split_at_mut(channels);
-        self.convert.convert(&values[..count], color);
+        match mode {
+            TexelMode::Exact => self.convert.convert(&values[..count], color),
+            TexelMode::Rounded => self.convert.convert_rounded(&values[..count], color, |v| {
+                crate::kernel::level(v).to_bits()
+            }),
+        };
         for value in color.iter_mut() {
             *value *= alpha;
         }
@@ -1158,6 +1180,8 @@ pub(super) struct Memo {
     state: MemoState,
     /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
+    /// How the texels held were converted.
+    mode: TexelMode,
 }
 
 /// A free slot: no key is negative.
@@ -1274,6 +1298,7 @@ impl MemoLayout {
             slots,
             state: self.state(),
             spare: [0.0; MAX_LANES],
+            mode: TexelMode::Exact,
         })
     }
 }
@@ -1347,6 +1372,7 @@ pub(super) struct MemoTexels<'a> {
     /// a Matte is removed.
     matte: Option<&'a Opacity>,
     memo: RefCell<&'a mut Memo>,
+    mode: TexelMode,
 }
 
 impl<'a> MemoTexels<'a> {
@@ -1365,7 +1391,19 @@ impl<'a> MemoTexels<'a> {
             colors,
             matte,
             memo: RefCell::new(memo),
+            mode: TexelMode::Exact,
         })
+    }
+
+    /// These texels converted by `mode`; a memo holding texels converted
+    /// otherwise is emptied first.
+    pub(super) fn converting(mut self, mode: TexelMode) -> Self {
+        let memo = self.memo.get_mut();
+        if memo.mode != mode {
+            memo.reset();
+            memo.mode = mode;
+        }
+        Self { mode, ..self }
     }
 
     /// The texel of sample `index`, written into `out` (its held values).
@@ -1438,8 +1476,12 @@ impl<'a> MemoTexels<'a> {
                 opacity.code(u16::from(mask.get(index).copied().unwrap_or(0)))
             }),
         };
-        self.colors
-            .texel(&codes[..components.min(MAX_COMPONENTS)], extra, texel);
+        self.colors.texel_with(
+            &codes[..components.min(MAX_COMPONENTS)],
+            extra,
+            self.mode,
+            texel,
+        );
     }
 }
 

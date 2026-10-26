@@ -23,6 +23,8 @@ pub(crate) struct Scratch {
     pub(super) memo: Option<Box<texels::Memo>>,
     pub(super) summed: Vec<f64>,
     pub(super) fused: Vec<f64>,
+    /// How the texels of the rows `plan` holds were converted.
+    pub(super) mode: texels::TexelMode,
 }
 
 impl Layout {
@@ -51,6 +53,7 @@ impl Layout {
                 .transpose()?,
             summed: allocate(self.summed)?,
             fused: allocate(self.fused)?,
+            mode: texels::TexelMode::Exact,
         })
     }
 }

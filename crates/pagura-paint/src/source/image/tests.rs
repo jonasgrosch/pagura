@@ -9,7 +9,7 @@
 //! bit for bit.
 
 use super::geometry::{BilinearRows, Geometry, Texels};
-use super::texels::{Opacity, OpacityTexels, SampleTexels};
+use super::texels::{Opacity, OpacityTexels, SampleTexels, TexelMode};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
 use crate::source::{Pixels, SpanColors};
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
@@ -1132,7 +1132,7 @@ fn rows_and_tables_sum_as_samples_do() {
                         (plan, source_paint),
                         Pixels::new(x0, y, len),
                         &mut storage,
-                        lanes - 1,
+                        (lanes - 1, TexelMode::Exact),
                         &mut whole.0,
                     );
                     assert_eq!(storage.bytes(), reserved);
@@ -1152,7 +1152,7 @@ fn rows_and_tables_sum_as_samples_do() {
                             (plan, source_paint),
                             span,
                             &mut storage,
-                            lanes - 1,
+                            (lanes - 1, TexelMode::Exact),
                             &mut rows,
                         );
                         let part = &whole.0[start * lanes..(start + count) * lanes];
@@ -1335,4 +1335,71 @@ fn indexed_sources_sample_as_their_memo_does() {
         }
     }
     assert!(indexed > 0 && written > 0);
+}
+
+/// An ICCBased RGB space through the sampled, sRGB-like profile of the
+/// colour fixtures: its conversion ends in the sRGB transfer function's
+/// power.
+fn icc_rgb() -> ColorSpace {
+    let bytes = pagura_testkit::fixture("color", "sampled-rgb.icc");
+    let profile = pagura_color::Profile::parse(&bytes, 3, &pagura_core::Limits::default())
+        .unwrap()
+        .unwrap();
+    ColorSpace::Icc(Arc::new(pagura_color::IccSpace {
+        profile: Some(Arc::new(profile)),
+        alternate: Arc::new(ColorSpace::DeviceRgb),
+        components: 3,
+        range: [[0.0, 1.0]; 4],
+        object: None,
+    }))
+}
+
+/// Spans kept to F32 levels that copy one opaque texel per pixel convert
+/// texels to values of the same levels: their levels and alphas are those
+/// of exact spans, under every placement, with and without a soft mask
+/// (which keeps texels exact).
+#[test]
+fn rounded_texels_keep_the_levels_of_exact_texels() {
+    let level = |values: &[f64]| {
+        values
+            .iter()
+            .map(|&v| crate::kernel::level(v).to_bits())
+            .collect::<Vec<_>>()
+    };
+    let photo = Case {
+        space: Some(icc_rgb()),
+        ..case(image((29, 19), 3, 8, bytes(29 * 19 * 3, 8, 83)))
+    };
+    let soft = Case {
+        mask: Some((
+            image((29, 19), 1, 8, bytes(29 * 19, 8, 89)),
+            [0.0, 1.0],
+            MaskUse::Soft(None),
+        )),
+        ..photo.clone()
+    };
+    let mut rounded = 0;
+    for case in [&photo, &soft] {
+        for unit_to_device in placements(29, 19) {
+            let sampler = sampler(case, unit_to_device, 3);
+            let (mut exact_storage, mut kept_storage) = (scratch(&sampler), scratch(&sampler));
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut exact, mut kept) = (SpanColors::default(), SpanColors::default());
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                let levels = Pixels {
+                    precision: crate::source::Precision::Level,
+                    ..pixels
+                };
+                sampler.span(pixels, &mut exact_storage, &mut exact);
+                sampler.span(levels, &mut kept_storage, &mut kept);
+                let place = format!("{unit_to_device:?} row {y}");
+                assert_eq!(level(&kept.colors), level(&exact.colors), "{place}");
+                assert_eq!(bits(&kept.alpha), bits(&exact.alpha), "{place}");
+                rounded += usize::from(kept_storage.mode == TexelMode::Rounded);
+            }
+        }
+    }
+    assert!(rounded > 20, "{rounded} rounded spans");
 }
