@@ -500,7 +500,7 @@ fn validate_color(
                 "JPX colour space disagrees with channel count",
             ));
         }
-        jpx::JpxColor::Enumerated(16 | 18) if count != 3 => {
+        jpx::JpxColor::Enumerated(14 | 16 | 18) | jpx::JpxColor::Lab(_) if count != 3 => {
             return Err(Error::syntax(
                 "JPX colour space disagrees with channel count",
             ));

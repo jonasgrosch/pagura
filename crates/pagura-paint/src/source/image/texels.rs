@@ -42,8 +42,8 @@ enum LookupScale {
     Unit,
     /// An ICC-based base's `Range` of each component.
     Ranges([[f64; 2]; 4]),
-    /// A Lab base: `L` in 0..100 and `a`, `b` in their ranges.
-    Lab([f64; 4]),
+    /// A Lab base's three physical component intervals.
+    Lab([[f64; 2]; 3]),
 }
 
 impl Lookup {
@@ -56,7 +56,7 @@ impl Lookup {
         let scale = match base {
             ColorSpace::Icc(icc) => LookupScale::Ranges(icc.range),
             ColorSpace::Calibrated(cie) => {
-                cie.lab_range().map_or(LookupScale::Unit, LookupScale::Lab)
+                cie.lab_ranges().map_or(LookupScale::Unit, LookupScale::Lab)
             }
             _ => LookupScale::Unit,
         };
@@ -96,11 +96,10 @@ impl Lookup {
                     let [low, high] = ranges.get(i).copied().unwrap_or([0.0, 1.0]);
                     low * (1.0 - byte(i) / 255.0) + high * (byte(i) / 255.0)
                 }
-                LookupScale::Lab(range) => match i {
-                    0 => 100.0 * n,
-                    1 => range[0] + n * (range[1] - range[0]),
-                    _ => range[2] + n * (range[3] - range[2]),
-                },
+                LookupScale::Lab(ranges) => {
+                    let [low, high] = ranges[i];
+                    low + n * (high - low)
+                }
             };
         }
         count

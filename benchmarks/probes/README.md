@@ -348,8 +348,17 @@ Its artifact `12678465710` has ZIP SHA-256
 `0752e6672392e2afcc63fa092d8465f4e908a8faf1487d312c37d50eecdb35dd`
 and report SHA-256
 `55ea413098f3a1a54c26502ab9c74dceb255c750eda5b1f2f5010f95e9942a1e`.
-These are historical results after integration of performance base
-`9f9801a754203009a314644ba22afbfdc4f3e58b`; that integration needs fresh hosted gates.
+Performance base `9f9801a754203009a314644ba22afbfdc4f3e58b` is integrated at
+`d167185d2b3f7b950a50fce7d71b8c6943bb0707`. Its three operating-system jobs in
+[functional run 40384519486](https://github.com/jonasgrosch/pagura/actions/runs/40384519486),
+[editing run 40384519675](https://github.com/jonasgrosch/pagura/actions/runs/40384519675)
+and all seven [capability jobs 40384519618](https://github.com/jonasgrosch/pagura/actions/runs/40384519618)
+pass. The combined report records all 274 Pagura controls and 1,918 cells at
+PR merge revision `600a6fad75d8e3a59995d9e673c6cc6d2ccd8169`.
+Artifact `12681226063` has ZIP SHA-256
+`ee743b8d40d67f55c5a66fd0c88aae78b19224e6d0003a34ec0be5c3ea7c4406`
+and report SHA-256
+`ab6d9d827a492df2386010d47b1dedd5c85a1d79d4023c94164bb83a6e651a94`.
 The original diagnostic inventory had those fourteen image cases plus
 blank/rectangle controls, for 112 cells.
 Its eight Pagura subject failures remain `adapter-error`, as recorded by the
@@ -473,7 +482,8 @@ All 36 baseline subject cells are `incorrect`; Pagura reports six explicit
 control, but its five direct Lab subjects have the same RGB digests as their
 codec controls; its palette result is grayscale. This is a scoped negative
 result, not a family support verdict. Baseline CIELab remains a normative PDF
-7.4.9/T.801 M.9.2.4 obligation and an open Pagura gap.
+7.4.9/T.801 M.9.2.4 obligation; this diagnostic established the input/oracle
+pairing for the implementation below.
 
 | Pinned baseline | Subject/control adjudication |
 | --- | --- |
@@ -489,7 +499,7 @@ Pagura binary SHA-256 is
 The Linux render job fails on the expected refusals; macOS completes its
 observations. All inventory jobs pass; combined-report jobs are skipped. The
 platform reports retain their original outcomes and other-platform `not-run`
-rows. No diagnostic result is promoted into an integrated acceptance control.
+rows. These historical failures do not assert acceptance of a later implementation.
 
 | Artifact | ID | SHA-256 of ZIP | SHA-256 of report |
 | --- | --- | --- | --- |
@@ -497,3 +507,45 @@ rows. No diagnostic result is promoted into an integrated acceptance control.
 | macOS report | 12677922030 | `8aa365172ca2abf724443c4807adced87122e141eb08dc2eb5fe27cad56c3cc5` | `de5ec5fcd6226887adb32649f2fbd619ac706d48447f89f6054151c3b395c7d3` |
 | Ubuntu pixels | 12679126815 | `7f80445c28fdf91028d682eb5fc721c343411e3bb8619e88ab6ad16b014cb25e` | — |
 | macOS pixels | 12678112882 | `b4199b530e637c32da343f91fb246add18805e6c7545dcf2a3c0536cd5970764` | — |
+
+## R02/R03 enumerated CIELab integration controls
+
+The existing JP2 box parser preserves enumeration 14's default or explicit
+seven-field encoding. Colour selection derives each physical interval from the
+final unsigned channel precision after palette mapping and channel ordering:
+`low = -O*R/(2^bits-1)`, `high = low+R` (T.801 M-18). It supplies those three
+intervals to the existing calibrated Lab conversion and image Decode owners.
+The ordinary PDF Lab constructor still fixes L* to `[0,100]`; explicit JPEG
+2000 encoding can represent a different L* interval. The existing reader
+requirements recognise Cor4 features 56/57, while actual colour selection still
+checks channel precision, sign, illuminant and the chosen encoding. D50 is the
+implemented illuminant. Other illuminants, signed Lab and zero-range records
+remain explicit unavailable candidates; a supported lower-ranked specification
+can be selected, including an explicit sRGB alternative, but an exhausted Lab
+list never becomes implicit DeviceRGB. The public decoded-image fallback follows
+the same rule; it does not replace selection of an explicit colour candidate.
+Zero-range validity remains unadjudicated rather than receiving an invented
+Syntax verdict.
+
+The 35 original diagnostic records and all 70 files are unchanged. The original
+26 render expectations and all 274 integrated controls are preserved in the
+323-case rendering manifest. Its 49 CIELab-area render controls include the
+original 24 PDFs plus one-/two-bit defaults, a 1/2/16-bit palette, extended
+lightness, ranked fallback and straight/premultiplied alpha with RGB controls.
+All use the existing independent CIE arithmetic and geometry generators;
+neither Pagura nor another renderer supplies expected pixels. At
+`L*=120, a*=-80, b*=80`, the declared extended interval gives RGB8
+`(158,255,134)`, whereas ordinary PDF clipping gives `(83,255,71)`.
+This literal order-sensitive control follows T.42 Appendix II's Lab/XYZ
+conversion and the independently solved Bradford/sRGB matrices. One-/two-bit
+default b offsets are respectively `3/4` and `3/2`, not rounded integer codes.
+
+Public image tests retain raw samples and post-palette precision for both
+interleaved/native requests. All 49 render cases also enter the existing
+native/WASI/browser-shim checks and reference-renderer conformance path. Six
+malformed EP lengths return Syntax; typed colour selection checks unsupported
+sign/illuminant/range boundaries. The colour-record parser's exact source budget
+is one `ColorSpecification` and one allocation-initialisation operation;
+one-short byte and zero-operation controls must refuse it before insertion.
+The new implementation's hosted acceptance is pending; the green d167 result
+above applies to the preceding 274-control checkpoint.

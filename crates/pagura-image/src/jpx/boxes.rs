@@ -130,11 +130,13 @@ fn reader_requirements(box_data: &BoxData<'_>, budget: &mut Budget<'_>) -> Resul
     for _ in 0..fields.u16()? {
         let feature = fields.u16()?;
         let mask = fields.take(length)?;
-        // Part 1 profiles, the two cdef opacity types, and PDF's CMYK space.
+        // Part 1 profiles, the two cdef opacity types, PDF's CMYK space and
+        // default/explicit CIELab. Colour selection still validates the
+        // illuminant and sample interpretation before using CIELab.
         // The codestream and header decoders still enforce their actual
         // precision/layout limits; declaring a feature cannot bypass them.
         // Deprecated flags contribute nothing (Cor.4 item 2).
-        if matches!(feature, 4 | 5 | 9 | 10 | 55) {
+        if matches!(feature, 4 | 5 | 9 | 10 | 55 | 56 | 57) {
             for (byte, &value) in supported.iter_mut().zip(mask) {
                 *byte |= value;
             }
@@ -431,7 +433,23 @@ fn parse_color(
                     fields.position() - 4,
                 ));
             }
-            JpxColor::Enumerated(color)
+            if color == 14 && fields.remaining() != 0 {
+                if fields.remaining() != 28 {
+                    return Err(syntax(
+                        "invalid JPX CIELab parameter length",
+                        fields.position(),
+                    ));
+                }
+                let mut ranges = [0; 3];
+                let mut offsets = [0; 3];
+                for (range, offset) in ranges.iter_mut().zip(&mut offsets) {
+                    *range = fields.u32()?;
+                    *offset = fields.u32()?;
+                }
+                JpxColor::Lab(super::LabParameters::new(ranges, offsets, fields.u32()?))
+            } else {
+                JpxColor::Enumerated(color)
+            }
         }
         2 | 3 => {
             let bytes = fields.take(fields.remaining())?;
@@ -847,6 +865,44 @@ fn check_depth(depth: u8, component: &JpxComponent) -> Result<()> {
 mod tests {
     use super::{BoxData, Budget, reader_requirements};
     use pagura_core::{ErrorKind, Limits};
+
+    #[test]
+    fn explicit_lab_metadata_uses_one_budgeted_colour_record() {
+        use super::{ColorSelection, FileType, Header, JpxColor, Options, Reader};
+        let mut fields = vec![1, 0, 1, 0, 0, 0, 14];
+        for value in [100_u32, 0, 170, 128, 200, 96, 0x0044_3530] {
+            fields.extend(value.to_be_bytes());
+        }
+        let bytes = size_of::<super::ColorSpecification>();
+        for (decoded_bytes, operations, valid) in
+            [(bytes, 1, true), (bytes - 1, 1, false), (bytes, 0, false)]
+        {
+            let limits = Limits {
+                decoded_bytes,
+                operations,
+                ..Limits::default()
+            };
+            let mut header = Header::default();
+            let result = header.read_color(
+                &mut Reader::new(&fields, 80),
+                &mut Budget::new(&limits),
+                &Options::default(),
+                ColorSelection::Pdf,
+                FileType::JpxBaseline,
+            );
+            if valid {
+                result.unwrap();
+                let JpxColor::Lab(parameters) = &header.colors[0].color else {
+                    panic!("missing Lab parameters")
+                };
+                assert_eq!(parameters.ranges(), [100, 170, 200]);
+                assert_eq!(parameters.offsets(), [0, 128, 96]);
+                assert_eq!(parameters.illuminant(), 0x0044_3530);
+            } else {
+                assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
+            }
+        }
+    }
 
     #[test]
     fn reader_expression_inspects_exactly_its_bounded_body() {

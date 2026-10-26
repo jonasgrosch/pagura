@@ -841,12 +841,13 @@ impl Lookup {
 fn decode_lookup(base: &ColorSpace, bytes: &[u8], out: &mut Vec<f64>) {
     let n = |i: usize| f64::from(bytes.get(i).copied().unwrap_or(0)) / 255.0;
     match base {
-        ColorSpace::Calibrated(space) => match (space.components(), space.lab_range()) {
-            (_, Some(r)) => out.extend([
-                100.0 * n(0),
-                r[0] + n(1) * (r[1] - r[0]),
-                r[2] + n(2) * (r[3] - r[2]),
-            ]),
+        ColorSpace::Calibrated(space) => match (space.components(), space.lab_ranges()) {
+            (_, Some(ranges)) => out.extend(
+                ranges
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &[low, high])| low + n(i) * (high - low)),
+            ),
             (1, None) => out.push(n(0)),
             _ => out.extend([n(0), n(1), n(2)]),
         },

@@ -225,12 +225,17 @@
         "paint/image-depth-8",
         "paint/image-depth-16"
       ],
-      "gaps": "Higher-precision sYCC, Lab-input embedded ICC and unsupported enumerated JPX colour descriptions remain explicit boundaries; see paint-jpx-icc and paint-jpx-sycc.",
+      "gaps": "JPX 1\u201316-bit sYCC, physical ICC Lab input and unsigned D50 enumerated CIELab use the existing sample/colour owners. Precision above 16 bits and unavailable colour definitions remain explicit boundaries; see paint-jpx-icc, paint-jpx-sycc and jpx-pdf-contract for their distinct encoding rules and pending acceptance.",
       "review": [
         {
           "locator": "8.9.3; 8.9.5.2; Table 88",
           "rule": "Unsigned sample endpoints map through Decode before colour conversion; Indexed defaults to the full integer sample range. Existing colour spaces perform component interpretation.",
           "verdict": "verified against local primary text; device policy identified explicitly"
+        },
+        {
+          "locator": "7.4.9; T.801 M.11.7.4.1/M-18; T.800 I.7.4/I-5",
+          "rule": "Enumerated CIELab maps each unsigned post-palette code through its declared physical interval. Undo sample premultiplication before the range mapping; the selected Lab model supplies the same ranges to image Decode. Ordinary PDF Lab still fixes L to 0\u2013100.",
+          "verdict": "source reviewed; low-precision, extended-lightness and alpha controls independently authored; hosted acceptance pending"
         }
       ]
     },

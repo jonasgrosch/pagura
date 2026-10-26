@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01/R02/R03 independent synthetic RGB8 oracles: image colour/layout integration, enumerated D50 CIELab defaults/explicit ranges, paired T.81 lossless JPEG compatibility, T.4/T.6 uncompressed fax and T.88 extended-template controls. Pagura and all six baseline engines at 72 DPI, first page, white backdrop. High-precision JPEG display reduction and the T.88 contradictory AT field length are explicitly documented reader policies. No timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -3561,6 +3561,643 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "f72b09375c1f7dfc4554f311527a40afdae609d319534678c36c3708c61fca34",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-8",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-8-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-8-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "322f7d8d6e15d439582bc8d64d315159c9bf513e2efd25f351a0d659153f08ec",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-8-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-8-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-8-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-8-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-default-8",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-default-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-default-8-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-default-8-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "322f7d8d6e15d439582bc8d64d315159c9bf513e2efd25f351a0d659153f08ec",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-default-8-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-default-8-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-default-8-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-default-8-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "183fb83b4d587a45db383dcef3b67221ff461256f056b02e3d10a2e7fd905877",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-16-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-16-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "36f93719d5b3a89a09480f20668c5bfe7a8d7399dc274560f793b42f4cf3bb57",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-16-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-16-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "183fb83b4d587a45db383dcef3b67221ff461256f056b02e3d10a2e7fd905877",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-16-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-16-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "183fb83b4d587a45db383dcef3b67221ff461256f056b02e3d10a2e7fd905877",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-8",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "e8187683ea7bf5794a7443332299787792b347052ad75bd2f0006eefbb92dc10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-8-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-8-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "0a8fdbf8c9faa02627e1ad21fb7e300f9ee4b5265c2889f6a966efbc94ab95c6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-8-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-8-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "e8187683ea7bf5794a7443332299787792b347052ad75bd2f0006eefbb92dc10",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-8-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-8-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "e8187683ea7bf5794a7443332299787792b347052ad75bd2f0006eefbb92dc10",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b7d0e806d0503f62077472b87c576e902ee6e7afd6ee1006350c762f3be7c53",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-16-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-16-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "00fd362b667b0f1dc41a6c308a3941f9836dbdd7ca9a84c48689e1d9756a9cb9",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-16-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-16-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b7d0e806d0503f62077472b87c576e902ee6e7afd6ee1006350c762f3be7c53",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-custom-16-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-custom-16-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "8b7d0e806d0503f62077472b87c576e902ee6e7afd6ee1006350c762f3be7c53",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-palette-8-12-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-palette-8-12-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "27204b19e273f403936f5363481b765a5491f57d0cec55d013abf2620fe2174e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-palette-8-12-16-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-palette-8-12-16-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "230901520f3422b353c855ee09a7b6375a7eb29c42523d2e35a03feba1caff72",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-palette-8-12-16-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-palette-8-12-16-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "27204b19e273f403936f5363481b765a5491f57d0cec55d013abf2620fe2174e",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-palette-8-12-16-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-palette-8-12-16-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "27204b19e273f403936f5363481b765a5491f57d0cec55d013abf2620fe2174e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-1bit",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-1bit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "20bc2237979f8d4ed55aaa342178ad70c27b982ef3e48c8eb164a5549528e2f7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-1bit-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-1bit-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "785a6890fbdc7244e2d1f3dd9e4f2d9a8851f584528cc3077db059e412bab308",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-1bit-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-1bit-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "20bc2237979f8d4ed55aaa342178ad70c27b982ef3e48c8eb164a5549528e2f7",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-1bit-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-1bit-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "20bc2237979f8d4ed55aaa342178ad70c27b982ef3e48c8eb164a5549528e2f7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-2bit",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-2bit",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "243b4c9db2cf57d991194597d87f921fee216d4fc2be742da2bae594bb1ba909",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-2bit-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-2bit-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "785a6890fbdc7244e2d1f3dd9e4f2d9a8851f584528cc3077db059e412bab308",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-2bit-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-2bit-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "243b4c9db2cf57d991194597d87f921fee216d4fc2be742da2bae594bb1ba909",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-default-2bit-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-default-2bit-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "243b4c9db2cf57d991194597d87f921fee216d4fc2be742da2bae594bb1ba909",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-palette-1-2-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-palette-1-2-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "efc256b40caef95394c6500a357e93d9092e316fee949796b735810022268006",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-palette-1-2-16-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-palette-1-2-16-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6ed33c9f511dcd4475b7113de90d3950a652b87681c0c225b641361db1cdb46c",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-palette-1-2-16-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-palette-1-2-16-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "efc256b40caef95394c6500a357e93d9092e316fee949796b735810022268006",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-palette-1-2-16-pdf-lab-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-palette-1-2-16-pdf-lab-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "efc256b40caef95394c6500a357e93d9092e316fee949796b735810022268006",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-extended-lightness",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-extended-lightness",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2f120ef019511de45219e6d8652ad39a5f8c1b3aec1c46e19e799fcfb226432a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-extended-lightness-codec-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-extended-lightness-codec-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d20e04b49c2a71aa675696091f4657f65b24b19d68939c476fdcc7c0b55f0030",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-explicit-extended-lightness-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-explicit-extended-lightness-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2f120ef019511de45219e6d8652ad39a5f8c1b3aec1c46e19e799fcfb226432a",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-fallback-illuminant",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-fallback-illuminant",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-fallback-illuminant-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-fallback-illuminant-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-fallback-zero-range",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-fallback-zero-range",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-fallback-zero-range-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-fallback-zero-range-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "adb0039de6928668d711d47846a969f5852bc6d57af31b6cf771de87f210176d",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-alpha-1",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-alpha-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "717ff6415de9ce93769e8ffa40256e197c37ae462ca8d1f7bbf7befc41c2effc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-alpha-1-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-alpha-1-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "717ff6415de9ce93769e8ffa40256e197c37ae462ca8d1f7bbf7befc41c2effc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-alpha-2",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-alpha-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "717ff6415de9ce93769e8ffa40256e197c37ae462ca8d1f7bbf7befc41c2effc",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-alpha-2-rgb-control",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-alpha-2-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "717ff6415de9ce93769e8ffa40256e197c37ae462ca8d1f7bbf7befc41c2effc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-fallback-rgb",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-fallback-rgb",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "322f7d8d6e15d439582bc8d64d315159c9bf513e2efd25f351a0d659153f08ec",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx_lab_probe.lab-fallback-rgb-control",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "jpx_lab_probe/lab-fallback-rgb-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "322f7d8d6e15d439582bc8d64d315159c9bf513e2efd25f351a0d659153f08ec",
         "tolerance": 0
       }
     }

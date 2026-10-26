@@ -77,11 +77,11 @@ impl Space {
         match self {
             Self::Cie(cie) => {
                 let n = |i: usize| f64::from(bytes.get(i).copied().unwrap_or(0)) / 255.0;
-                match (cie.components(), cie.lab_range()) {
+                match (cie.components(), cie.lab_ranges()) {
                     (_, Some(r)) => vec![
-                        100.0 * n(0),
-                        r[0] + n(1) * (r[1] - r[0]),
-                        r[2] + n(2) * (r[3] - r[2]),
+                        r[0][0] + n(0) * (r[0][1] - r[0][0]),
+                        r[1][0] + n(1) * (r[1][1] - r[1][0]),
+                        r[2][0] + n(2) * (r[2][1] - r[2][0]),
                     ],
                     (1, None) => vec![n(0)],
                     _ => vec![n(0), n(1), n(2)],

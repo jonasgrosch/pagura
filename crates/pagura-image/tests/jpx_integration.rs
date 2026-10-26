@@ -45,6 +45,83 @@ fn main_header_markers_and_jpxb_requirements_preserve_public_samples() {
 }
 
 #[test]
+fn cielab_metadata_preserves_post_palette_precision_and_raw_samples() {
+    for (name, bits, first) in [
+        ("lab-default-8", [8; 3], [127, 128, 96]),
+        ("lab-explicit-default-8", [8; 3], [127, 128, 96]),
+        ("lab-default-16", [16; 3], [32767, 32768, 24576]),
+        ("lab-explicit-custom-8", [8; 3], [64, 96, 160]),
+        ("lab-explicit-custom-16", [16; 3], [16384, 24576, 40960]),
+        (
+            "lab-default-palette-8-12-16",
+            [8, 12, 16],
+            [127, 2048, 24576],
+        ),
+        ("lab-default-1bit", [1; 3], [0; 3]),
+        ("lab-default-2bit", [2; 3], [0; 3]),
+        ("lab-palette-1-2-16", [1, 2, 16], [0; 3]),
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("jpx_lab_probe", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let source = source(&document).unwrap();
+        assert_eq!(source.components(), 3);
+        for (index, precision) in bits.into_iter().enumerate() {
+            assert_eq!(source.component_bits(index), Some(precision), "{name}");
+        }
+        let ImageKind::EmbeddedColor { color, sample_bias } = source.kind() else {
+            panic!("missing Lab metadata")
+        };
+        assert!(matches!(color, JpxColor::Enumerated(14) | JpxColor::Lab(_)));
+        assert!(sample_bias.is_empty());
+        for layout in [
+            pagura_image::Layout::Interleaved,
+            pagura_image::Layout::Native,
+        ] {
+            let decoded = source
+                .decode(
+                    &DecodeRequest::new(pagura_image::Reduce::Full, None, layout),
+                    &document.limits(),
+                    Recovery::Strict,
+                )
+                .unwrap();
+            assert_eq!(&decoded.image.kind, source.kind());
+            assert!(decoded.image.embedded_color_fallback().is_none());
+            for (index, expected) in first.into_iter().enumerate() {
+                assert_eq!(decoded.image.samples.get(index), Some(expected), "{name}");
+            }
+        }
+    }
+}
+
+#[test]
+fn cielab_parameter_lengths_and_metadata_budgets_are_explicit() {
+    for length in [1, 4, 24, 27, 29, 32] {
+        let data =
+            pagura_testkit::fixture("jpx_lab_probe", &format!("lab-malformed-ep-{length}.jpx"));
+        let error = pagura_image::jpx::decode(&data, &Limits::default()).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert!(matches!(error.position, pagura_core::Position::Buffer(_)));
+    }
+    for name in ["lab-explicit-custom-8", "lab-default-palette-8-12-16"] {
+        let document = Document::open(
+            pagura_testkit::fixture("jpx_lab_probe", &format!("{name}.pdf")),
+            &OpenOptions {
+                limits: Limits {
+                    decoded_bytes: 64,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(source(&document).unwrap_err().kind, ErrorKind::Limit);
+    }
+}
+
+#[test]
 fn ranked_candidates_remain_visible_without_decoding() {
     let document = document("precedence-signed", Limits::default()).unwrap();
     let source = source(&document).unwrap();

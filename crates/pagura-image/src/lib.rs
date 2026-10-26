@@ -210,11 +210,12 @@ pub struct DecodedImage {
 
 impl DecodedImage {
     /// Device fallback for an unsigned embedded colour description that the
-    /// painter cannot support (7.4.9). Signed ICC samples require a defined
-    /// profile interpretation. Original colour metadata remains available in
+    /// painter cannot support (7.4.9). Signed ICC and enumerated CIELab samples
+    /// require a defined colour interpretation. Original metadata remains in
     /// [`ImageKind::EmbeddedColor`].
     pub fn embedded_color_fallback(&self) -> Option<Value> {
-        if !matches!(&self.kind, ImageKind::EmbeddedColor { sample_bias, .. } if sample_bias.is_empty())
+        if !matches!(&self.kind, ImageKind::EmbeddedColor { color, sample_bias }
+            if sample_bias.is_empty() && !color.has_lab())
         {
             return None;
         }

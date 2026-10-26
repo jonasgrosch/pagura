@@ -183,7 +183,7 @@ pub struct Calibrated {
 enum Model {
     Gray { gamma: f64 },
     Rgb { gamma: [f64; 3], matrix: Matrix },
-    Lab { range: [f64; 4] },
+    Lab { ranges: [[f64; 2]; 3] },
 }
 
 impl Calibrated {
@@ -219,11 +219,32 @@ impl Calibrated {
     /// # Errors
     /// As [`Self::rgb`], for a reversed range.
     pub fn lab(white: [f64; 3], black: [f64; 3], range: [f64; 4]) -> Result<Self> {
+        Self::lab_with_ranges(
+            white,
+            black,
+            [[0.0, 100.0], [range[0], range[1]], [range[2], range[3]]],
+        )
+    }
+
+    /// A Lab space with declared physical L*, a* and b* intervals.
+    /// JPEG 2000's explicit R/O encoding (T.801 M-18) can represent an L*
+    /// interval beyond PDF Lab's `0..=100`; both use the same CIE conversion.
+    ///
+    /// # Errors
+    /// As [`Self::rgb`], or `Syntax` for a nonfinite or reversed interval.
+    pub fn lab_with_ranges(
+        white: [f64; 3],
+        black: [f64; 3],
+        ranges: [[f64; 2]; 3],
+    ) -> Result<Self> {
         check_points(white, black)?;
-        if range[0] > range[1] || range[2] > range[3] {
+        if ranges
+            .iter()
+            .any(|&[low, high]| !low.is_finite() || !high.is_finite() || low > high)
+        {
             return Err(Error::syntax("invalid Lab range"));
         }
-        Self::new(Model::Lab { range }, white)
+        Self::new(Model::Lab { ranges }, white)
     }
 
     fn new(model: Model, white: [f64; 3]) -> Result<Self> {
@@ -249,8 +270,14 @@ impl Calibrated {
 
     /// The `a*` and `b*` range of a Lab space, `None` for CalGray and CalRGB.
     pub fn lab_range(&self) -> Option<[f64; 4]> {
+        self.lab_ranges()
+            .map(|[_, [a0, a1], [b0, b1]]| [a0, a1, b0, b1])
+    }
+
+    /// The physical intervals of a Lab space's three components.
+    pub fn lab_ranges(&self) -> Option<[[f64; 2]; 3]> {
         match self.model {
-            Model::Lab { range } => Some(range),
+            Model::Lab { ranges } => Some(ranges),
             Model::Gray { .. } | Model::Rgb { .. } => None,
         }
     }
@@ -269,12 +296,8 @@ impl Calibrated {
                 matrix,
                 [0, 1, 2].map(|i| n(i).clamp(0.0, 1.0).powf(gamma[i])),
             ),
-            Model::Lab { range } => lab_to_xyz(
-                [
-                    n(0).clamp(0.0, 100.0),
-                    n(1).clamp(range[0], range[1]),
-                    n(2).clamp(range[2], range[3]),
-                ],
+            Model::Lab { ranges } => lab_to_xyz(
+                std::array::from_fn(|i| n(i).clamp(ranges[i][0], ranges[i][1])),
                 self.white,
             ),
         };
@@ -341,5 +364,35 @@ mod tests {
         // Lab white is sRGB white after adaptation.
         let [r, g, b] = lab.convert(&[100.0, 0.0, 0.0]);
         assert!(r > 0.999 && g > 0.999 && b > 0.999, "{r} {g} {b}");
+    }
+
+    #[test]
+    fn declared_lab_lightness_uses_the_shared_cie_conversion() {
+        let white = [0.96422, 1.0, 0.82521];
+        let ordinary = Calibrated::lab(white, [0.0; 3], [-128.0, 127.0, -128.0, 127.0]).unwrap();
+        let extended = Calibrated::lab_with_ranges(
+            white,
+            [0.0; 3],
+            [[-51.0, 151.0], [-128.0, 127.0], [-128.0, 127.0]],
+        )
+        .unwrap();
+        assert_eq!(ordinary.lab_ranges().unwrap()[0], [0.0, 100.0]);
+        // Independently derived from T.42 Appendix II and D50, solving the
+        // Bradford/sRGB matrices in fixturegen/content.py. Clipping L*=120
+        // as ordinary PDF Lab does changes red by 75 and blue by 63 levels.
+        for (space, rgb) in [
+            (&extended, [158.0, 255.0, 134.0]),
+            (&ordinary, [83.0, 255.0, 71.0]),
+        ] {
+            for (actual, expected) in space.convert(&[120.0, -80.0, 80.0]).into_iter().zip(rgb) {
+                assert!((actual * 255.0 - expected).abs() <= 1.0);
+            }
+        }
+        for lightness in [[2.0, 1.0], [f64::NAN, 1.0], [0.0, f64::INFINITY]] {
+            assert!(
+                Calibrated::lab_with_ranges(white, [0.0; 3], [lightness, [-1.0, 1.0], [-1.0, 1.0]])
+                    .is_err()
+            );
+        }
     }
 }

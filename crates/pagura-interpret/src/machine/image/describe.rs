@@ -96,12 +96,14 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 let ImageId::Object(id) = source.id() else {
                     return Err(Error::syntax("JPXDecode is forbidden in inline images"));
                 };
+                let bits: [u8; MAX_COMPONENTS] =
+                    std::array::from_fn(|i| source.component_bits(i).unwrap_or(0));
                 self.session
                     .colors
                     .embedded_jpx(
                         id,
                         color,
-                        source.components(),
+                        &bits[..usize::from(source.components())],
                         intent,
                         if sample_bias.is_empty() {
                             JpxSamples::Unsigned
@@ -135,13 +137,9 @@ fn decode(source: &ImageSource, space: Option<&ColorSpace>) -> Result<Vec<[f64; 
         } else {
             match space {
                 Some(ColorSpace::Indexed(_)) => [0.0, f64::from(max_sample(source, component)?)],
-                Some(ColorSpace::Calibrated(cie)) => {
-                    cie.lab_range().map_or([0.0, 1.0], |r| match component {
-                        0 => [0.0, 100.0],
-                        1 => [r[0], r[1]],
-                        _ => [r[2], r[3]],
-                    })
-                }
+                Some(ColorSpace::Calibrated(cie)) => cie
+                    .lab_ranges()
+                    .map_or([0.0, 1.0], |ranges| ranges[component]),
                 Some(ColorSpace::Icc(icc)) => {
                     icc.range.get(component).copied().unwrap_or([0.0, 1.0])
                 }

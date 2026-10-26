@@ -8,11 +8,13 @@
 //! predictable termination, vertical-causal contexts and segmentation symbols,
 //! 5/3 and 9/7 synthesis, RCT/ICT, palettes and straight or premultiplied opacity.
 //! Part 1 mechanics follow ITU-T T.800 (06/2019), Annexes A–I.
-//! Part 2 extensions remain pending primary T.801 review. PDF integration
-//! follows clause 7.4.9 and Table 87.
+//! The bounded baseline JPX container follows T.801 M.8/M.11 and Cor.4;
+//! other Part 2 coding/layout extensions remain explicit boundaries. PDF
+//! integration follows clause 7.4.9 and Table 87.
 //! Unsupported JPX extensions and sample representations return
 //! `Unsupported(filter.JPXDecode)`; structural truncations remain explicit errors.
-//! ICC bytes and enumerated colour identifiers are preserved for the caller.
+//! ICC bytes, enumerated colour identifiers and CIELab encoding parameters
+//! are preserved for the caller.
 //!
 //! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid
 //! image, `decoded_bytes` conservatively caps cumulative allocations (including
@@ -40,12 +42,16 @@ const UNSUPPORTED: Feature = Feature::new("filter.JPXDecode");
 
 /// Colour information carried by a JP2 file.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JpxColor {
     /// No colour box (raw codestream).
     Unspecified,
     /// An enumerated colour space (`colr` method 1), e.g. 16 = sRGB, 17 =
     /// greyscale, 18 = sYCC.
     Enumerated(u32),
+    /// CIELab (`colr` enumeration 14) with explicit encoding parameters.
+    /// The default encoding remains [`Self::Enumerated`] with value 14.
+    Lab(LabParameters),
     /// A restricted or full ICC profile (`colr` methods 2 and 3).
     Icc(Vec<u8>),
     /// A method whose colour interpretation is unavailable. Its payload
@@ -59,6 +65,42 @@ pub enum JpxColor {
     /// PDF colour choices in precedence/approximation order (7.4.9).
     /// A standalone JP2 decode retains the first specification instead.
     Alternatives(Vec<ColorSpecification>),
+}
+
+/// Explicit CIELab encoding fields (T.801 M.11.7.4.1, Table M.30).
+/// These are source metadata; their colour interpretation is the caller's job.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct LabParameters {
+    ranges: [u32; 3],
+    offsets: [u32; 3],
+    illuminant: u32,
+}
+
+impl LabParameters {
+    /// Preserves the three unsigned ranges, offsets and illuminant code.
+    pub const fn new(ranges: [u32; 3], offsets: [u32; 3], illuminant: u32) -> Self {
+        Self {
+            ranges,
+            offsets,
+            illuminant,
+        }
+    }
+
+    /// Ranges for L*, a* and b*, in that order.
+    pub const fn ranges(&self) -> [u32; 3] {
+        self.ranges
+    }
+
+    /// Offsets in the unsigned sample domain, for L*, a* and b*.
+    pub const fn offsets(&self) -> [u32; 3] {
+        self.offsets
+    }
+
+    /// The illuminant identifier from Table M.29.
+    pub const fn illuminant(&self) -> u32 {
+        self.illuminant
+    }
 }
 
 /// One embedded colour specification and its selection metadata
@@ -75,6 +117,17 @@ pub struct ColorSpecification {
 }
 
 impl JpxColor {
+    /// Whether this description contains CIELab, including ranked alternatives.
+    /// Its encoded channels require a declared physical interpretation rather
+    /// than an inferred device-colour fallback.
+    pub fn has_lab(&self) -> bool {
+        match self {
+            Self::Enumerated(14) | Self::Lab(_) => true,
+            Self::Alternatives(choices) => choices.iter().any(|choice| choice.color.has_lab()),
+            _ => false,
+        }
+    }
+
     /// Heap storage retained by the colour metadata.
     pub fn retained_bytes(&self) -> usize {
         match self {
@@ -85,7 +138,7 @@ impl JpxColor {
                     .saturating_mul(size_of::<ColorSpecification>()),
                 |total, choice| total.saturating_add(choice.color.retained_bytes()),
             ),
-            Self::Unspecified | Self::Enumerated(_) => 0,
+            Self::Unspecified | Self::Enumerated(_) | Self::Lab(_) => 0,
         }
     }
 }
