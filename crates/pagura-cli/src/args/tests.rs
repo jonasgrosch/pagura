@@ -83,6 +83,57 @@ fn options_may_appear_anywhere_but_only_where_they_apply() {
 }
 
 #[test]
+fn document_services_share_source_options_and_require_explicit_output_selection() {
+    assert_eq!(
+        run(&["metadata", "a.pdf"]),
+        Ok(Command::Metadata(source("a.pdf", b"", Recovery::Repair)))
+    );
+    assert_eq!(
+        run(&["attachments", "--strict", "a.pdf", "--password", "pw"]),
+        Ok(Command::Attachments(source(
+            "a.pdf",
+            b"pw",
+            Recovery::Strict
+        )))
+    );
+    assert_eq!(
+        run(&["extract-metadata", "a.pdf", "x.xmp"]),
+        Ok(Command::ExtractMetadata {
+            source: source("a.pdf", b"", Recovery::Repair),
+            output: PathBuf::from("x.xmp")
+        })
+    );
+    assert_eq!(
+        run(&["extract-attachment", "a.pdf", "2", "UF", "data.bin"]),
+        Ok(Command::ExtractAttachment {
+            source: source("a.pdf", b"", Recovery::Repair),
+            index: 2,
+            key: "UF".into(),
+            output: PathBuf::from("data.bin")
+        })
+    );
+    for name in [
+        "metadata",
+        "attachments",
+        "extract-metadata",
+        "extract-attachment",
+    ] {
+        assert_eq!(
+            run(&[name]),
+            Err(format!("wrong number of arguments for {name}"))
+        );
+        assert_eq!(
+            run(&[name, "--timings"]),
+            Err(format!("--timings does not apply to {name}"))
+        );
+    }
+    assert_eq!(
+        run(&["extract-attachment", "a.pdf", "-1", "F", "data.bin"]),
+        Err("INDEX must be a non-negative integer, not -1".into())
+    );
+}
+
+#[test]
 fn malformed_arguments_name_what_is_wrong() {
     for (args, message) in [
         (&[][..], "missing command"),

@@ -86,7 +86,7 @@ pub(crate) fn failure(out: &mut impl Write, failure: &Failure) -> io::Result<()>
     out.write_all(b"}")
 }
 
-fn optional(out: &mut impl Write, text: Option<&str>) -> io::Result<()> {
+pub(crate) fn optional(out: &mut impl Write, text: Option<&str>) -> io::Result<()> {
     match text {
         Some(text) => string(out, text),
         None => out.write_all(b"null"),

@@ -11,6 +11,10 @@ use std::str::FromStr;
 /// The synopsis printed with every usage error.
 pub(crate) const USAGE: &str = "\
 usage: pagura inspect [--strict] [--password TEXT] INPUT
+       pagura metadata [--strict] [--password TEXT] INPUT
+       pagura attachments [--strict] [--password TEXT] INPUT
+       pagura extract-metadata [--strict] [--password TEXT] INPUT OUTPUT
+       pagura extract-attachment [--strict] [--password TEXT] INPUT INDEX KEY OUTPUT
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
        pagura render [--strict] [--password TEXT] [--overprint MODE] [--timings]
@@ -29,6 +33,15 @@ usage: pagura inspect [--strict] [--password TEXT] INPUT
 pub(crate) const HELP: &str = "\
 commands:
   inspect     print one JSON line: page and object counts, size, diagnostics
+  metadata    print Info fields, document language and metadata stream identity
+              as JSON; Info and XMP remain separate sources
+  attachments print catalog EmbeddedFiles entries and EF payload keys as JSON;
+              Unicode names and original path/key bytes are retained separately
+  extract-metadata
+              decode the catalog metadata stream to the explicit OUTPUT path
+  extract-attachment
+              decode EF payload KEY (F, UF, DOS, Mac or Unix) from catalog
+              EmbeddedFiles INDEX (starting at 0) to the explicit OUTPUT path
   text        print the text of every page, or of PAGE, separated by form feeds
   find        print one JSON line per match: page, character range and quads
               in default user space
@@ -87,6 +100,19 @@ pub(crate) enum Command {
     Licenses,
     /// Print a JSON summary of a document.
     Inspect(Source),
+    /// Print typed document metadata as JSON.
+    Metadata(Source),
+    /// Print catalog attachment entries as JSON, without decoding their payloads.
+    Attachments(Source),
+    /// Decode the document metadata stream to a new, caller-named file.
+    ExtractMetadata { source: Source, output: PathBuf },
+    /// Decode a selected catalog attachment payload to a new, caller-named file.
+    ExtractAttachment {
+        source: Source,
+        index: usize,
+        key: String,
+        output: PathBuf,
+    },
     /// Print the text of every page, or of one zero-based page.
     Text { source: Source, page: Option<usize> },
     /// Print the matches of a query as JSON lines.
@@ -363,6 +389,9 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
 /// The command `name` with its `operands`, if it takes the given options.
 fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Command, UsageError> {
     use Flag::{MaxPages, Overprint, Password, Strict, Timings as TimingsFlag};
+    if let Some(command) = document_command(name, operands, options)? {
+        return Ok(command);
+    }
     let command = match (name, operands) {
         ("licenses", []) => {
             options.allow(name, &[])?;
@@ -455,6 +484,36 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
         _ => return Err(usage(format!("unknown command {name}"))),
     };
     Ok(command)
+}
+
+fn document_command(
+    name: &str,
+    operands: &[OsString],
+    options: &Options,
+) -> Result<Option<Command>, UsageError> {
+    if !matches!(
+        name,
+        "metadata" | "attachments" | "extract-metadata" | "extract-attachment"
+    ) {
+        return Ok(None);
+    }
+    options.allow(name, &[Flag::Strict, Flag::Password])?;
+    let command = match (name, operands) {
+        ("metadata", [input]) => Command::Metadata(options.chosen_source(input)),
+        ("attachments", [input]) => Command::Attachments(options.chosen_source(input)),
+        ("extract-metadata", [input, output]) => Command::ExtractMetadata {
+            source: options.chosen_source(input),
+            output: PathBuf::from(output),
+        },
+        ("extract-attachment", [input, index, key, output]) => Command::ExtractAttachment {
+            source: options.chosen_source(input),
+            index: number(index, "INDEX")?,
+            key: text(key, "KEY")?.to_owned(),
+            output: PathBuf::from(output),
+        },
+        _ => return Err(usage(format!("wrong number of arguments for {name}"))),
+    };
+    Ok(Some(command))
 }
 
 fn text<'a>(value: &'a OsStr, what: &str) -> Result<&'a str, UsageError> {

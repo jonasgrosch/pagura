@@ -3,7 +3,7 @@
 use crate::args::{Command, Conversion, HELP, Output, Source, Timings, USAGE};
 use crate::failure::Failure;
 use crate::input::{create_new, write_new};
-use crate::{json, microbench, scan};
+use crate::{document_services, json, microbench, scan};
 use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
 use pagura::{Document, RenderContext, RenderOptions, Rgba8, device_size};
@@ -42,6 +42,19 @@ pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure
         Command::Version => writeln!(out, "pagura {} (safe Rust)", env!("CARGO_PKG_VERSION"))?,
         Command::Licenses => licenses(out)?,
         Command::Inspect(source) => inspect(source, out)?,
+        Command::Metadata(source) => document_services::metadata(source, out)?,
+        Command::Attachments(source) => document_services::attachments(source, out)?,
+        Command::ExtractMetadata { source, output } => {
+            document_services::extract_metadata(source, output)?;
+        }
+        Command::ExtractAttachment {
+            source,
+            index,
+            key,
+            output,
+        } => {
+            document_services::extract_attachment(source, *index, key, output)?;
+        }
         Command::Text { source, page } => text(source, *page, out)?,
         Command::Find { source, query } => find(source, query, out)?,
         Command::Convert(conversion) => convert(conversion, out)?,

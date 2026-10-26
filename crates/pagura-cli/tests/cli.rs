@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! The command-line tool, run as a subprocess.
 
-use pagura_testkit::{Manifest, assert_bytes_eq, fixture, fixture_path};
+use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture, fixture_path};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -46,6 +46,262 @@ fn unsupported_case() -> (PathBuf, String) {
 
 fn pagura() -> Command {
     Command::new(env!("CARGO_BIN_EXE_pagura"))
+}
+
+fn service_report(
+    command: &str,
+    area: &str,
+    file: &str,
+) -> Result<Json, Box<dyn std::error::Error>> {
+    let output = pagura()
+        .arg(command)
+        .arg(fixture_path(area, file))
+        .output()?;
+    if !output.status.success() {
+        return Err(
+            std::io::Error::other(String::from_utf8_lossy(&output.stderr).into_owned()).into(),
+        );
+    }
+    Ok(Json::parse(&String::from_utf8(output.stdout)?)?)
+}
+
+#[test]
+fn metadata_json_keeps_unicode_fields_and_stream_identity_separate() {
+    let report = service_report("metadata", "metadata", "populated-flate.pdf").unwrap();
+    assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
+    assert_eq!(report.get("language").and_then(Json::as_str), Some("de-DE"));
+    let info = report.get("info").unwrap();
+    for (key, value) in [
+        ("Title", "Grüße Ω"),
+        ("Author", "Euro €"),
+        ("Subject", "測試"),
+        ("Trapped", "True"),
+        ("CreationDate", "D:20261026030000+01'00"),
+    ] {
+        assert_eq!(info.get(key).and_then(Json::as_str), Some(value), "{key}");
+    }
+    assert_eq!(
+        info.get("object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        report
+            .get("metadata_object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(6)
+    );
+    let absent = service_report("metadata", "metadata", "absent.pdf").unwrap();
+    for key in ["info", "language", "metadata_object"] {
+        assert!(absent.get(key).unwrap().is_null(), "{key}");
+    }
+    let empty = service_report("metadata", "metadata", "empty.pdf").unwrap();
+    assert!(empty.get("info").unwrap().get("Title").unwrap().is_null());
+    assert_eq!(
+        empty
+            .get("info")
+            .unwrap()
+            .get("Trapped")
+            .and_then(Json::as_str),
+        Some("Unknown")
+    );
+}
+
+#[test]
+fn attachment_listing_preserves_filename_bytes_unicode_and_payload_choices() {
+    let report = service_report("attachments", "files", "populated.pdf").unwrap();
+    assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
+    let files = report.get("files").and_then(Json::as_array).unwrap();
+    assert_eq!(files.len(), 1);
+    let file = &files[0];
+    assert_eq!(file.get("index").and_then(Json::as_u64), Some(0));
+    assert_eq!(
+        file.get("key_hex").and_then(Json::as_str),
+        Some("6c6f6f6b75702d6b6579")
+    );
+    let names = file.get("names").unwrap();
+    assert_eq!(names.get("UF").and_then(Json::as_str), Some("Grüße Ω.txt"));
+    assert_eq!(
+        names.get("F_hex").and_then(Json::as_str),
+        Some("6c65676163792e747874")
+    );
+    assert!(names.get("DOS_hex").unwrap().is_null());
+    assert_eq!(
+        file.get("description").and_then(Json::as_str),
+        Some("Attachment €")
+    );
+    assert_eq!(
+        file.get("relationship").and_then(Json::as_str),
+        Some("Data")
+    );
+    assert_eq!(file.get("volatile").and_then(Json::as_bool), Some(true));
+    let payloads = file.get("payloads").and_then(Json::as_array).unwrap();
+    assert_eq!(payloads.len(), 2);
+    for (payload, key) in payloads.iter().zip(["F", "UF"]) {
+        assert_eq!(payload.get("key").and_then(Json::as_str), Some(key));
+        assert_eq!(
+            payload.get("declared_size").and_then(Json::as_u64),
+            Some(18)
+        );
+        assert_eq!(
+            payload
+                .get("object")
+                .unwrap()
+                .get("number")
+                .and_then(Json::as_u64),
+            Some(6)
+        );
+    }
+    let raw = service_report("attachments", "files", "simple-string.pdf").unwrap();
+    let file = &raw.get("files").and_then(Json::as_array).unwrap()[0];
+    assert_eq!(
+        file.get("names")
+            .unwrap()
+            .get("F_hex")
+            .and_then(Json::as_str),
+        Some("2f726177ff2f66696c65")
+    );
+    assert!(
+        file.get("payloads")
+            .and_then(Json::as_array)
+            .unwrap()
+            .is_empty()
+    );
+    for name in ["absent.pdf", "null-tree.pdf", "empty-tree.pdf"] {
+        let report = service_report("attachments", "files", name).unwrap();
+        assert!(
+            report
+                .get("files")
+                .and_then(Json::as_array)
+                .unwrap()
+                .is_empty()
+        );
+    }
+}
+
+#[test]
+fn service_reports_reject_bad_types_and_preserve_strict_repairs() {
+    for (command, area, file) in [
+        ("metadata", "metadata", "info-field-wrong-type.pdf"),
+        ("metadata", "metadata", "metadata-cycle.pdf"),
+        ("attachments", "files", "embedded-nonstream.pdf"),
+        ("attachments", "files", "spec-cycle.pdf"),
+    ] {
+        let output = pagura()
+            .arg(command)
+            .arg(fixture_path(area, file))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{file}");
+        assert!(output.stdout.is_empty(), "{file}");
+    }
+    for (command, area, file) in [
+        ("metadata", "metadata", "invalid-text.pdf"),
+        ("attachments", "files", "invalid-unicode.pdf"),
+    ] {
+        let repaired = service_report(command, area, file).unwrap();
+        assert!(
+            !repaired
+                .get("repairs")
+                .and_then(Json::as_array)
+                .unwrap()
+                .is_empty()
+        );
+        let output = pagura()
+            .args([command, "--strict"])
+            .arg(fixture_path(area, file))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{file}");
+        assert!(output.stdout.is_empty(), "{file}");
+    }
+}
+
+#[test]
+fn extraction_writes_decoded_bytes_only_to_the_requested_new_file() {
+    let scratch = Scratch::new().unwrap();
+    for (command, area, name, args, expected) in [
+        ("extract-metadata", "metadata", "populated-flate.pdf", &[][..], b"<?xpacket begin=\"\"?><x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><title>XMP title</title></x:xmpmeta><?xpacket end=\"w\"?>".as_slice()),
+        ("extract-metadata", "metadata", "empty.pdf", &[], b""),
+        ("extract-metadata", "metadata", "metadata-inert-xml.pdf", &[], b"<!DOCTYPE x [<!ENTITY e SYSTEM \"https://example.invalid/metadata\">]><x>&e;</x>"),
+        ("extract-attachment", "files", "flate.pdf", &["0", "UF"], b"attachment\0bytes\xff\n"),
+        ("extract-attachment", "files", "empty-payload.pdf", &["0", "F"], b""),
+    ] {
+        let target = scratch.0.join(name);
+        let output = pagura().arg(command).arg(fixture_path(area, name)).args(args).arg(&target).output().unwrap();
+        assert!(output.status.success(), "{name}: {:?}", output.stderr);
+        assert!(output.stdout.is_empty());
+        assert_eq!(std::fs::read(&target).unwrap(), expected);
+        let repeated = pagura().arg(command).arg(fixture_path(area, name)).args(args).arg(&target).output().unwrap();
+        assert_eq!(repeated.status.code(), Some(1));
+        assert_eq!(std::fs::read(&target).unwrap(), expected);
+    }
+    assert_eq!(std::fs::read_dir(&scratch.0).unwrap().count(), 5);
+}
+
+#[test]
+fn failed_extraction_leaves_no_output_and_passwords_authorize_payload_reads() {
+    let scratch = Scratch::new().unwrap();
+    let target = scratch.0.join("output");
+    for (command, area, file, args) in [
+        ("extract-metadata", "metadata", "absent.pdf", &[][..]),
+        ("extract-attachment", "files", "populated.pdf", &["1", "F"]),
+        (
+            "extract-attachment",
+            "files",
+            "populated.pdf",
+            &["0", "Unix"],
+        ),
+        (
+            "extract-attachment",
+            "files",
+            "populated.pdf",
+            &["0", "invalid-key"],
+        ),
+        (
+            "extract-attachment",
+            "files",
+            "simple-string.pdf",
+            &["0", "F"],
+        ),
+        (
+            "extract-attachment",
+            "files",
+            "external-stream.pdf",
+            &["0", "F"],
+        ),
+    ] {
+        let output = pagura()
+            .arg(command)
+            .arg(fixture_path(area, file))
+            .args(args)
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{file}: {args:?}");
+        assert!(!target.exists());
+    }
+    for password in ["", "wrong", "attachment", "owner"] {
+        let output = pagura()
+            .args(["extract-attachment", "--password", password])
+            .arg(fixture_path("files", "encrypted-no-type.pdf"))
+            .args(["0", "F"])
+            .arg(&target)
+            .output()
+            .unwrap();
+        if matches!(password, "attachment" | "owner") {
+            assert!(output.status.success(), "{password}: {:?}", output.stderr);
+            assert_eq!(std::fs::read(&target).unwrap(), b"attached file bytes");
+            std::fs::remove_file(&target).unwrap();
+        } else {
+            assert_eq!(output.status.code(), Some(1));
+            assert!(!target.exists());
+        }
+    }
 }
 
 #[test]
