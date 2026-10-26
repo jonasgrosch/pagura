@@ -1382,8 +1382,11 @@ impl<'a> MemoTexels<'a> {
 
     /// [`Texels::row`] from sample `start` on into `out`, `H` held values a
     /// texel, for keys of `N` colour codes alone: one lookup per run of
-    /// equal keys, with fixed-size keys and copies. False, with nothing
-    /// written, where the samples are not all present.
+    /// equal keys, with fixed-size keys and copies, and the table's mask
+    /// found once. A texel at its key's first slot is read in place, as
+    /// [`Memo::get`] reads it without changing the memo; every other lookup
+    /// goes through it. False, with nothing written, where the samples are
+    /// not all present.
     #[inline]
     fn plain_row<const N: usize, const H: usize>(
         &self,
@@ -1397,7 +1400,8 @@ impl<'a> MemoTexels<'a> {
             .checked_mul(N)
             .zip(start.checked_add(count).and_then(|end| end.checked_mul(N)))
             .and_then(|(first, end)| self.samples.colors.get(first..end));
-        let Some(codes) = codes.filter(|_| rest.is_empty()) else {
+        let mask = (memo.slots.len() / (1 + H)).checked_sub(1);
+        let (Some(codes), Some(mask)) = (codes.filter(|_| rest.is_empty()), mask) else {
             return false;
         };
         // No key is all ones: keys have at most 48 bits.
@@ -1407,7 +1411,17 @@ impl<'a> MemoTexels<'a> {
             let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
             if key != previous {
                 previous = key;
-                let held = memo.get(key, H, |texel| self.convert(index, N, texel));
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "keys have at most 48 bits, which f64 holds exactly"
+                )]
+                let wanted = key as f64;
+                let at = hash_slot(key, mask) * (1 + H);
+                let held = if memo.slots.get(at) == Some(&wanted) {
+                    memo.slots.get(at + 1..at + 1 + H).unwrap_or(&[])
+                } else {
+                    memo.get(key, H, |texel| self.convert(index, N, texel))
+                };
                 if let Some(held) = held.first_chunk::<H>() {
                     last = *held;
                 }

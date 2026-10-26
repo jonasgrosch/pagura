@@ -1016,6 +1016,69 @@ fn device_and_cie_spaces_into_every_process_target() {
     }
 }
 
+/// A row of memoized texels reads, bit for bit, the texels that per-sample
+/// lookups give: three and four components into three and four channels,
+/// with runs of equal samples, colours that come back, rows that end at
+/// the image's edge and a row outside it.
+#[test]
+fn memo_rows_read_the_texels_of_their_samples() {
+    use super::Plan;
+    use super::texels::{MemoTexels, Strategy};
+    let (width, height) = (61, 5);
+    let samples = |components: u8| {
+        // Runs of three samples, eleven tuples that come back.
+        let bytes = (0..width * height).flat_map(|i: u32| {
+            let run = u8::try_from(i / 3 % 11).unwrap() * 23;
+            (0..components).map(move |c| run ^ c.wrapping_mul(37))
+        });
+        Samples::Bytes(bytes.collect())
+    };
+    let mut cmyk = case(image((width, height), 4, 8, samples(4)));
+    cmyk.space = Some(ColorSpace::DeviceCmyk);
+    let rgb = case(image((width, height), 3, 8, samples(3)));
+    let lab = pagura_color::cie::Calibrated::lab(
+        [0.9505, 1.0, 1.089],
+        [0.0; 3],
+        [-100.0, 100.0, -80.0, 90.0],
+    )
+    .unwrap();
+    let mut lab_case = case(image((width, height), 3, 8, samples(3)));
+    lab_case.space = Some(ColorSpace::Calibrated(Arc::new(lab)));
+    lab_case.decode = vec![[0.0, 100.0], [-100.0, 100.0], [-80.0, 90.0]];
+    for (case, target) in [(&cmyk, 3), (&cmyk, 4), (&rgb, 4), (&lab_case, 3)] {
+        let sampler = sampler(case, placements(width, height)[0], target);
+        let prepared = sampler.prepared.as_deref().unwrap();
+        let Plan::Texels {
+            paint: Paint::Colors(paint),
+            ..
+        } = &prepared.plan
+        else {
+            panic!("a texel plan");
+        };
+        let (colors, Strategy::Memo(layout)) = &**paint else {
+            panic!("a memoized strategy");
+        };
+        let mut memo = layout.make().unwrap();
+        let texels = MemoTexels::new(&prepared.image.image, colors, None, &mut memo).unwrap();
+        let held = texels.lanes() - 2;
+        for (row, first, end) in [(2, 0, width), (3, 7, 40), (4, 55, width), (height, 0, 9)] {
+            let count = usize::try_from(end - first).unwrap();
+            let mut values = vec![0.0; count * held];
+            texels.row((row, width), (first, end), &mut values);
+            for (i, values) in values.chunks_exact(held).enumerate() {
+                let mut single = vec![0.0; held];
+                let index = usize::try_from(row * width + first).unwrap() + i;
+                texels.get(index, &mut single);
+                assert_eq!(
+                    bits(values),
+                    bits(&single),
+                    "target {target}, row {row}, sample {index}"
+                );
+            }
+        }
+    }
+}
+
 /// The bits of `values`.
 fn bits(values: &[f64]) -> Vec<u64> {
     values.iter().map(|v| v.to_bits()).collect()
