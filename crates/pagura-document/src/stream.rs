@@ -36,10 +36,10 @@ pub(crate) fn raw(document: &Document, object: &IndirectObject) -> ReadResult<By
     if range.end > document.bytes.len() {
         return Err((Error::syntax("stream lies outside the file").in_object(object.id())).into());
     }
-    document.bytes.lease(ByteRange::new(
+    Ok(document.bytes.lease(ByteRange::new(
         usize_to_u64(range.start),
         usize_to_u64(range.end),
-    )?)
+    )?)?)
 }
 
 /// `size` is the expected decoded length, an allocation hint only.
@@ -49,7 +49,7 @@ pub(crate) fn decoded(
     size: usize,
 ) -> ReadResult<StreamData> {
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
-    decode(document, object.id(), data, &chain, size)
+    Ok(decode(document, object.id(), data, &chain, size)?)
 }
 
 pub(crate) fn embedded_decoded(
@@ -65,7 +65,7 @@ pub(crate) fn embedded_decoded(
         &mut Vec::new(),
         Usage::EmbeddedFile,
     )?;
-    decode(document, object.id(), data, &chain, 0)
+    Ok(decode(document, object.id(), data, &chain, 0)?)
 }
 
 /// Applies `chain` to the data of stream `id`, reporting its repairs for
@@ -234,10 +234,10 @@ fn decrypt(
     if method == CryptMethod::Identity {
         return Ok(raw.into());
     }
-    security
+    Ok(security
         .decrypt_stream(method, object.id(), raw.bytes())
         .map(StreamData::from)
-        .map_err(|error| error.in_object(object.id()))
+        .map_err(|error| error.in_object(object.id()))?)
 }
 
 /// The codec contract leaves Crypt parameters to the document layer.
@@ -362,7 +362,12 @@ mod tests {
             let object = document.object(ObjectId::new(3, 0)).unwrap();
             let original = object.dictionary().unwrap().clone();
             assert_eq!(
-                document.image_stream(object).unwrap_err().kind,
+                document
+                    .image_stream(object)
+                    .unwrap_err()
+                    .as_error()
+                    .unwrap()
+                    .kind,
                 ErrorKind::Syntax
             );
             let parameters = parameters(&document, object);
@@ -384,8 +389,8 @@ mod tests {
             let error = limited
                 .image_stream_with_parameters(object, Some(&parameters))
                 .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Limit);
-            assert_eq!(error.object, Some(object.id()));
+            assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+            assert_eq!(error.as_error().unwrap().object, Some(object.id()));
         }
     }
 
@@ -407,8 +412,11 @@ mod tests {
         let error = document
             .image_stream_with_parameters(&external, None)
             .unwrap_err();
-        assert_eq!(error.feature(), Some(crate::features::EXTERNAL_STREAM));
-        assert_eq!(error.object, Some(object.id()));
+        assert_eq!(
+            error.as_error().unwrap().feature(),
+            Some(crate::features::EXTERNAL_STREAM)
+        );
+        assert_eq!(error.as_error().unwrap().object, Some(object.id()));
 
         let document = open("params-crypt-string-null", Limits::default().decoded_bytes);
         let object = document.object(ObjectId::new(3, 0)).unwrap();
@@ -424,6 +432,8 @@ mod tests {
             document
                 .image_stream_with_parameters(object, Some(&parameters))
                 .unwrap_err()
+                .as_error()
+                .unwrap()
                 .kind,
             ErrorKind::Syntax
         );

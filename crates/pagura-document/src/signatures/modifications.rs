@@ -7,19 +7,18 @@ use super::{
     policy,
     roles::{self, Roles},
 };
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::{
     Document,
     view::{Context, Source},
 };
-use pagura_core::Result;
 use std::collections::BTreeSet;
 
 pub(super) fn apply(
     doc: &Document,
     signatures: &mut Signatures<'_>,
-    facts: Result<Vec<Option<Facts>>>,
-) {
+    facts: ReadResult<Vec<Option<Facts>>>,
+) -> ReadResult<()> {
     // Structural source checks have their own shared budget. Changes cannot
     // erase an already established ByteRange or revision coverage result.
     let mut ctx = Context::new(doc);
@@ -42,6 +41,9 @@ pub(super) fn apply(
             Ok((Vec::new(), Vec::new()))
         }
     });
+    if let Err(ReadFault::Unavailable(missing)) = &prepared {
+        return Err(ReadFault::Unavailable(missing.clone()));
+    }
     for signature in signatures
         .fields
         .iter_mut()
@@ -58,8 +60,11 @@ pub(super) fn apply(
                         outcome: O::NoChanges,
                     })
                 } else if let Ok((roles, updates)) = &prepared {
-                    analyse(doc, &mut ctx, signature, index, roles, updates)
-                        .unwrap_or(PermittedModifications::Inconclusive)
+                    match analyse(doc, &mut ctx, signature, index, roles, updates) {
+                        Ok(analysis) => analysis,
+                        Err(ReadFault::Invalid(_)) => PermittedModifications::Inconclusive,
+                        Err(unavailable) => return Err(unavailable),
+                    }
                 } else {
                     PermittedModifications::Inconclusive
                 }
@@ -81,6 +86,7 @@ pub(super) fn apply(
             signature.results.permitted_modifications = PermittedModifications::Inconclusive;
         }
     }
+    Ok(())
 }
 
 type Prepared = (Vec<Option<Roles>>, Vec<BTreeSet<pagura_core::ObjectId>>);
@@ -108,7 +114,7 @@ fn prepare(
         let current = doc.revision_with_context(revision, ctx)?;
         let previous = doc.revision_with_context(revision + 1, ctx)?;
         let (Some(old), Some(new)) = (&roles[revision + 1], &roles[revision]) else {
-            return Err(pagura_core::Error::syntax("revision roles unavailable"));
+            return Err(pagura_core::Error::syntax("revision roles unavailable").into());
         };
         updates.push(deltas::read(ctx, (previous, old), (current, new))?);
     }

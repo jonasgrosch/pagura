@@ -3,7 +3,7 @@ use super::actions;
 use crate::Document;
 use crate::source::ReadResult;
 use crate::view::{Context, Source, identity, number};
-use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Rect, Value};
 use std::collections::BTreeSet;
 
 /// How the host should fit or position a destination page. Null coordinates
@@ -120,7 +120,7 @@ fn optional(value: &Value, source: Source) -> ReadResult<Option<f64>> {
     if value.is_null() {
         Ok(None)
     } else {
-        number(value, source).map(Some)
+        Ok(number(value, source).map(Some)?)
     }
 }
 
@@ -252,7 +252,7 @@ fn find<'a>(
     let (catalog, catalog_source) = context.catalog()?;
     // A name uses the legacy dictionary first; a string uses the name tree
     // first. The other representation is a compatibility fallback by bytes.
-    let legacy = |context: &mut Context<'a>| -> Result<Option<(&'a Value, Source)>> {
+    let legacy = |context: &mut Context<'a>| -> ReadResult<Option<(&'a Value, Source)>> {
         let Some(value) = context.present(catalog, b"Dests", catalog_source)? else {
             return Ok(None);
         };
@@ -261,7 +261,7 @@ fn find<'a>(
             .present(dictionary, name.as_bytes(), source)?
             .map(|v| (v, source)))
     };
-    let tree = |context: &mut Context<'a>| -> Result<Option<(&'a Value, Source)>> {
+    let tree = |context: &mut Context<'a>| -> ReadResult<Option<(&'a Value, Source)>> {
         let Some(names) = context.present(catalog, b"Names", catalog_source)? else {
             return Ok(None);
         };
@@ -281,11 +281,11 @@ fn find<'a>(
     match name {
         DestinationName::Name(_) => match legacy(context)? {
             Some(v) => Ok(Some(v)),
-            None => tree(context),
+            None => Ok(tree(context)?),
         },
         DestinationName::String(_) => match tree(context)? {
             Some(v) => Ok(Some(v)),
-            None => legacy(context),
+            None => Ok(legacy(context)?),
         },
     }
 }

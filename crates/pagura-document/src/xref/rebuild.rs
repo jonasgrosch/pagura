@@ -9,7 +9,7 @@
 use super::{Location, XrefEntry, XrefOrigin, XrefTable, entry_budget, structural};
 use crate::object::recovery::{self, StreamContext, TERMINATOR_SLACK, header};
 use crate::object::stream::headers;
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
@@ -227,7 +227,7 @@ fn skip_stream(
             parser.seek(exact.offset())?;
             return Ok(true);
         }
-        Err(error) if structural(&error) => {}
+        Err(ReadFault::Invalid(error)) if structural(&error) => {}
         Err(error) => return Err(error),
     }
     if !parser.keyword(b"stream") {
@@ -428,15 +428,16 @@ pub(crate) fn object_streams(
 pub(crate) fn root(document: &Document) -> ReadResult<Option<ObjectId>> {
     match document.catalog() {
         Ok(catalog) if crate::catalog::candidate(document, catalog)? => return Ok(None),
-        Err(error) if !structural(&error) => return Err(error),
+        Err(ReadFault::Invalid(error)) if structural(&error) => {}
+        Err(fault) => return Err(fault),
         _ => {}
     }
     let mut candidate = None;
     for id in document.object_ids() {
         let object = match document.object(id) {
             Ok(object) => object,
-            Err(error) if !structural(&error) => return Err(error),
-            Err(_) => continue,
+            Err(ReadFault::Invalid(error)) if structural(&error) => continue,
+            Err(fault) => return Err(fault),
         };
         let Some(dictionary) = object.dictionary() else {
             continue;

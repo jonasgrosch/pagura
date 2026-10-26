@@ -75,7 +75,7 @@ fn detect(document: &Document, key: &FileKey) -> ReadResult<Option<ObjectId>> {
         dictionary.get(b"DecodeParms"),
     ) {
         Ok(chain) if matches!(chain.filters(), [Filter::Flate { .. }]) => chain,
-        Err(error) if error.kind == ErrorKind::Limit => return Err(error.in_object(id)),
+        Err(error) if error.kind == ErrorKind::Limit => return Err(error.in_object(id).into()),
         Ok(_) | Err(_) => return Ok(None),
     };
     let raw = document.raw_stream_data(&object)?;

@@ -25,7 +25,7 @@ pub use trees::{NameTree, NumberTree, Tree, TreeEntries, TreeKey};
 
 use crate::source::ReadResult;
 use crate::{Document, Page};
-use pagura_core::{Error, Result, Value};
+use pagura_core::{Error, Value};
 
 impl Document {
     /// A borrowed name-tree handle (7.9.6), including non-navigation trees.
@@ -42,7 +42,7 @@ impl Document {
     ///
     /// # Errors
     /// Returns positioned syntax, missing-target, cycle or budget errors.
-    pub fn destination(&self, value: &Value) -> Result<Destination> {
+    pub fn destination(&self, value: &Value) -> ReadResult<Destination> {
         destinations::local(self, value)
     }
 
@@ -50,7 +50,7 @@ impl Document {
     ///
     /// # Errors
     /// Returns errors from tree validation or destination resolution.
-    pub fn named_destinations(&self) -> Result<Vec<NamedDestination<'_>>> {
+    pub fn named_destinations(&self) -> ReadResult<Vec<NamedDestination<'_>>> {
         destinations::named(self)
     }
 
@@ -93,9 +93,9 @@ impl Document {
     /// # Errors
     /// Returns an invalid-argument error for an out-of-range index, or errors
     /// interpreting labels and enforcing string/result budgets.
-    pub fn page_label(&self, index: usize) -> Result<String> {
+    pub fn page_label(&self, index: usize) -> ReadResult<String> {
         if index >= self.page_count()? {
-            return Err(Error::invalid_argument("page label index outside document"));
+            return Err((Error::invalid_argument("page label index outside document")).into());
         }
         self.page_labels()?.label(index)
     }
@@ -116,7 +116,7 @@ impl Page {
     /// # Errors
     /// As [`Document::page_label`], and `InvalidArgument` if `document` is not
     /// the one this page came from.
-    pub fn label(&self, document: &Document) -> Result<String> {
+    pub fn label(&self, document: &Document) -> ReadResult<String> {
         document.check_page(self)?;
         document.page_label(self.index())
     }

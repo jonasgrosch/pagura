@@ -90,7 +90,7 @@ fn decision(
         &BTreeSet<ObjectId>,
     ),
     past: &[Option<Roles>],
-) -> ReadResult<(Vec<ObjectRole>, D, D, R)> {
+) -> Result<(Vec<ObjectRole>, D, D, R)> {
     let mut usages = BTreeSet::new();
     for usage in old
         .get(id)
@@ -164,7 +164,7 @@ fn trailer_change(
     before: &Document,
     after: &Document,
     policy: &Policy,
-) -> ReadResult<Option<ObjectChange>> {
+) -> Result<Option<ObjectChange>> {
     let a = before.trailer();
     let b = after.trailer();
     if equality::same_dictionary(ctx, a, b, equality::TRAILER_KEYS)? {
@@ -231,7 +231,7 @@ fn field_decision(
     (old, new, signed, policy): (&Roles, &Roles, &Roles, &Policy),
     changed_fields: &BTreeSet<ObjectId>,
     structural: bool,
-) -> ReadResult<D> {
+) -> Result<D> {
     let mut locked = false;
     for owner in usages
         .iter()
@@ -301,7 +301,7 @@ fn object_roles_overlay(
     {
         return Ok(true);
     }
-    let has_appearance = |(doc, object): (&Document, Option<&IndirectObject>)| -> Result<bool> {
+    let has_appearance = |(doc, object): (&Document, Option<&IndirectObject>)| -> ReadResult<bool> {
         let Some(value) = object
             .and_then(IndirectObject::dictionary)
             .and_then(|d| d.get(b"AP"))

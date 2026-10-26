@@ -9,7 +9,7 @@ use crate::{
     Document, repairs,
     view::{Context, Source, ValueIdentity, identity},
 };
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 struct Pending<'a> {
@@ -126,11 +126,11 @@ impl<'a> Walk<'a> {
         let (value, source) = self.context.resolve(value, source)?;
         self.context.index_entry(source)?;
         if !self.seen.insert(identity(value)) {
-            return self.context.repair(
+            return Ok(self.context.repair(
                 repairs::FORM_CYCLE,
                 "repeated field or widget edge omitted (12.7.4.1)",
                 source,
-            );
+            )?);
         }
         let (dictionary, source) = self.context.dictionary(value, source)?;
         if !indirect {

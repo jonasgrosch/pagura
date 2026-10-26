@@ -1,6 +1,6 @@
 use crate::source::ReadResult;
 use crate::{Document, IndirectObject, StreamData};
-use pagura_core::{Dictionary, Name, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Name, ObjectId, Value};
 
 /// A filename as declared, without operating-system path interpretation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

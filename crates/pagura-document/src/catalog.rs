@@ -2,7 +2,7 @@
 
 use crate::source::ReadResult;
 use crate::{Document, repairs};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Value};
 
 /// Types of standard dictionaries that recovery never reinterprets: an object
 /// typed as one of them is that object, not another with a damaged Type.

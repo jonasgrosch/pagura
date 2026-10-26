@@ -4,7 +4,7 @@ mod padding;
 mod policy;
 mod repair;
 
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::{Document, IndirectObject, Location, ObjectSource, features, repairs};
 use pagura_core::{Dictionary, Error, ErrorKind, Name, ObjectId, Result, ResultExt, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
@@ -47,7 +47,7 @@ pub(crate) fn read(document: &Document, password: &[u8]) -> ReadResult<Option<Se
     };
     let id = encrypt.as_reference();
     handler(document, encrypt, id, password)
-        .in_object_opt(id)
+        .map_err(|fault| fault.in_object_opt(id))
         .map(Some)
 }
 
@@ -166,6 +166,7 @@ fn authenticate_document(
     }
     let authentication = if short_key || selector {
         pagura_crypto::standard::authenticate_legacy_compatibility(params, password)
+            .map_err(ReadFault::from)
     } else {
         repair::authenticate(
             document,
@@ -178,7 +179,7 @@ fn authenticate_document(
     };
     let key = match authentication {
         Ok(key) => Some(key),
-        Err(error) if deferred && error.kind == ErrorKind::Password => None,
+        Err(ReadFault::Invalid(error)) if deferred && error.kind == ErrorKind::Password => None,
         Err(error) => return Err(error),
     };
     if let Some(key) = &key {
@@ -313,7 +314,7 @@ fn methods<'a>(
     params: &SecurityParams,
     resolve: impl Fn(&'a Value) -> ReadResult<&'a Value>,
     policy: &mut Policy,
-) -> Result<Methods> {
+) -> ReadResult<Methods> {
     if params.version < 4 {
         return Ok(Methods {
             filters: BTreeMap::new(),

@@ -1,10 +1,10 @@
 //! Source-bound byte ranges (12.8.1, Table 255; 12.8.3.3.1).
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::{
     ObjectSource,
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Result, Value};
+use pagura_core::{Dictionary, Value};
 use std::ops::Range;
 
 /// A failed byte-range structure check; cryptography has not run.
@@ -107,8 +107,11 @@ pub(super) fn check<'a>(
         super::source::contents_span(ctx, dictionary, object.value(), extent.clone(), source);
     let span = match span {
         Ok(span) => span,
-        Err(error) if error.kind == pagura_core::ErrorKind::Limit => return Err(error),
-        Err(_) => return Ok(Err(ByteRangeError::AmbiguousSource)),
+        Err(ReadFault::Invalid(error)) if error.kind == pagura_core::ErrorKind::Limit => {
+            return Err(error.into());
+        }
+        Err(ReadFault::Unavailable(missing)) => return Err(ReadFault::Unavailable(missing)),
+        Err(ReadFault::Invalid(_)) => return Ok(Err(ByteRangeError::AmbiguousSource)),
     };
     let Some(span) = span else {
         return Ok(Err(ByteRangeError::SourceUnavailable));

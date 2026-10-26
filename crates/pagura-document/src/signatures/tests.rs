@@ -209,15 +209,24 @@ fn budgets_fail_without_partial_results() {
     doc.signatures().unwrap();
     let mut limited = doc;
     limited.limits.traversal_work = 1;
-    assert_eq!(limited.signatures().unwrap_err().kind, ErrorKind::Limit);
+    assert_eq!(
+        limited.signatures().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
     let mut doc = open("multiple-revisions", Limits::default());
     doc.signatures().unwrap();
     doc.limits.document_bytes = 1;
-    assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
+    assert_eq!(
+        doc.signatures().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
     let mut doc = open("multiple-revisions", Limits::default());
     doc.signatures().unwrap();
     doc.limits.file_bytes = 1;
-    assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
+    assert_eq!(
+        doc.signatures().unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
 }
 
 #[test]

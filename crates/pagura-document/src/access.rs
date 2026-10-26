@@ -16,9 +16,9 @@ impl Document {
     /// As [`Document::resolve`], plus a syntax error for another type.
     pub fn integer(&self, value: &Value) -> ReadResult<i64> {
         let (value, origin) = self.located(value)?;
-        value
+        Ok(value
             .as_integer()
-            .ok_or_else(|| Error::syntax("expected an integer").in_object_opt(origin))
+            .ok_or_else(|| Error::syntax("expected an integer").in_object_opt(origin))?)
     }
 
     /// Resolves `value` and requires a finite number, integer or real.
@@ -29,7 +29,7 @@ impl Document {
     /// non-finite real.
     pub fn number(&self, value: &Value) -> ReadResult<f64> {
         let (value, origin) = self.located(value)?;
-        number(value, origin)
+        Ok(number(value, origin)?)
     }
 
     /// Resolves `value` and requires a name.
@@ -39,9 +39,9 @@ impl Document {
     /// As [`Document::resolve`], plus a syntax error for another type.
     pub fn name<'a>(&'a self, value: &'a Value) -> ReadResult<&'a Name> {
         let (value, origin) = self.located(value)?;
-        value
+        Ok(value
             .as_name()
-            .ok_or_else(|| Error::syntax("expected a name").in_object_opt(origin))
+            .ok_or_else(|| Error::syntax("expected a name").in_object_opt(origin))?)
     }
 
     /// Resolves `value` to an array of exactly `N` numbers, resolving each
@@ -123,20 +123,30 @@ mod tests {
         assert_eq!(document.number(&Value::Integer(2)).unwrap(), 2.0);
         assert_eq!(document.number(&Value::Real(0.5)).unwrap(), 0.5);
         let error = document.integer(&reference).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(error.object, Some(catalog));
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Syntax);
+        assert_eq!(error.as_error().unwrap().object, Some(catalog));
         assert_eq!(
             document.name(&Value::Name(Name::new(b"Catalog"))).unwrap(),
             b"Catalog"
         );
         assert_eq!(
-            document.number(&Value::Real(f64::NAN)).unwrap_err().kind,
+            document
+                .number(&Value::Real(f64::NAN))
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::Syntax
         );
         // A reference to an undefined object is null (7.3.10), not a number.
         let missing = Value::Reference(ObjectId::new(999, 0));
         assert_eq!(
-            document.number(&missing).unwrap_err().kind,
+            document
+                .number(&missing)
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::Syntax
         );
     }
@@ -163,7 +173,12 @@ mod tests {
             Value::Integer(4),
         ] {
             assert_eq!(
-                document.numbers::<4>(&wrong).unwrap_err().kind,
+                document
+                    .numbers::<4>(&wrong)
+                    .unwrap_err()
+                    .as_error()
+                    .unwrap()
+                    .kind,
                 ErrorKind::Syntax
             );
         }

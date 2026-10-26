@@ -24,7 +24,12 @@ fn reserved_zero_root_needs_its_exact_positive_plaintext_identity() {
         ObjectId::new(1, 0)
     );
     assert_eq!(
-        document.object(ObjectId::new(0, 0)).unwrap_err().kind,
+        document
+            .object(ObjectId::new(0, 0))
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::MissingObject
     );
     for name in [
@@ -90,8 +95,11 @@ fn ambiguous_stream_boundaries_are_not_repaired() {
     bytes.splice(start..start, b"\nendstream\nendobj\n".iter().copied());
     let document = Document::open(bytes, &OpenOptions::default()).unwrap();
     let error = document.object(ObjectId::new(4, 0)).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Syntax);
-    assert_eq!(error.message, "ambiguous stream terminators");
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Syntax);
+    assert_eq!(
+        error.as_error().unwrap().message,
+        "ambiguous stream terminators"
+    );
 }
 
 #[test]
@@ -112,7 +120,11 @@ fn unusable_lengths_are_repaired_lazily_and_keep_exact_bytes() {
         )
         .unwrap();
         let error = strict.object(ObjectId::new(4, 0)).unwrap_err();
-        assert_eq!(error.repair, Some(repairs::LENGTH_CORRECTED), "{name}");
+        assert_eq!(
+            error.as_error().unwrap().repair,
+            Some(repairs::LENGTH_CORRECTED),
+            "{name}"
+        );
         let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
         let object = document.object(ObjectId::new(4, 0)).unwrap();
         assert_eq!(
@@ -143,7 +155,12 @@ fn unusable_lengths_are_repaired_lazily_and_keep_exact_bytes() {
     )
     .unwrap();
     assert_eq!(
-        document.object(ObjectId::new(4, 0)).unwrap_err().kind,
+        document
+            .object(ObjectId::new(4, 0))
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Limit
     );
 }
@@ -173,9 +190,12 @@ mod length_dependencies {
                 let error = document
                     .content_streams(document.page(0).unwrap())
                     .unwrap_err();
-                assert_eq!(error.kind, expected);
+                assert_eq!(error.as_error().unwrap().kind, expected);
                 let number = if expected == ErrorKind::Limit { 69 } else { 4 };
-                assert_eq!(error.object, Some(ObjectId::new(number, 0)));
+                assert_eq!(
+                    error.as_error().unwrap().object,
+                    Some(ObjectId::new(number, 0))
+                );
             }
         }
     }

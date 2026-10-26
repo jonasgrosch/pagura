@@ -3,9 +3,9 @@
 use super::RevisionCoverage;
 pub(super) use crate::revision_bounds::Boundary;
 use crate::revision_bounds::boundary;
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::view::{Context, Source};
-use pagura_core::{Position, Result};
+use pagura_core::Position;
 
 pub(super) fn read(ctx: &mut Context<'_>) -> ReadResult<Vec<Option<Boundary>>> {
     let revisions = ctx.document.revisions();
@@ -32,10 +32,13 @@ pub(super) fn read(ctx: &mut Context<'_>) -> ReadResult<Vec<Option<Boundary>>> {
                     ctx.scan(consumed, source)?;
                     Ok(Some(boundary))
                 }
-                Err(error) if error.kind == pagura_core::ErrorKind::Limit => {
+                Err(ReadFault::Invalid(error)) if error.kind == pagura_core::ErrorKind::Limit => {
                     Err((source.fault(error)).into())
                 }
-                Err(_) => Ok(None),
+                Err(ReadFault::Unavailable(missing)) => {
+                    return Err(ReadFault::Unavailable(missing));
+                }
+                Err(ReadFault::Invalid(_)) => Ok(None),
             }
         })
         .collect()

@@ -39,7 +39,7 @@ mod structure_tests {
         )
     }
 
-    fn contents(document: &Document) -> pagura_core::Result<Vec<u8>> {
+    fn contents(document: &Document) -> crate::source::ReadResult<Vec<u8>> {
         let mut output = Vec::new();
         for page in document.pages()? {
             for stream in document.content_streams(page)? {
@@ -271,7 +271,12 @@ mod structure_tests {
             Document::open(fixture("classic", "rectangle.pdf"), &OpenOptions::default()).unwrap();
         document.bytes = crate::source::View::local(bytes.into(), &document.limits()).unwrap();
         assert_eq!(
-            document.object(ObjectId::new(4, 0)).unwrap_err().kind,
+            document
+                .object(ObjectId::new(4, 0))
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::Cycle
         );
     }
@@ -319,8 +324,8 @@ mod structure_tests {
             index: 99,
         };
         let error = document.object(ObjectId::new(3, 0)).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(error.object, Some(ObjectId::new(3, 0)));
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Syntax);
+        assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(3, 0)));
     }
 }
 
@@ -534,6 +539,7 @@ mod field_recovery {
                     ..OpenOptions::default()
                 },
             )
+            .map_err(crate::source::ReadFault::from)
             .and_then(|document| {
                 for object in document.content_streams(document.page(0)?)? {
                     document.stream_data(object)?;
@@ -541,8 +547,8 @@ mod field_recovery {
                 Ok(())
             })
             .unwrap_err();
-            assert_eq!(strict.kind, ErrorKind::Syntax, "{name}");
-            assert_eq!(strict.repair, Some(tag), "{name}");
+            assert_eq!(strict.as_error().unwrap().kind, ErrorKind::Syntax, "{name}");
+            assert_eq!(strict.as_error().unwrap().repair, Some(tag), "{name}");
             let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
             assert_eq!(document.original_bytes(), bytes);
             assert_eq!(document.page_count().unwrap(), 1);
@@ -684,7 +690,12 @@ mod page_ownership {
         drop(first);
         let third = open();
         assert_eq!(
-            third.content_streams(&page).unwrap_err().kind,
+            third
+                .content_streams(&page)
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::InvalidArgument
         );
     }

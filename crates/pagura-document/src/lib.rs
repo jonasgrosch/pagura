@@ -147,7 +147,7 @@ impl Document {
     ///
     /// # Errors
     /// Returns source lifecycle, consistency, admission or range failures.
-    pub fn materialize(&self) -> source::ReadResult<source::ByteLease> {
+    pub fn materialize(&self) -> ReadResult<source::ByteLease> {
         self.bytes.materialize()
     }
 
@@ -276,9 +276,9 @@ impl Document {
     /// dictionary.
     pub fn resolve_dictionary<'a>(&'a self, value: &'a Value) -> ReadResult<&'a Dictionary> {
         let (value, origin) = self.resolve_inner(value, &mut Vec::new())?;
-        value
+        Ok(value
             .as_dictionary()
-            .ok_or_else(|| Error::syntax("expected a dictionary").in_object_opt(origin))
+            .ok_or_else(|| Error::syntax("expected a dictionary").in_object_opt(origin))?)
     }
 
     /// The document catalog (`/Root`).
@@ -461,7 +461,7 @@ impl Document {
     pub fn page(&self, index: usize) -> ReadResult<&Page> {
         self.pages()?
             .get(index)
-            .ok_or(Error::invalid_argument("page index outside document"))
+            .ok_or_else(|| Error::invalid_argument("page index outside document").into())
     }
 
     /// The content stream objects of `page`, in order (clause 7.8.2). The

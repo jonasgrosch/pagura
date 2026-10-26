@@ -4,7 +4,7 @@ use super::read;
 use crate::Document;
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
-use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Value};
 
 /// Initial collection presentation, as declared by the producer (Table 153).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -238,14 +238,14 @@ fn boolean<'a>(
     key: &[u8],
     source: Source,
 ) -> ReadResult<Option<bool>> {
-    context
+    Ok(context
         .entry(dictionary, key, source)?
         .map(|value| {
             value
                 .as_bool()
                 .ok_or_else(|| source.error(Error::syntax("collection flag must be boolean")))
         })
-        .transpose()
+        .transpose()?)
 }
 
 fn sort<'a>(

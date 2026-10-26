@@ -1,7 +1,7 @@
 use super::{FileNames, FileSpecification, Relationship, stream};
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
-use pagura_core::{Dictionary, Error, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Value};
 
 pub(super) fn entry<'a>(
     context: &mut Context<'a>,
@@ -22,13 +22,13 @@ pub(super) fn bytes<'a>(
     key: &[u8],
     source: Source,
 ) -> ReadResult<Option<&'a [u8]>> {
-    entry(context, dictionary, key, source)?
+    Ok(entry(context, dictionary, key, source)?
         .map(|(value, source)| {
             value
                 .as_string()
                 .ok_or_else(|| source.error(Error::syntax("file entry must be a string")))
         })
-        .transpose()
+        .transpose()?)
 }
 
 pub(super) fn text<'a>(
@@ -37,14 +37,14 @@ pub(super) fn text<'a>(
     key: &[u8],
     source: Source,
 ) -> ReadResult<Option<String>> {
-    entry(context, dictionary, key, source)?
+    Ok(entry(context, dictionary, key, source)?
         .map(|(value, source)| {
             let bytes = value
                 .as_string()
                 .ok_or_else(|| source.error(Error::syntax("file entry must be a text string")))?;
             context.text(bytes, source)
         })
-        .transpose()
+        .transpose()?)
 }
 
 pub(super) fn name<'a>(
@@ -53,13 +53,13 @@ pub(super) fn name<'a>(
     key: &[u8],
     source: Source,
 ) -> ReadResult<Option<&'a Name>> {
-    entry(context, dictionary, key, source)?
+    Ok(entry(context, dictionary, key, source)?
         .map(|(value, source)| {
             value
                 .as_name()
                 .ok_or_else(|| source.error(Error::syntax("file entry must be a name")))
         })
-        .transpose()
+        .transpose()?)
 }
 
 pub(super) fn specification<'a>(

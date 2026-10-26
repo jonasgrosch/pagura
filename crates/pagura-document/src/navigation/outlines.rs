@@ -1,9 +1,9 @@
 //! Flat, bounded outline traversal (12.3.3, Tables 150–152).
 use super::destinations::{self, Target};
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::view::{Context, Source, ValueIdentity, identity, number};
 use crate::{Document, repairs};
-use pagura_core::{Dictionary, Error, ErrorKind, Result, Value};
+use pagura_core::{Dictionary, Error, ErrorKind, Value};
 use std::collections::BTreeSet;
 
 /// Outline item flags (Table 152).
@@ -73,7 +73,8 @@ fn edge<'a>(
     };
     match context.resolve(value, source) {
         Ok((value, _)) if value.is_null() => return Ok(None),
-        Err(error) if error.kind != ErrorKind::MissingObject => return Err(error),
+        Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::MissingObject => {}
+        Err(fault) => return Err(fault),
         _ => {}
     }
     if !matches!(value, Value::Reference(_)) {
@@ -358,7 +359,7 @@ fn reciprocal<'a>(
 ) -> ReadResult<Option<ValueIdentity>> {
     match context.resolve(value, source) {
         Ok((value, _)) => Ok(Some(identity(value))),
-        Err(error) if error.kind == ErrorKind::MissingObject => {
+        Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::MissingObject => {
             context.repair(
                 repairs::OUTLINE_LINKS,
                 "dangling reciprocal outline link ignored; forward chain used (12.3.3)",

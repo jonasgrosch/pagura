@@ -1,7 +1,7 @@
 use super::{EmbeddedFile, EmbeddedFileEntry, FileParameters, RelatedFile, read};
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
 
 pub(super) fn entries<'a>(
     context: &mut Context<'a>,

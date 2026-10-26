@@ -5,7 +5,7 @@ use crate::{
     Document,
     view::{Context, Source},
 };
-use pagura_core::{ObjectId, Result};
+use pagura_core::ObjectId;
 use std::collections::BTreeSet;
 
 pub(super) fn read(

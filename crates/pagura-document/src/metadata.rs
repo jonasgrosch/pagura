@@ -10,7 +10,7 @@
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use crate::{Document, IndirectObject, StreamData};
-use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Value};
 
 /// The Info dictionary's trapping declaration (14.3.3, Table 349).
 /// This records what the producer declared, not an inspection of page marks.
@@ -179,7 +179,7 @@ fn text<'a>(
     let bytes = value
         .as_string()
         .ok_or_else(|| source.error(Error::syntax("metadata entry must be a text string")))?;
-    context.text(bytes, source).map(Some)
+    Ok(context.text(bytes, source).map(Some)?)
 }
 
 fn metadata<'a>(

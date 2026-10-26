@@ -6,9 +6,7 @@
 use crate::source::ReadResult;
 use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, ObjectId, Position, Result,
-};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, ObjectId, Position};
 use pagura_crypto::standard::{self, FileKey, SecurityParams};
 
 /// Whether the encryption dictionary declares the key `Length` (Table 20).
@@ -33,7 +31,7 @@ const fn hash_length(params: &SecurityParams) -> usize {
     if params.revision >= 5 { 48 } else { 32 }
 }
 
-pub(crate) fn position(document: &Document, id: Option<ObjectId>) -> Result<Position> {
+pub(crate) fn position(document: &Document, id: Option<ObjectId>) -> ReadResult<Position> {
     id.map_or(Ok(Position::Unknown), |id| {
         Ok(document.object(id)?.source().position())
     })
@@ -82,7 +80,7 @@ pub(crate) fn authenticate(
     length: KeyLength,
     password: &[u8],
     diagnostics: &mut Diagnostics,
-) -> Result<FileKey> {
+) -> ReadResult<FileKey> {
     let original = match standard::authenticate(params, password) {
         Ok(key) => return Ok(key),
         Err(error) => error,
@@ -92,7 +90,7 @@ pub(crate) fn authenticate(
         || params.revision != 3
         || original.kind != ErrorKind::Password
     {
-        return Err(original);
+        return Err(original.into());
     }
     let mut candidate = params.clone();
     let mut found = None;
@@ -101,13 +99,13 @@ pub(crate) fn authenticate(
         candidate.key_length = length;
         match standard::authenticate(&candidate, password) {
             Ok(key) if found.is_none() => found = Some(key),
-            Ok(_) => return Err(original),
+            Ok(_) => return Err(original.into()),
             Err(error) if error.kind == ErrorKind::Password => {}
-            Err(error) => return Err(error),
+            Err(error) => return Err(error.into()),
         }
     }
     let Some(key) = found else {
-        return Err(original);
+        return Err(original.into());
     };
     diagnostics.repair(
         Diagnostic::new(
@@ -132,7 +130,7 @@ fn literal_hashes(
     id: Option<ObjectId>,
     params: &mut SecurityParams,
     diagnostics: &mut Diagnostics,
-) -> Result<()> {
+) -> ReadResult<()> {
     let Some(id) = id else {
         return Ok(());
     };
@@ -162,7 +160,8 @@ fn literal_hashes(
     let expected = hash_length(params);
     if expected > document.limits().string_bytes {
         return Err(
-            Error::limit("recovered security hash exceeds the string budget").in_object(id),
+            (Error::limit("recovered security hash exceeds the string budget").in_object(id))
+                .into(),
         );
     }
     let mut replacements: [Option<(Vec<u8>, Position)>; 2] = [None, None];

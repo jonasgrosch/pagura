@@ -1,8 +1,9 @@
 //! Page boundaries, Table 31 and 14.11.2. Invalid geometry is never used to
 //! identify an otherwise untyped leaf.
 
+use crate::source::ReadResult;
 use crate::{Document, repairs};
-use pagura_core::{Diagnostic, Diagnostics, ObjectId, Rect, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, ObjectId, Rect, Value};
 
 /// US Letter, the viewing convention for a page without a usable MediaBox.
 const LETTER: Rect = if let Some(rect) = Rect::from_corners(0.0, 0.0, 612.0, 792.0) {
@@ -21,7 +22,7 @@ pub(crate) fn boxes(
     media: Option<&Value>,
     crop: Option<&Value>,
     diagnostics: &mut Diagnostics,
-) -> Result<(Rect, Rect)> {
+) -> ReadResult<(Rect, Rect)> {
     let media = rectangle(document, media)?;
     let crop_rectangle = rectangle(document, crop)?;
     let media = if let Some(media) = media {
@@ -60,7 +61,7 @@ pub(crate) fn boxes(
 
 /// A usable rectangle, or `None` when the entry is absent or malformed and
 /// the caller repairs it; resolution errors propagate.
-fn rectangle(document: &Document, value: Option<&Value>) -> Result<Option<Rect>> {
+fn rectangle(document: &Document, value: Option<&Value>) -> ReadResult<Option<Rect>> {
     let Some(value) = value else { return Ok(None) };
     let Some(values @ [_, _, _, _]) = document.resolve(value)?.as_array() else {
         return Ok(None);

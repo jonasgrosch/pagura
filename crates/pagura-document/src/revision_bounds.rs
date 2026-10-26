@@ -2,7 +2,7 @@
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{
-    Error, Result, Value,
+    Error, Value,
     syntax::{Origin, Parser, is_whitespace},
 };
 #[derive(Debug, Clone, Copy)]

@@ -3,7 +3,7 @@ use super::destinations::{self, Destination, RemoteDestination};
 use crate::source::ReadResult;
 use crate::view::{Context, Source, ValueIdentity, identity};
 use crate::{Document, IndirectObject, repairs};
-use pagura_core::{Dictionary, Error, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Value};
 use std::collections::BTreeSet;
 
 /// Standard Named actions (12.6.4.12), with extension names preserved.

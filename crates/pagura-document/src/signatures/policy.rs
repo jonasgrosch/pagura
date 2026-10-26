@@ -5,7 +5,7 @@ use crate::{
     Document,
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Value};
 use std::collections::BTreeSet;
 
 pub(super) struct Selection {

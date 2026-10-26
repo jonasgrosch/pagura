@@ -2,7 +2,7 @@
 
 use super::EmbeddedFile;
 use crate::source::ReadResult;
-use pagura_core::{Result, convert::usize_to_u64};
+use pagura_core::convert::usize_to_u64;
 use pagura_crypto::{Digest, Md5};
 
 /// Comparison of one declared embedded-file parameter with the decoded payload.
@@ -45,7 +45,7 @@ impl EmbeddedFile<'_> {
     /// # Errors
     /// As [`Self::data`]. Even without declarations, the complete payload must
     /// decode successfully before its actual length is reported.
-    pub fn check_parameters(&self) -> Result<FileParameterChecks> {
+    pub fn check_parameters(&self) -> ReadResult<FileParameterChecks> {
         let bytes = self.data()?;
         let decoded_size = usize_to_u64(bytes.len());
         let parameters = self.parameters();

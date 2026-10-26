@@ -144,12 +144,18 @@ fn historical_objects_are_prefix_bound_and_cached() {
     });
     assert_eq!(doc.retained.used(), used);
     assert_eq!(
-        doc.object_at_revision(2, id).unwrap_err().kind,
+        doc.object_at_revision(2, id)
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::InvalidArgument
     );
     assert_eq!(
         doc.object_at_revision(1, ObjectId::new(7, 1))
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::MissingObject
     );
@@ -157,6 +163,8 @@ fn historical_objects_are_prefix_bound_and_cached() {
     assert_eq!(
         doc.object_at_revision(1, ObjectId::new(9, 0))
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::MissingObject
     );
@@ -177,6 +185,8 @@ fn historical_caches_share_the_aggregate_limit() {
     assert_eq!(
         doc.object_at_revision(1, ObjectId::new(7, 0))
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );
@@ -188,9 +198,16 @@ fn historical_generations_frees_and_stream_dependencies_use_the_old_xref() {
     let doc = open("field-generation-replaced");
     let old = ObjectId::new(7, 0);
     let new = ObjectId::new(7, 1);
-    assert_eq!(doc.object(old).unwrap_err().kind, ErrorKind::MissingObject);
     assert_eq!(
-        doc.object_at_revision(1, new).unwrap_err().kind,
+        doc.object(old).unwrap_err().as_error().unwrap().kind,
+        ErrorKind::MissingObject
+    );
+    assert_eq!(
+        doc.object_at_revision(1, new)
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::MissingObject
     );
     assert_eq!(
@@ -215,7 +232,11 @@ fn historical_generations_frees_and_stream_dependencies_use_the_old_xref() {
     );
     let doc = open("annotation-deleted-p3");
     assert_eq!(
-        doc.object(ObjectId::new(10, 0)).unwrap_err().kind,
+        doc.object(ObjectId::new(10, 0))
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::MissingObject
     );
     assert!(doc.object_at_revision(1, ObjectId::new(10, 0)).is_ok());
@@ -330,7 +351,7 @@ fn a_failed_snapshot_releases_its_own_cache_reservations() {
     )
     .unwrap();
     let error = doc.object_at_revision(1, ObjectId::new(7, 0)).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
     assert_eq!(doc.retained.used(), initial + history_slots);
     assert_eq!(
         doc.object_at_revision(1, ObjectId::new(7, 0)).unwrap_err(),
@@ -535,7 +556,11 @@ fn snapshot_work_limits_do_not_poison_a_later_analysis() {
         .allocate::<u8>(doc.limits().document_bytes, crate::view::Source::default())
         .unwrap();
     assert_eq!(
-        doc.revision_with_context(1, &mut spent).unwrap_err().kind,
+        doc.revision_with_context(1, &mut spent)
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Limit
     );
     let value = doc.object_at_revision(1, ObjectId::new(7, 0)).unwrap();
@@ -605,6 +630,8 @@ fn snapshot_metadata_admission_limits_can_be_retried() {
     assert_eq!(
         doc.object_at_revision(1, ObjectId::new(7, 0))
             .unwrap_err()
+            .as_error()
+            .unwrap()
             .kind,
         ErrorKind::Limit
     );

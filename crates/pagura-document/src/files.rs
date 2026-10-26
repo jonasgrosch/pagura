@@ -33,7 +33,7 @@ use crate::navigation::trees::NameTree;
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use crate::{Document, Page};
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
 
 impl Document {
     /// Reads an inert file specification string or dictionary (7.11).

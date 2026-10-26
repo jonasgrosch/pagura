@@ -2,7 +2,7 @@
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
 use pagura_core::{
-    Dictionary, Error, Name, Result, Value,
+    Dictionary, Error, Name, Value,
     syntax::{Origin, Parser},
 };
 use std::ops::Range;

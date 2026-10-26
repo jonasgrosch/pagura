@@ -201,8 +201,8 @@ mod unit {
     fn methods<'a>(
         dictionary: &'a Dictionary,
         params: &pagura_crypto::standard::SecurityParams,
-        resolve: impl Fn(&'a Value) -> pagura_core::Result<&'a Value>,
-    ) -> pagura_core::Result<Methods> {
+        resolve: impl Fn(&'a Value) -> crate::source::ReadResult<&'a Value>,
+    ) -> crate::source::ReadResult<Methods> {
         crate::security::methods(
             dictionary,
             params,
@@ -364,11 +364,20 @@ mod unit {
         )
         .unwrap();
         let expected = pagura_crypto::standard::authenticate(&parameters, b"").unwrap_err();
-        assert_eq!(crate::security::read(&document, &[]).unwrap_err(), expected);
+        assert_eq!(
+            crate::security::read(&document, &[])
+                .unwrap_err()
+                .as_error(),
+            Some(&expected)
+        );
         *document.trailer.get_mut(b"Encrypt").unwrap() =
             Value::Dictionary(dictionary(b"<< /Filter /Adobe.PubSec >>"));
         assert_eq!(
-            crate::security::read(&document, &[]).unwrap_err().feature(),
+            crate::security::read(&document, &[])
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .feature(),
             Some(crate::features::PUBSEC)
         );
         let options = OpenOptions {
@@ -472,8 +481,8 @@ mod authorization_events {
             );
             let embedded = document.object(ObjectId::new(6, 0)).unwrap();
             let error = document.stream_data(embedded).unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Password);
-            assert_eq!(error.object, Some(embedded.id()));
+            assert_eq!(error.as_error().unwrap().kind, ErrorKind::Password);
+            assert_eq!(error.as_error().unwrap().object, Some(embedded.id()));
             let retained = document.retained.used();
             assert_eq!(document.stream_data(embedded).unwrap_err(), error);
             assert_eq!(document.retained.used(), retained);

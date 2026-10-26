@@ -108,7 +108,8 @@ impl<'a> Context<'a> {
             }
             self.pages = Some(index);
         }
-        self.pages
+        Ok(self
+            .pages
             .as_ref()
             .and_then(|pages| pages.get(&id))
             .copied()
@@ -116,7 +117,7 @@ impl<'a> Context<'a> {
                 source.error(Error::missing_object(
                     "destination page is absent from the page tree",
                 ))
-            })
+            })?)
     }
 
     pub(crate) fn step(&mut self, depth: usize, source: Source) -> Result<()> {
@@ -193,10 +194,10 @@ impl<'a> Context<'a> {
         source: Source,
     ) -> ReadResult<(&'a Dictionary, Source)> {
         let (value, source) = self.resolve(value, source)?;
-        value
+        Ok(value
             .as_dictionary()
             .map(|dictionary| (dictionary, source))
-            .ok_or_else(|| source.error(Error::syntax("navigation object must be a dictionary")))
+            .ok_or_else(|| source.error(Error::syntax("navigation object must be a dictionary")))?)
     }
 
     /// Preserve the original reference while applying dictionary-null absence
@@ -252,8 +253,9 @@ impl<'a> Context<'a> {
         key: &[u8],
         source: Source,
     ) -> ReadResult<&'a Value> {
-        self.entry(dictionary, key, source)?
-            .ok_or_else(|| source.error(Error::syntax("required navigation entry is absent")))
+        Ok(self
+            .entry(dictionary, key, source)?
+            .ok_or_else(|| source.error(Error::syntax("required navigation entry is absent")))?)
     }
 
     pub(crate) fn repair(

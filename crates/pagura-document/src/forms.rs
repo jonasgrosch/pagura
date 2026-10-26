@@ -28,7 +28,6 @@ pub use model::{
     AcroForm, AdditionalAction, ButtonKind, ChoiceOption, ChoiceStyle, Field, FieldFlags,
     FieldKind, FieldValue, Justification, Widget,
 };
-use pagura_core::Result;
 
 impl Document {
     /// Starts an in-memory form session, or returns None without an AcroForm.
@@ -37,9 +36,10 @@ impl Document {
     /// # Errors
     /// As [`Self::acro_form`]; changes have their own bounded storage.
     pub fn form_filler(&self) -> ReadResult<Option<FormFiller<'_>>> {
-        self.acro_form()?
+        Ok(self
+            .acro_form()?
             .map(|form| FormFiller::new(self, form))
-            .transpose()
+            .transpose()?)
     }
 
     /// Reads the AcroForm and its field/widget tree (12.7.3–12.7.5).

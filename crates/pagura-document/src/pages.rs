@@ -4,13 +4,12 @@ pub(crate) mod contents;
 pub(crate) mod geometry;
 
 use crate::memory::{Reservation, path_bytes};
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::view::ValueIdentity;
 use crate::{Document, repairs};
 use pagura_core::syntax::PathComponent;
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Meter, Name, ObjectId, Rect, Result, Rotation,
-    Value,
+    Diagnostic, Diagnostics, Dictionary, Error, Meter, Name, ObjectId, Rect, Rotation, Value,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Weak};
@@ -498,7 +497,7 @@ impl<'a> Walk<'a> {
             for id in self.document.object_ids() {
                 let object = match self.document.object(id) {
                     Ok(object) => object,
-                    Err(error) if crate::xref::structural(&error) => continue,
+                    Err(ReadFault::Invalid(error)) if crate::xref::structural(&error) => continue,
                     Err(error) => return Err(error),
                 };
                 if let Some(dictionary) = object.dictionary()
@@ -572,7 +571,7 @@ impl<'a> Walk<'a> {
             None => Rotation::None,
             Some(value) => document
                 .integer(value)
-                .and_then(Rotation::try_from)
+                .and_then(|number| Ok(Rotation::try_from(number)?))
                 .map_err(|error| error.in_object(id))?,
         };
         let user_unit = match dictionary.get(b"UserUnit") {

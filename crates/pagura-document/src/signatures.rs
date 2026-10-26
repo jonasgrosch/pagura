@@ -45,7 +45,6 @@ pub use model::{
     RevisionCoverage, RevocationStatus, Signature, SignatureField, SignatureReference,
     SignatureResults, Signatures, SignerTrust, SubFilter, Transform, ValidationTime,
 };
-use pagura_core::Result;
 
 impl Document {
     /// Inspects signature fields and the catalog's UR3 usage-rights signature.
@@ -69,7 +68,7 @@ impl Document {
         if facts.is_err() {
             result.history_complete = false;
         }
-        modifications::apply(self, &mut result, facts);
+        modifications::apply(self, &mut result, facts)?;
         Ok(result)
     }
 }

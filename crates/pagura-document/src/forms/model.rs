@@ -245,6 +245,7 @@ pub struct Field<'a> {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct Widget<'a> {
+    pub(super) has_appearance: bool,
     /// Index of the owning field.
     pub field: usize,
     /// Source object or enclosing object for a direct widget.

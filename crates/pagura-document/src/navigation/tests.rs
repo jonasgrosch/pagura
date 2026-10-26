@@ -73,7 +73,7 @@ fn root(document: &Document) -> &Value {
         .unwrap()
 }
 
-fn snapshot(document: &Document, kind: &str) -> Result<String> {
+fn snapshot(document: &Document, kind: &str) -> ReadResult<String> {
     let mut out = String::new();
     match kind {
         "destinations" => {
@@ -172,10 +172,19 @@ fn independent_navigation_structures_and_reported_repairs() {
         let strict = open(name, Recovery::Strict, Limits::default());
         let actual = snapshot(&strict, params["view"]);
         if let Some(error) = params.get("error") {
-            assert_eq!(actual.unwrap_err().kind.name(), *error, "{name}");
+            assert_eq!(
+                actual.unwrap_err().as_error().unwrap().kind.name(),
+                *error,
+                "{name}"
+            );
             let repaired = open(name, Recovery::Repair, Limits::default());
             assert_eq!(
-                snapshot(&repaired, params["view"]).unwrap_err().kind.name(),
+                snapshot(&repaired, params["view"])
+                    .unwrap_err()
+                    .as_error()
+                    .unwrap()
+                    .kind
+                    .name(),
                 *error,
                 "{name}"
             );
@@ -184,7 +193,8 @@ fn independent_navigation_structures_and_reported_repairs() {
         if params["repair"].is_empty() {
             assert_eq!(actual.unwrap(), expected, "{name}");
         } else {
-            let error = actual.unwrap_err();
+            let fault = actual.unwrap_err();
+            let error = fault.as_error().unwrap();
             assert_eq!(
                 error.repair.unwrap().as_str(),
                 params["repair"],
@@ -291,7 +301,11 @@ fn tree_action_outline_and_result_budgets_return_no_partial_views() {
         document.pages().unwrap();
         document.limits.depth = 1;
         assert_eq!(
-            snapshot(&document, kind).unwrap_err().kind,
+            snapshot(&document, kind)
+                .unwrap_err()
+                .as_error()
+                .unwrap()
+                .kind,
             ErrorKind::Limit,
             "{name}"
         );
@@ -307,13 +321,21 @@ fn tree_action_outline_and_result_budgets_return_no_partial_views() {
     let mut document = document;
     document.limits.traversal_work = 2;
     assert_eq!(
-        snapshot(&document, "trees").unwrap_err().kind,
+        snapshot(&document, "trees")
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Limit
     );
     document.limits.traversal_work = Limits::default().traversal_work;
     document.limits.document_bytes = 1;
     assert_eq!(
-        snapshot(&document, "trees").unwrap_err().kind,
+        snapshot(&document, "trees")
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::Limit
     );
 }
@@ -381,9 +403,17 @@ fn lookup_query_does_not_borrow_for_the_tree_lifetime_and_labels_are_bounded() {
     );
     assert_eq!(document.page_label(0).unwrap(), "Intro");
     document.limits.string_bytes = 4;
-    assert_eq!(document.page_label(0).unwrap_err().kind, ErrorKind::Limit);
     assert_eq!(
-        document.page_label(10).unwrap_err().kind,
+        document.page_label(0).unwrap_err().as_error().unwrap().kind,
+        ErrorKind::Limit
+    );
+    assert_eq!(
+        document
+            .page_label(10)
+            .unwrap_err()
+            .as_error()
+            .unwrap()
+            .kind,
         ErrorKind::InvalidArgument
     );
 }
@@ -412,7 +442,7 @@ fn parsed_label_view_reuses_ranges_for_lookup_and_linear_iteration() {
     }
     assert_eq!(labels.ranges().len(), 9);
     assert_eq!(
-        labels.label(10).unwrap_err().kind,
+        labels.label(10).unwrap_err().as_error().unwrap().kind,
         ErrorKind::InvalidArgument
     );
     let tree = document.number_tree(document.catalog().unwrap().get(b"PageLabels").unwrap());

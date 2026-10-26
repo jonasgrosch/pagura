@@ -6,7 +6,7 @@ use crate::{
     repairs,
     view::{Context, Source, number},
 };
-use pagura_core::{Dictionary, Error, Name, Rect, Result};
+use pagura_core::{Dictionary, Error, Name, Rect, Value};
 
 /// Whether a widget has its own dictionary or shares its field's (12.7.4.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,13 +31,15 @@ pub(super) fn read<'a>(
         )?;
     }
     context.allocate::<Widget<'_>>(1, source)?;
+    let appearance = context.present(dictionary, b"AP", source)?;
     Ok(Widget {
+        has_appearance: appearance.is_some(),
         field,
         object: source.object,
         position: source.position,
         merged,
         rectangle: rectangle(context, dictionary, source)?,
-        on_states: on_states(context, dictionary, source)?,
+        on_states: on_states(context, appearance, source)?,
         appearance_state: context
             .entry(dictionary, b"AS", source)?
             .map(|v| {
@@ -68,18 +70,22 @@ fn rectangle<'a>(
     let [x0, y0, x1, y1] = values else {
         return Err((source.error(Error::syntax("widget Rect requires four numbers"))).into());
     };
-    let mut read = |v| context.resolve(v, source).and_then(|(v, s)| number(v, s));
+    let mut read = |v| {
+        context
+            .resolve(v, source)
+            .and_then(|(v, s)| Ok(number(v, s)?))
+    };
     let (x0, y0, x1, y1) = (read(x0)?, read(y0)?, read(x1)?, read(y1)?);
-    Rect::from_corners(x0, y0, x1, y1)
-        .ok_or_else(|| source.error(Error::syntax("invalid widget Rect")))
+    Ok(Rect::from_corners(x0, y0, x1, y1)
+        .ok_or_else(|| source.error(Error::syntax("invalid widget Rect")))?)
 }
 
 fn on_states<'a>(
     context: &mut Context<'a>,
-    dictionary: &'a Dictionary,
+    appearance: Option<&'a Value>,
     source: Source,
 ) -> ReadResult<Vec<&'a Name>> {
-    let Some(ap) = context.present(dictionary, b"AP", source)? else {
+    let Some(ap) = appearance else {
         return Ok(Vec::new());
     };
     let (ap, source) = context.dictionary(ap, source)?;

@@ -3,7 +3,7 @@
 use crate::source::ReadResult;
 use crate::{Document, IndirectObject, Page};
 use pagura_core::syntax::PathComponent;
-use pagura_core::{Error, Name, Result, Value};
+use pagura_core::{Error, Name, Value};
 
 pub(crate) fn read<'a>(document: &'a Document, page: &Page) -> ReadResult<Vec<&'a IndirectObject>> {
     let Some(mut value) = page.dictionary().get(b"Contents") else {
@@ -61,8 +61,8 @@ fn one<'a>(
         }
         return Err((Error::limit("Contents reference chain too long").in_object(id)).into());
     }
-    owner
+    Ok(owner
         .direct_stream(path)
         .filter(|stream| stream.value() == value)
-        .ok_or_else(|| Error::syntax("Contents entry is not a stream").in_object(owner.id()))
+        .ok_or_else(|| Error::syntax("Contents entry is not a stream").in_object(owner.id()))?)
 }

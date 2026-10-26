@@ -4,13 +4,13 @@ use super::{
     Signature, SignatureField, SignatureResults, Signatures, SignerTrust, SubFilter,
     ValidationTime, byte_range, revisions, transforms,
 };
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::{
     Document,
     forms::{Field, FieldKind, FieldValue},
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Error, Result};
+use pagura_core::{Dictionary, Error};
 
 struct Reader<'a> {
     ctx: Context<'a>,
@@ -80,8 +80,11 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> ReadResult<Signa
             })();
             let (lock, signature, error) = match parsed {
                 Ok((lock, signature)) => (lock, signature, None),
-                Err(error) if error.kind == pagura_core::ErrorKind::Limit => return Err(error),
-                Err(error) => (None, None, Some(error)),
+                Err(ReadFault::Invalid(error)) if error.kind == pagura_core::ErrorKind::Limit => {
+                    return Err(error.into());
+                }
+                Err(ReadFault::Invalid(error)) => (None, None, Some(error)),
+                Err(unavailable) => return Err(unavailable),
             };
             fields.push(SignatureField {
                 object: field.object,
@@ -164,8 +167,11 @@ impl<'a> Reader<'a> {
         })();
         match parsed {
             Ok(signature) => Ok((signature, None)),
-            Err(error) if error.kind == pagura_core::ErrorKind::Limit => Err(error),
-            Err(error) => Ok((None, Some(error))),
+            Err(ReadFault::Invalid(error)) if error.kind == pagura_core::ErrorKind::Limit => {
+                Err(error.into())
+            }
+            Err(ReadFault::Invalid(error)) => Ok((None, Some(error))),
+            Err(unavailable) => Err(unavailable),
         }
     }
 

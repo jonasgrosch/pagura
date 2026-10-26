@@ -7,7 +7,7 @@
 use crate::source::ReadResult;
 use crate::view::Context;
 use crate::{Document, ImageCodec, ImageStream, IndirectObject, StreamData};
-use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Value};
 
 /// A declared source image or thumbnail, whose payload is decoded only on request.
 #[derive(Debug, Clone, Copy)]
@@ -197,7 +197,7 @@ fn asset<'a>(
     {
         return Err((source.error(Error::syntax("image asset Subtype must be Image"))).into());
     }
-    let mut dimension = |key| -> Result<u32> {
+    let mut dimension = |key| -> ReadResult<u32> {
         context
             .required(dictionary, key, source)?
             .as_integer()

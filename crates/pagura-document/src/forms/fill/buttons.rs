@@ -81,13 +81,6 @@ pub(super) fn validate(
     Ok((name, states))
 }
 
-fn has_appearance(filler: &FormFiller<'_>, widget: &Widget<'_>) -> Result<bool> {
-    Ok(filler
-        .document
-        .optional(widget.dictionary, b"AP")?
-        .is_some())
-}
-
 /// The on state a widget without appearances would use.
 fn fallback(
     filler: &FormFiller<'_>,
@@ -134,7 +127,7 @@ fn on_state(
     }
     match widget.on_states.as_slice() {
         [state] => Ok((*state).clone()),
-        [] if !has_appearance(filler, widget)? => Ok(fallback(filler, widget, ordinal, exports)),
+        [] if !widget.has_appearance => Ok(fallback(filler, widget, ordinal, exports)),
         [] => Err(Error::syntax("existing button appearance has no on state")),
         _ => Err(Error::invalid_argument(
             "widget has several on appearances; specify a state",
@@ -150,8 +143,7 @@ fn supports(
     state: &Name,
 ) -> Result<bool> {
     Ok(widget.on_states.contains(&state)
-        || (!has_appearance(filler, widget)?
-            && fallback(filler, widget, ordinal, exports) == *state))
+        || (!widget.has_appearance && fallback(filler, widget, ordinal, exports) == *state))
 }
 
 /// The chosen widget's ordinal and requested state, or `None` for Off.

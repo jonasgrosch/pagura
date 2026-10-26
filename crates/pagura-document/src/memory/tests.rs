@@ -21,8 +21,11 @@ fn object_caches_stop_at_the_aggregate_budget_and_keep_prior_objects() {
         match document.object(ObjectId::new(number, 0)) {
             Ok(_) => loaded += 1,
             Err(error) => {
-                assert_eq!(error.kind, ErrorKind::Limit);
-                assert_eq!(error.object, Some(ObjectId::new(number, 0)));
+                assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+                assert_eq!(
+                    error.as_error().unwrap().object,
+                    Some(ObjectId::new(number, 0))
+                );
                 let retained = document.retained.used();
                 assert_eq!(
                     document.object(ObjectId::new(number, 0)).unwrap_err(),
@@ -88,8 +91,8 @@ fn decoded_object_streams_and_concurrent_object_access_are_charged_once() {
     });
     assert_eq!(document.retained.used(), total);
     let error = document.object(ObjectId::new(7, 0)).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
-    assert_eq!(error.object, Some(ObjectId::new(7, 0)));
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+    assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(7, 0)));
     assert_eq!(document.retained.used(), total);
     // The decoded buffer itself must fit before any compressed value is published.
     let stream_object = probe.object(ObjectId::new(5, 0)).unwrap().retained_bytes();
@@ -98,8 +101,8 @@ fn decoded_object_streams_and_concurrent_object_access_are_charged_once() {
         initial + stream_object + stream.retained_bytes() - 1,
     );
     let error = document.object(ObjectId::new(6, 0)).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
-    assert_eq!(error.object, Some(ObjectId::new(5, 0)));
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+    assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(5, 0)));
     assert!(
         document
             .object_streams

@@ -2,9 +2,7 @@
 
 use crate::source::{NeedData, ReadFault, ReadResult};
 use crate::{Document, Location, repairs};
-use pagura_core::syntax::{
-    ModeResult, Origin, ParseFault, ParseMode, Parser, WindowInput, is_whitespace,
-};
+use pagura_core::syntax::{Origin, ParseFault, ParseMode, Parser, WindowInput, is_whitespace};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result,
     Value,
@@ -35,7 +33,7 @@ pub(crate) fn end<M: ParseMode>(
     limits: &Limits,
     id: ObjectId,
     diagnostics: &mut Diagnostics,
-) -> ModeResult<M, ()> {
+) -> std::result::Result<(), M::Fault> {
     if parser.keyword(ENDOBJ) {
         return Ok(());
     }

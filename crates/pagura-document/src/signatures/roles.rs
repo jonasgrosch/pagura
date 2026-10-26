@@ -1,12 +1,12 @@
 //! Reachability-derived roles. A shared object retains every use and field owner.
 use super::ObjectRole;
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::{
     Document, Location,
     forms::{FieldKind, FieldValue},
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Error, ErrorKind, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, ErrorKind, ObjectId, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -134,7 +134,7 @@ fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> ReadR
                         v.as_reference()
                             .ok_or_else(|| Error::syntax("annotation must be indirect"))
                     })
-                    .collect::<ReadResult<Vec<_>>>()?
+                    .collect::<pagura_core::Result<Vec<_>>>()?
             }
         } else {
             Vec::new()
@@ -211,7 +211,7 @@ fn read_length(
         }
         length = match doc.object(source) {
             Ok(object) => Some(object.value()),
-            Err(error) if error.kind == ErrorKind::MissingObject => None,
+            Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::MissingObject => None,
             Err(error) => return Err(error),
         };
         depth += 1;
@@ -247,7 +247,9 @@ fn walk(
         let object = match doc.object(*id) {
             Ok(object) => object,
             // Undefined references have the value null (7.3.10).
-            Err(error) if error.kind == ErrorKind::MissingObject => return Ok(()),
+            Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::MissingObject => {
+                return Ok(());
+            }
             Err(error) => return Err(error),
         };
         if object.is_stream() {

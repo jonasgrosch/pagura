@@ -5,7 +5,7 @@ use super::{
 };
 use crate::source::ReadResult;
 use crate::view::{Context, Source, identity};
-use pagura_core::{Dictionary, Error, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Value};
 
 pub(super) fn kind<'a>(
     context: &mut Context<'a>,
@@ -20,7 +20,7 @@ pub(super) fn kind<'a>(
     let (value, type_source) = context.resolve(ft.value, ft.source)?;
     let name = value
         .as_name()
-        .ok_or_else(|| type_source.error(Error::syntax("form FT must be a name")))?;
+        .ok_or_else(|| type_source.fault(Error::syntax("form FT must be a name")))?;
     Ok(match name.as_bytes() {
         b"Btn" => FieldKind::Button {
             kind: if flags.contains(FieldFlags::PUSHBUTTON) {
@@ -41,10 +41,10 @@ pub(super) fn kind<'a>(
                 .get(Key::MaxLen)
                 .map(|e| {
                     attributes::unsigned(e, context).and_then(|v| {
-                        usize::try_from(v).map_err(|_| {
+                        Ok(usize::try_from(v).map_err(|_| {
                             e.source
                                 .error(Error::limit("form MaxLen exceeds address space"))
-                        })
+                        })?)
                     })
                 })
                 .transpose()?,
@@ -155,7 +155,7 @@ pub(super) fn read<'a>(
 
 fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> ReadResult<String> {
     if let Some(bytes) = value.as_string() {
-        return context.text(bytes, source);
+        return Ok(context.text(bytes, source)?);
     }
     let object = source
         .object
@@ -170,20 +170,20 @@ fn text_value(context: &mut Context<'_>, value: &Value, source: Source) -> ReadR
         return Err((source.error(Error::limit("form text stream exceeds string budget"))).into());
     }
     context.allocate::<u8>(bytes.len(), source)?;
-    context.text(&bytes, source)
+    Ok(context.text(&bytes, source)?)
 }
 
 pub(super) fn field_type<'a>(
     context: &mut Context<'a>,
     effective: &Inherited<'a>,
 ) -> ReadResult<Option<&'a Name>> {
-    effective
+    Ok(effective
         .get(Key::Ft)
         .map(|e| {
             let (value, source) = context.resolve(e.value, e.source)?;
             value
                 .as_name()
-                .ok_or_else(|| source.error(Error::syntax("form FT must be a name")))
+                .ok_or_else(|| source.fault(Error::syntax("form FT must be a name")))
         })
-        .transpose()
+        .transpose()?)
 }

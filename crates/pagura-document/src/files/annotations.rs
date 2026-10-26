@@ -4,7 +4,7 @@ use super::{FileSpecification, read};
 use crate::source::ReadResult;
 use crate::view::{Context, Source, number};
 use crate::{Document, Page};
-use pagura_core::{Dictionary, Error, Name, ObjectId, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Rect, Value};
 
 /// A page's `FileAttachment` annotation and its unactivated file specification.
 /// This view does not render an icon, follow a path or launch an attached file.
@@ -118,13 +118,13 @@ fn rectangle<'a>(
     let mut coordinate = |value| {
         context
             .resolve(value, source)
-            .and_then(|(value, source)| number(value, source))
+            .and_then(|(value, source)| Ok(number(value, source)?))
     };
-    Rect::from_corners(
+    Ok(Rect::from_corners(
         coordinate(x0)?,
         coordinate(y0)?,
         coordinate(x1)?,
         coordinate(y1)?,
     )
-    .ok_or_else(|| source.error(Error::syntax("invalid annotation rectangle")))
+    .ok_or_else(|| source.error(Error::syntax("invalid annotation rectangle")))?)
 }

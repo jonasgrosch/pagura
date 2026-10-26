@@ -106,7 +106,7 @@ fn justification(q: Justification) -> usize {
     }
 }
 
-fn snapshot(document: &Document) -> Result<String> {
+fn snapshot(document: &Document) -> ReadResult<String> {
     let Some(form) = document.acro_form()? else {
         return Ok("absent\n".into());
     };
@@ -195,10 +195,19 @@ fn independent_form_models_and_reported_repairs() {
         let strict = open(name, Recovery::Strict, Limits::default());
         let actual = snapshot(&strict);
         if !params["error"].is_empty() {
-            assert_eq!(actual.unwrap_err().kind.name(), params["error"], "{name}");
+            assert_eq!(
+                actual.unwrap_err().as_error().unwrap().kind.name(),
+                params["error"],
+                "{name}"
+            );
             let repaired = open(name, Recovery::Repair, Limits::default());
             assert_eq!(
-                snapshot(&repaired).unwrap_err().kind.name(),
+                snapshot(&repaired)
+                    .unwrap_err()
+                    .as_error()
+                    .unwrap()
+                    .kind
+                    .name(),
                 params["error"],
                 "{name}"
             );
@@ -207,7 +216,8 @@ fn independent_form_models_and_reported_repairs() {
         if params["repair"].is_empty() {
             assert_eq!(actual.unwrap(), expected, "{name}");
         } else {
-            let error = actual.unwrap_err();
+            let fault = actual.unwrap_err();
+            let error = fault.as_error().unwrap();
             assert_eq!(
                 error.repair.unwrap().as_str(),
                 params["repair"],
@@ -254,8 +264,8 @@ fn form_budgets_and_absence() {
     ] {
         let document = open("forms-deep", Recovery::Repair, limits);
         let error = document.acro_form().unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit, "{error}");
-        assert!(error.object.is_some());
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit, "{error}");
+        assert!(error.as_error().unwrap().object.is_some());
     }
     let document = open(
         "navigation-destinations",
@@ -342,6 +352,6 @@ fn duplicate_comparison_shares_the_traversal_budget() {
         names::Strings::Bytes,
     )
     .unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Limit);
-    assert_eq!(error.object, source.object);
+    assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+    assert_eq!(error.as_error().unwrap().object, source.object);
 }

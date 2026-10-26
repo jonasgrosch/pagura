@@ -382,7 +382,11 @@ mod direct_tests {
                 .pages()
                 .and_then(|pages| strict.content_streams(&pages[0]))
                 .unwrap_err();
-            assert_eq!(error.repair, Some(DIRECT_STREAM), "{name}");
+            assert_eq!(
+                error.as_error().unwrap().repair,
+                Some(DIRECT_STREAM),
+                "{name}"
+            );
             let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
             let page = document.page(0).unwrap();
             let streams = document.content_streams(page).unwrap();
@@ -460,8 +464,8 @@ mod direct_tests {
         assert_eq!(exact.retained.used(), initial + expected);
         let limited = open(initial + expected - 1);
         let error = limited.object(ObjectId::new(3, 0)).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit);
-        assert_eq!(error.object, Some(ObjectId::new(3, 0)));
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+        assert_eq!(error.as_error().unwrap().object, Some(ObjectId::new(3, 0)));
         assert_eq!(limited.retained.used(), initial);
         assert_eq!(limited.object(ObjectId::new(3, 0)).unwrap_err(), error);
     }

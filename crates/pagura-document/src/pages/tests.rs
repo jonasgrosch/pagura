@@ -74,8 +74,8 @@ mod retained_tests {
         assert_eq!(exact.retained.used(), initial + expected);
         let limited = open(initial + expected - 1);
         let error = limited.pages().unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit);
-        assert!(error.object.is_some());
+        assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+        assert!(error.as_error().unwrap().object.is_some());
         assert_eq!(limited.retained.used(), initial);
         assert_eq!(limited.pages().unwrap_err(), error);
         assert_eq!(limited.retained.used(), initial);
@@ -116,7 +116,11 @@ mod recovery_tests {
                 },
             )
             .unwrap();
-            assert_eq!(strict.pages().unwrap_err().repair, Some(tag), "{name}");
+            assert_eq!(
+                strict.pages().unwrap_err().as_error().unwrap().repair,
+                Some(tag),
+                "{name}"
+            );
             let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
             let pages = document.pages().unwrap();
             assert_eq!(pages.len(), count, "{name}");
@@ -209,8 +213,8 @@ mod recovery_tests {
             assert_eq!(exact.retained.used(), retained, "{name}");
             let limited = preloaded(name, retained - 1);
             let error = limited.pages().unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Limit, "{name}");
-            assert!(error.object.is_some());
+            assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit, "{name}");
+            assert!(error.as_error().unwrap().object.is_some());
             assert_eq!(limited.retained.used(), initial, "{name}");
             assert_eq!(limited.pages().unwrap_err(), error);
         }
@@ -238,8 +242,8 @@ mod recovery_tests {
                 document.limits.pages = 1;
             }
             let error = document.pages().unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Limit);
-            assert!(error.object.is_some());
+            assert_eq!(error.as_error().unwrap().kind, ErrorKind::Limit);
+            assert!(error.as_error().unwrap().object.is_some());
             assert_eq!(document.retained.used(), initial);
             assert_eq!(document.pages().unwrap_err(), error);
         }

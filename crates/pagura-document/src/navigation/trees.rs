@@ -1,8 +1,8 @@
 //! One traversal for name and number trees (7.9.6–7.9.7, Tables 36–37).
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::view::{Context, Source, identity};
 use crate::{Document, repairs};
-use pagura_core::{Error, ErrorKind, Result, Value};
+use pagura_core::{Error, ErrorKind, Value};
 use std::{collections::BTreeSet, fmt::Debug, marker::PhantomData};
 
 mod sealed {
@@ -110,7 +110,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         let (dictionary, source) = context.dictionary(value, source)?;
         let (limits, present) = match context.entry(dictionary, b"Limits", source) {
             Ok(value) => (value, value.is_some()),
-            Err(error) if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) => {
+            Err(ReadFault::Invalid(error))
+                if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) =>
+            {
                 (None, true)
             }
             Err(error) => return Err(error),
@@ -138,7 +140,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     ) -> ReadResult<Option<K>> {
         match context.resolve(value, source) {
             Ok((value, _)) => Ok(K::from_value(value)),
-            Err(error) if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) => {
+            Err(ReadFault::Invalid(error))
+                if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) =>
+            {
                 Ok(None)
             }
             Err(error) => Err(error),
@@ -161,7 +165,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 Ok(None)
             }
             Ok(value) => Ok(Some(value)),
-            Err(error)
+            Err(ReadFault::Invalid(error))
                 if !root && matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) =>
             {
                 let tag = if error.kind == ErrorKind::Cycle {
@@ -304,7 +308,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                         value: &pair[1],
                         source,
                     })
-                    .ok_or_else(|| source.error(Error::syntax("invalid tree key type")))
+                    .ok_or_else(|| source.fault(Error::syntax("invalid tree key type")))
             })
             .collect::<ReadResult<_>>()?;
         if entries.windows(2).any(|v| v[0].key >= v[1].key) {

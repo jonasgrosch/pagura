@@ -1,7 +1,7 @@
 //! Link annotations, their hit geometry and inert targets (12.5.6.5).
 
 use super::destinations::{self, Target};
-use crate::source::ReadResult;
+use crate::source::{ReadFault, ReadResult};
 use crate::view::{Context, Source, number};
 use crate::{Document, Page, repairs};
 use pagura_core::{Dictionary, Error, ErrorKind, Name, Rect, Result, Value};
@@ -118,16 +118,16 @@ fn numbers<'a>(
         .iter()
         .map(|value| {
             let (value, source) = context.resolve(value, source)?;
-            number(value, source)
+            Ok(number(value, source)?)
         })
         .collect()
 }
 
-fn nonnegative(value: f64, source: Source) -> ReadResult<f64> {
+fn nonnegative(value: f64, source: Source) -> Result<f64> {
     if value >= 0.0 {
         Ok(value)
     } else {
-        Err((source.error(Error::syntax("negative annotation border dimension"))).into())
+        Err(source.error(Error::syntax("negative annotation border dimension")))
     }
 }
 
@@ -210,7 +210,7 @@ fn quads<'a>(
             ignore_quads(context, source)?;
             return Ok(Vec::new());
         }
-        Err(error) if error.kind == ErrorKind::Syntax => {
+        Err(ReadFault::Invalid(error)) if error.kind == ErrorKind::Syntax => {
             ignore_quads(context, source)?;
             return Ok(Vec::new());
         }
@@ -225,7 +225,7 @@ fn quads<'a>(
     Ok(values.as_chunks::<8>().0.to_vec())
 }
 
-fn ignore_quads(context: &mut Context<'_>, source: Source) -> ReadResult<()> {
+fn ignore_quads(context: &mut Context<'_>, source: Source) -> Result<()> {
     context.repair(
         repairs::LINK_QUADS,
         "malformed link QuadPoints ignored; Rect used (12.5.6.5, Table 176)",

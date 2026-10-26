@@ -3,7 +3,7 @@ use super::{AdditionalAction, Justification};
 use crate::navigation::actions;
 use crate::source::ReadResult;
 use crate::view::{Context, Source};
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Error, Value};
 
 #[derive(Clone, Copy)]
 pub(super) struct Entry<'a> {
@@ -91,24 +91,24 @@ impl<'a> Inherited<'a> {
 
 pub(super) fn unsigned<'a>(entry: Entry<'a>, context: &mut Context<'a>) -> ReadResult<u32> {
     let (value, source) = context.resolve(entry.value, entry.source)?;
-    value
+    Ok(value
         .as_integer()
         .and_then(|v| u32::try_from(v).ok())
-        .ok_or_else(|| source.error(Error::syntax("form integer must be unsigned 32-bit")))
+        .ok_or_else(|| source.error(Error::syntax("form integer must be unsigned 32-bit")))?)
 }
 
 pub(super) fn appearance<'a>(
     context: &mut Context<'a>,
     entry: Option<Entry<'a>>,
 ) -> ReadResult<Option<&'a [u8]>> {
-    entry
+    Ok(entry
         .map(|entry| {
             let (value, source) = context.resolve(entry.value, entry.source)?;
             value
                 .as_string()
-                .ok_or_else(|| source.error(Error::syntax("form DA must be a string")))
+                .ok_or_else(|| source.fault(Error::syntax("form DA must be a string")))
         })
-        .transpose()
+        .transpose()?)
 }
 
 pub(super) fn quadding<'a>(
@@ -125,10 +125,12 @@ pub(super) fn quadding<'a>(
             1 => Justification::Center,
             2 => Justification::Right,
             _ => {
-                return Err(entry.map_or_else(
-                    || Error::syntax("invalid form Q"),
-                    |e| e.source.error(Error::syntax("invalid form Q")),
-                ));
+                return Err(entry
+                    .map_or_else(
+                        || Error::syntax("invalid form Q"),
+                        |e| e.source.error(Error::syntax("invalid form Q")),
+                    )
+                    .into());
             }
         },
     )
@@ -140,12 +142,12 @@ pub(super) fn string<'a>(
     source: Source,
 ) -> ReadResult<String> {
     let (value, source) = context.resolve(value, source)?;
-    context.text(
+    Ok(context.text(
         value
             .as_string()
             .ok_or_else(|| source.error(Error::syntax("form text must be a string")))?,
         source,
-    )
+    )?)
 }
 
 pub(super) fn optional_text<'a>(
@@ -189,9 +191,9 @@ pub(super) fn array<'a>(
     source: Source,
 ) -> ReadResult<&'a [Value]> {
     let (value, source) = context.resolve(value, source)?;
-    value
+    Ok(value
         .as_array()
-        .ok_or_else(|| source.error(Error::syntax("form entry must be an array")))
+        .ok_or_else(|| source.error(Error::syntax("form entry must be an array")))?)
 }
 
 /// Preserve malformed names as anonymous source nodes, never synthesize names.
@@ -204,7 +206,7 @@ pub(super) fn partial_name<'a>(
         return Ok(None);
     };
     if let Some(bytes) = value.as_string() {
-        return context.text(bytes, source).map(Some);
+        return Ok(context.text(bytes, source).map(Some)?);
     }
     context.repair(
         crate::repairs::FORM_NAME,
