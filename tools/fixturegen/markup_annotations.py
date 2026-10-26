@@ -70,7 +70,7 @@ def cases():
             rgb=color if len(color)==3 else color*3
         return Case(name,source(shape,quads,color=color,alpha=alpha,background=background,rect=rect,rotate=rotate,**options),
                     RENDER,(REQUIREMENT,),'Literal polygons, exact winding/clip integration and the blend equation',
-                    dpi=dpi,repairs=repairs,oracle=oracle(polygons,dpi=dpi,rotate=rotate,color=rgb,
+                    dpi=dpi,repairs=repairs,strict_valid=not bool(repairs),oracle=oracle(polygons,dpi=dpi,rotate=rotate,color=rgb,
                     alpha=alpha if fill_alpha is None else fill_alpha,background=background,rect=rect,multiply=shape=='Highlight'),
                     extra={'tolerance':1})
     for shape in REGIONS:

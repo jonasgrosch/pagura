@@ -62,7 +62,7 @@ def check(case: dict) -> list[str]:
     if sorted(report.get("information", [])) != sorted(case.get("information", [])):
         problems.append(f"information {report.get('information', [])}, expected {case.get('information', [])}")
     if report["strict"] != case.get("strict_valid", True):
-        problems.append(f"strict open {'succeeded' if report['strict'] else 'failed'}, expected the opposite")
+        problems.append(f"strict audit {'succeeded' if report['strict'] else 'failed'}, expected the opposite")
     if expected == "unsupported":
         features = [failure["error"]["feature"] for failure in report["failures"]]
         if case["feature"] not in features:

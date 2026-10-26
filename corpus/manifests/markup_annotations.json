@@ -55,7 +55,7 @@
       "path": "corpus/generated/markup_annotations/highlight-alternate.pdf",
       "sha256": "65cc1523737a3ed3c01146b24cfe4172db081ea38b528f5f5d59b5cfcd79f170",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [
         "annotation.quad-order"
       ],
@@ -137,7 +137,7 @@
       "path": "corpus/generated/markup_annotations/underline-alternate.pdf",
       "sha256": "13ceb4427d1b25a0aecff370cde99315a21c3e968ef67392035d2df12f366d93",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [
         "annotation.quad-order"
       ],
@@ -219,7 +219,7 @@
       "path": "corpus/generated/markup_annotations/strikeout-alternate.pdf",
       "sha256": "98413ccb5aaa3328b70b6b85f4d7477f1d9814841a81e92ede25700b75b39120",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [
         "annotation.quad-order"
       ],
@@ -301,7 +301,7 @@
       "path": "corpus/generated/markup_annotations/squiggly-alternate.pdf",
       "sha256": "c71d1c55f7df53a5ddbdb0afbdb6170a90ab70902c0ad67ec40c4be64fd89ad2",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [
         "annotation.quad-order"
       ],
