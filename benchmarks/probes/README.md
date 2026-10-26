@@ -4,10 +4,9 @@ The first executable slice probes **page counts/dimensions, Info metadata,
 embedded-file bytes and text** using independently authored populated/empty
 controls and a non-PDF rejection control. All six baseline columns are retained.
 G01 remains open: these ten cases do not establish family or product parity.
-The companion [render manifest](rendering.json) adds six independent pixel
-oracles: blank and rectangle controls, fractional geometry, JPX grayscale and straight/
-premultiplied JPX alpha. Its 42 cells use the public Pagura CLI and all six
-existing public render adapters. The ledger retains six competitor columns;
+The companion [render manifest](rendering.json) now contains 46 independent pixel
+oracles: six initial controls plus forty valid R02 colour/opacity fixtures.
+Its 322 cells use the public Pagura CLI and all six existing public render adapters. The ledger retains six competitor columns;
 Pagura is an additional measured subject, never a replacement baseline.
 
 | Baseline | Public adapter paths | Explicit adapter gaps | Hosted execution |
@@ -92,10 +91,16 @@ Fresh output, matching dimensions and attested comparisons are required for a
 pass; a successful process exit or leftover image cannot pass. Nonzero renderer
 exits remain unclassified adapter failures until investigated, never presumed
 backend rejections or unsupported features. These probes do not measure or
-compare the render adapters' timing output. Embedded ICC/sYCC and Indexed JPX
-alpha from the separate R02 implementation PR will be added after consolidation.
+compare the render adapters' timing output. The consolidated R02 fixtures add
+embedded Gray/RGB ICC transforms, PDF colour/decode overrides, later-profile
+fallback, sYCC at every supported 1-16-bit precision, mixed-precision palette
+channels, and direct Indexed opacity. Straight/premultiplied and ignored alpha
+are exercised where authored. The three deliberately malformed R02 inputs stay
+in the product conformance suite; they are not counted as valid render probes.
 The `--images` option retains actual/oracle PPM pairs for these project-owned
-synthetic fixtures; hosted `capability-render-images-<os>` artifacts allow visual
+synthetic fixtures and at most 64 KiB each of native stdout/stderr for invocation
+adjudication. Raw diagnostics stay in hosted artifacts, outside Git and the JSON
+report. Hosted `capability-render-images-<os>` artifacts allow visual
 adjudication without committing measured output. A pixel disagreement can reflect
 colour, sampling or antialiasing policy and is not by itself an established engine
 defect. No tolerance is relaxed to turn an observation into a pass.
@@ -156,6 +161,13 @@ These observations still need matched uncompressed controls and explicit
 sampling/configuration adjudication; they do not establish competitor defects.
 No oracle or tolerance was changed after measurement. Reproduce from the
 reports' exact source, native-artifact and fixture hashes, not the current branch.
+
+The first Pagura-inclusive [run 40257897816](https://github.com/jonasgrosch/pagura/actions/runs/40257897816)
+at merge revision `a6db14a5134357af2b92cc503083ee6837374194` added six Pagura
+passes: 26 passes and the same 16 baseline disagreements overall. Pagura met
+five controls exactly and fractional coverage within its declared one-level
+bound. The subsequent 46-fixture R02 expansion is pending hosted execution;
+results of the initial six controls do not establish the expanded scope.
 
 ## Next G01 increments
 

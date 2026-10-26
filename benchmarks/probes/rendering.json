@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01/R02 independent synthetic RGB8 oracles: controls, JPX ICC, sYCC channel precision and Indexed opacity. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
   "cases": [
     {
       "id": "control.blank",
@@ -78,6 +78,526 @@
         "height": 32,
         "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
         "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-neutral",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-neutral",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "611a540333a400b5bcfcff8fea242327b4e8e4e4d51157f69fc66fdaf33995b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-chroma",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-chroma",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "506fbbe496e31cf0c98b45efca35e3edb5585073d0ef5c34a3b297b6a6a5a9d1",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-gamut",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-gamut",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "78602578a29a126950c6be75412ae14a9dc9ccfcf09f45ead4adcd6b0a077673",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-pdf-override",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-pdf-override",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "61d3b6a7e9a0229cb1eeca144852b89f22b4c20173567a7ea88648c294332744",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-ignores-decode-default",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-ignores-decode-default",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "506fbbe496e31cf0c98b45efca35e3edb5585073d0ef5c34a3b297b6a6a5a9d1",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-straight-alpha",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-straight-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b86bb1c444d3ac665078a2d7c03ae1029870cf0b35d42ceb0ecc93123d699e06",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-premultiplied-alpha",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-premultiplied-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "818ba5ce640d9acd21e031be63cc0c0727320088a02b8f878c18b21b8ab3a648",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-1",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "5df5b3d46f0146e61e4cc38e6d23edb02c03d5af052f8cc3211f11c92b5168a3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-2",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "50811b44c6387f7f49898024c9219d991654cde4d2944f63821c147f2faeddfe",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-3",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-3",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ee8b881c3115f244022173ae5189971de0d6d200eb7aeea6c1e371c07ee9e51d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-4",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-4",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "30d93da258c15e76b59eb6d6a3bafcd54e4b19cefb588e9b1fa231fd213c011a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-5",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-5",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "024978a2f27aa9f4aaa057901300b72bc088f5698651dcf6884650567b60821e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-6",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-6",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9c917692a23b59a925fd0120bef6642cc83007f0a2a3150384b10c5ac7d565c5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-7",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-7",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "98dd0a52a42a314e98645988f484181e5f9d839ea56bfbedb615ae3a7d83dbb7",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-8",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-8",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "a9f9432aa2830f9d50a027cbdece02ddcd7ec38e344dcf6f055b478bd3442cb3",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-9",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-9",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-10",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-10",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-11",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-11",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-12",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-12",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-13",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-13",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-14",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-14",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-15",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-15",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-precision-16",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-precision-16",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "d4fd9ff75fc6467e058f7acc5dd1a704d317211eb459f249152c313f20870c9d",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-16bit-boundary",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-16bit-boundary",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "14a65e88f05710e58588afc1958f164ebf8471d9fec3744ff4fbafba5aae5f4f",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-mixed-alpha-0",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-mixed-alpha-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "2a3933b1d2525dfd94e410fb558548e2d6b1b9c5bc90a7f88ae72b153ad27a7e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-mixed-alpha-1",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-mixed-alpha-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "09f85418e9a7598a2324488dfb5fdea843d14665be7e45e2f8446aaa1cfbf75e",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.sycc-mixed-alpha-2",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/sycc-mixed-alpha-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "6b0a46b8a574bc6c86d416d65faa4ce20a08d50f4921be8d811ed3f0f26945e6",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-0-last",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx/indexed-alpha-0-last",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ec0b48054f3ea6975348a4dbf967dba5fbc7f4151debc6b974be612de31714c8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-0-first",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx/indexed-alpha-0-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "ec0b48054f3ea6975348a4dbf967dba5fbc7f4151debc6b974be612de31714c8",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-1-last",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx/indexed-alpha-1-last",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "0e6932a7c13d6e0bcecd47c9e20b9fb9bc45980ed17b824475d73e35e9afc814",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-1-first",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx/indexed-alpha-1-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "0e6932a7c13d6e0bcecd47c9e20b9fb9bc45980ed17b824475d73e35e9afc814",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-2-last",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx/indexed-alpha-2-last",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "67d407aa875f0d3b4f345d661ff82ab5a08de482940712c60ed4e69f7799ae8a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.indexed-alpha-2-first",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint_jpx/indexed-alpha-2-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "67d407aa875f0d3b4f345d661ff82ab5a08de482940712c60ed4e69f7799ae8a",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.gray-linear",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/gray-linear",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f46ae2a5b49d0c1a6c5eaeb7c64d9b994a951a99ae690b24d0929ffe07448996",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.rgb-linear",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/rgb-linear",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b2ebf03babe3749644cd5ac14af2ea12fb643d05f0ca98b07b806071a8536d98",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.pdf-override",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/pdf-override",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "bd68e29058b4190bf0e917e8f4086802ae401a3df851813e755234175900a4cc",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.ignores-pdf-decode-default",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/ignores-pdf-decode-default",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b2ebf03babe3749644cd5ac14af2ea12fb643d05f0ca98b07b806071a8536d98",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.future-profile-fallback",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/future-profile-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "19db3aa6a956252a7e6cdca0191cbfba5e70973dad5dfa1a0a147bd093a40c40",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "paint_jpx.straight-alpha",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/straight-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9a8e25ac1ee716a48c326c4486b3c6a0d9fb7cbfca0254ba2dbdbd954aba0136",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "paint_jpx.premultiplied-alpha",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint_jpx/premultiplied-alpha",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "9a8e25ac1ee716a48c326c4486b3c6a0d9fb7cbfca0254ba2dbdbd954aba0136",
+        "tolerance": 1
       }
     }
   ]

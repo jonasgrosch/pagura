@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import platform
+import shutil
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -178,16 +179,25 @@ def run(data, inventory, output, selected, images=None):
                 else:
                     row = rows[case['id']]
                     result = invoke(command_for(name, commands[name], row, directory / 'page.ppm'), row, directory)
-                    if images is not None and result['outcome'] in {'pass', 'incorrect'}:
+                    if images is not None:
                         # Only the manifest's project-owned synthetic fixtures
                         # reach here. Keep visual evidence outside Git; names
                         # use the fixed engine and an ordinal, never PDF text.
                         folder = images / name / str(index)
                         folder.mkdir(parents=True, exist_ok=True)
-                        width, height, pixels = normalize((directory / 'page.ppm').read_bytes())
-                        (folder / 'actual.ppm').write_bytes(f'P6\n{width} {height}\n255\n'.encode() + pixels)
-                        (folder / 'oracle.ppm').write_bytes(local_file(ROOT, row['oracle']).read_bytes())
-                        result['image_directory'] = f'{name}/{index}'
+                        # Bounded diagnostics let a nonzero exit be investigated
+                        # before classifying it as a backend rejection. No raw
+                        # native diagnostics enter the JSON report or Git.
+                        for name_log in ('stdout', 'stderr'):
+                            log = directory / name_log
+                            if log.is_file() and log.stat().st_size <= 65536:
+                                shutil.copyfile(log, folder / (name_log + '.txt'))
+                        result['diagnostic_directory'] = f'{name}/{index}'
+                        if result['outcome'] in {'pass', 'incorrect'}:
+                            width, height, pixels = normalize((directory / 'page.ppm').read_bytes())
+                            (folder / 'actual.ppm').write_bytes(f'P6\n{width} {height}\n255\n'.encode() + pixels)
+                            (folder / 'oracle.ppm').write_bytes(local_file(ROOT, row['oracle']).read_bytes())
+                            result['image_directory'] = f'{name}/{index}'
                 report['results'].append({'engine': name, 'case': case['id'], **result})
     validate_report(report, data, inventory)
     output.parent.mkdir(parents=True, exist_ok=True)

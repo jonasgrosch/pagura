@@ -166,8 +166,10 @@ The initial render slice adds six independent pixel oracles and 42 case/engine
 cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
 The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
 these are observations pending sampling/colour/alpha adjudication, not established
-competitor defects. The subsequent Pagura-inclusive run remains pending. The separate R02 changes need their own expanded probes after
-consolidation onto the shared target.
+competitor defects. The first Pagura-inclusive run passed all six subject
+oracles. The consolidated R02 follow-up expands this to 46 fixtures and 322
+render cells, with its own hosted execution pending; none of the earlier results
+establishes this expanded scope.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
