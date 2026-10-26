@@ -28,7 +28,7 @@
         "tools/host_test.mjs malformed native/WASI parity",
         "pagura-host session::tests::bad_render_arguments_are_operational_and_never_return_pixels"
       ],
-      "gaps": "The host fuzz target has bounded smoke runs only; no long campaigns, transport deadlines, engine-side cancellation, or OS memory-limit evidence."
+      "gaps": "The host fuzz target has bounded smoke runs only; no long campaigns, transport deadlines, active-request cancellation integration, or OS memory-limit evidence. The rendering library supports stopping between bands, but the host does not expose it for an active request."
     },
     {
       "id": "host-session-order",
@@ -106,13 +106,13 @@
       "id": "host-browser-viewer",
       "reference": "project-policy",
       "clauses": [],
-      "status": "continuous lazy pages with zoom, gestures, keyboard controls and password entry",
+      "status": "continuous lazy pages with zoom, gestures, keyboard controls, password entry, text/search/navigation and form preview/save",
       "tests": [
         "tools/host_test.mjs testViewer",
         "web/README.md manual browser validation instructions",
         "web/test_server.py"
       ],
-      "gaps": "New layout, touch gestures and modal need real-browser interaction checks. The visual image roles do not provide tagged-PDF text. UTF-8 password text is supported; legacy PDFDocEncoding text conversion is not implemented in the UI."
+      "gaps": "The DOM text layer exposes extracted reading-order text to screen readers, but is not connected to the tagged logical structure view. Broader real-browser/device and accessibility checks remain necessary. UTF-8 password text is supported; legacy PDFDocEncoding text conversion is not implemented in the UI."
     },
     {
       "id": "host-multipage-navigation",
@@ -191,7 +191,7 @@
         "tools/host_test.mjs testViewer",
         "crypto/r2-rc4-40-password-user"
       ],
-      "gaps": "Text entry uses UTF-8. Raw byte passwords remain available through the client; non-ASCII legacy PDFDocEncoding conversion and engine SASLprep limitations remain."
+      "gaps": "Text entry uses UTF-8. Raw byte passwords remain available through the client; legacy PDFDocEncoding conversion is not implemented in the UI. Engine R6 SASLprep is implemented and tracked by the crypto requirements."
     },
     {
       "id": "host-retention-telemetry",

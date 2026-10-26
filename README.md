@@ -45,6 +45,7 @@ Passing bootstrap tests does not mean PDF conformance or 20% superiority.
 - [Contributing](CONTRIBUTING.md)
 - [Architecture and boundaries](docs/ARCHITECTURE.md)
 - [Roadmap and milestones](docs/ROADMAP.md)
+- [Competitive feature parity plan](docs/COMPETITIVE_PARITY.md)
 - [Decision records](docs/adr/)
 - [Testing and conformance](docs/TESTING.md)
 - [Performance contract](benchmarks/README.md)
