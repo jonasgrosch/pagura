@@ -39,6 +39,10 @@ type Input = [f64; MAX_COMPONENTS];
 /// Pixels whose colours [`ShadingSource::fill_batched`] converts together.
 const BATCH: usize = 32;
 
+/// Pixels whose colours [`ShadingSource::levels`] forms before storing them
+/// together.
+const ROW_CHUNK: usize = 128;
+
 /// Shading geometry: the function input at a point of shading space.
 trait Sampler {
     /// Writes the input at `point` and returns true, or returns false for a
@@ -583,25 +587,33 @@ impl ShadingSource {
         if !hits {
             alpha.resize(len, 0.0);
         }
-        self.each_pixel(axial, row, (span.x, span.y, len), |k, color| {
-            debug_assert!(color.is_some() || !hits, "every sample hits");
-            if let Some(out) = colors.get_mut(k * channels..(k + 1) * channels) {
-                match color {
-                    Some(color) => out.copy_from_slice(color),
-                    None => out.fill(0.0),
+        self.each_pixel(
+            axial,
+            row,
+            (span.x, span.y),
+            (0..len, &mut 0),
+            |k, color| {
+                debug_assert!(color.is_some() || !hits, "every sample hits");
+                if let Some(out) = colors.get_mut(k * channels..(k + 1) * channels) {
+                    match color {
+                        Some(color) => out.copy_from_slice(color),
+                        None => out.fill(0.0),
+                    }
                 }
-            }
-            if let Some(alpha) = alpha.get_mut(k) {
-                *alpha = if color.is_some() { 1.0 } else { 0.0 };
-            }
-        });
+                if let Some(alpha) = alpha.get_mut(k) {
+                    *alpha = if color.is_some() { 1.0 } else { 0.0 };
+                }
+            },
+        );
     }
 
     /// Writes into `out` the F32 levels a store at full opacity writes for
     /// device pixels `x .. x + out.len()` of row `y` (each colour's
     /// [`crate::kernel::levels`]), where a [`Self::row`] of three channels gives
     /// the span's colours and every sample hits; false, with nothing
-    /// written, otherwise.
+    /// written, otherwise. The colours of a chunk of pixels are formed
+    /// first and stored together, as [`crate::kernel::overwrite_f32`]
+    /// stores a span's, which vectorizes.
     pub(crate) fn levels(&self, x: u32, y: u32, out: &mut [[f32; 4]]) -> bool {
         let (Geometry::Axial(axial), None, 3) = (&*self.geometry, &self.aligned, self.channels)
         else {
@@ -620,16 +632,24 @@ impl ShadingSource {
         else {
             return false;
         };
-        self.each_pixel(axial, &row, (x, y, len), |k, color| {
-            debug_assert!(color.is_some(), "every sample hits");
-            if let (Some(pixel), Some(color)) = (out.get_mut(k), color) {
-                *pixel = crate::kernel::levels(color);
-            }
-        });
+        let mut colors = [0.0; ROW_CHUNK * 3];
+        let mut hint = 0;
+        for (first, pixels) in (0..len).step_by(ROW_CHUNK).zip(out.chunks_mut(ROW_CHUNK)) {
+            let pixels_in = first..first + pixels.len();
+            self.each_pixel(axial, &row, (x, y), (pixels_in, &mut hint), |k, color| {
+                debug_assert!(color.is_some(), "every sample hits");
+                let at = (k - first) * 3;
+                if let (Some(out), Some(color)) = (colors.get_mut(at..at + 3), color) {
+                    out.copy_from_slice(color);
+                }
+            });
+            crate::kernel::overwrite_f32(pixels, colors.get(..pixels.len() * 3).unwrap_or(&[]));
+        }
         true
     }
 
-    /// Calls `put(k, colour)` for pixel `k` of a [`Self::row`]: its colour
+    /// Calls `put(k, colour)` for each pixel `k` of `pixels` of a
+    /// [`Self::row`], with `hint` the piece to look from: its colour
     /// as a store of its one sample keeps it (`0 + v`, which turns `−0`
     /// into `+0`), or `None` where the sample misses. A pixel whose stepped
     /// parameter could fall on the other side of `0` or `1` than the exact
@@ -639,22 +659,23 @@ impl ShadingSource {
         &self,
         axial: &Axial,
         row: &Row<'_>,
-        (x, y, len): (u32, u32, usize),
+        (x, y): (u32, u32),
+        (pixels, hint): (std::ops::Range<usize>, &mut usize),
         mut put: impl FnMut(usize, Option<&[f64]>),
     ) {
         let channels = self.channels.max(1);
         let (d0, width) = row.domain;
-        let mut hint = 0;
         let mut piece: Option<pagura_color::Piece<'_>> = None;
         let mut exact = Exact::default();
-        let mut color = [0.0; pagura_color::MAX_CHANNELS];
+        let mut color = [0.0; pagura_color::MAX_RAMP_CHANNELS];
         let color = color.get_mut(..channels).unwrap_or_default();
-        for k in 0..len {
+        let mut input: Input = [0.0; MAX_COMPONENTS];
+        for k in pixels {
             let t = row.parameter(k);
             if t > row.error && t < 1.0 - row.error {
                 let x = d0 + t * width;
                 if !piece.is_some_and(|p| p.holds(x)) {
-                    piece = row.ramp.piece(x, row.input_error, &mut hint);
+                    piece = row.ramp.piece(x, row.input_error, hint);
                 }
                 if let Some(piece) = piece {
                     piece.evaluate(x, color);
@@ -669,7 +690,6 @@ impl ShadingSource {
             }
             let column = x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
             let point = Point::new(f64::from(column) + 0.5, f64::from(y) + 0.5) * self.inverse;
-            let mut input: Input = [0.0; MAX_COMPONENTS];
             if !axial.sample(point, &mut input) {
                 put(k, None);
             } else if exact.push(k, input[0]) {
@@ -1013,7 +1033,8 @@ impl Exact {
         if self.count == 0 {
             return;
         }
-        let mut converted = [0.0; BATCH * pagura_color::MAX_CHANNELS];
+        // The row's stage has a ramp, so at most this many channels.
+        let mut converted = [0.0; BATCH * pagura_color::MAX_RAMP_CHANNELS];
         let converted = &mut converted[..self.distinct * channels];
         stage.convert_line(&self.inputs[..self.distinct], converted, Precision::Level);
         for value in converted.iter_mut() {
