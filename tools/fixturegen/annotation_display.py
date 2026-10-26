@@ -562,6 +562,8 @@ def button_observation_cases():
                            (BUTTON_REQUIREMENT,),
                            'Matched normal checkbox/radio/push-button source display; no field edits or interaction',
                            oracle=button_control_pixels('off' if off else 'on',dpi,variant=='push-page-rotation') if stored else None,
+                           information=('font.substituted',) if not stored and variant in
+                               ('check-on','check-as-on','check-need','radio-on') else (),
                            dpi=dpi,extra={'dpi':dpi})
 
 

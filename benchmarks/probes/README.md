@@ -678,6 +678,14 @@ green at `(44/3,12)`, both `10/3` by `10`, plus the existing black 5-by-7
 caption at `(43,21)`. No product code, tolerance or other oracle is changed by
 this adjudication. The original failure remains in the hosted run history.
 
+At `358abe709`, [functional run 40405543406](https://github.com/jonasgrosch/pagura/actions/runs/40405543406)
+identified four missing informational expectations in the original button
+observations. The on-state check/radio cases without a caption use the existing
+ZapfDingbats mark policy and the explicit standard-font provider, so they report
+`font.substituted`. Their fixture records now require that information; PDF
+bytes, pixel oracles, tolerances, repair expectations and product code are
+unchanged. Stored appearances and original Type3 captions retain no such report.
+
 ### Final static subtype boundary
 
 ISO 12.5.6.18 defines Screen without AP as blank, even when MK/I is present.
