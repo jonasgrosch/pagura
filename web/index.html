@@ -38,6 +38,7 @@
         <div class="menu-panel">
           <button id="edit-open" aria-pressed="true" disabled>Fill forms</button>
           <button id="copy-page" disabled>Copy page text</button>
+          <button id="document-services-open" disabled>Properties and attachments…</button>
           <button id="form-reset" disabled>Discard form changes</button>
           <hr><button id="diagnostics-open">Document diagnostics…</button>
         </div>
@@ -77,6 +78,12 @@
     <label><input id="strict" type="checkbox"><span>Use strict rendering for the next PDF opened</span></label>
     <p id="cache-summary">Page tiles: 0 MiB / 64 MiB</p>
     <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0 · Information: 0</summary><ul id="repair-list"></ul></details>
+  </dialog>
+  <dialog id="document-services-dialog" aria-labelledby="document-services-title">
+    <div class="dialog-heading"><h2 id="document-services-title">Properties and attachments</h2><button id="document-services-close">Done</button></div>
+    <h3>Properties</h3><div id="document-properties"></div>
+    <h3>Attachments</h3><div id="document-attachments"></div>
+    <p id="document-services-status" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-feedback">
     <form id="password-form">

@@ -83,6 +83,7 @@ def cases():
     yield case('flate', file_stream=stream(zlib.compress(PAYLOAD), b'/Type /EmbeddedFile /Filter /FlateDecode'))
     yield case('empty-payload', payload=b'')
     yield case('stream-type-absent', file_stream=stream(PAYLOAD))
+    yield case('large-size-declaration', file_stream=stream(PAYLOAD, b'/Params << /Size 9007199254740993 >>'))
     yield case('external-url', spec=b'<< /F (https://example.invalid/never-fetch) /FS /URL /AFRelationship /Vendor_Relation >>', catalog=b'/AF [5 0 R]')
     yield case('simple-string', spec=b'<2f726177ff2f66696c65>')
     yield case('legacy-paths', spec=b'<< /DOS (C:\\134legacy.dat) /Mac (disk:legacy.dat) /Unix (/tmp/legacy.dat) >>')
@@ -93,6 +94,9 @@ def cases():
     yield case('empty-tree', names=b'/Names << /EmbeddedFiles << /Names [] >> >>')
     yield case('related', spec=b'<< /Type /Filespec /F (parent) /EF << /F 6 0 R >> /RF << /F [(sidecar) 7 0 R] >> >>')
     yield case('duplicate-payload', names=b'/Names << /EmbeddedFiles << /Names [(a) 5 0 R (b) 5 0 R] >> >>')
+    for count in (1024, 1025):
+        entries = b' '.join(b'(key-%04d) 5 0 R' % index for index in range(count))
+        yield case(f'catalog-{count}', names=b'/Names << /EmbeddedFiles << /Names [' + entries + b'] >> >>')
     yield case('tree-order', names=b'/Names << /EmbeddedFiles << /Names [(z) 5 0 R (a) 5 0 R] >> >>')
     yield case('spec-stream', spec=stream(b'not a specification', b'/Type /Filespec /F (bad)'))
     for name, spec in [

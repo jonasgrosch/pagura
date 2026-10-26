@@ -4,12 +4,16 @@
 //! frame encoder sends without copying.
 
 mod navigation;
+mod services;
 mod text;
 
 pub(crate) use navigation::{labels, links, outlines};
+pub(crate) use services::{attachment_bytes, attachments, metadata, metadata_bytes};
 pub(crate) use text::{page_text, search};
 
-use crate::protocol::{Field, PageRef, RequestKind, ResponseKind, SearchFlags, SessionStats};
+use crate::protocol::{
+    AttachmentKey, Field, PageRef, RequestKind, ResponseKind, SearchFlags, SessionStats,
+};
 use crate::wire::Writer;
 use pagura::{Error, Rect, Result, SearchOptions};
 
@@ -21,6 +25,8 @@ pub const MAX_SEARCH_PAGES: u32 = 16;
 pub const MAX_QUERY_BYTES: usize = 4096;
 /// Most semantic characters in one page text response.
 pub const MAX_PAGE_CHARACTERS: usize = 1_000_000;
+/// Most catalog attachment records in one listing response.
+pub const MAX_ATTACHMENTS: usize = 1024;
 
 /// The bounded search window and continuation cursor.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -92,7 +98,7 @@ impl Search<'_> {
     }
 }
 
-/// Requests added by protocol 1.2 and 1.3.
+/// Requests added by protocol 1.2, 1.3 and 1.8.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
@@ -110,6 +116,21 @@ pub enum Request<'a> {
     Stats,
     /// Conservative painted bounds in default user space (1.3).
     Bounds(PageRef),
+    /// Info, catalog language and metadata-stream identity (1.8).
+    Metadata(Field<u32>),
+    /// Catalog EmbeddedFiles declarations, with lazy payload identities (1.8).
+    Attachments(Field<u32>),
+    /// Inert metadata-stream bytes, separately requested (1.8).
+    MetadataBytes(Field<u32>),
+    /// Explicit embedded-file selection; no filename or URL is followed (1.8).
+    AttachmentBytes {
+        /// Session-local document handle.
+        document: Field<u32>,
+        /// Zero-based index in catalog EmbeddedFiles byte-key order.
+        index: Field<u32>,
+        /// Exact EF key; no fallback to another key.
+        key: Field<AttachmentKey>,
+    },
 }
 
 impl Request<'_> {
@@ -123,6 +144,10 @@ impl Request<'_> {
             Self::Labels(_) => RequestKind::Labels,
             Self::Stats => RequestKind::ReadingStats,
             Self::Bounds(_) => RequestKind::Bounds,
+            Self::Metadata(_) => RequestKind::Metadata,
+            Self::Attachments(_) => RequestKind::Attachments,
+            Self::MetadataBytes(_) => RequestKind::MetadataBytes,
+            Self::AttachmentBytes { .. } => RequestKind::AttachmentBytes,
         }
     }
 }

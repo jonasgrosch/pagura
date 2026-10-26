@@ -78,11 +78,13 @@ wire_codes! {
     V1_6 = 0x0001_0006,
     /// Actual form text presentation metrics.
     V1_7 = 0x0001_0007,
+    /// Document metadata and explicit embedded-file reads.
+    V1_8 = 0x0001_0008,
 }
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_7;
+    pub const LATEST: Self = Self::V1_8;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -95,6 +97,7 @@ impl Version {
             Self::V1_5 => "form editing requires protocol 1.5",
             Self::V1_6 => "inline form editing requires protocol 1.6",
             Self::V1_7 => "form text styles require protocol 1.7",
+            Self::V1_8 => "document services require protocol 1.8",
         })
     }
 }
@@ -144,6 +147,14 @@ wire_codes! {
     FormWidgets = 20,
     /// Form text presentation (1.7).
     FormStyles = 21,
+    /// Info, language and metadata-stream identity (1.8).
+    Metadata = 22,
+    /// Catalog EmbeddedFiles entries, without reading payloads (1.8).
+    Attachments = 23,
+    /// Explicit inert metadata-stream bytes (1.8).
+    MetadataBytes = 24,
+    /// Explicit catalog attachment and EF key selection (1.8).
+    AttachmentBytes = 25,
 }
 
 impl RequestKind {
@@ -168,6 +179,9 @@ impl RequestKind {
             Self::FormFields | Self::SaveForm => Version::V1_5,
             Self::FormWidgets => Version::V1_6,
             Self::FormStyles => Version::V1_7,
+            Self::Metadata | Self::Attachments | Self::MetadataBytes | Self::AttachmentBytes => {
+                Version::V1_8
+            }
         }
     }
 
@@ -195,6 +209,10 @@ impl RequestKind {
             Self::SaveForm => ResponseKind::SavedForm,
             Self::FormWidgets => ResponseKind::FormWidgets,
             Self::FormStyles => ResponseKind::FormStyles,
+            Self::Metadata => ResponseKind::Metadata,
+            Self::Attachments => ResponseKind::Attachments,
+            Self::MetadataBytes => ResponseKind::MetadataBytes,
+            Self::AttachmentBytes => ResponseKind::AttachmentBytes,
         }
     }
 }
@@ -244,8 +262,44 @@ wire_codes! {
     FormWidgets = 148,
     /// Form text presentation.
     FormStyles = 149,
+    /// Info, language and metadata-stream identity.
+    Metadata = 150,
+    /// Catalog attachment declarations.
+    Attachments = 151,
+    /// Optional inert metadata-stream bytes.
+    MetadataBytes = 152,
+    /// Selected embedded-file bytes.
+    AttachmentBytes = 153,
     /// A structured failure.
     Error = 255,
+}
+
+wire_codes! {
+    /// Explicit EF filename-key selection (Table 43); no platform inference.
+    pub enum AttachmentKey: u8, unknown = Error::syntax("unknown attachment filename key");
+    /// F filename.
+    File = 0,
+    /// UF Unicode filename.
+    Unicode = 1,
+    /// Legacy DOS filename.
+    Dos = 2,
+    /// Legacy Mac filename.
+    Mac = 3,
+    /// Legacy Unix filename.
+    Unix = 4,
+}
+
+impl AttachmentKey {
+    /// The corresponding PDF filename key, without a slash.
+    pub const fn pdf_name(self) -> &'static [u8] {
+        match self {
+            Self::File => b"F",
+            Self::Unicode => b"UF",
+            Self::Dos => b"DOS",
+            Self::Mac => b"Mac",
+            Self::Unix => b"Unix",
+        }
+    }
 }
 
 wire_codes! {

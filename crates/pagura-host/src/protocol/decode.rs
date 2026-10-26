@@ -60,6 +60,20 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
         },
         RequestKind::FormWidgets => Request::FormWidgets(reader.page()?),
         RequestKind::FormStyles => Request::FormStyles(reader.page()?),
+        RequestKind::Metadata => {
+            Request::Reading(reading::Request::Metadata(reader.field(Reader::u32)?))
+        }
+        RequestKind::Attachments => {
+            Request::Reading(reading::Request::Attachments(reader.field(Reader::u32)?))
+        }
+        RequestKind::MetadataBytes => {
+            Request::Reading(reading::Request::MetadataBytes(reader.field(Reader::u32)?))
+        }
+        RequestKind::AttachmentBytes => Request::Reading(reading::Request::AttachmentBytes {
+            document: reader.field(Reader::u32)?,
+            index: reader.field(Reader::u32)?,
+            key: reader.field(|reader| reader.code())?,
+        }),
     };
     reader.finish()?;
     Ok(RequestFrame { id, request })

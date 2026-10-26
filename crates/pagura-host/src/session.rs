@@ -226,6 +226,20 @@ impl Session {
             reading::Request::Bounds(page) => {
                 reading::bounds(self.documents.content_bounds(page)?, cap)
             }
+            reading::Request::Metadata(handle) => {
+                reading::metadata(self.documents.document(handle)?, cap)
+            }
+            reading::Request::Attachments(handle) => {
+                reading::attachments(self.documents.document(handle)?, cap)
+            }
+            reading::Request::MetadataBytes(handle) => {
+                reading::metadata_bytes(self.documents.document(handle)?, cap)
+            }
+            reading::Request::AttachmentBytes {
+                document,
+                index,
+                key,
+            } => reading::attachment_bytes(self.documents.document(document)?, index, key, cap),
         }
     }
 

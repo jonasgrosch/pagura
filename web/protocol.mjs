@@ -1,5 +1,6 @@
 import { decodeFields, decodeWidgets, decodeStyles, encodeChanges } from './editing_protocol.mjs';
 import { decodeReading, encodeReading } from './reading_protocol.mjs';
+import { decodeDocumentService, encodeDocumentService } from './document_protocol.mjs';
 import { DiagnosticCode, ErrorCategory, MAX_FILE, MAX_FRAME, MAX_PASSWORD, OpenFlags, PositionKind, RequestKind, ResponseKind, TileStatus, Version } from './protocol_constants.mjs';
 /** Project-owned protocol v1 codec. See crates/pagura-host/PROTOCOL.md. */
 export { MAX_FILE, MAX_FRAME };
@@ -10,6 +11,7 @@ export const VERSION_1_4 = Version.V1_4;
 export const VERSION_1_5 = Version.V1_5;
 export const VERSION_1_6 = Version.V1_6;
 export const VERSION_1_7 = Version.V1_7;
+export const VERSION_1_8 = Version.V1_8;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -104,6 +106,7 @@ export function decodeResponse(body) {
     case ResponseKind.Stats: value = { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32() }; break;
     case ResponseKind.PageText: case ResponseKind.Search: case ResponseKind.Links: case ResponseKind.Outlines: case ResponseKind.Labels: case ResponseKind.ReadingStats: case ResponseKind.Bounds: value = decodeReading(kind, r); break;
     case ResponseKind.FormFields: value = decodeFields(r); break;
+    case ResponseKind.Metadata: case ResponseKind.Attachments: case ResponseKind.MetadataBytes: case ResponseKind.AttachmentBytes: value = decodeDocumentService(kind, r); break;
     case ResponseKind.FormStyles: value = decodeStyles(r); break;
     case ResponseKind.FormWidgets: value = decodeWidgets(r); break;
     case ResponseKind.SavedForm: { const length = r.u32(); if (length > MAX_FILE) throw new Error('Saved PDF exceeds budget'); value = r.take(length); break; }
@@ -148,8 +151,9 @@ export function encodeRequest(kind, id, values = {}) {
     return value;
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
-  if (kind >= RequestKind.PageText && kind <= RequestKind.Bounds) {
-    const payload = encodeReading(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
+  const reading = kind >= RequestKind.PageText && kind <= RequestKind.Bounds;
+  if (reading || kind >= RequestKind.Metadata && kind <= RequestKind.AttachmentBytes) {
+    const payload = reading ? encodeReading(kind, values) : encodeDocumentService(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
     view.setUint32(0, payload.length + 5, true); bytes[4] = kind; view.setUint32(5, id, true); bytes.set(payload, 9); return bytes;
   }
   const changes = kind === RequestKind.SaveForm ? encodeChanges(values.changes) : null;

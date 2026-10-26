@@ -5,6 +5,8 @@ import { destinationView } from '../web/destinations.mjs';
 import { readingWorkload } from '../web/reading_workload.mjs';
 import { OutlineTree } from '../web/outline_tree.mjs';
 import { ReadingView } from '../web/reading_view.mjs';
+import { testDocumentServices } from './document_services_test.mjs';
+import { testDocumentServicesView } from './document_services_view_test.mjs';
 import { navigationDocument } from '../web/navigation_document.mjs';
 /** Offline parity, independent pixel oracles and browser-shim checks.
  * Prerequisites: cargo build --locked --offline -p pagura-host; cargo wasm --offline
@@ -222,6 +224,8 @@ async function main() {
       tested++;
     }
     await testReading(client, root, native, wasiRun);
+    await testDocumentServices(client, root, native, wasiRun);
+    await testDocumentServicesView();
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
     const emptyStats = { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 };
@@ -449,6 +453,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
     'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
+    'document-services-dialog', 'document-services-open', 'document-services-close', 'document-properties', 'document-attachments', 'document-services-status',
     'edit-open', 'form-status', 'form-reset', 'form-download',
     'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
     'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'cache-summary', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];

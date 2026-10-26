@@ -227,3 +227,10 @@ body.dragging #viewport { outline: 3px dashed var(--focus); outline-offset: -8px
 
 .form-widget:not(.form-dirty)::selection { color: transparent; background: #337ac633; }
 .form-widget:disabled { cursor: progress; }
+
+#document-services-dialog { max-width: min(42rem, 94vw); }
+#document-services-dialog dd, #document-services-dialog li { overflow-wrap: anywhere; white-space: pre-wrap; }
+#document-services-dialog dt { font-weight: 600; }
+#document-services-dialog dd { margin: 0 0 .75rem; }
+#document-services-dialog li { margin-bottom: 1rem; }
+#document-services-dialog li button { margin: .25rem 0; }

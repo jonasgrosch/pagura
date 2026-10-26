@@ -13,8 +13,8 @@ mod encode;
 mod javascript;
 
 pub use codes::{
-    ActionCode, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle, PositionKind,
-    RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
+    ActionCode, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle,
+    PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
 };
 pub(crate) use decode::Reader;
 pub use decode::decode;
@@ -161,7 +161,7 @@ pub enum Request<'a> {
     Close(Field<u32>),
     /// Snapshot session retention accounting (1.1).
     Stats,
-    /// Reading operations (1.2 and 1.3).
+    /// Reading operations (1.2, 1.3 and 1.8).
     Reading(crate::reading::Request<'a>),
     /// Inspect bounded form controls (1.5).
     FormFields(Field<u32>),

@@ -237,6 +237,18 @@
         "tools/host_test.mjs viewer mixed diagnostic counts"
       ],
       "gaps": "Information omitted from older diagnostics responses is available through the negotiated 1.4 typed snapshot."
+    },
+    {
+      "id": "host-document-services",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Protocol 1.8 bounded metadata/catalog attachment reads and explicit byte downloads; hosted validation pending",
+      "tests": [
+        "pagura-host tests/document_services.rs",
+        "tools/document_services_test.mjs",
+        "tools/document_services_view_test.mjs"
+      ],
+      "gaps": "Catalog EmbeddedFiles and catalog XMP only. No AF/RF or annotation discovery, streaming, source mutation, XML/schema/profile validation or filename/URL execution. Response and document decoding budgets are separate."
     }
   ]
 }

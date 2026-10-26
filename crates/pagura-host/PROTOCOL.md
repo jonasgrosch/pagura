@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.4
+# Pagura session protocol v1 through v1.8
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -17,7 +17,8 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-or `hello(65540)` (0x00010004) for v1.4.
+`hello(65540)` (0x00010004) for v1.4, through `hello(65544)`
+(0x00010008) for v1.8. Versions 1.5–1.7 add the form operations below.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -445,3 +446,70 @@ appearance interpretation, including its matrix and fitting; DA supplies a
 fallback for empty/unavailable text. The source handle's rendering policy also
 applies here. Source decoding is capped at 32 MiB per request; at most 4096
 widgets are described. Versions 1.0–1.6 retain their existing layouts.
+
+## Document services (v1.8)
+
+`hello(65544)` adds the following requests without changing earlier layouts.
+Older negotiated versions reject these operations with InvalidArgument and stay
+usable. The default browser client negotiates 1.8.
+
+| Request kind | Payload | Success kind | Payload |
+|---|---|---|---|
+| 22 metadata | `u32 handle` | 150 | Metadata record below |
+| 23 attachments | `u32 handle` | 151 | `u32 count`, then catalog attachment records |
+| 24 metadata_bytes | `u32 handle` | 152 | Optional `blob` |
+| 25 attachment_bytes | `u32 handle,index`, `u8 filename_key` | 153 | `blob` |
+
+An optional value is `u8 present` (exactly 0 or 1), followed by its value only
+when present. An object identity is `u32 number | u16 generation`. Missing and
+empty text/blob values remain distinct. Filename keys are F=0, UF=1, DOS=2,
+Mac=3 and Unix=4 (`AttachmentKey`); other codes are terminal syntax errors.
+A valid but absent key or out-of-range attachment index is an operational
+InvalidArgument error, with the request field position. There is no key fallback.
+
+A metadata record contains:
+
+1. Optional Info record: optional object identity; eight optional UTF-8 texts in
+   the order Title, Author, Subject, Keywords, Creator, Producer, CreationDate,
+   ModDate; and a text trapping declaration (`True`, `False` or `Unknown`).
+2. Optional catalog language text.
+3. Optional catalog metadata-stream object identity.
+
+Info, language and packet identity use the public typed document views. Packet
+bytes are read only by request 24. Info and XMP are separate, unreconciled sources;
+no XML parsing, entities, schemas, calendars or profile validation are implied.
+
+Catalog attachment records appear in EmbeddedFiles name-tree byte-key order;
+their zero-based ordinal is the index for request 25. Each record contains:
+
+1. Raw name-tree key `blob`, then optional file-specification object identity.
+2. Optional UF text; four optional raw filename blobs in F, DOS, Mac, Unix order.
+3. Optional description text, optional file-system-name blob, optional
+   relationship-name blob, then `u8 volatile` (0 or 1).
+4. `u32 payload_count`, then each payload: `u8 filename_key`, object identity,
+   optional media-type-name blob, optional `u64 declared_size`.
+
+Bytes are preserved for names without a defined text encoding. The browser
+represents declared sizes as exact BigInts. Size and relationship are producer
+declarations, not verified payload lengths or security conclusions. Listings
+contain at most 1024 files and five EF entries per file. Unknown future library
+relationship variants are represented as absent, never guessed. This version
+lists catalog EmbeddedFiles only; AF/RF, annotation discovery and portfolios
+remain separate work.
+
+All four responses use `SessionLimits::reading_response_bytes` (32 MiB by
+default), checked before each fallible writer append. Source views and payload
+decoding separately obey the document view/stream limits. Payloads are fully
+decoded before the response is framed; this is not streaming output or a cap on
+total transient memory. Exceeding either limit returns one error, no partial
+response, and leaves the session usable. Listings do not decode embedded bytes;
+request 25 applies attachment crypt filters and EFOpen authentication even when
+an embedded stream omits Type. External filenames and URLs are never followed.
+
+The viewer loads these records only when Properties and attachments is opened.
+Text is placed with `textContent`. Downloads require an explicit button click,
+use an octet-stream Blob and fixed local filenames (`metadata.xmp` or
+`attachment-N-KEY.bin`), and revoke their object URLs. Closing the dialog,
+replacing the document or restarting the host invalidates pending results and
+downloads. Payload content is never previewed or executed. Errors in one listing
+remain visible without hiding the other service or the document's pages.

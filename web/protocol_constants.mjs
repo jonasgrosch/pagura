@@ -14,6 +14,7 @@ export const Version = Object.freeze({
   V1_5: 0x00010005,
   V1_6: 0x00010006,
   V1_7: 0x00010007,
+  V1_8: 0x00010008,
 });
 
 /** Request kind bytes. */
@@ -39,6 +40,10 @@ export const RequestKind = Object.freeze({
   SaveForm: 19,
   FormWidgets: 20,
   FormStyles: 21,
+  Metadata: 22,
+  Attachments: 23,
+  MetadataBytes: 24,
+  AttachmentBytes: 25,
 });
 
 /** Response kind bytes. */
@@ -64,7 +69,20 @@ export const ResponseKind = Object.freeze({
   SavedForm: 147,
   FormWidgets: 148,
   FormStyles: 149,
+  Metadata: 150,
+  Attachments: 151,
+  MetadataBytes: 152,
+  AttachmentBytes: 153,
   Error: 255,
+});
+
+/** Explicit embedded-file filename keys (1.8). */
+export const AttachmentKey = Object.freeze({
+  File: 0,
+  Unicode: 1,
+  Dos: 2,
+  Mac: 3,
+  Unix: 4,
 });
 
 /** Error categories of response kind 255. */
@@ -163,6 +181,9 @@ export const MAX_SEARCH_PAGES = 16;
 
 /** Most semantic characters in one page text response. */
 export const MAX_PAGE_CHARACTERS = 1000000;
+
+/** Most catalog attachments in one listing (1.8). */
+export const MAX_ATTACHMENTS = 1024;
 
 /** Most form fields in one inspection or save (1.5). */
 export const MAX_FORM_FIELDS = 1024;
