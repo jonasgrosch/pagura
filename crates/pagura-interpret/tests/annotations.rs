@@ -65,7 +65,7 @@ fn static_paint_does_not_follow_ignored_keys_or_sound_payloads() {
             .scene(document.page(0).unwrap())
             .unwrap();
         assert_eq!(scene.marks(), 2, "{name}");
-        assert!(document.diagnostics().is_empty(), "{name}");
+        assert_eq!(document.diagnostics(), [], "{name}");
     }
     let document = open("fixed-hidden-malformed", Limits::default());
     assert_eq!(
