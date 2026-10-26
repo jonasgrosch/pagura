@@ -165,7 +165,7 @@ fn font_dict_context_does_not_change_top_or_cff1_matrices() {
         dict.matrix(Transform::IDENTITY).unwrap(),
         Transform::IDENTITY
     );
-    assert_eq!(diagnostics.take(), []); // Normative ignoring is not a repair.
+    assert_eq!(diagnostics.take(), []); // The selected stack rule adds no repair.
 }
 
 #[test]

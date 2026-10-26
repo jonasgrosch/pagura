@@ -291,6 +291,11 @@ rules require unknown operators to discard their operands. The existing parser
 now distinguishes that context, ignoring deprecated FontMatrix without changing
 CFF1 or Top DICT matrices. Legacy matrix application remains a separate
 compatibility question because both interpretations use the same version-2 header.
+The same source's [DICT data paragraph](https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#dict-data)
+calls behavior for an operator outside the current namespace unspecified.
+Pagura follows the explicit stack-decoding instruction; this internal wording
+conflict prevents treating that interpretation as an unambiguous conformance
+verdict for every producer or reader.
 The original diagnostic reports, fonts and pixel expectations remain unchanged.
 Nine of those PDFs/controls join the preceding 25 integrated controls. At
 `95249301d`, all 34 Pagura controls pass in [hosted run 40403532318](https://github.com/jonasgrosch/pagura/actions/runs/40403532318),
@@ -313,8 +318,10 @@ before entry allocation and duplicate-key validation. Repeated foreign keys
 therefore cannot trigger CFF1 synthetic-font or width behavior. Four additional
 native fonts and eight simple/CID PDF controls preserve a literal 100-by-200
 outline; at 50 points their expected rectangle is 5 by 10 pixels. They bring
-the integrated set to 48. All previous font bytes, records and pixel expectations
-are unchanged. These new controls await hosted acceptance. Required CFF2
+the integrated set to 48. These new fonts omit FDSelect for their single
+FontDICT, as required by the current specification. All font bytes, records and
+pixel expectations published through `3e5d8e69c` are unchanged. The eight new
+controls await hosted acceptance. Required CFF2
 structures and complete known-operator validation remain explicit review gaps.
 
 ## Type 1 advance vectors

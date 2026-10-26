@@ -178,7 +178,7 @@ def cases():
     yield from cmap_cases()
     yield from cff_matrix_cases()
     yield from type1_advance_cases()
-    for label,variant in [('control',None),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
+    for label,variant in [('control','dict-control'),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
         program = truetype(cff=cff_font(conforming=True,cff2=True,variant=variant),cff2=True)
         for cid in (False,True):
             text = b'<0001>' if cid else b'(A)'

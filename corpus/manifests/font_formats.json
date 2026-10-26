@@ -693,7 +693,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-control-simple.pdf",
-      "sha256": "181ddb3d04cd5bfc2e594943d6adef7ad8680357b9297a7567424fac48f3299d",
+      "sha256": "1b558db07e868125e88e38e17779efdcffe7ccadb0cbf2105872d60f4f1a85a5",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -713,7 +713,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-control-cid.pdf",
-      "sha256": "70dd8eacb7d081f1c20f1ea8d2a4737507f1a330ed60d8342cba453c76366ef1",
+      "sha256": "385897cdf740954ab183e05c7792b76477f158855fe8eabcae54eae4ebc49b6e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -733,7 +733,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-top-simple.pdf",
-      "sha256": "79a3913f2e191d475b44e0ed2b7bd32825a5114ebaa70b5836aeaefb7a173bf4",
+      "sha256": "7940495f99c0b069afbf91f99b8755f184a4e0e9d1db8c907103757f31347e62",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -753,7 +753,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-top-cid.pdf",
-      "sha256": "3351fc8f46da0ce0d4872a80da9bcded7bb6b74afab1291d64ea82b2dd975058",
+      "sha256": "bdb3f2e4a5de56111dc19fc269fde57ce10edf3cac85a655a23ed715ec2162d7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -773,7 +773,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-font-simple.pdf",
-      "sha256": "33e28170ae77462b53b310e084020f2b65b06f1eb9cef0861c2a4479230c02c3",
+      "sha256": "a648c5d8004da19e2c1632322f9c5b7880de955a1f0fbba447918c1383577054",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -793,7 +793,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-font-cid.pdf",
-      "sha256": "c3a2ec5882d00994ffd7bed0c19f5cd7c576d0c9188c2a8d02655394b9e4afdb",
+      "sha256": "9cf14c5cb32e54cbc5c9338f56f7a3e432d44da725fd1f837414014066d97114",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -813,7 +813,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-private-simple.pdf",
-      "sha256": "3cdee86d061fd2d61b90153aad493aa1e7ee220a862718b52ab748ed11c2c48e",
+      "sha256": "48e17b936a38304ca9d6e6498412d804d73a1f6f0e8f890ab5b16a52216b91b8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -833,7 +833,7 @@
         "font-cff"
       ],
       "path": "corpus/generated/font_formats/cff2-dict-private-cid.pdf",
-      "sha256": "490b85f3f99eef7ce2242ed8a4939312e3052bfed74c6899b1bed9f61ca05120",
+      "sha256": "b4adc7c00edc00b916ad66f8273c9a469cf751f0781a70dd0958b88d574e8610",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

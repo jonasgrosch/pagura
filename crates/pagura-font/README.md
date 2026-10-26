@@ -148,8 +148,10 @@ CFF CharstringType 1 or standalone TN 5014 CIDFont programs. Unrecognized OtherS
 argument fallback rather than invoking PostScript. Current CFF2 Font DICTs
 recognize only Private; unknown operators, including the deprecated FontMatrix,
 clear their operands without adding entries or a repair. CFF1 and CFF2 Top DICT
-matrices retain their existing behavior. The historical CFF2 matrix interpretation
-is a separate unresolved compatibility choice: the unchanged version-2 header
+matrices retain their existing behavior. The current text's stack-decoding
+section directs discard, while its DICT-data paragraph leaves behavior
+unspecified; Pagura follows the explicit, bounded discard rule. Historical
+matrix application is a separate unresolved compatibility choice: the unchanged version-2 header
 does not identify which interpretation a producer intended. The nine preserved
 diagnostic PDFs pass with all 34 integrated rendering controls at `95249301d`
 in [hosted run 40403532318](https://github.com/jonasgrosch/pagura/actions/runs/40403532318).

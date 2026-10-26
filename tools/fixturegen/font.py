@@ -221,7 +221,12 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         if cid and not conforming:
             result += operands(0,0,0)+b"\x0c\x1e"
         if cid or cff2:
-            result += offset(fdarray_at)+b"\x0c\x24"+offset(fdselect_at)+b"\x0c\x25"
+            result += offset(fdarray_at)+b"\x0c\x24"
+            # Current CFF2 forbids FDSelect when only one FontDICT exists.
+            # Keep historical vectors unchanged; the new namespace controls
+            # use one dictionary and omit the unnecessary selector.
+            if variant not in ('dict-control','dict-top','dict-font','dict-private'):
+                result += offset(fdselect_at)+b"\x0c\x25"
         else:
             result += offset(private_size)+offset(private_at)+b"\x12"
         if variant == "cid-count":
@@ -543,7 +548,7 @@ def cases():
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
     yield from type1_advance_cases()
-    for label,variant in [('control',None),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
+    for label,variant in [('control','dict-control'),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
         yield vector('cff2-dict-'+label,truetype(cff=cff_font(conforming=True,cff2=True,variant=variant),cff2=True),
                      'count 5\nadvance 1 600\noutline 1\n'+RECT,'font-cff','opentype')
 

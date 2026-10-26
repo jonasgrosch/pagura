@@ -7392,7 +7392,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff2-dict-control.font",
-          "sha256": "f2fd778e92e799beeb089673bf2d5d104961f6306069a106f26fecb17a056183"
+          "sha256": "894c8f0415d0da4afb8e4b2e85c9c5646c7f96be9d9eeaadf1a790ccda7ce239"
         }
       },
       "format": "opentype"
@@ -7411,7 +7411,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff2-dict-top.font",
-          "sha256": "989d7f15a79753fd720ec73a94c74cb095f5e5f53765db1fb0b394bfcf84b307"
+          "sha256": "3a745ff48d19548e922d63e0f76768408ba14d527c4a21ef126468c5641794e0"
         }
       },
       "format": "opentype"
@@ -7430,7 +7430,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff2-dict-font.font",
-          "sha256": "4becc0ec6474a9e67478aa012c463a2ae71734de02de0b02cde299b474df1276"
+          "sha256": "5cc40288f5746cb6acc9e6e6daa8c11440abba79d2ea2e472bf06883df40c8bf"
         }
       },
       "format": "opentype"
@@ -7449,7 +7449,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff2-dict-private.font",
-          "sha256": "9013818a57d2c5bfd2068dd8595816ca583bb3cd02f99a62306cfe7788c9ba89"
+          "sha256": "9fa3ec75212092d445aaf2ae957996d43d1f91a07faf90a0ef7095260030c808"
         }
       },
       "format": "opentype"
