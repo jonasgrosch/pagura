@@ -833,6 +833,22 @@ fn approximated_rows_stay_within_their_bound() {
             let x0 = (far as u32).saturating_sub(512);
             source.span(x0, y, 2048, Precision::Exact, &mut exact);
             source.span(x0, y, 2048, Precision::Level, &mut kept);
+            let mut tile = SpanColors::default();
+            for first in (0..2048).step_by(37) {
+                let len = 37.min(2048 - first);
+                source.span(x0 + first as u32, y, len, Precision::Level, &mut tile);
+                for (c, (&whole, &part)) in kept.colors[first * 3..(first + len) * 3]
+                    .iter()
+                    .zip(&tile.colors)
+                    .enumerate()
+                {
+                    assert_eq!(
+                        crate::kernel::level(whole).to_bits(),
+                        crate::kernel::level(part).to_bits(),
+                        "case {case} row {y} column {first} channel {c}: partition"
+                    );
+                }
+            }
             assert_eq!(kept.alpha, exact.alpha, "case {case} row {y}: alpha");
             for (i, (&k, &e)) in kept.colors.iter().zip(&exact.colors).enumerate() {
                 let level = |v: f64| crate::kernel::level(v).to_bits();

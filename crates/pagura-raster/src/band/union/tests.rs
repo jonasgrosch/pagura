@@ -623,7 +623,7 @@ fn doubtful_pairs_expire_once_and_large_live_sets_decline() {
 /// twice over, with collinear edges from one vertex, beside and over random
 /// polygons and across chunks, under either rule: the swaps leave every
 /// side as the full sweep emits it, bit for bit and in the same order, and
-/// charge at most an eighth more for their bookkeeping.
+/// charge no more.
 #[test]
 fn swaps_inside_the_union_keep_every_side() {
     let mut rng = Lcg(2_026);
@@ -671,7 +671,7 @@ fn swaps_inside_the_union_keep_every_side() {
         };
         assert_eq!(bits(&fast), bits(&full), "case {case}");
         assert!(
-            fast_work <= full_work + full_work / 8,
+            fast_work <= full_work,
             "case {case}: {fast_work} {full_work}"
         );
         swapped += taken;

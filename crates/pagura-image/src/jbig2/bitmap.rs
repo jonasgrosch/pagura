@@ -151,12 +151,8 @@ impl Bitmap {
 }
 
 /// The eight bits of `row` from bit `at` on, most significant first; bits
-/// before or after the row read as zero.
-fn bits_at(row: &[u8], at: isize) -> u8 {
-    let Ok(at) = usize::try_from(at) else {
-        let shift = u32::try_from(at.unsigned_abs()).unwrap_or(u32::MAX);
-        return bits_at(row, 0).checked_shr(shift).unwrap_or(0);
-    };
+/// after the row read as zero.
+fn bits_at(row: &[u8], at: usize) -> u8 {
     let (index, shift) = (at / 8, at % 8);
     let high = row.get(index).copied().unwrap_or(0);
     if shift == 0 {
@@ -170,7 +166,10 @@ fn bits_at(row: &[u8], at: isize) -> u8 {
 /// on with `op`, a byte of `target` at a time.
 fn combine_row(target: &mut [u8], to: usize, source: &[u8], from: usize, len: usize, op: u8) {
     let end = to + len;
-    let offset = isize::try_from(from).unwrap_or(isize::MAX) - isize::try_from(to).unwrap_or(0);
+    // Bit coordinates can exceed isize::MAX on wasm32 even when the
+    // packed allocation fits. Keep their displacement unsigned.
+    let before = to.saturating_sub(from);
+    let after = from.saturating_sub(to);
     for (index, a) in target
         .iter_mut()
         .enumerate()
@@ -180,10 +179,12 @@ fn combine_row(target: &mut [u8], to: usize, source: &[u8], from: usize, len: us
         let start = 8 * index;
         let mask =
             (0xff_u8 >> (to.max(start) - start)) & (0xff_u8 << (start + 8 - end.min(start + 8)));
-        let b = bits_at(
-            source,
-            isize::try_from(start).unwrap_or(isize::MAX) + offset,
-        );
+        let b = match start.checked_sub(before) {
+            Some(at) => bits_at(source, at + after),
+            // Only the first target byte can reach before source bit zero,
+            // by at most seven bits; those leading bits are masked off.
+            None => bits_at(source, 0) >> (before - start),
+        };
         let value = match op {
             0 => *a | b,
             1 => *a & b,
@@ -215,6 +216,32 @@ fn writes(row: &[u8], len: usize, op: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Bit offsets may cross the signed address boundary while their
+    /// packed storage still fits. This exercises that boundary on wasm32.
+    #[test]
+    #[ignore = "allocates a 256 MiB packed row; run separately on native and wasm32"]
+    fn wide_packed_row_keeps_unsigned_bit_offsets() {
+        let x = (1_u32 << 31) + 3;
+        let width = x + 9;
+        let limits = Limits {
+            pixels: width as usize,
+            decoded_bytes: width.div_ceil(8) as usize,
+            ..Limits::default()
+        };
+        let mut target = Bitmap::new(width, 1, false, &limits).unwrap();
+        let mut source = Bitmap::new(9, 1, false, &limits).unwrap();
+        source.data.copy_from_slice(&[0xa6, 0x80]);
+        target.combine_signed(&source, i64::from(x), 0, 4);
+        for column in 0..9 {
+            assert_eq!(
+                target.pixel(i64::from(x) + column, 0),
+                source.pixel(column, 0)
+            );
+        }
+        assert_eq!(target.pixel(i64::from(x) - 1, 0), 0);
+        assert_eq!(target.data.last().copied().unwrap() & 0x0f, 0);
+    }
 
     /// Pixel by pixel, as T.88 7.4.10 states it.
     fn combine_pixels(target: &mut Bitmap, other: &Bitmap, x: i64, y: i64, op: u8) {

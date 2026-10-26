@@ -387,7 +387,7 @@ impl ShadingSource {
         };
         let aligned = self.aligned.as_ref().filter(|_| span.boundary.is_none());
         let rows = match &*self.geometry {
-            Geometry::Axial(g) if aligned.is_none() => self.row(g, span, len).map(|row| (g, row)),
+            Geometry::Axial(g) if aligned.is_none() => self.row(g, span).map(|row| (g, row)),
             _ => None,
         };
         if let Some((axial, row)) = rows {
@@ -514,20 +514,22 @@ impl ShadingSource {
     /// a pixel, no background and no `BBox` test, stepped along its
     /// parameter ([`Row`]); `None` otherwise.
     ///
-    /// Along a row the parameter is affine in the column, so it is stepped,
-    /// `t₀ + k·β`, instead of computed from each pixel's point. Both
+    /// Along a row the parameter is affine in the device column, so it is
+    /// `t₀ + column·β`, with `t₀` at column zero, instead of computed from
+    /// each pixel's point. Both
     /// parameters approximate the real one (`u` the unit roundoff): the
     /// exact one rounds the point's two products and two sums, the two
     /// differences, products and sum, and the quotient, so it is within
     /// `8u·M` of it, where `M` is the parameter computed in magnitudes; the
     /// stepped one has the first pixel's error, `β`'s rounding (`4u` of its
     /// magnitudes) times `k`, and two more roundings. `M` grows along the
-    /// row, so its value at `far`, past the last pixel's column, bounds
-    /// every pixel's, and `32u·(M + |t₀| + far·|β|)` bounds the parameters'
+    /// row, so its value at `far`, past a fixed device-grid chunk of 128
+    /// columns, bounds every pixel's in that chunk, and
+    /// `32u·(M + |t₀| + far·|β|)` bounds the parameters'
     /// distance with room to spare. Inside `0..1` neither parameter is
     /// clamped, and the domain map `d₀ + t·w` rounds twice more for each, so
     /// the inputs differ by at most `|w|` times that plus `4u·(|d₀| + |w|)`.
-    fn row(&self, axial: &Axial, span: Span<'_>, len: usize) -> Option<Row<'_>> {
+    fn row(&self, axial: &Axial, span: Span<'_>) -> Option<Row<'_>> {
         let ramp = self.colors.ramp()?;
         if span.precision != Precision::Level
             || span.boundary.is_some()
@@ -541,27 +543,25 @@ impl ShadingSource {
             return None;
         }
         let i = self.inverse;
-        let (x0, y) = (f64::from(span.x) + 0.5, f64::from(span.y) + 0.5);
-        let start = axial.parameter(Point::new(x0, y) * i);
+        // Anchor every span at the same device column. A span's starting
+        // point must not change the rounding of a shared pixel's parameter.
+        let y = f64::from(span.y) + 0.5;
+        let start = axial.parameter(Point::new(0.5, y) * i);
         let step = (i.a * axial.delta.x + i.b * axial.delta.y) / axial.denominator;
-        let u = f64::EPSILON / 2.0;
-        let far = x0 + f64::from(u32::try_from(len).unwrap_or(u32::MAX));
-        let magnitude = ((i.a.abs() * far + i.c.abs() * y.abs() + i.e.abs() + axial.start.x.abs())
-            * axial.delta.x.abs()
-            + (i.b.abs() * far + i.d.abs() * y.abs() + i.f.abs() + axial.start.y.abs())
-                * axial.delta.y.abs())
-            / axial.denominator;
-        let error = 32.0 * u * (magnitude + start.abs() + far * step.abs());
+        let magnitude = (
+            (i.a.abs() * axial.delta.x.abs() + i.b.abs() * axial.delta.y.abs()) / axial.denominator,
+            ((i.c.abs() * y.abs() + i.e.abs() + axial.start.x.abs()) * axial.delta.x.abs()
+                + (i.d.abs() * y.abs() + i.f.abs() + axial.start.y.abs()) * axial.delta.y.abs())
+                / axial.denominator,
+        );
         let [d0, d1] = axial.domain;
-        let width = d1 - d0;
-        let input_error = (width.abs() * error + 4.0 * u * (d0.abs() + width.abs())) * (1.0 + 1e-6);
-        (error.is_finite() && input_error.is_finite() && error < 0.25).then_some(Row {
+        Some(Row {
             ramp,
+            x: span.x,
             start,
             step,
-            error,
-            domain: (d0, width),
-            input_error,
+            magnitude,
+            domain: (d0, d1 - d0),
         })
     }
 
@@ -627,7 +627,7 @@ impl ShadingSource {
             precision: Precision::Level,
         };
         let Some(row) = self
-            .row(axial, span, len)
+            .row(axial, span)
             .filter(|row| row.hits(len, axial.extend))
         else {
             return false;
@@ -670,12 +670,21 @@ impl ShadingSource {
         let mut color = [0.0; pagura_color::MAX_RAMP_CHANNELS];
         let color = color.get_mut(..channels).unwrap_or_default();
         let mut input: Input = [0.0; MAX_COMPONENTS];
+        let mut block = u32::MAX;
+        let (mut error, mut input_error) = (f64::INFINITY, f64::INFINITY);
         for k in pixels {
+            let column = x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
+            let next = column / ROW_CHUNK as u32;
+            if block != next {
+                block = next;
+                (error, input_error) = row.errors(column);
+                piece = None;
+            }
             let t = row.parameter(k);
-            if t > row.error && t < 1.0 - row.error {
+            if error < 0.25 && t > error && t < 1.0 - error {
                 let x = d0 + t * width;
                 if !piece.is_some_and(|p| p.holds(x)) {
-                    piece = row.ramp.piece(x, row.input_error, hint);
+                    piece = row.ramp.piece(x, input_error, hint);
                 }
                 if let Some(piece) = piece {
                     piece.evaluate(x, color);
@@ -688,7 +697,6 @@ impl ShadingSource {
                     continue;
                 }
             }
-            let column = x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
             let point = Point::new(f64::from(column) + 0.5, f64::from(y) + 0.5) * self.inverse;
             if !axial.sample(point, &mut input) {
                 put(k, None);
@@ -964,26 +972,34 @@ thread_local! {
 /// ([`ShadingSource::row`]).
 struct Row<'a> {
     ramp: &'a pagura_color::Ramp,
-    /// The first pixel's parameter and its step from one pixel to the next.
+    /// Device column zero's parameter and its step from one pixel to the next.
     start: f64,
     step: f64,
-    /// A bound of the distance between a pixel's stepped parameter and the
-    /// exact one.
-    error: f64,
-    /// The domain's start and width, and a bound of the distance between a
-    /// pixel's input from its stepped parameter and the exact input.
+    /// First device column of this span.
+    x: u32,
+    /// Slope and intercept of the parameter's magnitude bound.
+    magnitude: (f64, f64),
+    /// The domain's start and width.
     domain: (f64, f64),
-    input_error: f64,
 }
 
 impl Row<'_> {
-    /// The stepped parameter of pixel `k`.
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "span lengths are far below 2^52"
-    )]
+    /// The stepped parameter, anchored at device column zero for every span.
     fn parameter(&self, k: usize) -> f64 {
-        self.start + k as f64 * self.step
+        let column = self.x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
+        self.start + f64::from(column) * self.step
+    }
+
+    /// Bounds for the fixed device-grid chunk containing `column`. Neither
+    /// the parameter nor admission can depend on how a caller splits rows.
+    fn errors(&self, column: u32) -> (f64, f64) {
+        let far = (f64::from(column / ROW_CHUNK as u32) + 1.0) * ROW_CHUNK as f64 + 0.5;
+        let magnitude = self.magnitude.0 * far + self.magnitude.1;
+        let u = f64::EPSILON / 2.0;
+        let error = 32.0 * u * (magnitude + self.start.abs() + far * self.step.abs());
+        let (d0, width) = self.domain;
+        let input = (width.abs() * error + 4.0 * u * (d0.abs() + width.abs())) * (1.0 + 1e-6);
+        (error, input)
     }
 
     /// Whether the samples of all `len` pixels hit, with `extend` the
@@ -993,7 +1009,13 @@ impl Row<'_> {
     /// from `error` for any other `p`.
     fn hits(&self, len: usize, [before, after]: [bool; 2]) -> bool {
         let [first, last] = [self.parameter(0), self.parameter(len.saturating_sub(1))];
-        (before || self.error <= first.min(last)) && (after || self.error <= 1.0 - first.max(last))
+        let column = self
+            .x
+            .saturating_add(u32::try_from(len.saturating_sub(1)).unwrap_or(u32::MAX));
+        let (error, _) = self.errors(column);
+        error.is_finite()
+            && (before || error <= first.min(last))
+            && (after || error <= 1.0 - first.max(last))
     }
 }
 
