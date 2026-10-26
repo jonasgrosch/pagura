@@ -370,6 +370,15 @@ four seam pixels: source Bézier endpoint tangents were lost during flattening.
 The repair preserves those tangents for open endpoint caps, including dashes
 that reach an original endpoint; its hosted validation is pending.
 
+**Straight Line appearances implemented:** required finite L coordinates resolve
+indirectly and validate before empty output. C, CA and BS width/dash use the
+existing bounded mark builder and annotation clip; absent/null/None endings and
+zero/null leaders are accepted. Forty-one authored controls include 22 independent
+pixel expectations for two resolutions, dashes, diagonals, rotation, clipping,
+opacity, indirection and stored appearance precedence. Hosted validation is pending.
+Non-None endings, nonzero leaders/extensions/offsets and captions still refuse
+explicitly and remain the next appearance increments.
+
 **Polygon/PolyLine appearances implemented:** finite Vertices or PDF 2.0 Path
 commands form bounded geometry in default user space. Polygon closes the path
 and uses nonzero IC fill; PolyLine remains open. Path overrides Vertices, with

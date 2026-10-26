@@ -508,7 +508,7 @@
         "12.5.6.8"
       ],
       "rule": "Visible link, square and circle borders remain inside Rect. BS overrides Border. Zero-width borders and absent interior colours are transparent. Seven note icons have geometric appearances selected by project device policy; exact-area coverage and channel rounding are project policies.",
-      "status": "link/square/circle, InkList, Polygon/PolyLine and predefined note/file icon appearance generation",
+      "status": "link/square/circle, InkList/PDF 2.0 Path, straight Line, Polygon/PolyLine and predefined note/file icon appearance generation",
       "tests": [
         "content/annotation-icon-Comment",
         "content/annotation-icon-Key",
@@ -524,7 +524,7 @@
         "content/annotation-link-transparent-colour",
         "content/annotation-opacity-components"
       ],
-      "gaps": "Rounded, relief and cloudy borders and other annotation subtypes remain explicit. Circle/ellipse and Square/Circle RD controls are registered in content-circle-appearances."
+      "gaps": "Rounded, relief and cloudy borders and other annotation subtypes remain explicit. Circle/ellipse and Square/Circle RD controls are registered in content-circle-appearances. Line controls and remaining endings/leaders/captions are registered in content-line-appearances."
     },
     {
       "id": "content-annotation-view",
@@ -1002,6 +1002,62 @@
         "polygon_annotations/arrow"
       ],
       "gaps": "Cloudy/relief/rounded borders and non-None polyline endings remain explicit. Independent expectations use convex clipping, literal stroke-region unions and closed-form quadratic integrals; no product or competitor path evaluator generates expected pixels."
+    },
+    {
+      "id": "content-line-appearances",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.4 Table 168",
+        "12.5.5",
+        "12.5.6.7 Tables 178 and 179"
+      ],
+      "rule": "Line L contains four finite coordinates in default user space; indirect arrays and numbers resolve. Reader policy strokes the segment with butt caps, C, CA and BS width/dash inside the original annotation BBox. Geometry validates before zero-width or empty-color suppression. Stored appearances retain precedence. Absent/null/None endings and null/zero leaders are accepted. LLE requires LL; extension/offset values are nonnegative and Cap is boolean. Caption-only properties are ignored when Cap is false. Generated content remains bounded.",
+      "status": "straight Line implementation with 41 authored controls and 22 independent pixel expectations; hosted validation pending",
+      "tests": [
+        "pagura-appearance annotation::tests::line_coordinates_resolve_indirectly_and_reject_nonfinite_values",
+        "line_annotations/horizontal-72",
+        "line_annotations/stored-72",
+        "line_annotations/vertical-72",
+        "line_annotations/diagonal-72",
+        "line_annotations/dash-72",
+        "line_annotations/horizontal-144",
+        "line_annotations/stored-144",
+        "line_annotations/vertical-144",
+        "line_annotations/diagonal-144",
+        "line_annotations/dash-144",
+        "line_annotations/reversed",
+        "line_annotations/rotated",
+        "line_annotations/opacity",
+        "line_annotations/clipped",
+        "line_annotations/zero-width",
+        "line_annotations/no-color",
+        "line_annotations/point",
+        "line_annotations/none-endings",
+        "line_annotations/null-optionals",
+        "line_annotations/zero-leaders",
+        "line_annotations/indirect",
+        "line_annotations/stored-ignores-geometry",
+        "line_annotations/l-missing",
+        "line_annotations/l-null",
+        "line_annotations/l-type",
+        "line_annotations/l-short",
+        "line_annotations/l-long",
+        "line_annotations/l-number",
+        "line_annotations/extension-without-leader",
+        "line_annotations/negative-extension",
+        "line_annotations/negative-offset",
+        "line_annotations/leader-type",
+        "line_annotations/caption-type",
+        "line_annotations/endings-type",
+        "line_annotations/endings-count",
+        "line_annotations/ending-type",
+        "line_annotations/leader",
+        "line_annotations/extension",
+        "line_annotations/offset",
+        "line_annotations/caption",
+        "line_annotations/arrow"
+      ],
+      "gaps": "Non-None endings, nonzero leader lines/extensions/offsets and captions remain explicit refusals. Independent expected pixels use literal rectangles and convex clipping, not generated appearance paths."
     }
   ]
 }

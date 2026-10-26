@@ -266,6 +266,7 @@ fn content_and_storage_budgets_bound_generation() {
     for subtype in [
         b"<< /Subtype /Text >>".as_slice(),
         b"<< /Subtype /Circle >>",
+        b"<< /Subtype /Line /L [0 0 8 8] >>",
     ] {
         let error =
             annotation_appearance(&document, &dictionary(subtype), rect(0.0, 0.0, 8.0, 8.0))
@@ -302,6 +303,7 @@ fn rectangles_without_area_get_no_appearance_after_validation() {
         b"<< /Subtype /Link >>".as_slice(),
         b"<< /Subtype /Square /IC [1 0 0] >>",
         b"<< /Subtype /Circle /IC [1 0 0] >>",
+        b"<< /Subtype /Line /L [0 0 8 8] >>",
         b"<< /Subtype /Text >>",
         b"<< /Subtype /Widget /FT /Tx /MK << /BC [0] >> >>",
     ] {
@@ -317,6 +319,7 @@ fn rectangles_without_area_get_no_appearance_after_validation() {
         b"<< /Subtype /Text /C [0 0] >>",
         b"<< /Subtype /Circle /IC [0 0] >>",
         b"<< /Subtype /Circle /BE << /S 42 >> >>",
+        b"<< /Subtype /Line /L [0 0 8] >>",
         b"<< /Subtype /Widget /FT /Tx /V (value) >>",
     ] {
         let flat = generate(text, line).unwrap_err();
@@ -604,4 +607,41 @@ fn ink_path_preserves_required_inklist_validation_and_uses_explicit_geometry() {
         )
         .unwrap()
     );
+}
+
+#[test]
+fn line_coordinates_resolve_indirectly_and_reject_nonfinite_values() {
+    let document = Document::open(
+        fixture("line_annotations", "indirect.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let area = rect(0.0, 0.0, 32.0, 32.0);
+    assert_eq!(
+        annotation_appearance(
+            &document,
+            &dictionary(b"<< /Subtype /Line /L 6 0 R /LE 8 0 R /Cap 10 0 R >>"),
+            area,
+        )
+        .unwrap(),
+        generate(b"<< /Subtype /Line /L [4 8 28 8] >>", area).unwrap()
+    );
+    for value in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let mut annotation = dictionary(b"<< /Subtype /Line >>");
+        annotation.insert(
+            pagura_core::Name::new(b"L"),
+            Value::Array(vec![
+                Value::Real(value),
+                Value::Integer(8),
+                Value::Integer(28),
+                Value::Integer(8),
+            ]),
+        );
+        assert_eq!(
+            annotation_appearance(&document, &annotation, area)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit,
+        );
+    }
 }

@@ -42,7 +42,7 @@ pub(super) fn generate(
     marks.finish(rect)
 }
 
-fn no_endings(document: &Document, annotation: &Dictionary) -> Result<()> {
+pub(super) fn no_endings(document: &Document, annotation: &Dictionary) -> Result<()> {
     let Some(value) = optional(document, annotation, b"LE")? else {
         return Ok(());
     };
@@ -60,7 +60,7 @@ fn no_endings(document: &Document, annotation: &Dictionary) -> Result<()> {
         if name != b"None" {
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,
-                "polyline ending generation is not implemented",
+                "line ending generation is not implemented",
             ));
         }
     }
