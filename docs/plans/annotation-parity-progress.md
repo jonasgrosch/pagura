@@ -37,13 +37,16 @@ No local builds, tests, scans or benchmarks were run (ADR 0031).
 
 ## Validation and scope
 
-[Hosted editing validation at `60dfa92b5`](https://github.com/jonasgrosch/pagura/actions/runs/40331905667)
-passed compilation, lint, all 75 appearance tests, 542 independent render cases
+[Hosted editing validation at `b6f34b410`](https://github.com/jonasgrosch/pagura/actions/runs/40333282015)
+passed compilation, lint, all 75 appearance tests, 545 independent render cases
 through native/WASI/client/viewer paths, and 35 filled-border save/strict-reopen
-pixel controls. The final UTF-16 stream and coincident-baseline changes are under
-[hosted editing validation](https://github.com/jonasgrosch/pagura/actions/runs/40333282015)
-and [full Linux/macOS/Windows validation](https://github.com/jonasgrosch/pagura/actions/runs/40333285810)
-at `b6f34b410`. These final runs are pending at this checkpoint.
+pixel controls, including the UTF-16 stream and coincident-baseline additions.
+The earlier full Linux run passed product, reference-raster, feature-matrix,
+host and Python checks, then found four cloud controls with duplicate BE keys.
+Those controls now contain one deliberately malformed BE value each; expected
+errors and tolerances are unchanged. No product source changed after the green
+editing run. [Full Linux/macOS/Windows validation](https://github.com/jonasgrosch/pagura/actions/runs/40334587794)
+at `6d689fddc` is pending at this checkpoint.
 
 Source formatting, changed-module Python lint/type checks, source-manifest and
 diff checks are the only local checks. Fixture generation is limited to changed
