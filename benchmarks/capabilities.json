@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "f776c2b42cd128de7e65932122d12a50306ced7d",
+  "audited_revision": "df1db4615524861a064970524cca7cdc42f83def",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -249,7 +249,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "0bdbb35e2652d7d27672be047a22cc73ec4ba6aadc6a4ab9b6b61f98e952d2db",
+    "references/requirements/content.json": "c676c08cee4e48bfd9e4893baf20d6f534678fccc18aa6f80ac0d64d1fc47364",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -323,13 +323,13 @@
     "crates/pagura-appearance/src/rich.rs": "dea1c1dd6c666536d7a440b43d088dbe6eaa106782bd8a5f5813b9ecee1a9d58",
     "crates/pagura-appearance/src/rich/xml.rs": "3f6e37423ffb076bc4d9b0e971d86468804fda6478ab9afa5ce5d06f0ce90a19",
     "crates/pagura-appearance/src/rich/style.rs": "1797dd50724cd142088d30d602fa71c9e8e7974ff058d1ae90e18d93425f273a",
-    "crates/pagura-appearance/src/rich/layout.rs": "58f60f3ff5ad1ca082bb625b7527d1ba1e29bfcdd5f4afaea302075b43c18335",
+    "crates/pagura-appearance/src/rich/layout.rs": "e037c8825df7c00a5e037407cdb669f74357567b66b201aef68b5c325b7ec190",
     "crates/pagura-appearance/src/annotation/tests/cloud.rs": "d10e839e5ff845b7a45922625fb0fcb95afb515a9a782d879ddd9bff8852bbb5",
     "crates/pagura-appearance/src/rich/tests.rs": "6ccdab307f2704bf04fc4407419ab5015fb980ae06d01c706a0c39b3726258c0",
     "tools/fixturegen/cloud_annotations.py": "d93296240b6d563e8629263a732b11a3fc323512acdd5496c3fa5b51f3da0a55",
-    "tools/fixturegen/rich_annotations.py": "e54c28239564a22706c05421cce6b597a98e543d1020062cc0721b53c74a2f50",
+    "tools/fixturegen/rich_annotations.py": "aec1b25bda2d55302dfd65db0fe17fe6ee276db627cc4b23631346ff589ad735",
     "corpus/manifests/cloud_annotations.json": "71ed6208b9bb9008748f2f168cdb5937dbc2ea51b7042c804b6baf80292d487f",
-    "corpus/manifests/rich_annotations.json": "c6e1df58faef8d09a6718d0a40c95b83299b80c019baf454cd413d28c5a954d2"
+    "corpus/manifests/rich_annotations.json": "66e7bf24283f947492a6c2df33849cdcdb77039a3c9964949bd88953fbb05abe"
   },
   "capabilities": [
     {
@@ -1769,6 +1769,7 @@
         "rich_annotations/caption",
         "rich_annotations/caption-color",
         "rich_annotations/caption-trailing-break",
+        "rich_annotations/caption-overlapping-lines",
         "rich_annotations/opacity",
         "rich_annotations/rotation",
         "rich_annotations/text-stream",
