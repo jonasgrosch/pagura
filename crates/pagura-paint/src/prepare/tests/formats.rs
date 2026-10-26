@@ -393,3 +393,90 @@ fn groups_that_paint_nothing_leave_their_parents_narrow() {
     assert_eq!(prepared.plan.groups.len(), 2);
     check(&b);
 }
+
+#[test]
+fn groups_of_one_store_fold_into_their_parents() {
+    let isolated = GroupAttributes {
+        isolated: true,
+        ..GroupAttributes::default()
+    };
+    // A page of colour and a group of alpha 0.4 around one mark, whose
+    // state `member` makes.
+    let page = |attributes: GroupAttributes, member: &dyn Fn(&mut Build) -> StateId| {
+        let mut b = Build::new(8.0, 6.0);
+        let back = b.rgb([0.9, 0.8, 0.3]);
+        let ink = b.rgb([0.2, 0.4, 0.7]);
+        b.rect(PAGE, [0.0, 0.0, 8.0, 6.0], back, mark(StateId(0)));
+        let alpha = b.state(|s| s.alpha = 0.4);
+        let group = b.transparency(PAGE, attributes, mark(alpha));
+        let state = member(&mut b);
+        b.rect(group, [0.5, 1.25, 6.75, 4.5], ink, mark(state));
+        (b, group)
+    };
+    let opaque = |_: &mut Build| StateId(0);
+    let planned = |b: &Build| {
+        b.prepare(&b.request(b.page(), 32), &Limits::default())
+            .unwrap_or_else(|e| panic!("{e}"))
+            .plan
+            .groups
+            .len()
+    };
+    // Its member composites at 0.4 times its own opacity, with no buffer.
+    for attributes in [GroupAttributes::default(), isolated] {
+        let (b, _) = page(attributes, &opaque);
+        assert_eq!(planned(&b), 1);
+        assert_eq!(formats(&b), [Format::N16]);
+        check(&b);
+    }
+    // So does a translucent member under its own soft mask.
+    let masked = |b: &mut Build| {
+        let ink = b.rgb([0.8, 0.1, 0.1]);
+        let (mask, group) = b.mask(MaskKind::Luminosity, GroupAttributes::default(), None);
+        b.rect(group, [1.0, 1.0, 7.0, 5.0], ink, mark(StateId(0)));
+        b.state(|s| {
+            s.alpha = 0.7;
+            s.soft_mask = Some(mask);
+        })
+    };
+    let (b, _) = page(GroupAttributes::default(), &masked);
+    assert_eq!(planned(&b), 2);
+    check(&b);
+    // A second member, and a member of another blend mode, keep the
+    // group's buffer.
+    let (mut b, group) = page(GroupAttributes::default(), &opaque);
+    let ink = b.rgb([0.1, 0.6, 0.2]);
+    b.rect(group, [3.0, 0.25, 7.75, 3.0], ink, mark(StateId(0)));
+    assert_eq!(planned(&b), 2);
+    check(&b);
+    let multiply = |b: &mut Build| b.state(|s| s.blend = BlendMode::Multiply);
+    let (b, _) = page(GroupAttributes::default(), &multiply);
+    assert_eq!(planned(&b), 2);
+    check(&b);
+    // So does a group under a soft mask of its own.
+    let (mut b, group) = page(GroupAttributes::default(), &opaque);
+    let ink = b.rgb([0.8, 0.1, 0.1]);
+    let (mask, mask_group) = b.mask(MaskKind::Alpha, GroupAttributes::default(), None);
+    b.rect(mask_group, [1.0, 1.0, 7.0, 5.0], ink, mark(StateId(0)));
+    let masked_group = b.state(|s| {
+        s.alpha = 0.4;
+        s.soft_mask = Some(mask);
+    });
+    b.scene.groups[group.index()].mark.state = masked_group;
+    assert_eq!(planned(&b), 3);
+    check(&b);
+    // Under a knockout parent the group stays one element of its own.
+    let mut b = Build::new(8.0, 6.0);
+    let ink = b.rgb([0.2, 0.4, 0.7]);
+    let knockout = GroupAttributes {
+        knockout: true,
+        ..GroupAttributes::default()
+    };
+    let knockout = b.transparency(PAGE, knockout, mark(StateId(0)));
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(knockout, [0.0, 0.0, 5.0, 4.0], ink, mark(half));
+    let alpha = b.state(|s| s.alpha = 0.4);
+    let group = b.transparency(knockout, GroupAttributes::default(), mark(alpha));
+    b.rect(group, [2.0, 1.0, 7.0, 5.0], ink, mark(StateId(0)));
+    assert_eq!(planned(&b), 3);
+    check(&b);
+}

@@ -148,6 +148,9 @@ pub(crate) struct Scope {
     /// Every enclosing group composites plainly, so marks may select
     /// transfer functions (11.7.5.2).
     pub(crate) plain: bool,
+    /// The opacity of a folded group, which its one member composites with
+    /// times its own; 1 elsewhere.
+    pub(crate) alpha: f64,
     /// Page content, which records transfer selections.
     pub(crate) records: bool,
     /// Colours keep spot colorants as channels (overprint simulation);
@@ -280,6 +283,7 @@ impl<'s> Planner<'s> {
                 spots: 0,
             }),
             plain: true,
+            alpha: 1.0,
             records: self.storage.transfers,
             separated: self.simulate,
             masked: false,

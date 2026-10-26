@@ -55,13 +55,14 @@ impl Planner<'_> {
         let plain = state.alpha == 1.0
             && state.blend == pagura_interpret::BlendMode::Normal
             && state.soft_mask.is_none();
-        let inner = |group: u32, layout: Layout| Scope {
+        let inner = |group: u32, layout: Layout, alpha: f64| Scope {
             group,
             transform,
             crop: scope.crop,
             bounds: culling,
             layout,
             plain: scope.plain && plain,
+            alpha,
             records: scope.records,
             separated: scope.separated,
             masked: scope.masked,
@@ -71,7 +72,12 @@ impl Planner<'_> {
         match decision.route {
             Route::Skip => return Ok(()),
             Route::Flatten => {
-                return self.children(&inner(scope.group, scope.layout), &group.children, budget);
+                let inner = inner(scope.group, scope.layout, 1.0);
+                return self.children(&inner, &group.children, budget);
+            }
+            Route::Fold => {
+                let inner = inner(scope.group, scope.layout, state.alpha);
+                return self.children(&inner, &group.children, budget);
             }
             Route::Buffer => {}
         }
@@ -100,7 +106,7 @@ impl Planner<'_> {
             },
             budget,
         )?;
-        self.children(&inner(child, layout), &group.children, budget)?;
+        self.children(&inner(child, layout, 1.0), &group.children, budget)?;
         let result = GroupResult {
             group: child,
             state: &state,
