@@ -264,3 +264,17 @@ display omits its HTML annotation layer; CoreGraphics drawing omits PDFKit.
 Those configurations cannot establish full-viewer icon support. No adapter here
 requests playback or physical printing. Printer media/fit-to-paper scaling,
 nonprintable margins, tiling and n-up remain V05 contract and probe gaps.
+
+The existing harness also has a separate `observe` command for the three
+missing-Sound-AP inputs plus blank, ordinary-content and stored-Sound controls.
+It records normalized RGB hashes, dimensions and y-down nonwhite bounds, with
+source/fixture/adapter/native identities. Named explicit refusals remain
+`unsupported`; other nonzero exits remain unclassified `renderer-error`
+observations, with diagnostic hashes. Blank output is an observation, never a
+feature verdict. The raw reports have kind `raw-render-observations` and are not
+added to oracle pass/fail totals or accepted by the oracle-report combiner.
+Hosted actual images remain artifacts and never become product icon oracles.
+The capability workflow's manual `sound_observations` input runs just this
+diagnostic batch on explicit Ubuntu/macOS runners, without repeating the full
+platform, service or pixel-oracle suites. No Sound artwork decision has been
+made from the current unexecuted observation extension.

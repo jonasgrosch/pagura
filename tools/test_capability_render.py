@@ -117,6 +117,69 @@ class RenderProbeTests(unittest.TestCase):
             with patch.object(render.subprocess, 'run', side_effect=FileNotFoundError):
                 self.assertEqual(render.invoke(['stub'], row, directory)['outcome'], 'engine-unavailable')
 
+    def test_reader_artwork_is_a_raw_observation_with_paired_controls(self):
+        data = render.sound_observations(self.manifest)
+        rows = render.fixtures(data, observations=True)
+        subjects = [case for case in data['cases'] if case['oracle'] is None]
+        self.assertEqual(len(subjects), 3)
+        self.assertEqual(len(rows), 7)
+        for case in subjects:
+            self.assertIsNone(case['expected'])
+            self.assertNotIn('oracle', rows[case['id']])
+            self.assertEqual(rows[case['id']]['dpi'], 72)
+        with self.assertRaises(ValueError):
+            render.validate_manifest(data, self.inventory)
+        with self.assertRaisesRegex(ValueError, 'report/manifest mismatch'):
+            render.combine([{'schema': 1, 'kind': 'raw-render-observations', 'cases': data['cases']}],
+                           self.manifest, render.render_inventory(self.inventory))
+        with self.assertRaisesRegex(ValueError, 'paired'):
+            render.sound_observations({'cases': []})
+
+        white, black, red = b'\xff\xff\xff', b'\0\0\0', b'\xff\0\0'
+        pixels = white + black + white + red + white + black
+        observed = render.drawing_observation((3, 2, pixels))
+        self.assertEqual(observed['nonwhite_pixels'], 3)
+        self.assertEqual(observed['nonwhite_bounds'], [0, 0, 3, 2])
+        self.assertEqual(observed['rgb_sha256'], render.sha(pixels))
+        self.assertFalse(pixel_pass(self.manifest['cases'][0], observed))
+        blank = render.drawing_observation((3, 2, white * 6))
+        self.assertEqual(blank['nonwhite_pixels'], 0)
+        self.assertIsNone(blank['nonwhite_bounds'])
+
+    def test_raw_drawing_never_infers_a_refusal_from_an_arbitrary_error(self):
+        row = render.fixtures(render.sound_observations(self.manifest), observations=True)[
+            'annotations.display.sound-speaker-missing-ap']
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            def run(stdout=b'', stderr=b'', pixels=None):
+                def stub(command, **kwargs):
+                    kwargs['stdout'].write(stdout)
+                    kwargs['stderr'].write(stderr)
+                    if pixels is not None:
+                        (directory / 'page.ppm').write_bytes(pixels)
+                    return subprocess.CompletedProcess(command, 0 if pixels is not None else 1)
+                return stub
+            with patch.object(render.subprocess, 'run', side_effect=run(pixels=b'P6\n1 1\n255\n\xff\xff\xff')):
+                observed = render.invoke(['stub'], row, directory, observations=True, engine='pdfium')
+                self.assertEqual(observed['outcome'], 'observed')
+                self.assertNotIn('pixel_comparison', observed)
+                drawing = observed['observed']
+                assert isinstance(drawing, dict)
+                self.assertEqual(drawing['nonwhite_pixels'], 0)
+            for engine, stdout, stderr, outcome in [
+                ('pagura', b'', b'pagura: unsupported [annotation.appearance]: missing', 'unsupported'),
+                ('pdfium', b'{"schema":1,"status":"unsupported","feature":"sound.icon"}', b'', 'unsupported'),
+                ('pdfium', b'', b'unsupported sound', 'renderer-error'),
+                ('pdfium', b'{"schema":true,"status":"unsupported","feature":"sound.icon"}', b'', 'renderer-error'),
+                ('pagura', b'', b'could not open the document', 'renderer-error'),
+            ]:
+                with self.subTest(engine=engine, outcome=outcome), patch.object(
+                        render.subprocess, 'run', side_effect=run(stdout, stderr)):
+                    result = render.invoke(['stub'], row, directory, observations=True, engine=engine)
+                    self.assertEqual(result['outcome'], outcome)
+                    self.assertNotIn('pixel_comparison', result)
+                    self.assertNotIn('observed', result)
+
 
 if __name__ == '__main__':
     unittest.main()

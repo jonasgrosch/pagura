@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -52,7 +53,23 @@ def subject_identity(command):
     return result
 
 
-def fixtures(data):
+def sound_observations(data):
+    """A diagnostic set, separate from the oracle manifest and its pass totals."""
+    controls = {'control.blank', 'annotations.display.ordinary-content',
+                'annotations.display.sound-speaker-stored', 'annotations.display.sound-mic-stored'}
+    cases = [case for case in data['cases'] if case['id'] in controls]
+    require(len(cases) == len(controls), 'missing paired Sound drawing controls')
+    cases += [{'id': 'annotations.display.sound-' + name + '-missing-ap',
+               'capability': 'annotations.appearances', 'operation': 'render',
+               'fixture': 'annotation_display/sound-' + name + '-missing-ap',
+               'oracle': None, 'expected': None} for name in ('default', 'speaker', 'mic')]
+    return {'schema': 1, 'cases': cases,
+            'scope': 'Raw static Sound drawing observations at 72 DPI with blank, ordinary-content and stored-AP controls. '
+                     'Reader-chosen artwork has no universal pixel oracle. No pass/fail or capability promotion; '
+                     'canvas-only configurations do not establish full-viewer support. No playback is requested.'}
+
+
+def fixtures(data, *, observations=False):
     """Resolve only named checked-in fixture cases, without invoking a generator."""
     rows = {}
     for area in sorted({row['fixture'].split('/')[0] for row in data['cases']}):
@@ -61,17 +78,25 @@ def fixtures(data):
     result = {}
     for case in data['cases']:
         row = rows.get(case['fixture'])
-        if row is None or row['kind'] != 'pdf' or row['expected'] != 'render':
+        if row is None or row['kind'] != 'pdf' or (row['expected'] != 'render' and not observations):
             raise ValueError('fixture has no independent pixel oracle')
+        if observations:
+            row = {**row, 'dpi': row.get('dpi', 72)}
         require(type(row['dpi']) is int and row['dpi'] in {72, 144} and row.get('page', 0) == 0,
                 'render scope requires page zero at declared 72 or 144 DPI')
         for field, digest in [('path', 'sha256'), ('oracle', 'oracle_sha256')]:
+            if observations and field == 'oracle' and field not in row:
+                continue
             path = local_file(ROOT, row[field])
             require(path.is_relative_to(ROOT / 'corpus/generated') and path.stat().st_size <= 64 * 1024 * 1024, 'invalid render fixture path or size')
             require(sha(path.read_bytes()) == row[digest], 'render fixture hash changed')
-        width, height, pixels = normalize(local_file(ROOT, row['oracle']).read_bytes())
-        expected = {'width': width, 'height': height, 'rgb_sha256': sha(pixels), 'tolerance': row.get('tolerance', 0)}
-        require(case['expected'] == expected, 'render oracle or declared tolerance changed')
+        if case['oracle'] == 'rgb8':
+            width, height, pixels = normalize(local_file(ROOT, row['oracle']).read_bytes())
+            expected = {'width': width, 'height': height, 'rgb_sha256': sha(pixels), 'tolerance': row.get('tolerance', 0)}
+            require(case['expected'] == expected, 'render oracle or declared tolerance changed')
+        else:
+            require(observations and case['oracle'] is None and case['expected'] is None,
+                    'non-oracle drawing must stay an explicit raw observation')
         result[case['id']] = row
     return result
 
@@ -98,7 +123,41 @@ def validate_manifest(data, inventory):
     return fixtures(data)
 
 
-def invoke(command, row, directory):
+def drawing_observation(actual):
+    """Raw y-down, half-open nonwhite bounds; never an artwork correctness score."""
+    width, height, pixels = actual
+    count, x0, y0, x1, y1 = 0, width, height, 0, 0
+    for offset in range(0, len(pixels), 3):
+        if pixels[offset:offset + 3] != b'\xff\xff\xff':
+            y, x = divmod(offset // 3, width)
+            count += 1
+            x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x + 1), max(y1, y + 1)
+    return {'width': width, 'height': height, 'rgb_sha256': sha(pixels),
+            'nonwhite_pixels': count, 'nonwhite_bounds': [x0, y0, x1, y1] if count else None}
+
+
+def explicit_refusal(directory, engine):
+    """Only a named backend refusal; arbitrary process errors stay unclassified."""
+    feature = None
+    if engine == 'pagura':
+        # The public CLI renders ErrorKind::Unsupported as this fixed prefix.
+        match = re.match(rb'pagura: unsupported \[([A-Za-z0-9_.-]{1,96})\]: ',
+                         (directory / 'stderr').read_bytes())
+        if match:
+            feature = match[1].decode('ascii')
+    else:
+        try:
+            value = json.loads((directory / 'stdout').read_bytes())
+            if (isinstance(value, dict) and type(value.get('schema')) is int and value['schema'] == 1
+                    and value.get('status') == 'unsupported' and isinstance(value.get('feature'), str)
+                    and re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', value['feature'])):
+                feature = value['feature']
+        except (ValueError, UnicodeDecodeError):
+            pass
+    return feature
+
+
+def invoke(command, row, directory, *, observations=False, engine=None):
     """No successful exit or stale output can stand in for independent pixels."""
     output = directory / 'page.ppm'
     output.unlink(missing_ok=True)
@@ -114,12 +173,19 @@ def invoke(command, row, directory):
         return {'outcome': 'adapter-error', 'reason': 'render diagnostics exceed 64 KiB'}
     diagnostic = {f'{path.name}_sha256': sha(path.read_bytes()) for path in logs}
     if result.returncode:
+        if observations:
+            feature = explicit_refusal(directory, engine)
+            return ({'outcome': 'unsupported', 'feature': feature, **diagnostic} if feature else
+                    {'outcome': 'renderer-error', 'reason': 'unclassified renderer failure; no feature verdict',
+                     'exit_code': result.returncode, **diagnostic})
         return {'outcome': 'adapter-error', 'reason': 'unclassified renderer failure; requires investigation',
                 'exit_code': result.returncode, **diagnostic}
     if not output.is_file() or output.stat().st_size > 64 * 1024 * 1024:
         return {'outcome': 'adapter-error', 'reason': 'missing or oversized render output', **diagnostic}
     try:
         actual = normalize(output.read_bytes())
+        if observations:
+            return {'outcome': 'observed', 'observed': drawing_observation(actual), **diagnostic}
         expected = normalize(local_file(ROOT, row['oracle']).read_bytes())
         verdict = verify_pixels(actual, expected, row.get('tolerance', 0))
     except ValueError:
@@ -131,11 +197,13 @@ def invoke(command, row, directory):
             'pixel_comparison': verdict, **diagnostic}
 
 
-def run(data, inventory, output, selected, images=None):
+def run(data, inventory, output, selected, images=None, *, observations=False):
     require(selected and len(set(selected)) == len(selected) and set(selected) <= set(inventory['engines']), 'invalid selected engines')
     require(not any(os.environ.get(key) for key in ('PAGURA_HAYRO', 'PAGURA_QUARTZ', 'PAGURA_POPPLER')),
             'custom render executables require matching service/version identities')
-    rows = validate_manifest(data, inventory)
+    rows = fixtures(data, observations=True) if observations else validate_manifest(data, inventory)
+    if observations:
+        require(all(row['dpi'] == 72 for row in rows.values()), 'Sound observation scope requires 72 DPI controls')
     commands, services = engines(), service_commands()
     identities = {}
     for name in inventory['engines']:
@@ -173,15 +241,19 @@ def run(data, inventory, output, selected, images=None):
     report = {'schema': 1, 'scope': data['scope'], 'generated_at': datetime.now(timezone.utc).isoformat(),
               'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
               'workflow_run': os.environ.get('GITHUB_RUN_ID'), 'selected_engines': list(selected),
-              'command': ['python', 'tools/capability_render.py', 'run', '--engines', ','.join(selected), '--output', '$OUTPUT'],
+              'command': ['python', 'tools/capability_render.py', 'observe' if observations else 'run',
+                          '--engines', ','.join(selected), '--output', '$OUTPUT'],
               'environment': {'system': platform.system(), 'release': platform.release(), 'machine': platform.machine(), 'python': platform.python_version()},
               'source_sha256': {path.as_posix(): sha((ROOT / path).read_bytes()) for path in sorted(set(source_files))},
               'engines': identities, 'cases': data['cases'], 'fixtures': {}, 'results': []}
+    if observations:
+        report['kind'] = 'raw-render-observations'
     if images is not None:
         report['command'].extend(['--images', '$IMAGES'])
     for case in data['cases']:
         row = rows[case['id']]
-        report['fixtures'][case['fixture']] = {field: row[field] for field in ('path', 'sha256', 'oracle', 'oracle_sha256', 'dpi')}
+        report['fixtures'][case['fixture']] = {field: row[field] for field in ('path', 'sha256', 'oracle', 'oracle_sha256', 'dpi')
+                                               if field in row}
     with tempfile.TemporaryDirectory(prefix='pagura-render-probes-') as temporary:
         directory = Path(temporary)
         for name in inventory['engines']:
@@ -193,8 +265,9 @@ def run(data, inventory, output, selected, images=None):
                     result = {'outcome': 'engine-unavailable', 'reason': identity['reason']}
                 else:
                     row = rows[case['id']]
-                    result = invoke(command_for(name, commands[name], row, directory / 'page.ppm'), row, directory)
-                    if images is not None and result['outcome'] in {'pass', 'incorrect'}:
+                    result = invoke(command_for(name, commands[name], row, directory / 'page.ppm'), row, directory,
+                                    observations=observations, engine=name)
+                    if images is not None and result['outcome'] in {'pass', 'incorrect', 'observed'}:
                         # Only the manifest's project-owned synthetic fixtures
                         # reach here. Keep visual evidence outside Git; names
                         # use the fixed engine and an ordinal, never PDF text.
@@ -202,12 +275,16 @@ def run(data, inventory, output, selected, images=None):
                         folder.mkdir(parents=True, exist_ok=True)
                         width, height, pixels = normalize((directory / 'page.ppm').read_bytes())
                         (folder / 'actual.ppm').write_bytes(f'P6\n{width} {height}\n255\n'.encode() + pixels)
-                        (folder / 'oracle.ppm').write_bytes(local_file(ROOT, row['oracle']).read_bytes())
+                        if 'oracle' in row:
+                            (folder / 'oracle.ppm').write_bytes(local_file(ROOT, row['oracle']).read_bytes())
                         result['image_directory'] = f'{name}/{index}'
                 report['results'].append({'engine': name, 'case': case['id'], **result})
-    validate_report(report, data, inventory)
+    if not observations:
+        validate_report(report, data, inventory)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    if observations:
+        return all(row['outcome'] in {'observed', 'unsupported'} for row in report['results'] if row['engine'] in selected)
     cases = {row['id']: row for row in data['cases']}
     return all(observation_complete(row['engine'], cases[row['case']], row)
                and (row['engine'] != 'pagura' or row['outcome'] == 'pass')
@@ -216,7 +293,7 @@ def run(data, inventory, output, selected, images=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['check', 'run', 'combine'])
+    parser.add_argument('command', choices=['check', 'run', 'combine', 'observe'])
     parser.add_argument('reports', type=Path, nargs='*')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--engines', default='pdfium,mupdf,pdfjs,poppler,hayro,pagura')
@@ -228,10 +305,16 @@ def main():
         print(f"G01 render manifest valid: {len(data['cases'])} independent pixel oracles; no engines invoked.")
         return
     require(args.output is not None, '--output is required')
-    if args.command == 'run':
+    if args.command in {'run', 'observe'}:
         require(not args.reports, 'run does not accept report inputs')
-        if not run(data, inventory, args.output, tuple(args.engines.split(',')), args.images):
-            parser.exit(1, 'G01 render observations incomplete or Pagura missed its oracle; inspect saved outcomes.\n')
+        observations = args.command == 'observe'
+        if observations:
+            data = sound_observations(data)
+        if not run(data, inventory, args.output, tuple(args.engines.split(',')), args.images, observations=observations):
+            parser.exit(1, 'Render observations incomplete or an oracle failed; inspect the saved outcomes.\n')
+        if observations:
+            print('Raw Sound observations recorded separately; no artwork oracle, pass total or capability verdict.')
+            return
     else:
         report = combine([read_json(path) for path in args.reports], data, inventory)
         args.output.parent.mkdir(parents=True, exist_ok=True)
