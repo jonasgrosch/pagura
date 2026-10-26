@@ -23,7 +23,7 @@ pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
 pub(crate) const RENDER_BYTES: &str = "render memory budget exceeded";
 
 /// One mark's geometry in device space, restricted to an [`Area`] and binned
-/// by band: a fill, a stroke outline (as pieces that meet without
+/// by band: a fill, a stroke outline (of pieces that meet without
 /// overlapping where that is exact), or a glyph placement.
 #[derive(Debug)]
 pub struct Shape {
@@ -102,6 +102,11 @@ impl Resolved {
 
     fn len(&self) -> usize {
         self.lines.len()
+    }
+
+    /// The sides of every resolved row.
+    pub(crate) fn sides(&self) -> &[Line] {
+        &self.lines
     }
 
     fn retained_bytes(&self) -> usize {
@@ -269,6 +274,20 @@ impl Shape {
         adjustment: Adjustment,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
+        let (polygon, tiling, mut bytes) =
+            Self::stroke_pieces(path, stroke, (pen, transform), adjustment, options)?;
+        Self::stroke_finish(polygon, tiling, options, &mut bytes)
+    }
+
+    /// The device polygon of a stroke's pieces, how far they tile, and the
+    /// byte meter their preparation goes on with.
+    pub(crate) fn stroke_pieces(
+        path: &Path,
+        stroke: &Stroke,
+        (pen, transform): (Transform, Transform),
+        adjustment: Adjustment,
+        options: &Prep<'_>,
+    ) -> Result<(Polygon, Tiling, Meter)> {
         let limits = options.limits;
         if path.segments().len() > limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
@@ -280,7 +299,7 @@ impl Shape {
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
-        let (mut polygon, tiling) = match adjustment {
+        let (polygon, tiling) = match adjustment {
             Adjustment::Adjusted => crate::stroke::adjusted_polygon_pieces(
                 &path,
                 device,
@@ -301,24 +320,25 @@ impl Shape {
         let released = path.retained_bytes();
         drop(path);
         bytes.refund(released);
+        Ok((polygon, tiling, bytes))
+    }
+
+    /// The shape of a stroke's pieces, with the rows their windings leave in
+    /// doubt resolved.
+    pub(crate) fn stroke_finish(
+        polygon: Polygon,
+        tiling: Tiling,
+        options: &Prep<'_>,
+        bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
-            Tiling::Unproven => {
-                polygon.cancel_shared(&mut bytes)?;
-                // Even without shared edges, only the slabs where pieces
-                // overlap need the union resolver.
-                Winding::Check(0.0)
-            }
+            // Only the slabs where the outline may overlap itself need the
+            // union resolver.
+            Tiling::Unproven => Winding::Check(0.0),
             Tiling::Components => Winding::Unknown,
         };
-        Self::polygon(
-            polygon,
-            FillRule::NonZero,
-            winding,
-            options,
-            &mut bytes,
-            None,
-        )
+        Self::polygon(polygon, FillRule::NonZero, winding, options, bytes, None)
     }
 
     /// One glyph placement outside any clip: `edges` translated to the
@@ -624,25 +644,24 @@ impl Shape {
         let words = columns / 64 + 2;
         // Each window of a band visits every item once, at most as often as
         // the placement has rows.
-        let point = edges.point().map(|point| point + origin);
+        let points = edges.points();
         let items = relative
             .lines
             .len()
             .saturating_add(relative.curves.len())
-            .saturating_add(usize::from(point.is_some()).saturating_mul(2));
+            .saturating_add(points.len().saturating_mul(2));
         let rows = bounds.height() as usize;
         // Each point side visits one row. Use the same primitive/emission
         // bound as the relative body's edges; item visits include both
         // sides in every window, even when the point is outside it.
-        let point_work = point.map_or(0, |point| {
-            super::glyph::point_sides(point)
-                .into_iter()
-                .filter_map(|line| {
-                    line_rows(&line, bounds, options.area.region.x1)
-                        .map(|rows| line_work(line, rows, width).saturating_mul(4))
-                })
-                .fold(0_usize, usize::saturating_add)
-        });
+        let point_work = points
+            .iter()
+            .flat_map(|&point| super::glyph::point_sides(point + origin))
+            .filter_map(|line| {
+                line_rows(&line, bounds, options.area.region.x1)
+                    .map(|rows| line_work(line, rows, width).saturating_mul(4))
+            })
+            .fold(0_usize, usize::saturating_add);
         let work = relative
             .work
             .saturating_add(point_work)
@@ -727,7 +746,7 @@ impl Shape {
         }))
     }
 
-    fn edges(
+    pub(crate) fn edges(
         (lines, curves): (Vec<Line>, Vec<Mono>),
         rule: FillRule,
         (bounds, scan, resolved): (DeviceRect, (usize, usize), Resolved),
@@ -740,12 +759,7 @@ impl Shape {
         let area = options.area;
         let region = area.region;
         let line_extent = |l: &Line| line_rows(l, bounds, region.x1);
-        let curve_extent = |m: &Mono| curve_rows(m, bounds, region.x1);
         let count = lines.len() + curves.len();
-        let item_rows = |i: usize| match lines.get(i) {
-            Some(l) => line_extent(l),
-            None => curves.get(i - lines.len()).and_then(curve_extent),
-        };
         let columns = scan.1.saturating_sub(scan.0);
         let shared = shared.and_then(|(edges, origin)| {
             let super::glyph::Kind::Polygon {
@@ -761,34 +775,31 @@ impl Shape {
         // band, at most once per row; a taller one lists its items per
         // strip, each visited at most once per row of the strip.
         let height = bounds.height() as usize;
-        let (list, mut work) = if strips((bounds.y0, bounds.y1 - 1)) == 1 {
-            (None, count.saturating_mul(height))
+        let (list, mut work, cells) = if strips((bounds.y0, bounds.y1 - 1)) == 1 {
+            let cells = cell_work(&lines, &curves, &resolved, bounds, region.x1);
+            (None, count.saturating_mul(height), cells)
+        } else if let Some((_, _, view, keys)) = shared {
+            let list = StripList::new(
+                (bounds.y0, bounds.y1),
+                keys,
+                view.indexed().filter_map(|(key, line)| {
+                    (!line.is_horizontal())
+                        .then(|| line_extent(&line))
+                        .flatten()
+                        .map(|rows| (key, rows))
+                }),
+                bytes,
+            )?;
+            let visits = list_visits(&list);
+            let cells = cell_work(&lines, &curves, &resolved, bounds, region.x1);
+            (Some(list), visits, cells)
         } else {
-            let list = match shared {
-                Some((_, _, view, keys)) => StripList::new(
-                    (bounds.y0, bounds.y1),
-                    keys,
-                    view.indexed().filter_map(|(key, line)| {
-                        (!line.is_horizontal())
-                            .then(|| line_extent(&line))
-                            .flatten()
-                            .map(|rows| (key, rows))
-                    }),
-                    bytes,
-                )?,
-                None => StripList::new(
-                    (bounds.y0, bounds.y1),
-                    count,
-                    (0..count).filter_map(|i| item_rows(i).map(|rows| (i, rows))),
-                    bytes,
-                )?,
-            };
-            let visits = list.len().saturating_mul(STRIP as usize);
-            (Some(list), visits)
+            let (list, cells) = listed((&lines, &curves), &resolved, bounds, region.x1, bytes)?;
+            let visits = list_visits(&list);
+            (Some(list), visits, cells)
         };
         let rows = bounds.height() as usize;
         let words = columns / 64 + 2;
-        let cells = cell_work(&lines, &curves, &resolved, bounds, region.x1);
         let overhead = rows
             .saturating_mul(words + columns + 4)
             .saturating_add(resolved.len())
@@ -890,6 +901,48 @@ fn curve_rows(curve: &Mono, bounds: DeviceRect, right: u32) -> Option<(u32, u32)
     }
 }
 
+/// Each window of a band visits a listed item at most once per row of its
+/// strip.
+fn list_visits(list: &StripList) -> usize {
+    list.len().saturating_mul(STRIP as usize)
+}
+
+/// The strip list of owned items and their cell bound, each item's rows
+/// found once for both of the list's passes and the bound.
+fn listed(
+    (lines, curves): (&[Line], &[Mono]),
+    resolved: &Resolved,
+    bounds: DeviceRect,
+    right: u32,
+    bytes: &mut Meter,
+) -> Result<(StripList, usize)> {
+    let count = lines.len() + curves.len();
+    let mut extents = Vec::new();
+    bytes.reserve(&mut extents, count)?;
+    extents.extend(lines.iter().map(|l| line_rows(l, bounds, right)));
+    extents.extend(curves.iter().map(|m| curve_rows(m, bounds, right)));
+    let list = StripList::new(
+        (bounds.y0, bounds.y1),
+        count,
+        extents
+            .iter()
+            .enumerate()
+            .filter_map(|(i, rows)| rows.map(|rows| (i, rows))),
+        bytes,
+    );
+    let mut cells = resolved_cells(resolved, bounds, right);
+    let items = lines.iter().copied().chain(curves.iter().map(chord));
+    for (line, rows) in items.zip(&extents) {
+        if let Some(r) = *rows {
+            cells = cells.saturating_add(line_work(line, r, right as usize));
+        }
+    }
+    let released = extents.capacity() * size_of::<Option<(u32, u32)>>();
+    drop(extents);
+    bytes.refund(released);
+    Ok((list?, cells))
+}
+
 /// The same cell bound for owned and shared geometry, including every
 /// absolute side that replaces a resolved row.
 fn cell_work(
@@ -907,18 +960,28 @@ fn cell_work(
     }
     for curve in curves {
         if let Some(r) = curve_rows(curve, bounds, right) {
-            let chord = Line {
-                a: crate::Point::new(curve.x0, curve.y0),
-                b: crate::Point::new(curve.x1, curve.y1),
-            };
-            cells = cells.saturating_add(line_work(chord, r, right as usize));
+            cells = cells.saturating_add(line_work(chord(curve), r, right as usize));
         }
     }
+    cells.saturating_add(resolved_cells(resolved, bounds, right))
+}
+
+/// The cell bound of the sides that replace resolved rows.
+fn resolved_cells(resolved: &Resolved, bounds: DeviceRect, right: u32) -> usize {
+    let mut cells = 0_usize;
     for line in &resolved.lines {
         let r = rows_of(line, bounds).unwrap_or((bounds.y0, bounds.y0));
         cells = cells.saturating_add(line_work(*line, r, right as usize));
     }
     cells
+}
+
+/// A monotone quadratic's chord, which bounds the cells it touches.
+fn chord(curve: &Mono) -> Line {
+    Line {
+        a: crate::Point::new(curve.x0, curve.y0),
+        b: crate::Point::new(curve.x1, curve.y1),
+    }
 }
 
 /// Borrowed polygons visit raw vertices even when a side is horizontal.

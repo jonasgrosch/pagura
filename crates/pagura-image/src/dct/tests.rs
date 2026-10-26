@@ -154,9 +154,10 @@ fn missing_quantizer_reports_the_entropy_data_position() {
 #[test]
 fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     let data = fixture("image", "jpeg-12bit-sequential.in");
-    // Six 8x8 blocks: i32 coefficients, u16 planes and expanded samples,
-    // plus the final bytes coexist through conversion.
-    let bytes = 24 * 16 * (4 + 2 + 2 + 1);
+    // Six 8x8 blocks: the u16 planes the scan reconstructs, and the
+    // expanded u16 samples plus the final bytes through conversion, beside
+    // the conversion's rows.
+    let bytes = 24 * 16 * (2 + 2 + 1) + 24 * super::transform::ROW_BYTES;
     let limits = Limits {
         decoded_bytes: bytes,
         ..Limits::default()
@@ -172,4 +173,42 @@ fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     )
     .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn sequential_frames_budget_their_sample_planes_not_coefficients() {
+    // 1000×1000 without subsampling: 125×125 blocks of 64 samples per
+    // component beside the expanded samples and the conversion's rows.
+    let header = |precision: u8| {
+        let mut data = vec![precision, 0x03, 0xe8, 0x03, 0xe8, 3];
+        for id in 1..=3 {
+            data.extend([id, 0x11, 0]);
+        }
+        data
+    };
+    let pixels = 1000 * 1000 * 3;
+    let rows = 1000 * super::transform::ROW_BYTES;
+    let planes = 3 * 125 * 125 * 64;
+    for (precision, process, bytes) in [
+        (8, 0xc0, pixels + planes + rows),
+        (8, 0xc1, pixels + planes + rows),
+        (12, 0xc1, 3 * pixels + 2 * planes + rows),
+        (8, 0xc2, pixels + 5 * planes + rows),
+        (12, 0xc2, 3 * pixels + 6 * planes + rows),
+    ] {
+        let limits = |decoded_bytes| Limits {
+            decoded_bytes,
+            ..Limits::default()
+        };
+        let data = header(precision);
+        assert!(
+            super::Frame::header(&data, process, &limits(bytes)).is_ok(),
+            "{precision}-bit {process:#x}"
+        );
+        let Err(error) = super::Frame::header(&data, process, &limits(bytes - 1)) else {
+            panic!("{precision}-bit {process:#x} admitted below its planes and samples");
+        };
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(error.message, "JPEG coefficient and sample budget exceeded");
+    }
 }

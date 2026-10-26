@@ -11,7 +11,8 @@
 //! One-input 8-bit linear grids, the common shading case, take a shorter path
 //! with the same sums in the same order.
 
-use super::{SampledFunction, interpolate, make_finite};
+use super::{SampledFunction, interpolate, interpolate_enclosed, make_finite};
+use crate::affine::{Affine, Undecided};
 use crate::space::MAX_COMPONENTS;
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
@@ -188,6 +189,50 @@ impl Sampled {
                 self.apply_decode(output);
             }
         }
+    }
+
+    /// Encloses what [`Self::evaluate`] computes for one input over every
+    /// value of `x`, already clipped to the domain (see [`crate::affine`]):
+    /// linear interpolation in a grid of one input. Where the values lie in
+    /// two cells near their boundary, both cells' interpolations are joined.
+    pub(super) fn enclose(&self, x: Affine, output: &mut [Affine]) -> Result<(), Undecided> {
+        let &[size] = &*self.size else {
+            return Err(Undecided::Unsupported);
+        };
+        let position = match self.path {
+            Path::UnitBytes => x.scale(last(size)),
+            Path::Bytes | Path::Tensor if !self.cubic || size < 4 => {
+                interpolate_enclosed(x, self.dimension(0).domain, self.dimension(0).encode)
+                    .clamp(0.0, last(size))?
+            }
+            Path::Bytes | Path::Tensor => return Err(Undecided::Unsupported),
+        };
+        let n = self.decode.len();
+        let [first, end] = position.cells(size - 1)?;
+        for low in first..=end {
+            let high = (low + 1).min(size - 1);
+            // `x − low`, exact on the grid.
+            let t = position.sub(Affine::point(low as f64));
+            let one_minus = Affine::point(1.0).sub(t);
+            for (component, out) in output.iter_mut().enumerate().take(n) {
+                let [a, b] = [low, high].map(|i| self.sample(i * n + component));
+                let value = if self.path == Path::Tensor {
+                    // `0 + (1 − t)·a + t·b`, the corners summed in order; one
+                    // sample, or `t` zero, gives `0 + 1·a`, which is the same.
+                    Affine::point(0.0).add(one_minus.scale(a)).add(t.scale(b))
+                } else {
+                    // `(1 − t)·a + t·b`; where `t` is zero, `a`, which is the same.
+                    one_minus.scale(a).add(t.scale(b))
+                };
+                *out = if low == first { value } else { out.join(value) };
+            }
+        }
+        if self.path != Path::UnitBytes {
+            for (value, &range) in output.iter_mut().zip(&self.decode) {
+                *value = interpolate_enclosed(*value, [0.0, 1.0], range);
+            }
+        }
+        Ok(())
     }
 
     /// The domain, `Encode` and size of input dimension `i`.

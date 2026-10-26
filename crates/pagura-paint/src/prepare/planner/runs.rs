@@ -312,6 +312,7 @@ mod tests {
         Mark {
             cover: Cover::default(),
             paint: 0,
+            scratch: 0,
             compositing: Compositing {
                 alpha: 1.0,
                 blend: BlendMode::Normal,

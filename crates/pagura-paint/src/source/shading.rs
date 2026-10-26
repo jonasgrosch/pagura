@@ -31,7 +31,7 @@ use pagura_color::{MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Rect, Result};
 use pagura_interpret::features;
 use pagura_interpret::{Shading, ShadingFunction, ShadingKind};
-use pagura_raster::{Point, Transform};
+use pagura_raster::{DeviceRect, Point, Transform};
 
 /// The function input of one sample: `t`, `(x, y)` or mesh values.
 type Input = [f64; MAX_COMPONENTS];
@@ -128,7 +128,7 @@ impl ShadingSource {
             Use::Operator,
             (&mut bytes, functions),
         )?
-        .reserve(pixels, functions)
+        .reserve((pixels, context.region), (&mut bytes, functions))
     }
 
     /// Prepares `shading` as a shading pattern's paint (8.7.4.4): samples
@@ -152,7 +152,7 @@ impl ShadingSource {
             Use::Pattern,
             (&mut bytes, functions),
         )?
-        .reserve(pixels, functions)
+        .reserve((pixels, context.region), (&mut bytes, functions))
     }
 
     fn new(
@@ -220,16 +220,42 @@ impl ShadingSource {
         };
         source.constant = source.constant_colors(bytes, functions)?;
         source.covers = source.always_covers();
-        source.aligned = aligned::Aligned::new(&source, bytes, functions)?.map(Box::new);
+        let columns = (context.region.x0, context.region.x1);
+        source.aligned = aligned::Aligned::new(&source, columns, bytes, functions)?.map(Box::new);
         Ok(source)
     }
 
-    /// Reserves execution work; preparation is charged before evaluation.
-    fn reserve(self, pixels: usize, functions: &mut Meter) -> Result<Self> {
-        let samples = pixels
+    /// Reserves execution work for the pixels of `region`, at most
+    /// `pixels`, that evaluation fills; preparation is charged before
+    /// evaluation. Aligned sources evaluate only what their columns'
+    /// table cannot serve. Batched colours are also certified ahead.
+    fn reserve(
+        mut self,
+        (pixels, region): (usize, DeviceRect),
+        (bytes, functions): (&mut Meter, &mut Meter),
+    ) -> Result<Self> {
+        let evaluated = match (&*self.geometry, &self.aligned) {
+            (Geometry::Axial(axial), Some(aligned)) => {
+                aligned.evaluated(&self, axial, region, pixels)
+            }
+            _ => pixels,
+        };
+        let samples = evaluated
             .checked_mul(self.samples())
             .ok_or(Error::limit("shading sample count overflow"))?;
         functions.charge_product(samples, self.colors.cost())?;
+        let inputs = match &*self.geometry {
+            Geometry::Axial(g) if self.aligned.is_none() => Some(g.inputs()),
+            Geometry::Radial(g) => Some(g.inputs()),
+            _ => None,
+        };
+        if let Some(inputs) = inputs
+            && self.constant.is_none()
+            && self.single_sample()
+            && self.colors.batched()
+        {
+            self.colors.certify(inputs, samples, (bytes, functions));
+        }
         Ok(self)
     }
 
@@ -258,15 +284,33 @@ impl ShadingSource {
             .and_then(|c| c.get(all * self.channels..(all + 1) * self.channels))
     }
 
-    /// Geometry work units one pixel costs at most, which the executor
-    /// reserves as render work: mesh primitive tests (one per triangle, at
-    /// most `MAX_WORK` per patch) for each sample; zero for analytic
-    /// shadings.
-    pub(crate) fn geometry_work(&self) -> usize {
-        match &*self.geometry {
-            Geometry::Mesh(mesh) => mesh.work().saturating_mul(self.samples()),
-            _ => 0,
+    /// Geometry work units filling the pixels of `region` costs at most,
+    /// which preparation reserves as render work: for each sample, the mesh
+    /// primitives its cell lists (one unit per triangle, at most `MAX_WORK`
+    /// per patch), at the sample's point as execution places it; zero for
+    /// analytic shadings. Counting stops once it passes `limit`.
+    pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
+        let Geometry::Mesh(mesh) = &*self.geometry else {
+            return 0;
+        };
+        let divisor = f64::from(self.rate);
+        let mut work = 0_usize;
+        for y in region.y0..region.y1 {
+            for x in region.x0..region.x1 {
+                for (sx, sy) in (0..self.rate).flat_map(|sy| (0..self.rate).map(move |sx| (sx, sy)))
+                {
+                    let point = Point::new(
+                        f64::from(x) + (f64::from(sx) + 0.5) / divisor,
+                        f64::from(y) + (f64::from(sy) + 0.5) / divisor,
+                    ) * self.inverse;
+                    work = work.saturating_add(mesh.work_at(point));
+                }
+                if work > limit {
+                    return work;
+                }
+            }
         }
+        work
     }
 
     /// Bytes this source holds besides its function and colour data: mesh

@@ -5,8 +5,9 @@
 use super::{Colour, is_pattern};
 use crate::plan::area;
 use crate::prepare::Budget;
-use crate::prepare::planner::{Planner, Scope, SolidKey};
-use crate::source::{ImageBudgets, PaintContext, Source};
+use crate::prepare::index;
+use crate::prepare::planner::{ImageKey, Planner, Scope, SolidKey};
+use crate::source::{ImageBudgets, PaintContext, ScratchLayout, Source};
 use pagura_color::Painted;
 use pagura_core::{Error, Result};
 use pagura_interpret::{Composite, Paint, PaintId};
@@ -33,6 +34,7 @@ impl Planner<'_> {
             limits: self.limits,
             region: bounds,
         };
+        let mut image = None;
         let prepared = match colour {
             Colour::Paint(id) => {
                 if let Some((paint, _)) = scope.paint.as_ref() {
@@ -61,7 +63,7 @@ impl Planner<'_> {
                     pixels,
                     (&mut budget.functions, &budget.bytes),
                 )?;
-                let index = self.add_paint(prepared, pixels, budget)?;
+                let index = self.add_paint(prepared, bounds, None, budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     budget.bytes.reserve_map_capacity(self.solids(), 1)?;
                     self.solids().insert(key, index);
@@ -79,6 +81,12 @@ impl Planner<'_> {
                 )?
             }
             Colour::Image(node) => {
+                image = Some(ImageKey {
+                    image: Arc::as_ptr(&node.image).addr(),
+                    state: state_id,
+                    layout: scope.layout,
+                    colorants: target.colorants,
+                });
                 let stencil = match (&node.image.space, node.stencil) {
                     (Some(_), _) => None,
                     (None, stencil) => Some(self.stencil(scope, stencil, &context, budget)?),
@@ -104,7 +112,7 @@ impl Planner<'_> {
                 prepared?
             }
         };
-        self.add_paint(prepared, pixels, budget)
+        self.add_paint(prepared, bounds, image, budget)
     }
 
     /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
@@ -142,27 +150,85 @@ impl Planner<'_> {
     }
 
     /// Keeps a prepared paint, reserving its bytes and its geometry work
-    /// over `pixels` (mesh shadings), and the repairs preparing it made.
-    fn add_paint(&mut self, paint: Source, pixels: usize, budget: &mut Budget) -> Result<u32> {
+    /// over `region` (mesh shadings), the repairs preparing it made and its
+    /// execution storage, shared by the draws of `image`.
+    fn add_paint(
+        &mut self,
+        paint: Source,
+        region: pagura_raster::DeviceRect,
+        image: Option<ImageKey>,
+        budget: &mut Budget,
+    ) -> Result<u32> {
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
         let payload = paint.bytes();
         budget.bytes.charge(payload)?;
+        let layout = paint.scratch_layout();
         let retained = (|| {
-            budget.work.charge_product(pixels, paint.work_per_pixel())?;
+            budget
+                .work
+                .charge(paint.geometry_work(region, budget.work.remaining()))?;
             budget.bytes.reserve_capacity(&mut self.parts.paints, 1)?;
+            budget.bytes.reserve_capacity(&mut self.parts.slots.of, 1)?;
             budget
                 .bytes
-                .reserve_capacity(&mut self.repairs, paint.repairs().len())
+                .reserve_capacity(&mut self.repairs, paint.repairs().len())?;
+            self.slot(layout, image, budget)
         })();
-        if let Err(error) = retained {
-            drop(paint);
-            budget.bytes.refund(payload);
-            return Err(error);
-        }
+        let slot = match retained {
+            Ok(slot) => slot,
+            Err(error) => {
+                drop(paint);
+                budget.bytes.refund(payload);
+                return Err(error);
+            }
+        };
         self.repairs.extend_from_slice(paint.repairs());
         self.parts.paints.push(paint);
+        self.parts.slots.of.push(slot);
         Ok(index)
+    }
+
+    /// The storage of a paint with `layout`: the empty one without storage,
+    /// the storage of the latest draw of `image` where it has the same
+    /// layout, and a new one otherwise.
+    fn slot(
+        &mut self,
+        layout: Option<ScratchLayout>,
+        image: Option<ImageKey>,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        let slots = &mut self.parts.slots;
+        if layout.is_none()
+            && let Some(empty) = slots.empty
+        {
+            return Ok(empty);
+        }
+        if let Some(key) = image
+            && let Some(&slot) = self.images.get(&key)
+            && layout.is_some()
+            && slots.layouts.get(index(slot)) == Some(&layout)
+        {
+            return Ok(slot);
+        }
+        let slot = u32::try_from(slots.layouts.len())
+            .map_err(|_| Error::limit("paint storage count exceeds u32"))?;
+        budget.bytes.reserve_capacity(&mut slots.layouts, 1)?;
+        slots.layouts.push(layout);
+        match (layout, image) {
+            (None, _) => slots.empty = Some(slot),
+            (Some(_), Some(key)) => {
+                budget.bytes.reserve_map_capacity(&mut self.images, 1)?;
+                self.images.insert(key, slot);
+            }
+            (Some(_), None) => {}
+        }
+        Ok(slot)
+    }
+
+    /// The storage of paint `paint`.
+    pub(super) fn scratch_of(&self, paint: u32) -> u32 {
+        self.parts.slots.of.get(index(paint)).copied().unwrap_or(0)
     }
 
     /// A solid paint for an uncoloured pattern's cell content.
@@ -189,6 +255,6 @@ impl Planner<'_> {
             pixels,
             (&mut budget.functions, &budget.bytes),
         )?;
-        self.add_paint(prepared, pixels, budget)
+        self.add_paint(prepared, bounds, None, budget)
     }
 }

@@ -123,14 +123,19 @@ impl Mesh {
         })
     }
 
-    /// The most geometry work units one sample costs: one per primitive the
-    /// densest cell lists, times the most a primitive's test costs.
-    pub(super) fn work(&self) -> usize {
+    /// The most geometry work units a sample at `point` costs: one per
+    /// primitive its cell lists, times the most a primitive's test costs,
+    /// and one for an empty cell.
+    pub(super) fn work_at(&self, point: Point) -> usize {
         let per_primitive = match self.kind {
             Kind::Triangles => 1,
             Kind::Patches => patch::MAX_WORK,
         };
-        self.grid.occupancy.saturating_mul(per_primitive).max(1)
+        self.grid
+            .cell(point)
+            .len()
+            .saturating_mul(per_primitive)
+            .max(1)
     }
 
     /// Bytes the prepared mesh holds.
@@ -369,6 +374,35 @@ mod tests {
             ErrorKind::Limit
         );
         assert_eq!(tiny.used(), 0);
+    }
+
+    #[test]
+    fn a_sample_costs_the_primitives_of_its_own_cell() {
+        // One triangle across the mesh and many small ones in its corner:
+        // the corner's cells list them all, the others only the large one.
+        let mut input = vec![triangle()];
+        for i in 0..48 {
+            let offset = f64::from(i % 4) * 0.25;
+            input.push(triangle().map(|vertex| MeshVertex {
+                point: Point::new(vertex.point.x / 8.0 + offset, vertex.point.y / 8.0 + offset),
+                ..vertex
+            }));
+        }
+        let mut bytes = Meter::new(1 << 20, "mesh test");
+        let mesh = Mesh::triangles(&input, 3, &mut bytes).unwrap();
+        let points: Vec<Point> = (0..32)
+            .flat_map(|y| (0..32).map(move |x| Point::new(f64::from(x) / 4.0, f64::from(y) / 4.0)))
+            .collect();
+        for &point in &points {
+            assert_eq!(mesh.work_at(point), mesh.grid.cell(point).len().max(1));
+        }
+        assert!(
+            points
+                .iter()
+                .any(|&p| mesh.work_at(p) == mesh.grid.occupancy)
+        );
+        let total: usize = points.iter().map(|&p| mesh.work_at(p)).sum();
+        assert!(4 * total < points.len() * mesh.grid.occupancy, "{total}");
     }
 
     #[test]

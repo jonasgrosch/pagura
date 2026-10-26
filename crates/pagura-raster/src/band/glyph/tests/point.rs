@@ -88,7 +88,7 @@ fn point_cell_preserves_winding_and_floor_origin_across_bands() {
         ] {
             let path = outline(point, reversed);
             let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-            assert_eq!(edges.point(), Some(point));
+            assert_eq!(edges.points(), [point]);
             for band in [1, 3, 16, 32] {
                 let options = options(&limits, band);
                 let prep = Prep::new(&options, None);
