@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "a72d3667b1c31263980565a72d0341001ddb1d7d",
+  "audited_revision": "a485412eb60e82f0fbd3178c89b39b0fafceb7d6",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -23,12 +23,15 @@
     "corpus/manifests/metadata.json": "c81e1a2e7c12211130185219e5d2738ea4d98658d3038a8274df86a69e914554",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
-    "crates/pagura-appearance/src/annotation.rs": "b04ea5dd973044890c179306fec884f1e809eed626232419b3dcf3b38e63dc8c",
-    "crates/pagura-appearance/src/annotation/border.rs": "075bfbf3f3e9e22de86651e23391659578fa217dc2be9ecdd01e0920380eb43a",
+    "corpus/manifests/polygon_annotations.json": "a86fcc8b4afb9fd644300950a30f21c6e39f8cf53ddc581dcbd441e45bfd2ae0",
+    "crates/pagura-appearance/src/annotation.rs": "673632903d56800d23253b9144c29417200b6c5fc3e6db4a7cc0901ac6dbb07c",
+    "crates/pagura-appearance/src/annotation/border.rs": "2b9daefcc9eb65a346e5b2decb4fd9434d4a24c4306ea36eefe142002e9ebb33",
     "crates/pagura-appearance/src/annotation/icon.rs": "dc0187460c1eb25d93a3979788e6eae1a6b2fa70afdaa60d6991a19db2b695c6",
     "crates/pagura-appearance/src/annotation/ink.rs": "8fcaf1da933f7d4961146277f9dac43b793b58106eb1813ae5022178c3b942bd",
-    "crates/pagura-appearance/src/annotation/marks.rs": "cdd2197ce9c253e89a1afbe190a7c88674cffe9ab3ca6784f7571fbc89c29fc9",
-    "crates/pagura-appearance/src/annotation/tests.rs": "aa4af4a4e9a443c975cd05424e95fb53282b447dd0d3239c081c7827c99f471c",
+    "crates/pagura-appearance/src/annotation/marks.rs": "3a17daf84bc66e374dc8b57f4009c797a1c0c4a54c3f78498e80a8f61018c143",
+    "crates/pagura-appearance/src/annotation/path.rs": "80164c4abe4bfca155079d617b745abefa87c3f5f2fd18f208c1ad25e14e33b2",
+    "crates/pagura-appearance/src/annotation/polygon.rs": "f62f9dfc8b4b2fbbec402a79bd557043d467276b9f13dc57719ab737c12378b4",
+    "crates/pagura-appearance/src/annotation/tests.rs": "dccb1748cd9beacf9319f8ccd6c1ab6465779372766ec84cf090821999c80c59",
     "crates/pagura-appearance/src/annotation/widget.rs": "c966238e9e4a0d05794f25e15708b344280aeda8150af97f09d4e5cb763b22ea",
     "crates/pagura-appearance/src/features.rs": "2db34d4fb337df1ff5fd57f85623cd783131cae399e98b3c90aaaccbaa982ec1",
     "crates/pagura-appearance/src/form.rs": "d33b9c7d017538680ad7e85be1c0be4ab94e9c4ba33794e53e36abeb0a23041a",
@@ -202,7 +205,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "488dbce3e0cb7c8b7455b5d1bfeacc472bf47046e676818479c6c1d9cc956864",
+    "references/requirements/content.json": "f9625a6e96b73dda1d264fb7f834aa6144d3d0479d4c843f3d5a492f38d5f9e2",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -237,7 +240,8 @@
     "tools/fixturegen/ink_annotations.py": "89736001636d4f470631f4aa4fbaf12fa5ccfb1c9339f0593041f6977144824d",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
-    "tools/host_test.mjs": "a2e906db29b85d68dea3b86c37755a039f9bf98d09b4aea513768221153561d8",
+    "tools/fixturegen/polygon_annotations.py": "04a623609458f86b7e749028c1adb56a91bb44b6e799529213b68c2d174e405f",
+    "tools/host_test.mjs": "8ae4090bbe815ce8bdc9f05844399814983f7893439dc1c0222466e6e5fa4e84",
     "tools/page_attachments_test.mjs": "253795e1c4e96ba4c49ad44acc2217889dce1b8af5e09658ad06d36a55f61fcb",
     "tools/page_attachments_view_test.mjs": "fb0f571bad95cabcf7156a6ff2f1451010eaaa64b9ce7b62af5117c477894f21",
     "tools/png_export_test.mjs": "a1a414c0ea46615c1013d66b3b403d42df01fae8e923bebfbe90f17c2d9bcb89",
@@ -951,8 +955,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored appearances, Link/Square/Circle borders, Text icons, four standard FileAttachment icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement. Generated file icons use original geometry, explicit annotation visibility/view flags, bounded content, declared colors and independent CA/ca. Stored appearances retain precedence. Null/absent icon names choose PushPin; unknown-name fallback is reader policy. Painting does not resolve or decode a payload. Circle/ellipse paths use bounded tangent cubics; Square/Circle RD insets preserve the original appearance BBox and accept null/plain border effects. Independent conic-area expectations cover fill, circle strokes, unequal axes, rotation, opacity and indirect geometry. InkList generation resolves all coordinate arrays before painting, joins samples with straight segments under the annotation clip, honors width/dash/C/CA and bounds aggregate segments, temporary storage and content. All disjoint paths share one stroke operation; zero width or empty color suppress marks after geometry validation.",
-      "remaining": "Other subtype appearances, PDF 2.0 Path, cloudy/rounded/relief borders, independent unequal-axis stroke/dash controls, nonempty/rotated widgets and interaction states.",
+      "implemented": "Stored appearances, Link/Square/Circle borders, Text icons, four standard FileAttachment icons and supported empty widgets. Null Annots entries are absent, and indirect rectangle numbers resolve before appearance placement. Generated file icons use original geometry, explicit annotation visibility/view flags, bounded content, declared colors and independent CA/ca. Stored appearances retain precedence. Null/absent icon names choose PushPin; unknown-name fallback is reader policy. Painting does not resolve or decode a payload. Circle/ellipse paths use bounded tangent cubics; Square/Circle RD insets preserve the original appearance BBox and accept null/plain border effects. Independent conic-area expectations cover fill, circle strokes, unequal axes, rotation, opacity and indirect geometry. InkList generation resolves all coordinate arrays before painting, joins samples with straight segments under the annotation clip, honors width/dash/C/CA and bounds aggregate segments, temporary storage and content. All disjoint paths share one stroke operation; zero width or empty color suppress marks after geometry validation. Polygon/PolyLine generation supports finite Vertices and PDF 2.0 Path (moveto/lineto/cubic) with indirect operands and explicit Path precedence. Polygon closes and nonzero-fills IC; PolyLine stays open. Geometry, temporary storage and output are bounded; plain/null polygon effects and absent/null/None polyline endings work.",
+      "remaining": "Other subtype appearances, Ink PDF 2.0 Path, non-None line endings, cloudy/rounded/relief borders, independent unequal-axis stroke/dash controls, nonempty/rotated widgets and interaction states.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
@@ -962,7 +966,9 @@
         "crates/pagura-appearance/src/annotation/icon.rs",
         "crates/pagura-appearance/src/annotation/border.rs",
         "crates/pagura-appearance/src/annotation/marks.rs",
-        "crates/pagura-appearance/src/annotation/ink.rs"
+        "crates/pagura-appearance/src/annotation/ink.rs",
+        "crates/pagura-appearance/src/annotation/path.rs",
+        "crates/pagura-appearance/src/annotation/polygon.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
@@ -970,7 +976,8 @@
         "tools/fixturegen/file_attachment_icons.py",
         "tools/host_test.mjs",
         "tools/fixturegen/circle_annotations.py",
-        "tools/fixturegen/ink_annotations.py"
+        "tools/fixturegen/ink_annotations.py",
+        "tools/fixturegen/polygon_annotations.py"
       ],
       "requirements": [
         "content-annotation-generation",
@@ -978,7 +985,8 @@
         "content-annotations",
         "content-file-attachment-icons",
         "content-circle-appearances",
-        "content-ink-appearances"
+        "content-ink-appearances",
+        "content-polygon-appearances"
       ],
       "fixtures": [
         "file_annotations/render-null",
@@ -1091,7 +1099,52 @@
         "ink_annotations/odd-path",
         "ink_annotations/coordinate-type",
         "ink_annotations/pdf2-path",
-        "ink_annotations/stored-ignores-geometry"
+        "ink_annotations/stored-ignores-geometry",
+        "polygon_annotations/triangle-72",
+        "polygon_annotations/triangle-stored-72",
+        "polygon_annotations/polygon-border-72",
+        "polygon_annotations/polyline-72",
+        "polygon_annotations/curve-fill-72",
+        "polygon_annotations/curve-line-72",
+        "polygon_annotations/triangle-144",
+        "polygon_annotations/triangle-stored-144",
+        "polygon_annotations/polygon-border-144",
+        "polygon_annotations/polyline-144",
+        "polygon_annotations/curve-fill-144",
+        "polygon_annotations/curve-line-144",
+        "polygon_annotations/clockwise",
+        "polygon_annotations/rotated",
+        "polygon_annotations/separate-opacity",
+        "polygon_annotations/self-crossing",
+        "polygon_annotations/path-lines",
+        "polygon_annotations/path-precedence",
+        "polygon_annotations/null-path",
+        "polygon_annotations/plain-effect",
+        "polygon_annotations/null-effect",
+        "polygon_annotations/none-endings",
+        "polygon_annotations/null-endings",
+        "polygon_annotations/indirect-vertices",
+        "polygon_annotations/indirect-path",
+        "polygon_annotations/no-mark",
+        "polygon_annotations/no-stroke-color",
+        "polygon_annotations/vertices-missing",
+        "polygon_annotations/vertices-null",
+        "polygon_annotations/vertices-type",
+        "polygon_annotations/vertices-empty",
+        "polygon_annotations/vertices-odd",
+        "polygon_annotations/vertices-number",
+        "polygon_annotations/path-type",
+        "polygon_annotations/path-empty",
+        "polygon_annotations/path-first-curve",
+        "polygon_annotations/path-operands",
+        "polygon_annotations/path-entry",
+        "polygon_annotations/path-number",
+        "polygon_annotations/effect",
+        "polygon_annotations/endings-type",
+        "polygon_annotations/endings-count",
+        "polygon_annotations/ending-name",
+        "polygon_annotations/cloudy",
+        "polygon_annotations/arrow"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2651,7 +2704,7 @@
       ],
       "review": "gap",
       "capability": "annotations.appearances",
-      "rationale": "Synthesis covers Link/Square/Circle borders, InkList strokes, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, PDF 2.0 Path, nonempty/rotated widgets and cloudy/relief/rounded borders still refuse. Existing appearance streams remain supported.",
+      "rationale": "Synthesis covers Link/Square/Circle borders, InkList strokes, Polygon/PolyLine vertices or PDF 2.0 paths, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, Ink PDF 2.0 Path, non-None line endings, nonempty/rotated widgets and cloudy/relief/rounded borders still refuse. Existing appearance streams remain supported.",
       "evidence": [
         {
           "path": "crates/pagura-appearance/src/annotation.rs",
@@ -2667,6 +2720,10 @@
         },
         {
           "path": "crates/pagura-appearance/src/annotation/ink.rs",
+          "needle": "features::ANNOTATION_APPEARANCE,"
+        },
+        {
+          "path": "crates/pagura-appearance/src/annotation/polygon.rs",
           "needle": "features::ANNOTATION_APPEARANCE,"
         }
       ]
