@@ -193,7 +193,7 @@
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
-    "tools/check.py": "1f8aa18a440def1d51df6be938c4241ae5d9214bb2bf4620f134beb29258118a",
+    "tools/check.py": "ad0e27fbfcdddc781f70148312422492bbe713f8c4772fdee80061c0598ace67",
     "tools/fixturegen/files.py": "a01e41594654e1ad1219f1380e239e4c5aecaab9282331756a08ead8b0038a97",
     "tools/fixturegen/metadata.py": "a0f5864b3d0077b2504f2dad99dc4fcafdbb88aff5c397d7366ebf87b62e32c7",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",

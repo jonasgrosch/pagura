@@ -72,11 +72,17 @@ class ProbeTests(unittest.TestCase):
             offset = int(entry[:10])
             self.assertTrue(content[offset:].startswith(f"{index} 0 obj\n".encode()))
         self.assertIn(b"(Parity probe)", content)
+        self.assertNotIn(b"/UF 8 0 R", content)
+        self.assertIn(b"/UF 8 0 R", probes.fixture("complete-ef"))
         self.assertNotIn(b"/EmbeddedFiles", probes.fixture("empty"))
         self.assertFalse(probes.fixture("invalid").startswith(b"%PDF"))
 
     def report(self):
         return {"schema": 1, "cases": self.manifest["cases"],
+                "selected_engines": list(self.inventory["engines"]),
+                "revision": "source-commit", "scope": self.manifest["scope"], "source_sha256": {"source": "hash"},
+                "fixtures": {"fixture": "hash"}, "workflow_run": "run", "environment": {"system": "stub"},
+                "generated_at": "time", "command": ["stub"],
                 "engines": {engine: {"status": "available"} for engine in self.inventory["engines"]},
                 "results": [{"engine": engine, "case": case["id"], "outcome": "adapter-unavailable"}
                             for engine in self.inventory["engines"] for case in self.manifest["cases"]]}
@@ -99,6 +105,55 @@ class ProbeTests(unittest.TestCase):
         report["engines"][report["results"][0]["engine"]]["status"] = "unavailable"
         with self.assertRaisesRegex(ValueError, "engine identity"):
             probes.validate_report(report, self.manifest, self.inventory)
+
+    def test_rejection_pass_requires_rejection_evidence(self):
+        report = self.report()
+        negative = next(row for row in report["results"] if row["case"] == "pages.invalid")
+        negative["outcome"] = "pass"
+        with self.assertRaisesRegex(ValueError, "rejection evidence"):
+            probes.validate_report(report, self.manifest, self.inventory)
+        negative["reason"] = "EngineOpenError"
+        probes.validate_report(report, self.manifest, self.inventory)
+
+    def test_measurement_gate_preserves_competitor_differences_but_fails_broken_adapters(self):
+        for engine in self.inventory["engines"]:
+            for case in self.manifest["cases"]:
+                gap = (engine, case["operation"]) in probes.UNIMPLEMENTED
+                for outcome in probes.OUTCOMES:
+                    expected = outcome == "adapter-unavailable" if gap else outcome in {"pass", "incorrect", "rejected", "unsupported"}
+                    self.assertEqual(probes.observation_complete(engine, case, {"outcome": outcome}), expected)
+        wrong = probes.adjudicate(self.case, {"schema": 1, "status": "ok", "value": []})
+        self.assertTrue(probes.observation_complete("pdfjs", self.case, wrong))
+        self.assertEqual(wrong["outcome"], "incorrect")
+
+    def split_reports(self):
+        reports = []
+        for selected in ([engine for engine in self.inventory["engines"] if engine != "quartz"], ["quartz"]):
+            report = self.report()
+            report["selected_engines"] = selected
+            for row in report["results"]:
+                if row["engine"] not in selected:
+                    row["outcome"] = "not-run"
+            reports.append(report)
+        return reports
+
+    def test_combination_requires_same_evidence_and_complete_disjoint_engines(self):
+        reports = self.split_reports()
+        combined = probes.combine(reports, self.manifest, self.inventory)
+        self.assertEqual(len(combined["results"]), len(self.manifest["cases"]) * len(self.inventory["engines"]))
+        self.assertNotIn("not-run", {row["outcome"] for row in combined["results"]})
+        for field in ("revision", "source_sha256", "fixtures", "workflow_run"):
+            broken = copy.deepcopy(reports)
+            broken[1][field] = "different"
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, field):
+                probes.combine(broken, self.manifest, self.inventory)
+        with self.assertRaisesRegex(ValueError, "overlapping"):
+            probes.combine([reports[0], reports[0]], self.manifest, self.inventory)
+        with self.assertRaisesRegex(ValueError, "missing baseline"):
+            probes.combine([reports[0]], self.manifest, self.inventory)
+        reports[0]["results"][0]["outcome"] = "not-run"
+        with self.assertRaisesRegex(ValueError, "selected engine/result"):
+            probes.validate_report(reports[0], self.manifest, self.inventory)
 
     def test_subprocess_failure_controls_do_not_run_an_engine(self):
         with tempfile.TemporaryDirectory() as temporary:
