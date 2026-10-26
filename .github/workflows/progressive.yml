@@ -22,4 +22,4 @@ jobs:
       - name: Verify source availability and lease lifetime
         run: cargo test -p pagura-document --test sources
       - name: Verify facade source contract
-        run: cargo test -p pagura --test api source::
+        run: 'cargo test -p pagura --test api source::'
