@@ -21,7 +21,7 @@
         "files/encrypted-explicit-no-type",
         "files/encrypted-identity-no-type"
       ],
-      "gaps": "Annotation attachment discovery, collection and encrypted-payload models, MIME/date/associated-file conformance validation, streaming extraction, authoring and CLI/host AF/RF selection remain open. Catalog CLI/host/viewer listing and extraction are implemented separately. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
+      "gaps": "collection and encrypted-payload models, MIME/date/associated-file conformance validation, streaming extraction, authoring and CLI/host annotation and AF/RF selection remain open. Catalog CLI/host/viewer listing and extraction are implemented separately. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
     },
     {
       "id": "document-file-parameter-checks",
@@ -43,6 +43,28 @@
       ],
       "gaps": "Whole-buffer payload decoding; date/MIME/profile/content validation and authenticity assessment are outside this operation.",
       "rule": "Compare declared Size with the actual uncompressed length and declared CheckSum with MD5 over fully decoded and decrypted embedded bytes. An absent declaration is not a match. Mismatches remain observations and never modify the source. Password/filter/limit failures cannot become successful checks. The CLI emits complete schema-1 check JSON before returning exit 1 for a mismatch."
+    },
+    {
+      "id": "document-file-annotations",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.7.3.3; Table 31",
+        "12.5.2; Table 166",
+        "12.5.6.15; Table 187",
+        "7.11; Tables 43-45"
+      ],
+      "status": "bounded library/facade page FileAttachment discovery implemented; hosted validation pending",
+      "tests": [
+        "pagura-document/tests/file_annotations.rs",
+        "file_annotations/populated",
+        "file_annotations/page-only",
+        "file_annotations/mixed",
+        "file_annotations/indirect-array-and-geometry",
+        "file_annotations/encrypted-no-type",
+        "file_annotations/late-failure"
+      ],
+      "gaps": "CLI/host/viewer annotation selection, activation policy, generic annotation/markup views and icon appearances remain separate work; no file execution, full annotation or profile validation is implied.",
+      "rule": "Keep original Annots indexes and resolved annotation/file/payload identities distinct. Require indirect annotation dictionaries and FileAttachment FS/Rect. Normalize geometry, decode Contents without FS/Desc substitution, preserve icon names and apply the PushPin default. Validate shared discovery shape and matching attachment entries under source-located work/result limits. Never decode or activate a payload during discovery."
     }
   ]
 }

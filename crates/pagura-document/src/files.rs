@@ -8,11 +8,13 @@
 //! Collection schemas, encrypted-payload semantics and MIME/date validation are
 //! outside these views; their source entries remain available to callers.
 
+mod annotations;
 mod checks;
 mod model;
 mod read;
 mod stream;
 
+pub use annotations::AttachmentAnnotation;
 pub use checks::{FileParameterChecks, ParameterCheck};
 pub use model::{
     EmbeddedFile, EmbeddedFileEntry, FileName, FileNames, FileParameters, FileSpecification,

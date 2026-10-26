@@ -42,7 +42,7 @@ def source(*, spec=None, payload=PAYLOAD, catalog=b'', page=b'', names=None, fil
     ]).replace(b'%PDF-1.7', b'%PDF-2.0', 1)
 
 
-def attachment_encryption(*, omit_type=False, explicit=False, identity=False):
+def attachment_encryption(*, omit_type=False, explicit=False, identity=False, annotation=False):
     # Add a name tree and Filespec in a classic incremental revision of the
     # existing independent Standard-handler fixture. StrF is Identity, so
     # these literal filenames remain plaintext. Object 6 keeps its cipher bytes.
@@ -59,9 +59,12 @@ def attachment_encryption(*, omit_type=False, explicit=False, identity=False):
         6: body,
         7: b'<< /Type /Filespec /F (protected.bin) /EF << /F 6 0 R >> >>',
     }
+    if annotation:
+        objects[3] = b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Contents 4 0 R /Annots [8 0 R] >>'
+        objects[8] = b'<< /Type /Annot /Subtype /FileAttachment /Rect [1 2 9 12] /FS 7 0 R >>'
     data = bytearray(base)
     offsets = {}
-    for number, value in objects.items():
+    for number, value in sorted(objects.items()):
         offsets[number] = len(data)
         data += b'%d 0 obj\n' % number + value + b'\nendobj\n'
     xref = len(data)
@@ -70,7 +73,7 @@ def attachment_encryption(*, omit_type=False, explicit=False, identity=False):
         data += b'%d 1\n%010d 00000 n \n' % (number, offset)
     previous = int(base.rsplit(b'startxref\n', 1)[1].splitlines()[0])
     identifier = b'00112233445566778899aabbccddeeff'
-    data += b'trailer\n<< /Size 8 /Root 1 0 R /Encrypt 5 0 R /ID [<' + identifier + b'><' + identifier + b'>] /Prev %d >>\n' % previous
+    data += b'trailer\n<< /Size ' + str(max(objects) + 1).encode() + b' /Root 1 0 R /Encrypt 5 0 R /ID [<' + identifier + b'><' + identifier + b'>] /Prev %d >>\n' % previous
     data += b'startxref\n%d\n%%%%EOF\n' % xref
     return bytes(data)
 
