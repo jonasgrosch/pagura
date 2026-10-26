@@ -5,7 +5,7 @@ on:
       lane:
         description: Hosted contract or browser-adapter checkpoint
         type: choice
-        options: [contracts, browser]
+        options: [contracts, browser, portability]
         default: contracts
 permissions:
   contents: read
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   source-contracts:
-    if: ${{ inputs.lane != 'browser' }}
+    if: ${{ inputs.lane == 'contracts' }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,3 +68,24 @@ jobs:
           node-version: 26.8.1
       - name: Verify literal protocol and range/output ownership
         run: node tools/progressive_protocol_test.mjs
+  host-portability:
+    if: ${{ inputs.lane == 'portability' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install pinned Rust with WASI
+        run: rustup toolchain install 1.99.1 --profile minimal --target wasm32-wasip1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.8.1
+      - name: Build native and SIMD WASI hosts
+        run: |
+          cargo build --locked --offline -p pagura-host
+          cargo build --locked --offline --release -p pagura-host --target wasm32-wasip1
+      - name: Build independently compiled scalar WASI host
+        env:
+          RUSTFLAGS: -C target-feature=-simd128 -C overflow-checks=on
+          CARGO_TARGET_DIR: target/progressive-scalar
+        run: cargo build --locked --offline --release -p pagura-host --target wasm32-wasip1
+      - name: Verify native SIMD scalar and browser-shim sparse output
+        run: node tools/progressive_host_test.mjs target/wasm32-wasip1/release/pagura-host.wasm target/progressive-scalar/wasm32-wasip1/release/pagura-host.wasm

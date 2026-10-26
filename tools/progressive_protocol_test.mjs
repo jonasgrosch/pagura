@@ -20,7 +20,7 @@ function layouts() {
   for (const length of [-1, Number.MAX_SAFE_INTEGER + 1, 1n << 64n, '3']) assert.throws(() => encodeRequest(41, 1, { length, version }));
   assert.throws(() => encodeRequest(41, 1, { length: 0, version: new Uint8Array(31) }));
   const missing = body(179, Buffer.concat([u64(4), version, u64((1n << 64n) - 1n), u32(2), u64(100, 120, 140, 160)]));
-  assert.deepEqual(decodeResponse(missing).value, { needData: true, source: 4n, version, generation: (1n << 64n) - 1n, ranges: [{ start: 100n, end: 120n }, { start: 140n, end: 160n }] });
+  assert.deepEqual(decodeResponse(new Uint8Array(missing)).value, { needData: true, source: 4n, version, generation: (1n << 64n) - 1n, ranges: [{ start: 100n, end: 120n }, { start: 140n, end: 160n }] });
   const band = body(174, Buffer.concat([u32(6), Buffer.from([4]), u64(1), u32(0, 0, 1, 2, 0, 0, 1, 2, 0, 1, 4, 4), Buffer.from([0, 0, 0, 255])]));
   const decoded = decodeResponse(band).value;
   assert.equal(decoded.sequence, 1n); assert.equal(decoded.stride, 4); assert.deepEqual([...decoded.premultipliedRgba], [0, 0, 0, 255]);
@@ -131,9 +131,30 @@ async function malformedRangesAndQueuedCancellation() {
   assert.equal(reads.length, 1);
 }
 
+async function cancelledRangeCanBeRequestedAgain() {
+  const events = new Map([[1, [demand()]], [2, [demand(), { job: 2, event: 6 }]]]);
+  const client = fakeClient(events), driver = new ProgressiveDriver(client); let reads = 0;
+  await driver.register({ length: 4n, version, read(range, signal) {
+    reads++;
+    if (reads === 1) return new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+    return Promise.resolve({ length: 4n, version, offset: range.start, bytes: new Uint8Array(4) });
+  } });
+  const controller = new AbortController(), abandoned = driver.run(1, { signal: controller.signal });
+  const rejected = assert.rejects(abandoned.next(), { name: 'AbortError' });
+  await tick(); controller.abort(); await rejected;
+  const retry = driver.run(2); assert.equal((await retry.next()).value.event, 6); await retry.next();
+  assert.equal(reads, 2); await driver.close();
+  const stalled = fakeClient(new Map([[1, [demand()]]]));
+  stalled.supplySource = async () => ({ added: 0n, generation: 0n });
+  const noProgress = new ProgressiveDriver(stalled);
+  await noProgress.register({ length: 4n, version, read: async () => ({ length: 4n, version, offset: 0n, bytes: new Uint8Array(4) }) });
+  await assert.rejects(noProgress.run(1).next(), /no availability progress/); await noProgress.close();
+}
+
 layouts();
 await serialClient();
 await sharedDemandAndOutput();
 await cancellationAndShutdown();
 await malformedRangesAndQueuedCancellation();
+await cancelledRangeCanBeRequestedAgain();
 console.log('Progressive protocol and browser ownership controls passed.');

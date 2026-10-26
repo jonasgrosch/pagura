@@ -66,6 +66,7 @@ COMMANDS = [
     (["node", "tools/tile_cache_test.mjs"], {}),
     (["node", "tools/progressive_protocol_test.mjs"], {}),
     (["node", "tools/host_test.mjs"], {}),
+    (["node", "tools/progressive_host_test.mjs"], {}),
     (["node", "tools/editing_host_test.mjs", "target/host-bundled/wasm32-wasip1/release/pagura-host.wasm"], {}),
     ([sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py"], {}),
     ([sys.executable, "tools/conformance.py"], {}),
