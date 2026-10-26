@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "e712f195b46de7b0177fa5f51e8a996eba36df0a",
+  "audited_revision": "543ecdb94aa639487310335cccc57de22cbe77a6",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -18,7 +18,7 @@
     "corpus/manifests/content.json": "6fc00aeac1f71eb3c2b7b9827402806fa6e0911b8daec68d93157a06909b2b98",
     "corpus/manifests/ending_annotations.json": "ff8d2d2495e05a0ebe782b8f3292692bf939be30a8511364ec297815edc0ed9d",
     "corpus/manifests/file_attachment_icons.json": "c4662b806f255d426e120c38b42daeb45986e38efbfddc5d539f5c84f154d2fa",
-    "corpus/manifests/form_borders.json": "a57699f2a37972e80a39e06a97f8c5bee8c0b096bc47d5caab4bef8dfed9e947",
+    "corpus/manifests/form_borders.json": "be067790327a9195a6c6db1dda7730a21b5b932195d9284dbb71c394e76a39a7",
     "corpus/manifests/free_text_annotations.json": "0d3a246416c58af45d341e70cbb63b57fb623afed478d58387d29861116f03bd",
     "corpus/manifests/free_text_callouts.json": "b3353af7107c4276c5ad4bce09a664f993d7a9035def06c46e8a9615e54bf248",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
@@ -53,28 +53,29 @@
     "crates/pagura-appearance/src/annotation/path.rs": "bd5267bff3ff5d79be5d5e35496ac440a09430f1c1e42df444950312ecb4941d",
     "crates/pagura-appearance/src/annotation/polygon.rs": "0c6693efbf77c314fd8a2b45d0a57cccae8c510af811743c4c365aacd7a9fd18",
     "crates/pagura-appearance/src/annotation/stamp.rs": "7d97568af8ebf78d8a6c349169e6e627a330dc0eae3db8ddca02d8f243783f6b",
-    "crates/pagura-appearance/src/annotation/tests.rs": "9435700d2cb5d9be1ffe4c1b2d41353ecc02acf7f5c6bdeb58da6f170e1dfba8",
+    "crates/pagura-appearance/src/annotation/tests.rs": "e054da40a2499992abb22c03042901fac4fa8e2453f4f574945b359717b71ee5",
     "crates/pagura-appearance/src/annotation/tests/caret.rs": "daf0c712376cda0aa8bc717923ce7d4461ada7782df3e532959c4c58082a0244",
     "crates/pagura-appearance/src/annotation/tests/free_text.rs": "e9946f9bc84eea45c43716d5ee51e6c36cc88ecab5fa10a3c5b6030bbf422add",
     "crates/pagura-appearance/src/annotation/tests/markup.rs": "43ad1070753e36860b9d044166e89d40b5ffb0e93da3996cb3c64782537a2bab",
     "crates/pagura-appearance/src/annotation/tests/relief.rs": "9f9b6e01750fcd8a226d38fce1959cfb86a6ae1b4e50df4d381497653f1ae3fc",
     "crates/pagura-appearance/src/annotation/tests/rounded.rs": "926e21320e506be9f545c5824fdb9389b997b6169e6025f0e7625dc18a14da91",
     "crates/pagura-appearance/src/annotation/tests/stamp.rs": "f19940bfcbc2bb7bd173fdfbd3cf2afd370f21cbd0b4148ec470ff250f091267",
-    "crates/pagura-appearance/src/annotation/widget.rs": "9a3912015d95277bebab0fc94793e16f03c411c78a8c52fb7d1db195f6f32170",
-    "crates/pagura-appearance/src/features.rs": "d9bb81e64364395464224a9e17171287f89efec1caec0cbe77e743d6c95d30e3",
+    "crates/pagura-appearance/src/annotation/widget.rs": "022b7d3e4bd89bee7cfbe331dfe23373577c1a7827eaf3a70aefe4340a3765eb",
+    "crates/pagura-appearance/src/features.rs": "cdf17343c581cbff15a12b151243c51b30ee42303e01e18d9e444e069dda0c2d",
     "crates/pagura-appearance/src/fonts.rs": "5e685f76721a5500d7996cc8f7d27ebfc3a3accfbfb76686170a234f6bb818fa",
     "crates/pagura-appearance/src/fonts/encoding.rs": "bff6b19c01084d0e76c8e5b724eaf7ac4b3f1f68ab0badfcf807e6995db56fd2",
-    "crates/pagura-appearance/src/form.rs": "52c8897546da3f06f90521516e776005fc014ef0adae632951b4e91f78d16372",
-    "crates/pagura-appearance/src/form/buttons.rs": "7f3d4dd95edf2a5d3028facd3fbaffcf353d9f6a87164d46738bafb9059fd00d",
+    "crates/pagura-appearance/src/form.rs": "62ee93694231b36a7df17e8e706fdd8d6fb79853a0d57b45db1abba4cea635ae",
+    "crates/pagura-appearance/src/form/buttons.rs": "0588008c30fcba5579fb83e486fed79d752f1511b047d1405ae71b44bd4dd3f9",
     "crates/pagura-appearance/src/form/compatibility.rs": "1d927a3fff57adc899c9199515dafd1b9d614d70758cd0cfd1b0ce196a3207bc",
     "crates/pagura-appearance/src/form/da.rs": "452a8895cb766bfaaf1364ff8f4191e4d3a66d107a914d684b1ac3fcaa6a35cf",
     "crates/pagura-appearance/src/form/layout.rs": "bd4a07c0c43c620b2d0cb5cf4ff768b6ea267e70c78bd988e160e42af9f8256c",
-    "crates/pagura-appearance/src/form/style.rs": "38932789787fb796001fb1d6625a8c896949d57661753856e119f9d54ebca7db",
-    "crates/pagura-appearance/src/form/tests.rs": "b6554338f5b4a618f7ae21fafeca2bc8538c5710dbaca69ff03b335ea1c771c7",
+    "crates/pagura-appearance/src/form/style.rs": "93b726c914acd13f7a17af3182d006d11301bebf3c4cd32faa4bb1b1b7ba8687",
+    "crates/pagura-appearance/src/form/tests.rs": "a657b5d60b1cee199251c224b29bf7156d35896a8b47beb9c3ff713c33439f76",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "d5521769596edc804b4f261522c7bf897bf46a1aaa3a1b54b0719afd83820ff8",
     "crates/pagura-appearance/src/repairs.rs": "b58813353b716b891e434c38f7fd8df87288d7711065a137cfecfdb51543bc53",
     "crates/pagura-appearance/src/values.rs": "81a4c6cd359a805e408c594491f698f88b944c412a70b52d10cfec97a16d5d24",
+    "crates/pagura-appearance/src/widget_rotation.rs": "4be03eecb64752c6ec7e481922da725347f92a4ec1a039998b02e44f5a877e98",
     "crates/pagura-cli/src/args.rs": "a3b99f4113502251bde2384bbc03d6851cc96c1899fc27ca10ad4f6ad74fa348",
     "crates/pagura-cli/src/commands.rs": "f196523039edec564386798a8cbdc81095fbbdb16fdd0966195243bf361fe461",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
@@ -207,7 +208,7 @@
     "crates/pagura/tests/api/document.rs": "e2e02c9095b5fb66e6411f4ada0bdbe524bfb574049ce60997889f3f89f8b577",
     "crates/pagura/tests/api/editing.rs": "cf71c47b564572ccb4c1575a8910786d62488a64f07de0003b9ad0f685741dad",
     "crates/pagura/tests/api/editing/button_states.rs": "fce5fe9215887fbf5389142d6c70538cb2771fb39983ab779358f25f43e205a2",
-    "crates/pagura/tests/api/editing/form_borders.rs": "7f0c6e0d08579c49bc58b40f94c4036abf337368e39c89533af3e0370abf7fb0",
+    "crates/pagura/tests/api/editing/form_borders.rs": "b2e80049a2b875dac15d5474164c5323cfdc5a6b0e480403f57a91767939909c",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
@@ -222,7 +223,7 @@
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
     "references/requirements/document.json": "642c2afcc0ead5ebf4fb7b2a80dda34ba66eb25a08455f4c69972e2c02898253",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
-    "references/requirements/forms.json": "7eb19990947206241a1045f66271af0229f61b34945a03b3546cf658dc6ac48a",
+    "references/requirements/forms.json": "9b9d0fc71c4b1d07f2f402e587c85df3038392e50341ea5e7dd08332caec07ca",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
     "references/requirements/image.json": "3410e86abc83f72875194f80fe95c16e5719b091698d440adbfbd7d65133032a",
@@ -246,7 +247,7 @@
     "tools/fixturegen/ending_annotations.py": "334b9437cb230f35498c7c2ff15e35fc275512b2db7ded12fa27c2a91f09f150",
     "tools/fixturegen/file_attachment_icons.py": "3ffd7a9f0929da61f1816f7df2a1f06da5bc4dfd0da56ebab921bdf59ddf50e2",
     "tools/fixturegen/font_pixels.py": "22a0503c131e6c12cb34bda5cff1f3fa67f651c07e16383a807af8b957e080ba",
-    "tools/fixturegen/form_borders.py": "297e7820ec0b17627f7e88f12c83bbcb5706b3eeb5aad2812f1abd987734f593",
+    "tools/fixturegen/form_borders.py": "f56b0fbc009c1ff454400c78fd244e1ec8228f7c0a73132435612c1e1f9ddc0f",
     "tools/fixturegen/free_text_annotations.py": "a0341ca7127f9e57011045e0228e3c60aedf80963123bfa208190c8c5c9e3b91",
     "tools/fixturegen/free_text_callouts.py": "aa14c98009857d99eeafbb940fa8bf73d74703906f72d42ee352dcbf4504b616",
     "tools/fixturegen/ink_annotations.py": "6f3f1795c854f785d2298b6f5ef690ba44f14f3e004fc8447becb57d09bb0eae",
@@ -258,7 +259,7 @@
     "tools/fixturegen/relief_annotations.py": "3df6928ba3730c63d96d6c1778fe58b7dd464c298213e2af4b17875fa6628069",
     "tools/fixturegen/rounded_annotations.py": "c878e9cfdcc91010d8bb3bd3de5829825dcce10d8992826eb434f99bafa05e43",
     "tools/fixturegen/stamp_annotations.py": "40b8faeca934da33da2eb5f0e6f16f92c043feb4ad9a3c6817a8e30b2b5251cf",
-    "tools/form_border_test.mjs": "dddd9cc3e93a5712fbbb37b2a5871200d1a9edfdee43f9b188034be57e557a22",
+    "tools/form_border_test.mjs": "d826536e356aad25cd5eb870ab8b56d28c8c65e65a4e36d5917b7c6e484e59ea",
     "tools/host_test.mjs": "583f6a54c2c8120c48459c73fdcfce664a5a4703c1ff43058131eee77ea661f4",
     "tools/test_font_pixels.py": "e113d871e3c2dd557079fafddeaf5770baf27e83d154f973071d2053ee258a3c",
     "tools/test_rounded_pixels.py": "c8f4a3f024eb2e195d29172965a7728b4899360a32e3d6223778227f8680cb85",
@@ -969,8 +970,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored normal appearances and state dictionaries; Link/Square/Circle, Text/FileAttachment icons, InkList/PDF 2.0 paths, Polygon/PolyLine/Line with standard endings and leaders, plain captions, text markup, Caret, standard stamps and plain FreeText/callouts. Shared border geometry supports rounded and beveled/inset rectangles for annotations and filled forms. Stored artwork wins; visual handling never resolves attachment payloads. Independent pixels cover placement, clipping, opacity, view flags and two resolutions; strict/reported recovery and resource bounds are explicit.",
-      "remaining": "Rich text, cloudy effects, broader font/transform support, nonempty/rotated widgets, interaction-selected rollover/down states, and outstanding stroke/dash/CMYK artwork evidence. Full V01 acceptance remains open.",
+      "implemented": "Stored normal appearances and state dictionaries; Link/Square/Circle, Text/FileAttachment icons, InkList/PDF 2.0 paths, Polygon/PolyLine/Line with standard endings and leaders, plain captions, text markup, Caret, standard stamps and plain FreeText/callouts. Shared border geometry supports rounded and beveled/inset rectangles for annotations and filled forms. Stored artwork wins; visual handling never resolves attachment payloads. Independent pixels cover placement, clipping, opacity, view flags and two resolutions; strict/reported recovery and resource bounds are explicit. Empty widget borders share quarter-turn MK R geometry with filled forms.",
+      "remaining": "Rich text, cloudy effects, broader font/transform support, nonempty widgets, interaction-selected rollover/down states, and outstanding stroke/dash/CMYK artwork evidence. Full V01 acceptance remains open.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
@@ -1002,7 +1003,8 @@
         "crates/pagura-appearance/src/form/compatibility.rs",
         "crates/pagura-appearance/src/annotation/free_text/callout.rs",
         "crates/pagura-appearance/src/annotation/marks/rounded.rs",
-        "crates/pagura-appearance/src/annotation/border/relief.rs"
+        "crates/pagura-appearance/src/annotation/border/relief.rs",
+        "crates/pagura-appearance/src/widget_rotation.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
@@ -1674,8 +1676,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Text/choice/button filling, generated appearances, saved values and browser preview/discard/download. Forms share rounded/relief border parsing and geometry with annotations. Missing checkbox/radio normal appearances now persist as both Off and on states through the preview generator, retaining source-state naming and NeedAppearances selection. Thirty-five independent border pixels and explicit state/save/reopen/atomic-failure tests are registered; new hosted validation is pending.",
-      "remaining": "Rich text, broader encodings/transforms, push-button artwork and nested direct fields; XFA belongs to V03. Widget rotation, no-area text layout and wider rounded-stroke/dash/CMYK evidence remain open.",
+      "implemented": "Text/choice/button filling, generated appearances, saved values and browser preview/discard/download. Forms share rounded/relief border geometry with annotations. Generated checkbox/radio Off and on states persist through the shared preview generator, retaining source-state naming and NeedAppearances selection. Fresh appearances support quarter-turn MK R; stored appearance coordinates remain unchanged. Sixty-four independent border/rotation pixel controls and explicit state/save/reopen/atomic-failure tests are registered.",
+      "remaining": "Rich text, broader encodings/text transforms, push-button artwork and nested direct fields; XFA belongs to V03. Rotated-MK browser controls, no-area text layout and wider rounded-stroke/dash/CMYK evidence remain open.",
       "sources": [
         "crates/pagura-appearance/src/form.rs",
         "crates/pagura/src/editing/forms.rs",
@@ -1688,7 +1690,8 @@
         "crates/pagura-appearance/src/annotation/marks/rounded.rs",
         "crates/pagura-appearance/src/form/style.rs",
         "crates/pagura-document/src/forms/fill/buttons.rs",
-        "crates/pagura-appearance/src/form/buttons.rs"
+        "crates/pagura-appearance/src/form/buttons.rs",
+        "crates/pagura-appearance/src/widget_rotation.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/editing.rs",
@@ -1749,7 +1752,36 @@
         "form_borders/no-border-color",
         "form_borders/wide-off",
         "form_borders/hidden",
-        "form_borders/no-view"
+        "form_borders/no-view",
+        "form_borders/rotation-Tx-0-72",
+        "form_borders/rotation-Ch-0-72",
+        "form_borders/rotation-Btn-0-72",
+        "form_borders/rotation-Tx-0-144",
+        "form_borders/rotation-Tx-90-72",
+        "form_borders/rotation-Ch-90-72",
+        "form_borders/rotation-Btn-90-72",
+        "form_borders/rotation-Tx-90-144",
+        "form_borders/rotation-Tx-180-72",
+        "form_borders/rotation-Ch-180-72",
+        "form_borders/rotation-Btn-180-72",
+        "form_borders/rotation-Tx-180-144",
+        "form_borders/rotation-Tx-270-72",
+        "form_borders/rotation-Ch-270-72",
+        "form_borders/rotation-Btn-270-72",
+        "form_borders/rotation-Tx-270-144",
+        "form_borders/rotation-Tx--90-72",
+        "form_borders/rotation-Ch--90-72",
+        "form_borders/rotation-Btn--90-72",
+        "form_borders/rotation-Tx--90-144",
+        "form_borders/rotation-Tx-450-72",
+        "form_borders/rotation-Ch-450-72",
+        "form_borders/rotation-Btn-450-72",
+        "form_borders/rotation-Tx-450-144",
+        "form_borders/rotation-stored-90",
+        "form_borders/rotation-stored-180",
+        "form_borders/rotation-stored-270",
+        "form_borders/rotation-null",
+        "form_borders/rotation-indirect"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -3022,7 +3054,7 @@
       ],
       "review": "gap",
       "capability": "annotations.appearances",
-      "rationale": "Synthesis covers Link/Square/Circle borders, straight Line, InkList and PDF 2.0 Path strokes, Polygon/PolyLine vertices or PDF 2.0 paths, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, rich line captions, nonempty/rotated widgets and cloudy borders and nonrectangular relief and nonrectangular legacy corner radii still refuse. All ten standard Line/PolyLine endings are implemented with documented reader artwork. Existing appearance streams remain supported. Signed leaders, extensions and offsets are implemented. Plain captions use explicit font data and documented bounded layout. Four standard text-markup appearances now use bounded compound geometry and reported alternate-quad recovery. Caret None/P symbols use original bounded geometry; unknown symbol names remain explicit refusals. Standard rubber-stamp names are implemented through explicit font data; non-rubber intents without stored artwork still refuse. Plain FreeText now reuses the shared form layout; standard callouts/line endings are implemented, while rich text remains an explicit gap. Rounded rectangular Link/Square/FreeText/empty-widget borders are implemented with bounded reader artwork; wider stroke/dash accuracy evidence remains open. Rectangular B/I styles now use bounded original light/shadow facets with independent border opacity.",
+      "rationale": "Synthesis covers Link/Square/Circle borders, straight Line, InkList and PDF 2.0 Path strokes, Polygon/PolyLine vertices or PDF 2.0 paths, Text and FileAttachment icons and selected empty widgets. Square/Circle RD and null/plain BE work. Other subtypes, rich line captions, nonempty widgets and cloudy borders and nonrectangular relief and nonrectangular legacy corner radii still refuse. All ten standard Line/PolyLine endings are implemented with documented reader artwork. Existing appearance streams remain supported. Signed leaders, extensions and offsets are implemented. Plain captions use explicit font data and documented bounded layout. Four standard text-markup appearances now use bounded compound geometry and reported alternate-quad recovery. Caret None/P symbols use original bounded geometry; unknown symbol names remain explicit refusals. Standard rubber-stamp names are implemented through explicit font data; non-rubber intents without stored artwork still refuse. Plain FreeText now reuses the shared form layout; standard callouts/line endings are implemented, while rich text remains an explicit gap. Rounded rectangular Link/Square/FreeText/empty-widget borders are implemented with bounded reader artwork; wider stroke/dash accuracy evidence remains open. Rectangular B/I styles now use bounded original light/shadow facets with independent border opacity.",
       "evidence": [
         {
           "path": "crates/pagura-appearance/src/annotation.rs",
@@ -3148,13 +3180,17 @@
       "sources": [
         "crates/pagura-appearance/src/features.rs"
       ],
-      "review": "gap",
+      "review": "dormant",
       "capability": "forms.workflow",
-      "rationale": "Nonzero widget rotation is not implemented in form appearance generation.",
+      "rationale": "Quarter-turn MK R values generate through the shared Rotation type for fresh text, choice and toggle-button appearances and empty widget borders. Existing appearance coordinates retain precedence; the public feature tag remains reserved.",
       "evidence": [
         {
-          "path": "crates/pagura-appearance/src/form/style.rs",
-          "needle": "features::APPEARANCE_WIDGET_ROTATION,"
+          "path": "crates/pagura-appearance/src/features.rs",
+          "needle": "pub const APPEARANCE_WIDGET_ROTATION:"
+        },
+        {
+          "path": "crates/pagura-appearance/src/widget_rotation.rs",
+          "needle": "Rotation::try_from(-degrees.rem_euclid(360))"
         }
       ]
     },
