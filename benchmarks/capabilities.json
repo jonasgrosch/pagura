@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "f3c92f3e323c5da6ce6ca3141331aee7d8f671c3",
+  "audited_revision": "61aa1e36dcf5114c05cdce0f4918f4dae67d85b8",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -195,7 +195,7 @@
     "references/requirements/host.json": "7b607d113522bc052fa9221cb5ce5f86ce8d3a34a95c03cba43395859e3101eb",
     "references/requirements/image.json": "c38f1c6f006b7997d2ca6103c11e6ccbb09ab5b7e9ca7dc72821d76aa6cfb948",
     "references/requirements/jbig2.json": "ee69056398af0d7757e076b88530d81885135766d3b839c404c185fdaee8fc10",
-    "references/requirements/jpx.json": "84cd8f077e5c7769e47bf1c8a29925df9f7d9ae056559bcb4b444c39cc19e658",
+    "references/requirements/jpx.json": "87d91ddaf554076a5a862455fee2b5d4c5d6d97e21bf3ec0dc6a4f5b5dc42f7f",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
     "references/requirements/paint.json": "4ecb851cce10da2043e45e175362112e9a1cbbdca46dcfde516daffe53d6e91b",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
@@ -225,7 +225,9 @@
     "crates/pagura-color/src/convert/tests/oracle.rs": "8c831d6d26da40cd3a64537a0ff8856084d8907a4cdf4b8d2238a558986c14b6",
     "tools/fixturegen/content.py": "311dbd15e95c4e632b3aadaf4d60b75ef61cb37b173a3ca6756e7accf87b47c2",
     "tools/fixturegen/jpx_lab_probe.py": "1ec747142c797da1fc207f444b243a85f71e780e278a4f26d838e7eeacaa86cb",
-    "corpus/manifests/jpx_lab_probe.json": "29f1daca0426e593386f1ff1bddb4d44ce493f96ffa87f685be4650d18e779a1"
+    "corpus/manifests/jpx_lab_probe.json": "29f1daca0426e593386f1ff1bddb4d44ce493f96ffa87f685be4650d18e779a1",
+    "tools/fixturegen/jpx_layout_probe.py": "44c057c3d9cf2993e75542fffb208d77377e5748c0aaa97f0829f126deb4387d",
+    "corpus/manifests/jpx_layout_probe.json": "cf5b0718d872a76e081d6b1327ad2f5a5c3b32f3bfb24eb7551853ed62d754f0"
   },
   "capabilities": [
     {
