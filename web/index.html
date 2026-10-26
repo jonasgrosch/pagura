@@ -39,6 +39,7 @@
           <button id="edit-open" aria-pressed="true" disabled>Fill forms</button>
           <button id="copy-page" disabled>Copy page text</button>
           <button id="document-services-open" disabled>Properties and attachments…</button>
+          <button id="png-export-open" disabled>Export page PNG</button>
           <button id="form-reset" disabled>Discard form changes</button>
           <hr><button id="diagnostics-open">Document diagnostics…</button>
         </div>
@@ -84,6 +85,17 @@
     <h3>Properties</h3><div id="document-properties"></div>
     <h3>Attachments</h3><div id="document-attachments"></div>
     <p id="document-services-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="png-export-dialog" aria-labelledby="png-export-title">
+    <form id="png-export-form">
+      <div class="dialog-heading"><h2 id="png-export-title">Export page PNG</h2><button id="png-export-close" type="button">Done</button></div>
+      <p>Uses the PDF page orientation and current form values.</p>
+      <label for="png-export-page">Page</label><input id="png-export-page" type="number" min="1" step="1" required>
+      <label for="png-export-dpi">Resolution (DPI)</label><input id="png-export-dpi" type="number" min="1" max="2400" step="1" value="144" required>
+      <label><input id="png-export-transparent" type="checkbox"> Transparent background</label>
+      <button id="png-export-submit" type="submit">Download PNG</button>
+      <p id="png-export-status" role="status" aria-live="polite"></p>
+    </form>
   </dialog>
   <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-feedback">
     <form id="password-form">

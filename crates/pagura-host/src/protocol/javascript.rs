@@ -2,7 +2,7 @@
 
 use super::{
     ActionCode, AttachmentKey, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle,
-    PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
+    PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
 };
 use crate::SessionLimits;
 use crate::editing;
@@ -73,7 +73,7 @@ fn write_module(out: &mut String) -> fmt::Result {
     Ok(())
 }
 
-fn tables() -> [Item<Vec<(&'static str, String)>>; 13] {
+fn tables() -> [Item<Vec<(&'static str, String)>>; 14] {
     let versions = Version::ALL
         .iter()
         .map(|version| (version.name(), format!("{:#010x}", version.code())))
@@ -86,6 +86,11 @@ fn tables() -> [Item<Vec<(&'static str, String)>>; 13] {
         ),
         ("RequestKind", "Request kind bytes.", codes!(RequestKind)),
         ("ResponseKind", "Response kind bytes.", codes!(ResponseKind)),
+        (
+            "PngBackground",
+            "Background of an exported PNG page (1.9).",
+            codes!(PngBackground),
+        ),
         (
             "AttachmentKey",
             "Explicit embedded-file filename keys (1.8).",

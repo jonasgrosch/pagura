@@ -249,6 +249,19 @@
         "tools/document_services_view_test.mjs"
       ],
       "gaps": "Catalog EmbeddedFiles and catalog XMP only. No AF/RF or annotation discovery, streaming, source mutation, XML/schema/profile validation or filename/URL execution. Response and document decoding budgets are separate."
+    },
+    {
+      "id": "host-png-export",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Protocol 1.9 whole-page PNG export and explicit viewer download; hosted validation pending",
+      "tests": [
+        "pagura-host tests/png.rs",
+        "tools/test_png_export.py",
+        "tools/png_export_test.mjs"
+      ],
+      "gaps": "Whole-buffer synchronous output only; no active-request cancellation, backpressure, PNG color/profile metadata or viewer rotation transform. Real-browser verification remains pending.",
+      "rule": "The shared renderer and public PNG encoder preserve ordinary page semantics. Pixel/decoded-byte preflight and stream/frame limits remain distinct. Viewer exports copy click-time form values through a temporary handle and discard stale results; they do not adopt or erase drafts."
     }
   ]
 }

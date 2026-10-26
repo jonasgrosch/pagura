@@ -1,6 +1,7 @@
 //! Session lifetime, version gating and request dispatch.
 
 mod documents;
+mod png;
 mod render;
 mod transport;
 
@@ -157,6 +158,7 @@ impl Session {
             } => self.documents.open(bytes, recovery, password),
             Request::PageInfo(page) => self.documents.page_info(page),
             Request::RenderTile(tile) => self.render(tile, None),
+            Request::PagePng(request) => self.page_png(request).map(Response::PagePng),
             Request::Generation {
                 document,
                 generation,

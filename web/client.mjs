@@ -1,6 +1,6 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_8 } from './protocol.mjs';
-import { RequestKind } from './protocol_constants.mjs';
+import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_9 } from './protocol.mjs';
+import { PngBackground, RequestKind } from './protocol_constants.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
@@ -71,7 +71,7 @@ export class SessionClient {
     this.tail = result.then(() => {}, () => {}).finally(() => { this.queued--; });
     return result;
   }
-  async hello(version = VERSION_1_8) {
+  async hello(version = VERSION_1_9) {
     const result = await this.request(1, { version });
     if (result.version !== version) { const error = new Error('Unsupported host protocol version'); this.fail(error); throw error; }
     this.version = version;
@@ -88,6 +88,7 @@ export class SessionClient {
   saveForm(document, changes) { return this.request(19, { document, changes }); }
   pageInfo(document, page) { return this.request(3, { document, page }); }
   contentBounds(document, page) { return this.request(16, { document, page }); }
+  pagePng(document, page, scale = 1, background = PngBackground.White) { return this.request(RequestKind.PagePng, { document, page, scale, background }); }
   renderTile(document, page, scale, tile) { return this.request(4, { document, page, scale, ...tile }); }
   invalidate(document) {
     const generation = (this.generations.get(document) ?? 0) + 1;

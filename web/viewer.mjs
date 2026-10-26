@@ -1,3 +1,4 @@
+import { PngExport } from './png_export.mjs';
 import { renderDensity } from './render_density.mjs';
 import { TileCache, TilePreloader, formsAllowPreload } from './tile_cache.mjs';
 import { tilesInRegion, aheadRegion } from './tile_region.mjs';
@@ -49,6 +50,7 @@ const editor = new FormEditor({
   state: () => ({ client, handle, epoch: documentEpoch, recovery: source?.recovery, bytes: source?.bytes, password: source?.password }),
   adopt: adoptSaved, download: downloadPdf, redraw: invalidate, presentationChanged: () => thumbnails?.refreshDrafts(),
 });
+const pngExport = new PngExport({ state: () => ({ client, handle, epoch: documentEpoch, page, count: layout.count }), editor });
 const preloader = new TilePreloader({
   allowed: () => handle !== null && !drawing && !dirty && interactionQuiet() && !editor.busy
     && !editor.preview?.running && !editor.preview?.timer && formsAllowPreload(editor.active, editor.fields),
@@ -86,7 +88,7 @@ async function adoptSaved(bytes, epoch) {
   ++documentEpoch; tileCache.clear(); preloader.cancel(); handle = opened.document;
   errorBox.textContent = ''; errorBox.hidden = true;
   source.password.fill(0); source = { bytes, password: new Uint8Array(), recovery: source.recovery };
-  reader.reset(); services.reset(); infos.clear(); views.clear(); surface.replaceChildren();
+  reader.reset(); services.reset(); pngExport.reset(); infos.clear(); views.clear(); surface.replaceChildren();
   layout = new PageLayout(opened.pages); page = Math.min(position.index, Math.max(0, opened.pages - 1));
   await current.close(previous);
   if (current !== client || handle !== opened.document) return false;
@@ -107,7 +109,7 @@ function controls() {
   $('copy-page').disabled = !count; $('rotate-view').disabled = !count;
   $('empty-state').hidden = handle !== null || !!source;
   thumbnails.refresh();
-  editor.controls(); services.controls();
+  editor.controls(); services.controls(); pngExport.controls();
 }
 function createClient() {
   if (!crossOriginIsolated || typeof SharedArrayBuffer !== 'function') throw new Error('Cross-origin isolation is required. Start python3 tools/serve_web.py and open http://localhost:8000.');
@@ -117,7 +119,7 @@ function createClient() {
 }
 async function recover(error) {
   if (recovering) return;
-  tileCache.clear(); preloader.cancel(); services.reset();
+  tileCache.clear(); preloader.cancel(); services.reset(); pngExport.reset();
   if (!source || recoveryAttempts >= 1) {
     handle = null; client?.destroy(); services.controls();
     for (const view of views.values()) view.element.remove(); views.clear();
@@ -404,7 +406,7 @@ async function openFile(file) {
   if (!file) return;
   cancelPassword();
   source?.password.fill(0); source = null; recoveryAttempts = 0;
-  const epoch = ++documentEpoch; preloader.cancel(); tileCache.clear(); reader.reset(); services.reset(); editor.reset(); rotations.clear();
+  const epoch = ++documentEpoch; preloader.cancel(); tileCache.clear(); reader.reset(); services.reset(); pngExport.reset(); editor.reset(); rotations.clear();
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
   $('filename').textContent = file.name; status.textContent = 'Opening…';
@@ -549,7 +551,7 @@ window.addEventListener('resize', resizeViewport);
 const regionObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => requestAnimationFrame(resizeViewport)) : null;
 regionObserver?.observe(viewport);
 window.addEventListener('beforeunload', (event) => { if (editor.changes.size) { event.preventDefault(); event.returnValue = ''; } });
-window.addEventListener('pagehide', () => { clearTimeout(quietTimer); preloader.destroy(); tileCache.clear(); thumbnails.destroy(); ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); services.reset(); source?.password.fill(0); source = null; client?.destroy(); });
+window.addEventListener('pagehide', () => { clearTimeout(quietTimer); preloader.destroy(); tileCache.clear(); thumbnails.destroy(); ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); services.reset(); pngExport.reset(); source?.password.fill(0); source = null; client?.destroy(); });
 if (debug) window.paguraDebug = Object.freeze({ tileCache: () => ({ ...tileCache.stats(), preloaded: preloader.completed, discarded: preloader.discarded, pending: preloader.jobs.length }), fail: (reason) => client.injectFailure(reason),
   readingProfile: async () => {
     const { profileTextLayer } = await import('./reading_profile.mjs');

@@ -473,6 +473,26 @@ Identity, external-stream refusal and decode limits. Hosted checks are pending.
 The operation does not modify the source or create a payload file. Host/viewer
 checks, streaming and semantic/date/MIME/profile validation remain open.
 
+**PNG facade/CLI slice:** `0288c02118232228254c1a26af2856b443a24be4` exposes the
+existing bounded PNG codec through `pagura::png`. Rendered page/tile Pixmaps are
+consumed and converted to straight RGBA in place. CLI `render`/`convert` accepts
+`--format png` and optional `--transparent`; default PPM behavior is preserved.
+Independent Python decoding checks pixels, CRC/chunk framing and zlib completion;
+API tests cover caller budgets and in-place conversion. Hosted runtime checks
+are pending. This is whole-buffer output; incremental PNG/DEFLATE, host/viewer
+export, persistent jobs, ancillary color metadata and backpressure remain open.
+
+**PNG host/viewer slice:** `335dbbd9c359b13d6f2ca30768bb0fd596907366` adds protocol
+1.9 complete-page PNG bytes with explicit resolution/background. Surface budgets
+are checked before recording; PNG stream and response frame caps are independent
+of reading-response limits. More → Export page PNG includes copied current form
+values through a temporary saved handle, released on success/failure/staleness.
+It does not adopt the snapshot or erase drafts. Native/WASI/client byte checks,
+independent Python pixel decoding, wire/version/budget tests and viewer
+option/snapshot/race/cleanup tests are authored; hosted and real-browser
+verification remain pending. Export uses PDF page orientation. Streaming, active
+cancellation, backpressure and ancillary color metadata remain open.
+
 Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
 portfolio/collection views and baseline-supported document properties. Expose
 lossless original-image extraction where valid and decoded-image export otherwise,

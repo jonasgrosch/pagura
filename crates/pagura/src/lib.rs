@@ -65,6 +65,7 @@
 //! # }
 //! ```
 
+pub mod png;
 pub mod provider;
 
 /// Positioned text, its reading-order layout, structure and search

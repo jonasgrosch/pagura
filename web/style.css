@@ -234,3 +234,8 @@ body.dragging #viewport { outline: 3px dashed var(--focus); outline-offset: -8px
 #document-services-dialog dd { margin: 0 0 .75rem; }
 #document-services-dialog li { margin-bottom: 1rem; }
 #document-services-dialog li button { margin: .25rem 0; }
+
+#png-export-form > label { display: block; margin: .75rem 0 .25rem; }
+#png-export-form > label:has(input[type=checkbox]) { display: flex; }
+#png-export-form > input[type=number] { display: block; width: 8rem; padding: .5rem; }
+#png-export-submit { margin-top: .75rem; }
