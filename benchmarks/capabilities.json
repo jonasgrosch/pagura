@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "e299b923a03b48c30302b58aec9a930f051ac2af",
+  "audited_revision": "7ef79e2b679e05429367225761ff6ae544744d2a",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -59,9 +59,10 @@
     "crates/pagura-color/tests/sycc.rs": "ebd03c04b7b8a9c4cab1e452ff07e6771fefa4fd3cec4c0edfea5702a97df2b2",
     "crates/pagura-core/src/error.rs": "c43b6a9db6cc264930a0fc4639d602fcc5ab39415965b948df2dff5f3b58fe9a",
     "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",
-    "crates/pagura-core/src/syntax.rs": "f2786bab1d5a9f818ee2ce345be25180c1b0b82782605e0f0c3e7f50343d8bc2",
-    "crates/pagura-core/src/syntax/window.rs": "baa6bfc727762433cae9b801a6be135e838fb2c31f8a2520ed45b468a0ee3f04",
-    "crates/pagura-core/tests/windows.rs": "6e8b5283329007466670b78cc226df740c8a1e8529f4a5d17b9b602d0060b561",
+    "crates/pagura-core/src/syntax.rs": "ba59c9d5ddd4813b1885c93a30a4586d9a007d8fef70b7637888f9c2cc11d912",
+    "crates/pagura-core/src/syntax/direct.rs": "d5d927d5cf97282fefd984916baa17b8a0cace89a028f4fb65695e4ea2da9b83",
+    "crates/pagura-core/src/syntax/window.rs": "123a89bc0bf8428613cd0bea6b2816080009058cf61125ea582910472f9e8ef2",
+    "crates/pagura-core/tests/windows.rs": "e89453378e9354ed94aae183c38cd699597f5e5cb3c080ea9616104d5f1a7021",
     "crates/pagura-crypto/src/hash/md5.rs": "b73634cbd9549de7c1893096b2fe61bb2e1fd4b238cab05a2509008925a64af0",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
@@ -369,7 +370,8 @@
         "crates/pagura-document/src/source/types.rs",
         "crates/pagura/src/lib.rs",
         "crates/pagura-core/src/syntax.rs",
-        "crates/pagura-core/src/syntax/window.rs"
+        "crates/pagura-core/src/syntax/window.rs",
+        "crates/pagura-core/src/syntax/direct.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
