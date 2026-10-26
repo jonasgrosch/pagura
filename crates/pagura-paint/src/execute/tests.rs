@@ -297,6 +297,7 @@ impl Fixture {
                 clip: None,
             },
             paint: paint_index,
+            scratch: paint_index,
             compositing,
             select,
             records: true,
@@ -338,11 +339,18 @@ impl Fixture {
         for group in &mut groups {
             group.order = (0..u32::try_from(group.items.len()).unwrap()).collect();
         }
+        // Every paint takes its own storage, as marks name them.
+        let slots = crate::plan::Slots {
+            of: (0..u32::try_from(self.paints.len()).unwrap()).collect(),
+            layouts: self.paints.iter().map(Source::scratch_layout).collect(),
+            empty: None,
+        };
         let parts = crate::prepare::planner::Parts {
             groups,
             items: self.items,
             masks: self.masks,
             paints: self.paints,
+            slots,
             conversions: self.conversions,
             transfers: Vec::new(),
         };
@@ -361,6 +369,7 @@ impl Fixture {
             items: parts.items,
             masks: parts.masks,
             paints: parts.paints,
+            slots: parts.slots,
             conversions: parts.conversions,
             output: self.output,
             stack,
@@ -695,6 +704,7 @@ impl Fixture {
         let mark = |shape: Option<u32>| Mark {
             cover: Cover { shape, clip: None },
             paint,
+            scratch: paint,
             compositing,
             select: 0,
             records: false,
