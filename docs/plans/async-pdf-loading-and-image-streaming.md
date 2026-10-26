@@ -253,6 +253,13 @@ adapter carrying the absolute origin and whether the window's end is the true
 source boundary. It grows windows within a loading budget and uses the same
 parser as the complete-buffer path.
 
+Source and transport ranges use checked `u64`; source registration still checks
+that the declared file fits existing `Limits::file_bytes` and target `usize`.
+The current diagnostic model has target-sized file positions, so wasm32 rejects
+files at or above 4 GiB even if only a small window would be resident. No offset
+is truncated or reported through a parallel diagnostic type. A future larger
+file contract must widen the existing position and file-limit types together.
+
 A token, string, dictionary or indirect-object boundary crossing the available
 window requests more bytes. The parser must report that condition structurally;
 catching every `Syntax` error and assuming that more bytes will fix it is

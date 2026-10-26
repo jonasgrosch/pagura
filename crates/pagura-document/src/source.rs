@@ -8,10 +8,12 @@ mod complete;
 mod memory;
 mod sparse;
 mod types;
+mod window;
 
 pub use complete::CompleteBytes;
 pub use sparse::{SparseBytes, Supply};
 pub use types::{ByteLease, ByteRange, NeedData, ReadFault, ReadResult, SourceIdentity};
+pub use window::{LoadingLimits, Window};
 
 use pagura_core::{Error, Limits, Result};
 
@@ -49,6 +51,10 @@ impl Default for SourceLimits {
 ///
 /// Implementations must never replace accepted bytes. A source error cannot
 /// become a repaired PDF or an undefined-reference null.
+///
+/// Ranges use `u64`, but the current document/diagnostic model admits only a
+/// declared length that fits both [`Limits::file_bytes`] and the target's
+/// `usize`. In particular, wasm32 cannot register a source at or above 4 GiB.
 pub trait ByteSource: std::fmt::Debug + Send + Sync {
     /// The immutable registration and version identity.
     fn identity(&self) -> SourceIdentity;
@@ -62,6 +68,15 @@ pub trait ByteSource: std::fmt::Debug + Send + Sync {
     fn generation(&self) -> u64;
     /// Allocation bytes retained by this source and its outstanding leases.
     fn retained_bytes(&self) -> usize;
+    /// Checks whether this immutable representation is still usable.
+    ///
+    /// This check performs no data read and consumes no scan budget. Callers
+    /// use it before returning a cached wait: a conflicting supply or close
+    /// is terminal even when the availability generation did not change.
+    ///
+    /// # Errors
+    /// Returns the source's terminal consistency or lifecycle error.
+    fn check(&self) -> Result<()>;
     /// Leases exactly `range`, or reports its missing intervals.
     ///
     /// # Errors

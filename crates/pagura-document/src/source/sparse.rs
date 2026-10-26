@@ -234,6 +234,9 @@ impl ByteSource for SparseBytes {
     fn generation(&self) -> u64 {
         self.lock().generation
     }
+    fn check(&self) -> Result<()> {
+        self.lock().active()
+    }
     fn retained_bytes(&self) -> usize {
         self.budget.used()
     }

@@ -59,6 +59,9 @@ impl ByteSource for CompleteBytes {
     fn retained_bytes(&self) -> usize {
         self.budget.used()
     }
+    fn check(&self) -> Result<()> {
+        Ok(())
+    }
     fn read_exact(&self, range: ByteRange) -> ReadResult<ByteLease> {
         let extent = range.offsets(self.length)?;
         self.work

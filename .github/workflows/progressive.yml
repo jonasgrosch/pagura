@@ -22,7 +22,7 @@ jobs:
       - name: Verify complete and extendable parser windows
         run: cargo test -p pagura-core
       - name: Verify source availability and lease lifetime
-        run: cargo test -p pagura-document --test sources
+        run: cargo test -p pagura-document --test sources --test windows
       - name: Verify facade source contract
         run: 'cargo test -p pagura --test api source::'
       - name: Verify shared glyph-store callers

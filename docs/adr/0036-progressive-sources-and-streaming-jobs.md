@@ -50,6 +50,14 @@ conflicting overlap poisons that source; an unrelated/stale identity is rejected
 without modifying the current source. Transport bytes and accepted source bytes
 have separate aggregate accounting at the host boundary.
 
+The current group retains one diagnostic position model: file positions and
+`Limits::file_bytes` use target-sized `usize`. Although transport intervals use
+checked `u64`, source registration rejects a declared length that exceeds either
+the configured file limit or target `usize` before publishing any document or
+window. A wasm32 source therefore must stay below 4 GiB. Supporting larger files
+on that target requires widening the existing file positions and file-size limit
+together; tiny sparse windows do not imply that separate large-file promise.
+
 Full-source materialization returns a checked complete-source lease. It reuses
 contiguous backing or explicitly reserves the additional assembly allocation;
 it never hides a whole-file copy behind a borrowed-slice accessor. Historical

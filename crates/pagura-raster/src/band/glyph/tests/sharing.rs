@@ -247,7 +247,7 @@ impl StoreKey for Key {
 fn held_polygon_sources_follow_existing_store_pinning_and_nonadmission() {
     let limits = Limits::default();
     let path = outline(37.0);
-    let build = || -> pagura_core::Result<_> {
+    let build = || -> Result<_> {
         let value = GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits)?;
         Ok(Built {
             bytes: value.retained_bytes(),
