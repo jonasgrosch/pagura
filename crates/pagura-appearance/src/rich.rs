@@ -107,15 +107,15 @@ fn rich_content(document: &Document, annotation: &Dictionary, limits: &Limits) -
             if bytes.starts_with(&[0xfe, 0xff]) || bytes.starts_with(&[0xff, 0xfe]) {
                 // XML streams follow their Unicode BOM; PDF text-string
                 // decoding is different and accepts only big-endian UTF-16.
-                let units = bytes[2..].chunks_exact(2);
-                if !units.remainder().is_empty() {
+                let (units, remainder) = bytes[2..].as_chunks::<2>();
+                if !remainder.is_empty() {
                     return Err(Error::syntax("incomplete rich text UTF-16 unit"));
                 }
-                let units = units.map(|pair| {
+                let units = units.iter().map(|pair| {
                     if bytes[0] == 0xff {
-                        u16::from_le_bytes([pair[0], pair[1]])
+                        u16::from_le_bytes(*pair)
                     } else {
-                        u16::from_be_bytes([pair[0], pair[1]])
+                        u16::from_be_bytes(*pair)
                     }
                 });
                 let mut source = String::new();
