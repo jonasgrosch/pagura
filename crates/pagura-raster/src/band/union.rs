@@ -167,7 +167,8 @@ pub(crate) struct Resolver {
     /// The heights where pairs may cross further than [`SURE`] from a
     /// crossing found, or that a pair found not to cross may cross near an
     /// end, with the pair; the heights whose sub-slabs each reaches, by the
-    /// first; those reaching the heights swapped at, and the next to reach.
+    /// first; those reaching the heights swapped at, in an expiry min-heap,
+    /// and the next to reach.
     doubtful: Vec<(f64, f64, u32, u32)>,
     bands: Vec<(usize, usize, u32, u32)>,
     reaching: Vec<(usize, u32, u32)>,
@@ -371,10 +372,11 @@ impl Resolver {
         let swaps = swaps && !self.full;
         self.crosses.clear();
         self.crossings(pieces, total, swaps, (work, bytes))?;
-        // They pay where crossings outnumber the pieces.
-        // A doubtful pair can change order without a recorded crossing.
-        // Such rows keep the full sweep and its existing work bound.
-        let swaps = swaps && self.crosses.len() >= count && self.doubtful.is_empty();
+        // They pay where crossings outnumber the pieces. The doubtful
+        // pairs' searches, sort and expiry queue stay within the heights'
+        // O(h log h) preparation bound; otherwise keep the full sweep.
+        let swaps =
+            swaps && self.crosses.len() >= count && self.doubtful.len() <= self.heights.len();
         // The crossings are among the heights the charge sorts.
         work.charge(sort_work(self.heights.len()))?;
         room(&mut self.height_keys, self.heights.len(), bytes)?;
@@ -382,7 +384,7 @@ impl Resolver {
         self.heights.dedup();
         self.keep = swaps;
         if swaps {
-            self.prepare_swaps(count, (work, bytes))?;
+            self.prepare_swaps(count, bytes)?;
         }
         self.windings.clear();
         room(&mut self.windings, rules.len(), bytes)?;
@@ -732,17 +734,10 @@ impl Resolver {
     /// Orders the crossings found by height, makes room for the windings and
     /// places of `pieces` pieces, and finds for each doubtful pair the
     /// heights whose sub-slabs above or below reach into its heights: two
-    /// searches per pair, and their sort, charged before they run.
-    fn prepare_swaps(
-        &mut self,
-        pieces: usize,
-        (work, bytes): (&mut Meter, &mut Meter),
-    ) -> Result<()> {
-        let depth = self.heights.len().max(1).ilog2() as usize + 1;
-        work.charge(
-            sort_work(self.doubtful.len())
-                .saturating_add(self.doubtful.len().saturating_mul(2 * depth)),
-        )?;
+    /// searches per pair, their sort, and one queue insertion/removal per
+    /// pair. There are no more pairs than heights, whose sort is charged
+    /// before this O(h log h) preparation and its queue updates run.
+    fn prepare_swaps(&mut self, pieces: usize, bytes: &mut Meter) -> Result<()> {
         self.crosses.sort_unstable();
         // Every entry is written before it is read, so earlier sweeps' stay.
         if self.lefts.len() < pieces {
@@ -777,6 +772,54 @@ impl Resolver {
         }
         self.bands.sort_unstable_by_key(|band| band.0);
         room(&mut self.reaching, self.bands.len(), bytes)
+    }
+
+    /// Inserts a pair into the min-heap of expiry heights. Storage for
+    /// every pair was admitted by `prepare_swaps` before the sweep.
+    fn reach(&mut self, end: usize, pair: (u32, u32)) {
+        let pair = (end, pair.0, pair.1);
+        let mut at = self.reaching.len();
+        self.reaching.push(pair);
+        while at > 0 {
+            let parent = (at - 1) / 2;
+            if self.reaching[parent].0 <= pair.0 {
+                break;
+            }
+            self.reaching[at] = self.reaching[parent];
+            at = parent;
+        }
+        self.reaching[at] = pair;
+    }
+
+    /// Drops each expired pair once, restoring the expiry heap each time.
+    fn expire(&mut self, height: usize) {
+        while self.reaching.first().is_some_and(|p| p.0 < height) {
+            let Some(last) = self.reaching.pop() else {
+                break;
+            };
+            if self.reaching.is_empty() {
+                break;
+            }
+            let mut at = 0_usize;
+            while let Some(left) = at.checked_mul(2).and_then(|n| n.checked_add(1))
+                && left < self.reaching.len()
+            {
+                let right = left + 1;
+                let child = if right < self.reaching.len()
+                    && self.reaching[right].0 < self.reaching[left].0
+                {
+                    right
+                } else {
+                    left
+                };
+                if last.0 <= self.reaching[child].0 {
+                    break;
+                }
+                self.reaching[at] = self.reaching[child];
+                at = child;
+            }
+            self.reaching[at] = last;
+        }
     }
 
     /// Takes the sub-slabs from `heights[k]` on, through the heights closer
@@ -822,13 +865,12 @@ impl Resolver {
         while let Some(&(first, end, i, j)) = self.bands.get(self.band)
             && first <= last
         {
-            self.reaching.push((end, i, j));
+            self.reach(end, (i, j));
             self.band += 1;
         }
-        // Overlapping doubtful pairs can greatly outnumber the active
-        // pieces. Their repeated scans are not covered by placing pieces.
-        work.charge(self.reaching.len())?;
-        self.reaching.retain(|&(end, _, _)| end >= k);
+        // Only expired pairs are visited. A large live set declines in
+        // constant time instead of being rescanned at every height.
+        self.expire(k);
         let mut doubtful = [(0, 0); 8];
         let Some(doubtful) = doubtful.get_mut(..self.reaching.len()) else {
             return Ok(None);
