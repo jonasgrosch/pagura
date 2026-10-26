@@ -1,15 +1,15 @@
 //! File structure and cross-reference data (ISO 32000-2 clauses 7.5.2–7.5.8).
 
+mod chain;
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 
 use crate::repairs;
 use pagura_core::syntax::{Origin, ParseMode, Parser, is_whitespace};
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, Meter, ObjectId, Position,
-    Result,
+    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// The header must start within the first 1024 bytes (7.5.2).
 const HEADER_WINDOW: usize = 1024;
@@ -164,85 +164,22 @@ pub(crate) fn read(
             .checked_add(header)
             .is_some_and(|at| is_section(bytes, at, limits));
     let shift = if shifted { header } else { 0 };
-    let mut offset = start
+    let offset = start
         .checked_add(shift)
         .ok_or(Error::syntax("xref offset overflow"))?;
-    let mut visited = BTreeSet::new();
-    let mut table = XrefTable::default();
-    let mut budget = Meter::new(
-        entry_budget(limits),
-        "cross-reference entry budget exceeded",
-    );
-    loop {
-        if !visited.insert(offset) {
-            return Err(Error::cycle("cross-reference revision cycle").at(Position::File(offset)));
-        }
-        if table.revisions.len() >= limits.revisions {
-            return Err(Error::limit("revision budget exceeded").at(Position::File(offset)));
-        }
-        let available = budget.remaining();
-        let mut section = section(
-            bytes,
-            offset,
-            &Limits {
-                objects: budget.remaining(),
-                ..*limits
-            },
-            diagnostics,
-        )?;
-        budget.charge(section.entries.len())?;
-        if section.kind == RevisionKind::Table
-            && let Some(hybrid) = integer_offset(&section.trailer, b"XRefStm")?
-        {
-            let hybrid = hybrid
-                .checked_add(shift)
-                .ok_or(Error::syntax("xref offset overflow"))?;
-            if !visited.insert(hybrid) {
-                return Err(Error::cycle("hybrid cross-reference cycle").at(Position::File(hybrid)));
-            }
-            let supplement = stream::read(
-                bytes,
-                hybrid,
-                &Limits {
-                    objects: budget.remaining(),
-                    ..*limits
-                },
-                diagnostics,
-            )?;
-            budget.charge(supplement.entries.len())?;
-            // Clause 7.5.8.4: stream entries override the companion table.
-            section.entries.extend(supplement.entries);
-            section.kind = RevisionKind::Hybrid;
-        }
-        let Section {
-            entries,
-            trailer,
-            kind,
-            end,
-        } = section;
-        let entries = merge_entries(&mut table, entries, &trailer, offset, shift)?;
-        for (key, value) in &trailer {
-            if !table.trailer.contains_key(key.as_bytes()) {
-                table.trailer.insert(key.clone(), value.clone());
-            }
-        }
-        let prev = integer_offset(&trailer, b"Prev")?;
-        table.revisions.push(Revision {
-            offset,
-            end_section: offset,
-            end,
-            kind,
-            trailer,
-            entries: std::sync::Arc::new(entries),
-            parsed_entries: available.saturating_sub(budget.remaining()),
-        });
-        let Some(prev) = prev else {
-            break;
+    let mut chain = chain::Chain::new(offset, shift, limits)?;
+    while let Some(request) = chain.request() {
+        let limits = Limits {
+            objects: request.objects,
+            ..*limits
         };
-        offset = prev
-            .checked_add(shift)
-            .ok_or(Error::syntax("Prev offset overflow"))?;
+        let section = match request.kind {
+            chain::Kind::Section => section(bytes, request.offset, &limits, diagnostics),
+            chain::Kind::Stream => stream::read(bytes, request.offset, &limits, diagnostics),
+        }?;
+        chain.accept(section)?;
     }
+    let mut table = chain.into_table();
     join_linearized_base(bytes, header, limits, &mut table)?;
     validate_identities(bytes, &table, limits)?;
     Ok(table)

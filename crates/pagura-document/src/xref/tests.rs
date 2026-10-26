@@ -178,3 +178,76 @@ fn irreparable_xref_fields_remain_terminal_without_fetching_later_holes() {
         assert!(matches!(error.position, Position::File(at) if at >= START));
     }
 }
+
+#[test]
+fn owned_revision_chain_keeps_a_primary_section_while_its_supplement_waits() {
+    use super::chain::{Chain, Kind};
+    use crate::source::ByteSource;
+
+    let primary = b"xref\n1 1\n22 0 n\n7 1\n700 0 n\ntrailer << /Size 8 /Root 1 0 R /Prev 100 /XRefStm 700 >>".to_vec();
+    let mut supplement =
+        b"7 0 obj\n<< /Type /XRef /Size 8 /Index [1 1] /W [1 2 1] /Length 4 >>\nstream\n".to_vec();
+    supplement.extend_from_slice(&[1, 0, 33, 0]);
+    supplement.extend_from_slice(b"\nendstream\nendobj ");
+    let older = b"xref\n0 3\n0 65535 f\n7 0 n\n80 0 n\ntrailer << /Size 8 >>".to_vec();
+    let limits = Limits {
+        objects: 6,
+        ..Limits::default()
+    };
+    let mut chain = Chain::new(1000, 0, &limits).unwrap();
+    let source = source().unwrap();
+    for (offset, kind, literal) in [
+        (1000, Kind::Section, primary),
+        (700, Kind::Stream, supplement),
+        (100, Kind::Section, older),
+    ] {
+        let request = chain.request().unwrap();
+        assert_eq!((request.offset, request.kind), (offset, kind));
+        let limits = Limits {
+            objects: request.objects,
+            ..limits
+        };
+        let mut window = Window::new(
+            source.clone(),
+            u64::try_from(offset).unwrap(),
+            limits,
+            LoadingLimits::default(),
+        )
+        .unwrap();
+        let read = |parser: &mut pagura_core::syntax::Parser<'_, _>| {
+            let mut diagnostics = Diagnostics::new(Recovery::Strict);
+            let section = match kind {
+                Kind::Section => parse_section(parser, FILE_LENGTH, &limits, &mut diagnostics),
+                Kind::Stream => {
+                    super::stream::parse(parser, FILE_LENGTH, &limits, &mut diagnostics)
+                }
+            }?;
+            Ok((section, diagnostics.take()))
+        };
+        assert!(matches!(window.read(read), Err(ReadFault::Unavailable(_))));
+        assert_eq!(chain.request(), Some(request));
+        source
+            .supply(ID, u64::try_from(offset).unwrap(), &literal)
+            .unwrap();
+        let parsed = window.read(read).unwrap();
+        let (mut section, diagnostics) = parsed.value;
+        assert_eq!(diagnostics, []);
+        assert_eq!(parsed.diagnostics, []);
+        section.end += offset;
+        chain.accept(section).unwrap();
+    }
+    assert_eq!(chain.request(), None);
+    let table = chain.into_table();
+    assert_eq!(table.entries[&1].location, Location::Offset(33));
+    assert_eq!(table.entries[&2].location, Location::Offset(80));
+    assert_eq!(table.entries[&7].location, Location::Offset(700));
+    assert_eq!(table.entries[&0].location, Location::Free);
+    assert_eq!(table.revisions.len(), 2);
+    assert_eq!(table.revisions[0].kind(), RevisionKind::Hybrid);
+    assert_eq!(table.revisions[0].entry_count(), 3);
+    assert_eq!(table.revisions[1].entry_count(), 3);
+    assert!(matches!(
+        source.materialize(),
+        Err(ReadFault::Unavailable(_))
+    ));
+}
