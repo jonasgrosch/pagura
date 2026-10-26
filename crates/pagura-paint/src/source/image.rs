@@ -798,6 +798,9 @@ impl Prepared {
         if !paint.opaque(&self.image.image) || self.geometry.mode() == Mode::Bilinear {
             return false;
         }
+        if self.nearest_words((plan, paint), pixels, scratch, out) {
+            return true;
+        }
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);
         let values = scratch::grown(&mut storage, len * lanes);
@@ -823,6 +826,33 @@ impl Prepared {
         }
         scratch.summed = storage;
         opaque
+    }
+
+    /// [`Self::texel_words`] of upright nearest samples of an unmasked
+    /// memoized image, written as its texel rows are read, without the
+    /// texels' alpha and shape between: false, with nothing written, for
+    /// other images and placements. (Unmasked table images placed upright
+    /// sample by codes.) Out of line, so that the path of other sources
+    /// stays as it was.
+    #[inline(never)]
+    fn nearest_words(
+        &self,
+        (plan, paint): (&Sampling, &Paint),
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let (Paint::Colors(paint), None) = (paint, &self.mask) else {
+            return false;
+        };
+        let (Strategy::Memo(_), Some(memo)) = (&paint.1, scratch.memo.as_deref_mut()) else {
+            return false;
+        };
+        let image = &self.image.image;
+        MemoTexels::new(image, &paint.0, None, memo).is_some_and(|texels| {
+            let texels = texels.converting(TexelMode::Exact);
+            plan.words(&self.geometry, pixels, &mut scratch.plan, &texels, out)
+        })
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.

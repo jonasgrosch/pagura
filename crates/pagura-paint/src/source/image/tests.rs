@@ -1248,12 +1248,24 @@ fn words_store_as_opaque_spans_do() {
     let gray = case(image((13, 9), 1, 8, bytes(13 * 9, 8, 3)));
     let mut icc_like = case(image((10, 8), 3, 8, bytes(10 * 8 * 3, 8, 7)));
     icc_like.decode = vec![[0.1, 0.9], [0.0, 1.0], [1.0, 0.0]];
-    let (mut written, mut averaged) = (0, 0);
-    for case in [&rgb, &gray, &icc_like] {
+    // Lab samples convert through the memo, and upright nearest pixels
+    // write their words as the memo's texel rows are read.
+    let lab = pagura_color::cie::Calibrated::lab([0.9505, 1.0, 1.089], [0.0; 3], [-100.0; 4]);
+    let lab = Case {
+        space: Some(ColorSpace::Calibrated(Arc::new(lab.unwrap()))),
+        decode: vec![[0.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]],
+        ..case(image((11, 9), 3, 8, bytes(11 * 9 * 3, 8, 13)))
+    };
+    let (mut written, mut averaged, mut memoized) = (0, 0, 0);
+    for case in [&rgb, &gray, &icc_like, &lab] {
         for target in [3, 4] {
             for unit_to_device in placements(case.image.width, case.image.height) {
                 let sampler = sampler(case, unit_to_device, target);
                 let mode = sampler.prepared.as_ref().map(|p| p.geometry.mode());
+                let memo = sampler.prepared.as_ref().is_some_and(|p| {
+                    matches!(&p.plan, super::Plan::Texels { paint: Paint::Colors(paint), .. }
+                        if matches!(paint.1, super::texels::Strategy::Memo(_)))
+                });
                 let mut storage = scratch(&sampler);
                 let reserved = storage.bytes();
                 let (x0, y0, x1, y1) = window(unit_to_device);
@@ -1270,6 +1282,7 @@ fn words_store_as_opaque_spans_do() {
                         }
                         written += 1;
                         averaged += usize::from(mode != Some(super::Mode::Nearest));
+                        memoized += usize::from(memo && mode == Some(super::Mode::Nearest));
                         sampler.span(Pixels::new(x, y, len), &mut storage, &mut span);
                         assert_eq!(storage.bytes(), reserved);
                         assert!(span.alpha.iter().all(|&a| a == 1.0));
@@ -1281,7 +1294,7 @@ fn words_store_as_opaque_spans_do() {
             }
         }
     }
-    assert!(written > 0 && averaged > 0);
+    assert!(written > 0 && averaged > 0 && memoized > 0);
 }
 
 /// A large source of few colours, indexed at preparation, samples bit for
