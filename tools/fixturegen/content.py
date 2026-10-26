@@ -926,6 +926,10 @@ def tiling_cases():
         # pixels, scaling the 0.8-unit square to exactly one pixel.
         ('tiling-constant-spacing',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f'},motif),
         ('tiling-constant-spacing-faster',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f','kind':3},motif),
+        # A 1.5-unit step becomes 2 pixels, moving the far corner of a
+        # 6-unit BBox by 2 pixels: TilingType 3 permits it, TilingType 1
+        # refuses it (below).
+        ('tiling-faster-distortion',{'step':b'1.5 2','bbox':b'[0 0 6 2]','cell':b'1 0 0 rg 0 0 .75 1 re f','kind':3},motif),
         ('tiling-underlying',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 1 re f'},motif),
         ('tiling-ignored-colour',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 rg /DeviceGray cs 0 sc /S sh 0 0 1 1 re f'},motif),
         ('tiling-ignored-inline',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'BI /W 1 /H 1 /CS /RGB /BPC 8 ID \0\0\xff EI 0 0 1 1 re f'},motif),
@@ -947,6 +951,22 @@ def tiling_cases():
             covered=overlap(x)*overlap(7-row)
             exact.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
     yield Case('tiling-type-two-fractional',pdf(step=b'1.6 1.6',bbox=b'[0 0 1.6 1.6]',cell=b'1 0 0 rg 0 0 .8 .8 re f',kind=2),RENDER,('content-tiling',),'8.7.3.1, Table 74: no distortion keeps a fractional lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(exact),extra={'tolerance':1})
+    # Constant spacing rounds the device lattice vectors (2.5, 0) and
+    # (0, -2.5) half away from zero, to (3, 0) and (0, -3): the 1.25-unit
+    # squares become 1.5 pixels on a 3-pixel lattice.
+    def halves(i):
+        return sum(max(F(0),min(F(i+1),F(3*k)+F(3,2))-max(F(i),F(3*k))) for k in range(3))
+    rounded=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=halves(x)*halves(7-row)
+            rounded.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-constant-spacing-half',pdf(step=b'2.5 2.5',bbox=b'[0 0 2.5 2.5]',cell=b'1 0 0 rg 0 0 1.25 1.25 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: constant spacing rounds lattice vectors at a half away from zero; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(rounded),extra={'tolerance':1})
+    for name,refused,reason in [
+        ('tiling-constant-spacing-distortion',pdf(step=b'1.5 2',bbox=b'[0 0 6 2]',cell=b'1 0 0 rg 0 0 .75 1 re f'),'constant spacing would move a BBox corner by 2 pixels'),
+        ('tiling-singular-matrix',pdf(matrix=b'[0 0 0 1 0 0]'),'a singular pattern matrix has no lattice'),
+    ]:
+        yield Case(name,refused,UNSUPPORTED,('content-tiling','unsupported-is-explicit'),'8.7.3.1, Table 74 and ADR 0004: '+reason+'; unsupported explicitly',feature='pattern.tiling',oracle=None)
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
         if name == 'tiling-coloured-underlying':
             yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))

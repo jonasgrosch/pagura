@@ -2055,6 +2055,25 @@
       "height": 8
     },
     {
+      "id": "content/tiling-faster-distortion",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-faster-distortion.pdf",
+      "sha256": "c532596bef455dc18284d67980ae983d3abccf69ddafbf49806fdffb7f2a3a29",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-faster-distortion.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
       "id": "content/tiling-underlying",
       "kind": "pdf",
       "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
@@ -2244,6 +2263,58 @@
       "width": 8,
       "height": 8,
       "tolerance": 1
+    },
+    {
+      "id": "content/tiling-constant-spacing-half",
+      "kind": "pdf",
+      "description": "8.7.3.1, Table 74 and ADR 0004: constant spacing rounds lattice vectors at a half away from zero; exact rational pixel coverage",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-constant-spacing-half.pdf",
+      "sha256": "b299c7361e97c1fe9e6be8428a9e695acb7f3440919f6f8248c0571b41085fc1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-constant-spacing-half.ppm",
+      "oracle_sha256": "fca1dddbc585d859dd65e0fd0626ba1231d893b8ca06d0278c603ff480391603",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/tiling-constant-spacing-distortion",
+      "kind": "pdf",
+      "description": "8.7.3.1, Table 74 and ADR 0004: constant spacing would move a BBox corner by 2 pixels; unsupported explicitly",
+      "expected": "unsupported",
+      "requirements": [
+        "content-tiling",
+        "unsupported-is-explicit"
+      ],
+      "path": "corpus/generated/content/tiling-constant-spacing-distortion.pdf",
+      "sha256": "d6eb8071704135dd47a2f77c520b48abfb8c0db1e36fc563c0689a4e38e16216",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.tiling"
+    },
+    {
+      "id": "content/tiling-singular-matrix",
+      "kind": "pdf",
+      "description": "8.7.3.1, Table 74 and ADR 0004: a singular pattern matrix has no lattice; unsupported explicitly",
+      "expected": "unsupported",
+      "requirements": [
+        "content-tiling",
+        "unsupported-is-explicit"
+      ],
+      "path": "corpus/generated/content/tiling-singular-matrix.pdf",
+      "sha256": "4e850a5ae3d6459116e123fa9165de47849c109675af648136aeafcdae73f6f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.tiling"
     },
     {
       "id": "content/tiling-zero-step",
