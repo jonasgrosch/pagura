@@ -195,9 +195,13 @@ Linux report SHA-256:
 `73beefea8ecaaafd6cb908477975d46c9cf795ed0dd3dab6130f533a375aacfb`.
 macOS report SHA-256:
 `76dee296a926897956bc6973451ee1907820a13aedf103d50b0f27930e58b43f`.
-The integrated 13-case manifest preserves the original six controls. Fresh
-hosted validation must accept every Pagura case after the reader change; the
-diagnostic failures are evidence of the previous behavior, not a passing gate.
+The integrated 13-case manifest preserves the original six controls. At `6ac4b1d27caa9bf2690f1105764b027059932998`,
+[hosted run 40385518384](https://github.com/jonasgrosch/pagura/actions/runs/40385518384)
+passes all 13 Pagura cases. Its combined report contains 91 cells; SHA-256
+`a61e91bceb3d01c4bb2aab579788179647b942e653f3b237044adedc3b5dba66`.
+The retained diagnostic failures describe the previous reader. The same integrated
+head passes [full Ubuntu, macOS and Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40385513689).
+Neither result establishes the entire font family or validates later changes.
 
 The preceding vertical-substitution checkpoint `a0533c2d6` passed
 [full hosted Ubuntu, macOS and Windows checks](https://github.com/jonasgrosch/pagura/actions/runs/40380082421).

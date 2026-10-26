@@ -49,13 +49,17 @@ subtable precedence are preserved. The stored `font_work` and `font_entries`
 budgets bound compilation; the map reports retained bytes. This does not shape
 strings, alter advances, or affect embedded PDF CID/GID selection. GDEF lookup
 filters, other substitution types and feature variations remain explicit gaps.
-Synthetic glyph-map, malformed-input and resource-bound controls are authored;
-hosted runtime acceptance is pending.
+Synthetic glyph-map, malformed-input and resource-bound controls pass the
+[three-platform hosted checks](https://github.com/jonasgrosch/pagura/actions/runs/40385513689)
+at `6ac4b1d27`, including the bundled CJK substitution and PDF metrics controls.
 
 Legacy post 2.5 offsets use the existing glyph-name index, including its work
 and entry budgets. Signed index bounds and the declared glyph count are checked.
 Post 1 requires exactly 258 glyphs. Independent paired PDF controls preserve
-cmap-first selection and name fallback; hosted acceptance of this change is pending.
+cmap-first selection and name fallback. All 13 integrated controls pass at
+`6ac4b1d27` in [hosted run 40385518384](https://github.com/jonasgrosch/pagura/actions/runs/40385518384).
+The later post 2 reserved-index correction has authored boundary tests and awaits
+hosted acceptance with the next font checkpoint.
 
 Implemented formats:
 

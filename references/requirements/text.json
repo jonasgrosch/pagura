@@ -410,7 +410,7 @@
         "source": "https://learn.microsoft.com/en-us/typography/opentype/spec/post",
         "locator": "Version 2.5; Header",
         "rule": "The 0x00025000 version stores one signed byte offset per glyph into standard Macintosh names. This is a deprecated, documented layout, not post 3.0 absence of names.",
-        "scope": "Paired original post 2.5/2.0 programs share cmap, outlines and metrics; PDF 9.6.5.4 determines direct Unicode and glyph-name fallback. Hosted measurements pending. No product change."
+        "scope": "Paired original post 2.5/2.0 programs share cmap, outlines and metrics; PDF 9.6.5.4 determines direct Unicode and glyph-name fallback. Head 6ac4b1d27 passed all 13 integrated Pagura render controls in hosted run40385518384 and full three-platform checks in run40385513689. This is scoped evidence, not font-family parity."
       }
     },
     {

@@ -355,6 +355,9 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Res
             let mut custom_count = 0;
             for _ in 0..count {
                 let index = usize::from(r.u16()?);
+                if index >= 32768 {
+                    return Err(r.error("reserved post glyph-name index"));
+                }
                 if let Some(custom) = index.checked_sub(STANDARD.len()) {
                     custom_count = custom_count.max(custom + 1);
                 }
@@ -455,6 +458,34 @@ mod tests {
                     .kind,
                 ErrorKind::Syntax
             );
+        }
+    }
+
+    #[test]
+    fn reserved_name_indices_fail_before_custom_name_allocation() {
+        let mut last = super::NAME_INDEX.to_be_bytes().to_vec();
+        last.extend([0; 28]);
+        last.extend(1_u16.to_be_bytes());
+        last.extend(32767_u16.to_be_bytes());
+        for _ in 258..=32767 {
+            last.extend([1, b'A']);
+        }
+        assert_eq!(
+            parse_table(&last, 1, &Limits::default()).unwrap().name(0),
+            Some(b"A".as_slice())
+        );
+        for index in [32768_u16, u16::MAX] {
+            let mut table = super::NAME_INDEX.to_be_bytes().to_vec();
+            table.extend([0; 28]);
+            table.extend(1_u16.to_be_bytes());
+            table.extend(index.to_be_bytes());
+            let limits = Limits {
+                font_entries: 0,
+                ..Limits::default()
+            };
+            let error = parse_table(&table, 1, &limits).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Syntax);
+            assert_eq!(error.message, "reserved post glyph-name index");
         }
     }
 
