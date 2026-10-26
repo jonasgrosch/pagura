@@ -662,8 +662,8 @@ run `40392132561`. Capability run `40392132510` measured merge
 3241 combined cells; artifact `12685018627`, ZIP SHA-256
 `a9299cef5f4286592a5cd721631d9d6e38ad33d18569b6bec9f73d8591c44485`, report
 SHA-256 `e4013329a413e2a1b39b8276ee7c878b5851999b03f0259e9670525d62e69f18`.
-That evidence does not validate this new normal-button source checkpoint.
-The new batch awaits hosted acceptance; no local build, test or engine was run.
+The normal-button and static-subtype additions were subsequently accepted at
+`fc0a302dc` below. No local build, test or engine was run.
 R/D activation, richer form data/actions, rich/CID/complex-script captions,
 physical print and broader V01/V02 closure remain outside this batch.
 
@@ -714,8 +714,8 @@ require normal AP. Stored artwork/state controls paint without resolving unused
 payloads; absent/null AP is Syntax after ordinary visibility and text-only
 culling. They do not represent a generic appearance-synthesis backlog.
 
-The 72 new cases include 48 pixel controls, bringing G01 to 596. They are
-independently authored acceptance fixtures, not measured competitor artwork. They await the retained PR's hosted gates. Existing Sound,
+The 72 new cases include 48 pixel controls, bringing G01 to 596. Their expected
+pixels are independently authored. Existing Sound,
 Redact, widget and button observations and all prior input identities are retained.
 The advertised static boundary uses one stored selector, generator and interpreter.
 Richer font/encoding coverage depends on group 04; rich form editing and complex
@@ -723,6 +723,17 @@ Tx updates on group 07; media decoding/activation, XFA and host interactions on
 group 08; physical print on group 10; sanitizing redaction on group 16. Remaining
 common-rich-text layout and difficult geometric accuracy cases stay explicit V01
 gates, without promoting this finite static boundary to full V01 acceptance.
+
+Checkpoint `fc0a302dc774ae348e9a8fb367c925cfecb27f38` passes
+[all three functional platforms](https://github.com/jonasgrosch/pagura/actions/runs/40408683166),
+[editing/native-WASI/browser checks](https://github.com/jonasgrosch/pagura/actions/runs/40408682968)
+and [all capability checks](https://github.com/jonasgrosch/pagura/actions/runs/40408682998).
+The combined report records 596/596 Pagura observations across 4,172 engine cells,
+at merge `d77e9797e0a208ad0f521b44b2320472ce9e74b1`. Artifact `12692088617`
+has ZIP SHA-256 `9c994740ac4d4a072e4381195148daeab1328f71607785759e596204f0de45cb`
+and report SHA-256 `388f1d626062e39823c81d9e4904fbf1734bc4a1c24a8f2507844505cbe791c7`.
+This acceptance precedes the rich-field extension below and the later one-pass
+base changes; their combined head needs its own hosted checks.
 
 The rich Tx RV/DS batch extends the same parser and layout used by RC annotations
 through source display, explicit library filling, preview and incremental saves
