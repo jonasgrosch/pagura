@@ -181,7 +181,7 @@
     "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
-    "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
+    "tools/check.py": "71175f8dc56b83e7b601ba1ad0e63fe6133365b125321ee8a13093bededb11a4",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
