@@ -401,8 +401,19 @@ pub(crate) fn store_f32_runs(
 pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
     if let Colors::Strided { values, stride: 3 } = *colors {
         // At full opacity the store is the target's levels.
+        // At opacity +0 the store is `x + 0·(t − x)` for a level `x` and
+        // target `t`, both in `-0 ..= 255`. Where `x` is `-0`, `t − x` is at
+        // least `+0`, so the product is `+0`; elsewhere it is a zero that
+        // leaves `x` alone. That is `x + 0`, `-0` becoming `+0`, without the
+        // target's levels. At `-0` the product can be `-0`, so it stays.
         let one = |pixel: &mut [f32; 4], color: &[f64], a: f64| {
-            lerp(pixel, levels(color), single(a));
+            if a.to_bits() == 0 {
+                for value in pixel {
+                    *value += 0.0;
+                }
+            } else {
+                lerp(pixel, levels(color), single(a));
+            }
         };
         by_runs((pixels, values, alpha), overwrite_f32, one);
         return;
@@ -606,12 +617,14 @@ mod tests {
         let unit = |random: u64| f64::from(u32::try_from(random % 1_000_001).unwrap_or(0)) / 1e6;
         for case in 0..400 {
             let len = case % 37;
-            // Runs of full opacity between other opacities, zero included.
+            // Runs of full opacity and of opacity +0 between other
+            // opacities, single zeros of either sign included.
             let alpha: Vec<f64> = (0..len)
-                .map(|k| match (k / 5 + case) % 3 {
+                .map(|k| match (k / 5 + case) % 4 {
                     0 => 1.0,
                     1 => unit(next()),
-                    _ => [0.0, 1.0, 0.5][k % 3],
+                    2 => 0.0,
+                    _ => [0.0, 1.0, 0.5, -0.0][k % 4],
                 })
                 .collect();
             let colors: Vec<f64> = (0..len * 3).map(|_| unit(next()) * 1.2 - 0.1).collect();
@@ -637,8 +650,14 @@ mod tests {
             dynamic_n16(&mut a, &runs, &alpha);
             dynamic_n16(&mut b, &general, &alpha);
             assert_eq!(a, b, "n16 {case}");
+            // Levels of -0 among them, which a store at opacity +0 takes to +0.
             let levels: Vec<[f32; 4]> = (0..len)
-                .map(|_| [0; 4].map(|_: u8| f32::from(u8::try_from(next() % 256).unwrap_or(0))))
+                .map(|_| {
+                    [0; 4].map(|_: u8| match next() % 300 {
+                        level @ 0..256 => f32::from(u8::try_from(level).unwrap_or(0)),
+                        _ => -0.0,
+                    })
+                })
                 .collect();
             let bits = |pixels: &[[f32; 4]]| -> Vec<[u32; 4]> {
                 pixels.iter().map(|p| p.map(f32::to_bits)).collect()
