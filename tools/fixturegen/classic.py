@@ -1,7 +1,7 @@
 """Bootstrap-era cases: classic xref files with opaque, pixel-aligned content."""
 from __future__ import annotations
 
-from .model import INVALID, OPEN, RENDER, UNSUPPORTED, Case
+from .model import INVALID, RENDER, UNSUPPORTED, Case
 from .pdf import document, opaque_rectangles, single_page, stream
 
 AREA = "classic"
