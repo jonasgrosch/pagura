@@ -405,6 +405,27 @@ impl ImageSampler {
         Ok(Self::new(Some(Box::new(prepared)), channels))
     }
 
+    /// Keeps the values of each component's codes through the conversion's
+    /// first stage ([`texels::Curved`]) for texels converted while
+    /// painting, charged to `bytes` where it has room for them. They are
+    /// optional, admitted once the page's own storage is charged: without
+    /// them texels convert directly, to the same values.
+    pub(crate) fn admit_curves(&mut self, bytes: &mut Meter) {
+        let Some(prepared) = self.prepared.as_deref_mut() else {
+            return;
+        };
+        let image = &prepared.image.image;
+        let samples = u64::from(image.width) * u64::from(image.height);
+        if let Plan::Texels {
+            paint: Paint::Colors(paint),
+            ..
+        } = &mut prepared.plan
+            && paint.1.converts_while_painting()
+        {
+            paint.0.curved = curved(&paint.0, samples, bytes);
+        }
+    }
+
     fn new(prepared: Option<Box<Prepared>>, channels: usize) -> Self {
         Self { prepared, channels }
     }
@@ -500,6 +521,18 @@ impl ImageSampler {
         self.prepared
             .as_ref()
             .map_or(0, |prepared| prepared.bytes())
+    }
+
+    /// Bytes the optional curve values hold ([`Self::admit_curves`]).
+    #[cfg(test)]
+    pub(crate) fn curve_bytes(&self) -> usize {
+        match self.prepared.as_deref().map(|prepared| &prepared.plan) {
+            Some(Plan::Texels {
+                paint: Paint::Colors(paint),
+                ..
+            }) => paint.0.curved.as_ref().map_or(0, texels::Curved::bytes),
+            _ => 0,
+        }
     }
 
     /// The repairs decoding made, for the caller to report in source order.
@@ -1386,5 +1419,43 @@ fn colors(
         matte,
         alpha_is_shape: description.alpha_is_shape,
         convert,
+        // Optional, and admitted after everything the image must hold
+        // ([`ImageSampler::admit_curves`]).
+        curved: None,
     })
+}
+
+/// Room for each component's codes through the conversion's first stage
+/// ([`Converter::curve`]), found as texels need them ([`texels::Curved`]),
+/// charged to `bytes`. `None` where a code alone does not give the value
+/// converted (a lookup, premultiplied opacity or Matte), a component has
+/// more than eight bits, the conversion has no such stage, the image has
+/// fewer `samples` than the room has entries, or `bytes` lacks the room:
+/// its texels then convert directly.
+fn curved(colors: &Colors, samples: u64, bytes: &mut Meter) -> Option<texels::Curved> {
+    let components = colors.maxima.len();
+    let entries = components * texels::CURVED_CODES;
+    let size = texels::Curved::bytes_of(components);
+    #[expect(clippy::cast_precision_loss, reason = "256 codes")]
+    let most = (texels::CURVED_CODES - 1) as f64;
+    let plain = colors.lookup.is_none()
+        && !colors
+            .embedded
+            .is_some_and(|(_, premultiplied)| premultiplied)
+        && colors.matte.is_none();
+    if !plain
+        || samples < u64::try_from(entries).unwrap_or(u64::MAX)
+        || colors.maxima.iter().any(|&maximum| maximum > most)
+        || size > bytes.remaining()
+        || (0..components).any(|i| colors.convert.curve(i, 0.0).is_none())
+    {
+        return None;
+    }
+    let mut values = Vec::new();
+    if bytes.reserve(&mut values, entries).is_err() {
+        // The charge fit; only the allocation failed.
+        bytes.refund(size);
+        return None;
+    }
+    Some(texels::Curved::new(components, values))
 }
