@@ -287,6 +287,25 @@ def damaged_filter_cases():
         stream(content, b'/Filter /FlateDecode')]), RENDER, ('recovery-codecs',),
         'Content decoded before damaged Flate data runs; the rest is discarded',
         oracle=opaque_rectangles(16, 16, [((0, 0, 8, 8), BLACK)]), repairs=('filter.corrupt',), strict_valid=False)
+    # The content ends at the damage: what it left open ends as `ET` and `EMC`
+    # end it, an unpainted path is discarded, a token the cut may have
+    # shortened does not run (`f` could be `f*`), and later streams do not run.
+    def cut(name, contents, description):
+        damaged = stream(zlib_blocks(stored(contents[0]), INVALID_BLOCK, b'junk'), b'/Filter /FlateDecode')
+        refs = b' '.join(b'%d 0 R' % (4 + i) for i in range(len(contents)))
+        return Case(name, document([
+            b'<< /Type /Catalog /Pages 2 0 R >>', b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Resources << >> /Contents [' + refs + b'] >>',
+            damaged, *[stream(c) for c in contents[1:]]]), RENDER, ('recovery-codecs',), description,
+            oracle=opaque_rectangles(16, 16, [((0, 0, 8, 8), BLACK)]), repairs=('filter.corrupt',), strict_valid=False)
+    yield cut('filter-corrupt-content-open-state', [b'/Tag BMC 0 g 0 0 8 8 re f\n1 0 0 rg 8 8 8 8 re\n'],
+              'Marked content and a path that damaged content leaves open end with it')
+    yield cut('filter-corrupt-content-open-text', [b'0 g 0 0 8 8 re f\nBT 1 0 0 1 2 2 Tm\n(ab'],
+              'A text object and a string that damaged content leaves open end with it')
+    yield cut('filter-corrupt-content-cut-operator', [b'0 g 0 0 8 8 re f\n1 0 0 rg 8 8 8 8 re f'],
+              'An operator that reaches the damage may be incomplete and does not run')
+    yield cut('filter-corrupt-content-later-streams', [b'0 g 0 0 8 8 re f\n', b'1 0 0 rg 8 8 8 8 re f\n'],
+              'Content streams after damaged data do not run')
     resources = b'<< /XObject << /X 5 0 R >> >>'
     png = b'/Filter /FlateDecode /DecodeParms << /Predictor 15 /Columns 4 /Colors 1 /BitsPerComponent %d >>'
     # Image: two whole rows, then an invalid PNG tag; rows 2 and 3 are absent

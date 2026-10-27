@@ -306,6 +306,20 @@ impl Document {
         stream::decoded(self, object, size)
     }
 
+    /// As [`Document::stream_data`], and whether damaged filter data cut the
+    /// data short (`filter.corrupt`, reported), so that content can end at
+    /// the damage.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::stream_data`].
+    pub fn stream_data_damaged<'a>(
+        &'a self,
+        object: &IndirectObject,
+    ) -> Result<(Cow<'a, [u8]>, bool)> {
+        stream::decoded_damaged(self, object)
+    }
+
     /// The leading decoded bytes of a stream whose only filter is
     /// `FlateDecode` without parameters, decoded until `enough` accepts them
     /// ([`pagura_codec::FilterChain::decode_prefix`]). `None` when the

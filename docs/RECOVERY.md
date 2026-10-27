@@ -139,14 +139,18 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   code, an invalid ASCIIHex or ASCII85 digit, `z` or end marker, an invalid
   PNG predictor tag) or an incomplete final predictor row ends the output.
   The whole rows decoded before it are kept, and the repair is reported at
-  the input byte offset of the damage. Content streams run that far. An
-  image shows the rows it has; its missing rows are absent (transparent, or
-  not painted by a stencil) rather than zero-filled. An image with a mask of
-  its own keeps the error, and an image predictor-precision retry
-  (`image.predictor-precision`) is tried before damage is accepted. zlib
-  header and parameter errors, a one-digit or overflowing final ASCII85
-  group and budget errors stay errors; Strict keeps the decoder's error with
-  this tag.
+  the input byte offset of the damage. Content runs that far and ends
+  there: a token that reaches the damage may be incomplete and does not run
+  with its operation (`f` could be `f*`, a string or array is open), a text
+  object and marked content left open end as `ET` and `EMC` end them, an
+  unpainted path and pending operands are discarded, and later streams of
+  the page's `Contents` do not run. An image shows the rows it has; its
+  missing rows are absent (transparent, or not painted by a stencil) rather
+  than zero-filled. An image with a mask of its own keeps the error, and an
+  image predictor-precision retry (`image.predictor-precision`) is tried
+  before damage is accepted. zlib header and parameter errors, a one-digit or
+  overflowing final ASCII85 group and budget errors stay errors; Strict keeps
+  the decoder's error with this tag.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
 - `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its
