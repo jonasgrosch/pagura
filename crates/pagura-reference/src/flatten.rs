@@ -475,55 +475,121 @@ fn flatten_curve(
     hulls: &mut Vec<Hull>,
     limits: &Limits,
 ) -> Result<()> {
+    if curves == Curves::Curve {
+        return flatten_true_curve((points, elevation), device, precision, (out, hulls), limits);
+    }
     let tolerance = curves.tolerance();
-    let magnitude = points
-        .iter()
-        .map(|p| {
-            ((p.x * device.a).abs() + (p.y * device.c).abs() + device.e.abs())
-                .max((p.x * device.b).abs() + (p.y * device.d).abs() + device.f.abs())
-        })
-        .fold(1.0_f64, f64::max);
-    let mut pending = vec![(points, 0, precision.area)];
-    while let Some((piece, depth, share)) = pending.pop() {
+    let mut pending = vec![(points, 0)];
+    while let Some((piece, depth)) = pending.pop() {
         let [a, b, c, d] = piece.map(|p| p * device);
-        let hull = if curves == Curves::Curve {
-            let triangle = |p: Point, q: Point| {
-                let (u, v) = (p - a, q - a);
-                let error = magnitude * f64::EPSILON * (32.0 * f64::from(depth + 4) + elevation)
-                    + precision.rounding;
-                let products = (u.x * v.y).abs() + (u.y * v.x).abs();
-                let determinant = (u.x * v.y - u.y * v.x).abs()
-                    + 16.0 * f64::EPSILON * products
-                    + 2.0 * error * (u.x.abs() + u.y.abs() + v.x.abs() + v.y.abs())
-                    + 8.0 * error * error;
-                determinant * (0.5 + 16.0 * f64::EPSILON) + f64::MIN_POSITIVE
-            };
-            let area =
-                (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON);
-            let rounding = magnitude * f64::EPSILON * (32.0 * f64::from(depth + 4) + elevation)
-                + precision.rounding;
-            let bounds = [
-                a.x.min(b.x).min(c.x).min(d.x) - rounding,
-                a.y.min(b.y).min(c.y).min(d.y) - rounding,
-                a.x.max(b.x).max(c.x).max(d.x) + rounding,
-                a.y.max(b.y).max(c.y).max(d.y) + rounding,
-            ];
-            Some(Hull { bounds, area })
-        } else {
-            None
-        };
-        let acceptable = hull.as_ref().map_or_else(
-            || near(b, a, d, tolerance) && near(c, a, d, tolerance),
-            |hull| hull.area <= share,
-        );
-        if acceptable {
+        if near(b, a, d, tolerance) && near(c, a, d, tolerance) {
             if out.len() >= limits.path_segments {
                 return Err(Error::limit("flattened segment budget exceeded"));
             }
             out.push(piece[3]);
-            if let Some(hull) = hull {
-                hulls.push(hull);
+            continue;
+        }
+        if depth >= MAX_DEPTH {
+            return Err(Error::limit("curve subdivision depth exceeded"));
+        }
+        let (first, second) = halve(piece);
+        pending.push((second, depth + 1));
+        pending.push((first, depth + 1));
+    }
+    Ok(())
+}
+
+/// A curve of a glyph referenced against its true curve, halved until each
+/// piece's control hull, which holds the piece and its chord, has at most
+/// its share of the area budget.
+///
+/// The curve is halved in its own frame: its controls less its first one,
+/// in the path's space, mapped by the linear map alone. Each coordinate of
+/// a piece's mapped controls, and of its emitted end point once placed,
+/// then lies within
+///
+/// ```text
+/// δ(d) = ε·(32·(d + 4)·own + (elevation + 8)·mapped + 4·placed) + rounding
+/// ```
+///
+/// of the exact one, at depth `d`:
+///
+/// - `own`, the largest mapped control of the curve's frame, bounds the
+///   rounding of forming the frame and of `d` halvings in it (the existing
+///   allowance of 32 units a halving, four more for the frame and mapping);
+/// - `mapped`, the largest mapped control, bounds the source's elevation of
+///   a quadratic and the emitted point's return to the path's space;
+/// - `placed`, the largest placed control, bounds the placement, which adds
+///   the origin once and does not grow with depth;
+/// - `rounding` is a localized pixel's two-sum tail.
+///
+/// The hull's area is outward for controls within δ, and its bounds are
+/// widened by δ, as before; only the error is the curve's own instead of
+/// the page's, so pieces far from the device origin still meet their share.
+fn flatten_true_curve(
+    (points, elevation): ([Point; 4], f64),
+    device: Transform,
+    precision: Precision,
+    (out, hulls): (&mut Vec<Point>, &mut Vec<Hull>),
+    limits: &Limits,
+) -> Result<()> {
+    let linear = Transform {
+        e: 0.0,
+        f: 0.0,
+        ..device
+    };
+    let magnitude = |p: Point, t: Transform| {
+        ((p.x * t.a).abs() + (p.y * t.c).abs() + t.e.abs())
+            .max((p.x * t.b).abs() + (p.y * t.d).abs() + t.f.abs())
+    };
+    let start = points[0];
+    let frame = points.map(|p| Point::new(p.x - start.x, p.y - start.y));
+    let largest = |controls: &[Point; 4], t: Transform| {
+        controls
+            .iter()
+            .map(|&p| magnitude(p, t))
+            .fold(1.0_f64, f64::max)
+    };
+    let (own, mapped, placed) = (
+        largest(&frame, linear),
+        largest(&points, linear),
+        largest(&points, device),
+    );
+    let fixed = f64::EPSILON * ((elevation + 8.0) * mapped + 4.0 * placed) + precision.rounding;
+    let anchor = start * device;
+    let mut pending = vec![(frame, 0, precision.area)];
+    while let Some((piece, depth, share)) = pending.pop() {
+        let [a, b, c, d] = piece.map(|p| p * linear);
+        let error = own * f64::EPSILON * 32.0 * f64::from(depth + 4) + fixed;
+        let triangle = |p: Point, q: Point| {
+            let (u, v) = (p - a, q - a);
+            let products = (u.x * v.y).abs() + (u.y * v.x).abs();
+            let determinant = (u.x * v.y - u.y * v.x).abs()
+                + 16.0 * f64::EPSILON * products
+                + 2.0 * error * (u.x.abs() + u.y.abs() + v.x.abs() + v.y.abs())
+                + 8.0 * error * error;
+            determinant * (0.5 + 16.0 * f64::EPSILON) + f64::MIN_POSITIVE
+        };
+        let area = (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON);
+        if area <= share {
+            if out.len() >= limits.path_segments {
+                return Err(Error::limit("flattened segment budget exceeded"));
             }
+            // The last piece ends at the curve's own end.
+            out.push(if piece[3] == frame[3] {
+                points[3]
+            } else {
+                Point::new(start.x + piece[3].x, start.y + piece[3].y)
+            });
+            hulls.push(Hull {
+                bounds: [
+                    anchor.x + a.x.min(b.x).min(c.x).min(d.x) - error,
+                    anchor.y + a.y.min(b.y).min(c.y).min(d.y) - error,
+                    anchor.x + a.x.max(b.x).max(c.x).max(d.x) + error,
+                    anchor.y + a.y.max(b.y).max(c.y).max(d.y) + error,
+                ],
+                area,
+            });
             continue;
         }
         if depth >= MAX_DEPTH {
@@ -615,6 +681,49 @@ mod tests {
                 .sum();
             assert!(errors[0] >= sum);
             assert!(errors[0] <= CURVE_AREA);
+        }
+    }
+
+    #[test]
+    fn many_curves_far_from_the_origin_meet_their_shares() {
+        // 100 coincident arches, 2 px wide: each curve's share of the area
+        // budget is about 1.5e-7 px². At a placed magnitude of a million
+        // pixels, rounding scaled by placed coordinates at every halving
+        // exceeds that share at any depth; in each curve's own frame it does
+        // not, and the hulls still bound the area.
+        let mut path = PathBuilder::new();
+        for _ in 0..100 {
+            path.move_to(Point::new(0.0, 0.0));
+            path.cubic_to(
+                Point::new(2.0 / 3.0, 1.0),
+                Point::new(4.0 / 3.0, 1.0),
+                Point::new(2.0, 0.0),
+            )
+            .unwrap();
+            path.close();
+        }
+        let path = path.finish();
+        for offset in [0, 2500, 1_000_000] {
+            let region = glyph_region(
+                &path,
+                Transform::IDENTITY,
+                Point::new(f64::from(offset), f64::from(offset)),
+                Reference::Curve,
+                &Limits::default(),
+            )
+            .unwrap();
+            let rect = DeviceRect {
+                x0: offset,
+                y0: offset,
+                x1: offset + 2,
+                y1: offset + 1,
+            };
+            let values = areas(std::slice::from_ref(&region), rect);
+            let total = values.get(offset, offset) + values.get(offset + 1, offset);
+            let error: f64 = region.hulls.iter().map(|hull| hull.area).sum();
+            // The elevated quadratic of control height 1.5 covers 1 px².
+            assert!((total - 1.0).abs() <= error, "{offset}: {total} ± {error}");
+            assert!(error <= CURVE_AREA);
         }
     }
 
