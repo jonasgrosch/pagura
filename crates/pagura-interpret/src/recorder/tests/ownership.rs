@@ -301,3 +301,67 @@ fn clip_identity_roots_are_temporary_but_retained_paths_stay_charged() {
     );
     assert!(before > scene.bytes + owned::ARC + size_of::<crate::Clip>());
 }
+
+#[test]
+fn a_profile_shared_by_paints_is_charged_once() {
+    let fixture = pagura_testkit::fixture("color", "lut16-cmyk-xyz.icc");
+    let parse = || {
+        Arc::new(
+            pagura_color::Profile::parse(&fixture, 4, &Limits::default())
+                .unwrap()
+                .unwrap(),
+        )
+    };
+    let icc = |profile: &Arc<pagura_color::Profile>| {
+        Arc::new(ColorSpace::Icc(Arc::new(pagura_color::IccSpace {
+            profile: Some(Arc::clone(profile)),
+            alternate: Arc::new(ColorSpace::DeviceCmyk),
+            components: 4,
+            range: [[0.0, 1.0]; 4],
+            object: None,
+        })))
+    };
+    let cyan = |space: &Arc<ColorSpace>, c: f64| {
+        Arc::new(Paint::Solid(Color {
+            space: Arc::clone(space),
+            components: Components::from_slice(&[c, 0.0, 0.0, 0.0]),
+        }))
+    };
+    let (shared, other) = (parse(), parse());
+    let charge = owned::ARC + shared.retained_bytes();
+    let (path, composite) = (square(), Arc::new(Composite::default()));
+    let space = icc(&shared);
+    // A hundred paints, in one space and in others over the same profile.
+    let record = |space_of: &dyn Fn(u8) -> Arc<ColorSpace>| {
+        let mut recorder = SceneRecorder::new(Limits::default());
+        recorder.begin_page(&page()).unwrap();
+        for i in 0..100_u8 {
+            let paint = cyan(&space_of(i), f64::from(i) / 128.0);
+            filled(&mut recorder, &path, &paint, &composite);
+        }
+        recorder
+    };
+    let device = record(&|_| Arc::new(ColorSpace::DeviceCmyk));
+    let mut profiled = record(&|i| {
+        if i % 2 == 0 {
+            Arc::clone(&space)
+        } else {
+            icc(&shared)
+        }
+    });
+    // They differ by their ICCBased records, the profile once and its index.
+    let record = owned::paint(&cyan(&space, 0.0))
+        - owned::paint(&cyan(&Arc::new(ColorSpace::DeviceCmyk), 0.0));
+    let index = profiled
+        .interner
+        .profiles
+        .index_bytes(&profiled.bytes)
+        .unwrap();
+    assert_eq!(
+        profiled.bytes.used() - device.bytes.used(),
+        100 * record + charge + index
+    );
+    // Another profile is charged in full.
+    filled(&mut profiled, &path, &cyan(&icc(&other), 0.5), &composite);
+    assert_eq!(profiled.interner.profiles.len(), 2);
+}

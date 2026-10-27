@@ -2,17 +2,77 @@
 //!
 //! Interned table entries pay once per entry. Other shared roots pay per
 //! retained reference: this may overestimate aliases, but never depends on
-//! the Store, reference counts, or earlier recordings. Child value types
-//! supply their own retained estimates; this is not allocator telemetry.
+//! the Store, reference counts, or earlier recordings. ICC profiles are the
+//! exception: the interpretation hands every reference to one profile stream
+//! the same profile, so a scene pays for each once ([`Profiles`]). Child
+//! value types supply their own retained estimates; this is not allocator
+//! telemetry.
 
 use crate::model::{
     Composite, FillStroke, Image, ImageMask, Paint, Pen, Shading, ShadingFunction, ShadingKind,
     Transfer,
 };
-use pagura_color::Function;
+use pagura_color::{ColorSpace, Function, Profile};
+use pagura_core::hash::FastMap;
+use pagura_core::{Meter, Result};
 use pagura_raster::Path;
+use std::sync::Arc;
 
 pub(super) const ARC: usize = 2 * size_of::<usize>();
+
+/// The ICC profiles of a scene's colour spaces, each charged once.
+#[derive(Debug, Default)]
+pub(super) struct Profiles(FastMap<usize, Arc<Profile>>);
+
+impl Profiles {
+    /// Charges the profiles of `spaces` the scene has not met yet. The map
+    /// holds each one, so that its address stays its own.
+    pub(super) fn charge<'a>(
+        &mut self,
+        spaces: impl IntoIterator<Item = &'a ColorSpace>,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        for profile in spaces.into_iter().flat_map(ColorSpace::profiles) {
+            let key = Arc::as_ptr(profile).addr();
+            if self.0.contains_key(&key) {
+                continue;
+            }
+            bytes.reserve_map_capacity(&mut self.0, 1)?;
+            bytes.charge(ARC.saturating_add(profile.retained_bytes()))?;
+            self.0.insert(key, Arc::clone(profile));
+        }
+        Ok(())
+    }
+
+    /// How many profiles the scene holds.
+    #[cfg(test)]
+    pub(super) fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// The bytes of the index, which a finished scene does not keep.
+    pub(super) fn index_bytes(&self, bytes: &Meter) -> Result<usize> {
+        bytes.map_bytes(&self.0)
+    }
+}
+
+/// The colour space a paint holds.
+pub(super) fn paint_space(paint: &Paint) -> Option<&ColorSpace> {
+    match paint {
+        Paint::Solid(color) => Some(&color.space),
+        Paint::Shading(value) => Some(&value.shading.space),
+        Paint::Tiling(value) => value.color.as_ref().map(|color| color.space.as_ref()),
+    }
+}
+
+/// The colour spaces of an image and its masks.
+pub(super) fn image_spaces(image: &Image) -> impl Iterator<Item = &ColorSpace> {
+    std::iter::successors(Some(image), |image| match &image.mask {
+        ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. } => Some(mask.as_ref()),
+        ImageMask::None | ImageMask::ColorKey(_) | ImageMask::Embedded => None,
+    })
+    .filter_map(|image| image.space.as_deref())
+}
 
 pub(super) fn path(path: &Path) -> usize {
     ARC.saturating_add(size_of::<Path>())
@@ -67,7 +127,7 @@ pub(super) fn fill_stroke(states: &FillStroke) -> usize {
 
 pub(super) fn paint(paint: &Paint) -> usize {
     let color = |color: &crate::model::Color| {
-        ARC.saturating_add(color.space.retained_bytes())
+        ARC.saturating_add(color.space.retained_bytes_without_profiles())
             .saturating_add(color.components.heap_bytes())
     };
     let payload = match paint {
@@ -125,7 +185,7 @@ pub(super) fn shading(shading: &Shading) -> usize {
         ARC,
         size_of::<Shading>(),
         ARC,
-        shading.space.retained_bytes(),
+        shading.space.retained_bytes_without_profiles(),
         shading
             .background
             .as_ref()
@@ -148,10 +208,9 @@ pub(super) fn image(mut image: &Image) -> usize {
             size_of::<Image>(),
             3 * ARC,
             image.source.retained_bytes(),
-            image
-                .space
-                .as_ref()
-                .map_or(0, |space| ARC.saturating_add(space.retained_bytes())),
+            image.space.as_ref().map_or(0, |space| {
+                ARC.saturating_add(space.retained_bytes_without_profiles())
+            }),
             ARC,
             size_of_val(image.decode.as_ref()),
         ]

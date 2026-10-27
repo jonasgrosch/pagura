@@ -330,6 +330,9 @@ impl Device for SceneRecorder {
             .transpose()?;
         let info = self.mark(&mark.state)?;
         self.bytes.charge(owned::image(mark.image))?;
+        self.interner
+            .profiles
+            .charge(owned::image_spaces(mark.image), &mut self.bytes)?;
         self.push(
             Node::Image(ImageNode {
                 image: Arc::clone(mark.image),
@@ -348,6 +351,9 @@ impl Device for SceneRecorder {
         }
         let info = self.mark(&mark.state)?;
         self.bytes.charge(owned::shading(mark.shading))?;
+        self.interner
+            .profiles
+            .charge([mark.shading.space.as_ref()], &mut self.bytes)?;
         self.push(
             Node::Shading(ShadingNode {
                 shading: Arc::clone(mark.shading),
