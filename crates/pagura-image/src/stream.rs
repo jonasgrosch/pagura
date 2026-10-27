@@ -221,11 +221,7 @@ mod tests {
                     && original.repair == Some(pagura_codec::tags::CORRUPT)
                 {
                     assert!(result.unwrap().damaged, "{name}");
-                    let tags: Vec<_> = document
-                        .diagnostics()
-                        .iter()
-                        .map(Diagnostic::tag)
-                        .collect();
+                    let tags: Vec<_> = document.diagnostics().iter().map(Diagnostic::tag).collect();
                     assert_eq!(tags, ["filter.corrupt"], "{name}");
                     continue;
                 }
