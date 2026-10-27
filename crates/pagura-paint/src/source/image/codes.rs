@@ -790,6 +790,14 @@ impl Codes {
             self.lanes
                 .uncover(covered, (&mut out.colors, &mut out.alpha), shape);
         };
+        // Over whole weights, the complements' sums follow from the codes'.
+        if let Some(maximum) = rows.complement
+            && self.separable.complements_derive(pixels, maximum)
+        {
+            self.separable
+                .complement_average(&rows, maximum, pixels, scratch, finish);
+            return;
+        }
         self.separable
             .average(&rows, pixels, scratch, None, (|average| average, finish));
     }
@@ -1010,9 +1018,13 @@ mod unpack_tests {
 
 #[cfg(test)]
 mod tests {
-    use super::{Lanes, pair_values};
-    use crate::source::SpanColors;
+    use super::super::geometry::Geometry;
+    use super::super::tests::image;
+    use super::{CodeRows, Codes, Grid, Lanes, pair_values};
+    use crate::source::{Pixels, SpanColors};
     use pagura_core::Meter;
+    use pagura_image::{DecodedImage, Samples};
+    use pagura_raster::Transform;
 
     fn bits(values: &[f64]) -> Vec<u64> {
         values.iter().map(|v| v.to_bits()).collect()
@@ -1078,6 +1090,220 @@ mod tests {
                     assert_eq!(bits(&fast.alpha), bits(&general.alpha), "{context}");
                     assert_eq!(bits(&fast_shape), bits(&general_shape), "{context}");
                 }
+            }
+        }
+    }
+
+    /// Non-opaque lanes of one component whose texel at code `c` lies a
+    /// fraction `c / (codes − 1)` between each lane's ends: an inverted
+    /// opacity and colours and shape that are not zero at code zero, so that
+    /// the complements' averages reach every lane.
+    fn complemented(codes: usize, channels: usize) -> Lanes {
+        let lanes = channels + 2;
+        let ends: Vec<(f64, f64)> = (0..lanes)
+            .map(|l| match l.cmp(&channels) {
+                std::cmp::Ordering::Equal => (1.0, 0.0),
+                std::cmp::Ordering::Greater => (0.5, 1.0),
+                std::cmp::Ordering::Less => {
+                    let l = f64::from(u32::try_from(l).unwrap());
+                    (0.05 + 0.1 * l, 0.6 - 0.1 * l)
+                }
+            })
+            .collect();
+        let largest = f64::from(u32::try_from(codes - 1).unwrap());
+        let mut table = vec![0.0; codes * lanes];
+        for (code, texel) in table.chunks_exact_mut(lanes).enumerate() {
+            let t = f64::from(u32::try_from(code).unwrap()) / largest;
+            for (value, &(zero, top)) in texel.iter_mut().zip(&ends) {
+                *value = zero + (top - zero) * t;
+            }
+        }
+        Lanes::single(
+            &table,
+            lanes,
+            codes,
+            false,
+            &mut Meter::new(usize::MAX, "test"),
+        )
+        .unwrap()
+        .unwrap()
+    }
+
+    /// Fills `pixels` as the code sampler did before complements followed
+    /// from codes: the complemented rows averaged as rows of pairs.
+    fn summed_pairs(
+        codes: &Codes,
+        image: &DecodedImage,
+        pixels: Pixels<'_>,
+        scratch: &mut super::super::separable::Scratch,
+        (out, shape): (&mut SpanColors, &mut Vec<f64>),
+    ) {
+        out.channels = codes.lanes.channels;
+        out.alpha.clear();
+        let rows = CodeRows {
+            grid: Grid::new(image).unwrap(),
+            components: 1,
+            complement: codes.lanes.complement(),
+        };
+        let finish = |averages: &mut [f64], covered: &[bool]| {
+            codes
+                .lanes
+                .write_averages(averages, 2, out, Some(&mut *shape));
+            codes
+                .lanes
+                .uncover(covered, (&mut out.colors, &mut out.alpha), Some(shape));
+        };
+        codes
+            .separable
+            .average(&rows, pixels, scratch, None, (|average| average, finish));
+    }
+
+    /// The code sampler of `image` placed by `unit_to_device` over device
+    /// columns `0..columns`.
+    fn sampler(
+        image: &DecodedImage,
+        lanes: Lanes,
+        unit_to_device: Transform,
+        columns: u32,
+    ) -> Codes {
+        let geometry = Geometry::new(
+            (image.width, image.height),
+            false,
+            unit_to_device.inverse().unwrap(),
+        )
+        .unwrap();
+        let meter = &mut Meter::new(usize::MAX, "test");
+        Codes::new(lanes, image, &geometry, (0, columns), meter)
+            .unwrap()
+            .unwrap()
+    }
+
+    /// Spans of `image` placed by `unit_to_device` over `columns × rows`
+    /// device pixels, through the sampler and as summed pairs, bit for bit.
+    fn agree(
+        image: &DecodedImage,
+        lanes: &Lanes,
+        unit_to_device: Transform,
+        (columns, rows): (u32, u32),
+    ) {
+        let codes = sampler(image, lanes.clone(), unit_to_device, columns);
+        let mut scratch = codes.layout().make().unwrap();
+        let (mut fast, mut summed) = (SpanColors::default(), SpanColors::default());
+        let (mut fast_shape, mut summed_shape) = (Vec::new(), Vec::new());
+        let len = usize::try_from(columns).unwrap();
+        for y in 0..rows {
+            let pixels = Pixels::new(0, y, len);
+            codes.fill(
+                image,
+                pixels,
+                &mut scratch,
+                &mut fast,
+                Some(&mut fast_shape),
+            );
+            summed_pairs(
+                &codes,
+                image,
+                pixels,
+                &mut scratch,
+                (&mut summed, &mut summed_shape),
+            );
+            let context = format!("{unit_to_device:?} row {y}");
+            assert_eq!(bits(&fast.colors), bits(&summed.colors), "{context}");
+            assert_eq!(bits(&fast.alpha), bits(&summed.alpha), "{context}");
+            assert_eq!(bits(&fast_shape), bits(&summed_shape), "{context}");
+        }
+    }
+
+    /// Where every weight is whole, complements' sums follow from the codes'
+    /// sums: one-bit codes packed and as bytes and eight-bit codes, reduced
+    /// whole and otherwise, write the spans summed pairs write.
+    #[test]
+    fn complement_sums_follow_from_code_sums_bit_for_bit() {
+        let (width, height) = (24_u32, 18_u32);
+        let count = usize::try_from(width * height).unwrap();
+        let mut state = 0x9e37_79b9_u32;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            state
+        };
+        let one: Vec<u8> = (0..count)
+            .map(|_| u8::try_from(next() & 1).unwrap())
+            .collect();
+        let eight: Vec<u8> = (0..count).map(|_| next().to_le_bytes()[0]).collect();
+        let stride = usize::try_from(width.div_ceil(8)).unwrap();
+        let mut rows = vec![0u8; stride * usize::try_from(height).unwrap()];
+        for (i, &code) in one.iter().enumerate() {
+            let (y, x) = (i / 24, i % 24);
+            rows[y * stride + x / 8] |= code << (7 - x % 8);
+        }
+        let packed = pagura_image::deferred::Packed::from_rows(24, 18, rows).unwrap();
+        let images = [
+            (image((width, height), 1, 1, Samples::Packed(packed)), 2),
+            (image((width, height), 1, 1, Samples::Bytes(one)), 2),
+            (image((width, height), 1, 8, Samples::Bytes(eight)), 256),
+        ];
+        let (w, h) = (f64::from(width), f64::from(height));
+        // Two, three and four samples a pixel, flipped and moved by whole
+        // pixels, then weights that are not whole.
+        let placements = [
+            (
+                Transform::new(w / 2.0, 0.0, 0.0, h / 3.0, 0.0, 0.0),
+                (12, 6),
+            ),
+            (
+                Transform::new(w / 3.0, 0.0, 0.0, -h / 2.0, 1.0, h / 2.0),
+                (10, 10),
+            ),
+            (
+                Transform::new(-w / 4.0, 0.0, 0.0, h / 6.0, w / 4.0 + 2.0, 1.0),
+                (9, 5),
+            ),
+            (
+                Transform::new(w / 2.5, 0.0, 0.0, h / 3.5, 0.25, 0.5),
+                (11, 7),
+            ),
+        ];
+        for (image, codes) in &images {
+            for channels in [1, 3] {
+                let lanes = complemented(*codes, channels);
+                for &(unit_to_device, size) in &placements {
+                    agree(image, &lanes, unit_to_device, size);
+                }
+            }
+        }
+    }
+
+    /// Complements follow from codes only while a footprint's samples at
+    /// the largest code sum within 32 bits: up to 255 · 16,843,009 =
+    /// `u32::MAX`, and a pixel of 4096 × 4096 eight-bit samples agrees with
+    /// summed pairs; one of 4200 × 4100 samples averages pairs.
+    #[test]
+    fn complements_follow_from_codes_up_to_the_32_bit_bound() {
+        assert!(super::super::separable::fits(16_843_009, 1, 255));
+        assert!(super::super::separable::fits(257, 65_537, 255));
+        assert!(!super::super::separable::fits(16_843_010, 1, 255));
+        assert!(!super::super::separable::fits(258, 65_537, 255));
+        assert!(super::super::separable::fits(u32::MAX, 1, 0));
+        assert!(!super::super::separable::fits(u32::MAX, 2, 1));
+        let lanes = complemented(256, 1);
+        for ((width, height), derives) in [((4096, 4096), true), ((4200, 4100), false)] {
+            let count = usize::try_from(width * height).unwrap();
+            let codes: Vec<u8> = (0..count)
+                .map(|i| if i % 3 == 0 { 0 } else { 255 })
+                .collect();
+            let image = image((width, height), 1, 8, Samples::Bytes(codes));
+            let placement = Transform::new(1.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+            let sampler = sampler(&image, lanes.clone(), placement, 1);
+            assert_eq!(
+                sampler
+                    .separable
+                    .complements_derive(Pixels::new(0, 0, 1), 255),
+                derives
+            );
+            if derives {
+                agree(&image, &lanes, placement, (1, 1));
             }
         }
     }

@@ -684,6 +684,120 @@ impl Separable {
         }
     }
 
+    /// Whether [`Self::complement_average`] serves `pixels` of codes
+    /// complemented to `maximum`: the row footprint and every column
+    /// footprint weight their samples whole, and no footprint holds so
+    /// many samples that `maximum` each could pass 32 bits.
+    pub(super) fn complements_derive(&self, pixels: Pixels<'_>, maximum: u8) -> bool {
+        let across = row(&self.geometry, self.taps, pixels.y);
+        let widest = self
+            .feet(pixels)
+            .iter()
+            .map(|foot| foot.end.saturating_sub(foot.first))
+            .max();
+        self.whole
+            && across.whole()
+            && fits(
+                widest.unwrap_or(0),
+                across.end.saturating_sub(across.first),
+                maximum,
+            )
+    }
+
+    /// [`Self::average`] of a one-component image's codes, each followed by
+    /// its complement to `maximum` as `rows` gives them, where
+    /// [`Self::complements_derive`]: the codes summed as there, and each
+    /// pixel's complements as its count of samples times `maximum` less its
+    /// codes' sum, the integer the complements sum to. Out of line, so that
+    /// the averages of other sources compile as they did.
+    #[inline(never)]
+    pub(super) fn complement_average<R: Rows<Value = u8>>(
+        &self,
+        rows: &R,
+        maximum: u8,
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
+        finish: impl FnOnce(&mut [f64], &[bool]),
+    ) {
+        let Scratch {
+            averages,
+            covered,
+            codes,
+            texels,
+            ..
+        } = scratch;
+        let values = grown(averages, pixels.len * 2);
+        covered.clear();
+        covered.resize(pixels.len, false);
+        let feet = self.feet(pixels);
+        let across = row(&self.geometry, self.taps, pixels.y);
+        if let Some((first, end)) = self.extent(feet)
+            && across.first < across.end
+            && rows.width() == 2
+        {
+            let Buffers { cache, sums, .. } = u8::pick(codes, texels);
+            let sums = grown(sums, end - first);
+            // Each column's codes summed over the rows, as `sum_rows` sums
+            // them; a row that cannot be read leaves every sum zero.
+            let (top, bottom) = (index(across.first), index(across.end) - 1);
+            let mut read = true;
+            for y in top..=bottom {
+                let pairs = rows.row(y, (first, end), cache);
+                if pairs.len() != (end - first) * 2 {
+                    read = false;
+                    break;
+                }
+                let pairs = pairs.as_chunks::<2>().0.iter();
+                if y == top {
+                    for (sum, &[code, _]) in sums.iter_mut().zip(pairs) {
+                        *sum = code.alone();
+                    }
+                } else {
+                    for (sum, &[code, _]) in sums.iter_mut().zip(pairs) {
+                        *sum = code.add(*sum);
+                    }
+                }
+            }
+            let height = across.end - across.first;
+            let outputs = values
+                .as_chunks_mut::<2>()
+                .0
+                .iter_mut()
+                .zip(covered.iter_mut());
+            for (foot, (pixel, covered)) in feet.iter().zip(outputs) {
+                if foot.first >= foot.end {
+                    continue;
+                }
+                let cells = index(foot.first) - first..index(foot.end) - first;
+                let Some(cells) = sums.get(cells) else {
+                    continue;
+                };
+                let (codes, complements) = if read {
+                    let codes = cells.iter().fold(0, |total, &sum| u8::merge(total, sum));
+                    // In range by `complements_derive`.
+                    let count = (foot.end - foot.first) * height;
+                    (codes, count * u32::from(maximum) - codes)
+                } else {
+                    (0, 0)
+                };
+                let factor = foot.normalization * across.normalization;
+                *pixel = [u8::total(codes) * factor, u8::total(complements) * factor];
+                *covered = true;
+            }
+        }
+        // Only covered pixels were written.
+        for (pixel, _) in values
+            .as_chunks_mut::<2>()
+            .0
+            .iter_mut()
+            .zip(covered.iter())
+            .filter(|(_, covered)| !**covered)
+        {
+            *pixel = [0.0; 2];
+        }
+        finish(values, covered);
+    }
+
     /// Writes the N16 words of device pixels `x .. x + out.len()` of row
     /// `y` into `out`, as a store at full opacity writes opaque colours:
     /// those of `map` of each pixel's [`Rows::width`] averages, one copied
@@ -931,6 +1045,13 @@ impl Span<'_> {
             write(output, sum(cells, foot).map(|sum| sum * factor));
         }
     }
+}
+
+/// Whether `columns × rows` samples of codes up to `maximum` (taken as at
+/// least 1, so that the count itself fits) sum within 32 bits, so that no
+/// code or complement sum wraps.
+pub(super) fn fits(columns: u32, rows: u32, maximum: u8) -> bool {
+    u32::try_from(u64::from(columns) * u64::from(rows) * u64::from(maximum.max(1))).is_ok()
 }
 
 /// The source columns' reductions of a row footprint: sums of every row
