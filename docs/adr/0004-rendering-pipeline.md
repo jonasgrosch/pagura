@@ -421,8 +421,12 @@ that much. Only the first term grows with depth, and it scales with the
 curve's own extent, so a piece far from the device origin still meets its
 share of the allowance. Paths and polygon glyph references are accepted at a
 fixed 1/256-pixel distance from the chord instead, which halving reaches
-whatever the magnitude: placed rounding is many orders below it. When those bytes differ it refines the
-original controls with one sixteenth of the area allowance and repeats.
+whatever the magnitude: placed rounding is many orders below it. When those
+bytes differ it refines, in the pixel's local frame, the pieces of the
+original controls whose hulls can meet that pixel (their control boxes
+widened by the deepest piece's error) with one sixteenth of their area
+allowance, and repeats; the other pieces keep theirs, as their hulls add
+nothing to the pixel's interval.
 Clipping cannot increase the interval's error. An unresolved interval,
 segment limit or subdivision limit is an error, never permission to select
 the byte that agrees with the renderer. A synthetic overlapping-quadratic

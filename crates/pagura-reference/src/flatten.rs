@@ -33,18 +33,43 @@ pub(crate) const CURVE_AREA: f64 = 1.0 / 65536.0;
 /// Halvings after which a curve piece is taken as its chord.
 const MAX_DEPTH: u32 = 48;
 
-/// The area budget and a retained coordinate error from localization.
+/// The area budget, a retained coordinate error from localization and,
+/// for a localized pixel, the curves its refinement leaves as they were.
 #[derive(Debug, Clone, Copy)]
 struct Precision {
     area: f64,
     rounding: f64,
+    focus: Option<Focus>,
+}
+
+/// A localized pixel's square: a curve piece whose hulls cannot meet it
+/// keeps the `coarse` budget when the others are refined, as it adds
+/// nothing to the pixel's interval.
+#[derive(Debug, Clone, Copy)]
+struct Focus {
+    bounds: [f64; 4],
+    coarse: f64,
 }
 
 impl Precision {
     const INITIAL: Self = Self {
         area: CURVE_AREA,
         rounding: 0.0,
+        focus: None,
     };
+
+    /// Each of `curves` curves' share of the budgets.
+    fn per_curve(self, curves: usize) -> Self {
+        let curves = f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX));
+        Self {
+            area: self.area / curves,
+            focus: self.focus.map(|focus| Focus {
+                coarse: focus.coarse / curves,
+                ..focus
+            }),
+            ..self
+        }
+    }
 }
 
 /// Error-free subtraction: `high + tail` is the exact difference of the
@@ -92,6 +117,11 @@ impl CurveReference {
             Reference::Curve,
             Precision {
                 rounding,
+                // The localized pixel is the unit square at the origin.
+                focus: Some(Focus {
+                    bounds: [0.0, 0.0, 1.0, 1.0],
+                    coarse: self.precision.area,
+                }),
                 ..self.precision
             },
             &self.limits,
@@ -363,10 +393,7 @@ fn contours_with_area(
         .iter()
         .filter(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }))
         .count();
-    let allowance = Precision {
-        area: precision.area / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX)),
-        ..precision
-    };
+    let allowance = precision.per_curve(curve_count);
     let mut start = Point::default();
     let mut position = Point::default();
     let mut push = |contour: &mut Contour, point: Point| -> Result<()> {
@@ -557,9 +584,25 @@ fn flatten_true_curve(
     );
     let fixed = f64::EPSILON * ((elevation + 8.0) * mapped + 4.0 * placed) + precision.rounding;
     let anchor = start * device;
-    let mut pending = vec![(frame, 0, precision.area)];
-    while let Some((piece, depth, share)) = pending.pop() {
-        let [a, b, c, d] = piece.map(|p| p * linear);
+    // The hulls of a piece's halves lie in its control box, widened by the
+    // deepest piece's error: a piece whose widened box misses the focus
+    // cannot touch its pixel, and takes the coarse budget.
+    let widening = own * f64::EPSILON * 32.0 * f64::from(MAX_DEPTH + 4) + fixed;
+    let misses = |controls: &[Point; 4]| {
+        precision.focus.is_some_and(|focus| {
+            let [x0, y0, x1, y1] = focus.bounds;
+            controls.iter().all(|p| anchor.x + p.x + widening <= x0)
+                || controls.iter().all(|p| anchor.x + p.x - widening >= x1)
+                || controls.iter().all(|p| anchor.y + p.y + widening <= y0)
+                || controls.iter().all(|p| anchor.y + p.y - widening >= y1)
+        })
+    };
+    let coarse = precision.focus.map_or(precision.area, |focus| focus.coarse);
+    let mut pending = vec![(frame, 0, (precision.area, coarse))];
+    while let Some((piece, depth, (fine, coarse))) = pending.pop() {
+        let controls = piece.map(|p| p * linear);
+        let share = if misses(&controls) { coarse } else { fine };
+        let [a, b, c, d] = controls;
         let error = own * f64::EPSILON * 32.0 * f64::from(depth + 4) + fixed;
         let triangle = |p: Point, q: Point| {
             let (u, v) = (p - a, q - a);
@@ -596,8 +639,9 @@ fn flatten_true_curve(
             return Err(Error::limit("curve subdivision depth exceeded"));
         }
         let (first, second) = halve(piece);
-        pending.push((second, depth + 1, share * 0.5));
-        pending.push((first, depth + 1, share * 0.5));
+        let shares = (fine * 0.5, coarse * 0.5);
+        pending.push((second, depth + 1, shares));
+        pending.push((first, depth + 1, shares));
     }
     Ok(())
 }
@@ -686,13 +730,13 @@ mod tests {
 
     #[test]
     fn many_curves_far_from_the_origin_meet_their_shares() {
-        // 100 coincident arches, 2 px wide: each curve's share of the area
-        // budget is about 1.5e-7 px². At a placed magnitude of a million
+        // 30 coincident arches, 2 px wide: each curve's share of the area
+        // budget is about 5e-7 px². At a placed magnitude of a million
         // pixels, rounding scaled by placed coordinates at every halving
         // exceeds that share at any depth; in each curve's own frame it does
         // not, and the hulls still bound the area.
         let mut path = PathBuilder::new();
-        for _ in 0..100 {
+        for _ in 0..30 {
             path.move_to(Point::new(0.0, 0.0));
             path.cubic_to(
                 Point::new(2.0 / 3.0, 1.0),
@@ -766,6 +810,107 @@ mod tests {
             };
             assert_eq!(crate::exact::coverage(&[region], pixel).unwrap(), [48]);
         }
+    }
+
+    /// An arch of control height `h` over `x..x + w`, as an elevated
+    /// quadratic, and closed along its base.
+    fn arch(path: &mut PathBuilder, x: f64, w: f64, h: f64) {
+        path.move_to(Point::new(x, 0.0));
+        path.cubic_to(
+            Point::new(x + w / 3.0, 2.0 * h / 3.0),
+            Point::new(x + 2.0 * w / 3.0, 2.0 * h / 3.0),
+            Point::new(x + w, 0.0),
+        )
+        .unwrap();
+        path.close();
+    }
+
+    #[test]
+    fn refinement_leaves_curves_that_miss_the_pixel_as_they_were() {
+        let mut path = PathBuilder::new();
+        arch(&mut path, 0.0, 1.0, 0.75);
+        arch(&mut path, 100.0, 40.0, 30.0);
+        let path = path.finish();
+        let region = glyph_region(
+            &path,
+            Transform::IDENTITY,
+            Point::new(10_000.25, 5_000.0),
+            Reference::Curve,
+            &Limits::default(),
+        )
+        .unwrap();
+        let curve = region.curve.as_ref().unwrap();
+        let local = curve.localized(10_000, 5_000).unwrap();
+        let refined = local.curve.as_ref().unwrap().refine().unwrap();
+        // The far arch keeps its pieces; the near one is halved more finely.
+        let far = |r: &Region| r.hulls.iter().filter(|h| h.bounds()[0] > 50.0).count();
+        let near = |r: &Region| r.hulls.iter().filter(|h| h.bounds()[2] < 50.0).count();
+        assert_eq!(far(&refined), far(&local));
+        assert!(near(&refined) > near(&local));
+        // Refining every curve gives the pixel the same area and interval.
+        let reference = local.curve.as_ref().unwrap();
+        let whole = glyph_region_at_area(
+            &path,
+            Transform::IDENTITY,
+            reference.origin,
+            Reference::Curve,
+            Precision {
+                area: reference.precision.area / 16.0,
+                focus: None,
+                ..reference.precision
+            },
+            &Limits::default(),
+        )
+        .unwrap();
+        let pixel = window(1, 1);
+        let interval = |r: &Region| -> f64 { r.hulls.iter().map(|h| h.error(0, 0)).sum() };
+        assert_eq!(interval(&refined), interval(&whole));
+        let area = |r: &Region| areas(std::slice::from_ref(r), pixel).get(0, 0);
+        assert_eq!(area(&refined), area(&whole));
+    }
+
+    #[test]
+    fn a_pixel_decides_where_refining_the_whole_glyph_exceeds_its_budget() {
+        // An arch whose area is a hair above a half level, which takes
+        // refinement to decide, beside 6 larger arches far from the pixel.
+        let h = 3.0 * (47.5 + 0.000_022) / 255.0;
+        let mut path = PathBuilder::new();
+        arch(&mut path, 0.0, 1.0, h);
+        for i in 0..6 {
+            arch(&mut path, 50.0 + 20.0 * f64::from(i), 8.0, 6.0);
+        }
+        let path = path.finish();
+        let origin = Point::new(10_000.0, 10_000.0);
+        let place = |limits: &Limits| {
+            glyph_region(&path, Transform::IDENTITY, origin, Reference::Curve, limits)
+        };
+        // A segment budget five times the first flattening's pieces.
+        let pieces = place(&Limits::default()).unwrap().hulls.len();
+        let limits = Limits {
+            path_segments: 5 * pieces,
+            ..Limits::default()
+        };
+        let pixel = DeviceRect {
+            x0: 10_000,
+            y0: 10_000,
+            x1: 10_001,
+            y1: 10_001,
+        };
+        let region = place(&limits).unwrap();
+        assert_eq!(crate::exact::coverage(&[region], pixel).unwrap(), [48]);
+        // Halving every curve sixteen times more finely twice exceeds it.
+        let whole = glyph_region_at_area(
+            &path,
+            Transform::IDENTITY,
+            origin,
+            Reference::Curve,
+            Precision {
+                area: CURVE_AREA / 256.0,
+                ..Precision::INITIAL
+            },
+            &limits,
+        );
+        assert!(whole.is_err());
     }
 
     #[test]
