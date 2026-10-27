@@ -85,6 +85,60 @@ fn round_cap_sliver_survives_composition_on_gray() {
 }
 
 #[test]
+fn hairline_and_fitted_miter_tips_are_not_culled() {
+    use pagura_interpret::{Pen, PenId, StrokeNode};
+    use pagura_raster::{Adjustment, LineCap, PathBuilder, Stroke};
+    use std::sync::Arc;
+
+    // 0811's red markers: two triangles with 14° corners, stroked as
+    // hairlines with miter joins, whose tips reach four pixels past their
+    // vertices, beyond the path's hull and the culling margin. A stroke
+    // adjusted to a one-pixel pen reaches as far.
+    for (width, adjustment) in [(0.0, Adjustment::None), (0.2, Adjustment::Adjusted)] {
+        let mut b = Build::new(8.0, 18.0);
+        let red = b.rgb([1.0, 0.0, 0.0]);
+        let corners =
+            [[2.72, 11.92], [3.8, 11.92], [2.72, 7.6], [3.8, 7.6]].map(|[x, y]| Point::new(x, y));
+        let mut path = PathBuilder::new();
+        for triangle in [[0, 1, 2], [1, 2, 3]] {
+            path.move_to(corners[triangle[0]]);
+            for i in &triangle[1..] {
+                path.line_to(corners[*i]).unwrap();
+            }
+            path.close();
+        }
+        b.scene.pens.push(Arc::new(Pen {
+            stroke: Stroke {
+                width,
+                cap: LineCap::Round,
+                ..Stroke::default()
+            },
+            transform: Transform::IDENTITY,
+            adjustment,
+        }));
+        b.node(
+            PAGE,
+            Node::Stroke(StrokeNode {
+                path: Arc::new(path.finish()),
+                pen: PenId(0),
+                paint: red,
+                mark: mark(StateId(0)),
+            }),
+        );
+        let bytes = check(&b);
+        // The tips cover pixels more than two rows beyond the path.
+        let painted = |y: usize| {
+            bytes[y * 32..(y + 1) * 32]
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[1] < 255)
+        };
+        assert!(painted(4) && painted(14), "width {width}");
+    }
+}
+
+#[test]
 fn translucent_marks_and_clips() {
     let mut b = Build::new(9.0, 7.0);
     let red = b.rgb([1.0, 0.1, 0.0]);
