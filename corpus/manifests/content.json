@@ -7538,17 +7538,44 @@
     {
       "id": "content/icc-invalid-data",
       "kind": "pdf",
-      "description": "Non-profile data cannot establish ICC fallback",
-      "expected": "open",
+      "description": "Unusable ICC data falls back to the Alternate space as a reported repair",
+      "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-invalid-data.pdf",
-      "sha256": "075c7006f3f09f5600aeea9fa140481652c6b735111907bd941c05f4a7b52954",
+      "sha256": "b27ec8536fabf22098160bad0441c57d821e0e575ce85d1d54f239e412d8fcc0",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-invalid-data.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/icc-invalid-data-default",
+      "kind": "pdf",
+      "description": "Unusable ICC data without an Alternate falls back to the N default",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-invalid-data-default.pdf",
+      "sha256": "a547792aeb76f24c7d464f7173a2d5e71d107ef2aacc35bf454099b2b1dd89ca",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-invalid-data-default.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-gray-media-white",
@@ -7973,412 +8000,574 @@
     {
       "id": "content/icc-header-d50",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-d50.pdf",
-      "sha256": "bea6ec04ce2bb6364d9de2727e5ded4d7740d3bd19a0177cf870c3644528fc19",
+      "sha256": "13ff8125faa894d4cd6621fa8e92edfca95189d8ab80c263865b2d2b17335713",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-d50.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-version-reserved",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-version-reserved.pdf",
-      "sha256": "490223e7f7f1beb36e2f1e056c2cc67e95fd2d721b153b1eed5c356e37b2b11b",
+      "sha256": "7d2e9578e9f70f52e8d44494e477823e9e4d4d5256b261d7453d35e715915e54",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-version-reserved.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-version-bcd",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-version-bcd.pdf",
-      "sha256": "8f146c648907393befea2c6d33e8bda2a97430c338b8879329cc95f4bf660f7b",
+      "sha256": "c3bcd13cb142f25a7e12f41bc336ba180e01438530a4d28b08fb5cd7dd9efe7f",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-version-bcd.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-date",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-date.pdf",
-      "sha256": "b2497178f6a41009605ff2dcb2f060f8886e5aa6a4d746965cb24bb583711822",
+      "sha256": "71ac09a10e7d918acf53d0f9d5003a005ec65fdba04a10c2eca2d59cf0723be1",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-date.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-leap-date",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-leap-date.pdf",
-      "sha256": "69676409cc7c0b5416e961f5c5fe7c83a03eeb891b4247872da0187373222c38",
+      "sha256": "4399f294e08eea2dd9848f7e08d92ceeb4683e3dc90102af9281da82bd8d10c5",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-leap-date.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-attributes",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-attributes.pdf",
-      "sha256": "a3e4b26f3a2eeb2f936b4e8ab1114aad990a229786d7dbd9dc5fefae25531b93",
+      "sha256": "9a1a1d635d882818d19d3fd0fbcd38682060d24e7eba23f8b57ae902ad387b47",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-attributes.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-intent",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-intent.pdf",
-      "sha256": "e3d36488abef911d912197939a8ff7cfb146c43ee160970baed1c807e8c8beca",
+      "sha256": "cde8faca5d955c8c340aa0300b54da8fe614c0d61af6260d1cee55cc0fa646e2",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-intent.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-reserved",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-reserved.pdf",
-      "sha256": "3373ba1cc3656639910e479e4d35923e919cddbbef74f090d54b6478ee74274a",
+      "sha256": "debcbc1f01fb597a1b7ce259825cb1c3fbe2f8ad6208e6afe4a31847de358717",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-reserved.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-header-pcs",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-header-pcs.pdf",
-      "sha256": "3c9566802ba3cc41276e50aa867f05d60043c042e57ff8c6ee083152c7ce4ac7",
+      "sha256": "44614d1c09f4e3b27d3d8f60349b97c9e8ecc800e11fac5bd5675a6b5abf1499",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-header-pcs.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-profile-id-invalid",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-profile-id-invalid.pdf",
-      "sha256": "e69d966359c70852ec1639f24840317172159d0373f429af8d6159b8fcd78146",
+      "sha256": "5f90696d0f5b01bbe18638467420fc18723a075f01854cd76aa6aa106e8a1adf",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-profile-id-invalid.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-negative-xyz",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-negative-xyz.pdf",
-      "sha256": "9c899ee817733ae3e579fc9e191e1c8b80401ba63e088aa720fa413b520e65ed",
+      "sha256": "4876c71b978d942d85438b72f7ea1e5fbd1d4d66c4cb6f88adabacb8718455b7",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-negative-xyz.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-xyz-partial-extra",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-xyz-partial-extra.pdf",
-      "sha256": "fc458c403fa092c94c200ba9ee3e390160680ad314beeac309910f3cd4d7958d",
+      "sha256": "d3ca010ab60b5189322da253437e7c511593c098bd0a258c454020d4f1ba01c4",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-xyz-partial-extra.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-xyz-reserved",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-xyz-reserved.pdf",
-      "sha256": "2b16de8845f346796bf3fc8af34e9f7ff9bb679fb5ec9318a2e407d663e22674",
+      "sha256": "36f1dd50aaf6bb3af22d4e7630cabb8029a8e5dfd01bcc37f190eea77df4da9b",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-xyz-reserved.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-curve-reserved",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-curve-reserved.pdf",
-      "sha256": "4c0456cac989bd09e4240a8efe8c0280fa20ba2b048c29ef3f83b71d05f2a0f0",
+      "sha256": "4f102e1762be3aad13527fcb7af1cf7e51bd7114ffbc612ba995268cbee72b1e",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-curve-reserved.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-curve-trailing",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-curve-trailing.pdf",
-      "sha256": "33699be33c378556e7b599b8290d5204b40b7c3d06247e853e03c25a5e0b86f1",
+      "sha256": "8fcd2248d100c9e787a6ad3c5fe3bbcc32199144e9eb98709f947d89405aa132",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-curve-trailing.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-param-reserved",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-param-reserved.pdf",
-      "sha256": "d468dbecc89f24e9c291966267a3731ff1118fd2396474986c5b52f2460a3638",
+      "sha256": "97af35ea49e822f74e5c462ddc19142cdff00334f57d0bea956f39d841a53cfa",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-param-reserved.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-chad-type",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-chad-type.pdf",
-      "sha256": "11380dbbd5c116a9d8aba6a1497aa279bc467d8715f3f7bdfa5a606522762c43",
+      "sha256": "b82947c2e9ab801775ed038b51e133272ac00a7e6c2da06947dc27f7dba5426a",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-chad-type.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-chad-short",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-chad-short.pdf",
-      "sha256": "18312011599b1431a275b32d157ba14b34263e7167dbc4c8215c107ce84c0ddc",
+      "sha256": "c59b4e726b8ff04bb899b64e96d9fdc93651f8ab0a79af2b43ad9bbe04d8eacf",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-chad-short.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-chad-singular",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-chad-singular.pdf",
-      "sha256": "ec12c7714b34ae24fb1cc0cb8b8a651313265b0a3ffb728b3fcce1b46bc1386e",
+      "sha256": "9e957c8105bf5587890abb933c85e1bc7908a5840129926235998f9cad0644ab",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-chad-singular.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-rgb-missing-wtpt",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-rgb-missing-wtpt.pdf",
-      "sha256": "84b98241db4b3216c9dcafb4960d5eb5815a35d1e11ef0c1f4aac8c27731335b",
+      "sha256": "66a285655f5d514bf87d8ebed11e510a665d211cb146f3969bd4d55671971201",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-rgb-missing-wtpt.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-missing-metadata",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-missing-metadata.pdf",
-      "sha256": "08c4fbec0df01123553fc759c6e4f794ab277b9b106dfc9f64968d558a76e31a",
+      "sha256": "3503cb68adc342202e047e00775352280ec1ee65988f4437d3f3fc181490592c",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-missing-metadata.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-rgb-output-no-luts",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-rgb-output-no-luts.pdf",
-      "sha256": "3f0a6cec390f5cd99858c429af0180335ffdddb8112ee564941613a2ba9aedbd",
+      "sha256": "016bace87100af69d73c0880efdf7b897d5827667f7369600df59471f0c5ab12",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-rgb-output-no-luts.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-rgb-colorspace-no-luts",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-rgb-colorspace-no-luts.pdf",
-      "sha256": "a7a0b85724d2a1f6598ad9a556d3f089c8d3bd3aa4f0c5eb5914819aad0775a7",
+      "sha256": "ce42daaf752900a3fb43d4259d7f10c63628be827d4cd44aa1432790f7701e9e",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-rgb-colorspace-no-luts.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-display-white-invalid",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-display-white-invalid.pdf",
-      "sha256": "9a098f9f762ce03b81815087b313dd557f0fa1d408771bc0c1e2c028962a0e42",
+      "sha256": "4779517d7a0473d705a4fafadd71549b3b383521e449d27c5731169ffa8d49b6",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-display-white-invalid.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-tag-gap",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-tag-gap.pdf",
-      "sha256": "085349708b85701b1994fda47e01f7827711dbe6f0a628b7b7fd29f685c4f418",
+      "sha256": "f4f8fd316e9c443dd7e7bd21e2af881c17103e89223ac16d069eb6e94c5c2445",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-tag-gap.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-tag-padding-nonzero",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-tag-padding-nonzero.pdf",
-      "sha256": "bb615d5d5013c6f6ba8fee67219a3208a5b6ab3eff18721914f074d9915fb63c",
+      "sha256": "e1979c6a6f13a58edd2629314a006d870a77ad482cc1e0451713d907776e13f7",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-tag-padding-nonzero.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-tag-padding-missing",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
-      "expected": "open",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-tag-padding-missing.pdf",
-      "sha256": "86ecbfd00774cff4b0668f907d28607cc838249cd27468cbc176e14a5fc43a92",
+      "sha256": "650ab131acdbafbedd37b536841dff25cb7694346ae46d34a4c40ab9f5b6ca09",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-tag-padding-missing.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-alternate-wrong-n",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "description": "ISO 8.6.5.5 Table 65: reject the independently malformed PDF entry",
       "expected": "open",
       "requirements": [
         "content-icc-admission"
@@ -8393,7 +8582,7 @@
     {
       "id": "content/icc-alternate-pattern",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "description": "ISO 8.6.5.5 Table 65: reject the independently malformed PDF entry",
       "expected": "open",
       "requirements": [
         "content-icc-admission"
@@ -8408,7 +8597,7 @@
     {
       "id": "content/icc-range-rgb-mismatch",
       "kind": "pdf",
-      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "description": "ISO 8.6.5.5 Table 65: reject the independently malformed PDF entry",
       "expected": "open",
       "requirements": [
         "content-icc-admission"
@@ -9333,212 +9522,296 @@
     {
       "id": "content/icc-lut-channel-count",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-channel-count.pdf",
-      "sha256": "7d82f9fb108273d4cece72a2632565036088c3da89c9d2f3524faaa673a9aa25",
+      "sha256": "20669ce07acc5f09783650c5926cff6514142a3d87a931b82fbb6975cadbf135",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-channel-count.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-lut-grid-zero",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-grid-zero.pdf",
-      "sha256": "34b4d9c39cc05d682e36d57f6f4dfdb7cd2859184bda899920bdd8d120a8a314",
+      "sha256": "dcddc447bf0dd7a98bf971d120b951a24b66f2ccf1d93b4eb6b95ff9725dd9d6",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-grid-zero.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-lut-reserved",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-reserved.pdf",
-      "sha256": "9bb7ce6498dda521c6a7279a1aebbd85219609fc4a434163f0d4acf4fa65803c",
+      "sha256": "77e1c10be47e34b568904436db8b84b88d1d4b23a752b8795ff0c75333e57b1e",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-reserved.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-lut-table-count",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-table-count.pdf",
-      "sha256": "dc9c83648a0d77e18a5984eeae54b9a4386c5047cdd5c30e252b86122c3df529",
+      "sha256": "befb6ee681696ad912ddf9f7155389dbba5b01a6d7497edeba5be9c0e082e8a5",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-table-count.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-lut-table-count-high",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-table-count-high.pdf",
-      "sha256": "d4ba12f3ab3565c51da8a78265a623501b0f1364faed611ebce9cfc5acb3a85b",
+      "sha256": "16bc16086cd8a197cb3a6ee937422c2c8fdcd08a5e8ca4aef3bdf061aad2339e",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-table-count-high.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-lut-output-count",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-output-count.pdf",
-      "sha256": "127697fab8396331458c4282d42a37439c4de3fbf782a7afba4fef9dc5db00ac",
+      "sha256": "88efbd1a44e64b2422a8c92c6a6985e94668c0a12be349be9d5d2490aa630cf8",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-output-count.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-lut-matrix",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-lut-matrix.pdf",
-      "sha256": "ead02771c17a20f01aef74a9201e3010918be8c9a108f3750d637bc73668ce98",
+      "sha256": "49825383a47b75b4a60f30937b1c76909b7212090112e61d65a61173fc5ccab7",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-lut-matrix.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-missing-A",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-missing-A.pdf",
-      "sha256": "7abd4977e904d73b931aca772e6a5a9d6b15f5795881d7bef6d0cdefcff1ab7d",
+      "sha256": "cc88fcb479feb468ad6c7979801335cab4c1ca85f68be98133d30eaf01b99f81",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-missing-A.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-missing-B",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-missing-B.pdf",
-      "sha256": "575c6503f12e8b9d75c8ef24087093d64cef025f26e49c704a7ec8261ad43006",
+      "sha256": "e38d6386f1edc541d46b3f574c9db4aaef632a7782b1d59d6bcc430b5467e21a",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-missing-B.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-misaligned",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-misaligned.pdf",
-      "sha256": "0e12f78290da72dc5027173813a1e96aa51206d89fbadf05e3ae4c3d67989fd7",
+      "sha256": "e4ded7124464666aeeb4e011236b1156140a17a869a2f5fdb1d3dc3f76c309d7",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-misaligned.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-missing-M",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-missing-M.pdf",
-      "sha256": "86f90fe39ead72352661573c9471d62a1b2267eb2dab335b8269e467c5e3a0e0",
+      "sha256": "cc2f52561be4dc82fa7df7ee43ff24caf7712b5567b5324558ca587fce2e30ec",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-missing-M.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-precision",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-precision.pdf",
-      "sha256": "00ca5a412c8129c85bfc8fbf6e801533f55aca955bea5cf715da3f5f3c4afbfa",
+      "sha256": "9aee6ff0f6f934c8d9f553cf2b778250e461529e6f5c8d1ba8bf2dcbc6e7770e",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-precision.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-unused-grid",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-unused-grid.pdf",
-      "sha256": "c83aa0be019927832083d3207d5c806118b17d84b14717a3bcd75141b6709000",
+      "sha256": "bd5ac4d8faea7b626b9b77eb493cf7ae6e5d1b7fe6040156337ed1ca316bac6e",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-unused-grid.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mAB-CLUT-padding",
       "kind": "pdf",
-      "description": "ICC 10.8/10.10 invalid processing-element structure",
-      "expected": "open",
+      "description": "ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws",
+      "expected": "render",
       "requirements": [
         "content-icc-admission"
       ],
       "path": "corpus/generated/content/icc-mAB-CLUT-padding.pdf",
-      "sha256": "7c1d5497264044f88eb1a3d7e712d3436cd5178d95c07b6e66e0eb96a4a6f6f0",
+      "sha256": "40b1f21a4a7cb9546a935b4f3596a4d5ec754420ef1e6b526390a47b66091096",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.icc-unusable"
+      ],
+      "oracle": "corpus/generated/content/icc-mAB-CLUT-padding.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/icc-mft2-grid-budget",
