@@ -962,8 +962,43 @@ def tiling_cases():
             covered=halves(x)*halves(7-row)
             rounded.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
     yield Case('tiling-constant-spacing-half',pdf(step=b'2.5 2.5',bbox=b'[0 0 2.5 2.5]',cell=b'1 0 0 rg 0 0 1.25 1.25 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: constant spacing rounds lattice vectors at a half away from zero; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(rounded),extra={'tolerance':1})
+    # Constant spacing would move the far BBox corner by 2 pixels, so the
+    # exact TilingType 2 lattice places the cells (ADR 0004): 0.75-unit
+    # squares every 1.5 units, 1 unit tall every 2, exact rational coverage.
+    def spaced(i, step, width, count):
+        return sum(max(F(0),min(F(i+1),step*k+width)-max(F(i),step*k)) for k in range(count))
+    distorted=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=spaced(x,F(3,2),F(3,4),6)*spaced(7-row,F(2),F(1),4)
+            distorted.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-constant-spacing-distortion',pdf(step=b'1.5 2',bbox=b'[0 0 6 2]',cell=b'1 0 0 rg 0 0 .75 1 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: beyond a pixel of distortion constant spacing uses the exact lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(distorted),extra={'tolerance':1})
+    # The device lattice vectors (0.6, -0.6) and (0.6, -0.8) both round to
+    # (1, -1): no whole-pixel lattice, so the exact lattice places the cells
+    # (ADR 0004). Each red cell is the parallelogram the matrix makes of the
+    # unit square at (2i, 2j), a mark of its own: a pixel keeps the product of
+    # one minus each cell's exact area (11.3, source-over).
+    from .raster import clipped_area
+    a,b,c,d=F(3,10),F(3,10),F(3,10),F(4,10)
+    remaining={}
+    # x = 0.6(i + j) and y = 0.6i + 0.8j, inverted at the page corners, bound
+    # the cells that can meet the page.
+    corners_ij=[((F(8,10)*px-F(6,10)*py)/F(12,100),(F(6,10)*py-F(6,10)*px)/F(12,100)) for px in (0,8) for py in (0,8)]
+    for i in range(int(min(k[0] for k in corners_ij))-2,int(max(k[0] for k in corners_ij))+2):
+        for j in range(int(min(k[1] for k in corners_ij))-2,int(max(k[1] for k in corners_ij))+2):
+            corners=[(a*x+c*y,b*x+d*y) for x,y in ((2*i,2*j),(2*i+1,2*j),(2*i+1,2*j+1),(2*i,2*j+1))]
+            xs,ys=[p[0] for p in corners],[p[1] for p in corners]
+            if max(xs)<=0 or min(xs)>=8 or max(ys)<=0 or min(ys)>=8: continue
+            for x in range(max(0,int(min(xs))),min(8,int(max(xs))+1)):
+                for y in range(max(0,int(min(ys))),min(8,int(max(ys))+1)):
+                    remaining[x,y]=remaining.get((x,y),F(1))*(1-clipped_area(corners,x,y))
+    oblique=bytearray()
+    for row in range(8):
+        for x in range(8):
+            level=int(255*remaining.get((x,7-row),F(1))+F(1,2))
+            oblique.extend((255,level,level))
+    yield Case('tiling-oblique-lattice',pdf(matrix=b'[.3 .3 .3 .4 0 0]',bbox=b'[0 0 1 1]'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: an oblique lattice with no whole-pixel lattice uses the exact lattice; exact cell areas',oracle=b'P6\n8 8\n255\n'+bytes(oblique),extra={'tolerance':1})
     for name,refused,reason in [
-        ('tiling-constant-spacing-distortion',pdf(step=b'1.5 2',bbox=b'[0 0 6 2]',cell=b'1 0 0 rg 0 0 .75 1 re f'),'constant spacing would move a BBox corner by 2 pixels'),
         ('tiling-singular-matrix',pdf(matrix=b'[0 0 0 1 0 0]'),'a singular pattern matrix has no lattice'),
     ]:
         yield Case(name,refused,UNSUPPORTED,('content-tiling','unsupported-is-explicit'),'8.7.3.1, Table 74 and ADR 0004: '+reason+'; unsupported explicitly',feature='pattern.tiling',oracle=None)

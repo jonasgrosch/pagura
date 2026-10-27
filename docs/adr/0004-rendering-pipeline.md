@@ -81,12 +81,15 @@ exact result.
   larger magnitude (the horizontal one on a tie), in that component's
   direction. `L` keeps `M`'s image of the pattern origin and takes
   `(XStep, 0)` and `(0, YStep)` to the rounded vectors, so instances lie
-  whole pixels apart. Rounded vectors that are parallel leave no lattice,
-  and the pattern is refused. Under `TilingType 1` the pattern is also
-  refused when `L` moves a corner of `BBox` more than one pixel from where
-  `M` puts it, allowing 10⁻¹² pixel for f64 evaluation; `TilingType 3` has
-  no such limit. `pagura-reference` implements this definition separately
-  from the renderer.
+  whole pixels apart. When no such whole-pixel lattice can serve, `L = M`,
+  the exact lattice of `TilingType 2`, whose spacing the specification lets
+  vary by up to one device pixel (amended 2026-10-27, owner decision; it
+  replaces a refusal). That happens when the rounded vectors are parallel,
+  and under `TilingType 1` when the rounded `L` would move a corner of
+  `BBox` more than one pixel from where `M` puts it, allowing 10⁻¹² pixel
+  for f64 evaluation. `TilingType 3` has no distortion limit.
+  `pagura-reference` implements this definition separately from the
+  renderer.
 - **Composition through non-amplifying operations:** the imaging model of
   clause 11 in exact arithmetic on the same coverage bytes and sources, for
   any number of overlapping marks. These operations are Normal compositing,
