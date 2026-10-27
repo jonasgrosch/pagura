@@ -2287,18 +2287,42 @@
     {
       "id": "content/tiling-constant-spacing-distortion",
       "kind": "pdf",
-      "description": "8.7.3.1, Table 74 and ADR 0004: constant spacing would move a BBox corner by 2 pixels; unsupported explicitly",
-      "expected": "unsupported",
+      "description": "8.7.3.1, Table 74 and ADR 0004: beyond a pixel of distortion constant spacing uses the exact lattice; exact rational pixel coverage",
+      "expected": "render",
       "requirements": [
-        "content-tiling",
-        "unsupported-is-explicit"
+        "content-tiling"
       ],
       "path": "corpus/generated/content/tiling-constant-spacing-distortion.pdf",
       "sha256": "d6eb8071704135dd47a2f77c520b48abfb8c0db1e36fc563c0689a4e38e16216",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.tiling"
+      "oracle": "corpus/generated/content/tiling-constant-spacing-distortion.ppm",
+      "oracle_sha256": "35db9ea5d6e9e47631372d57eb9fef626d639e8e3477886e78be69ea54d17bbd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/tiling-oblique-lattice",
+      "kind": "pdf",
+      "description": "8.7.3.1, Table 74 and ADR 0004: an oblique lattice with no whole-pixel lattice uses the exact lattice; exact cell areas",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-oblique-lattice.pdf",
+      "sha256": "247be6fbfa9165f421dad75e032672711ae10168ce3cf36aba3b1a4ff3cf3b93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-oblique-lattice.ppm",
+      "oracle_sha256": "ac653d433545a5959996a99bf38169a4111394f5ad2646ce2ae6680ca385ee84",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
       "id": "content/tiling-singular-matrix",

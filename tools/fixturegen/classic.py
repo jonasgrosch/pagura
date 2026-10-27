@@ -70,15 +70,16 @@ def cases():
                       requirements=("recovery-reported",))
     yield Case(**{**trailing.__dict__, "repairs": ("file.trailing-bytes",), "strict_valid": False})
 
-    tiling = document([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>",
-        stream(b"/Pattern cs /P scn 0 0 64 64 re f\n"),
-        stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix [.3 .3 .3 .4 0 0] /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
-    ])
-    yield Case("pattern-unsupported", tiling, UNSUPPORTED, BASE + ("unsupported-is-explicit",),
-               "Table 74 constant-spacing fitting collapses this oblique device lattice; unsupported explicitly", feature="pattern.tiling", oracle=None)
+    def tiling(size, matrix):
+        return document([
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>" % (size, size),
+            stream(b"/Pattern cs /P scn 0 0 %d %d re f\n" % (size, size)),
+            stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix " + matrix + b" /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
+        ])
+    yield Case("pattern-unsupported", tiling(64, b"[0 0 0 1 0 0]"), UNSUPPORTED, BASE + ("unsupported-is-explicit",),
+               "A singular pattern matrix has no lattice (ADR 0004 section 2); unsupported explicitly", feature="pattern.tiling", oracle=None)
     yield Case("text-undefined-font", single_page([b"BT /F1 12 Tf (hello) Tj ET\n"]), OPEN, BASE,
                "a font name that is not a page resource is malformed content (7.8.3)",
                extra={"render_error": "Syntax"})
