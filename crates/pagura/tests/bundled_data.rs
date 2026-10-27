@@ -249,12 +249,36 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
     assert_eq!(program.glyph_count(), 5);
     assert_eq!(glyph.0, 1);
     assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
-    // An embedded but invalid binding is an error, never a substitution.
+    // An embedded program that cannot be used is replaced by the substitute
+    // for its name and descriptor, a reported repair; strict mode keeps the
+    // program's error with that repair (ADR 0009).
+    let strict = open_with(
+        "binding-wrong-fontfile",
+        &OpenOptions {
+            recovery: pagura::Recovery::Strict,
+            ..OpenOptions::default()
+        },
+    )?;
+    let error = PdfFont::load_with_provider(&strict, font(&strict)?, Some(&provider)).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Syntax);
+    assert_eq!(error.repair, Some(pagura_text::repairs::EMBEDDED_UNUSABLE));
+    let document = open("binding-wrong-fontfile")?;
+    let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+    assert!(loaded.program().is_some());
+    let repairs: Vec<_> = document
+        .diagnostics()
+        .iter()
+        .filter_map(Diagnostic::repair)
+        .collect();
+    assert_eq!(repairs, [pagura_text::repairs::EMBEDDED_UNUSABLE]);
+    assert!(information(
+        &document,
+        pagura_text::information::SUBSTITUTED
+    ));
+    // Without a provider nothing can replace it: the program's error stays.
     let document = open("binding-wrong-fontfile")?;
     assert_eq!(
-        PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
-            .unwrap_err()
-            .kind,
+        PdfFont::load(&document, font(&document)?).unwrap_err().kind,
         ErrorKind::Syntax
     );
     Ok(())

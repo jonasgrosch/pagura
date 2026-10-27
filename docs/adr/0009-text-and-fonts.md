@@ -94,5 +94,21 @@ a predefined CMap by name, and a CID substitute by character collection. A data 
 which are recorded with source URLs and SHA-256 in a lock, like the corpora.
 Hosts may supply their own provider; the browser can fetch data lazily
 instead of embedding it in the WebAssembly module. Substitution is reported
-as a diagnostic, never silent, and a document's own embedded program always
-wins.
+as a diagnostic, never silent, and a document's own embedded program wins
+whenever it is usable.
+
+### Unusable embedded programs (amended 2026-10-27)
+
+An embedded program first goes through its parser's own reported repairs
+(`font.sfnt-version`, `font.table-bounds` and the others in
+`docs/RECOVERY.md`). If the program still cannot be used, because of a syntax
+error, a format that disagrees with the font's binding, or an unsupported
+construct, it is replaced by the substitute a non-embedded font with the same
+name and descriptor would get. The same rules apply as for a non-embedded
+font, including the symbolic and collection rules.
+
+- Reported as the repair `font.embedded-unusable` at the program's error.
+  Strict mode keeps the program's error with that repair attached.
+- The PDF's widths (`Widths`, `W`, `DW`) keep every advance.
+- Budget, cycle and other errors keep the program's error, and so do fonts
+  for which no substitute exists.

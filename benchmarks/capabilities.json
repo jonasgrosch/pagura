@@ -138,7 +138,7 @@
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
     "crates/pagura-text/src/features.rs": "488e4cab6c106cd3df8d3722c23b8d7add6674891350c2a8aa45e523b8ce0e1c",
     "crates/pagura-text/src/font.rs": "85f6eabbe810efba245588b54e4e540b23162031631f94abe214a0adb9e60f26",
-    "crates/pagura-text/src/font/load.rs": "22563131b121210329299b8224250e408698c377bc7cf84a2e9da55739fe5387",
+    "crates/pagura-text/src/font/load.rs": "bd74004d8f2c71c9446bafdfe32d439162df327030b46dfd07a02aeb07562c25",
     "crates/pagura-text/src/program.rs": "c24e0a892d90f6d3a36fc3b1ea91ecd7eaf11ac9188ab7b53b08c8d34aa5088d",
     "crates/pagura-text/src/substitute.rs": "4b666270e59ea0a56b7cd82838f1e3eafe7fa76fbcb5f8a8bfe731dea08c9e60",
     "crates/pagura-text/src/substitute/cid.rs": "c960f139a2f44adee03a30efb7ed71cc057b5632a60e2f2466b54c117a23ab30",

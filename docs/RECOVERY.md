@@ -89,6 +89,11 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   and Nonsymbolic is treated as its inverse. Valid pairs are not repairs and
   keep their 9.6.5 selection routes, even when the font's character set
   disagrees. Applied by `pagura-text` for every caller of `PdfFont`.
+- `font.embedded-unusable` (9.9; ADR 0009): an embedded program that still
+  cannot be used after its parser's own repairs (syntax, binding or
+  unsupported construct) is replaced by the substitute a non-embedded font with
+  the same name and descriptor would get, with the PDF's widths. Strict mode
+  keeps the program's error; budget and cycle errors are never replaced.
 - `font.widths-length` (Table 109): a `Widths` array whose length disagrees
   with `FirstChar` and `LastChar`; codes past the array use `MissingWidth`
   and extra entries are ignored.
