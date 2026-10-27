@@ -438,6 +438,14 @@ impl Spine {
         Ok(())
     }
 
+    /// The widest radius its round capsules hold, in device pixels.
+    pub(crate) fn radius(&self) -> f64 {
+        self.capsules
+            .iter()
+            .filter(|c| c.round)
+            .fold(0.0, |r, c| r.max(c.radius))
+    }
+
     /// Bytes on the heap.
     pub(crate) fn heap_bytes(&self) -> usize {
         self.capsules
