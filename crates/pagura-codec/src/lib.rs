@@ -24,7 +24,8 @@ pub mod png;
 
 use pagura_core::syntax::is_whitespace;
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Feature, Name, Position, Repair, Result, Value,
+    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Feature, Name, Position, Recovery,
+    Repair, Result, Value,
 };
 
 use std::borrow::Cow;
@@ -54,8 +55,15 @@ pub mod tags {
     /// this repair. Explicit `decode_raw_deflate` does not apply it.
     pub const RAW_DEFLATE: Repair = Repair::new("filter.raw-deflate");
     /// Keep the decoded prefix when input ends before the required end marker.
-    /// Incomplete predictor rows remain errors; no synthetic pixels are added.
+    /// An incomplete final predictor row is [`CORRUPT`]; no synthetic pixels
+    /// are added.
     pub const TRUNCATED: Repair = Repair::new("filter.truncated");
+    /// Keep the output decoded before data no decoder accepts (an invalid
+    /// code, distance, block, predictor tag or digit) or before an incomplete
+    /// final predictor row: whole rows only, the damaged rest is discarded.
+    /// Reported at the input offset of the damage; Strict keeps the decoder's
+    /// error with this repair. Budget errors are never repaired.
+    pub const CORRUPT: Repair = Repair::new("filter.corrupt");
     /// Keep a full 12-bit LZW dictionary through entry 4095 without further
     /// insertions until clear or EOD; report missing clear once per stream.
     /// This recovers an encoder fault under ISO 32000-2 clause 7.4.4.2.
@@ -88,6 +96,30 @@ fn repair(
     offset: usize,
 ) -> Result<()> {
     diagnostics.repair(Diagnostic::new(tag, message).at(Position::Buffer(offset)))
+}
+
+/// The output decoded before damaged data (`filter.corrupt`), where `error`
+/// reports damage rather than a budget; `complete` yields its whole rows.
+fn damaged(
+    mut error: Error,
+    diagnostics: &mut Diagnostics,
+    complete: impl FnOnce() -> Vec<u8>,
+) -> Result<Vec<u8>> {
+    if error.kind != ErrorKind::Syntax {
+        return Err(error);
+    }
+    if diagnostics.mode() == Recovery::Strict {
+        error.repair.get_or_insert(tags::CORRUPT);
+        return Err(error);
+    }
+    diagnostics.repair(
+        Diagnostic::new(
+            tags::CORRUPT,
+            "damaged filter data; the whole rows decoded before it are kept",
+        )
+        .at(error.position),
+    )?;
+    Ok(complete())
 }
 
 fn trailing(input: &[u8], end: usize, ascii: bool, diagnostics: &mut Diagnostics) -> Result<()> {

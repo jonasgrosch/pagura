@@ -134,6 +134,19 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `font.cff-blue-order` (CFF section 15, Table 23; Type 1 5.3–5.5): unused
   hint zones whose pairs do not ascend are ignored; outlines and widths are
   unchanged.
+- `filter.corrupt` (7.4; owner decision 2026-10-27): data no decoder accepts
+  (an invalid DEFLATE block, code table, symbol or distance, an invalid LZW
+  code, an invalid ASCIIHex or ASCII85 digit, `z` or end marker, an invalid
+  PNG predictor tag) or an incomplete final predictor row ends the output.
+  The whole rows decoded before it are kept, and the repair is reported at
+  the input byte offset of the damage. Content streams run that far. An
+  image shows the rows it has; its missing rows are absent (transparent, or
+  not painted by a stencil) rather than zero-filled. An image with a mask of
+  its own keeps the error, and an image predictor-precision retry
+  (`image.predictor-precision`) is tried before damage is accepted. zlib
+  header and parameter errors, a one-digit or overflowing final ASCII85
+  group and budget errors stay errors; Strict keeps the decoder's error with
+  this tag.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
 - `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its
@@ -171,7 +184,8 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   declared. Extra numeric underlying-colour operands are reported and discarded.
   The base space remains available for a later uncoloured pattern.
 - `filter.lzw-initial-clear` (7.4.4.2): a literal or EOD before the initial
-  clear code uses the initial dictionary; invalid dictionary codes still fail.
+  clear code uses the initial dictionary; an invalid dictionary code is
+  `filter.corrupt`.
 - `jpeg.trailing-restart` (T.81 B.2.1, B.2.4.4): a restart immediately before
   EOI after the complete MCU sequence is discarded.
 - `image.predictor-precision` (7.4.4.3): syntax failures with conflicting valid

@@ -25,7 +25,11 @@ pub(crate) fn decode(
     while let Some(code) = reader.read(width) {
         if first_code && code != 256 {
             if code > 257 {
-                return Err(syntax("LZW must start with clear code", 0));
+                return crate::damaged(
+                    syntax("LZW must start with clear code", 0),
+                    diagnostics,
+                    || output.complete(),
+                );
             }
             repair(
                 diagnostics,
@@ -52,7 +56,7 @@ pub(crate) fn decode(
                     )?;
                 }
                 trailing(input, reader.offset, false, diagnostics)?;
-                return output.finish(reader.offset);
+                return output.finish(reader.offset, diagnostics);
             }
             _ => {
                 // The encoder inserts one entry ahead while more input remains.
@@ -71,16 +75,23 @@ pub(crate) fn decode(
                 let special = code == table.next && previous.is_some();
                 let source = if special { previous.unwrap_or(0) } else { code };
                 if source >= table.next || source == 256 || source == 257 {
-                    return Err(syntax("invalid LZW dictionary code", reader.position()));
+                    return crate::damaged(
+                        syntax("invalid LZW dictionary code", reader.position()),
+                        diagnostics,
+                        || output.complete(),
+                    );
                 }
                 let index = usize::from(source);
                 let length = usize::from(table.lengths.get(index).copied().unwrap_or(0));
                 output.check(length + usize::from(special), reader.position())?;
                 let first = table.first.get(index).copied().unwrap_or(0);
-                let bytes = table.expand(source, &mut stack, reader.position())?;
-                output.write(bytes, reader.position())?;
-                if special {
-                    output.write(&[first], reader.position())?;
+                let tail: &[u8] = if special { &[first] } else { &[] };
+                if let Err(error) = table
+                    .expand(source, &mut stack, reader.position())
+                    .and_then(|bytes| output.write(bytes, reader.position()))
+                    .and_then(|()| output.write(tail, reader.position()))
+                {
+                    return crate::damaged(error, diagnostics, || output.complete());
                 }
                 if let Some(prev) = previous {
                     // Complete the one pending decoder entry (4095), then
@@ -100,7 +111,7 @@ pub(crate) fn decode(
         "LZW end code missing",
         input.len(),
     )?;
-    output.finish(input.len())
+    output.finish(input.len(), diagnostics)
 }
 
 struct Codes<'a> {

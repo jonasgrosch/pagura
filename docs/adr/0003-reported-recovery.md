@@ -54,7 +54,7 @@ explicit, bounded and visible to the caller.
 | `xref.offset-corrected` | an entry's offset corrected to the nearby object header |
 | `stream.length-corrected` | stream data ends at `endstream`, not at a wrong `/Length` |
 | `trailer.reconstructed` | trailer recovered from the last `trailer` or from the catalog |
-| `filter.truncated` | filter input ends before its end marker or checksum; the decoded prefix is kept (incomplete predictor rows stay errors) |
+| `filter.truncated` | filter input ends before its end marker or checksum; the decoded prefix is kept (an incomplete predictor row is `filter.corrupt`, amended 2026-10-27) |
 | `filter.checksum-mismatch` | decoded Flate data is kept despite a wrong Adler-32 |
 | `filter.trailing-data` | bytes after a filter's end marker are ignored |
 | `filter.raw-deflate` | FlateDecode data without the zlib wrapper is decoded as raw DEFLATE |

@@ -1,0 +1,4 @@
+filter=ASCIIHexDecode
+outcome=valid
+repair=filter.corrupt
+cap=4096

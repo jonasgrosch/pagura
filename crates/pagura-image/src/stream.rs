@@ -2,32 +2,47 @@
 use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Position, Result, Value};
 use pagura_document::{Document, ImageStream, IndirectObject};
 
+/// Damaged filter data (`filter.corrupt`) is accepted only after a predictor
+/// precision retry fails to read the stream whole.
 pub(crate) fn read<'a>(
     document: &'a Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
 ) -> Result<ImageStream<'a>> {
-    let result = read_inner(document, image, diagnostics);
-    if result
-        .as_ref()
-        .is_err_and(|e| e.kind == ErrorKind::Syntax && e.repair.is_none())
-    {
-        return predictor_precision(document, image, diagnostics).unwrap_or(result);
+    let result = read_inner(document, image, diagnostics, false);
+    let Err(error) = &result else {
+        return result;
+    };
+    if error.kind != ErrorKind::Syntax {
+        return result;
     }
-    result
+    match error.repair {
+        None => predictor_precision(document, image, diagnostics).unwrap_or(result),
+        Some(pagura_codec::tags::CORRUPT) => predictor_precision(document, image, diagnostics)
+            .unwrap_or_else(|| read_inner(document, image, diagnostics, true)),
+        Some(_) => result,
+    }
 }
 
 fn read_inner<'a>(
     document: &'a Document,
     image: &IndirectObject,
     diagnostics: &mut Diagnostics,
+    damage: bool,
 ) -> Result<ImageStream<'a>> {
+    let stream = |parameters: Option<&Value>, size| {
+        if damage {
+            document.image_stream_damaged(image, parameters, size)
+        } else {
+            document.image_stream_sized(image, parameters, size)
+        }
+    };
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image has no dictionary"))?;
     let size = expected_size(document, dictionary);
     let Some(params) = dictionary.get(b"DecodeParms") else {
-        return document.image_stream_sized(image, None, size);
+        return stream(None, size);
     };
     let params = document.resolve(params)?;
     let filter = dictionary
@@ -37,12 +52,13 @@ fn read_inner<'a>(
     let names = match filter {
         Some(value @ Value::Name(_)) => std::slice::from_ref(value),
         Some(Value::Array(names)) => names,
-        _ => return document.image_stream_sized(image, dictionary.get(b"DecodeParms"), size),
+        _ => return stream(dictionary.get(b"DecodeParms"), size),
     };
     let Some(params) = repaired_params(document, names, params)? else {
-        return document.image_stream_sized(image, dictionary.get(b"DecodeParms"), size);
+        return stream(dictionary.get(b"DecodeParms"), size);
     };
-    diagnostics.repair(
+    // A damaged stream is read twice; the repair is reported once.
+    diagnostics.repair_once(
         Diagnostic::new(
             crate::tags::DECODE_PARAMS,
             "malformed image DecodeParms entry treated as absent (7.3.8.1 Table 5, 7.4.1, 7.4.9)",
@@ -52,7 +68,7 @@ fn read_inner<'a>(
             offset: 0,
         }),
     )?;
-    document.image_stream_sized(image, Some(&params), size)
+    stream(Some(&params), size)
 }
 
 /// The sample bytes an image of a device colour space declares, as an
@@ -197,9 +213,23 @@ mod tests {
                 let image = document.object(ObjectId::new(5, 0)).unwrap();
                 let original = document.image_stream(image).unwrap_err();
                 let mut diagnostics = Diagnostics::new(recovery);
-                let error = read(&document, image, &mut diagnostics).unwrap_err();
-                assert_eq!(error, original, "{name}: {recovery:?}");
+                let result = read(&document, image, &mut diagnostics);
                 assert!(diagnostics.as_slice().is_empty(), "{name}: {recovery:?}");
+                // A failed retry leaves damaged data (`filter.corrupt`) to be
+                // shown in Repair mode; budgets and Strict keep the error.
+                if recovery == Recovery::Repair
+                    && original.repair == Some(pagura_codec::tags::CORRUPT)
+                {
+                    assert!(result.unwrap().damaged, "{name}");
+                    let tags: Vec<_> = document
+                        .diagnostics()
+                        .iter()
+                        .map(Diagnostic::tag)
+                        .collect();
+                    assert_eq!(tags, ["filter.corrupt"], "{name}");
+                    continue;
+                }
+                assert_eq!(result.unwrap_err(), original, "{name}: {recovery:?}");
                 assert!(document.diagnostics().is_empty(), "{name}: {recovery:?}");
             }
         }

@@ -25,6 +25,13 @@ def vector(name, encoded, decoded, requirement, filter="FlateDecode", *,
                   extra={"oracle_source": "independent Python standard-library/format encoder"})
 
 
+# Damaged data (7.4, filter.corrupt): the whole output decoded before the
+# first symbol, code, tag or digit no decoder accepts is kept and reported;
+# strict mode keeps the error. Each vector's expected prefix is what the
+# symbols this generator wrote before the damaged one decode to.
+CORRUPT = dict(outcome="valid", repair="filter.corrupt", cap=4096)
+
+
 class Bits:
     """RFC 1951 least-significant-bit-first fields."""
     def __init__(self):
@@ -136,9 +143,13 @@ def external_format_cases():
                       63 if distance == 256 else 0, 6 if distance == 256 else 7)])
         plain = b"A" * (distance + 3)
         encoded = zlib_stream(raw, plain, cinfo=0)
-        yield vector(f"zlib-rfc1950-window-distance{distance}", encoded,
-                     plain if distance == 256 else b"", "filter-flate",
-                     outcome="valid" if distance == 256 else "syntax", cap=len(plain))
+        if distance == 256:
+            yield vector(f"zlib-rfc1950-window-distance{distance}", encoded, plain,
+                         "filter-flate", cap=len(plain))
+        else:
+            # The literal and the 256-byte match precede the distance beyond the window.
+            yield vector(f"zlib-rfc1950-window-distance{distance}", encoded, b"A" * distance,
+                         "filter-repairs", **CORRUPT)
     # RFC 1951 3.2.6 literal boundaries, including the two literal bit widths.
     plain = bytes([0, 143, 144, 255])
     yield vector("flate-rfc1951-fixed-literal-boundaries", fixed(list(plain)), plain,
@@ -358,13 +369,13 @@ def cases():
     ]:
         lengths = [0] * (max(256, *lit) + 1)
         for symbol, length in lit.items(): lengths[symbol] = length
-        yield vector("flate-invalid-" + label, dynamic(lengths, dist, payload), b"", "filter-flate", outcome="syntax", cap=4096, raw=1)
+        yield vector("flate-invalid-" + label, dynamic(lengths, dist, payload), b"", "filter-repairs", raw=1, **CORRUPT)
     for label, symbol in [("repeat-without-previous", 16), ("repeat-overflow", 18)]:
         bits = Bits(); bits.put(5, 3); bits.put(0, 5); bits.put(0, 5); bits.put(0, 4)
         for value in ([1, 0, 0, 1] if symbol == 16 else [0, 0, 1, 1]): bits.put(value, 3)
         bits.put(1, 1); bits.put(0 if symbol == 16 else 127, 2 if symbol == 16 else 7)
         if symbol == 18: bits.put(1, 1); bits.put(127, 7)
-        yield vector("flate-invalid-" + label, bits.bytes(), b"", "filter-flate", outcome="syntax", cap=4096, raw=1)
+        yield vector("flate-invalid-" + label, bits.bytes(), b"", "filter-repairs", raw=1, **CORRUPT)
     ring = bytes(i % 251 for i in range(32868))
     encoded = b"\0" + struct.pack("<HH", len(ring), len(ring) ^ 65535) + ring + fixed([(285, 0, 0, 15, 7, 6)])
     plain = ring + (ring[-200:] * 2)[:258]
@@ -421,20 +432,23 @@ def cases():
         ("truncated-empty", b"", b"", "filter.truncated"),
     ]:
         yield vector("flate-" + name, encoded, decoded, "filter-repairs", repair=tag, raw=int(name in ("truncated-block", "truncated-empty")))
-    for name, encoded in [
-        ("block-type", b"\x07"), ("bad-fcheck", bytes([good[0], good[1] ^ 1]) + good[2:]),
-        ("bad-stored-length", b"\x01\x01\0\0\0x"),
-        ("bad-distance", fixed([(257, 0, 0, 0, 0, 0)])),
-        ("length284-overflow", fixed([65, (284, 31, 5, 0, 0, 0)])),
-        ("reserved-distance", fixed([65, (257, 0, 0, 30, 0, 0)])),
-        ("reserved-literal", fixed([286])),
-        ("preset-dictionary", b"\x78\x20"),
+    # The zlib header is the stream's framing, not data: its errors stay errors.
+    for name, encoded in [("bad-fcheck", bytes([good[0], good[1] ^ 1]) + good[2:]),
+                          ("preset-dictionary", b"\x78\x20")]:
+        yield vector("flate-invalid-" + name, encoded, b"", "filter-flate", outcome="syntax", cap=4096, raw=0)
+    for name, encoded, prefix in [
+        ("block-type", b"\x07", b""),
+        ("bad-stored-length", b"\x01\x01\0\0\0x", b""),
+        ("bad-distance", fixed([(257, 0, 0, 0, 0, 0)]), b""),
+        ("length284-overflow", fixed([65, (284, 31, 5, 0, 0, 0)]), b"A"),
+        ("reserved-distance", fixed([65, (257, 0, 0, 30, 0, 0)]), b"A"),
+        ("reserved-literal", fixed([286]), b""),
     ]:
-        yield vector("flate-invalid-" + name, encoded, b"", "filter-flate", outcome="syntax", cap=4096, raw=int(name not in ("bad-fcheck", "preset-dictionary")))
+        yield vector("flate-invalid-" + name, encoded, prefix, "filter-repairs", raw=1, **CORRUPT)
     for name, code_lengths in [("oversubscribed", [1, 1, 1, 0]), ("incomplete", [1, 0, 0, 0])]:
         bits = Bits(); bits.put(5, 3); bits.put(0, 5); bits.put(0, 5); bits.put(0, 4)
         for value in code_lengths: bits.put(value, 3)
-        yield vector("flate-invalid-" + name, bits.bytes(), b"", "filter-flate", outcome="syntax", cap=4096, raw=1)
+        yield vector("flate-invalid-" + name, bits.bytes(), b"", "filter-repairs", raw=1, **CORRUPT)
     yield vector("flate-bomb", zlib.compress(b"A" * 1_000_000), b"", "decoder-output-cap", outcome="limit", cap=31)
     for early in (0, 1):
         for label, plain, reset in [("empty", b"", 4096), ("special", b"ABABABA" * 200, 4096),
@@ -447,14 +461,20 @@ def cases():
                          repair="filter.lzw-full-table" if label == "frozen-table" else "none")
     yield vector("lzw-truncated", lzw(b"hello", 1)[:-2], b"hell", "filter-repairs", "LZWDecode", repair="filter.truncated")
     yield vector("lzw-trailing", lzw(b"hello", 1) + b"\0", b"hello", "filter-repairs", "LZWDecode", repair="filter.trailing-data")
-    yield vector("lzw-invalid-code", bytes.fromhex("804b40"), b"", "filter-lzw", "LZWDecode", outcome="syntax", cap=4096)
+    # Clear, then code 301 before the dictionary reaches it: nothing decoded.
+    yield vector("lzw-invalid-code", bytes.fromhex("804b40"), b"", "filter-repairs", "LZWDecode", **CORRUPT)
     for length in range(10):
         plain = data[:length]
         yield vector(f"a85-partial-{length}", base64.a85encode(plain) + b"~>", plain, "filter-ascii85", "ASCII85Decode")
     yield vector("a85-z-whitespace", b"z\x00\t\r\n\x0c ! ! ! ! !~> \n", b"\0" * 8, "filter-ascii85", "ASCII85Decode")
     yield vector("a85-missing-end", b"BOu!rDZ", b"hello", "filter-repairs", "ASCII85Decode", repair="filter.truncated")
+    # A digit, z or end marker no group accepts is damage after nothing
+    # decoded; a one-digit final group or an overflowing group stays an error.
     for i, encoded in enumerate([b"!z~>", b"v~>", b"!~>", b"uuuuu~>", b"~~>", b"<~z~>"]):
-        yield vector(f"a85-invalid-{i}", encoded, b"", "filter-ascii85", "ASCII85Decode", outcome="syntax", cap=4096)
+        if i in (2, 3):
+            yield vector(f"a85-invalid-{i}", encoded, b"", "filter-ascii85", "ASCII85Decode", outcome="syntax", cap=4096)
+        else:
+            yield vector(f"a85-invalid-{i}", encoded, b"", "filter-repairs", "ASCII85Decode", **CORRUPT)
     yield vector("hex-binascii", binascii.hexlify(data) + b">", data, "filter-asciihex", "ASCIIHexDecode")
     yield vector("hex-odd-whitespace", b" a\x00B\tC\rD\nE\x0c>", bytes.fromhex("abcde0"), "filter-asciihex", "ASCIIHexDecode")
     yield vector("hex-missing-end", b"123", b"\x12\x30", "filter-repairs", "ASCIIHexDecode", repair="filter.truncated")
@@ -464,7 +484,8 @@ def cases():
         ("run", "RunLengthDecode", b"\0x\x80\0", b"x"),
     ]:
         yield vector(label + "-trailing-data", encoded, plain, "filter-repairs", filter_name, repair="filter.trailing-data")
-    yield vector("hex-invalid", b"gg>", b"", "filter-asciihex", "ASCIIHexDecode", outcome="syntax", cap=4096)
+    yield vector("hex-invalid", b"gg>", b"", "filter-repairs", "ASCIIHexDecode", **CORRUPT)
+    yield vector("hex-invalid-after-data", b"6162 6g>", b"ab", "filter-repairs", "ASCIIHexDecode", **CORRUPT)
     yield vector("run-literals", run_length(data), data, "filter-runlength", "RunLengthDecode")
     yield vector("run-repeats", b"\x81A\xffB\x80", b"A" * 128 + b"BB", "filter-runlength", "RunLengthDecode")
     yield vector("run-truncated", b"\x04ab", b"ab", "filter-repairs", "RunLengthDecode", repair="filter.truncated")
@@ -487,8 +508,11 @@ def cases():
     # Samples [3, 0, 3] give differences [3, 1, 3] modulo four;
     # preserve the unused two low padding bits (11) without prediction.
     yield vector("tiff-padding-preserved", zlib.compress(b"\xdf"), b"\xcf", "predictor-tiff", predictor=2, bits=2, columns=3)
-    for name, plain in [("invalid-tag", b"\x05x"), ("partial-row", b"\0x"), ("tag-only", b"\0")]:
-        yield vector("predictor-" + name, zlib.compress(plain), b"", "predictor-png", outcome="syntax", cap=4096, predictor=15, columns=2)
+    # Whole rows before an invalid tag or an incomplete final row are kept.
+    for name, plain, rows in [("invalid-tag", b"\x05x", b""), ("partial-row", b"\0x", b""), ("tag-only", b"\0", b""),
+                              ("invalid-tag-after-rows", b"\0ab\x02\x01\x01\x09cd", b"abbc"),
+                              ("partial-row-after-rows", b"\0ab\0c", b"ab")]:
+        yield vector("predictor-" + name, zlib.compress(plain), rows, "predictor-png", predictor=15, columns=2, **CORRUPT)
 
     # ISO 32000-2 7.4.4.2 requires zero unused bits after EOD.
     encoded = lzw(b"", 1)

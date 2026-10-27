@@ -155,7 +155,7 @@ fn inflate(
             "zlib header truncated",
             input.len(),
         )?;
-        return Output::new(cap, predictor)?.finish(input.len());
+        return Output::new(cap, predictor)?.finish(input.len(), diagnostics);
     }
     let (start, window) = if wrapped {
         header(input)?
@@ -178,7 +178,7 @@ fn inflate(
                         "zlib checksum truncated",
                         input.len(),
                     )?;
-                    return inflater.sink.finish(input.len());
+                    return inflater.sink.finish(input.len(), diagnostics);
                 };
                 if u32::from_be_bytes(*checksum) != inflater.adler.value() {
                     repair(
@@ -191,7 +191,7 @@ fn inflate(
                 end += 4;
             }
             trailing(input, end, false, diagnostics)?;
-            inflater.sink.finish(end)
+            inflater.sink.finish(end, diagnostics)
         }
         Err(Fault::End) => {
             repair(
@@ -200,9 +200,11 @@ fn inflate(
                 "DEFLATE input truncated",
                 input.len(),
             )?;
-            inflater.sink.finish(input.len())
+            inflater.sink.finish(input.len(), diagnostics)
         }
-        Err(Fault::Invalid(error)) => Err(error),
+        Err(Fault::Invalid(error)) => {
+            crate::damaged(error, diagnostics, || inflater.sink.complete())
+        }
     }
 }
 
@@ -234,7 +236,10 @@ pub(crate) fn prefix(
         let final_block = bits.read(1).ok()? != 0;
         inflater.block(&mut bits).ok()?;
         match enough(&inflater.sink.bytes[..inflater.sink.len]) {
-            crate::Prefix::Enough => return inflater.sink.finish(bits.offset()).ok(),
+            crate::Prefix::Enough => {
+                let mut strict = Diagnostics::new(pagura_core::Recovery::Strict);
+                return inflater.sink.finish(bits.offset(), &mut strict).ok();
+            }
             crate::Prefix::Abandon => return None,
             crate::Prefix::More if final_block => return None,
             crate::Prefix::More => {}
@@ -527,16 +532,34 @@ impl Sink {
         Ok(())
     }
 
-    fn finish(self, offset: usize) -> Result<Vec<u8>> {
+    fn finish(self, offset: usize, diagnostics: &mut Diagnostics) -> Result<Vec<u8>> {
         if self.predicted {
-            return self.output.finish(offset);
+            return self.output.finish(offset, diagnostics);
         }
+        Ok(self.unpredicted())
+    }
+
+    /// The whole rows decoded before damaged data (`filter.corrupt`): bytes
+    /// still in the window go to the predictor, which keeps the rows it
+    /// accepts.
+    fn complete(mut self) -> Vec<u8> {
+        if !self.predicted {
+            return self.unpredicted();
+        }
+        if let Some(bytes) = self.bytes.get(self.done..self.len) {
+            // A predictor tag it refuses ends the rows; that is the damage.
+            let _ = self.output.write(bytes, 0);
+        }
+        self.output.complete()
+    }
+
+    fn unpredicted(self) -> Vec<u8> {
         let mut bytes = self.bytes;
         bytes.truncate(self.len);
         if bytes.capacity() > self.reserved {
             bytes.shrink_to(self.reserved);
         }
-        Ok(bytes)
+        bytes
     }
 }
 

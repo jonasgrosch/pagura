@@ -21,7 +21,13 @@ pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Re
             b'0'..=b'9' => byte - b'0',
             b'a'..=b'f' => byte - b'a' + 10,
             b'A'..=b'F' => byte - b'A' + 10,
-            _ => return Err(syntax("invalid ASCIIHex digit", offset)),
+            _ => {
+                return crate::damaged(
+                    syntax("invalid ASCIIHex digit", offset),
+                    diagnostics,
+                    || output.complete(),
+                );
+            }
         };
         if let Some(first) = high.take() {
             output.write(&[first * 16 + digit], offset)?;
@@ -41,7 +47,7 @@ pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Re
         output.write(&[first * 16], end)?;
     }
     trailing(input, end, true, diagnostics)?;
-    output.finish(end)
+    output.finish(end, diagnostics)
 }
 
 pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Result<Vec<u8>> {
@@ -67,18 +73,30 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
                     break;
                 }
                 None => break,
-                Some((index, _)) => return Err(syntax("invalid ASCII85 end marker", index)),
+                Some((index, _)) => {
+                    return crate::damaged(
+                        syntax("invalid ASCII85 end marker", index),
+                        diagnostics,
+                        || output.complete(),
+                    );
+                }
             }
         }
         if byte == b'z' {
             if count != 0 {
-                return Err(syntax("ASCII85 z inside a group", offset));
+                return crate::damaged(
+                    syntax("ASCII85 z inside a group", offset),
+                    diagnostics,
+                    || output.complete(),
+                );
             }
             output.write(&[0; 4], offset)?;
             continue;
         }
         if !(b'!'..=b'u').contains(&byte) {
-            return Err(syntax("invalid ASCII85 digit", offset));
+            return crate::damaged(syntax("invalid ASCII85 digit", offset), diagnostics, || {
+                output.complete()
+            });
         }
         group = group * 85 + u64::from(byte - b'!');
         count += 1;
@@ -106,7 +124,7 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
         write_group(&mut output, group, count - 1, end)?;
     }
     trailing(input, end, true, diagnostics)?;
-    output.finish(end)
+    output.finish(end, diagnostics)
 }
 
 fn write_group(output: &mut Output, group: u64, count: usize, offset: usize) -> Result<()> {
@@ -133,7 +151,7 @@ pub(crate) fn run_length(
         match tag {
             128 => {
                 trailing(input, offset, false, diagnostics)?;
-                return output.finish(offset);
+                return output.finish(offset, diagnostics);
             }
             0..=127 => {
                 let count = usize::from(tag) + 1;
@@ -164,5 +182,5 @@ pub(crate) fn run_length(
         "RunLength input truncated",
         input.len(),
     )?;
-    output.finish(input.len())
+    output.finish(input.len(), diagnostics)
 }

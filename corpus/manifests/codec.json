@@ -1458,7 +1458,7 @@
       "kind": "vector",
       "description": "zlib rfc1950 window distance257",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -1467,11 +1467,11 @@
         },
         ".out": {
           "path": "corpus/generated/codec/zlib-rfc1950-window-distance257.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          "sha256": "77608f24da6140277bd789efec57a179b1c1e57f44045ebd2b39e3c1e7e18d42"
         },
         ".params": {
           "path": "corpus/generated/codec/zlib-rfc1950-window-distance257.params",
-          "sha256": "292e70a1cdd82344eb940639344124bfcf4b2d72e96336c91b080bb69d5d7c09"
+          "sha256": "7cf9d82c71e22ef012b314bfce2abd9b22fbc4914affb1bd6a500cd20f0af93d"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4379,7 +4379,7 @@
       "kind": "vector",
       "description": "flate invalid literal incomplete",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4392,7 +4392,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-literal-incomplete.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4402,7 +4402,7 @@
       "kind": "vector",
       "description": "flate invalid literal oversubscribed",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4415,7 +4415,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-literal-oversubscribed.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4425,7 +4425,7 @@
       "kind": "vector",
       "description": "flate invalid missing eob",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4438,7 +4438,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-missing-eob.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4448,7 +4448,7 @@
       "kind": "vector",
       "description": "flate invalid distance incomplete",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4461,7 +4461,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-distance-incomplete.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4471,7 +4471,7 @@
       "kind": "vector",
       "description": "flate invalid distance oversubscribed",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4484,7 +4484,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-distance-oversubscribed.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4494,7 +4494,7 @@
       "kind": "vector",
       "description": "flate invalid empty distance used",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4507,7 +4507,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-empty-distance-used.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4517,7 +4517,7 @@
       "kind": "vector",
       "description": "flate invalid repeat without previous",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4530,7 +4530,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-repeat-without-previous.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4540,7 +4540,7 @@
       "kind": "vector",
       "description": "flate invalid repeat overflow",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -4553,7 +4553,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-repeat-overflow.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -5916,29 +5916,6 @@
       "oracle_source": "independent Python standard-library/format encoder"
     },
     {
-      "id": "codec/flate-invalid-block-type",
-      "kind": "vector",
-      "description": "flate invalid block type",
-      "requirements": [
-        "filter-flate"
-      ],
-      "files": {
-        ".in": {
-          "path": "corpus/generated/codec/flate-invalid-block-type.in",
-          "sha256": "ca358758f6d27e6cf45272937977a748fd88391db679ceda7dc7bf1f005ee879"
-        },
-        ".out": {
-          "path": "corpus/generated/codec/flate-invalid-block-type.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        },
-        ".params": {
-          "path": "corpus/generated/codec/flate-invalid-block-type.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
-        }
-      },
-      "oracle_source": "independent Python standard-library/format encoder"
-    },
-    {
       "id": "codec/flate-invalid-bad-fcheck",
       "kind": "vector",
       "description": "flate invalid bad fcheck",
@@ -5957,121 +5934,6 @@
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-bad-fcheck.params",
           "sha256": "974be1e27672f120d92853ce6363ba6dc2408361e13f83fcb34e45946288860f"
-        }
-      },
-      "oracle_source": "independent Python standard-library/format encoder"
-    },
-    {
-      "id": "codec/flate-invalid-bad-stored-length",
-      "kind": "vector",
-      "description": "flate invalid bad stored length",
-      "requirements": [
-        "filter-flate"
-      ],
-      "files": {
-        ".in": {
-          "path": "corpus/generated/codec/flate-invalid-bad-stored-length.in",
-          "sha256": "0958fbeb1db5b861931b66968e84b79a28f0f55b4671bd7d9b4465ddcef1a3b7"
-        },
-        ".out": {
-          "path": "corpus/generated/codec/flate-invalid-bad-stored-length.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        },
-        ".params": {
-          "path": "corpus/generated/codec/flate-invalid-bad-stored-length.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
-        }
-      },
-      "oracle_source": "independent Python standard-library/format encoder"
-    },
-    {
-      "id": "codec/flate-invalid-bad-distance",
-      "kind": "vector",
-      "description": "flate invalid bad distance",
-      "requirements": [
-        "filter-flate"
-      ],
-      "files": {
-        ".in": {
-          "path": "corpus/generated/codec/flate-invalid-bad-distance.in",
-          "sha256": "37bda89258654d0301b7d9481f2f349dc2f3167da81738339d9bcc53a580cdc3"
-        },
-        ".out": {
-          "path": "corpus/generated/codec/flate-invalid-bad-distance.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        },
-        ".params": {
-          "path": "corpus/generated/codec/flate-invalid-bad-distance.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
-        }
-      },
-      "oracle_source": "independent Python standard-library/format encoder"
-    },
-    {
-      "id": "codec/flate-invalid-length284-overflow",
-      "kind": "vector",
-      "description": "flate invalid length284 overflow",
-      "requirements": [
-        "filter-flate"
-      ],
-      "files": {
-        ".in": {
-          "path": "corpus/generated/codec/flate-invalid-length284-overflow.in",
-          "sha256": "e6a4202e686318849def09c23f28bfe9e2bdf443cef7d7057e7795c47e8638bd"
-        },
-        ".out": {
-          "path": "corpus/generated/codec/flate-invalid-length284-overflow.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        },
-        ".params": {
-          "path": "corpus/generated/codec/flate-invalid-length284-overflow.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
-        }
-      },
-      "oracle_source": "independent Python standard-library/format encoder"
-    },
-    {
-      "id": "codec/flate-invalid-reserved-distance",
-      "kind": "vector",
-      "description": "flate invalid reserved distance",
-      "requirements": [
-        "filter-flate"
-      ],
-      "files": {
-        ".in": {
-          "path": "corpus/generated/codec/flate-invalid-reserved-distance.in",
-          "sha256": "9ea06ac50eeb9f6de4cc28c6990dcc3297bf8a1f9dbecd5e8c0ab0a4abc0442e"
-        },
-        ".out": {
-          "path": "corpus/generated/codec/flate-invalid-reserved-distance.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        },
-        ".params": {
-          "path": "corpus/generated/codec/flate-invalid-reserved-distance.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
-        }
-      },
-      "oracle_source": "independent Python standard-library/format encoder"
-    },
-    {
-      "id": "codec/flate-invalid-reserved-literal",
-      "kind": "vector",
-      "description": "flate invalid reserved literal",
-      "requirements": [
-        "filter-flate"
-      ],
-      "files": {
-        ".in": {
-          "path": "corpus/generated/codec/flate-invalid-reserved-literal.in",
-          "sha256": "7d17e229a0a10ef12c915ded63e0c00a921f9284d408541c573fdd23ae5515d3"
-        },
-        ".out": {
-          "path": "corpus/generated/codec/flate-invalid-reserved-literal.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        },
-        ".params": {
-          "path": "corpus/generated/codec/flate-invalid-reserved-literal.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6100,11 +5962,149 @@
       "oracle_source": "independent Python standard-library/format encoder"
     },
     {
+      "id": "codec/flate-invalid-block-type",
+      "kind": "vector",
+      "description": "flate invalid block type",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-invalid-block-type.in",
+          "sha256": "ca358758f6d27e6cf45272937977a748fd88391db679ceda7dc7bf1f005ee879"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-invalid-block-type.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-invalid-block-type.params",
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-invalid-bad-stored-length",
+      "kind": "vector",
+      "description": "flate invalid bad stored length",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-invalid-bad-stored-length.in",
+          "sha256": "0958fbeb1db5b861931b66968e84b79a28f0f55b4671bd7d9b4465ddcef1a3b7"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-invalid-bad-stored-length.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-invalid-bad-stored-length.params",
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-invalid-bad-distance",
+      "kind": "vector",
+      "description": "flate invalid bad distance",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-invalid-bad-distance.in",
+          "sha256": "37bda89258654d0301b7d9481f2f349dc2f3167da81738339d9bcc53a580cdc3"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-invalid-bad-distance.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-invalid-bad-distance.params",
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-invalid-length284-overflow",
+      "kind": "vector",
+      "description": "flate invalid length284 overflow",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-invalid-length284-overflow.in",
+          "sha256": "e6a4202e686318849def09c23f28bfe9e2bdf443cef7d7057e7795c47e8638bd"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-invalid-length284-overflow.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-invalid-length284-overflow.params",
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-invalid-reserved-distance",
+      "kind": "vector",
+      "description": "flate invalid reserved distance",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-invalid-reserved-distance.in",
+          "sha256": "9ea06ac50eeb9f6de4cc28c6990dcc3297bf8a1f9dbecd5e8c0ab0a4abc0442e"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-invalid-reserved-distance.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-invalid-reserved-distance.params",
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-invalid-reserved-literal",
+      "kind": "vector",
+      "description": "flate invalid reserved literal",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-invalid-reserved-literal.in",
+          "sha256": "7d17e229a0a10ef12c915ded63e0c00a921f9284d408541c573fdd23ae5515d3"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-invalid-reserved-literal.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-invalid-reserved-literal.params",
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
       "id": "codec/flate-invalid-oversubscribed",
       "kind": "vector",
       "description": "flate invalid oversubscribed",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6117,7 +6117,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-oversubscribed.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6127,7 +6127,7 @@
       "kind": "vector",
       "description": "flate invalid incomplete",
       "requirements": [
-        "filter-flate"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6140,7 +6140,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/flate-invalid-incomplete.params",
-          "sha256": "ac30b367b8b2c559d189b0d9ead9a7dfba768cfff593a2b17dee9f4da88ed319"
+          "sha256": "7e16884443dc31a6196e44664466689816fbd89b08cb7401fd8d77e78f3cd469"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6449,7 +6449,7 @@
       "kind": "vector",
       "description": "lzw invalid code",
       "requirements": [
-        "filter-lzw"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6462,7 +6462,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/lzw-invalid-code.params",
-          "sha256": "1a8121988c0b4bc90abc67e32b5e20d454c5233dfaeef7bb8366f1d0f69389c1"
+          "sha256": "eee761c63a6dbdc46b79a9376a4ccdb5076cfd99e262f2360edb7befdcb27374"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6748,7 +6748,7 @@
       "kind": "vector",
       "description": "a85 invalid 0",
       "requirements": [
-        "filter-ascii85"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6761,7 +6761,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/a85-invalid-0.params",
-          "sha256": "c766b8b630aef820e45cea30522f2f0c3d58c94b88d24c71dbfd7c26b54e130a"
+          "sha256": "f42e4bed7e48b9d43508525c9b69dda49f8f20272ed6ee0462129f5ac49c78fc"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6771,7 +6771,7 @@
       "kind": "vector",
       "description": "a85 invalid 1",
       "requirements": [
-        "filter-ascii85"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6784,7 +6784,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/a85-invalid-1.params",
-          "sha256": "c766b8b630aef820e45cea30522f2f0c3d58c94b88d24c71dbfd7c26b54e130a"
+          "sha256": "f42e4bed7e48b9d43508525c9b69dda49f8f20272ed6ee0462129f5ac49c78fc"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6840,7 +6840,7 @@
       "kind": "vector",
       "description": "a85 invalid 4",
       "requirements": [
-        "filter-ascii85"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6853,7 +6853,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/a85-invalid-4.params",
-          "sha256": "c766b8b630aef820e45cea30522f2f0c3d58c94b88d24c71dbfd7c26b54e130a"
+          "sha256": "f42e4bed7e48b9d43508525c9b69dda49f8f20272ed6ee0462129f5ac49c78fc"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -6863,7 +6863,7 @@
       "kind": "vector",
       "description": "a85 invalid 5",
       "requirements": [
-        "filter-ascii85"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -6876,7 +6876,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/a85-invalid-5.params",
-          "sha256": "c766b8b630aef820e45cea30522f2f0c3d58c94b88d24c71dbfd7c26b54e130a"
+          "sha256": "f42e4bed7e48b9d43508525c9b69dda49f8f20272ed6ee0462129f5ac49c78fc"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -7024,7 +7024,7 @@
       "kind": "vector",
       "description": "hex invalid",
       "requirements": [
-        "filter-asciihex"
+        "filter-repairs"
       ],
       "files": {
         ".in": {
@@ -7037,7 +7037,30 @@
         },
         ".params": {
           "path": "corpus/generated/codec/hex-invalid.params",
-          "sha256": "01d2c1276557635aad32f19b4de9ad520e708171fdf1d26b24ec4fe2b0374e1f"
+          "sha256": "241a027d6eb9d862b841b556f400ed3152bdb1bc2e8333ef5358554b830d6633"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/hex-invalid-after-data",
+      "kind": "vector",
+      "description": "hex invalid after data",
+      "requirements": [
+        "filter-repairs"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/hex-invalid-after-data.in",
+          "sha256": "e74123a07de86342dce006da53fcf647e5eda7605ca9f6113721ebd4bb5e7962"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/hex-invalid-after-data.out",
+          "sha256": "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/hex-invalid-after-data.params",
+          "sha256": "241a027d6eb9d862b841b556f400ed3152bdb1bc2e8333ef5358554b830d6633"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -9475,7 +9498,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/predictor-invalid-tag.params",
-          "sha256": "cc00a84d6b6ddbc7bb5cc3021ee0bc6b70a9eac1f45fa66bce9329a0d44eefb6"
+          "sha256": "2d66323a0abcec957f0bdf076f4b22ddf300211ca5879871ced5543897a0c18e"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -9498,7 +9521,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/predictor-partial-row.params",
-          "sha256": "cc00a84d6b6ddbc7bb5cc3021ee0bc6b70a9eac1f45fa66bce9329a0d44eefb6"
+          "sha256": "2d66323a0abcec957f0bdf076f4b22ddf300211ca5879871ced5543897a0c18e"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -9521,7 +9544,53 @@
         },
         ".params": {
           "path": "corpus/generated/codec/predictor-tag-only.params",
-          "sha256": "cc00a84d6b6ddbc7bb5cc3021ee0bc6b70a9eac1f45fa66bce9329a0d44eefb6"
+          "sha256": "2d66323a0abcec957f0bdf076f4b22ddf300211ca5879871ced5543897a0c18e"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/predictor-invalid-tag-after-rows",
+      "kind": "vector",
+      "description": "predictor invalid tag after rows",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/predictor-invalid-tag-after-rows.in",
+          "sha256": "4ef5a76bcfe794185af9d90f3d742fa4e69331e6e1ff2a48f57a52778e018219"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/predictor-invalid-tag-after-rows.out",
+          "sha256": "762cb46ea72a4df5e18d8a546724d854dce14331bbe59244c5ed6a94253da133"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/predictor-invalid-tag-after-rows.params",
+          "sha256": "2d66323a0abcec957f0bdf076f4b22ddf300211ca5879871ced5543897a0c18e"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/predictor-partial-row-after-rows",
+      "kind": "vector",
+      "description": "predictor partial row after rows",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/predictor-partial-row-after-rows.in",
+          "sha256": "6408484a7926641b9539ea94d2dca1326bdfdef01def482135b10cb53a7f30f2"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/predictor-partial-row-after-rows.out",
+          "sha256": "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/predictor-partial-row-after-rows.params",
+          "sha256": "2d66323a0abcec957f0bdf076f4b22ddf300211ca5879871ced5543897a0c18e"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"

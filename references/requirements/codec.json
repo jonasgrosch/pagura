@@ -255,7 +255,8 @@
       "gaps": "TIFF strip boundaries, FillOrder metadata and TIFF container byte order are outside this PDF decoder. Positive dimensions beyond the public predictor fields remain unsupported.",
       "documented_choices": [
         "filter.lzw-full-table: ISO 7.4.4.2 requires an encoder clear when full. Strict rejects with this repair tag; Repair completes the decoder-lag entry and freezes codes through 4095, without subsequent insertion until clear/EOD. It records the repair once per stream, including across later clear codes. This recovery is project policy, not ISO permission.",
-        "filter.lzw-padding: ISO 7.4.4.2 requires zero unused EOD bits. Strict rejects with this repair tag; Repair ignores nonzero residual bits and records the deviation. This recovery is project policy, not ISO permission."
+        "filter.lzw-padding: ISO 7.4.4.2 requires zero unused EOD bits. Strict rejects with this repair tag; Repair ignores nonzero residual bits and records the deviation. This recovery is project policy, not ISO permission.",
+        "filter.corrupt: data no decoder accepts (an invalid DEFLATE block, code table, symbol or distance, an invalid LZW code, an invalid ASCIIHex or ASCII85 digit, z or end marker, an invalid PNG predictor tag) or an incomplete final predictor row ends the output: the whole rows decoded before it are kept and the repair is reported at the input offset. Strict keeps the decoder's error with this tag. zlib header errors, parameter errors, a one-digit or overflowing final ASCII85 group and budget errors stay errors. Images show the kept rows and leave the rest transparent. This recovery is project policy (owner decision 2026-10-27), not ISO permission."
       ],
       "external_primary_review": [
         {
