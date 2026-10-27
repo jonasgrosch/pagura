@@ -42,6 +42,19 @@ use pagura_core::{Limits, Meter, Result};
 /// Device pixels the proof keeps clear of the pieces' rounding.
 const MARGIN: f64 = 1.0 / 1024.0;
 
+/// The least device radius worth a spine. Narrower pens hold few whole
+/// cells, so their capsules cost more to build and test than the cells they
+/// prove save. Instructions on the Graviton runner, against no spines:
+///
+/// | spines from | 0347 | 0618 | 0232 | 0121 | 0636 | 0933 | 0007 | 1,000 pages |
+/// |---|---|---|---|---|---|---|---|---|
+/// | 0.5 px | 1.050 | 1.031 | 1.036 | 1.014 | 1.022 | 0.139 | 0.677 | 0.9972, worst 1.050 |
+/// | 1.0 px | 1.001 | 1.000 | 1.037 | 1.000 | 1.001 | 0.139 | 0.678 | – |
+/// | 1.25 px | 1.001 | 1.000 | 1.000 | 1.000 | 1.001 | 0.139 | 0.678 | 0.9974, worst 1.006 |
+///
+/// The pens of the first five pages prove 0.5–1.0 px, 0007's 1.5 px.
+const LEAST_RADIUS: f64 = 1.25;
+
 /// The device radius from which runs of short segments count as chords:
 /// narrower pens have few segments reaching each row, and would lose cells.
 const CHORDS: f64 = 4.0;
@@ -100,7 +113,7 @@ impl Spine {
     /// The spine of `runs` stroked with `pen` under the conformal
     /// `transform` to device space, leaving out the runs `convex` names
     /// (their pieces are their convex boundaries). `None` where the pen is
-    /// too narrow to hold a cell or the transform is not conformal, and where
+    /// narrower than [`LEAST_RADIUS`] or the transform is not conformal, and where
     /// the stroke's budgets cannot admit it: the rows are then resolved
     /// whole, as without one. Charged to `bytes` while it lives.
     pub(super) fn of(
@@ -112,7 +125,8 @@ impl Spine {
         bytes: &mut Meter,
     ) -> Option<Self> {
         let scale = transform.a.hypot(transform.b);
-        if !conformal(transform) || !scale.is_finite() || (pen.radius * scale - MARGIN) <= 0.5 {
+        if !conformal(transform) || !scale.is_finite() || pen.radius * scale - MARGIN < LEAST_RADIUS
+        {
             return None;
         }
         let before = bytes.used();
