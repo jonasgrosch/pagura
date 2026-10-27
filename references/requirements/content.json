@@ -649,7 +649,7 @@
       "clauses": [
         "8.6.5.5, Tables 65–68"
       ],
-      "rule": "ICC.1:2010 v4 profiles validate BCD/version reserved bytes, Gregorian dates, permitted source class/colour-space/PCS, attributes, intent, D50 illuminant, MD5 ProfileID and reserved bytes; required tags depend on profile class/model. Tag bodies are tightly packed, aligned and zero-padded, with exact shared bodies allowed. XYZ records are complete and nonnegative, reserved type fields and curve extents are exact, and chad is a signed sf32 invertible 3-by-3 matrix. These v4 metadata rules are not imposed on legacy v2 profiles. All table products, extents, allocations and cumulative retained profile storage are bounded before use.",
+      "rule": "ICC.1:2010 v4 profiles validate BCD/version reserved bytes, Gregorian dates, permitted source class/colour-space/PCS, attributes, intent, D50 illuminant, MD5 ProfileID and reserved bytes; required tags depend on profile class/model. Tag bodies are tightly packed, aligned and zero-padded, with exact shared bodies allowed. XYZ records are complete and nonnegative, reserved type fields and curve extents are exact, and chad is a signed sf32 invertible 3-by-3 matrix. These v4 metadata rules are not imposed on legacy v2 profiles. All table products, extents, allocations and cumulative retained profile storage are bounded before use. A profile stream that fails these rules, or cannot be read, is unusable: Strict rejects it, and Repair draws the Alternate space or the N default (8.6.5.5) with the reported repair content.icc-unusable. Budget errors and JPEG 2000 embedded profiles keep their errors.",
       "status": "implemented; ICC.1:2010 primary text verified",
       "tests": [
         "content/icc-profile-id-valid",

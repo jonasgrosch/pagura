@@ -37,6 +37,11 @@ pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
 /// numeric operands supplied with an underlying pattern colour space.
 pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying");
 
+/// 8.6.5.5: an ICC profile whose data cannot be used (damaged, malformed or
+/// unreadable) is treated as unsupported: the Alternate space, or the default
+/// for `N`, draws instead. Budget errors are never repaired.
+pub const ICC_UNUSABLE: Repair = Repair::new("content.icc-unusable");
+
 /// Every tag above.
 pub const ALL: &[Repair] = &[
     COLOR_OPERATOR,
@@ -52,4 +57,5 @@ pub const ALL: &[Repair] = &[
     GRAPHICS_UNCLOSED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
+    ICC_UNUSABLE,
 ];

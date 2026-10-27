@@ -76,6 +76,13 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   discarded; `image.stencil-color-space` (8.9.5.1, Table 87): an image mask's
   extraneous ColorSpace is ignored; `image.filter-abbreviation` (8.9.7, Table
   92): the inline-image filter abbreviations are accepted on image XObjects.
+- `content.icc-unusable` (8.6.5.5; owner decision 2026-10-27): an ICCBased
+  profile stream that cannot be used (malformed under ICC.1:2010, truncated,
+  damaged, or encoded with a filter that cannot apply) is treated like an
+  unsupported profile: the validated `Alternate` space, or the default for
+  `N`, draws instead. Strict keeps the profile's error with this tag. Budget,
+  cycle and missing-object errors, and JPEG 2000 embedded profiles (which rank
+  their own colour candidates), keep their errors.
 - `content.text-clip-reset` (9.3.6, 9.4.1): a text rendering mode reset to a
   non-clipping mode before `ET` keeps the clip already accumulated.
 - `text.marked-property` (14.6.2, 14.9.3–14.9.5): an unusable marked-content
