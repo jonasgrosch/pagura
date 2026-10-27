@@ -20,15 +20,6 @@ use std::sync::Arc;
 
 pub(super) const ARC: usize = 2 * size_of::<usize>();
 
-/// `space`'s bytes without its ICC profiles, which [`Profiles`] charges.
-fn space(space: &ColorSpace) -> usize {
-    space
-        .profiles()
-        .fold(space.retained_bytes(), |total, profile| {
-            total.saturating_sub(ARC.saturating_add(profile.retained_bytes()))
-        })
-}
-
 /// The ICC profiles of a scene's colour spaces, each charged once.
 #[derive(Debug, Default)]
 pub(super) struct Profiles(FastMap<usize, Arc<Profile>>);
@@ -136,7 +127,7 @@ pub(super) fn fill_stroke(states: &FillStroke) -> usize {
 
 pub(super) fn paint(paint: &Paint) -> usize {
     let color = |color: &crate::model::Color| {
-        ARC.saturating_add(space(&color.space))
+        ARC.saturating_add(color.space.retained_bytes_without_profiles())
             .saturating_add(color.components.heap_bytes())
     };
     let payload = match paint {
@@ -194,7 +185,7 @@ pub(super) fn shading(shading: &Shading) -> usize {
         ARC,
         size_of::<Shading>(),
         ARC,
-        space(&shading.space),
+        shading.space.retained_bytes_without_profiles(),
         shading
             .background
             .as_ref()
@@ -217,10 +208,9 @@ pub(super) fn image(mut image: &Image) -> usize {
             size_of::<Image>(),
             3 * ARC,
             image.source.retained_bytes(),
-            image
-                .space
-                .as_ref()
-                .map_or(0, |value| ARC.saturating_add(space(value))),
+            image.space.as_ref().map_or(0, |space| {
+                ARC.saturating_add(space.retained_bytes_without_profiles())
+            }),
             ARC,
             size_of_val(image.decode.as_ref()),
         ]
