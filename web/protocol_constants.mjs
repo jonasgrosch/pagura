@@ -141,7 +141,7 @@ export const OutlineStyle = Object.freeze({
 
 /** Largest frame body: max(file_bytes + string_bytes + 14, pixels * 4 + 18,
  *  reading_response_bytes + 5, 1024) under the default limits, at most u32::MAX. */
-export const MAX_FRAME = 570425358;
+export const MAX_FRAME = 1073741842;
 
 /** Largest PDF in an open request (Limits::file_bytes). */
 export const MAX_FILE = 536870912;
