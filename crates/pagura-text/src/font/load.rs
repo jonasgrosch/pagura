@@ -58,6 +58,7 @@ pub(super) fn load_with(
             }
             return crate::substitute::cid::load(
                 document,
+                font,
                 metrics_font,
                 metrics_id,
                 mapping,

@@ -314,6 +314,73 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
     Ok(())
 }
 
+#[test]
+fn latin_identity_cid_fonts_draw_through_tounicode_with_pdf_widths() -> Result<()> {
+    let provider = Bundled::default();
+    let program = provider
+        .standard_font(b"Helvetica")?
+        .and_then(|font| font.program.clone())
+        .ok_or_else(|| Error::syntax("missing Helvetica substitute"))?;
+    for name in [
+        "substitute-cid-identity-latin",
+        "substitute-cid-identity-latin-no-tounicode",
+    ] {
+        let document = open(name)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+        let input = fixture("text", &format!("{name}.input"));
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+        // Rendering decodes without the extraction Unicode; selection uses
+        // the font's own ToUnicode map either way.
+        for extraction in [None, Some(&unicode)] {
+            let glyphs = loaded.decode(&input, extraction)?;
+            let rows = rows(name, "out")?;
+            assert_eq!(glyphs.len(), rows.len(), "{name}");
+            for (glyph, value) in glyphs.iter().zip(rows) {
+                let values = row(&value)?;
+                assert_eq!(glyph.code, integer(&values[0])?);
+                near(glyph.advance, number(&values[2])? / 1000.0);
+                if extraction.is_some() {
+                    assert_eq!(glyph.unicode.as_deref(), text(&values[3]), "{name}");
+                }
+                if values[4].is_null() {
+                    assert!(matches!(glyph.shape, GlyphShape::Blank), "{name}");
+                } else {
+                    let GlyphShape::Outline {
+                        program: selected,
+                        glyph,
+                        ..
+                    } = &glyph.shape
+                    else {
+                        return Err(Error::syntax("missing Latin outline"));
+                    };
+                    assert!(Arc::ptr_eq(selected, &program));
+                    assert_eq!(glyph.0, integer(&values[4])?);
+                }
+            }
+        }
+        assert!(information(
+            &document,
+            pagura_text::information::SUBSTITUTED
+        ));
+        assert!(information(
+            &document,
+            pagura_text::information::CID_GLYPH_MISSING
+        ));
+        assert!(
+            document.diagnostics().iter().all(|d| d.repair().is_none()),
+            "{name}"
+        );
+    }
+    let document = open("substitute-cid-identity-latin-vertical")?;
+    assert_eq!(
+        PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
+            .unwrap_err()
+            .kind,
+        ErrorKind::Unsupported(features::CID_SUBSTITUTE_VERTICAL)
+    );
+    Ok(())
+}
+
 #[cfg(not(feature = "cjk-fonts"))]
 #[test]
 fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> {

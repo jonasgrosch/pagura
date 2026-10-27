@@ -17,7 +17,7 @@ mod load;
 mod shape;
 mod unicode;
 pub use unicode::FontUnicode;
-pub(crate) use unicode::cid_collection;
+pub(crate) use unicode::{cid_collection, to_unicode};
 
 /// The font dictionary's `/Subtype`. ISO 32000-2 Table 110 closes this set,
 /// so the enum is exhaustive.
@@ -84,6 +84,13 @@ pub(crate) enum Source {
         program: Arc<FontProgram>,
         /// The collection's Unicode, which selects the glyphs.
         unicode: Arc<CidToUnicode>,
+    },
+    /// A Latin standard face drawing a non-embedded Identity CIDFont with a
+    /// Latin family name: each code's ToUnicode text selects the glyph
+    /// (ADR 0009). Without a usable ToUnicode map nothing is drawn.
+    UnicodeSubstitute {
+        program: Arc<FontProgram>,
+        to_unicode: Option<Arc<CMap>>,
     },
     Type3 {
         procedures: BTreeMap<Name, ObjectId>,
@@ -234,9 +241,9 @@ impl PdfFont {
     /// provider supplies metrics only.
     pub fn program(&self) -> Option<&Arc<FontProgram>> {
         match &self.source {
-            Source::Program { program, .. } | Source::CidSubstitute { program, .. } => {
-                Some(program)
-            }
+            Source::Program { program, .. }
+            | Source::CidSubstitute { program, .. }
+            | Source::UnicodeSubstitute { program, .. } => Some(program),
             Source::Type3 { .. } | Source::MetricsOnly => None,
         }
     }
@@ -245,7 +252,10 @@ impl PdfFont {
     pub fn type3_resources(&self) -> Option<&Dictionary> {
         match &self.source {
             Source::Type3 { resources, .. } => resources.as_ref(),
-            Source::Program { .. } | Source::MetricsOnly | Source::CidSubstitute { .. } => None,
+            Source::Program { .. }
+            | Source::MetricsOnly
+            | Source::CidSubstitute { .. }
+            | Source::UnicodeSubstitute { .. } => None,
         }
     }
 

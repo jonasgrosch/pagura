@@ -1311,6 +1311,9 @@
       ],
       "status": "CID collection identities determine character meaning; the PDF CMap selects CIDs, and W/DW supply advances independently of the external program; ToUnicode serves extraction only.",
       "tests": [
+        "text/substitute-cid-identity-latin",
+        "text/substitute-cid-identity-latin-no-tounicode",
+        "text/substitute-cid-identity-latin-vertical",
         "text/substitute-cid-Japan1-CIDFontType0",
         "text/substitute-cid-Japan1-CIDFontType2",
         "text/substitute-cid-Japan1-tounicode",
