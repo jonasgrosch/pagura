@@ -590,6 +590,53 @@ fn packed_mask_rows_read_the_opacity_of_their_samples() {
 }
 
 #[test]
+fn packed_stencils_sample_as_their_bytes_bit_for_bit() {
+    // Rows of three bytes: a head inside a byte, whole bytes and a tail.
+    let (width, height) = (21_usize, 9_usize);
+    let values = codes(width * height, 1, 31);
+    let stride = width.div_ceil(8);
+    let mut packed = vec![0u8; stride * height];
+    for (i, &v) in values.iter().enumerate() {
+        let (y, x) = (i / width, i % width);
+        packed[y * stride + x / 8] |= u8::try_from(v).unwrap() << (7 - x % 8);
+    }
+    let packed = pagura_image::deferred::Packed::from_rows(21, 9, packed).unwrap();
+    let bytes = values.iter().map(|&v| u8::try_from(v).unwrap()).collect();
+    let stencil = |samples, inverted, color: &Option<Vec<f64>>| {
+        let mut stencil = image((21, 9), 1, 1, samples);
+        stencil.kind = ImageKind::Stencil { inverted };
+        let mut case = case(stencil);
+        case.space = None;
+        case.decode = vec![[0.0, 1.0]];
+        case.stencil_color.clone_from(color);
+        case
+    };
+    for inverted in [false, true] {
+        for color in [None, Some(vec![0.3, 0.7, 0.123_456_789])] {
+            let packed = stencil(Samples::Packed(packed.clone()), inverted, &color);
+            let bytes = stencil(Samples::Bytes(Vec::clone(&bytes)), inverted, &color);
+            for unit_to_device in placements(21, 9) {
+                let (a, b) = (
+                    sampler(&packed, unit_to_device, 3),
+                    sampler(&bytes, unit_to_device, 3),
+                );
+                let (mut scratch_a, mut scratch_b) = (scratch(&a), scratch(&b));
+                let (mut span_a, mut span_b) = (SpanColors::default(), SpanColors::default());
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                for y in y0..y1 {
+                    a.span(Pixels::new(x0, y, len), &mut scratch_a, &mut span_a);
+                    b.span(Pixels::new(x0, y, len), &mut scratch_b, &mut span_b);
+                    let context = format!("{unit_to_device:?} row {y}");
+                    assert_eq!(bits(&span_a.colors), bits(&span_b.colors), "{context}");
+                    assert_eq!(bits(&span_a.alpha), bits(&span_b.alpha), "{context}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn rgb_images_through_channel_tables_and_samples() {
     for bits in [8, 16] {
         let samples = if bits == 16 {
