@@ -190,3 +190,19 @@ store's capacity, plus any value too large to retain, which its build budgets
 bound; this replaces the consequence above that `render_bytes` alone bounds a
 page's peak memory.
 
+
+## Amendment, 2026-10-29: work budgets of 2 Gi units
+
+`render_work`, `decode_work` and `function_work` default to 2,147,483,648
+units, or 32 units per pixel of a 64 Mi-pixel reference. Each budget still
+covers its documented domain and is reserved before execution. This raises
+`function_work` from 50,000,000 and `render_work` from 2,000,000,000;
+`decode_work` is unchanged. The value fits a 32-bit `usize`. The output and
+image pixel cap remains 64 Mi, and all byte caps remain unchanged.
+
+Function preparation reserves its evaluation cost per sample. A boundary
+regression checks the largest admitted sample count at the default and
+refusal of one more. Newly admitted renders must match the unchanged
+renderer with only these work limits raised; a prior refusal is not a
+performance baseline. This amendment does not introduce separate image
+size limits or change the host frame cap.

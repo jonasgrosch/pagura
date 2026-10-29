@@ -392,6 +392,18 @@ fn function_work_is_reserved_per_sample() {
         .reserve((1000, context.region), (&mut bytes, &mut tight))
         .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+    // Under the default budget, the most pixels this shading's evaluations
+    // admit at four samples each, and one more.
+    let most = limits.function_work / (4 * cost);
+    let mut default = Meter::new(limits.function_work, "function work");
+    prepare()
+        .reserve((most, context.region), (&mut bytes, &mut default))
+        .unwrap();
+    let mut default = Meter::new(limits.function_work, "function work");
+    let error = prepare()
+        .reserve((most + 1, context.region), (&mut bytes, &mut default))
+        .unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
 }
 
 #[test]

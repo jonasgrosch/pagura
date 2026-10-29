@@ -193,6 +193,7 @@ impl Default for Limits {
     fn default() -> Self {
         const MIB: usize = 1024 * 1024;
         const PIXELS: usize = 64 * MIB;
+        const WORK: usize = 32 * PIXELS;
         Self {
             file_bytes: 512 * MIB,
             document_bytes: 128 * MIB,
@@ -212,17 +213,17 @@ impl Default for Limits {
             mask_sources: 256,
             display_commands: 10_000_000,
             render_bytes: 512 * MIB,
-            render_work: 2_000_000_000,
+            render_work: WORK,
             // 32 units per pixel at the pixel cap: a progressive or 4:4:4
             // JPEG of that size decodes, unlike under the 50M-token
             // `operations` budget that capped codecs before (ADR 0016).
-            decode_work: 32 * PIXELS,
+            decode_work: WORK,
             decode_bytes: 256 * MIB,
             font_work: 50_000_000,
             font_entries: 1_000_000,
             text_items: 1_000_000,
             text_work: 50_000_000,
-            function_work: 50_000_000,
+            function_work: WORK,
             signatures: SignatureLimits::default(),
         }
     }
