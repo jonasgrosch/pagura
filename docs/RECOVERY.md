@@ -92,6 +92,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   and Nonsymbolic is treated as its inverse. Valid pairs are not repairs and
   keep their 9.6.5 selection routes, even when the font's character set
   disagrees. Applied by `pagura-text` for every caller of `PdfFont`.
+- `font.symbolic-latin-encoding` (9.6.5, 9.8.2; ADR 0009): a non-embedded
+  font flagged Symbolic whose name is a known Latin family and whose
+  `/Encoding` names a Latin base encoding (Standard, WinAnsi or MacRoman)
+  uses that encoding with the standard face instead of failing. Symbol,
+  dingbat and unknown families, and fonts without such an encoding, still
+  fail with `font.non-embedded`.
 - `font.widths-length` (Table 109): a `Widths` array whose length disagrees
   with `FirstChar` and `LastChar`; codes past the array use `MissingWidth`
   and extra entries are ignored.

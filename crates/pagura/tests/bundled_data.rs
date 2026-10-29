@@ -196,6 +196,53 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
         };
         assert_eq!(repairs, expected, "{name}");
     }
+    // A known Latin family with an explicit Latin encoding: the contradicting
+    // Symbolic flag is a reported repair, and the encoding selects the glyph.
+    for name in [
+        "substitute-symbolic-latin-encoding",
+        "substitute-symbolic-latin-base-encoding",
+    ] {
+        let strict = open_with(
+            name,
+            &OpenOptions {
+                recovery: pagura::Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )?;
+        assert_eq!(
+            PdfFont::load_with_provider(&strict, font(&strict)?, Some(&provider))
+                .unwrap_err()
+                .repair,
+            Some(pagura_text::repairs::SYMBOLIC_LATIN_ENCODING),
+            "{name}"
+        );
+        let document = open(name)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+        let glyphs = loaded.decode(b"A", Some(&unicode))?;
+        let values = rows(name, "out")?;
+        let values = row(&values[0])?;
+        near(glyphs[0].advance, number(&values[1])?);
+        assert_eq!(glyphs[0].unicode.as_deref(), text(&values[2]));
+        let GlyphShape::Outline { glyph, .. } = &glyphs[0].shape else {
+            return Err(Error::syntax("missing substitute outline"));
+        };
+        assert_eq!(glyph.0, integer(&values[3])?, "{name}");
+        let repairs: Vec<_> = document
+            .diagnostics()
+            .iter()
+            .filter_map(Diagnostic::repair)
+            .collect();
+        assert_eq!(
+            repairs,
+            [pagura_text::repairs::SYMBOLIC_LATIN_ENCODING],
+            "{name}"
+        );
+        assert!(information(
+            &document,
+            pagura_text::information::SUBSTITUTED
+        ));
+    }
     Ok(())
 }
 

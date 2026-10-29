@@ -127,3 +127,26 @@ the PDF's `W` and `DW` keep the advances, missing glyphs paint nothing and
 are reported once as `font.cid-glyph-missing`, and the font is reported as
 `font.substituted`. Vertical writing still needs vertical forms
 (`font.cid-substitute-vertical`).
+
+### Symbolic flags on non-embedded Latin fonts (amended 2026-10-27)
+
+A non-embedded font flagged Symbolic leaves the glyph of each code to the
+original program's own encoding (9.6.5.2, 9.6.5.4). A substitute cannot know
+it, so Pagura makes no guess for such fonts, with one exception. When the
+font names a known Latin family and its `/Encoding` names, or has a
+`/BaseEncoding` naming, `StandardEncoding`, `WinAnsiEncoding` or
+`MacRomanEncoding`, that encoding is the document's own statement of its
+glyph names. Form generators commonly write such fonts, for example
+LiberationSans or ArialMT with `/Flags 4` and `/WinAnsiEncoding`.
+
+- The encoding is followed, and the Symbolic flag that contradicts it is
+  the reported repair `font.symbolic-latin-encoding`. Strict mode rejects it.
+- The family is known when the bounded standard aliases name a Latin face
+  (Arial, Times New Roman, Courier New and their spellings), which then
+  selects the face. A short list of Latin text families also counts: the
+  metric-compatible Liberation and croscore faces, and DejaVu. Their face
+  comes from the descriptor, as for any unknown nonsymbolic font.
+- Symbol, dingbat and unknown families, fonts without an explicit Latin
+  encoding, and embedded programs keep their 9.6.5 routes. This narrows
+  ADR 0025's rule that valid flag pairs keep their selection routes, for
+  non-embedded substitutes only.

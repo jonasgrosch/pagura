@@ -1097,9 +1097,20 @@ def substitution_cases(data, lock):
             descriptor = b"<< /Flags %d /FontWeight %d >>" % (flags,weight)
             yield Vector(fixture,{".pdf":pdf(font,[descriptor]),".input":b"A",".out":expected([(65,.731,"A",glyph)]),".base":base.encode()},("text-font-substitution","text-provider"),"Descriptor-based substitution preserves the PDF width",{"driver":"substitute"})
     yield Vector("bundled-substitute-inventory",{".out":expected([(name,) for name in choices])},("text-font-substitution",),"All serif, fixed-pitch, weight and italic substitution routes",{"driver":"inventory"})
-    for name,base,flags in [("unsafe-symbolic","UnknownSymbol",4),("unsafe-symbolic-both","UnknownSymbol",36),("unsafe-symbolic-known-base","Arial",4)]:
-        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>"
+    # An unknown family, or a known one without an explicit Latin encoding,
+    # leaves the glyphs of a Symbolic font unknown: no guess is made.
+    for name,base,flags,encoding in [("unsafe-symbolic","UnknownSymbol",4,b" /Encoding /WinAnsiEncoding"),("unsafe-symbolic-both","UnknownSymbol",36,b" /Encoding /WinAnsiEncoding"),("unsafe-symbolic-known-base","Arial",4,b"")]:
+        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R"+encoding+b" /FirstChar 65 /LastChar 65 /Widths [731] >>"
         yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags %d >>" % flags]),".error":b"font.non-embedded\n"},("text-font-substitution",),"Unsafe symbolic substitution fails explicitly",{"driver":"provider-error"})
+    # A known Latin family whose Encoding names a Latin base encoding: the
+    # contradicting Symbolic flag is a reported repair and the encoding's
+    # glyph names select the standard face's glyphs (9.6.5, 9.8.2).
+    item = lock["standard_14"]["Helvetica"]
+    glyph = bundled_tt_glyph(data/item["outline"],65)
+    for name,base,encoding in [("symbolic-latin-encoding","Arial",b"/WinAnsiEncoding"),
+                               ("symbolic-latin-base-encoding","DejaVuSans",b"<< /BaseEncoding /MacRomanEncoding >>")]:
+        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding "+encoding+b" /FirstChar 65 /LastChar 65 /Widths [731] >>"
+        yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags 4 >>"]),".input":b"A",".out":expected([(65,.731,"A",glyph)]),".repair":b"font.symbolic-latin-encoding\n"},("text-font-substitution",),"A Symbolic flag contradicted by a known Latin family and an explicit Latin encoding is a reported repair; strict mode rejects it",{"driver":"substitute-repair"})
 
 
 def style_substitution_cases(data, lock):
