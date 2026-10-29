@@ -287,6 +287,9 @@ def cases():
     yield from transfer_cases()
     yield from codec_cases()
     yield render('unclosed-graphics',b'q 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.graphics-unclosed',))
+    yield render('unclosed-marked',b'/P <</MCID 0>> BDC 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
+    # Printer PCLm output opens a sequence per strip and never closes one.
+    yield render('unclosed-marked-deep',b'/P BMC '*400+b'1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
     yield from type3_empty_bounds_cases()
 
 

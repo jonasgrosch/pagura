@@ -31,6 +31,9 @@ pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
 /// 7.8.2; 8.4.2: discard unmatched saved graphics states at the end of a
 /// content sequence, after all painting and text objects have finished.
 pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
+/// 14.6: close marked-content sequences left open at the end of a content
+/// sequence, after all painting and text objects have finished.
+pub const MARKED_UNCLOSED: Repair = Repair::new("content.marked-unclosed");
 /// 9.6.4, Table 111: retain the horizontal Widths advance when d0/d1 disagrees.
 pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
 /// 8.7.3.2, Table 73: coloured patterns require only a name; discard extra
@@ -50,6 +53,7 @@ pub const ALL: &[Repair] = &[
     TEXT_CLIP_RESET,
     APPEARANCE_EMPTY,
     GRAPHICS_UNCLOSED,
+    MARKED_UNCLOSED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
 ];
