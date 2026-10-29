@@ -73,8 +73,14 @@ impl Patch {
 
     /// Bilinear interpolation of the corner values at the parameters of
     /// `p`, if the patch covers it.
+    /// Whether a sample at `p` searches this patch: only one within the
+    /// bounds of its control points, which hold its whole surface.
+    pub(super) fn holds(&self, p: Point) -> bool {
+        self.bounds.contains(p)
+    }
+
     pub(super) fn sample(&self, p: Point, values: usize, out: &mut Input) -> bool {
-        if !self.bounds.contains(p) {
+        if !self.holds(p) {
             return false;
         }
         let mut best = if self.regular {
