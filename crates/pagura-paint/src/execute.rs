@@ -1197,6 +1197,7 @@ pub(crate) fn store(
 /// Stores a non-Normal group result into narrow storage. Marks and
 /// Normal stores retain the ordinary kernels and their dispatch. Returns
 /// false for wide storage, which keeps the full compositing kernel.
+#[inline(always)]
 pub(super) fn store_blended_result(
     target: &mut Target<'_>,
     frame: Frame,
@@ -1204,45 +1205,49 @@ pub(super) fn store_blended_result(
     sources: &Sources<'_>,
     blend: pagura_interpret::BlendMode,
 ) -> bool {
-    if matches!(frame.buffer, Buffer::Wide(_))
-        || (matches!(frame.buffer, Buffer::Page)
-            && matches!(target.page.pixels(), PageBuffer::F64(_)))
-    {
-        return false;
-    }
     let len = sources.alpha.len();
-    let Some(start) = frame.index(x, y) else {
-        return true;
-    };
     match frame.buffer {
+        Buffer::Wide(_) => false,
         Buffer::Levels(offset) => {
+            let Some(start) = frame.index(x, y) else {
+                return true;
+            };
             if let Some(pixels) = target.levels.get_mut(offset + start..offset + start + len) {
                 kernel::blend_f32(pixels, &sources.colors, sources.alpha, blend);
             }
+            true
         }
         Buffer::Page => {
-            let row = u32_to_usize(y - frame.rect.y0);
-            let begin = x - frame.rect.x0;
-            let end = begin.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
             let (pixels, extents) = target.page.parts_mut();
-            extents.mark(row, begin, end);
+            let mut start = || {
+                let start = frame.index(x, y)?;
+                let row = u32_to_usize(y - frame.rect.y0);
+                let begin = x - frame.rect.x0;
+                let end = begin.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+                extents.mark(row, begin, end);
+                Some(start)
+            };
             match pixels {
+                PageBuffer::F64(_) => false,
                 PageBuffer::N16(words) => {
-                    if let Some(pixels) = words.get_mut(start..start + len) {
+                    if let Some(start) = start()
+                        && let Some(pixels) = words.get_mut(start..start + len)
+                    {
                         kernel::blend_n16(pixels, &sources.colors, sources.alpha, blend);
                     }
+                    true
                 }
                 PageBuffer::F32(levels) => {
-                    if let Some(pixels) = levels.get_mut(start..start + len) {
+                    if let Some(start) = start()
+                        && let Some(pixels) = levels.get_mut(start..start + len)
+                    {
                         kernel::blend_f32(pixels, &sources.colors, sources.alpha, blend);
                     }
+                    true
                 }
-                PageBuffer::F64(_) => return false,
             }
         }
-        Buffer::Wide(_) => return false,
     }
-    true
 }
 
 /// Starts the pixels `x .. x + len` of row `y` of the lazily started
