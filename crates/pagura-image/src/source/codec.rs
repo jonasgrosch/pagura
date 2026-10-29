@@ -75,8 +75,13 @@ pub(crate) fn decode(
             )?;
         }
         Codec::Jbig2(globals) => {
-            image.samples =
-                dispatch::jbig2_samples(data, globals.as_deref(), (width, height), limits)?;
+            image.samples = dispatch::jbig2_samples(
+                data,
+                globals.as_deref(),
+                (width, height),
+                limits,
+                diagnostics,
+            )?;
         }
         Codec::Jpx(jpx) => jpx.decode(data, &mut image, limits, diagnostics)?,
     }

@@ -88,7 +88,7 @@
     "crates/pagura-image/src/jbig2/generic.rs": "b905bb8315f8f987d2d846a2b2bcb348d001efceff4f50fed645f60c79a8489d",
     "crates/pagura-image/src/jbig2/huffman_symbol.rs": "fee9fe993770c51d44b63e9fdf2e4d946342c36b998401f7ccc600aa623c6067",
     "crates/pagura-image/src/jbig2/huffman_text.rs": "7325a6750f641a405f641d8588509866a2523f284ea98ecb9039be38ee37a2c5",
-    "crates/pagura-image/src/jbig2/mod.rs": "c7d30129f999bcb8fe77f44fa212f93436736922f714ef601add924ece83e5c6",
+    "crates/pagura-image/src/jbig2/mod.rs": "dee686eff153bfbd14d4425a4616af9b0f47b4288360f68197e8db0c81a2291a",
     "crates/pagura-image/src/jbig2/symbol.rs": "a6208a6ef9a1fc52bbec1439d5776065d0f6e2e166832685aa2706bbd11dab93",
     "crates/pagura-image/src/jbig2/text.rs": "657f4867588db7eb7a89cc26db71098a6586b7cfdc77e515ca1ab5d0ed38ab11",
     "crates/pagura-image/src/jpx/boxes.rs": "0db041f020b692f7f29a60b3752fae236f4f4743dd6cc0fc909b732043d64594",
@@ -146,7 +146,7 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "8957891da773217d57e291c1ea4e016fb865115d8e1ee7e16b9ff7173a38a5c2",
+    "crates/pagura/src/lib.rs": "518807c8a08d2279a12bcd797ee9d8b00b1d61c35f5298b3fd157a569e753da8",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e2e02c9095b5fb66e6411f4ada0bdbe524bfb574049ce60997889f3f89f8b577",
@@ -175,7 +175,7 @@
     "references/requirements/paint.json": "76d93b9e6579b261f55a39730ced3d602f5dc677bd1f842c6b386806106b9bb8",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
-    "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
+    "references/requirements/recovery.json": "12ef9a564b6851d5c3e40b9b4df34d1e13eade2c6c59b08c36ad6928bdb5f025",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "89d871349209a10998756faf0715d2cbff12496b1fbc51925129f95f276caa17",
@@ -188,7 +188,8 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "corpus/manifests/recovery.json": "16ede4690d1321a42cd069a7cd6ffd6b77d69589ccb8a0943525ef0adef3d558"
   },
   "capabilities": [
     {
@@ -489,7 +490,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1.",
+      "implemented": "JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. Reported repair of contradicting JBIG2 auxiliary/refinement page flags; strict mode retains rejection.",
       "remaining": "Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures.",
       "sources": [
         "crates/pagura-image/src/features.rs",
@@ -573,9 +574,14 @@
         "jpx-tiles",
         "jpx-wavelet",
         "predictor-png",
-        "predictor-tiff"
+        "predictor-tiff",
+        "recovery-jbig2-page-capabilities"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery/jbig2-page-capabilities-auxiliary",
+        "recovery/jbig2-page-capabilities-refinement",
+        "recovery/jbig2-page-capabilities-both"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

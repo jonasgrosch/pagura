@@ -23,6 +23,11 @@ The source check detects stale evidence and missing ownership, not runtime parit
 
 ## Capability matrix
 
+JBIG2 viewing reports `jbig2.page-capabilities` when complete regions contradict
+the page's auxiliary/refinement capability bits (T.88 7.4.8.5). Strict mode
+rejects the same input. This repair changes neither region validation nor
+resource limits; it does not establish broader JBIG2 compatibility.
+
 | Area | Implemented | Remaining boundary |
 |---|---|---|
 | Rendering architecture | One interpreter with negotiated device needs; separate text device; appearance generation in `pagura-appearance`; cached resolution-independent scenes; source-order preparation, per-buffer N16/F32/F64 storage and one band executor; exact rendering only | Additional output/hit-testing devices, persistent resumable jobs and broader scheduling. `Accuracy::Competitive` and the former rendering pipelines have been removed. Architecture alone does not establish complete PDF feature coverage. |

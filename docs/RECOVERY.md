@@ -21,6 +21,13 @@ older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `jbig2.page-capabilities` (T.88 7.4.8.5, bits 1 and 5): complete
+  auxiliary/refinement region segments override contradicting page capability
+  declarations. This is a reported viewing policy, not conforming input.
+  Strict decoding rejects the contradiction. Region syntax, reference identity,
+  combination operators, framing, cycles and all work/storage budgets retain
+  their checks; failed decoding never returns a partial bitmap.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING

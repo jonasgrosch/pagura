@@ -25,7 +25,7 @@ mod symbol;
 mod tests;
 mod text;
 
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Recovery, Result};
 use reader::Reader;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -72,6 +72,18 @@ pub mod tags {
     pub const UNKNOWN_LENGTH: Feature = Feature::new("jbig2.unknown-length");
 }
 
+/// Stable repairs of malformed JBIG2 page declarations (ADR 0003).
+pub mod repairs {
+    use pagura_core::Repair;
+
+    /// Decode complete regions despite missing page capability bits
+    /// (T.88 7.4.8.5, bits 1 and 5). Actual region syntax stays authoritative.
+    pub const PAGE_CAPABILITIES: Repair = Repair::new("jbig2.page-capabilities");
+
+    /// Every repair owned by the JBIG2 decoder.
+    pub const ALL: &[Repair] = &[PAGE_CAPABILITIES];
+}
+
 /// A decoded page bitmap: 1-bit rows, MSB first, padded to bytes, 1 = black.
 /// Padding bits in every returned row are zero.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +111,28 @@ pub struct Bitmap {
 /// errors for self-referrals, explicit unsupported tags for unimplemented
 /// coding modes, and limit errors before oversized allocations or work.
 pub fn decode(data: &[u8], globals: Option<&[u8]>, limits: &Limits) -> Result<Bitmap> {
+    decode_with_diagnostics(
+        data,
+        globals,
+        limits,
+        &mut Diagnostics::new(Recovery::Strict),
+    )
+}
+
+/// Decodes PDF page 1 with reported page-capability repair (T.88 7.4.8.5).
+/// In repair mode, complete auxiliary/refinement regions may contradict the
+/// page's capability bits. Region data, referrals, combination operators,
+/// framing and every work/memory limit retain their normal validation.
+///
+/// # Errors
+/// As [`decode`]; strict diagnostics reject a capability mismatch. No partial
+/// bitmap is returned if any subsequent validation or decoding fails.
+pub fn decode_with_diagnostics(
+    data: &[u8],
+    globals: Option<&[u8]>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Bitmap> {
     let total = data
         .len()
         .checked_add(globals.map_or(0, <[u8]>::len))
@@ -108,6 +142,7 @@ pub fn decode(data: &[u8], globals: Option<&[u8]>, limits: &Limits) -> Result<Bi
     }
     let mut state = State {
         limits,
+        diagnostics,
         page: None,
         segments: BTreeMap::new(),
         bytes: 0,
@@ -179,6 +214,7 @@ struct StoredRegion {
 
 struct State<'a> {
     limits: &'a Limits,
+    diagnostics: &'a mut Diagnostics,
     page: Option<Page>,
     // Storage remains charged until completion; availability still follows 7.2.4.
     segments: BTreeMap<u32, Segment>,
@@ -634,7 +670,13 @@ impl State<'_> {
         Ok(())
     }
 
-    fn validate_region(&self, info: &RegionInfo, kind: u8, references: &[u32]) -> Result<bool> {
+    fn validate_region(
+        &mut self,
+        info: &RegionInfo,
+        kind: u8,
+        references: &[u32],
+        position: Position,
+    ) -> Result<bool> {
         let RegionInfo {
             width,
             height,
@@ -655,11 +697,16 @@ impl State<'_> {
                 "JBIG2 direct region operator differs from fixed page default",
             ));
         }
-        if !immediate && page.capabilities & 32 == 0 {
-            return Err(Error::syntax("JBIG2 page forbids auxiliary regions"));
-        }
-        if matches!(kind, 40 | 42 | 43) && page.capabilities & 2 == 0 {
-            return Err(Error::syntax("JBIG2 page forbids refinement regions"));
+        if (!immediate && page.capabilities & 32 == 0)
+            || (matches!(kind, 40 | 42 | 43) && page.capabilities & 2 == 0)
+        {
+            self.diagnostics.repair_once(
+                Diagnostic::new(
+                    repairs::PAGE_CAPABILITIES,
+                    "JBIG2 page capability flags contradict its region segments (T.88 7.4.8.5)",
+                )
+                .at(position),
+            )?;
         }
         if matches!(kind, 40 | 42 | 43) {
             match references {
@@ -699,6 +746,7 @@ impl State<'_> {
         references: &[u32],
         actual_rows: Option<u32>,
     ) -> Result<Option<StoredRegion>> {
+        let position = reader.position();
         let width = reader.u32()?;
         let declared_height = reader.u32()?;
         let height = actual_rows.unwrap_or(declared_height);
@@ -720,7 +768,7 @@ impl State<'_> {
             y,
             flags,
         };
-        let immediate = self.validate_region(&info, kind, references)?;
+        let immediate = self.validate_region(&info, kind, references, position)?;
         let page = self
             .page
             .as_ref()

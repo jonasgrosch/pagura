@@ -5,6 +5,72 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "recovery/jbig2-page-capabilities-auxiliary",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities auxiliary",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-auxiliary.pdf",
+      "sha256": "05c5109b83e1e1f1b751c49b792d07643a906121901b4919c57cd4ba212921ae",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-auxiliary.ppm",
+      "oracle_sha256": "d776352b0c6a3c2da83b626833342849d2a9d69ef9cac67e018dbee861295d27",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-refinement",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities refinement",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-refinement.pdf",
+      "sha256": "7f75e570f61fcb104337afc67be275c53d4717d9dcbb343eaead450d60b1daa2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-refinement.ppm",
+      "oracle_sha256": "d776352b0c6a3c2da83b626833342849d2a9d69ef9cac67e018dbee861295d27",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-both",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities both",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-both.pdf",
+      "sha256": "8c103e2099fa4c4bb4f77a09f6cd5507e537aba5c3bcb050e8a41213771069e4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-both.ppm",
+      "oracle_sha256": "d776352b0c6a3c2da83b626833342849d2a9d69ef9cac67e018dbee861295d27",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/pattern-coloured-base-no-operands",
       "kind": "pdf",
       "description": "pattern coloured base no operands",
