@@ -9101,6 +9101,46 @@
       "tolerance": 1
     },
     {
+      "id": "content/icc-mft1-Lab-input-default-range",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-Lab-input-default-range.pdf",
+      "sha256": "87886758d709130a2e11bbcaa9d72317e02b11258c1c5c975e6e770631b23903",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-Lab-input-default-range.ppm",
+      "oracle_sha256": "2f05c1ce0ac4dc3aa2ae01f84f583147746c23de343b56ab9301ff05e5fa0f28",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-separation-Lab-default-range",
+      "kind": "pdf",
+      "description": "Separation through an ICCBased Lab-input alternate without Range: tints keep CIELAB units; independent quantized formula oracle",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-separation-Lab-default-range.pdf",
+      "sha256": "edb6a3888bf526683940bbe49d80817e59e61da4f3cc0486f534d328f39c8e16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-separation-Lab-default-range.ppm",
+      "oracle_sha256": "55c79cb46bb23ba5b6b823c8db2475d3e2c94a779559a6ed6f3d580cf1a4c716",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
       "id": "content/icc-mft2-Lab-input",
       "kind": "pdf",
       "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
@@ -9114,6 +9154,26 @@
       "strict_valid": true,
       "repairs": [],
       "oracle": "corpus/generated/content/icc-mft2-Lab-input.ppm",
+      "oracle_sha256": "2f05c1ce0ac4dc3aa2ae01f84f583147746c23de343b56ab9301ff05e5fa0f28",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-Lab-input-default-range",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-Lab-input-default-range.pdf",
+      "sha256": "8784a92b399b32a374d93ca3fbf36b885534eb415dc9977be769f8e828334b29",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-Lab-input-default-range.ppm",
       "oracle_sha256": "2f05c1ce0ac4dc3aa2ae01f84f583147746c23de343b56ab9301ff05e5fa0f28",
       "dpi": 72,
       "width": 8,
