@@ -15,7 +15,8 @@ use std::{collections::BTreeMap, sync::Arc};
 /// The host must cover outstanding shared results even after cache eviction
 /// or destruction of the provider itself.
 pub trait Provider: Send + Sync {
-    /// A horizontal substitute with a Unicode cmap for a CID collection.
+    /// A substitute with a Unicode cmap for a CID collection. Vertical use
+    /// additionally requires its applicable OpenType vert/vrt2 feature.
     /// Selection translates collection CIDs through [`Self::cid_to_unicode`],
     /// never through the substitute's internal CIDs (9.7.4.2; ADR 0009).
     ///

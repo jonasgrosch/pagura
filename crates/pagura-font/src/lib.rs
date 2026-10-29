@@ -58,9 +58,30 @@ pub enum FontFormat {
     OpenType,
 }
 
+/// Selects a face in an OpenType or TrueType collection (OpenType TTC Header).
+/// Standalone programs have index zero and ignore name hints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum FontFace<'a> {
+    /// Zero-based collection index. Ordinary parsing selects index zero.
+    Index(u32),
+    /// Ordered PostScript name hints. The first hint matching any face must
+    /// identify exactly one; an ambiguous match does not fall back to a later
+    /// hint. Missing or ambiguous matches are errors. Names are compared
+    /// exactly with naming-table ID 6, independently of the CFF Name INDEX.
+    PostScriptNames(&'a [&'a [u8]]),
+}
+
 /// A glyph index within one font program.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GlyphId(pub u32);
+
+/// Compiled single-glyph alternates for one OpenType script/language's vertical feature.
+/// Unselected features and PDF advances are not part of this map.
+#[derive(Debug)]
+pub struct VerticalSubstitution {
+    pairs: Vec<(u16, u16)>,
+}
 
 /// A TrueType `cmap` subtable selection (platform, encoding).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -210,8 +231,35 @@ impl FontProgram {
         limits: &Limits,
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
+        Self::parse_with_face(data, format, FontFace::Index(0), limits, diagnostics)
+    }
+
+    /// Parses a selected collection face with explicit, reported recovery.
+    ///
+    /// The entire immutable input is retained once. Only the selected face's
+    /// font tables are parsed; name selection scans bounded directory and name
+    /// records without decoding the other faces' glyph programs. Standalone
+    /// programs ignore name hints, preserving their ordinary parsing behavior.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::parse_with_diagnostics`]. An out-of-range index is an
+    /// `InvalidArgument`; absent or ambiguous collection names are `Syntax`.
+    pub fn parse_with_face(
+        data: impl Into<FontBytes>,
+        format: FontFormat,
+        face: FontFace<'_>,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         let mut local = Diagnostics::new(diagnostics.mode());
-        let result = Self::parse_inner(data.into(), format, FontBudget::new(limits), &mut local);
+        let result = Self::parse_inner(
+            data.into(),
+            format,
+            face,
+            FontBudget::new(limits),
+            &mut local,
+        );
         diagnostics.absorb(local.take())?;
         result
     }
@@ -219,6 +267,7 @@ impl FontProgram {
     fn parse_inner(
         data: FontBytes,
         format: FontFormat,
+        face: FontFace<'_>,
         budget: FontBudget,
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
@@ -226,10 +275,21 @@ impl FontProgram {
         let mut work = Work::new(budget, diagnostics);
         let parsed = match format {
             FontFormat::TrueType | FontFormat::OpenType => {
-                Program::Sfnt(sfnt::Sfnt::parse(&data, &mut work)?)
+                Program::Sfnt(sfnt::Sfnt::parse(&data, face, &mut work)?)
             }
-            FontFormat::Cff => Program::Cff(cff::Cff::parse(&data, 0..data.len(), &mut work)?),
-            FontFormat::Type1 => Program::Type1(type1::Type1::parse(&data, &mut work)?),
+            FontFormat::Cff | FontFormat::Type1 => {
+                if matches!(face, FontFace::Index(index) if index != 0) {
+                    return Err(Error::invalid_argument(
+                        "standalone font index must be zero",
+                    ));
+                }
+                match format {
+                    FontFormat::Cff => {
+                        Program::Cff(cff::Cff::parse(&data, 0..data.len(), &mut work)?)
+                    }
+                    _ => Program::Type1(type1::Type1::parse(&data, &mut work)?),
+                }
+            }
         };
         let retained_bytes = memory::estimate(&data, &parsed);
         Ok(Self {
@@ -398,7 +458,7 @@ impl FontProgram {
     }
 
     /// Whether the program has a usable TrueType `cmap` subtable of this kind
-    /// (formats 0, 2, 4, 6, 10, 12 or 13). How a PDF character code selects a TrueType
+    /// (formats 0, 2, 4, 6, 8, 10, 12 or 13). How a PDF character code selects a TrueType
     /// glyph depends on which subtables exist (9.6.5.4).
     pub fn has_cmap_subtable(&self, subtable: CmapSubtable) -> bool {
         match self.parsed.as_ref() {
@@ -409,11 +469,38 @@ impl FontProgram {
 
     /// The glyph for `code` in a TrueType `cmap` subtable. Subtables are
     /// validated at parse time; a code that a repaired, truncated subtable
-    /// no longer maps has no glyph.
+    /// no longer maps has no glyph. The complete numeric code is looked up
+    /// unchanged, including for legacy format 8; this does not decode a text
+    /// stream or combine UTF-16 words.
     pub fn glyph_for_code(&self, subtable: CmapSubtable, code: u32) -> Option<GlyphId> {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.code(&self.data, subtable, code),
             Program::Cff(_) | Program::Type1(_) => None,
+        }
+    }
+
+    /// Compiles this script/language's OpenType `vrt2`, or `vert` when `vrt2`
+    /// is absent. Missing scripts fall back to `DFLT`; missing languages use
+    /// the selected script's default. Returns `None` without an applicable
+    /// feature. Only explicit callers apply this map: embedded PDF CIDs/GIDs
+    /// and ordinary horizontal glyph lookup remain unchanged.
+    ///
+    /// # Errors
+    /// Returns `Syntax` for malformed selected GSUB data, `Unsupported` for
+    /// contextual/filtering or variable feature selection, and `Limit` when
+    /// the program's font work/entry budgets are exhausted.
+    pub fn vertical_substitution(
+        &self,
+        script: [u8; 4],
+        language: Option<[u8; 4]>,
+    ) -> Result<Option<VerticalSubstitution>> {
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(self.budget, &mut diagnostics);
+        match self.parsed.as_ref() {
+            Program::Sfnt(program) => {
+                program.vertical_substitution(&self.data, script, language, &mut work)
+            }
+            Program::Cff(_) | Program::Type1(_) => Ok(None),
         }
     }
 

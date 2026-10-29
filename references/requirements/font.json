@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement. DICT recovery was additionally reviewed against TN 5176 section 4/Table 6, section 15/Table 23 and Appendix H; encoding supplement recovery against section 12/Tables 14-15; repeated Type 1 CharStrings names against chapters 6 and 10. First-definition retention and dropping malformed metadata are explicit ADR 0003 choices, not claims that the format standards prescribe those recoveries. Descriptor flag-pair validity and the reader's selection routes were checked against local ISO 32000-2:2020 sponsored EC3 9.8.2/Table 121, 9.6.5.1/Table 112, 9.6.5.2, 9.6.5.4 and Annex D.2/Table D.2. The review distinguishes invalid pairs from informational repertoire disagreement: valid flags retain the prescribed selection algorithm, including its permitted reader fallbacks. No repertoire heuristic overrides a valid pair; only invalid pairs require this reported repair. Program glyph-name lookup and extraction-only Unicode fallback were additionally checked against local ISO 32000-2:2020 sponsored EC3 9.10.2: ToUnicode and encoding/collection mappings retain priority, followed by an explicit reader choice to apply the existing AGL converter to the selected glyph name. This does not alter painting or claim new primary verification of TrueType post layouts. Glyph-name list scoping was checked against ISO 9.10.2 and Annex D.6/Table D.6 and the local Adobe Glyph List: numeric ZapfDingbats names are not general AGL names. Family aliases and recognized subset/style spellings are explicit reader policy.",
+  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Remaining primary-format review includes: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await full TrueType/OpenType primary-format review; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement. DICT recovery was additionally reviewed against TN 5176 section 4/Table 6, section 15/Table 23 and Appendix H; encoding supplement recovery against section 12/Tables 14-15; repeated Type 1 CharStrings names against chapters 6 and 10. First-definition retention and dropping malformed metadata are explicit ADR 0003 choices, not claims that the format standards prescribe those recoveries. Descriptor flag-pair validity and the reader's selection routes were checked against local ISO 32000-2:2020 sponsored EC3 9.8.2/Table 121, 9.6.5.1/Table 112, 9.6.5.2, 9.6.5.4 and Annex D.2/Table D.2. The review distinguishes invalid pairs from informational repertoire disagreement: valid flags retain the prescribed selection algorithm, including its permitted reader fallbacks. No repertoire heuristic overrides a valid pair; only invalid pairs require this reported repair. Program glyph-name lookup and extraction-only Unicode fallback were additionally checked against local ISO 32000-2:2020 sponsored EC3 9.10.2: ToUnicode and encoding/collection mappings retain priority, followed by an explicit reader choice to apply the existing AGL converter to the selected glyph name. This does not alter painting or claim new primary verification of TrueType post layouts. Glyph-name list scoping was checked against ISO 9.10.2 and Annex D.6/Table D.6 and the local Adobe Glyph List: numeric ZapfDingbats names are not general AGL names. Family aliases and recognized subset/style spellings are explicit reader policy.",
   "requirements": [
     {
       "id": "font-truetype",
@@ -11,7 +11,7 @@
         "9.6.5.4",
         "9.9.1"
       ],
-      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review",
+      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/8/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review; TTC/OTC index and unique-name selection implemented, hosted acceptance pending",
       "tests": [
         "font/truetype-cmap0",
         "font/truetype-cmap4",
@@ -33,9 +33,36 @@
         "font/truetype-cmap10",
         "font/truetype-cmap13",
         "font/truetype-cmap14",
-        "font/sfnt-legacy-true"
+        "font/sfnt-legacy-true",
+        "font_formats/cmap8-windows-bmp",
+        "font_formats/cmap12-windows-bmp",
+        "font_formats/cmap8-unicode-bmp",
+        "font_formats/cmap12-unicode-bmp",
+        "font_formats/cmap12-windows-utf16-isolated",
+        "font_formats/cmap8-windows-ucs4-isolated",
+        "font_formats/cmap12-unicode-utf16-isolated",
+        "font_formats/cmap8-unicode-ucs4-isolated",
+        "font_collections/glyf-simple-first-control",
+        "font_collections/glyf-simple-second-control",
+        "font_collections/glyf-simple-single-v1",
+        "font_collections/glyf-simple-single-v2",
+        "font_collections/glyf-simple-pair-first",
+        "font_collections/glyf-simple-pair-second",
+        "font_collections/glyf-cid-first-control",
+        "font_collections/glyf-cid-second-control",
+        "font_collections/glyf-cid-single-v1",
+        "font_collections/glyf-cid-single-v2",
+        "font_collections/glyf-cid-pair-first",
+        "font_collections/glyf-cid-pair-second",
+        "font_collections/rectangle-0",
+        "font_collections/rectangle-1",
+        "font_collections/native-glyf-v1",
+        "font_collections/native-glyf-v2",
+        "font_collections/native-glyf-standalone",
+        "font_collections/native-glyf-late-directory",
+        "font_collections/native-glyf-dsig"
       ],
-      "gaps": "Other cmap/post formats and collections are unsupported. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies require TrueType primary review.",
+      "gaps": "Remaining post formats are unsupported. Collection signatures and checksums are not authenticated or validated. Format 8 accepts complete numeric codes without decoding UTF-16 word streams; no scalar-to-packed-surrogate heuristic is introduced. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies and other internal layouts still require primary-format review.",
       "tables": [
         "124"
       ],
@@ -53,6 +80,28 @@
         "external_status": "pending primary-text review of TrueType and OpenType",
         "evidence": "ISO-derived PDF constraints plus analytic binary fixtures. Secondary read-fonts 0.41.0 comparison agrees on 26 cmap 10/13 code queries. Its mapping API does not implement format 2; no differential claim for format 2 or a primary-format known-answer dataset.",
         "choices": "Platform 0 and (3,10) are exposed separately; supplementary Unicode mappings never impersonate PDF (3,1). Format 14 is unused because 9.6.5.4 selects by a single mapped value, while 9.7.4.2 uses explicit CIDs/GIDs. Legacy component offsets use unscaled translation; external semantics pending."
+      },
+      "cmap8_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cmap#format-8-mixed-16-bit-and-32-bit-coverage",
+          "https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6cmap.html"
+        ],
+        "rule": "Format 8 has a long header, 8192-byte word-length bitmap and sorted, disjoint sequential groups. Glyph ranges must fit maxp. The API receives one complete numeric code; it does not decode an encoded word stream.",
+        "implementation": "The existing group validator and binary lookup also handle format 8, retaining the original table bytes. It validates bitmap extent, ordering, glyph bounds and declared group budgets; no range is expanded. Format 8 permits numeric keys across u32 while formats 12/13 retain the Unicode ceiling. Existing subtable selection remains unchanged, preferring 12/10 before 8 before BMP formats.",
+        "scope": "Microsoft's UTF-16 introduction and UCS4 high-word example disagree; Apple also differs on bitmap bit order. This change does not adjudicate a stream decoder or validate bitmap encoding semantics. It looks up the caller's numeric key unchanged, preserving PDF glyph-name selection and all existing cmap identities.",
+        "expectations": "Native controls distinguish BMP, scalar and packed-surrogate numeric keys, gaps, group order/overlap, glyph overflow, exact work/entry bounds, truncated headers/groups and one deduplicated repair. Format 12/13 shared-path controls preserve sequential/constant mapping and their Unicode ceiling. Eight PDF controls retain the earlier diagnostic bytes and literal rectangle oracles; isolated supplementary cases map the literal PDF byte to a different glyph.",
+        "evidence": "Diagnostic e8ffe19a1b380592191970f43d37712e4ebbbdec, hosted run40393193630: MuPDF passes both BMP subjects with paired format12 controls, and the isolated Windows UCS4 subject/control. Its isolated UTF16 subject fails; platform0 supplementary control also fails, preventing a format-specific conclusion there. Pagura before this change fails all format8 subjects but passes the paired format12 controls. Linux artifact12686106513 ZIP SHA256 a9e7ad3da9b26fc702e7b3e325f62ace290ed31ce5e44a663bda706b72d5d346; report SHA256 bd01f3e8635b336fe37ff184ad401b5caba157a25413fa606c26fe2005d8223f. Historical observations are unchanged. The implementation at e399327d78c1a1c302235977cfb9a5532c88a759 passes all 25 integrated Pagura rendering controls in hosted run40395913198 (175 cells); artifact12685388918 ZIP SHA256 83f2818c0602e4514f86f570fe62f9c03d77e4ad98df2714e649cd56118f766b, report SHA256 25f988c14b8dc61ca4d94f06eed99ef08c618f0a609b28bff7a236dcf3d126fe. Functional run40395908628 passes on Ubuntu, macOS and Windows."
+      },
+      "collection_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/otff#font-collections",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/name"
+        ],
+        "rule": "TTC headers 1/2 locate per-face sfnt directories; table offsets remain relative to the whole file and tables can be shared. Naming-table ID 6 supplies restricted ASCII PostScript names, encoded according to its platform. Versions 0/1 have bounded record and string-storage extents.",
+        "implementation": "One directory reader handles standalone and selected collection faces. The original FontBytes owner is retained without rewriting shared tables; other faces are scanned only for names when requested. Native callers select an index or ordered exact name hints. An ambiguous earliest match is rejected, even if a later hint is unique. PDF loading tries exact FontName/BaseFont, followed by those names without a valid six-letter subset tag. Standalone programs ignore collection name hints.",
+        "scope": "PDF Table 124 supplies no collection index; PDF named selection is measured reader policy, not a claimed normative embedding requirement. DSIG is inert and range checked, not authenticated. Checksums, hint execution, nondefault variations and unselected glyph validation remain outside this change.",
+        "expectations": "The 20 original diagnostic fixture records and all PDF/PPM bytes are unchanged. Ten native vectors cover indices/names, shared original storage, TTC versions 1/2, a selected directory after its shared tables, and an inert DSIG header. Unit controls cover name versions/encodings, ambiguity/priority, invalid or absent names, truncation and limits.",
+        "evidence": "Diagnostic 4aa3d18ce2c9c1f5d35353150eff29bab5188f80, hosted run40413575630: pdf.js passes all 22 controls, including both named faces in simple/CID TrueType and CID OpenType CFF. Pagura passes standalones and ordinary controls but all 12 collection subjects return adapter errors. Other baseline results and immutable report hashes are recorded in benchmarks/probes/README.md. Collection implementation acceptance is pending."
       }
     },
     {
@@ -63,7 +112,7 @@
         "9.7.4.2",
         "9.9.1"
       ],
-      "status": "Primary-reviewed CFF1 and Type 2: header, INDEX, DICT domains/defaults, SIDs, encodings, charsets, FDSelect 0/3, CID lookup and all Type 2 operators; CFF2 remains pending OpenType.",
+      "status": "Primary-reviewed CFF1 and Type 2: header, INDEX, DICT domains/defaults, SIDs, encodings, charsets, FDSelect 0/3, CID lookup and all Type 2 operators; CFF2 Top/Font/Private DICT unknown-operator handling follows current OpenType; other CFF2 obligations still need primary review.",
       "tests": [
         "font/cff",
         "font/cff-cid",
@@ -178,9 +227,41 @@
         "font/review-cff-width-cntrmask",
         "font/review-cff-width-seac",
         "font/review-cff-flex1-equal",
-        "font/review-cff-cid-count"
+        "font/review-cff-cid-count",
+        "font_formats/cff2-fd-none-simple",
+        "font_formats/cff2-fd-matrix-simple",
+        "font_formats/cff2-fd-none-cid",
+        "font_formats/cff2-fd-matrix-cid",
+        "font_formats/cff1-fd-matrix-explicit-top-cid",
+        "font_formats/cff2-fd-matrix-explicit-top-cid",
+        "font_formats/cff2-fd-small-matrix-cid",
+        "font_formats/cff-matrix-rectangle-1",
+        "font_formats/cff-matrix-rectangle-2",
+        "font/cff2-dict-control",
+        "font/cff2-dict-top",
+        "font/cff2-dict-font",
+        "font/cff2-dict-private",
+        "font_formats/cff2-dict-control-simple",
+        "font_formats/cff2-dict-control-cid",
+        "font_formats/cff2-dict-top-simple",
+        "font_formats/cff2-dict-top-cid",
+        "font_formats/cff2-dict-font-simple",
+        "font_formats/cff2-dict-font-cid",
+        "font_formats/cff2-dict-private-simple",
+        "font_formats/cff2-dict-private-cid",
+        "font_collections/cff-cid-first-control",
+        "font_collections/cff-cid-second-control",
+        "font_collections/cff-cid-single-v1",
+        "font_collections/cff-cid-single-v2",
+        "font_collections/cff-cid-pair-first",
+        "font_collections/cff-cid-pair-second",
+        "font_collections/native-cff-v1",
+        "font_collections/native-cff-v2",
+        "font_collections/native-cff-standalone",
+        "font_collections/native-cff-late-directory",
+        "font_collections/native-cff-dsig"
       ],
-      "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Nondefault variations, CFF2 Font DICT matrices, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
+      "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Legacy CFF2 Font DICT matrix interpretation remains an unresolved compatibility choice. Nondefault variations, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported. CFF2 mandatory FDArray/Private presence, empty-Private offsets and complete known-operator validation remain unverified.",
       "tables": [
         "124",
         "125"
@@ -193,11 +274,11 @@
         "expectations": "Single-font, nonidentity CID, minimal OpenType and missing-cmap cases agree with ISO; INDEX/DICT/charstring binary encodings and CFF2 are not verified by ISO.",
         "outside": "Integrated pagura-text::program checks subtype compatibility and forbidden CFF Length entries. To strengthen CID structural rejection without breaking shared vectors, update tools/fixturegen/text.py callers of cff_font to conforming=True and regenerate its font-binding PDFs/manifests.",
         "pending": [
-          "OpenType / ISO/IEC 14496-22: CFF2 header/INDEX/DICT, FDSelect 4, variation stores, Private/charstring blends and Font DICT matrices"
+          "OpenType / ISO/IEC 14496-22: CFF2 header/INDEX, required structures and known DICT operands, FDSelect 4, variation stores and Private/charstring blends"
         ],
-        "external_status": "TN 5176/5177 and applicable TN 5014 reviewed; CFF2 pending primary-text review",
-        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. Font DICT matrix behavior disagreed and is explicitly unsupported; these comparisons are not primary-text verification. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions.",
-        "choices": "Unhinted API retains flex curves, skips hint placement and ignores allowed embedded PostScript. Type 2 random uses a per-glyph 32-bit LCG seeded from folded initialRandomSeed bits, returning (state+1)/2^32; the texts specify seed and range but not the algorithm. Uninitialized transient reads use zero (undefined by TN 5177), invalid index ranges and nonfinite arithmetic fail, zero-element roll is a no-op. CFF2 default-instance interpretation and Font DICT matrix restrictions retain the earlier secondary evidence and pending status."
+        "external_status": "TN 5176/5177 and applicable TN 5014 reviewed; current CFF2 Top/Font/Private DICT namespaces reviewed; other CFF2 primary review remains pending",
+        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. The historical Font DICT matrix disagreement led to an explicit refusal; current primary review below supersedes that refusal without rewriting its recorded observations. These secondary comparisons are not primary-text verification. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions.",
+        "choices": "Unhinted API retains flex curves, skips hint placement and ignores allowed embedded PostScript. Type 2 random uses a per-glyph 32-bit LCG seeded from folded initialRandomSeed bits, returning (state+1)/2^32; the texts specify seed and range but not the algorithm. Uninitialized transient reads use zero (undefined by TN 5177), invalid index ranges and nonfinite arithmetic fail, zero-element roll is a no-op. CFF2 default-instance interpretation retains its earlier secondary evidence and pending primary review. Unknown-operator handling follows the explicit stack rule with the same source's DICT-data wording conflict recorded below; legacy matrix application remains separate."
       },
       "format_verification": [
         {
@@ -955,7 +1036,40 @@
             "font/review-cff-bias-global-33900"
           ]
         }
-      ]
+      ],
+      "cff2_font_dict_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#stack-based-cff2-decoding",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#fontdict",
+          "https://learn.microsoft.com/en-us/typography/opentype/otspec180/cff2",
+          "https://learn.microsoft.com/en-us/typography/opentype/otspec182/cff2",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#dict-data"
+        ],
+        "rule": "Current CFF2 FontDICT recognizes PrivateDICTOffset only. Unrecognized operators clear their operands in that context. OpenType1.8 Table13 also listed FontMatrix; 1.8.2 deprecated it and limited valid use to TopDICT.",
+        "implementation": "The existing DICT parser has an explicit FontDICT context that discards unknown entries before allocation or arity validation. The previous matrix refusal is removed; CFF1 and TopDICT matrix behavior and PrivateDICT blends are unchanged. This is normative ignoring, not a repair or a new font-selection path.",
+        "expectations": "Repeated unknown operators and non-matrix arity do not taint the following Private pair. Literal controls retain number syntax, 513/514 operand limits, duplicate known-operator rejection and exact 7/6 work and 1/0 entry boundaries. The original cff2-font-dict-matrix bytes are unchanged; the formerly Unsupported vector now expects its independent untransformed 200x400 outline. Nine diagnostic PDFs/oracles are preserved exactly; no tolerance changes.",
+        "diagnostic": "Run40397598168 at fdfc47c1e82c700057ea5d23999e1d024ec1fa6d, Ubuntu12 cases/84 cells: Pagura passes8 controls and refuses4 matrix subjects. Hayro passes the paired CID no-matrix control, but applies the legacy matrix for explicit Top.001/FD2 and omitted Top/FD.002, producing the separately authored20x40 rectangle rather than current-rule10x20. Other baselines fail the paired CFF2 control, so their matrix cells do not establish format-specific gaps. MuPDF and PDF.js pass the explicit-Top CFF1 control. The omitted-Top CFF1 observation is unresolved and excluded from acceptance; no CFF1 product change is made.",
+        "artifacts": "Linux report artifact12687168595 ZIP SHA256 763a9df7cff0b36950ebcb6ee43a15efbc987f0d0f94c25c97131b6649c8f8c0; report SHA256 ea7a6a90c330062312b7aa3da5f1a6987b4e26098dcca590df6a033d30982369. Pixel artifact12686938657 ZIP SHA256 b3844355c64d922806e3f7fbfc6dad4bee198f3410276b1bbeb164303f6c10d6. The historical run and all its hypotheses remain unchanged.",
+        "scope": "Current and historical CFF2 share a version2 header, so automatic selection cannot satisfy both interpretations of the same bytes. A legacy policy remains open; this implementation does not claim legacy matrix parity. Other TopDICT/PrivateDICT operator-validation obligations are outside this change. All 34 integrated rendering controls pass in run40403532318 at95249301d; full functional validation is still pending on macOS/Windows after Ubuntu passed.",
+        "acceptance": "Run40403532318 measures merge2f89cbc28efafa544ce6c0a50ea2552886b724b4: 34/34 Pagura observations, 238 total cells. Combined artifact12690375705 ZIP SHA256 a1b179444cdc51d405f656c682c70fbfc00825e7fa136325cd62ceafc5c0f826; report SHA256 760e50b5a5d106b05f5e72d884f0744464c69641b3cb1051a62087128b5a86a5. This is scoped render acceptance, not full CFF2 conformance or legacy matrix parity.",
+        "qualification": "The current OpenType CFF2 stack-decoding section explicitly directs ignoring unrecognized contextual operators and clearing operands, but its DICT-data paragraph calls behavior outside a namespace unspecified. Pagura selects the explicit bounded discard rule. These statements do not establish an unambiguous whole-format conformance or competitor verdict."
+      },
+      "cff2_dict_context_review": {
+        "sources": [
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#stack-based-cff2-decoding",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#topdict-operator-summary",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#privatedict-operator-summary",
+          "https://learn.microsoft.com/en-us/typography/opentype/spec/cff2#dict-data"
+        ],
+        "rule": "Unrecognized operators in each CFF2 DICT namespace discard their operands. TopDICT recognizes five keys, FontDICT recognizes Private only, and PrivateDICT recognizes its sixteen hint/subroutine/variation operators. CFF1 widths, random seed, ForceBold and synthetic-font keys are not CFF2 keys.",
+        "implementation": "One context predicate in the existing parser controls the existing discard path before entry allocation, duplicate and arity processing. Numeric syntax, work and stack limits still apply. CFF1 recognition and known CFF2 matrix/blend handling are unchanged.",
+        "expectations": "Four independent native fonts and eight paired simple/CID PDF controls retain 100x200 outlines and PDF-owned widths. Unit controls cover foreign and reserved operators, duplicate known keys, 513/514 stacks and exact work/entry bounds. All prior font fixture bytes, records and rendering oracles are retained. Hosted acceptance pending. The new single-FontDICT fonts omit FDSelect, as required by current text; prior published fixtures remain unchanged.",
+        "qualification": "The current OpenType CFF2 stack-decoding section explicitly directs ignoring unrecognized contextual operators and clearing operands, but its DICT-data paragraph calls behavior outside a namespace unspecified. Pagura selects the explicit bounded discard rule. These statements do not establish an unambiguous whole-format conformance or competitor verdict."
+      },
+      "collection_review": {
+        "shared_review": "font-truetype.collection_review",
+        "scope": "OpenType CFF collections use the same TTC and naming-table selection. CFF Name INDEX names are not required to equal naming-table ID 6."
+      }
     },
     {
       "id": "font-type1",
@@ -1016,9 +1130,26 @@
         "font/review-type1-length-65535",
         "font/review-type1-length-65536",
         "font/review-type1-close-line",
-        "font/review-type1-setcurrentpoint"
+        "font/review-type1-setcurrentpoint",
+        "font/type1-advance-horizontal",
+        "font/type1-advance-up",
+        "font/type1-advance-down",
+        "font/type1-advance-vertical",
+        "font/type1-advance-negative",
+        "font/type1-advance-duplicate",
+        "font/type1-advance-arity",
+        "font/type1-advance-nonfinite",
+        "font/type1-advance-width-only",
+        "font/type1-advance-seac",
+        "font/type1-advance-seac-y-mismatch",
+        "font_formats/type1-advance-horizontal-control-normal",
+        "font_formats/type1-advance-horizontal-control-rotated",
+        "font_formats/type1-advance-up-normal",
+        "font_formats/type1-advance-up-rotated",
+        "font_formats/type1-advance-down-normal",
+        "font_formats/type1-advance-down-rotated"
       ],
-      "gaps": "Static extraction is not complete PostScript execution or structural validation. Hybrid/synthetic programs and nonhorizontal sbw advances are explicitly unsupported. PFB packaging and lenIV -1 require the unavailable TN 5040/5015.",
+      "gaps": "Static extraction is not complete PostScript execution or structural validation. Hybrid/synthetic programs remain explicitly unsupported. PFB packaging and lenIV -1 require the unavailable TN 5040/5015.",
       "tables": [
         "124",
         "125"
@@ -1090,12 +1221,29 @@
           "item": "sbw",
           "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
           "locator": "6.1-6.4",
-          "rule": "sbx,sby,wx,wy set the bearing and advance; nonhorizontal advances are explicitly unsupported by this API.",
-          "verdict": "agrees for unhinted outlines",
-          "implementation": "agrees for unhinted outlines",
-          "expectations": "Independent generated vectors agree with this rule.",
+          "rule": "sbx,sby set the current point and sidebearing; wx,wy form the complete advance vector. Width-only API returns its horizontal component; seac must match both base advance components and its bearing.",
+          "verdict": "implemented; new vector and PDF controls await hosted acceptance",
+          "implementation": "The existing Type 1 glyph state retains a Point advance. hsbw uses (wx,0); sbw uses (wx,wy). Existing finite-operand, arity, duplicate-width and work/entry checks are unchanged. No new parser or public metric API; PDF text layout retains its dictionary widths.",
+          "expectations": "Eleven original native vectors cover both signs, a vertical vector, duplicate/invalid widths, width-only stopping and seac y agreement. Six complete embedded-font PDFs pair horizontal/up/down advances at ordinary and rotated text matrices; independent rectangles check two PDF-spaced glyphs. Existing 331 native records and 34 render controls are unchanged.",
           "vectors": [
-            "font/review-type1-sbw"
+            "font/review-type1-sbw",
+            "font/type1-advance-horizontal",
+            "font/type1-advance-up",
+            "font/type1-advance-down",
+            "font/type1-advance-vertical",
+            "font/type1-advance-negative",
+            "font/type1-advance-duplicate",
+            "font/type1-advance-arity",
+            "font/type1-advance-nonfinite",
+            "font/type1-advance-width-only",
+            "font/type1-advance-seac",
+            "font/type1-advance-seac-y-mismatch",
+            "font_formats/type1-advance-horizontal-control-normal",
+            "font_formats/type1-advance-horizontal-control-rotated",
+            "font_formats/type1-advance-up-normal",
+            "font_formats/type1-advance-up-rotated",
+            "font_formats/type1-advance-down-normal",
+            "font_formats/type1-advance-down-rotated"
           ]
         },
         {
@@ -2041,7 +2189,7 @@
       "clauses": [
         "9.10.2"
       ],
-      "status": "Constant-time glyph-index name lookup for TrueType post, name-keyed Type 1 and CFF; shared program metadata is included in retained-byte estimates.",
+      "status": "Constant-time glyph-index name lookup for TrueType post, name-keyed Type 1 and CFF; shared program metadata is included in retained-byte estimates. Post 2.5 signed standard-name offsets reuse the same index and work/entry limits; post 1 requires all 258 standard glyphs. The post 2.5 and reserved-index changes passed hosted checks; post 4 admission passes all 17 integrated rendering controls at b1fd431a8, and its three-platform functional run 40393127365 passes.",
       "tests": [
         "font/glyph-names-post-alias",
         "font/glyph-names-post-standard",
@@ -2050,14 +2198,41 @@
         "font/glyph-names-cid",
         "font/glyph-names-cff2"
       ],
-      "gaps": "TrueType/OpenType binary post layouts remain pending primary-text review. CID-keyed CFF and bare CFF2 charsets do not provide glyph names.",
+      "gaps": "Custom post name validation and Apple-only post 4 printer-name derivation remain open; post 4 numeric code arrays are admitted for existing cmap selection. CID-keyed CFF and bare CFF2 charsets do not provide glyph names. The primary review below covers post 1/2.5 count and index rules; it is not full OpenType certification.",
       "verification": {
         "primary_text": "Local ISO 32000-2:2020 sponsored EC3; Adobe Type 1 Font Format; Adobe TN 5176 CFF",
         "locator": "PDF 9.10.2; Type 1 chapter 6; CFF section 13; ADR 0012",
         "rule": "Type 1 and name-keyed CFF identify glyph programs by names. A reader may supply Unicode when the stated character-code mappings fail.",
-        "verdict": "Primary rules reviewed; use of program names after the specified mappings fail is an explicit reader choice. Existing post parsing is reused without claiming format verification.",
+        "verdict": "Primary PDF/Type 1/CFF rules reviewed; use of program names after the specified mappings fail is an explicit reader choice. Selected post 1/2.5 binary rules are reviewed separately below.",
         "implementation": "Names are indexed once by glyph ID, within decoded-byte budgets. Duplicate post names remain available on each glyph; name-to-glyph lookup retains its first match. Type 1 indexing follows normalization of .notdef to glyph zero. Missing names return None, including out-of-range IDs. The reverse index is accounted in FontProgram::retained_bytes and shared by clones. Index size, payload and glyph-range errors retain the source table/program offset rather than zero.",
         "expectations": "Independent fonts provide repeated post names at distinct glyphs, standard post indices, a reordered Type 1 .notdef, CFF SIDs and nameless CID/CFF2 charsets. Both forward lookup and reverse identity are checked, with unchanged outline oracles."
+      },
+      "post_review": {
+        "sources": [
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/post",
+            "locators": [
+              "Header",
+              "Version 1.0",
+              "Version 2.0",
+              "Version 2.5"
+            ]
+          },
+          {
+            "url": "https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html",
+            "locators": [
+              "post Format 1",
+              "post Format 2",
+              "post Format 2.5",
+              "post Format 4",
+              "Dependencies"
+            ]
+          }
+        ],
+        "rule": "Post 1 implies exactly 258 glyphs. Post 2.5 uses tag 0x00025000, a count matching maxp, and one signed byte added to each glyph ID to index the standard-name set. Post 2 name indices 32768 through 65535 are reserved.",
+        "implementation": "The existing names owner validates both index bounds and count equality, and sends borrowed standard names through its existing bounded index builder. No offset array, custom-name copy path or new parser is added.",
+        "expectations": "Literal signed offsets cover .notdef, A, .null, B, space and the final standard name; all truncations, count mismatch, both index bounds, and exact work/entry boundaries are checked. The earlier five-glyph post-1 fixture was nonconforming; its named-glyph control now supplies 258 glyphs, with the undersized count retained as an explicit unit refusal. The final permitted custom index is accepted; reserved indices fail before custom-name allocation even under a zero-entry budget.",
+        "scope": "Post 2.5 is deprecated but remains a defined legacy input. Other font-format obligations stay open. Legacy post4 composite-code arrays are admitted for unchanged cmap use after count/work validation; they do not supply name strings in this implementation. Printer-derived names remain unimplemented."
       }
     },
     {
@@ -2095,6 +2270,84 @@
         "verdict": "Primary mapping order reviewed; program-name fallback is explicitly reader policy under the final paragraph, not a repair or a claim that raw selection used that name.",
         "implementation": "Only the optional positioned-text recorder performs fallback. Existing Unicode, including an explicit empty string, is retained. Otherwise an outline glyph can supply a program name to the same AGL converter the text decoder already uses. No recovered text is passed back to glyph selection, metrics or painting. Name-processing work and retained output bytes are separately bounded. Composite collection mappings retain priority before program-name fallback. AGL and ZapfDingbats names are separate lists. The latter is used only for a recognized ZapfDingbats/Dingbats base font, including recognized subset/style names; other fonts and absent base names get AGL alone. This policy also applies to encoding-name conversion. ToUnicode remains authoritative.",
         "expectations": "Independent pairs cover both-set and valid Symbolic flags with and without post names, AGL suffix/component and supplementary-scalar rules, authoritative ToUnicode, authoritative encoding names and unknown names. Exact pixels and glyph IDs remain fixed; decoded glyph text and positioned fallback text are checked separately. Independent a12/a19 vectors cover ordinary and Dingbats fonts on raw and named routes. Annex D.6 gives the hand and check-mark identities; those names are absent from the local AGL. All vectors retain exact rectangle pixels and metrics."
+      }
+    },
+    {
+      "id": "font-vertical-substitution",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.4.3",
+        "9.7.5"
+      ],
+      "status": "Selected OpenType vertical single substitutions for external CID provider fonts; PDF metrics and extraction stay independent. Synthetic maps, malformed-input/resource bounds, bundled CJK substitutions and PDF metrics/extraction controls pass the three-platform hosted functional checks at 6ac4b1d27 (run40385513689).",
+      "tests": [
+        "vertical_fonts/pdf-mode-0",
+        "vertical_fonts/pdf-mode-1",
+        "vertical_fonts/unused-vert-offset",
+        "vertical_fonts/unused-vert-entries",
+        "vertical_fonts/unused-default-script",
+        "vertical_fonts/single-delta",
+        "vertical_fonts/single-ranges",
+        "vertical_fonts/extension",
+        "vertical_fonts/lookup-order",
+        "vertical_fonts/first-subtable",
+        "vertical_fonts/vrt2-preferred",
+        "vertical_fonts/default-script",
+        "vertical_fonts/named-language",
+        "vertical_fonts/missing-feature",
+        "vertical_fonts/missing-script",
+        "vertical_fonts/coverage-order",
+        "vertical_fonts/coverage-range-index",
+        "vertical_fonts/coverage-count",
+        "vertical_fonts/output-range",
+        "vertical_fonts/coverage-range",
+        "vertical_fonts/null-coverage",
+        "vertical_fonts/lookup-index",
+        "vertical_fonts/feature-index",
+        "vertical_fonts/reserved-flags",
+        "vertical_fonts/filtering",
+        "vertical_fonts/contextual",
+        "vertical_fonts/variable-feature",
+        "vertical_fonts/extension-kind-0",
+        "vertical_fonts/extension-kind-7",
+        "vertical_fonts/extension-kind-9",
+        "vertical_fonts/extension-kind-5"
+      ],
+      "verification": {
+        "primary_text": "Microsoft OpenType 1.9.1 GSUB, OpenType Layout Common Table Formats, registered vert/vrt2 features; PDF 2.0 EC3 9.7.4.3 and 9.7.5.",
+        "sources": [
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/gsub",
+            "locators": [
+              "GSUB versions 1.0/1.1",
+              "LookupType 1 formats 1/2",
+              "LookupType 7 extension"
+            ]
+          },
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/chapter2",
+            "locators": [
+              "ScriptList and Script",
+              "LangSys",
+              "FeatureList and Feature",
+              "LookupList and Lookup",
+              "Coverage formats 1/2"
+            ]
+          },
+          {
+            "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/features_uz",
+            "locators": [
+              "vert",
+              "vrt2"
+            ]
+          }
+        ],
+        "rule": "Select the script and language feature indices, prefer vrt2 to vert, apply deduplicated lookups in LookupList order and the first matching subtable per lookup. Single substitutions change glyph identities, never PDF W/W2/DW/DW2 or ToUnicode.",
+        "implementation": "The existing sfnt owner lazily reads selected GSUB type 1 or type 7-to-1 lookups. FontProgram compiles a bounded immutable map, and PdfFont owns it only for external vertical CID substitutes.",
+        "expectations": "Original synthetic sfnt/GSUB bytes have literal glyph maps, an independent horizontal/vertical PDF metric and extraction pair, malformed tables, truncated selected tables and exact work/entry bounds. Existing bundled Adobe collection fixtures retain PDF bytes.",
+        "choices": "For Adobe collections, the provider policy requests hani with JAN/ZHS/ZHT/KOR by collection and falls back to DFLT/default LangSys when absent. This is a substitution policy, not general script shaping or an embedded CID/GID rewrite.",
+        "outside": "GDEF-dependent lookup filters, contextual/multiple/alternate/ligature substitutions, nonzero FeatureVariations, arbitrary shaping and unsupported provider/collection coverage. Other TrueType/OpenType primary-format review remains pending.",
+        "verdict": "Primary-defined selected layout subset implemented and validated by the scoped hosted controls at 6ac4b1d27. Competitive-family acceptance remains unprobed."
       }
     }
   ]

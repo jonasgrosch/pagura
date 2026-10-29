@@ -1,0 +1,548 @@
+{
+  "schema": 2,
+  "area": "font_collections",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "font_collections/glyf-simple-first-control",
+      "kind": "pdf",
+      "description": "glyf simple first control",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-simple-first-control.pdf",
+      "sha256": "79c389e8ab3f76fb340f1672ce67c20e836aad80006e16891bfac04189880c18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-simple-first-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-simple-second-control",
+      "kind": "pdf",
+      "description": "glyf simple second control",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-simple-second-control.pdf",
+      "sha256": "ce26fc4917aa05ecf6f5ff74b449f3b7c2f23ce499bb50899769098b520eb98f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-simple-second-control.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-simple-single-v1",
+      "kind": "pdf",
+      "description": "glyf simple single v1",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-simple-single-v1.pdf",
+      "sha256": "8b657f7e49df5cc6247dce17258a9119ff3098042557949bbb633841df3ef6ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-simple-single-v1.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-simple-single-v2",
+      "kind": "pdf",
+      "description": "glyf simple single v2",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-simple-single-v2.pdf",
+      "sha256": "5915d630439c4619d61182ccab9fa36f57743e10e6824bb56a3c86b50141f028",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-simple-single-v2.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-simple-pair-first",
+      "kind": "pdf",
+      "description": "glyf simple pair first",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-simple-pair-first.pdf",
+      "sha256": "48e03784406848c5e4e33f7fac536c6c99b7ac8bdffad85f408ef5080f8e7137",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-simple-pair-first.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-simple-pair-second",
+      "kind": "pdf",
+      "description": "glyf simple pair second",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-simple-pair-second.pdf",
+      "sha256": "1a09e35bef582c0246291c8e5bfc237510126eebb9de686f139fdfdc5ce902df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-simple-pair-second.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-cid-first-control",
+      "kind": "pdf",
+      "description": "glyf cid first control",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-cid-first-control.pdf",
+      "sha256": "c2cf950f0b4cb801e8e15e73d1488912bac7c7f46bbb56f6b7e2db5997aa9fe8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-cid-first-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-cid-second-control",
+      "kind": "pdf",
+      "description": "glyf cid second control",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-cid-second-control.pdf",
+      "sha256": "8780abca141ae30f6ae3616fee3bd1579675ce7a0a463ddbc76b4e88f9c45842",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-cid-second-control.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-cid-single-v1",
+      "kind": "pdf",
+      "description": "glyf cid single v1",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-cid-single-v1.pdf",
+      "sha256": "c744b26b8c560fd958e1e16e2145a312ed10e2c9a9d35b87082883a9d9103f52",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-cid-single-v1.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-cid-single-v2",
+      "kind": "pdf",
+      "description": "glyf cid single v2",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-cid-single-v2.pdf",
+      "sha256": "e4738712a9c1217c8e8a8d9fff47a94cef393ffca4b6e126ba40f028d040c35e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-cid-single-v2.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-cid-pair-first",
+      "kind": "pdf",
+      "description": "glyf cid pair first",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-cid-pair-first.pdf",
+      "sha256": "30d8fb2198646de6a1ab6f6a4bbba5e04210c40366eaf7a6d0a051af36e8ccb5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-cid-pair-first.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/glyf-cid-pair-second",
+      "kind": "pdf",
+      "description": "glyf cid pair second",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/glyf-cid-pair-second.pdf",
+      "sha256": "b65f300c91869e36b4d3ffc2b24c6b45c92b55ecdebff94a4c699b8d2c4d989e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/glyf-cid-pair-second.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/cff-cid-first-control",
+      "kind": "pdf",
+      "description": "cff cid first control",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_collections/cff-cid-first-control.pdf",
+      "sha256": "2e36d3bf918874b812dee3f8f84369e497eaa51456f2f53f8de501bfa78f28d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/cff-cid-first-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/cff-cid-second-control",
+      "kind": "pdf",
+      "description": "cff cid second control",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_collections/cff-cid-second-control.pdf",
+      "sha256": "8fdd45d683f37bd25b41af4f3599006786a1010eadefc2eba75d7de7bc48c39a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/cff-cid-second-control.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/cff-cid-single-v1",
+      "kind": "pdf",
+      "description": "cff cid single v1",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_collections/cff-cid-single-v1.pdf",
+      "sha256": "3b581939dde3ec39df4532dab54cd662248ea496fd362ad57fb49c75180bebe4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/cff-cid-single-v1.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/cff-cid-single-v2",
+      "kind": "pdf",
+      "description": "cff cid single v2",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_collections/cff-cid-single-v2.pdf",
+      "sha256": "83bda059ca996b4c8e8485a088e18dd6bc67c1ecfdbbf23f7b975d03711ad0fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/cff-cid-single-v2.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/cff-cid-pair-first",
+      "kind": "pdf",
+      "description": "cff cid pair first",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_collections/cff-cid-pair-first.pdf",
+      "sha256": "856fabff0e71b7dc083fd8f2f46305fb000b9431e8d4de5c8db1341f17285ece",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/cff-cid-pair-first.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/cff-cid-pair-second",
+      "kind": "pdf",
+      "description": "cff cid pair second",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_collections/cff-cid-pair-second.pdf",
+      "sha256": "0fa428408d847dc04ef1f37ecbd441f3c2a675446831cf0efe0bd0c472d239c8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/cff-cid-pair-second.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/rectangle-0",
+      "kind": "pdf",
+      "description": "rectangle 0",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/rectangle-0.pdf",
+      "sha256": "108cfe883b00ab7783a6c43057219103f5da6ee26b71c1fd1b62fbcc21e73fae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/rectangle-0.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/rectangle-1",
+      "kind": "pdf",
+      "description": "rectangle 1",
+      "expected": "render",
+      "requirements": [
+        "font-truetype"
+      ],
+      "path": "corpus/generated/font_collections/rectangle-1.pdf",
+      "sha256": "17a0ffbc912427c6602fae353515b68ad0833eb2885e61b841d049d98804086b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_collections/rectangle-1.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collections/native-glyf-v1",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-truetype"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-glyf-v1.font",
+          "sha256": "edf3d44be90bc44a92bdd57446e9ff3ce421677e532c5e3d924f1121ae22d935"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-glyf-v2",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-truetype"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-glyf-v2.font",
+          "sha256": "3cfec5aa68d1a3e65c2e1ad0ef3fa203aabdc056d12f19d9f633f25cc8190287"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-glyf-standalone",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-truetype"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-glyf-standalone.font",
+          "sha256": "086fa6b1feb07335d249b9f11a0b86a946e09fcc4cab3b085ba00c3390684cf0"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-glyf-late-directory",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-truetype"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-glyf-late-directory.font",
+          "sha256": "7eec74b28efb4d4058808e278e787c88007d11dd877111506ee3bd0ce5415f31"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-glyf-dsig",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-truetype"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-glyf-dsig.font",
+          "sha256": "0b09992c753daec78b2c78c86505df586bd19b203ea895d44213cef64fffc6a5"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-cff-v1",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-cff-v1.font",
+          "sha256": "ad8bdad4941fa982cd0239c92a40ebbdb7337c576463254ed35017c7f77b7b89"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-cff-v2",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-cff-v2.font",
+          "sha256": "963d7ed7cec11ef90c16b7d75c70da756899f6a6c8c0caa6cef6ff0a397e8093"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-cff-standalone",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-cff-standalone.font",
+          "sha256": "bf84815905fa48df99c087c05fcf1b2427b01ccdd95025e4e5f9ca811ead1351"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-cff-late-directory",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-cff-late-directory.font",
+          "sha256": "19b36a1fec41dfeeb20f8dbc0f9f1acc002979098c86efec6f34bb6c2ea4c29a"
+        }
+      }
+    },
+    {
+      "id": "font_collections/native-cff-dsig",
+      "kind": "vector",
+      "description": "Index/name selection: first rectangle 100x200; second 200x400; original bytes retained.",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/font_collections/native-cff-dsig.font",
+          "sha256": "5f5f7d35352792218675b65a9e39e9f681b13e60ca1ad0510785aed76b5233f5"
+        }
+      }
+    }
+  ]
+}

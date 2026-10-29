@@ -21,12 +21,6 @@ pub(crate) fn load(
     let Mapping::Composite { map, .. } = &mapping else {
         return Err(unavailable());
     };
-    if map.mode == WritingMode::Vertical {
-        return Err(Error::unsupported(
-            features::CID_SUBSTITUTE_VERTICAL,
-            "vertical CID substitute glyph forms are unavailable",
-        ));
-    }
     let (registry, ordering) = cid_collection(document, descendant)?.ok_or_else(unavailable)?;
     if map.registry().is_some_and(|r| r != registry)
         || map.ordering().is_some_and(|o| o != ordering)
@@ -41,6 +35,33 @@ pub(crate) fn load(
     let unicode = provider
         .cid_to_unicode(registry, ordering)?
         .ok_or_else(unavailable)?;
+    let writing_mode = map.mode;
+    let vertical = if writing_mode == WritingMode::Vertical {
+        // Regional collection policy chooses the font's Han language system.
+        // This changes glyph forms only: PDF W/W2/DW/DW2 still own positioning.
+        let language =
+            (registry == b"Adobe")
+                .then_some(ordering)
+                .and_then(|ordering| match ordering {
+                    b"Japan1" => Some(*b"JAN "),
+                    b"GB1" => Some(*b"ZHS "),
+                    b"CNS1" => Some(*b"ZHT "),
+                    b"Korea1" => Some(*b"KOR "),
+                    _ => None,
+                });
+        Some(
+            program
+                .vertical_substitution(*b"hani", language)?
+                .ok_or_else(|| {
+                    Error::unsupported(
+                        features::CID_SUBSTITUTE_VERTICAL,
+                        "CID substitute lacks an applicable vertical glyph feature",
+                    )
+                })?,
+        )
+    } else {
+        None
+    };
     let metrics = Metrics::composite(document, descendant)?;
     // Inspect reachable CIDs, not the substitute's own CID charset. Stop at the
     // first hole; the diagnostic covers incomplete font coverage as a whole.
@@ -71,8 +92,12 @@ pub(crate) fn load(
     )?;
     Ok(PdfFont {
         kind: FontKind::Type0,
-        writing_mode: WritingMode::Horizontal,
-        source: Source::CidSubstitute { program, unicode },
+        writing_mode,
+        source: Source::CidSubstitute {
+            program,
+            unicode,
+            vertical,
+        },
         mapping,
         metrics,
         limits: document.limits(),

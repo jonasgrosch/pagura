@@ -9,16 +9,18 @@
 //! | `standard-metrics` | Adobe Core14 AFM metrics: widths and descriptors of the standard 14 fonts | 0.6 MiB |
 //! | `standard-outlines` | Arimo, Tinos, Cousine, FoxitSymbol and FoxitDingbats outlines for them; implies `standard-metrics` | 5.8 MiB |
 //! | `cmaps` | the Table 116 CMaps and four collections' CID-to-Unicode data | 3.4 MiB |
-//! | `cjk-fonts` | horizontal Source Han Sans substitutes for those collections; implies `cmaps` | 22.3 MiB |
+//! | `cjk-fonts` | Source Han Sans substitutes for those collections; implies `cmaps` | 22.3 MiB |
 //!
 //! The first three are enabled by default. With `default-features = false`,
 //! no data bytes are linked and every lookup is `None`; a host can implement
 //! [`Provider`] with lazy resources instead. Without `standard-outlines`,
 //! non-embedded standard fonts keep their metrics but have no outlines.
 //!
-//! Each instance owns bounded, lazy caches. No build script, runtime filesystem
-//! access, network access or global mutable state is involved. Data provenance,
-//! hashes and licences are recorded in `data/README.md` and `data/lock.json`.
+//! Standard-font metrics and outlines are parsed once under fixed default
+//! limits and shared across providers. Each provider owns bounded, lazy caches
+//! for its remaining resources. No build script, runtime filesystem or network
+//! access is involved. Data provenance, hashes and licences are recorded in
+//! `data/README.md` and `data/lock.json`.
 
 use cache::Cache;
 use pagura_core::{Limits, Result};

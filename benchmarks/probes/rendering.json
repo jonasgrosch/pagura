@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Includes original post 2.5 subjects, matched post 2 controls, and an ordinary glyph-sized rectangle; PDF cmap selection and name fallback remain distinct. Legacy post4 cmap admission and format8 numeric-code groups have paired controls. Supplementary numeric codes are isolated from literal-byte fallback; no UTF-16 stream-decoding or family-conformance claim. CFF2 FontDICT probes use current context-specific ignored-operator semantics; preserved legacy and omitted-Top observations remain explicitly separate. Type 1 sbw controls retain complete glyph metrics while checking PDF-owned advances in ordinary and rotated text. Top, Font and Private CFF2 DICT namespaces have paired unknown-operator controls; known-operator validation is a separate remaining boundary. TTC/OTC collections retain the earlier standalone, single-face and named two-face controls unchanged. Face selection is a measured reader policy; successful rendering does not validate digital signatures or general OpenType conformance.",
   "cases": [
     {
       "id": "control.blank",
@@ -77,6 +77,812 @@
         "width": 32,
         "height": 32,
         "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-name-fallback",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-name-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-name-fallback",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-name-fallback",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post25-differences",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post25-differences",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post2-control-differences",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post2-control-differences",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.ordinary-rectangle",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/ordinary-rectangle",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post3-control-direct",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post3-control-direct",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post4-direct-unnamed",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post4-direct-unnamed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.post3-control-direct-unnamed",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/post3-control-direct-unnamed",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-windows-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-windows-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-windows-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-windows-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-unicode-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-unicode-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-unicode-bmp",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-unicode-bmp",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-windows-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-windows-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-windows-ucs4-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-windows-ucs4-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap12-unicode-utf16-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap12-unicode-utf16-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cmap8-unicode-ucs4-isolated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cmap8-unicode-ucs4-isolated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "25ba1a62addca3c6713d47e9248809ae9569ea77a99a9398025759e59abc5577",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-none-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-none-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-matrix-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-matrix-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-none-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-none-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-matrix-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-matrix-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff-matrix-rectangle-1",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff-matrix-rectangle-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff-matrix-rectangle-2",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff-matrix-rectangle-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6aab699d911c5d7b43f8b9438d59c7e58e6ddec3ff1f062b4504d0b7e7788986",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff1-fd-matrix-explicit-top-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff1-fd-matrix-explicit-top-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-matrix-explicit-top-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-matrix-explicit-top-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-fd-small-matrix-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-fd-small-matrix-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-horizontal-control-normal",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-horizontal-control-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6d6a45d06d68226bfb18796ee325b0cd799bc7d77b0dde9e1dfb25ea1fdfc7b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-horizontal-control-rotated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-horizontal-control-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-up-normal",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-up-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6d6a45d06d68226bfb18796ee325b0cd799bc7d77b0dde9e1dfb25ea1fdfc7b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-up-rotated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-up-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-down-normal",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-down-normal",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "6d6a45d06d68226bfb18796ee325b0cd799bc7d77b0dde9e1dfb25ea1fdfc7b0",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.type1-advance-down-rotated",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/type1-advance-down-rotated",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "f9f90867760e16af3be4f9bf27ee27340bf7bd411164a57ce1a84368cc597f85",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-control-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-control-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-control-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-control-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-top-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-top-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-top-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-top-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-font-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-font-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-font-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-font-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-private-simple",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-private-simple",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.cff2-dict-private-cid",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_formats/cff2-dict-private-cid",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-simple-first-control",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-simple-first-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-simple-second-control",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-simple-second-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-simple-single-v1",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-simple-single-v1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-simple-single-v2",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-simple-single-v2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-simple-pair-first",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-simple-pair-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-simple-pair-second",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-simple-pair-second",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-cid-first-control",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-cid-first-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-cid-second-control",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-cid-second-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-cid-single-v1",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-cid-single-v1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-cid-single-v2",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-cid-single-v2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-cid-pair-first",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-cid-pair-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-glyf-cid-pair-second",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/glyf-cid-pair-second",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-cff-cid-first-control",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/cff-cid-first-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-cff-cid-second-control",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/cff-cid-second-control",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-cff-cid-single-v1",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/cff-cid-single-v1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-cff-cid-single-v2",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/cff-cid-single-v2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-cff-cid-pair-first",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/cff-cid-pair-first",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-cff-cid-pair-second",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/cff-cid-pair-second",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-rectangle-0",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/rectangle-0",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "3369a2b2a0ba694019dd3fa5cbe8ab39b9469583438c92a54a7a5879bf4fd136",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "fonts.collection-rectangle-1",
+      "capability": "fonts.programs",
+      "operation": "render",
+      "fixture": "font_collections/rectangle-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2b21489aaacdda0d85c4d70a82b306d49d3735a01b2559e35945ba9e4d34bb71",
         "tolerance": 0
       }
     }

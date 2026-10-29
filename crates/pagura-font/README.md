@@ -11,9 +11,14 @@ The requirement registry records a rule, locator, implementation verdict and
 independent vectors for each operator and format item. These are reviews of
 the supported behavior, not complete font or PostScript conformance claims.
 
-The TrueType Reference Manual, OpenType/ISO 14496-22 (including CFF2),
+Selected OpenType GSUB layout and `vert`/`vrt2` behavior have also been reviewed
+against Microsoft's primary specification, as recorded by
+`font-vertical-substitution`. Post 1/2.5 count and signed-name-index rules were
+reviewed against Microsoft and Apple, recorded in `font-program-glyph-names`.
+Remaining TrueType Reference Manual and
+OpenType/ISO 14496-22 formats (including CFF2),
 TN 5015 supplements such as Type 1 lenIV -1, and TN 5040 PFB packaging remain
-**pending primary-text review** because their texts are unavailable. The
+**pending primary-format review**. The
 Type 1 book verifies binary/hex eexec, both ciphers, and lenIV 4/0/1.
 No external known-answer font dataset has been used.
 
@@ -36,11 +41,72 @@ must enforce simple/CID-specific cmap rules, Type 1 binary eexec and Length1/2/3
 stream subtype compatibility and subset naming. Hex PFA/PFB fixture success
 is not a claim that these wrappers are permitted PDF embeddings.
 
+TTC/OTC collection versions 1 and 2 reuse the sfnt directory reader and retain
+one original byte buffer. `parse_with_face` accepts an index or ordered
+PostScript name hints; ordinary `parse` selects index zero. The earliest hint
+matching any face must identify exactly one. Unmatched or ambiguous names are
+`Syntax`; an out-of-range caller index is `InvalidArgument`. Naming-table
+versions 0/1 support their Unicode, Windows and Macintosh Roman name encodings.
+Only the selected face's tables are decoded. Name selection scans other faces'
+directory/name records under the same work budget; shared tables may precede
+the selected directory. Standalone programs ignore these name hints.
+
+PDF collection binding tries exact FontName/BaseFont and then valid subset-tag
+removal. This is a measured reader policy: PDF Table 124 supplies no collection
+index. The [OpenType collection](https://learn.microsoft.com/en-us/typography/opentype/spec/otff#font-collections)
+and [name](https://learn.microsoft.com/en-us/typography/opentype/spec/name) specifications
+supply container rules. DSIG is inert; signature authentication, checksum
+validation and hint execution are outside this reader. The original diagnostic
+PDFs and independent pixel oracles are unchanged; implementation acceptance is
+pending. [Probe evidence](../../benchmarks/probes/README.md#font-collections)
+records baseline results and native boundary coverage.
+
+`vertical_substitution(script, language)` reads selected GSUB tables lazily and
+returns an owned glyph map. It supports single substitution formats 1/2,
+coverage formats 1/2 and extension-wrapped single substitutions. Script and
+language selection precede `vrt2`/`vert` preference; lookup order and first-match
+subtable precedence are preserved. The stored `font_work` and `font_entries`
+budgets bound compilation; the map reports retained bytes. This does not shape
+strings, alter advances, or affect embedded PDF CID/GID selection. GDEF lookup
+filters, other substitution types and feature variations remain explicit gaps.
+Synthetic glyph-map, malformed-input and resource-bound controls pass the
+[three-platform hosted checks](https://github.com/jonasgrosch/pagura/actions/runs/40385513689)
+at `6ac4b1d27`, including the bundled CJK substitution and PDF metrics controls.
+
+Legacy post 2.5 offsets use the existing glyph-name index, including its work
+and entry budgets. Signed index bounds and the declared glyph count are checked.
+Post 1 requires exactly 258 glyphs. Independent paired PDF controls preserve
+cmap-first selection and name fallback. All 13 integrated controls pass at
+`6ac4b1d27` in [hosted run 40385518384](https://github.com/jonasgrosch/pagura/actions/runs/40385518384).
+The post 2 reserved-index correction passes [all three hosted platforms](https://github.com/jonasgrosch/pagura/actions/runs/40388811513)
+at `2d92bdc21`, including the last permitted index and rejection before allocation.
+
+Legacy Apple TrueType post 4 code arrays are admitted after maxp-count and
+work-budget validation, so their existing cmap can select glyphs. This does not
+synthesize printer-specific names or assert OpenType conformance. Four unchanged
+direct-cmap subjects/controls pass with the preceding controls: 17/17 at
+`b1fd431a8` in [hosted run 40393132189](https://github.com/jonasgrosch/pagura/actions/runs/40393132189).
+Its [three-platform functional run](https://github.com/jonasgrosch/pagura/actions/runs/40393127365)
+also passes. No new font selection path or allocation is introduced.
+
+Legacy cmap format 8 reuses the existing bounded sequential-group validator
+and binary lookup. It accepts the caller's complete numeric code unchanged;
+it does not decode a word stream or pack a Unicode scalar into UTF-16 words.
+The bitmap's extent is checked, while its word-decoding semantics remain
+outside this API. Microsoft and Apple describe conflicting details, recorded
+in `font-truetype`; no heuristic resolves them. Eight preserved diagnostic
+PDFs isolate BMP and supplementary numeric mappings with format-12 controls.
+All 25 integrated rendering controls pass at `e399327d7` in
+[hosted run 40395913198](https://github.com/jonasgrosch/pagura/actions/runs/40395913198).
+The corresponding [functional run](https://github.com/jonasgrosch/pagura/actions/runs/40395908628)
+passes on Ubuntu, macOS and Windows.
+
 Implemented formats:
 
 - TrueType and OpenType `glyf`: short/long `loca`, simple contours, repeated
   point flags, implied quadratic points, affine composite components and
-  point attachments; cmap formats 0, 2, 4, 6, 10, 12 and 13; post formats 1, 2 and 3.
+  point attachments; cmap formats 0, 2, 4, 6, 8, 10, 12 and 13; post names from
+  formats 1, 2, 2.5 and 3, with legacy post 4 admission for cmap use.
 - Bare CFF and OpenType CFF: checked INDEX/DICT data, ISOAdobe and explicit
   charsets, all 391 standard SIDs, Expert/ExpertSubset predefined charsets,
   StandardEncoding/ExpertEncoding and explicit encodings with supplements,
@@ -50,7 +116,8 @@ Implemented formats:
   evaluated at normalized default coordinates using the variation store;
   Private DICT blends and their inherited variation index. A charstring can
   override that index. Private DICT parsing preserves pre-blend operands and
-  evaluates blends before consuming their enclosing DICT operator.
+  evaluates blends before consuming their enclosing DICT operator. Top, Font
+  and Private DICTs discard unknown operators in their respective namespaces.
 - Type 1: binary/hex eexec, PFB segment framing, encrypted or `lenIV -1`
   charstrings, static dictionaries and encodings, local subroutines, flex,
   mandatory argument fallback for unrecognized OtherSubrs, hint replacement, and StandardEncoding seac. Hint replacement consumes its
@@ -94,17 +161,40 @@ does nothing. Deprecated dotsection is accepted as a no-op (Appendix C).
 Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
-Remaining coverage: nondefault variation instances, CFF2 Font DICT matrices,
-post formats other than 1/2/3, cmap format 8 and TrueType collections, and
+Remaining coverage: nondefault variation instances, legacy CFF2 Font DICT matrix interpretation,
+derived post 4 printer names and unknown post formats, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
-CFF CharstringType 1, standalone TN 5014 CIDFont programs or nonhorizontal
-Type 1 sbw advances. Unrecognized OtherSubrs use chapter 8’s required
-argument fallback rather than invoking PostScript. CFF2 Font DICT matrices
-are explicitly unsupported after a secondary outline disagreement, pending
-primary review. Format 14 UVS records do not change this API's single-code PDF
+CFF CharstringType 1 or standalone TN 5014 CIDFont programs. Unrecognized OtherSubrs use chapter 8’s required
+argument fallback rather than invoking PostScript. Current CFF2 Font DICTs
+recognize only Private; unknown operators, including the deprecated FontMatrix,
+clear their operands without adding entries or a repair. CFF1 and CFF2 Top DICT
+matrices retain their existing behavior. The current text's stack-decoding
+section directs discard, while its DICT-data paragraph leaves behavior
+unspecified; Pagura follows the explicit, bounded discard rule. Historical
+matrix application is a separate unresolved compatibility choice: the unchanged version-2 header
+does not identify which interpretation a producer intended. The nine preserved
+diagnostic PDFs pass with all 34 integrated rendering controls at `95249301d`
+in [hosted run 40403532318](https://github.com/jonasgrosch/pagura/actions/runs/40403532318).
+Native stack/entry/work controls pass full Ubuntu/macOS/Windows checks in
+[run 40403532292](https://github.com/jonasgrosch/pagura/actions/runs/40403532292).
+The same discard path now covers Top and Private DICT namespaces; four native
+and eight PDF controls pass functional checks on all three platforms at `e568b4292`
+in [run 40414804728](https://github.com/jonasgrosch/pagura/actions/runs/40414804728);
+combined rendering acceptance remains pending. Required CFF2 structures and
+complete known-operator validation remain review gaps. Format 14 UVS records
+do not change this API's single-code PDF
 selection: 9.6.5.4 maps one code through a named base subtable, and 9.7.4.2
 selects CIDs/GIDs. A fixture includes a nondefault UVS mapping and confirms
 that it does not replace the base glyph.
+Type 1 `sbw` retains both advance components in the existing glyph state,
+including base/composite equality for `seac`. The public horizontal-advance
+method returns the x component; PDF text positioning uses PDF dictionary
+metrics. Eleven new native vectors and six paired rendering controls cover
+nonhorizontal advances, malformed widths and composite agreement. All 40 integrated
+render controls pass at `3e5d8e69c` in [run 40408412177](https://github.com/jonasgrosch/pagura/actions/runs/40408412177),
+and [functional run 40408412284](https://github.com/jonasgrosch/pagura/actions/runs/40408412284) passes
+on Ubuntu, macOS and Windows.
+
 Type 1 seac follows chapter 3.1/6.4's explicit origin rule: component
 paths already include their sidebearings, so the accent origin is translated
 by adx/ady. Its asb is checked against the accent, and the base bearing/width
