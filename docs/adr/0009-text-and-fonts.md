@@ -66,7 +66,7 @@ the linked files, which the binary carries uncompressed:
 | `standard-metrics` | 14 Core14 AFM files | 0.6 MiB | yes |
 | `standard-outlines` (implies `standard-metrics`) | 12 croscore TrueType fonts, 2 Foxit CFF fonts | 5.8 MiB | yes |
 | `cmaps` | 59 Table 116 CMaps, 4 `cid2unicode.txt` | 3.4 MiB | yes |
-| `cjk-fonts` (implies `cmaps`) | 4 Source Han Sans OpenType fonts | 22.3 MiB | no |
+| `cjk-fonts` (implies `cmaps`) | 4 Source Han Sans OpenType fonts | 22.3 MiB | no (CLI: yes) |
 
 What each configuration carries:
 
@@ -76,7 +76,14 @@ What each configuration carries:
 - **The facade's default `bundled-data` feature** takes `pagura-data`'s
   defaults. It links 9.8 MiB into the `pagura` CLI and into a
   `pagura-host --features bundled-data` module.
-- **`cjk-fonts`** adds 22.3 MiB.
+- **`cjk-fonts`** adds 22.3 MiB. It stays off in the library and the
+  WebAssembly host, which keeps the viewer module small.
+- **The `pagura` CLI** (amended 2026-10-27) enables `cjk-fonts` by default,
+  so it links 32.1 MiB. A command-line tool is judged by the documents it
+  renders, and without the substitutes every non-embedded Japan1, GB1, CNS1
+  or Korea1 font fails. Builds that need the smaller binary use
+  `--no-default-features --features bundled-data`. Every substitution is
+  reported as `font.substituted`, as in any other configuration.
 - **Metrics without outlines** (`default-features = false, features =
   ["standard-metrics", "cmaps"]`) links 4.0 MiB. A non-embedded standard
   font then keeps its AFM widths and descriptor, but decoding its glyphs
@@ -96,3 +103,27 @@ Hosts may supply their own provider; the browser can fetch data lazily
 instead of embedding it in the WebAssembly module. Substitution is reported
 as a diagnostic, never silent, and a document's own embedded program always
 wins.
+
+### System CJK fonts in a host (amended 2026-10-27)
+
+A host without `cjk-fonts`, such as the WebAssembly viewer or an
+application that ships its own fonts, supplies CJK substitutes through its
+own `Provider`:
+
+- `cid_font(registry, ordering)` returns a font the host already has, such
+  as a system Noto Sans CJK, Hiragino or Source Han face, parsed with
+  `FontProgram::parse` under the provider's `Limits`. It needs a Unicode
+  `cmap` (Windows Unicode BMP or full repertoire), and returns `None` for
+  collections the host does not cover. The program's own CIDs are never used.
+- `cid_to_unicode(registry, ordering)` returns the collection's CID to
+  Unicode data. A host with `bundled-data` delegates to the bundled
+  provider, which links the four `cid2unicode.txt` files without any CJK
+  font. Otherwise it builds the table with `CidToUnicode::new`.
+- `predefined_cmap` and `standard_font` delegate to the bundled provider or
+  return `None`.
+
+Selection and reporting do not change: glyphs are chosen through Unicode,
+the PDF's `W` and `DW` keep the advances, missing glyphs paint nothing and
+are reported once as `font.cid-glyph-missing`, and the font is reported as
+`font.substituted`. Vertical writing still needs vertical forms
+(`font.cid-substitute-vertical`).

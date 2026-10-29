@@ -21,8 +21,10 @@ doc = false
 [dependencies]
 pagura.workspace = true
 
+# The command-line tool renders CJK documents whose fonts are not embedded
+# (ADR 0009): its defaults include the CJK substitutes, the library's do not.
 [features]
-default = ["bundled-data"]
+default = ["bundled-data", "cjk-fonts"]
 bundled-data = ["pagura/bundled-data"]
 cjk-fonts = ["bundled-data", "pagura/cjk-fonts"]
 
