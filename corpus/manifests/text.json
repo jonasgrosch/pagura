@@ -8728,6 +8728,71 @@
       "driver": "bundled-cid-error"
     },
     {
+      "id": "text/substitute-cid-identity-latin",
+      "kind": "vector",
+      "description": "A Latin-named Identity CIDFont draws through its ToUnicode text with the metric-compatible face; unmapped codes and ligatures draw nothing; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin.input",
+          "sha256": "958f471f5477894347dcbff396bd76f96a462df65c79f3b9cac58e340cd8a61e"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin.out",
+          "sha256": "0ed329497cdab3f4a1030685529bc1fecaa0ec5d3cf7091aabbf53ca41459242"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin.pdf",
+          "sha256": "c6e09a00db227fc9d61faa740c9e0d648e612e7f05f7738e33c9db12d5fa6c70"
+        }
+      },
+      "driver": "bundled-cid-latin"
+    },
+    {
+      "id": "text/substitute-cid-identity-latin-no-tounicode",
+      "kind": "vector",
+      "description": "Without ToUnicode text a Latin-named Identity CIDFont draws nothing, keeps the PDF advances and reports incomplete coverage",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-no-tounicode.input",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-no-tounicode.out",
+          "sha256": "6f88e68e20bb0d3049fadc14d5c6f9874814f9088dc99017fc36aceee4714581"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-no-tounicode.pdf",
+          "sha256": "bb4d145092c1f66c3b3844f418a5e1d6574bed98e3b0d0c3386feb0bd7a47562"
+        }
+      },
+      "driver": "bundled-cid-latin"
+    },
+    {
+      "id": "text/substitute-cid-identity-latin-vertical",
+      "kind": "vector",
+      "description": "Vertical writing still needs vertical forms",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-vertical.pdf",
+          "sha256": "aac9917ed3e3ace9edf22248196827e52026b81b1137478e4b8618d2ed20ea7a"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
       "id": "text/substitute-cid-wmode",
       "kind": "vector",
       "description": "Embedded CMap WMode 1 also rejects horizontal-only substitution",

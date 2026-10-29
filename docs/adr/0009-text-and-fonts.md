@@ -150,3 +150,27 @@ LiberationSans or ArialMT with `/Flags 4` and `/WinAnsiEncoding`.
   encoding, and embedded programs keep their 9.6.5 routes. This narrows
   ADR 0025's rule that valid flag pairs keep their selection routes, for
   non-embedded substitutes only.
+
+### Non-embedded Identity CID fonts with Latin names (amended 2026-10-27)
+
+Word processors write non-embedded `CIDFontType2` fonts such as ArialMT or
+TimesNewRomanPSMT with `/Encoding /Identity-H` and an `Adobe-Identity` or
+missing `CIDSystemInfo`. Their CIDs are glyph indices of the absent program,
+so no collection Unicode identifies a glyph.
+
+When the CIDFont's `/BaseFont` names a known Latin family, through the same
+bounded standard aliases simple fonts use, the bundled metric-compatible
+face (Arimo, Tinos or Cousine) draws the font:
+
+- Each code's text in the font's own `ToUnicode` map selects the glyph
+  through the face's Unicode `cmap`. This is the one place where ToUnicode
+  selects glyphs (9.10.3 reserves it for extraction): for these fonts it is
+  the document's only statement of what each code shows.
+- Codes without ToUnicode text, notdef among them, and ligature texts paint
+  nothing. A missing or discarded ToUnicode map draws nothing at all.
+- The PDF's `W` and `DW` keep every advance, so glyph positions are the
+  document's own.
+- The substitution is reported as `font.substituted`, and the incomplete
+  coverage as `font.cid-glyph-missing`. Vertical writing stays unsupported.
+
+Other families, including unknown or non-Latin names, keep the refusal.

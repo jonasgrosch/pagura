@@ -881,10 +881,10 @@ def symbol_substitute_cases(data, lock):
         ("text-symbol-substitution",),"After the named Latin route lacks a glyph, a known Symbol TrueType face falls back to its AFM code mapping",{"driver":"bundled-symbol"})
 
 
-def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None, flags=4):
-    font = b"<< /Subtype /Type0 /BaseFont /Collection /DescendantFonts [5 0 R] /Encoding "+cmap
+def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None, flags=4, base=b"Collection"):
+    font = b"<< /Subtype /Type0 /BaseFont /"+base+b" /DescendantFonts [5 0 R] /Encoding "+cmap
     font += (b" /ToUnicode 8 0 R" if unicode_map else b"")+b" >>"
-    cidfont = b"<< /Subtype /"+subtype+b" /BaseFont /Collection /CIDSystemInfo << /Registry (Adobe) /Ordering ("+ordering.encode()+b") /Supplement 0 >> /FontDescriptor 6 0 R "+descendant+b" >>"
+    cidfont = b"<< /Subtype /"+subtype+b" /BaseFont /"+base+b" /CIDSystemInfo << /Registry (Adobe) /Ordering ("+ordering.encode()+b") /Supplement 0 >> /FontDescriptor 6 0 R "+descendant+b" >>"
     return pdf(font,[cidfont,b"<< /Flags %d /FontName /Collection >>" % flags,stream(extra) if extra else b"null",stream(unicode_map) if unicode_map else b"null"])
 
 
@@ -933,6 +933,18 @@ def cid_substitute_cases(data, lock):
     ]:
         yield Vector(name,{".pdf":cid_substitute_document(ordering,encoding),".error":error+b"\n"},
                      ("text-cid-substitution",),"Incompatible or unknown character collections never select guessed glyphs",{"driver":"bundled-cid-error"})
+    # An Identity collection with a Latin family name: the font's ToUnicode
+    # text selects glyphs of the bundled metric-compatible face (ADR 0009).
+    # Codes without ToUnicode text draw nothing; PDF widths stay authoritative.
+    helvetica = data/lock["standard_14"]["Helvetica"]["outline"]
+    tounicode = b"/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /T def 1 begincodespacerange <0000> <ffff> endcodespacerange 2 beginbfchar <0001> <0041> <0003> <00660069> endbfchar endcmap CMapName currentdict /CMap defineresource pop end end"
+    rows = [(1,1,731,"A",bundled_tt_glyph(helvetica,65)),(2,2,500,None,None),(3,3,500,"fi",None)]
+    yield Vector("substitute-cid-identity-latin",{".pdf":cid_substitute_document("Identity",b"/Identity-H",descendant=b"/DW 500 /W [1 [731]]",unicode_map=tounicode,base=b"ArialMT"),".input":b"\0\1\0\2\0\3",".out":expected(rows)},
+                 ("text-cid-substitution",),"A Latin-named Identity CIDFont draws through its ToUnicode text with the metric-compatible face; unmapped codes and ligatures draw nothing; PDF W and DW supply advances",{"driver":"bundled-cid-latin"})
+    yield Vector("substitute-cid-identity-latin-no-tounicode",{".pdf":cid_substitute_document("Identity",b"/Identity-H",descendant=b"/DW 500",base=b"Arial,Bold"),".input":b"\0\1",".out":expected([(1,1,500,None,None)])},
+                 ("text-cid-substitution",),"Without ToUnicode text a Latin-named Identity CIDFont draws nothing, keeps the PDF advances and reports incomplete coverage",{"driver":"bundled-cid-latin"})
+    yield Vector("substitute-cid-identity-latin-vertical",{".pdf":cid_substitute_document("Identity",b"/Identity-V",base=b"ArialMT"),".error":b"font.cid-substitute-vertical\n"},
+                 ("text-cid-substitution",),"Vertical writing still needs vertical forms",{"driver":"bundled-cid-error"})
     cmap=b"/WMode 1 def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> 1 endcidchar"
     yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".error":b"font.cid-substitute-vertical\n"},
                  ("text-cid-substitution",),"Embedded CMap WMode 1 also rejects horizontal-only substitution",{"driver":"bundled-cid-error"})

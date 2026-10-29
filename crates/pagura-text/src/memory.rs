@@ -45,6 +45,12 @@ pub(crate) fn estimate(font: &PdfFont) -> usize {
 fn source(source: &Source) -> usize {
     match source {
         Source::MetricsOnly | Source::CidSubstitute { .. } => 0,
+        // The face belongs to the provider; the ToUnicode map to this font.
+        Source::UnicodeSubstitute { to_unicode, .. } => to_unicode.as_ref().map_or(0, |map| {
+            size_of_val(map.as_ref())
+                .saturating_add(2 * size_of::<usize>())
+                .saturating_add(map.heap_bytes())
+        }),
         Source::Type3 {
             procedures,
             resources,
