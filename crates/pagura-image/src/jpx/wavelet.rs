@@ -371,7 +371,7 @@ mod tests {
     #[test]
     fn zero_subbands_preserve_odd_grids_without_coefficient_storage() -> pagura_core::Result<()> {
         let limits = Limits {
-            operations: 0,
+            decode_work: 0,
             decoded_bytes: 0,
             ..Limits::default()
         };

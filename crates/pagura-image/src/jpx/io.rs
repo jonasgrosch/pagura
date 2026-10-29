@@ -135,7 +135,7 @@ impl<'a> Budget<'a> {
         self.work = self
             .work
             .checked_add(count)
-            .filter(|&n| n <= self.limits.operations)
+            .filter(|&n| n <= self.limits.decode_work)
             .ok_or_else(|| Error::limit("JPEG 2000 work budget exceeded"))?;
         Ok(())
     }

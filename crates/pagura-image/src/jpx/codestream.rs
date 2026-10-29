@@ -109,7 +109,7 @@ fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
     let columns = (x1 - tile_x0).div_ceil(tile_width);
     let rows = (y1 - tile_y0).div_ceil(tile_height);
     let tiles = area(columns, rows)?;
-    if tiles > budget.limits.operations || tiles > budget.limits.objects {
+    if tiles > budget.limits.decode_work || tiles > budget.limits.objects {
         return Err(Error::limit("JPEG 2000 tile budget exceeded"));
     }
     if tiles > 65535 {

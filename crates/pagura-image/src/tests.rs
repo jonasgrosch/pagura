@@ -409,7 +409,7 @@ fn truncated_and_mutated_codecs_never_invent_samples() {
     let limits = Limits {
         pixels: 4096,
         decoded_bytes: 65536,
-        operations: 100_000,
+        decode_work: 100_000,
         ..Limits::default()
     };
     for name in [
