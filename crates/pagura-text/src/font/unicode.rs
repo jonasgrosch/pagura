@@ -70,12 +70,15 @@ pub(super) fn load(
             let (descendant, _) = super::load::descendant(document, dictionary)?;
             collection_unicode(document, descendant, &font.mapping, provider)?
         }
-        Source::Program { .. } | Source::Type3 { .. } | Source::MetricsOnly => None,
+        Source::Program { .. }
+        | Source::UnicodeSubstitute { .. }
+        | Source::Type3 { .. }
+        | Source::MetricsOnly => None,
     };
     Ok(FontUnicode::new(to_unicode, collection))
 }
 
-fn to_unicode(
+pub(crate) fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,

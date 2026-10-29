@@ -196,6 +196,53 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
         };
         assert_eq!(repairs, expected, "{name}");
     }
+    // A known Latin family with an explicit Latin encoding: the contradicting
+    // Symbolic flag is a reported repair, and the encoding selects the glyph.
+    for name in [
+        "substitute-symbolic-latin-encoding",
+        "substitute-symbolic-latin-base-encoding",
+    ] {
+        let strict = open_with(
+            name,
+            &OpenOptions {
+                recovery: pagura::Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )?;
+        assert_eq!(
+            PdfFont::load_with_provider(&strict, font(&strict)?, Some(&provider))
+                .unwrap_err()
+                .repair,
+            Some(pagura_text::repairs::SYMBOLIC_LATIN_ENCODING),
+            "{name}"
+        );
+        let document = open(name)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+        let glyphs = loaded.decode(b"A", Some(&unicode))?;
+        let values = rows(name, "out")?;
+        let values = row(&values[0])?;
+        near(glyphs[0].advance, number(&values[1])?);
+        assert_eq!(glyphs[0].unicode.as_deref(), text(&values[2]));
+        let GlyphShape::Outline { glyph, .. } = &glyphs[0].shape else {
+            return Err(Error::syntax("missing substitute outline"));
+        };
+        assert_eq!(glyph.0, integer(&values[3])?, "{name}");
+        let repairs: Vec<_> = document
+            .diagnostics()
+            .iter()
+            .filter_map(Diagnostic::repair)
+            .collect();
+        assert_eq!(
+            repairs,
+            [pagura_text::repairs::SYMBOLIC_LATIN_ENCODING],
+            "{name}"
+        );
+        assert!(information(
+            &document,
+            pagura_text::information::SUBSTITUTED
+        ));
+    }
     Ok(())
 }
 
@@ -249,12 +296,36 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
     assert_eq!(program.glyph_count(), 5);
     assert_eq!(glyph.0, 1);
     assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
-    // An embedded but invalid binding is an error, never a substitution.
+    // An embedded program that cannot be used is replaced by the substitute
+    // for its name and descriptor, a reported repair; strict mode keeps the
+    // program's error with that repair (ADR 0009).
+    let strict = open_with(
+        "binding-wrong-fontfile",
+        &OpenOptions {
+            recovery: pagura::Recovery::Strict,
+            ..OpenOptions::default()
+        },
+    )?;
+    let error = PdfFont::load_with_provider(&strict, font(&strict)?, Some(&provider)).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Syntax);
+    assert_eq!(error.repair, Some(pagura_text::repairs::EMBEDDED_UNUSABLE));
+    let document = open("binding-wrong-fontfile")?;
+    let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+    assert!(loaded.program().is_some());
+    let repairs: Vec<_> = document
+        .diagnostics()
+        .iter()
+        .filter_map(Diagnostic::repair)
+        .collect();
+    assert_eq!(repairs, [pagura_text::repairs::EMBEDDED_UNUSABLE]);
+    assert!(information(
+        &document,
+        pagura_text::information::SUBSTITUTED
+    ));
+    // Without a provider nothing can replace it: the program's error stays.
     let document = open("binding-wrong-fontfile")?;
     assert_eq!(
-        PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
-            .unwrap_err()
-            .kind,
+        PdfFont::load(&document, font(&document)?).unwrap_err().kind,
         ErrorKind::Syntax
     );
     Ok(())
@@ -311,6 +382,73 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
             }
         );
     }
+    Ok(())
+}
+
+#[test]
+fn latin_identity_cid_fonts_draw_through_tounicode_with_pdf_widths() -> Result<()> {
+    let provider = Bundled::default();
+    let program = provider
+        .standard_font(b"Helvetica")?
+        .and_then(|font| font.program.clone())
+        .ok_or_else(|| Error::syntax("missing Helvetica substitute"))?;
+    for name in [
+        "substitute-cid-identity-latin",
+        "substitute-cid-identity-latin-no-tounicode",
+    ] {
+        let document = open(name)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+        let input = fixture("text", &format!("{name}.input"));
+        let unicode = loaded.unicode(&document, font(&document)?, Some(&provider))?;
+        // Rendering decodes without the extraction Unicode; selection uses
+        // the font's own ToUnicode map either way.
+        for extraction in [None, Some(&unicode)] {
+            let glyphs = loaded.decode(&input, extraction)?;
+            let rows = rows(name, "out")?;
+            assert_eq!(glyphs.len(), rows.len(), "{name}");
+            for (glyph, value) in glyphs.iter().zip(rows) {
+                let values = row(&value)?;
+                assert_eq!(glyph.code, integer(&values[0])?);
+                near(glyph.advance, number(&values[2])? / 1000.0);
+                if extraction.is_some() {
+                    assert_eq!(glyph.unicode.as_deref(), text(&values[3]), "{name}");
+                }
+                if values[4].is_null() {
+                    assert!(matches!(glyph.shape, GlyphShape::Blank), "{name}");
+                } else {
+                    let GlyphShape::Outline {
+                        program: selected,
+                        glyph,
+                        ..
+                    } = &glyph.shape
+                    else {
+                        return Err(Error::syntax("missing Latin outline"));
+                    };
+                    assert!(Arc::ptr_eq(selected, &program));
+                    assert_eq!(glyph.0, integer(&values[4])?);
+                }
+            }
+        }
+        assert!(information(
+            &document,
+            pagura_text::information::SUBSTITUTED
+        ));
+        assert!(information(
+            &document,
+            pagura_text::information::CID_GLYPH_MISSING
+        ));
+        assert!(
+            document.diagnostics().iter().all(|d| d.repair().is_none()),
+            "{name}"
+        );
+    }
+    let document = open("substitute-cid-identity-latin-vertical")?;
+    assert_eq!(
+        PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
+            .unwrap_err()
+            .kind,
+        ErrorKind::Unsupported(features::CID_SUBSTITUTE_VERTICAL)
+    );
     Ok(())
 }
 

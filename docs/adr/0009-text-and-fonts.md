@@ -127,3 +127,69 @@ the PDF's `W` and `DW` keep the advances, missing glyphs paint nothing and
 are reported once as `font.cid-glyph-missing`, and the font is reported as
 `font.substituted`. Vertical writing still needs vertical forms
 (`font.cid-substitute-vertical`).
+
+### Symbolic flags on non-embedded Latin fonts (amended 2026-10-27)
+
+A non-embedded font flagged Symbolic leaves the glyph of each code to the
+original program's own encoding (9.6.5.2, 9.6.5.4). A substitute cannot know
+it, so Pagura makes no guess for such fonts, with one exception. When the
+font names a known Latin family and its `/Encoding` names, or has a
+`/BaseEncoding` naming, `StandardEncoding`, `WinAnsiEncoding` or
+`MacRomanEncoding`, that encoding is the document's own statement of its
+glyph names. Form generators commonly write such fonts, for example
+LiberationSans or ArialMT with `/Flags 4` and `/WinAnsiEncoding`.
+
+- The encoding is followed, and the Symbolic flag that contradicts it is
+  the reported repair `font.symbolic-latin-encoding`. Strict mode rejects it.
+- The family is known when the bounded standard aliases name a Latin face
+  (Arial, Times New Roman, Courier New and their spellings), which then
+  selects the face. A short list of Latin text families also counts: the
+  metric-compatible Liberation and croscore faces, and DejaVu. Their face
+  comes from the descriptor, as for any unknown nonsymbolic font.
+- Symbol, dingbat and unknown families, fonts without an explicit Latin
+  encoding, and embedded programs keep their 9.6.5 routes. This narrows
+  ADR 0025's rule that valid flag pairs keep their selection routes, for
+  non-embedded substitutes only.
+
+### Non-embedded Identity CID fonts with Latin names (amended 2026-10-27)
+
+Word processors write non-embedded `CIDFontType2` fonts such as ArialMT or
+TimesNewRomanPSMT with `/Encoding /Identity-H` and an `Adobe-Identity` or
+missing `CIDSystemInfo`. Their CIDs are glyph indices of the absent program,
+so no collection Unicode identifies a glyph.
+
+When the CIDFont's `/BaseFont` names a known Latin family, through the same
+bounded standard aliases simple fonts use, the bundled metric-compatible
+face (Arimo, Tinos or Cousine) draws the font:
+
+- Each code's text in the font's own `ToUnicode` map selects the glyph
+  through the face's Unicode `cmap`. This is the one place where ToUnicode
+  selects glyphs (9.10.3 reserves it for extraction): for these fonts it is
+  the document's only statement of what each code shows.
+- Codes without ToUnicode text, notdef among them, and ligature texts paint
+  nothing. A missing or discarded ToUnicode map draws nothing at all.
+- The PDF's `W` and `DW` keep every advance, so glyph positions are the
+  document's own.
+- The substitution is reported as `font.substituted`, and the incomplete
+  coverage as `font.cid-glyph-missing`. Vertical writing stays unsupported.
+
+Other families, including unknown or non-Latin names, keep the refusal.
+
+as a diagnostic, never silent, and a document's own embedded program wins
+whenever it is usable.
+
+### Unusable embedded programs (amended 2026-10-27)
+
+An embedded program first goes through its parser's own reported repairs
+(`font.sfnt-version`, `font.table-bounds` and the others in
+`docs/RECOVERY.md`). If the program still cannot be used, because of a syntax
+error, a format that disagrees with the font's binding, or an unsupported
+construct, it is replaced by the substitute a non-embedded font with the same
+name and descriptor would get. The same rules apply as for a non-embedded
+font, including the symbolic and collection rules.
+
+- Reported as the repair `font.embedded-unusable` at the program's error.
+  Strict mode keeps the program's error with that repair attached.
+- The PDF's widths (`Widths`, `W`, `DW`) keep every advance.
+- Budget, cycle and other errors keep the program's error, and so do fonts
+  for which no substitute exists.

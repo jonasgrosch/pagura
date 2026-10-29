@@ -785,6 +785,8 @@
         "text/substitute-unsafe-symbolic",
         "text/substitute-unsafe-symbolic-both",
         "text/substitute-unsafe-symbolic-known-base",
+        "text/substitute-symbolic-latin-encoding",
+        "text/substitute-symbolic-latin-base-encoding",
         "text/substitute-style-angle",
         "text/substitute-style-medium-weight",
         "text/substitute-style-bold-weight",
@@ -803,6 +805,7 @@
         "choices": [
           "Fixed-pitch selects Courier ahead of serif; serif selects Times; otherwise Helvetica. Italic flag or nonzero ItalicAngle selects the italic style; FontWeight >= 600 or ForceBold selects bold.",
           "Unknown Type1/TrueType fonts without an Encoding use the substitute AFM built-in encoding. No guess is made for unknown symbolic fonts.",
+          "A Symbolic flag on a non-embedded font whose name is a known Latin family (a standard alias, or the Liberation, croscore or DejaVu text families, whose face then comes from the descriptor) and whose Encoding names, or has a BaseEncoding naming, StandardEncoding, WinAnsiEncoding or MacRomanEncoding follows that encoding as the reported repair font.symbolic-latin-encoding; strict mode rejects it. Symbol, dingbat and unknown families, and fonts without an explicit Latin encoding, still fail with font.non-embedded.",
           "Known Symbol and ZapfDingbats style suffixes retain the regular bundled program and its encoding without synthetic slant or weight. Substitution is reported in both recovery modes; explicit PDF widths take precedence over AFM widths. Indirect Flags are resolved before symbolic TrueType encodings are ignored."
         ]
       }
@@ -1311,6 +1314,9 @@
       ],
       "status": "CID collection identities determine character meaning; the PDF CMap selects CIDs, and W/DW supply advances independently of the external program; ToUnicode serves extraction only.",
       "tests": [
+        "text/substitute-cid-identity-latin",
+        "text/substitute-cid-identity-latin-no-tounicode",
+        "text/substitute-cid-identity-latin-vertical",
         "text/substitute-cid-Japan1-CIDFontType0",
         "text/substitute-cid-Japan1-CIDFontType2",
         "text/substitute-cid-Japan1-tounicode",

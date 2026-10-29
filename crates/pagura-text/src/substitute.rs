@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 pub(crate) mod cid;
 mod family;
+use family::latin_text_family;
 use family::{Family, Style};
 pub(crate) use family::{Standard14, standard_name};
 
@@ -46,14 +47,19 @@ pub(crate) fn load(
     let flags = descriptor
         .map(|descriptor| descriptor.normalized_flags(document, position))
         .transpose()?;
-    let symbolic = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
+    let flagged = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
+    let latin = flagged && latin_route(document, font, base.as_bytes(), standard, position)?;
+    let symbolic = flagged && !latin;
     if symbolic && !standard.is_some_and(Standard14::is_symbolic) {
         return Err(unavailable());
     }
     let selected = match standard {
         Some(face) => face,
         None => match (descriptor, flags) {
-            (Some(descriptor), Some(flags)) => closest(document, descriptor, flags)?,
+            (Some(descriptor), Some(flags)) => {
+                let flags = if latin { flags.nonsymbolic() } else { flags };
+                closest(document, descriptor, flags)?
+            }
             _ => return Err(unavailable()),
         },
     };
@@ -129,6 +135,50 @@ pub(crate) fn load(
         retained: 0,
     }
     .accounted())
+}
+
+/// Whether a font flagged Symbolic takes its explicit Latin encoding: a known
+/// Latin family whose Encoding names a Latin base encoding contradicts the
+/// flag, and the encoding is followed as a reported repair (ADR 0009). Symbol,
+/// dingbat and unknown families still get no guess.
+fn latin_route(
+    document: &Document,
+    font: &Dictionary,
+    base: &[u8],
+    standard: Option<Standard14>,
+    position: Position,
+) -> Result<bool> {
+    let family = standard.is_some_and(|face| !face.is_symbolic()) || latin_text_family(base);
+    if !family || !latin_encoding(document, font)? {
+        return Ok(false);
+    }
+    Report::new(document).repair(
+        crate::repairs::SYMBOLIC_LATIN_ENCODING,
+        "Symbolic flag ignored: the font names a Latin family and base encoding",
+        position,
+    )?;
+    Ok(true)
+}
+
+/// Whether `/Encoding` names, or has a `/BaseEncoding` naming, one of the
+/// Latin text encodings (Table 112). MacExpert and absent encodings do not
+/// count: only an explicit Latin encoding identifies the glyph names.
+fn latin_encoding(document: &Document, font: &Dictionary) -> Result<bool> {
+    let Some(encoding) = optional(document, font, b"Encoding")? else {
+        return Ok(false);
+    };
+    let name = match encoding {
+        pagura_core::Value::Dictionary(dictionary) => {
+            optional(document, dictionary, b"BaseEncoding")?.and_then(pagura_core::Value::as_name)
+        }
+        value => value.as_name(),
+    };
+    Ok(name.is_some_and(|name| {
+        matches!(
+            name.as_bytes(),
+            b"StandardEncoding" | b"WinAnsiEncoding" | b"MacRomanEncoding"
+        )
+    }))
 }
 
 fn unavailable() -> Error {

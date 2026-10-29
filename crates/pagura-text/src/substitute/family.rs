@@ -137,6 +137,28 @@ pub(crate) fn standard_name(name: &[u8]) -> Option<Standard14> {
     None
 }
 
+/// Latin text families beyond the standard aliases whose name rules out a
+/// symbol font: the metric-compatible Liberation and croscore faces and DejaVu.
+/// Only a Symbolic font with an explicit Latin encoding consults this list;
+/// its face then comes from the descriptor, as for an unknown nonsymbolic font.
+pub(crate) fn latin_text_family(name: &[u8]) -> bool {
+    let mut buffer = [0; MAX_NAME];
+    normalized(name, &mut buffer).is_some_and(|name| {
+        [
+            b"liberationsans".as_slice(),
+            b"liberationserif",
+            b"liberationmono",
+            b"arimo",
+            b"tinos",
+            b"cousine",
+            b"dejavusans",
+            b"dejavuserif",
+        ]
+        .iter()
+        .any(|family| name.starts_with(family))
+    })
+}
+
 fn style(suffix: &[u8]) -> Option<Style> {
     Some(match suffix {
         b"" | b"roman" | b"regular" => Style::Regular,
@@ -180,6 +202,10 @@ mod tests {
             Some(Standard14::TimesRoman)
         );
         assert_eq!(standard_name(b"Symbol,Italic"), Some(Standard14::Symbol));
+        assert!(latin_text_family(b"ABCDEF+LiberationSans-Bold"));
+        assert!(latin_text_family(b"DejaVuSansMono"));
+        assert!(!latin_text_family(b"Wingdings"));
+        assert!(!latin_text_family(b"Liberation"));
         assert_eq!(standard_name(b"Unknown"), None);
         assert_eq!(standard_name(&[b'A'; MAX_NAME + 1]), None);
         assert_eq!(
