@@ -216,25 +216,13 @@ impl Preview {
         }
         // Only the page's spots carry tints; the kept ones past them are 0.
         let tint = |c: f64| 1.0 - (c / alpha).clamp(0.0, 1.0);
-        let equivalent =
-            if let Some((previous, cached)) = &mut self.last {
-                let changed = previous.iter().zip(spots).enumerate().find_map(
-                    |(i, (&previous, &component))| {
-                        let value = tint(component);
-                        (previous != value).then_some((i, value))
-                    },
-                );
-                if let Some((i, value)) = changed {
-                    // The equal prefix already holds these tints. Keep it,
-                    // including the first changed value just calculated.
-                    previous[i] = value;
-                    for (value, &component) in previous[i + 1..].iter_mut().zip(&spots[i + 1..]) {
-                        *value = tint(component);
-                    }
-                    *cached = equivalent(output, previous, usage);
-                }
-                *cached
-            } else {
+        let equivalent = match &self.last {
+            Some((previous, equivalent))
+                if previous.iter().zip(spots).all(|(&p, &c)| p == tint(c)) =>
+            {
+                *equivalent
+            }
+            _ => {
                 let mut tints = [0.0; crate::plan::MAX_SPOTS];
                 for (value, &c) in tints.iter_mut().zip(spots) {
                     *value = tint(c);
@@ -242,7 +230,8 @@ impl Preview {
                 let equivalent = equivalent(output, &tints, usage);
                 self.last = Some((tints, equivalent));
                 equivalent
-            };
+            }
+        };
         let mixed = [0, 1, 2, 3].map(|i| (cmyk[i] + equivalent[i] - 1.0).max(0.0));
         process::rgb(Process::Cmyk, &mixed)
     }
